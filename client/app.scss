@@ -1,0 +1,29 @@
+$fa-font-path: '../node_modules/@fortawesome/fontawesome-free/webfonts';
+@import '@fortawesome/fontawesome-free/scss/fontawesome';
+@import '@fortawesome/fontawesome-free/scss/regular';
+@import '@fortawesome/fontawesome-free/scss/solid';
+@import '@fortawesome/fontawesome-free/scss/brands';
+@import 'react-toastify/dist/ReactToastify';
+
+// Inject Tailwind CSSs base styles, including normalization.
+@tailwind base;
+
+// Inject component classes registered by tailwind plugins
+@tailwind components;
+
+// Imports
+
+html {
+    @apply font-sans;
+}
+
+// Components
+@responsive {
+    @import 'components/alert';
+    @import 'components/button';
+    @import 'components/field';
+    @import 'components/link';
+}
+
+// Inject tailwind utility classes
+@tailwind utilities;

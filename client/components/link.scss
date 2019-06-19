@@ -1,0 +1,16 @@
+.link {
+    @apply underline;
+    color: inherit;
+
+    &:focus {
+        @apply outline-none;
+    }
+
+    &-stealth {
+        @apply no-underline;
+
+        &:hover {
+            @apply underline;
+        }
+    }
+}

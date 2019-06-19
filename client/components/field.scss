@@ -1,0 +1,50 @@
+.field {
+    @apply bg-white;
+    @apply block;
+    @apply border;
+    @apply border-gray-500;
+    @apply rounded;
+    @apply my-4;
+    @apply outline-none;
+    @apply overflow-hidden;
+    @apply h-12;
+    @apply px-3;
+    @apply py-2;
+    @apply text-black;
+    @apply w-full;
+
+    &-disabled {
+        @apply bg-gray-400;
+        @apply text-gray-600;
+    }
+
+    &-label {
+        @apply text-sm;
+        @apply font-medium;
+        @apply py-1;
+        @apply truncate;
+    }
+
+    &:invalid {
+        @apply shadow-none;
+    }
+
+    &:focus {
+        @apply border-black;
+    }
+
+    &::placeholder {
+        @apply text-gray-300;
+    }
+
+    &-group {
+        @apply flex;
+        @apply flex-col;
+        @apply mt-0;
+        @apply relative;
+    }
+
+    &-group & {
+        @apply mt-0;
+    }
+}

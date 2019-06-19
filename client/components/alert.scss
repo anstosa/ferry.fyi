@@ -1,0 +1,20 @@
+.alert {
+    @apply bg-gray-300;
+    @apply my-4;
+    @apply p-4;
+    @apply rounded;
+    @apply w-full;
+
+    &-info {
+        @apply bg-blue-300;
+    }
+
+    &-warning {
+        @apply bg-orange-300;
+    }
+
+    &-error {
+        @apply bg-red-600;
+        @apply text-white;
+    }
+}
