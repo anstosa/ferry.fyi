@@ -1,10 +1,10 @@
 const Koa = require('koa');
-const koaStatic = require('koa-staic');
+const serve = require('koa-staic');
 const app = new Koa();
 const dotenv = require('dotenv');
 
 dotenv.config();
-app.use(koaStatic(`${__dirname}../dist`));
+app.use(serve(`${__dirname}../dist`));
 app.use((ctx) => {
     ctx.body = 'Hello World';
 });
