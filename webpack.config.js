@@ -1,9 +1,9 @@
+const HtmlPlugin = require('html-webpack-plugin');
+const LiveReloadPlugin = require('webpack-livereload-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const StyleLintPlugin = require('stylelint-webpack-plugin');
-const LiveReloadPlugin = require('webpack-livereload-plugin');
 const merge = require('webpack-merge');
 const path = require('path');
-const webpack = require('webpack');
 
 const commonConfig = merge([
     {
@@ -13,8 +13,8 @@ const commonConfig = merge([
             filename: 'bundle.js',
         },
         plugins: [
+            new HtmlPlugin({title: 'Ferry FYI'}),
             new StyleLintPlugin(),
-            new LiveReloadPlugin({ protocol: 'https' }),
             new MiniCssExtractPlugin({
                 filename: '[name].css',
                 chunkFilename: '[id].css',
@@ -32,8 +32,8 @@ const commonConfig = merge([
                 {
                     test: /\.css$/,
                     use: [
-                        { loader: 'style-loader' },
-                        { loader: 'css-loader', options: { modules: true } },
+                        {loader: 'style-loader'},
+                        {loader: 'css-loader', options: {modules: true}},
                     ],
                 },
                 {
@@ -45,7 +45,7 @@ const commonConfig = merge([
                                 hmr: process.env.NODE_ENV === 'development',
                             },
                         },
-                        { loader: 'css-loader', options: { importLoaders: 1 } },
+                        {loader: 'css-loader', options: {importLoaders: 1}},
                         'postcss-loader',
                         'sass-loader',
                     ],
@@ -74,13 +74,14 @@ const productionConfig = merge([{}]);
 const developmentConfig = merge([
     {
         devtool: 'inline-source-map',
+        plugins: [new LiveReloadPlugin({appendScriptTag: true})],
     },
 ]);
 
 module.exports = (mode) => {
     if (mode === 'production') {
-        return merge(commonConfig, productionConfig, { mode });
+        return merge(commonConfig, productionConfig, {mode});
     } else {
-        return merge(commonConfig, developmentConfig, { mode });
+        return merge(commonConfig, developmentConfig, {mode});
     }
 };

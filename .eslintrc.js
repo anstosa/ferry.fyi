@@ -35,7 +35,7 @@ module.exports = {
                 memberSyntaxSortOrder: ['none', 'all', 'multiple', 'single'],
             },
         ],
-        'no-console': ['warn', {allow: ['warn', 'error']}],
+        'no-console': 'off',
         'no-template-curly-in-string': 'error',
         'require-atomic-updates': 'error',
         curly: ['error', 'all'],

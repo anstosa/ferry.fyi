@@ -38,6 +38,8 @@ module.exports = {
                 900: 'rgba(255, 255, 255, 90%)',
             },
 
+            'wsf-green': '#00735a',
+
             gray: {
                 100: '#fafafa',
                 200: '#f0f0f0',
@@ -360,6 +362,7 @@ module.exports = {
             '1/2': '50%',
             full: '100%',
             screen: '100vh',
+            halfscreen: '50vh',
         },
         maxWidth: {
             '3xs': '10rem',

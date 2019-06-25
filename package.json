@@ -39,6 +39,7 @@
         "eslint-plugin-react": "^7.13.0",
         "eslint-plugin-sort-imports-es6-autofix": "^0.4.0",
         "file-loader": "^4.0.0",
+        "html-webpack-plugin": "^3.2.0",
         "mini-css-extract-plugin": "^0.7.0",
         "ngrok": "^3",
         "node-sass": "^4.12.0",
@@ -66,11 +67,20 @@
         "dotenv": "^8.0.0",
         "draft-js": "^0.10.5",
         "koa": "^2.7.0",
+        "koa-bodyparser": "^4.2.1",
+        "koa-logger": "^3.2.0",
+        "koa-mount": "^4.0.0",
+        "koa-router": "^7.4.0",
         "koa-static": "^5.0.0",
         "lodash": "^4.17.11",
-        "luxon": "^1.13.1",
+        "luxon": "^1.16.0",
         "react": "^16.8.6",
         "react-dom": "^16.8.6",
-        "react-toastify": "^5.1.0"
+        "react-helmet": "^5.2.1",
+        "react-toastify": "^5.1.0",
+        "request": "^2.88.0",
+        "request-promise": "^4.2.4",
+        "scroll-into-view": "^1.9.7",
+        "xml-js": "^1.6.11"
     }
 }

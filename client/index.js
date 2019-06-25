@@ -1,11 +1,16 @@
 import '@babel/polyfill';
+import {post} from './lib/api';
 import App from './App';
 import React from 'react';
 import ReactDOM from 'react-dom';
 
-window.addEventListener('error', window.onerror);
+function onError(error) {
+    post('/error', {error});
+}
+
+window.addEventListener('error', onError);
 window.addEventListener('unhandledrejection', (error) => {
-    window.onerror(error.reason.message);
+    onError(error.reason.message);
 });
 
 /**
@@ -27,7 +32,8 @@ const whenReady = (callback) => {
 };
 
 whenReady(() => {
-    const root = document.querySelector('#root');
+    const root = document.createElement('div');
+    document.body.appendChild(root);
     const app = React.createElement(App);
     ReactDOM.render(app, root);
 });
