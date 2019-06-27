@@ -5,10 +5,8 @@
     "main": "server.js",
     "scripts": {
         "build-client": "webpack --env production",
-        "build-server": "babel server/server.js -d dist",
         "client": "webpack --env development --watch",
         "migrate": "nodenv --exec sh scripts/migrate.sh",
-        "run-server": "node dist/server.js",
         "server": "nodemon --exec babel-node server/server.js"
     },
     "repository": {
