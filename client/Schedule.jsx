@@ -57,6 +57,9 @@ export default class Schedule extends Component {
     updateSchedule = async () => {
         const {terminal, mate} = this.state;
         const schedule = await getSchedule(terminal, mate);
+        if (!this.state.schedule) {
+            this.hasScrolled = false;
+        }
         this.setState({schedule});
     };
 
