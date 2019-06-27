@@ -1,6 +1,6 @@
 {
   "plugins": [
-    "transform-class-properties",
+    "@babel/plugin-proposal-class-properties",
     [
       "@babel/plugin-transform-runtime",
       {
@@ -9,7 +9,12 @@
     ]
   ],
   "presets": [
-    ["@babel/preset-env", {"targets": "last 2 version"}],
-    "@babel/preset-react",
+    [
+      "@babel/preset-env",
+      {
+        "targets": "last 2 version"
+      }
+    ],
+    "@babel/preset-react"
   ]
 }

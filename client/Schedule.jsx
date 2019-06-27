@@ -42,10 +42,22 @@ export default class Schedule extends Component {
     };
 
     setTerminal = async (slug) => {
+        this.setState({mate: null, schedule: null, terminal: null});
         const terminal = await getTerminal(slug);
         const mate = _.first(terminal.mates);
+        this.setState({mate, terminal});
+        await this.updateSchedule();
+    };
+
+    setMate = async (mate) => {
+        this.setState({mate, schedule: null});
+        await this.updateSchedule();
+    };
+
+    updateSchedule = async () => {
+        const {terminal, mate} = this.state;
         const schedule = await getSchedule(terminal, mate);
-        this.setState({mate, schedule, terminal});
+        this.setState({schedule});
     };
 
     renderMeta = () => {
@@ -161,9 +173,9 @@ export default class Schedule extends Component {
     };
 
     render = () => {
-        const {mate, terminal} = this.state;
+        const {mate, terminal, schedule} = this.state;
         const {match} = this.props;
-        if (!terminal || !mate) {
+        if (!terminal || !mate || !schedule) {
             return <Splash />;
         }
         return (
@@ -172,7 +184,7 @@ export default class Schedule extends Component {
                     match={match}
                     terminal={terminal}
                     mate={mate}
-                    setMate={(newMate) => this.setState({mate: newMate})}
+                    setMate={this.setMate}
                 />
                 <article className={clsx('w-full', 'flex-grow flex flex-col')}>
                     <div className="w-full max-w-6xl">

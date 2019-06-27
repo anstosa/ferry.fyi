@@ -1,5 +1,3 @@
-require('dotenv').config();
-
 import * as log from './lib/log';
 import {
     backfillCapacity,
@@ -56,11 +54,13 @@ app.use(mount('/api', api));
 
 // static files app
 const dist = new Koa();
-dist.use(serve(`${__dirname}/../dist`));
+dist.use(serve(`${__dirname}/../client/dist`));
 const browser = new Router();
 browser.get('*', (ctx) => {
     ctx.type = 'html';
-    ctx.body = fs.readFileSync(path.resolve(`${__dirname}/../dist/index.html`));
+    ctx.body = fs.readFileSync(
+        path.resolve(`${__dirname}/../client/dist/index.html`)
+    );
 });
 dist.use(browser.routes());
 dist.use(browser.allowedMethods());

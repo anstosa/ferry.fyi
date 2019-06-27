@@ -1,5 +1,3 @@
-require('dotenv').config();
-
 import Sequelize from 'sequelize';
 
 export const {Op} = Sequelize;
