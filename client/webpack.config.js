@@ -10,7 +10,7 @@ const commonConfig = merge([
         entry: './client/index.js',
         output: {
             path: path.resolve(__dirname, 'dist'),
-            filename: 'bundle.js',
+            filename: 'client.js',
         },
         plugins: [
             new HtmlPlugin({title: 'Ferry FYI'}),

@@ -4,8 +4,11 @@
     "description": "",
     "main": "server.js",
     "scripts": {
-        "heroku-postbuild": "webpack --env production",
-        "client": "webpack --env development --watch",
+        "client": "webpack --env development --watch --config client/webpack.config.js",
+        "heroku-postbuild": "npm run heroku-postbuild-client && npm run heroku-postbuild-server",
+        "heroku-postbuild-client": "webpack --env production --config client/webpack.config.js",
+        "heroku-postbuild-server": "webpack --env production --config server/webpack.config.js",
+        "heroku-web": "node server/dist/server.js",
         "migrate": "nodenv --exec sh scripts/migrate.sh",
         "server": "nodemon --exec babel-node server/server.js"
     },
@@ -22,6 +25,7 @@
     "devDependencies": {
         "@babel/cli": "^7.4.4",
         "@babel/core": "^7.4.4",
+        "@babel/node": "^7.4.5",
         "@babel/plugin-transform-runtime": "^7.4.4",
         "@babel/preset-env": "^7.4.4",
         "@babel/preset-react": "^7.0.0",
@@ -61,10 +65,10 @@
         "webpack": "^4.30.0",
         "webpack-cli": "^3.3.1",
         "webpack-livereload-plugin": "^2.2.0",
-        "webpack-merge": "^4.2.1"
+        "webpack-merge": "^4.2.1",
+        "webpack-node-externals": "^1.7.2"
     },
     "dependencies": {
-        "@babel/node": "^7.4.5",
         "@babel/polyfill": "^7.4.4",
         "clsx": "^1.0.4",
         "color-convert": "^2.0.0",
