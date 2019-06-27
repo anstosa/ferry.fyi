@@ -78,14 +78,26 @@ export default class Schedule extends Component {
         if (!schedule) {
             return;
         }
-        const sailings = _.map(schedule, this.renderSailing);
+        const sailings = _.map(schedule, this.renderCrossing);
         return <ul>{sailings}</ul>;
     };
 
-    renderSailing = (sailing) => {
-        const time = DateTime.fromSeconds(sailing.time);
-        const hasPassed = DateTime.local() > time;
+    renderCrossing = (crossing) => {
+        const time = DateTime.fromSeconds(crossing.time);
+        const isNext =
+            crossing === _.find(this.state.schedule, {hasPassed: false});
         const diff = time.diffNow();
+        let percentFull = 0;
+        let spaceLeft = 0;
+        if (crossing.capacity) {
+            const {
+                driveUpCapacity = 0,
+                reservableCapacity = 0,
+                totalCapacity,
+            } = crossing.capacity;
+            spaceLeft = driveUpCapacity + reservableCapacity;
+            percentFull = ((totalCapacity - spaceLeft) / totalCapacity) * 100;
+        }
 
         let majorTime;
         let minorTime;
@@ -94,7 +106,9 @@ export default class Schedule extends Component {
                 <>
                     {_.round(Math.abs(diff.as('minutes')))}
                     <br />
-                    mins {hasPassed && 'ago'}
+                    <span className="text-sm">
+                        mins {crossing.hasPassed && 'ago'}
+                    </span>
                 </>
             );
             minorTime = time.toFormat('hh:mm a');
@@ -106,24 +120,41 @@ export default class Schedule extends Component {
         return (
             <li
                 className={clsx(
-                    'h-32 p-4',
+                    'relative h-32 p-4',
                     'border-b border-gray-500',
-                    hasPassed && 'opacity-50',
+                    crossing.hasPassed && 'opacity-50',
+                    isNext && 'bg-green-200',
                     'flex justify-between'
                 )}
-                key={sailing.time}
+                key={crossing.time}
                 ref={(element) => {
-                    if (hasPassed) {
+                    if (crossing.hasPassed) {
                         this.lastPassed = element;
                     }
                 }}
             >
-                <span>{sailing.vessel.name}</span>
+                <div
+                    className={clsx(
+                        'absolute w-0 top-0 left-0 h-full',
+                        'bg-darken-500'
+                    )}
+                    style={{width: `${percentFull}%`}}
+                >
+                    <span className={clsx('absolute top-0 right-0 m-4')}>
+                        {spaceLeft} cars left
+                    </span>
+                </div>
+                <div />
                 <div className="flex flex-col text-center">
-                    <span className="flex-grow text-2xl font-bold">
+                    <span
+                        className={clsx(
+                            'flex-grow text-2xl font-bold leading-none',
+                            'flex flex-col justify-center'
+                        )}
+                    >
                         {majorTime}
                     </span>
-                    <span className="text-sm font-bold">{minorTime}</span>
+                    <span className="text-sm text-gray-700">{minorTime}</span>
                 </div>
             </li>
         );

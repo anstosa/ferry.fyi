@@ -1,7 +1,7 @@
-const _ = require('lodash');
-const {DateTime} = require('luxon');
+import {DateTime} from 'luxon';
+import _ from 'lodash';
 
-module.exports.wsfDateToTimestamp = (wsfDate) => {
+export const wsfDateToTimestamp = (wsfDate) => {
     if (!wsfDate) {
         return null;
     }
@@ -12,4 +12,4 @@ module.exports.wsfDateToTimestamp = (wsfDate) => {
     return _.round(match[1] / 1000);
 };
 
-module.exports.getToday = () => DateTime.local().toFormat('yyyy-MM-dd');
+export const getToday = () => DateTime.local().toFormat('yyyy-MM-dd');

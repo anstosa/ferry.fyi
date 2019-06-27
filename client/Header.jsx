@@ -28,12 +28,13 @@ export default class Header extends Component {
     wrapHeader = (content) => (
         <header
             className={clsx(
+                'fixed top-0 inset-x z-10',
                 'bg-wsf-green text-white',
                 'w-full shadow-lg h-16',
                 'flex justify-center'
             )}
         >
-            <div className={clsx('w-full max-w-6xl p-4', 'flex items-center')}>
+            <div className={clsx('w-full max-w-6xl p-8', 'flex items-center')}>
                 {content}
             </div>
         </header>
@@ -134,17 +135,25 @@ export default class Header extends Component {
         );
     };
 
+    renderLogo = () => <i className="fas fa-ship text-2xl mr-8" />;
+
     render = () => {
         const {terminal} = this.props;
         if (!terminal) {
             return this.wrapHeader('Ferry FYI');
         }
-        return this.wrapHeader(
-            <div className="flex">
-                {this.renderTerminal()}
-                {this.renderSwap()}
-                {this.renderMate()}
-            </div>
+        return (
+            <>
+                <div className="h-16 w-full" />
+                {this.wrapHeader(
+                    <div className="flex">
+                        {this.renderLogo()}
+                        {this.renderTerminal()}
+                        {this.renderSwap()}
+                        {this.renderMate()}
+                    </div>
+                )}
+            </>
         );
     };
 }

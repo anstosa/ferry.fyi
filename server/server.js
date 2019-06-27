@@ -1,17 +1,26 @@
-// init environment
 require('dotenv').config();
 
-const Koa = require('koa');
-const Router = require('koa-router');
-const bodyParser = require('koa-bodyparser');
-const fs = require('fs');
-const logger = require('koa-logger');
-const mount = require('koa-mount');
-const path = require('path');
-const serve = require('koa-static');
-const {getTerminals, getTerminal, getTerminalCapacity} = require('./terminals');
-const {getVessels, getVessel} = require('./vessels');
-const {getSchedule} = require('./schedule');
+import * as log from './lib/log';
+import {
+    backfillCapacity,
+    getSchedule,
+    getTerminal,
+    getTerminals,
+    getVessel,
+    getVessels,
+    recordCapacity,
+    recordTiming,
+    updateCache,
+} from './lib/wsf';
+import {dbInit} from './lib/db';
+import bodyParser from 'koa-bodyparser';
+import fs from 'fs';
+import Koa from 'koa';
+import logger from 'koa-logger';
+import mount from 'koa-mount';
+import path from 'path';
+import Router from 'koa-router';
+import serve from 'koa-static';
 
 // start main app
 const app = new Koa();
@@ -58,4 +67,12 @@ dist.use(browser.allowedMethods());
 app.use(mount('/', dist));
 
 // start server
-app.listen(process.env.PORT, () => console.log('Server started!'));
+(async () => {
+    await dbInit;
+    await updateCache();
+    await backfillCapacity();
+    app.listen(process.env.PORT, () => log.info('Server started!'));
+    setInterval(updateCache, 30 * 1000);
+    setInterval(recordCapacity, 5 * 1000);
+    setInterval(recordTiming, 5 * 1000);
+})();

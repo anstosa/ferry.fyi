@@ -1,0 +1,7 @@
+require('dotenv').config();
+const path = require('path');
+
+module.exports = {
+  'models-path': path.resolve('server', 'models'),
+  'migrations-path': path.resolve('server', 'migrations')
+}
