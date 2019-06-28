@@ -16,7 +16,7 @@ if (dialect === DIALECT_SQLITE) {
         dialectOptions: {
             ssl: true,
         },
-        // logging: false,
+        logging: process.env.DEBUG || false,
         protocol: DIALECT_POSTGRES,
     });
 }
