@@ -14,5 +14,5 @@ Crossing.init(
         reservableCapacity: Sequelize.INTEGER,
         totalCapacity: Sequelize.INTEGER,
     },
-    {sequelize: db, modelName: 'crossing'}
+    {sequelize: db, modelName: 'Crossing'}
 );
