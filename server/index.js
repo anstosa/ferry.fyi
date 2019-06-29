@@ -56,9 +56,9 @@ app.use(mount('/api', api));
 const dist = new Koa();
 dist.use(serve(path.resolve(process.cwd(), 'client', 'dist')));
 const browser = new Router();
-browser.get('*', (ctx) => {
-    ctx.type = 'html';
-    ctx.body = fs.readFileSync(
+browser.get('*', (context) => {
+    context.type = 'html';
+    context.body = fs.readFileSync(
         path.resolve(process.cwd(), 'client', 'dist', 'index.html')
     );
 });

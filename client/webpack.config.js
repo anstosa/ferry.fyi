@@ -5,6 +5,10 @@ const StyleLintPlugin = require('stylelint-webpack-plugin');
 const merge = require('webpack-merge');
 const path = require('path');
 
+const TITLE = 'Ferry FYI';
+const DESCRIPTION = 'A better WSF tracker';
+const IMAGE = '';
+
 const commonConfig = merge([
     {
         entry: './client/index.js',
@@ -13,7 +17,12 @@ const commonConfig = merge([
             filename: 'client.js',
         },
         plugins: [
-            new HtmlPlugin({title: 'Ferry FYI'}),
+            new HtmlPlugin({
+                description: DESCRIPTION,
+                image: IMAGE,
+                template: './client/index.html',
+                title: TITLE,
+            }),
             new StyleLintPlugin(),
             new MiniCssExtractPlugin({
                 filename: '[name].css',

@@ -10,7 +10,7 @@
         "heroku-postbuild-server": "webpack --env production --config server/webpack.config.js",
         "heroku-web": "node server/dist/server.js",
         "migrate": "nodenv --exec sh scripts/migrate.sh",
-        "server": "nodemon --exec node --require dotenv/config --require @babel/register server/index.js"
+        "server": "nodemon --exec node --require dotenv/config scripts/start.js"
     },
     "repository": {
         "type": "git",

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title><%= htmlWebpackPlugin.options.title %></title>
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1"
+    ></meta>
+
+    <link rel="canonical" href={process.env.BASE_URL} />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@FerryFYI" />
+    <meta name="twitter:title" content="<%= htmlWebpackPlugin.options.title %>" />
+    <meta name="twitter:description" content="<%= htmlWebpackPlugin.options.description %>" />
+    <meta name="twitter:image" content="<%= htmlWebpackPlugin.options.image %>" />
+
+    <meta property="og:url" content={process.env.BASE_URL} />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="<%= htmlWebpackPlugin.options.title %>" />
+    <meta property="og:description" content="<%= htmlWebpackPlugin.options.description %>" />
+    <meta property="og:image" content="<%= htmlWebpackPlugin.options.image %>" />
+
+    <meta itemProp="name" content="<%= htmlWebpackPlugin.options.title %>" />
+    <meta itemProp="description" content="<%= htmlWebpackPlugin.options.description %>" />
+    <meta itemProp="image" content="<%= htmlWebpackPlugin.options.image %>" />
+</head>
+<body>
+    <script src="/bundle.js"></script>
+</body>
+</html>
