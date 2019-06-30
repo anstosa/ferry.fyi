@@ -17,6 +17,10 @@ html {
     @apply font-sans;
 }
 
+.fa-spin-pause {
+    animation-play-state: paused;
+}
+
 // Components
 @responsive {
     @import 'components/alert';

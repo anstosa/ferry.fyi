@@ -36,7 +36,7 @@ export default class Header extends Component {
                 'flex justify-center'
             )}
         >
-            <div className={clsx('w-full max-w-6xl p-8', 'flex items-center')}>
+            <div className={clsx('w-full max-w-6xl p-4', 'flex items-center')}>
                 {content}
             </div>
         </header>
@@ -109,7 +109,7 @@ export default class Header extends Component {
         }
         return (
             <Link
-                className="mx-4 w-8 text-center"
+                className="mx-2 w-8 text-center"
                 to={`/${getSlug(mate.id)}`}
                 onMouseEnter={() => this.setState({isSwapHovering: true})}
                 onMouseLeave={() => this.setState({isSwapHovering: false})}
@@ -137,15 +137,15 @@ export default class Header extends Component {
         );
     };
 
-    renderLogo = () => <i className="fas fa-ship text-2xl mr-8" />;
+    renderLogo = () => <i className="fas fa-ship text-2xl mr-4" />;
 
     renderReload = () => {
         const {isReloading, reload} = this.props;
         return (
             <i
                 className={clsx(
-                    'block fas fa-sync text-xl cursor-pointer',
-                    isReloading && 'fa-spin'
+                    'fas fa-redo fa-lg fa-spin cursor-pointer',
+                    !isReloading && 'fa-spin-pause'
                 )}
                 onClick={() => {
                     if (!isReloading) {
@@ -167,7 +167,7 @@ export default class Header extends Component {
             <>
                 <div className="h-16 w-full" />
                 {this.wrapHeader(
-                    <div className="flex w-full">
+                    <div className="flex w-full items-center">
                         {this.renderLogo()}
                         {this.renderTerminal()}
                         {this.renderSwap()}

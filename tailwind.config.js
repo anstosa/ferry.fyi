@@ -341,6 +341,7 @@ module.exports = {
             widest: '0.2em',
         },
         lineHeight: {
+            inherit: 'inherit',
             none: '1',
             tight: '1.25',
             snug: '1.375',
