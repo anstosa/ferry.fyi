@@ -87,6 +87,7 @@ module.exports = {
             {
                 ignoreComments: true,
                 ignorePattern: '^import\\s.+\\sfrom\\s.+;$',
+                ignoreStrings: true,
                 ignoreTemplateLiterals: true,
             },
         ],

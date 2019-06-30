@@ -3,7 +3,7 @@ import {createBrowserHistory} from 'history';
 import {Redirect, Route, Router} from 'react-router-dom';
 import {ToastContainer} from 'react-toastify';
 import React, {Component} from 'react';
-import Schedule from './Schedule';
+import Schedule from './Schedule/Schedule';
 import Splash from './Splash';
 
 export default class App extends Component {
