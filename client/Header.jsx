@@ -7,8 +7,10 @@ import React, {Component} from 'react';
 
 export default class Header extends Component {
     static propTypes = {
+        isReloading: PropTypes.bool.isRequired,
         match: PropTypes.object.isRequired,
         mate: PropTypes.object,
+        reload: PropTypes.func.isRequired,
         setMate: PropTypes.func.isRequired,
         terminal: PropTypes.object,
     };
@@ -137,6 +139,25 @@ export default class Header extends Component {
 
     renderLogo = () => <i className="fas fa-ship text-2xl mr-8" />;
 
+    renderReload = () => {
+        const {isReloading, reload} = this.props;
+        return (
+            <i
+                className={clsx(
+                    'block fas fa-sync text-xl cursor-pointer',
+                    isReloading && 'fa-spin'
+                )}
+                onClick={() => {
+                    if (!isReloading) {
+                        reload();
+                    }
+                }}
+            />
+        );
+    };
+
+    renderSpacer = () => <div className="flex-grow" />;
+
     render = () => {
         const {terminal} = this.props;
         if (!terminal) {
@@ -146,11 +167,13 @@ export default class Header extends Component {
             <>
                 <div className="h-16 w-full" />
                 {this.wrapHeader(
-                    <div className="flex">
+                    <div className="flex w-full">
                         {this.renderLogo()}
                         {this.renderTerminal()}
                         {this.renderSwap()}
                         {this.renderMate()}
+                        {this.renderSpacer()}
+                        {this.renderReload()}
                     </div>
                 )}
             </>

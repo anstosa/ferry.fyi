@@ -1,14 +1,13 @@
 import * as log from './lib/log';
 import {
-    backfillCapacity,
+    backfillCrossings,
     getSchedule,
     getTerminal,
     getTerminals,
     getVessel,
     getVessels,
-    recordCapacity,
-    recordTiming,
     updateCache,
+    updateCrossings,
 } from './lib/wsf';
 import {dbInit} from './lib/db';
 import bodyParser from 'koa-bodyparser';
@@ -70,9 +69,9 @@ app.use(mount('/', dist));
 (async () => {
     await dbInit;
     await updateCache();
-    await backfillCapacity();
+    await updateCrossings();
+    await backfillCrossings();
     app.listen(process.env.PORT, () => log.info('Server started!'));
     setInterval(updateCache, 30 * 1000);
-    setInterval(recordCapacity, 5 * 1000);
-    setInterval(recordTiming, 5 * 1000);
+    setInterval(updateCrossings, 10 * 1000);
 })();

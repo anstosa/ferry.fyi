@@ -54,7 +54,6 @@ const updateProgress = {
 let matesByTerminalId = {};
 const vesselsById = {};
 const capacityByTerminal = {};
-const timingByTerminal = {};
 const terminalsById = {};
 
 // safely initialize a mates object
@@ -121,11 +120,6 @@ export const getSchedule = async (departingId, arrivingId) => {
                 ]),
                 hasPassed,
                 time,
-                timing: _.get(timingByTerminal, [
-                    departingId,
-                    arrivingId,
-                    time,
-                ]),
                 vessel: await getVessel(departure.VesselID),
             };
         })
@@ -305,7 +299,7 @@ export const updateCache = async () => {
     log.endIndent();
 };
 
-export async function backfillCapacity() {
+export async function backfillCrossings() {
     const yesterday = _.round(
         DateTime.local()
             .minus({days: 1})
@@ -324,8 +318,46 @@ export async function backfillCapacity() {
     });
 }
 
-export async function recordCapacity() {
-    log.debugging('Recording capacity...');
+async function recordTiming() {
+    log.debugging('Updating timings...');
+    const vessels = await request(API_VESSELS_LOCATIONS, {json: true});
+    _.each(vessels, (vessel) => {
+        const {VesselID: id} = vessel;
+        const departedTime = wsfDateToTimestamp(vessel.LeftDock);
+        const departureTime = wsfDateToTimestamp(vessel.ScheduledDeparture);
+        const estimatedArrivalTime = wsfDateToTimestamp(vessel.Eta);
+        let departedDelta;
+        if (departureTime) {
+            departedDelta = departedTime - departureTime;
+        } else {
+            departedDelta = _.get(vesselsById, [id, 'departedDelta']);
+        }
+        assignVessel(id, {
+            arrivingTerminalId: vessel.ArrivingTerminalID,
+            departingTerminalId: vessel.DepartingTerminalID,
+            departedTime,
+            departedDelta,
+            estimatedArrivalTime,
+            heading: vessel.Heading,
+            id,
+            isAtDock: vessel.AtDock,
+            location: {
+                latitude: vessel.Latitude,
+                longitude: vessel.Longitude,
+            },
+            mmsi: vessel.Mmsi,
+            speed: vessel.Speed,
+            info: {
+                ..._.get(vesselsById[id], 'info', {}),
+                crossing: vessel.EtaBasis,
+            },
+        });
+    });
+    log.debug('✔');
+}
+
+async function recordCapacity() {
+    log.debugging('Updating capacities...');
     const terminals = await request(API_TERMINALS_SPACE, {json: true});
     _.each(terminals, (terminal) => {
         _.each(terminal.DepartingSpaces, (departure) => {
@@ -333,6 +365,11 @@ export async function recordCapacity() {
                 const model = {
                     arrivalId: capacity.TerminalID,
                     departureId: terminal.TerminalID,
+                    departedDelta: _.get(
+                        vesselsById,
+                        [departure.VesselID, 'departedDelta'],
+                        null
+                    ),
                     departureTime: wsfDateToTimestamp(departure.Departure),
                     driveUpCapacity: capacity.DriveUpSpaceCount,
                     hasDriveUp: capacity.DisplayDriveUpSpace,
@@ -361,47 +398,10 @@ export async function recordCapacity() {
     log.debug('✔');
 }
 
-export async function recordTiming() {
-    const vessels = await request(API_VESSELS_LOCATIONS, {json: true});
-    _.each(vessels, (vessel) => {
-        const {VesselID: id} = vessel;
-        const departedTime = wsfDateToTimestamp(vessel.LeftDock);
-        const departureTime = wsfDateToTimestamp(vessel.ScheduledDeparture);
-        const estimatedArrivalTime = wsfDateToTimestamp(vessel.Eta);
-        let departedDelta;
-        if (departureTime) {
-            departedDelta = departedTime - departureTime;
-        }
-        _.setWith(
-            timingByTerminal,
-            [
-                vessel.DepartingTerminalID,
-                vessel.ArrivingTerminalID,
-                departureTime,
-            ],
-            {
-                departedTime,
-                departedDelta,
-                estimatedArrivalTime,
-            },
-            Object
-        );
-        assignVessel(id, {
-            arrivingTerminalId: vessel.ArrivingTerminalID,
-            departingTerminalId: vessel.DepartingTerminalID,
-            heading: vessel.Heading,
-            id,
-            isAtDock: vessel.AtDock,
-            location: {
-                latitude: vessel.Latitude,
-                longitude: vessel.Longitude,
-            },
-            mmsi: vessel.Mmsi,
-            speed: vessel.Speed,
-            info: {
-                ..._.get(vesselsById[id], 'info', {}),
-                crossing: vessel.EtaBasis,
-            },
-        });
-    });
-}
+export const updateCrossings = async () => {
+    log.debug('Updating crossings:');
+    log.startIndent();
+    await recordTiming();
+    await recordCapacity();
+    log.endIndent();
+};

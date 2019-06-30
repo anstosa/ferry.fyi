@@ -17,12 +17,17 @@ export default class Schedule extends Component {
 
     hasScrolled = false;
 
-    state = {terminal: null, mate: null, schedule: []};
+    state = {terminal: null, mate: null, schedule: [], isUpdating: false};
 
     componentDidMount = () => {
         const {match} = this.props;
         this.setTerminal(match.params.slug);
         this.checkScroll();
+        this.scheduleTick = setInterval(this.updateSchedule, 10 * 1000);
+    };
+
+    componentWillUnmount = () => {
+        clearInterval(this.scheduleTick);
     };
 
     componentDidUpdate(prevProps) {
@@ -56,11 +61,12 @@ export default class Schedule extends Component {
 
     updateSchedule = async () => {
         const {terminal, mate} = this.state;
+        this.setState({isUpdating: true});
         const schedule = await getSchedule(terminal, mate);
         if (!this.state.schedule) {
             this.hasScrolled = false;
         }
-        this.setState({schedule});
+        this.setState({isUpdating: false, schedule});
     };
 
     renderMeta = () => {
@@ -113,31 +119,38 @@ export default class Schedule extends Component {
             spaceLeft = driveUpCapacity + reservableCapacity;
             percentFull = ((totalCapacity - spaceLeft) / totalCapacity) * 100;
         }
+        let spaceText = `${spaceLeft} cars left`;
+        let spaceClass = 'text-xs whitespace-no-wrap';
+        if (spaceLeft === 0) {
+            spaceText = 'Boat full';
+            if (!crossing.hasPassed) {
+                spaceClass = clsx(spaceClass, 'font-bold text-red-700');
+            }
+        } else if (percentFull > 70) {
+            if (!crossing.hasPassed) {
+                spaceClass = clsx(spaceClass, 'font-medium text-orange-600');
+            }
+        }
 
         let majorTime;
         let minorTime;
         if (Math.abs(diff.as('hours')) < 1) {
-            majorTime = (
-                <>
-                    {_.round(Math.abs(diff.as('minutes')))}
-                    <br />
-                    <span className="text-sm">
-                        mins {crossing.hasPassed && 'ago'}
-                    </span>
-                </>
-            );
-            minorTime = time.toFormat('hh:mm a');
+            const mins = _.round(Math.abs(diff.as('minutes')));
+            majorTime = mins;
+            minorTime = `min${mins > 1 ? 's' : ''}${
+                crossing.hasPassed ? ' ago' : ''
+            }`;
         } else {
-            majorTime = time.toFormat('hh:mm');
+            majorTime = time.toFormat('h:mm');
             minorTime = time.toFormat('a');
         }
 
         return (
             <li
                 className={clsx(
-                    'relative h-32 p-4',
+                    'relative h-20 py-4 px-2',
                     'border-b border-gray-500',
-                    crossing.hasPassed && 'opacity-50',
+                    crossing.hasPassed && 'bg-gray-300',
                     isNext && 'bg-green-200',
                     'flex justify-between'
                 )}
@@ -148,35 +161,62 @@ export default class Schedule extends Component {
                     }
                 }}
             >
-                <div
-                    className={clsx(
-                        'absolute w-0 top-0 left-0 h-full',
-                        'bg-darken-500'
-                    )}
-                    style={{width: `${percentFull}%`}}
-                >
-                    <span className={clsx('absolute top-0 right-0 m-4')}>
-                        {spaceLeft} cars left
+                {percentFull > 0 && (
+                    <div
+                        className={clsx(
+                            'absolute w-0 top-0 left-0 h-full',
+                            'bg-darken-200'
+                        )}
+                        style={{width: `${percentFull}%`}}
+                    >
+                        {percentFull < 80 && (
+                            <span
+                                className={clsx(
+                                    spaceClass,
+                                    'absolute top-0 m-4',
+                                    percentFull <= 30 && 'left-full',
+                                    percentFull > 30 && 'right-0'
+                                )}
+                            >
+                                {spaceText}
+                            </span>
+                        )}
+                    </div>
+                )}
+                {percentFull >= 80 && (
+                    <span
+                        className={clsx(spaceClass, 'absolute top-0 m-4')}
+                        style={{right: '20%'}}
+                    >
+                        {spaceText}
                     </span>
-                </div>
+                )}
                 <div />
-                <div className="flex flex-col text-center">
+                <div className="flex flex-col text-center w-20">
                     <span
                         className={clsx(
                             'flex-grow text-2xl font-bold leading-none',
-                            'flex flex-col justify-center'
+                            'flex flex-col justify-center',
+                            crossing.hasPassed && 'text-gray-600'
                         )}
                     >
                         {majorTime}
                     </span>
-                    <span className="text-sm text-gray-700">{minorTime}</span>
+                    <span
+                        className={clsx(
+                            'text-sm font-bold',
+                            crossing.hasPassed && 'text-gray-600'
+                        )}
+                    >
+                        {minorTime}
+                    </span>
                 </div>
             </li>
         );
     };
 
     render = () => {
-        const {mate, terminal, schedule} = this.state;
+        const {isUpdating, mate, terminal, schedule} = this.state;
         const {match} = this.props;
         if (!terminal || !mate || !schedule) {
             return <Splash />;
@@ -188,6 +228,8 @@ export default class Schedule extends Component {
                     terminal={terminal}
                     mate={mate}
                     setMate={this.setMate}
+                    reload={this.updateSchedule}
+                    isReloading={isUpdating}
                 />
                 <article className={clsx('w-full', 'flex-grow flex flex-col')}>
                     <div className="w-full max-w-6xl">

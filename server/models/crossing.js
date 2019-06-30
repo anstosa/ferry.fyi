@@ -5,6 +5,7 @@ export default class Crossing extends Model {}
 Crossing.init(
     {
         arrivalId: Sequelize.INTEGER,
+        departureDelta: Sequelize.INTEGER,
         departureId: Sequelize.INTEGER,
         departureTime: Sequelize.INTEGER,
         driveUpCapacity: Sequelize.INTEGER,
