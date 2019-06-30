@@ -6,6 +6,10 @@ import React, {Component} from 'react';
 const RESERVATIONS_BASE_URL =
     'https://secureapps.wsdot.wa.gov/Ferries/Reservations/Vehicle/SailingSchedule.aspx?VRSTermId=';
 
+const LEFT_EDGE = 65;
+const RIGHT_EDGE = 90;
+const CAPACITY_WIDTH = 100;
+
 export default class Capacity extends Component {
     static propTypes = {
         crossing: PropTypes.object.isRequired,
@@ -53,11 +57,29 @@ export default class Capacity extends Component {
         );
     };
 
-    isLeftZone = () => this.state.percentFull <= 30;
+    isLeftEdge = () => {
+        const percent = this.state.percentFull / 100;
+        const totalWidth = window.innerWidth;
+        const width = percent * totalWidth;
+        return width <= LEFT_EDGE;
+    };
 
-    isRightZone = () => this.state.percentFull >= 80;
+    willFitLeft = () => {
+        const percent = this.state.percentFull / 100;
+        const totalWidth = window.innerWidth;
+        const width = percent * totalWidth;
+        return width >= CAPACITY_WIDTH + LEFT_EDGE;
+    };
 
-    isMiddleZone = () => !this.isLeftZone() && !this.isRightZone();
+    isRightEdge = () => {
+        const percent = this.state.percentFull / 100;
+        const totalWidth = window.innerWidth;
+        const width = percent * totalWidth;
+        const remainder = totalWidth - width;
+        return remainder <= RIGHT_EDGE;
+    };
+
+    isMiddleZone = () => !this.isLeftEdge() && !this.isRightEdge();
 
     isEmpty = () => this.state.percentFull === 0;
 
@@ -98,13 +120,23 @@ export default class Capacity extends Component {
         const {crossing} = this.props;
         const {hasPassed} = crossing;
 
-        let spaceText = `${spaceLeft} cars left`;
+        let spaceText = (
+            <>
+                <i className="fas fa-car mr-1 text-darken-400" />
+                {spaceLeft} cars left
+            </>
+        );
         let spaceClass = clsx(
             'text-xs whitespace-no-wrap',
-            'absolute top-0 m-4'
+            'absolute top-0 mt-5'
         );
         if (this.isFull()) {
-            spaceText = 'Boat full';
+            spaceText = (
+                <>
+                    <i className="fas fa-do-not-enter mr-1 text-darken-400" />
+                    Boat full
+                </>
+            );
             if (!hasPassed) {
                 spaceClass = clsx(spaceClass, 'font-bold text-red-700');
             }
@@ -119,7 +151,7 @@ export default class Capacity extends Component {
                 <div
                     className={clsx(
                         'absolute w-0 top-0 left-0 h-full',
-                        'bg-darken-200'
+                        'bg-darken-100'
                     )}
                     style={{width: `${percentFull}%`}}
                 >
@@ -127,21 +159,28 @@ export default class Capacity extends Component {
                         <span
                             className={clsx(
                                 spaceClass,
-                                percentFull <= 30 && 'left-full',
-                                percentFull > 30 && 'right-0'
+                                this.willFitLeft()
+                                    ? 'right-0 mr-4'
+                                    : 'left-full ml-4'
                             )}
                         >
                             {spaceText}
                         </span>
                     )}
                 </div>
-                {this.isLeftZone() && (
-                    <span className={clsx(spaceClass)} style={{left: '10%'}}>
+                {this.isLeftEdge() && (
+                    <span
+                        className={clsx(spaceClass)}
+                        style={{left: LEFT_EDGE}}
+                    >
                         {spaceText}
                     </span>
                 )}
-                {this.isRightZone() && (
-                    <span className={clsx(spaceClass)} style={{right: '20%'}}>
+                {this.isRightEdge() && (
+                    <span
+                        className={clsx(spaceClass)}
+                        style={{right: RIGHT_EDGE}}
+                    >
                         {spaceText}
                     </span>
                 )}

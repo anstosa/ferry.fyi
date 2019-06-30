@@ -16,6 +16,7 @@ export default class VesselTag extends Component {
                     'bg-gray-600 rounded p-1'
                 )}
             >
+                <i className="fas fa-ship mr-1" />
                 {abbreviation}
             </div>
         );

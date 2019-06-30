@@ -32,7 +32,7 @@ export default class Crossing extends Component {
                 ref={setElement}
             >
                 <Capacity crossing={crossing} />
-                <div className="flex flex-col justify-between items-start">
+                <div className="flex flex-col justify-between items-start z-0">
                     <VesselTag vessel={vessel} />
                     <Status crossing={crossing} />
                 </div>

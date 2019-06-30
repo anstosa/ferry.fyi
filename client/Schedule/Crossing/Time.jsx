@@ -29,7 +29,7 @@ export default class Time extends Component {
             minorTime = estimatedTime.toFormat('a');
         }
         return (
-            <div className="flex flex-col text-center w-20">
+            <div className="flex flex-col text-center w-20 z-0">
                 <span
                     className={clsx(
                         'flex-grow text-2xl font-bold leading-none',
