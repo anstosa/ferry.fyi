@@ -43,7 +43,10 @@ export default class Capacity extends Component {
         } = capacity;
 
         const spaceLeft = driveUpCapacity + reservableCapacity;
-        const percentFull = ((totalCapacity - spaceLeft) / totalCapacity) * 100;
+        const percentFull = _.min([
+            ((totalCapacity - spaceLeft) / totalCapacity) * 100,
+            100,
+        ]);
         this.setState({spaceLeft, percentFull});
     };
 
