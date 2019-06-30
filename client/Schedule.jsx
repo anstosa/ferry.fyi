@@ -1,4 +1,4 @@
-import {DateTime} from 'luxon';
+import {DateTime, Duration} from 'luxon';
 import {getSchedule} from './schedule';
 import {getTerminal} from './terminals';
 import {Helmet} from 'react-helmet';
@@ -103,19 +103,38 @@ export default class Schedule extends Component {
         return <ul>{sailings}</ul>;
     };
 
+    renderVesselTag = (vessel) => {
+        const {abbreviation} = vessel;
+        return (
+            <div
+                className={clsx(
+                    'font-bold text-2xs text-white',
+                    'bg-gray-600 rounded p-1'
+                )}
+            >
+                {abbreviation}
+            </div>
+        );
+    };
+
     renderCrossing = (crossing) => {
-        const time = DateTime.fromSeconds(crossing.time);
+        const {capacity = {}, hasPassed, vessel, time} = crossing;
+        const {
+            departedDelta = 0,
+            driveUpCapacity = 0,
+            isCancelled = false,
+            reservableCapacity = 0,
+            totalCapacity,
+        } = capacity;
+        const delta = Duration.fromObject({seconds: departedDelta});
+        const scheduledTime = DateTime.fromSeconds(crossing.time);
+        const estimatedTime = scheduledTime.plus(delta);
         const isNext =
             crossing === _.find(this.state.schedule, {hasPassed: false});
-        const diff = time.diffNow();
+        const diff = estimatedTime.diffNow();
         let percentFull = 0;
         let spaceLeft = 0;
-        if (crossing.capacity) {
-            const {
-                driveUpCapacity = 0,
-                reservableCapacity = 0,
-                totalCapacity,
-            } = crossing.capacity;
+        if (capacity) {
             spaceLeft = driveUpCapacity + reservableCapacity;
             percentFull = ((totalCapacity - spaceLeft) / totalCapacity) * 100;
         }
@@ -123,11 +142,11 @@ export default class Schedule extends Component {
         let spaceClass = 'text-xs whitespace-no-wrap';
         if (spaceLeft === 0) {
             spaceText = 'Boat full';
-            if (!crossing.hasPassed) {
+            if (!hasPassed) {
                 spaceClass = clsx(spaceClass, 'font-bold text-red-700');
             }
         } else if (percentFull > 70) {
-            if (!crossing.hasPassed) {
+            if (!hasPassed) {
                 spaceClass = clsx(spaceClass, 'font-medium text-orange-600');
             }
         }
@@ -136,13 +155,32 @@ export default class Schedule extends Component {
         let minorTime;
         if (Math.abs(diff.as('hours')) < 1) {
             const mins = _.round(Math.abs(diff.as('minutes')));
-            majorTime = mins;
-            minorTime = `min${mins > 1 ? 's' : ''}${
-                crossing.hasPassed ? ' ago' : ''
-            }`;
+            majorTime = mins + delta.as('minutes');
+            minorTime = `min${mins > 1 ? 's' : ''}${hasPassed ? ' ago' : ''}`;
         } else {
-            majorTime = time.toFormat('h:mm');
-            minorTime = time.toFormat('a');
+            majorTime = estimatedTime.toFormat('h:mm');
+            minorTime = estimatedTime.toFormat('a');
+        }
+
+        let statusText;
+        let statusClass;
+        let scheduled;
+        if (capacity) {
+            if (isCancelled) {
+                statusText = 'Cancelled';
+                statusClass = clsx(
+                    statusClass,
+                    'text-red-700 font-bold uppercase'
+                );
+            } else if (Math.abs(departedDelta) < 3 * 60 * 1000) {
+                statusText = 'On time';
+                statusClass = clsx(statusClass, 'text-green-600');
+            } else {
+                const direction = departedDelta < 0 ? 'ahead' : 'behind';
+                statusText = `${delta.as('minutes')} ${direction}`;
+                statusClass = clsx(statusClass, 'text-red-700');
+                scheduled = `Scheduled ${scheduledTime.toFormat('h:mm a')} `;
+            }
         }
 
         return (
@@ -150,13 +188,13 @@ export default class Schedule extends Component {
                 className={clsx(
                     'relative h-20 py-4 px-2',
                     'border-b border-gray-500',
-                    crossing.hasPassed && 'bg-gray-300',
+                    hasPassed && 'bg-gray-300',
                     isNext && 'bg-green-200',
                     'flex justify-between'
                 )}
-                key={crossing.time}
+                key={time}
                 ref={(element) => {
-                    if (crossing.hasPassed) {
+                    if (hasPassed) {
                         this.lastPassed = element;
                     }
                 }}
@@ -169,7 +207,7 @@ export default class Schedule extends Component {
                         )}
                         style={{width: `${percentFull}%`}}
                     >
-                        {percentFull < 80 && (
+                        {percentFull < 80 && percentFull > 10 && (
                             <span
                                 className={clsx(
                                     spaceClass,
@@ -183,21 +221,29 @@ export default class Schedule extends Component {
                         )}
                     </div>
                 )}
-                {percentFull >= 80 && (
+                {(percentFull >= 80 || percentFull < 10) && (
                     <span
                         className={clsx(spaceClass, 'absolute top-0 m-4')}
-                        style={{right: '20%'}}
+                        style={
+                            percentFull >= 80 ? {right: '20%'} : {left: '10%'}
+                        }
                     >
                         {spaceText}
                     </span>
                 )}
-                <div />
+                <div className="flex flex-col justify-between items-start">
+                    {this.renderVesselTag(vessel)}
+                    <span className="text-sm ">
+                        {scheduled ? `${scheduled} · ` : ''}
+                        <span className={statusClass}>{statusText}</span>
+                    </span>
+                </div>
                 <div className="flex flex-col text-center w-20">
                     <span
                         className={clsx(
                             'flex-grow text-2xl font-bold leading-none',
                             'flex flex-col justify-center',
-                            crossing.hasPassed && 'text-gray-600'
+                            hasPassed && 'text-gray-600'
                         )}
                     >
                         {majorTime}
@@ -205,7 +251,7 @@ export default class Schedule extends Component {
                     <span
                         className={clsx(
                             'text-sm font-bold',
-                            crossing.hasPassed && 'text-gray-600'
+                            hasPassed && 'text-gray-600'
                         )}
                     >
                         {minorTime}
