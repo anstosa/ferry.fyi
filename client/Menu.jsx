@@ -1,6 +1,3 @@
-import {getSlug, getTerminals} from './terminals';
-import {Link} from 'react-router-dom';
-import _ from 'lodash';
 import clsx from 'clsx';
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
