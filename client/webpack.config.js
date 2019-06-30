@@ -6,7 +6,7 @@ const merge = require('webpack-merge');
 const path = require('path');
 
 const TITLE = 'Ferry FYI';
-const DESCRIPTION = 'A better WSF tracker';
+const DESCRIPTION = 'A better tracker for the Washington State Ferry system';
 const IMAGE = '';
 
 const commonConfig = merge([

@@ -2,6 +2,7 @@ import {getSlug, getTerminals} from './terminals';
 import {Link} from 'react-router-dom';
 import _ from 'lodash';
 import clsx from 'clsx';
+import Menu from './Menu';
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 
@@ -16,6 +17,7 @@ export default class Header extends Component {
     };
 
     state = {
+        isMenuOpen: false,
         isTerminalOpen: false,
         isMateOpen: false,
         isSwapHovering: false,
@@ -137,7 +139,12 @@ export default class Header extends Component {
         );
     };
 
-    renderLogo = () => <i className="fas fa-ship text-2xl mr-4" />;
+    renderMenuToggle = () => (
+        <i
+            className="fas fa-bars fa-lg mr-4 cursor-pointer"
+            onClick={() => this.setState({isMenuOpen: true})}
+        />
+    );
 
     renderReload = () => {
         const {isReloading, reload} = this.props;
@@ -159,6 +166,7 @@ export default class Header extends Component {
     renderSpacer = () => <div className="flex-grow" />;
 
     render = () => {
+        const {isMenuOpen} = this.state;
         const {terminal} = this.props;
         if (!terminal) {
             return this.wrapHeader('Ferry FYI');
@@ -166,9 +174,13 @@ export default class Header extends Component {
         return (
             <>
                 <div className="h-16 w-full" />
+                <Menu
+                    isOpen={isMenuOpen}
+                    onClose={() => this.setState({isMenuOpen: false})}
+                />
                 {this.wrapHeader(
                     <div className="flex w-full items-center">
-                        {this.renderLogo()}
+                        {this.renderMenuToggle()}
                         {this.renderTerminal()}
                         {this.renderSwap()}
                         {this.renderMate()}

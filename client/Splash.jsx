@@ -41,9 +41,9 @@ export default class Splash extends Component {
                         flex justify-center items-center
                     "
                 >
-                    Not working? Email
+                    Not working? Email{' '}
                     <a
-                        className="link ml-2"
+                        className="link"
                         href="mailto:dev@ferry.fyi"
                         target="_blank"
                         rel="noopener noreferrer"

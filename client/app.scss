@@ -4,6 +4,7 @@ $fa-font-path: '../node_modules/@fortawesome/fontawesome-free/webfonts';
 @import '@fortawesome/fontawesome-free/scss/solid';
 @import '@fortawesome/fontawesome-free/scss/brands';
 @import 'react-toastify/dist/ReactToastify';
+@import url('https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap');
 
 // Inject Tailwind CSSs base styles, including normalization.
 @tailwind base;
@@ -14,7 +15,7 @@ $fa-font-path: '../node_modules/@fortawesome/fontawesome-free/webfonts';
 // Imports
 
 html {
-    @apply font-sans;
+    font-family: 'Roboto', sans-serif;
 }
 
 .fa-spin-pause {
@@ -23,6 +24,10 @@ html {
 
 // Components
 @responsive {
+    .animate {
+        transition: all 0.15s ease-out;
+    }
+
     @import 'components/alert';
     @import 'components/button';
     @import 'components/field';
