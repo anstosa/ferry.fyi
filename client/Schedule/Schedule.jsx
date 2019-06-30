@@ -131,8 +131,19 @@ export default class Schedule extends Component {
                     reload={this.updateSchedule}
                     isReloading={isUpdating}
                 />
-                <article className={clsx('w-full', 'flex-grow flex flex-col')}>
-                    <div className="w-full max-w-6xl">
+                <article
+                    className={clsx(
+                        'w-full',
+                        'flex-grow',
+                        'flex flex-col items-center'
+                    )}
+                >
+                    <div
+                        className={clsx(
+                            'w-full max-w-6xl',
+                            'lg:border-l lg:border-r border-gray-500'
+                        )}
+                    >
                         {this.renderSchedule()}
                     </div>
                 </article>

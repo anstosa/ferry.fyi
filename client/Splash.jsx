@@ -9,12 +9,13 @@ export default class Splash extends Component {
     };
 
     componentDidMount() {
-        this.timer = setInterval(this.tick, 600);
-        setTimeout(this.showHelp, 10 * 1000);
+        this.tickTimer = setInterval(this.tick, 600);
+        this.helpTimer = setTimeout(this.showHelp, 10 * 1000);
     }
 
     componentWillUnmount() {
-        clearInterval(this.timer);
+        clearInterval(this.tickTimer);
+        clearTimeout(this.helpTimer);
     }
 
     tick = () => {
@@ -40,9 +41,9 @@ export default class Splash extends Component {
                         flex justify-center items-center
                     "
                 >
-                    Not working? Email{' '}
+                    Not working? Email
                     <a
-                        className="link"
+                        className="link ml-2"
                         href="mailto:dev@ferry.fyi"
                         target="_blank"
                         rel="noopener noreferrer"
