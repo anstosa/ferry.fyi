@@ -1,3 +1,4 @@
+require('dotenv').config();
 const HtmlPlugin = require('html-webpack-plugin');
 const LiveReloadPlugin = require('webpack-livereload-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
@@ -22,6 +23,7 @@ const commonConfig = merge([
                 image: IMAGE,
                 template: './client/index.html',
                 title: TITLE,
+                url: process.env.BASE_URL,
             }),
             new StyleLintPlugin(),
             new MiniCssExtractPlugin({
