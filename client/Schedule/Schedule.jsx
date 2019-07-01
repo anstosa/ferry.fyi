@@ -21,7 +21,8 @@ export default class Schedule extends Component {
 
     componentDidMount = () => {
         const {match} = this.props;
-        this.setTerminal(match.params.slug);
+        const {slug} = match.params;
+        this.setTerminal(slug);
         this.checkScroll();
         this.scheduleTick = setInterval(this.updateSchedule, 10 * 1000);
     };
@@ -48,14 +49,25 @@ export default class Schedule extends Component {
 
     setTerminal = async (slug) => {
         this.setState({mate: null, schedule: null, terminal: null});
+        localStorage.savedSlug = slug;
         const terminal = await getTerminal(slug);
-        const mate = _.first(terminal.mates);
+        const savedMateId = _.get(localStorage, 'savedMateId');
+        let mate;
+        if (
+            _.isUndefined(savedMateId) ||
+            !_.find(terminal.mates, {id: _.toInteger(savedMateId)})
+        ) {
+            mate = _.first(terminal.mates);
+        } else {
+            mate = await getTerminal(_.toInteger(savedMateId));
+        }
         this.setState({mate, terminal});
         await this.updateSchedule();
     };
 
     setMate = async (mate) => {
         this.setState({mate, schedule: null});
+        localStorage.savedMateId = mate.id;
         await this.updateSchedule();
     };
 

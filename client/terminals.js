@@ -35,7 +35,6 @@ const TERMINAL_ID_BY_SLUG = {
 
 const API_TERMINALS = '/terminals';
 const getApiTerminal = (id) => `/terminals/${id}`;
-const getApiSpace = (id) => `/terminals/${id}/space`;
 
 let hasAll = false;
 const terminalCache = {};
