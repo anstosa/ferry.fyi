@@ -39,7 +39,7 @@ export default class Time extends Component {
         } else if (deltaMins >= 10) {
             color = 'text-red-700';
         } else if (deltaMins >= 4) {
-            color = 'text-orange-600';
+            color = 'text-orange-500';
         }
         return (
             <div

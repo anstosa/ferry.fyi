@@ -39,7 +39,7 @@ export default class Status extends Component {
                 const units = deltaMins === 1 ? 'min' : 'mins';
                 const direction = deltaMins < 0 ? 'ahead' : 'behind';
                 const color =
-                    deltaMins <= 10 ? 'text-orange-600' : 'text-red-700';
+                    deltaMins < 10 ? 'text-orange-500' : 'text-red-700';
                 statusText = `${deltaMins} ${units} ${direction}`;
                 statusClass = clsx(statusClass, color);
                 scheduled = `Scheduled ${scheduledTime.toFormat('h:mm a')}`;
