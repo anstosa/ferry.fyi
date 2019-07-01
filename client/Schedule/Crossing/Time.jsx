@@ -22,7 +22,7 @@ export default class Time extends Component {
         let minorTime;
         if (Math.abs(diff.as('hours')) < 1) {
             const mins = _.round(Math.abs(diff.as('minutes')));
-            majorTime = mins + delta.as('minutes');
+            majorTime = mins + _.round(delta.as('minutes'));
             minorTime = `min${mins > 1 ? 's' : ''}${hasPassed ? ' ago' : ''}`;
         } else {
             majorTime = estimatedTime.toFormat('h:mm');

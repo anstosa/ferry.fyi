@@ -60,6 +60,14 @@ export default class Capacity extends Component {
         );
     };
 
+    allowsReservations = () => {
+        return _.get(
+            this.props,
+            ['crossing', 'capacity', 'hasReservations'],
+            false
+        );
+    };
+
     isLeftEdge = () => {
         const percent = this.state.percentFull / 100;
         const totalWidth = window.innerWidth;
@@ -103,22 +111,27 @@ export default class Capacity extends Component {
         if (this.hasAvailableReservations()) {
             reservationsText = (
                 <a
-                    className="link"
+                    className="text-xs link"
                     href={RESERVATIONS_BASE_URL + departureId}
                     target="_blank"
                     rel="noreferrer noopener"
                 >
-                    Reservations Available!
+                    <i className="fas fa-external-link-square mr-1" />
+                    Reserve
                 </a>
+            );
+        } else if (this.allowsReservations()) {
+            reservationsText = (
+                <span className="text-xs text-red-600">
+                    <i className="fas fa-exclamation-triangle mr-1" />
+                    Standby Only
+                </span>
             );
         }
         return reservationsText;
     };
 
-    render = () => {
-        if (!this.hasData()) {
-            return null;
-        }
+    renderSpace = () => {
         const {spaceLeft, percentFull} = this.state;
         const {crossing} = this.props;
         const {hasPassed} = crossing;
@@ -129,10 +142,7 @@ export default class Capacity extends Component {
                 {spaceLeft} cars left
             </>
         );
-        let spaceClass = clsx(
-            'text-xs whitespace-no-wrap',
-            'absolute top-0 mt-5'
-        );
+        let spaceClass = clsx('text-xs whitespace-no-wrap');
         if (this.isFull()) {
             spaceText = (
                 <>
@@ -148,6 +158,26 @@ export default class Capacity extends Component {
                 spaceClass = clsx(spaceClass, 'font-medium text-orange-600');
             }
         }
+        return <span className={spaceClass}>{spaceText}</span>;
+    };
+
+    renderStatus = () => (
+        <div
+            className={clsx(
+                'flex flex-col pt-5',
+                this.willFitLeft() ? 'items-end' : 'items-start'
+            )}
+        >
+            {this.renderSpace()}
+            {this.renderReservations()}
+        </div>
+    );
+
+    render = () => {
+        if (!this.hasData()) {
+            return null;
+        }
+        const {percentFull} = this.state;
 
         return (
             <>
@@ -161,30 +191,27 @@ export default class Capacity extends Component {
                     {this.isMiddleZone() && (
                         <span
                             className={clsx(
-                                spaceClass,
+                                'absolute top-0',
                                 this.willFitLeft()
                                     ? 'right-0 mr-4'
                                     : 'left-full ml-4'
                             )}
                         >
-                            {spaceText}
+                            {this.renderStatus()}
                         </span>
                     )}
                 </div>
                 {this.isLeftEdge() && (
-                    <span
-                        className={clsx(spaceClass)}
-                        style={{left: LEFT_EDGE}}
-                    >
-                        {spaceText}
+                    <span className="absolute top-0" style={{left: LEFT_EDGE}}>
+                        {this.renderStatus()}
                     </span>
                 )}
                 {this.isRightEdge() && (
                     <span
-                        className={clsx(spaceClass)}
+                        className="absolute top-0"
                         style={{right: RIGHT_EDGE}}
                     >
-                        {spaceText}
+                        {this.renderStatus()}
                     </span>
                 )}
             </>
