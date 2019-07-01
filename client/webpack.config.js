@@ -8,7 +8,6 @@ const path = require('path');
 
 const TITLE = 'Ferry FYI';
 const DESCRIPTION = 'A better tracker for the Washington State Ferry system';
-const IMAGE = '';
 
 const commonConfig = merge([
     {
@@ -20,7 +19,6 @@ const commonConfig = merge([
         plugins: [
             new HtmlPlugin({
                 description: DESCRIPTION,
-                image: IMAGE,
                 template: './client/index.html',
                 title: TITLE,
                 url: process.env.BASE_URL,
@@ -38,7 +36,7 @@ const commonConfig = merge([
             rules: [
                 {
                     test: /\.(ttf|jpe?g|gif|svg|png|otf|woff|woff2|eot)$/,
-                    loader: 'file-loader',
+                    loader: 'file-loader?name=[name].[ext]',
                 },
                 {
                     test: /\.css$/,
