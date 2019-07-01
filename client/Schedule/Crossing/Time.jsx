@@ -12,8 +12,8 @@ export default class Time extends Component {
     render = () => {
         const {crossing} = this.props;
         const {capacity = {}, hasPassed} = crossing;
-        const {departedDelta = 0} = capacity;
-        const delta = Duration.fromObject({seconds: departedDelta});
+        const {departureDelta = 0} = capacity;
+        const delta = Duration.fromObject({seconds: departureDelta});
         const scheduledTime = DateTime.fromSeconds(crossing.time);
         const estimatedTime = scheduledTime.plus(delta);
         const diff = estimatedTime.diffNow();

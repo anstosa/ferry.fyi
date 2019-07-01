@@ -11,8 +11,8 @@ export default class Status extends Component {
     render = () => {
         const {crossing} = this.props;
         const {capacity = {}} = crossing;
-        const {departedDelta = 0, isCancelled = false} = capacity;
-        const delta = Duration.fromObject({seconds: departedDelta});
+        const {departureDelta = 0, isCancelled = false} = capacity;
+        const delta = Duration.fromObject({seconds: departureDelta});
         const scheduledTime = DateTime.fromSeconds(crossing.time);
 
         let statusText;
@@ -25,11 +25,11 @@ export default class Status extends Component {
                     statusClass,
                     'text-red-700 font-bold uppercase'
                 );
-            } else if (Math.abs(departedDelta) < 3 * 60 * 1000) {
+            } else if (Math.abs(departureDelta) < 1 * 60 * 1000) {
                 statusText = 'On time';
                 statusClass = clsx(statusClass, 'text-green-600');
             } else {
-                const direction = departedDelta < 0 ? 'ahead' : 'behind';
+                const direction = departureDelta < 0 ? 'ahead' : 'behind';
                 statusText = `${delta.as('minutes')} ${direction}`;
                 statusClass = clsx(statusClass, 'text-red-700');
                 scheduled = `Scheduled ${scheduledTime.toFormat('h:mm a')} `;

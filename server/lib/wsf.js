@@ -326,17 +326,17 @@ async function recordTiming() {
         const departedTime = wsfDateToTimestamp(vessel.LeftDock);
         const departureTime = wsfDateToTimestamp(vessel.ScheduledDeparture);
         const estimatedArrivalTime = wsfDateToTimestamp(vessel.Eta);
-        let departedDelta;
-        if (departureTime) {
-            departedDelta = departedTime - departureTime;
+        let departureDelta;
+        if (departureTime && departedTime) {
+            departureDelta = departedTime - departureTime;
         } else {
-            departedDelta = _.get(vesselsById, [id, 'departedDelta']);
+            departureDelta = _.get(vesselsById, [id, 'departureDelta']);
         }
         assignVessel(id, {
             arrivingTerminalId: vessel.ArrivingTerminalID,
             departingTerminalId: vessel.DepartingTerminalID,
             departedTime,
-            departedDelta,
+            departureDelta,
             estimatedArrivalTime,
             heading: vessel.Heading,
             id,
@@ -365,9 +365,9 @@ async function recordCapacity() {
                 const model = {
                     arrivalId: capacity.TerminalID,
                     departureId: terminal.TerminalID,
-                    departedDelta: _.get(
+                    departureDelta: _.get(
                         vesselsById,
-                        [departure.VesselID, 'departedDelta'],
+                        [departure.VesselID, 'departureDelta'],
                         null
                     ),
                     departureTime: wsfDateToTimestamp(departure.Departure),
