@@ -67,7 +67,7 @@ export default class Header extends Component {
                         className={clsx(
                             'absolute top-full left-0',
                             'bg-wsf-green shadow-lg',
-                            'py-4',
+                            '-ml-4 py-2',
                             'max-h-halfscreen overflow-y-auto'
                         )}
                     >
