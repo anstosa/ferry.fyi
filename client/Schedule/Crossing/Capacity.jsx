@@ -111,7 +111,7 @@ export default class Capacity extends Component {
         if (this.hasAvailableReservations()) {
             reservationsText = (
                 <a
-                    className="text-xs link"
+                    className="text-xs link text-wsf-green"
                     href={RESERVATIONS_BASE_URL + departureId}
                     target="_blank"
                     rel="noreferrer noopener"
@@ -122,10 +122,7 @@ export default class Capacity extends Component {
             );
         } else if (this.allowsReservations()) {
             reservationsText = (
-                <span className="text-xs text-red-600">
-                    <i className="fas fa-exclamation-triangle mr-1" />
-                    Standby Only
-                </span>
+                <span className="text-xs text-gray-600">Standby Only</span>
             );
         }
         return reservationsText;

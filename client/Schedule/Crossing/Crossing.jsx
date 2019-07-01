@@ -23,7 +23,7 @@ export default class Crossing extends Component {
         return (
             <li
                 className={clsx(
-                    'relative h-20 py-4 px-2',
+                    'relative py-4 px-2',
                     'border-b border-gray-500',
                     hasPassed && 'bg-gray-300',
                     isNext && 'bg-green-200',
@@ -34,7 +34,7 @@ export default class Crossing extends Component {
                 <Capacity crossing={crossing} />
                 <div className="flex flex-col justify-between items-start z-0">
                     <VesselTag vessel={vessel} />
-                    <Status crossing={crossing} />
+                    <Status className="mt-4" crossing={crossing} />
                 </div>
                 <Time crossing={crossing} />
             </li>
