@@ -136,7 +136,7 @@ export default class Capacity extends Component {
         let spaceText = (
             <>
                 <i className="fas fa-car mr-1 text-darken-400" />
-                {spaceLeft} cars left
+                {spaceLeft} spaces
             </>
         );
         let spaceClass = clsx('text-xs whitespace-no-wrap');
