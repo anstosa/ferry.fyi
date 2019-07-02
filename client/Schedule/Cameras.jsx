@@ -2,6 +2,7 @@ import _ from 'lodash';
 import clsx from 'clsx';
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
+import ReactGA from 'react-ga';
 
 export default class Cameras extends Component {
     static propTypes = {
@@ -41,7 +42,21 @@ export default class Cameras extends Component {
                     'relative h-16 p-4',
                     'flex items-center flex-shrink-0'
                 )}
-                onClick={() => this.setState({isOpen: !isOpen})}
+                onClick={() => {
+                    if (isOpen) {
+                        this.setState({isOpen: false});
+                        ReactGA.event({
+                            category: 'Navigation',
+                            action: 'Close Cameras',
+                        });
+                    } else {
+                        this.setState({isOpen: true});
+                        ReactGA.event({
+                            category: 'Navigation',
+                            action: 'Open Cameras',
+                        });
+                    }
+                }}
             >
                 <i
                     className={clsx(

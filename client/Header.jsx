@@ -5,6 +5,7 @@ import clsx from 'clsx';
 import Menu from './Menu';
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
+import ReactGA from 'react-ga';
 
 export default class Header extends Component {
     static propTypes = {
@@ -115,6 +116,12 @@ export default class Header extends Component {
                 to={`/${getSlug(mate.id)}`}
                 onMouseEnter={() => this.setState({isSwapHovering: true})}
                 onMouseLeave={() => this.setState({isSwapHovering: false})}
+                onClick={() =>
+                    ReactGA.event({
+                        category: 'Navigation',
+                        action: 'Swap Terminals',
+                    })
+                }
             >
                 {isSwapHovering && <i className="fas fa-exchange-alt" />}
                 {!isSwapHovering && <i className="fas fa-arrow-right" />}
@@ -142,7 +149,13 @@ export default class Header extends Component {
     renderMenuToggle = () => (
         <i
             className="fas fa-bars fa-lg mr-4 cursor-pointer"
-            onClick={() => this.setState({isMenuOpen: true})}
+            onClick={() => {
+                this.setState({isMenuOpen: true});
+                ReactGA.event({
+                    category: 'Navigation',
+                    action: 'Open Menu',
+                });
+            }}
         />
     );
 
@@ -157,6 +170,10 @@ export default class Header extends Component {
                 onClick={() => {
                     if (!isReloading) {
                         reload();
+                        ReactGA.event({
+                            category: 'Navigation',
+                            action: 'Force Reload',
+                        });
                     }
                 }}
             />
@@ -176,7 +193,13 @@ export default class Header extends Component {
                 <div className="h-16 w-full" />
                 <Menu
                     isOpen={isMenuOpen}
-                    onClose={() => this.setState({isMenuOpen: false})}
+                    onClose={() => {
+                        this.setState({isMenuOpen: false});
+                        ReactGA.event({
+                            category: 'Navigation',
+                            action: 'Close Menu',
+                        });
+                    }}
                 />
                 {this.wrapHeader(
                     <div className="flex w-full items-center">
