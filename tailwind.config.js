@@ -178,6 +178,8 @@ module.exports = {
             '160': '40rem',
             '192': '48rem',
             '256': '64rem',
+            '1/2': '50%',
+            full: '100%',
         },
         backgroundColor: (theme) => theme('colors'),
         backgroundPosition: {
@@ -324,12 +326,14 @@ module.exports = {
             auto: 'auto',
             ...theme('spacing'),
             '40vh': '40vh',
+            '1/2': '50%',
             full: '100%',
             screen: '100vh',
         }),
         inset: {
             '0': '0',
             auto: 'auto',
+            '1/2': '50%',
             full: '100%',
         },
         letterSpacing: {

@@ -2,6 +2,7 @@ import {getSchedule} from '../schedule';
 import {getTerminal} from '../terminals';
 import {Helmet} from 'react-helmet';
 import _ from 'lodash';
+import Cameras from './Cameras';
 import clsx from 'clsx';
 import Crossing from './Crossing/Crossing';
 import Header from '../Header';
@@ -159,6 +160,7 @@ export default class Schedule extends Component {
                         {this.renderSchedule()}
                     </div>
                 </article>
+                <Cameras terminal={terminal} />
             </>
         );
     };

@@ -16,6 +16,7 @@ import {Op} from './db';
 import _ from 'lodash';
 import Crossing from '../models/crossing';
 import request from 'request-promise';
+import {getCameras} from './wsf-cameras'
 
 // API paths
 const API_ACCESS = `?apiaccesscode=${process.env.WSDOT_API_KEY}`;
@@ -236,6 +237,7 @@ export const updateTerminals = async () => {
                 description: bulletin.BulletinText,
                 date: wsfDateToTimestamp(bulletin.BulletinLastUpdated),
             })),
+            cameras: getCameras(id),
             hasElevator: terminal.Elevator,
             hasOverheadLoading: terminal.OverheadPassengerLoading,
             hasRestroom: terminal.Restroom,
