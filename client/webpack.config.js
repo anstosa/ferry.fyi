@@ -15,6 +15,7 @@ const commonConfig = merge([
         output: {
             path: path.resolve(__dirname, 'dist'),
             filename: 'client.js',
+            publicPath: '/',
         },
         plugins: [
             new HtmlPlugin({

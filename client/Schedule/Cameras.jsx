@@ -57,7 +57,6 @@ export default class Cameras extends Component {
     renderCamera = (camera, index, cameras) => {
         const {id, title, image, spacesToNext, owner} = camera;
         const isLast = index === cameras.length - 1;
-        const isFirst = index === 0;
         let totalToBooth = 0;
         _.find(cameras, (candidate) => {
             totalToBooth += candidate.spacesToNext;

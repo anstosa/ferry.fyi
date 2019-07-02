@@ -1,6 +1,7 @@
 import {getSchedule} from '../schedule';
-import {getTerminal} from '../terminals';
+import {getSlug, getTerminal} from '../terminals';
 import {Helmet} from 'react-helmet';
+import {withRouter} from 'react-router';
 import _ from 'lodash';
 import Cameras from './Cameras';
 import clsx from 'clsx';
@@ -11,8 +12,10 @@ import React, {Component} from 'react';
 import scrollIntoView from 'scroll-into-view';
 import Splash from '../Splash';
 
-export default class Schedule extends Component {
+class Schedule extends Component {
     static propTypes = {
+        history: PropTypes.object.isRequired,
+        location: PropTypes.object.isRequired,
         match: PropTypes.object.isRequired,
     };
 
@@ -22,8 +25,8 @@ export default class Schedule extends Component {
 
     componentDidMount = () => {
         const {match} = this.props;
-        const {slug} = match.params;
-        this.setTerminal(slug);
+        const {terminalSlug, mateSlug} = match.params;
+        this.setRoute(terminalSlug, mateSlug);
         this.checkScroll();
         this.scheduleTick = setInterval(this.updateSchedule, 10 * 1000);
     };
@@ -34,9 +37,9 @@ export default class Schedule extends Component {
 
     componentDidUpdate(prevProps) {
         const {match} = this.props;
-        const {slug} = match.params;
-        if (slug !== prevProps.match.params.slug) {
-            this.setTerminal(slug);
+        const {terminalSlug, mateSlug} = match.params;
+        if (terminalSlug !== prevProps.match.params.terminalSlug) {
+            this.setRoute(terminalSlug, mateSlug);
         }
         this.checkScroll();
     }
@@ -48,32 +51,43 @@ export default class Schedule extends Component {
         }
     };
 
-    setTerminal = async (slug) => {
+    setRoute = async (terminalSlug, mateSlug) => {
+        const {history, location} = this.props;
         this.setState({mate: null, schedule: null, terminal: null});
-        localStorage.savedSlug = slug;
-        const terminal = await getTerminal(slug);
-        const savedMateId = _.get(localStorage, 'savedMateId');
+        const terminal = await getTerminal(terminalSlug);
         let mate;
-        if (
-            _.isUndefined(savedMateId) ||
-            !_.find(terminal.mates, {id: _.toInteger(savedMateId)})
-        ) {
-            mate = _.first(terminal.mates);
-        } else {
-            mate = await getTerminal(_.toInteger(savedMateId));
+        if (_.isObject(mateSlug)) {
+            mate = mateSlug;
+        } else if (_.isString(mateSlug)) {
+            mate = await getTerminal(mateSlug);
         }
-        this.setState({mate, terminal});
-        await this.updateSchedule();
-    };
+        if (!mate || !_.find(terminal.mates, {id: mate.id})) {
+            mate = _.first(terminal.mates);
+        }
 
-    setMate = async (mate) => {
-        this.setState({mate, schedule: null});
-        localStorage.savedMateId = mate.id;
+        terminalSlug = getSlug(terminal.id);
+        localStorage.terminalSlug = terminalSlug;
+        mateSlug = getSlug(mate.id);
+        localStorage.mateSlug = mateSlug;
+
+        let path;
+        if (terminal.mates.length === 1) {
+            path = `/${terminalSlug}`;
+        } else {
+            path = `/${terminalSlug}/${mateSlug}`;
+        }
+        if (location.pathname !== path) {
+            history.push(path);
+        }
+        this.setState({terminal, mate});
         await this.updateSchedule();
     };
 
     updateSchedule = async () => {
         const {terminal, mate} = this.state;
+        if (!terminal || !mate) {
+            return;
+        }
         this.setState({isUpdating: true});
         const schedule = await getSchedule(terminal, mate);
         if (!this.state.schedule) {
@@ -140,7 +154,7 @@ export default class Schedule extends Component {
                     match={match}
                     terminal={terminal}
                     mate={mate}
-                    setMate={this.setMate}
+                    setRoute={this.setRoute}
                     reload={this.updateSchedule}
                     isReloading={isUpdating}
                 />
@@ -165,3 +179,6 @@ export default class Schedule extends Component {
         );
     };
 }
+
+const ScheduleWithRouter = withRouter(Schedule);
+export default ScheduleWithRouter;

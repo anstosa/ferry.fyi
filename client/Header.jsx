@@ -12,7 +12,7 @@ export default class Header extends Component {
         match: PropTypes.object.isRequired,
         mate: PropTypes.object,
         reload: PropTypes.func.isRequired,
-        setMate: PropTypes.func.isRequired,
+        setRoute: PropTypes.func.isRequired,
         terminal: PropTypes.object,
     };
 
@@ -123,7 +123,7 @@ export default class Header extends Component {
     };
 
     renderMate = () => {
-        const {mate, setMate, terminal} = this.props;
+        const {mate, setRoute, terminal} = this.props;
         if (!mate) {
             return null;
         }
@@ -134,7 +134,7 @@ export default class Header extends Component {
             (event, option) => {
                 event.preventDefault();
                 this.setState({isMateOpen: false});
-                setMate(option);
+                setRoute(getSlug(terminal.id), option);
             }
         );
     };
