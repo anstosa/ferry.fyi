@@ -1,4 +1,5 @@
 require('dotenv').config();
+const DotenvPlugin = require('dotenv-webpack');
 const HtmlPlugin = require('html-webpack-plugin');
 const LiveReloadPlugin = require('webpack-livereload-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
@@ -18,6 +19,7 @@ const commonConfig = merge([
             publicPath: '/',
         },
         plugins: [
+            new DotenvPlugin(),
             new HtmlPlugin({
                 description: DESCRIPTION,
                 template: './client/index.html',

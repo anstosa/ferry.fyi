@@ -1,8 +1,8 @@
 import './app.scss';
-import {createBrowserHistory} from 'history';
-import {Redirect, Route, Router} from 'react-router-dom';
+import {BrowserRouter, Redirect, Route} from 'react-router-dom';
 import {ToastContainer} from 'react-toastify';
 import _ from 'lodash';
+import Analytics from './lib/Analytics';
 import React, {Component} from 'react';
 import Schedule from './Schedule/Schedule';
 import Splash from './Splash';
@@ -12,11 +12,6 @@ export default class App extends Component {
         isLoading: false,
         route: null,
     };
-
-    constructor(props) {
-        super(props);
-        this.history = createBrowserHistory();
-    }
 
     renderToast = () => (
         <ToastContainer
@@ -35,19 +30,29 @@ export default class App extends Component {
 
     render = () => {
         const {isLoading} = this.state;
-        const defaultRoute = _.get(localStorage, 'savedSlug', 'clinton');
+        const terminalSlug = _.get(localStorage, 'terminalSlug');
+        const mateSlug = _.get(localStorage, 'mateSlug');
+        let defaultRoute = '/clinton';
+        if (terminalSlug) {
+            defaultRoute = `/${terminalSlug}/${mateSlug}`;
+        }
         return (
-            <Router history={this.history}>
-                <Route path="/:slug" component={Schedule} />
-                <Route
-                    path="/"
-                    exact
-                    render={() => (
-                        <Redirect to={{pathname: `/${defaultRoute}`}} />
-                    )}
-                />
-                {isLoading && <Splash />}
-            </Router>
+            <BrowserRouter>
+                <Analytics>
+                    <Route
+                        path="/:terminalSlug/:mateSlug?"
+                        component={Schedule}
+                    />
+                    <Route
+                        path="/"
+                        exact
+                        render={() => (
+                            <Redirect to={{pathname: defaultRoute}} />
+                        )}
+                    />
+                    {isLoading && <Splash />}
+                </Analytics>
+            </BrowserRouter>
         );
     };
 }
