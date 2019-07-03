@@ -3,9 +3,9 @@ import {getSlug, getTerminal} from '../terminals';
 import {Helmet} from 'react-helmet';
 import {withRouter} from 'react-router';
 import _ from 'lodash';
-import Cameras from './Cameras';
 import clsx from 'clsx';
 import Crossing from './Crossing/Crossing';
+import Footer from './Footer';
 import Header from '../Header';
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
@@ -174,7 +174,7 @@ class Schedule extends Component {
                         {this.renderSchedule()}
                     </div>
                 </article>
-                <Cameras terminal={terminal} />
+                <Footer terminal={terminal} />
             </>
         );
     };

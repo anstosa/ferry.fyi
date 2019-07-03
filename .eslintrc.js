@@ -89,6 +89,7 @@ module.exports = {
                 ignorePattern: '^import\\s.+\\sfrom\\s.+;$',
                 ignoreStrings: true,
                 ignoreTemplateLiterals: true,
+                ignoreRegExpLiterals: true,
             },
         ],
         'new-cap': 'error',

@@ -2,71 +2,10 @@ import _ from 'lodash';
 import clsx from 'clsx';
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
-import ReactGA from 'react-ga';
 
 export default class Cameras extends Component {
     static propTypes = {
         terminal: PropTypes.object,
-    };
-
-    state = {
-        isOpen: false,
-    };
-
-    wrapFooter = (content) => {
-        const {isOpen} = this.state;
-        return (
-            <footer
-                className={clsx(
-                    'fixed top-full inset-x z-10',
-                    'bg-wsf-green text-white',
-                    'w-full h-screen shadow-lg',
-                    'flex justify-center',
-                    'animate',
-                    !isOpen && '-mt-16'
-                )}
-                style={isOpen ? {marginTop: '-100vh'} : {}}
-            >
-                <div className={clsx('w-full max-w-6xl', 'flex flex-col')}>
-                    {content}
-                </div>
-            </footer>
-        );
-    };
-
-    renderToggle = () => {
-        const {isOpen} = this.state;
-        return (
-            <div
-                className={clsx(
-                    'relative h-16 p-4',
-                    'flex items-center flex-shrink-0'
-                )}
-                onClick={() => {
-                    if (isOpen) {
-                        this.setState({isOpen: false});
-                        ReactGA.event({
-                            category: 'Navigation',
-                            action: 'Close Cameras',
-                        });
-                    } else {
-                        this.setState({isOpen: true});
-                        ReactGA.event({
-                            category: 'Navigation',
-                            action: 'Open Cameras',
-                        });
-                    }
-                }}
-            >
-                <i
-                    className={clsx(
-                        'fas fa-lg mr-4',
-                        isOpen ? 'fa-chevron-down' : 'fa-chevron-up'
-                    )}
-                />
-                Cameras
-            </div>
-        );
     };
 
     renderCamera = (camera, index, cameras) => {
@@ -133,7 +72,7 @@ export default class Cameras extends Component {
         );
     };
 
-    renderCameras = () => {
+    render = () => {
         const {
             terminal: {cameras},
         } = this.props;
@@ -151,26 +90,6 @@ export default class Cameras extends Component {
                     {_.map(cameras, this.renderCamera)}
                 </ul>
             </div>
-        );
-    };
-
-    render = () => {
-        const {
-            terminal: {cameras},
-        } = this.props;
-        if (!cameras) {
-            return null;
-        }
-        return (
-            <>
-                <div className="h-16 w-full" />
-                {this.wrapFooter(
-                    <>
-                        {this.renderToggle()}
-                        {this.renderCameras()}
-                    </>
-                )}
-            </>
         );
     };
 }
