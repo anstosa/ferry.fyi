@@ -97,10 +97,22 @@ export default class Header extends Component {
     renderTerminal = () => {
         const {terminal} = this.props;
         const {terminals} = this.state;
-        return this.renderDropdown(
-            [terminal, ..._.without(terminals, terminal)],
-            'isTerminalOpen',
-            () => this.setState({isTerminalOpen: false})
+        return (
+            <>
+                <a
+                    className="mr-2"
+                    href={terminal.location.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    <i className="fas fa-directions" />
+                </a>
+                {this.renderDropdown(
+                    [terminal, ..._.without(terminals, terminal)],
+                    'isTerminalOpen',
+                    () => this.setState({isTerminalOpen: false})
+                )}
+            </>
         );
     };
 
