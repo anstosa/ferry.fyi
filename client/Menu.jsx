@@ -63,26 +63,23 @@ export default class Menu extends Component {
                     </p>
                     <h2 className="font-medium text-lg mt-8">Feedback</h2>
                     <p className="mt-2">
-                        See something wrong? Want to request a feature? Email{' '}
+                        See something wrong? Want to request a feature?{' '}
+                        <a
+                            className="link"
+                            href="https://github.com/anstosa/ferry.fyi/issues"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            File a ticket on GitHub
+                        </a>{' '}
+                        or{' '}
                         <a
                             className="link"
                             href="mailto:dev@ferry.fyi"
                             target="_blank"
                             rel="noopener noreferrer"
                         >
-                            dev@ferry.fyi
-                        </a>
-                        .
-                    </p>
-                    <p className="mt-4">
-                        Are you a software engineer?{' '}
-                        <a
-                            className="link"
-                            href="https://github.com/anstosa/ferry.fyi"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                        >
-                            Contribute on GitHub
+                            email dev@ferry.fyi
                         </a>
                         .
                     </p>
