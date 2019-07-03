@@ -3,6 +3,7 @@ const DotenvPlugin = require('dotenv-webpack');
 const HtmlPlugin = require('html-webpack-plugin');
 const LiveReloadPlugin = require('webpack-livereload-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const RobotstxtPlugin = require('robotstxt-webpack-plugin');
 const StyleLintPlugin = require('stylelint-webpack-plugin');
 const merge = require('webpack-merge');
 const path = require('path');
@@ -20,11 +21,21 @@ const commonConfig = merge([
         },
         plugins: [
             new DotenvPlugin(),
+            new RobotstxtPlugin({
+                policy: [
+                    {
+                        userAgent: '*',
+                        disallow: '',
+                    },
+                ],
+                host: process.env.BASE_URL,
+            }),
             new HtmlPlugin({
                 description: DESCRIPTION,
                 template: './client/index.html',
                 title: TITLE,
                 url: process.env.BASE_URL,
+                color: '#00735a',
             }),
             new StyleLintPlugin(),
             new MiniCssExtractPlugin({

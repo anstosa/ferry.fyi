@@ -57,6 +57,7 @@
         "prettier-eslint-webpack-plugin": "^0.14.73",
         "react-ga": "^2.6.0",
         "react-router-dom": "^5.0.0",
+        "robotstxt-webpack-plugin": "^6.0.0",
         "sass-loader": "^7.1.0",
         "style-loader": "^0.23.1",
         "stylelint": "^10.0.1",
