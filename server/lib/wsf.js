@@ -11,12 +11,12 @@
 // imports
 import * as log from './log';
 import {DateTime} from 'luxon';
+import {getCameras} from './wsf-cameras';
 import {getToday, wsfDateToTimestamp} from './date';
 import {Op} from './db';
 import _ from 'lodash';
 import Crossing from '../models/crossing';
 import request from 'request-promise';
-import {getCameras} from './wsf-cameras'
 
 // API paths
 const API_ACCESS = `?apiaccesscode=${process.env.WSDOT_API_KEY}`;

@@ -9,24 +9,23 @@ export default class Cameras extends Component {
     };
 
     renderCamera = (camera, index, cameras) => {
-        const {id, title, image, spacesToNext, owner} = camera;
-        const isLast = index === cameras.length - 1;
+        const {id, title, image, spacesToNext, location, owner} = camera;
+        const isFirst = index === 0;
         let totalToBooth = 0;
+        const mapsUrl = `https://www.google.com/maps/search/${location.latitude},${location.longitude}`;
         _.find(cameras, (candidate) => {
             totalToBooth += candidate.spacesToNext;
             return candidate === camera;
         });
         return (
-            <li className="flex flex-col pb-8 relative" key={id}>
-                <span className="font-bold text-lg mb-2">
-                    {title}
-                    {spacesToNext > 0 && (
-                        <span className={clsx('ml-4 font-normal text-sm')}>
-                            <i className={clsx('fas fa-car mr-2')} />
-                            {totalToBooth} to tollbooth
-                        </span>
-                    )}
-                </span>
+            <li
+                className={clsx(
+                    'flex flex-col',
+                    'relative',
+                    !isFirst && 'pt-8'
+                )}
+                key={id}
+            >
                 <img
                     src={image.url}
                     className={clsx(
@@ -34,7 +33,29 @@ export default class Cameras extends Component {
                         owner.name && 'border border-black'
                     )}
                 />
-                {isLast && (
+                <span className="font-bold text-lg mt-2">
+                    <a
+                        href={mapsUrl}
+                        target="_blank"
+                        className="link"
+                        rel="noopener noreferrer"
+                    >
+                        {title}
+                    </a>
+                    {totalToBooth > 0 && (
+                        <span className={clsx('ml-4 font-normal text-sm')}>
+                            <i className={clsx('fas fa-car mr-2')} />
+                            {totalToBooth} to tollbooth
+                        </span>
+                    )}
+                    {totalToBooth === 0 && (
+                        <span className={clsx('ml-4 font-normal text-sm')}>
+                            <i className={clsx('fas fa-parking mr-2')} />
+                            Past tollbooth
+                        </span>
+                    )}
+                </span>
+                {isFirst && (
                     <div
                         className={clsx(
                             'bg-wsf-green',
@@ -47,7 +68,7 @@ export default class Cameras extends Component {
                     className={clsx(
                         'bg-wsf-green text-lighten-500',
                         'w-12 py-2',
-                        'absolute top-0 left-0 -ml-12 -mt-2 z-10',
+                        'absolute bottom-0 left-0 -ml-12 -mb-2 z-10',
                         'text-center'
                     )}
                 >
@@ -58,7 +79,7 @@ export default class Cameras extends Component {
                         className={clsx(
                             'bg-wsf-green',
                             'w-12 py-1',
-                            'absolute top-0 left-0 -ml-12 -mt-1/2 z-10',
+                            'absolute top-0 left-0 -ml-12 mt-32 z-10',
                             'text-center'
                         )}
                     >
