@@ -21,6 +21,8 @@ class Schedule extends Component {
 
     hasScrolled = false;
 
+    currentCrossing = null;
+
     state = {terminal: null, mate: null, schedule: [], isUpdating: false};
 
     componentDidMount = () => {
@@ -45,8 +47,8 @@ class Schedule extends Component {
     }
 
     checkScroll = () => {
-        if (!this.hasScrolled && this.lastPassed) {
-            scrollIntoView(this.lastPassed);
+        if (!this.hasScrolled && this.currentCrossing) {
+            scrollIntoView(this.currentCrossing, {align: {top: 0.3}});
             this.hasScrolled = true;
         }
     };
@@ -132,8 +134,8 @@ class Schedule extends Component {
                 key={crossing.time}
                 schedule={schedule}
                 setElement={(element) => {
-                    if (crossing.hasPassed) {
-                        this.lastPassed = element;
+                    if (!this.currentCrossing && !crossing.hasPassed) {
+                        this.currentCrossing = element;
                     }
                 }}
             />
