@@ -1,4 +1,5 @@
 import {getSlug, getTerminals} from './terminals';
+import {isOnline} from './lib/api';
 import {Link} from 'react-router-dom';
 import _ from 'lodash';
 import clsx from 'clsx';
@@ -172,6 +173,14 @@ export default class Header extends Component {
     );
 
     renderReload = () => {
+        if (!isOnline()) {
+            return (
+                <div className="font-bold text-red-700 bg-white rounded p-2">
+                    Offline
+                    <i className="fas fa-signal-alt-slash ml-2" />
+                </div>
+            );
+        }
         const {isReloading, reload} = this.props;
         return (
             <i

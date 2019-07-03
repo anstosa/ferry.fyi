@@ -27,10 +27,6 @@ app.use(logger());
 const api = new Koa();
 api.use(bodyParser());
 const router = new Router();
-router.post('/error', (context) => {
-    console.error(`ClientError: ${context.request.body.error}`);
-    context.body = {};
-});
 router.get('/vessels', async (context) => {
     context.body = await getVessels();
 });

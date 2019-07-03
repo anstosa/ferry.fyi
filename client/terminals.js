@@ -76,6 +76,8 @@ const TERMINAL_ID_BY_SLUG = {
     ...TERMINAL_ALIASES,
 };
 
+export const slugs = _.keys(TERMINAL_ID_BY_SLUG);
+
 const API_TERMINALS = '/terminals';
 const getApiTerminal = (id) => `/terminals/${id}`;
 

@@ -3,13 +3,16 @@ const DotenvPlugin = require('dotenv-webpack');
 const HtmlPlugin = require('html-webpack-plugin');
 const LiveReloadPlugin = require('webpack-livereload-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const WebappPlugin = require('webapp-webpack-plugin');
 const RobotstxtPlugin = require('robotstxt-webpack-plugin');
 const StyleLintPlugin = require('stylelint-webpack-plugin');
+const WorkboxPlugin = require('workbox-webpack-plugin');
 const merge = require('webpack-merge');
 const path = require('path');
 
 const TITLE = 'Ferry FYI';
 const DESCRIPTION = 'A better tracker for the Washington State Ferry system';
+const COLOR = '#00735a';
 
 const commonConfig = merge([
     {
@@ -21,6 +24,17 @@ const commonConfig = merge([
         },
         plugins: [
             new DotenvPlugin(),
+            new WebappPlugin({
+                logo: './client/images/icon.png',
+                favicons: {
+                    appName: TITLE,
+                    appDescription: DESCRIPTION,
+                    developerName: 'Ansel Santosa',
+                    developerURL: 'https://santosa.dev',
+                    background: COLOR,
+                    theme_color: COLOR,
+                },
+            }),
             new RobotstxtPlugin({
                 policy: [
                     {
@@ -35,7 +49,10 @@ const commonConfig = merge([
                 template: './client/index.html',
                 title: TITLE,
                 url: process.env.BASE_URL,
-                color: '#00735a',
+                color: COLOR,
+            }),
+            new WorkboxPlugin.InjectManifest({
+                swSrc: './client/service-worker.js',
             }),
             new StyleLintPlugin(),
             new MiniCssExtractPlugin({
@@ -97,7 +114,14 @@ const productionConfig = merge([{}]);
 const developmentConfig = merge([
     {
         devtool: 'inline-source-map',
-        plugins: [new LiveReloadPlugin({appendScriptTag: true})],
+        watchOptions: {
+            ignored: './**/dist/.*',
+        },
+        plugins: [
+            new LiveReloadPlugin({
+                appendScriptTag: true,
+            }),
+        ],
     },
 ]);
 

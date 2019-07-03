@@ -1,17 +1,7 @@
 import '@babel/polyfill';
-import {post} from './lib/api';
 import App from './App';
 import React from 'react';
 import ReactDOM from 'react-dom';
-
-function onError(error) {
-    post('/error', {error});
-}
-
-window.addEventListener('error', onError);
-window.addEventListener('unhandledrejection', (error) => {
-    onError(error.reason.message);
-});
 
 /**
  * @description Fires callback exactly once, after the document is loaded.
@@ -35,5 +25,19 @@ whenReady(() => {
     const root = document.createElement('div');
     document.body.appendChild(root);
     const app = React.createElement(App);
-    ReactDOM.render(app, root);
+    const renderAll = () => {
+        ReactDOM.render(app, root);
+    };
+    window.addEventListener('online', renderAll);
+    window.addEventListener('offline', renderAll);
+    renderAll();
 });
+
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', async () => {
+        const registration = await navigator.serviceWorker.register(
+            '/service-worker.js'
+        );
+        console.log('SW registered: ', registration);
+    });
+}

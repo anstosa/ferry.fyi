@@ -1,3 +1,4 @@
+import {isOnline} from '../lib/api';
 import Alerts, {getBulletins, getLastAlertTime} from './Alerts';
 import Cameras from './Cameras';
 import clsx from 'clsx';
@@ -53,11 +54,15 @@ export default class Footer extends Component {
 
     renderToggleCameras = () => {
         const {isOpen} = this.state;
+        if (!isOnline()) {
+            return null;
+        }
         return (
             <div
                 className={clsx(
                     'relative h-16 p-4',
-                    'flex items-center flex-shrink-0 justify-start'
+                    'flex items-center flex-shrink-0 justify-start',
+                    'cursor-pointer'
                 )}
                 onClick={() => {
                     if (isOpen) {
@@ -96,7 +101,8 @@ export default class Footer extends Component {
             <div
                 className={clsx(
                     'relative h-16 p-4',
-                    'flex items-center flex-grow justify-end'
+                    'flex items-center flex-grow justify-end',
+                    'cursor-pointer'
                 )}
                 onClick={() => {
                     if (isOpen) {
