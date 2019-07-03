@@ -26,13 +26,20 @@ export default class Cameras extends Component {
                 )}
                 key={id}
             >
-                <img
-                    src={image.url}
-                    className={clsx(
-                        'w-full',
-                        owner.name && 'border border-black'
-                    )}
-                />
+                <div
+                    className="bg-lighten-100 w-full relative"
+                    style={{
+                        paddingTop: `${(image.height / image.width) * 100}%`,
+                    }}
+                >
+                    <img
+                        src={image.url}
+                        className={clsx(
+                            'absolute inset-0 w-full',
+                            owner.name && 'border border-black'
+                        )}
+                    />
+                </div>
                 <span className="font-bold text-lg mt-2">
                     <a
                         href={mapsUrl}
@@ -79,7 +86,7 @@ export default class Cameras extends Component {
                         className={clsx(
                             'bg-wsf-green',
                             'w-12 py-1',
-                            'absolute top-0 left-0 -ml-12 mt-32 z-10',
+                            'absolute top-0 left-0 -ml-12 mt-1/3 z-10',
                             'text-center'
                         )}
                     >
@@ -99,7 +106,7 @@ export default class Cameras extends Component {
         } = this.props;
         return (
             <div className="flex-grow overflow-y-auto">
-                <ul className={clsx('my-4 pl-12 relative')}>
+                <ul className={clsx('my-4 pl-12 relative max-w-lg')}>
                     <div
                         className={clsx(
                             'bg-wsf-green',
