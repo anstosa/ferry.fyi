@@ -153,9 +153,9 @@ const CAMERAS_BY_TERMINAL_ID = {
             location: {latitude: 47.974689, longitude: -122.352236},
             title: 'Dock',
             image: {
-                url: 'http://209.166.65.130/boothdock.jpg',
-                width: 320,
-                height: 240,
+                url: 'https://camserv.whidbey.com/boothdock.jpg',
+                width: 480,
+                height: 352,
             },
             owner: {
                 name: 'WhidbeyTelecom',
@@ -187,9 +187,9 @@ const CAMERAS_BY_TERMINAL_ID = {
             location: {latitude: 47.974711, longitude: -122.352462},
             title: 'Uphill',
             image: {
-                url: 'http://209.166.65.130/boothhill.jpg',
-                width: 320,
-                height: 240,
+                url: 'https://camserv.whidbey.com/boothhill.jpg',
+                width: 480,
+                height: 352,
             },
             owner: {
                 name: 'Whidbey.com',
@@ -205,9 +205,9 @@ const CAMERAS_BY_TERMINAL_ID = {
             location: {latitude: 47.979695, longitude: -122.357644},
             title: 'E SR 525',
             image: {
-                url: 'http://209.166.65.130/clinteast.jpg',
-                width: 320,
-                height: 240,
+                url: 'https://camserv.whidbey.com/clinteast.jpg',
+                width: 480,
+                height: 352,
             },
             owner: {
                 name: 'WhidbeyTelecom',
@@ -223,9 +223,9 @@ const CAMERAS_BY_TERMINAL_ID = {
             location: {latitude: 47.979681, longitude: -122.357429},
             title: 'W SR 525',
             image: {
-                url: 'http://209.166.65.130/clintwest.jpg',
-                width: 320,
-                height: 240,
+                url: 'https://camserv.whidbey.com/clintwest.jpg',
+                width: 467,
+                height: 360,
             },
             owner: {
                 name: 'Whidbey.com',
