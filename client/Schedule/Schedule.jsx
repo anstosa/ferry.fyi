@@ -36,16 +36,14 @@ class Schedule extends Component {
         clearInterval(this.scheduleTick);
     };
 
-    componentDidUpdate(prevProps) {
+    componentDidUpdate(prevProps, prevState) {
         const {schedule} = this.state;
         const {match} = this.props;
         const {terminalSlug, mateSlug} = match.params;
         if (terminalSlug !== prevProps.match.params.terminalSlug) {
             this.setRoute(terminalSlug, mateSlug);
         }
-        if (schedule) {
-            this.checkScroll();
-        }
+        this.checkScroll();
     }
 
     checkScroll = () => {
@@ -59,6 +57,7 @@ class Schedule extends Component {
         const {history, location} = this.props;
         this.setState({mate: null, schedule: null, terminal: null});
         this.hasScrolled = false;
+        this.currentCrossing = null;
         const terminal = await getTerminal(terminalSlug);
         let mate;
         if (_.isObject(mateSlug)) {
