@@ -1,6 +1,5 @@
 import {getSchedule} from '../schedule';
 import {getSlug, getTerminal} from '../terminals';
-import {Helmet} from 'react-helmet';
 import {withRouter} from 'react-router';
 import _ from 'lodash';
 import clsx from 'clsx';
@@ -38,12 +37,15 @@ class Schedule extends Component {
     };
 
     componentDidUpdate(prevProps) {
+        const {schedule} = this.state;
         const {match} = this.props;
         const {terminalSlug, mateSlug} = match.params;
         if (terminalSlug !== prevProps.match.params.terminalSlug) {
             this.setRoute(terminalSlug, mateSlug);
         }
-        this.checkScroll();
+        if (schedule) {
+            this.checkScroll();
+        }
     }
 
     checkScroll = () => {
@@ -56,6 +58,7 @@ class Schedule extends Component {
     setRoute = async (terminalSlug, mateSlug) => {
         const {history, location} = this.props;
         this.setState({mate: null, schedule: null, terminal: null});
+        this.hasScrolled = false;
         const terminal = await getTerminal(terminalSlug);
         let mate;
         if (_.isObject(mateSlug)) {
@@ -92,35 +95,7 @@ class Schedule extends Component {
         }
         this.setState({isUpdating: true});
         const schedule = await getSchedule(terminal, mate);
-        if (!this.state.schedule) {
-            this.hasScrolled = false;
-        }
         this.setState({isUpdating: false, schedule});
-    };
-
-    renderMeta = () => {
-        const {terminal} = this.state;
-        if (!terminal) {
-            return null;
-        }
-        const {match} = this.props;
-        const {slug} = match.params;
-        const url = `${process.env.BASE_URL}/${slug}`;
-        const title = `${_.capitalize(terminal.name)} Ferry FYI`;
-        return (
-            <Helmet>
-                <meta charSet="utf-8" />
-                <title>Ferry FYI</title>
-                <link rel="canonical" href={url} />
-
-                <meta name="twitter:title" content={title} />
-
-                <meta property="og:url" content={url} />
-                <meta property="og:title" content={title} />
-
-                <meta itemProp="name" content={title} />
-            </Helmet>
-        );
     };
 
     renderSchedule = () => {
@@ -151,7 +126,6 @@ class Schedule extends Component {
         }
         return (
             <>
-                {this.renderMeta()}
                 <Header
                     match={match}
                     terminal={terminal}

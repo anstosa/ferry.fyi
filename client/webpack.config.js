@@ -3,12 +3,13 @@ const DotenvPlugin = require('dotenv-webpack');
 const HtmlPlugin = require('html-webpack-plugin');
 const LiveReloadPlugin = require('webpack-livereload-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
-const WebappPlugin = require('webapp-webpack-plugin');
 const RobotstxtPlugin = require('robotstxt-webpack-plugin');
 const StyleLintPlugin = require('stylelint-webpack-plugin');
+const WebappPlugin = require('webapp-webpack-plugin');
 const WorkboxPlugin = require('workbox-webpack-plugin');
 const merge = require('webpack-merge');
 const path = require('path');
+const webpack = require('webpack');
 
 const TITLE = 'Ferry FYI';
 const DESCRIPTION = 'A better tracker for the Washington State Ferry system';
@@ -23,7 +24,6 @@ const commonConfig = merge([
             publicPath: '/',
         },
         plugins: [
-            new DotenvPlugin(),
             new WebappPlugin({
                 logo: './client/images/icon.png',
                 favicons: {
@@ -109,7 +109,17 @@ const commonConfig = merge([
     },
 ]);
 
-const productionConfig = merge([{}]);
+const productionConfig = merge([
+    {
+        plugins: [
+            new webpack.EnvironmentPlugin([
+                'BASE_URL',
+                'DEBUG',
+                'GOOGLE_ANALYTICS',
+            ]),
+        ],
+    },
+]);
 
 const developmentConfig = merge([
     {
@@ -118,6 +128,7 @@ const developmentConfig = merge([
             ignored: './**/dist/.*',
         },
         plugins: [
+            new DotenvPlugin(),
             new LiveReloadPlugin({
                 appendScriptTag: true,
             }),
