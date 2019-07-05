@@ -12,4 +12,11 @@ export const wsfDateToTimestamp = (wsfDate) => {
     return _.round(match[1] / 1000);
 };
 
-export const getToday = () => DateTime.local().toFormat('yyyy-MM-dd');
+// "today" is a tricky concept. WSF's "day" ends around 3am
+export const getToday = () => {
+    let date = DateTime.local();
+    if (date.hour < 3) {
+        date = date.minus({days: 1});
+    }
+    return date.toFormat('yyyy-MM-dd');
+};
