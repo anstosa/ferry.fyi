@@ -18,14 +18,14 @@ const ALERT_FILTER = new RegExp(
     'i'
 );
 
-function getAlertTime(bulletin) {
+function getAlertTime(bulletin, now = DateTime.local()) {
     const time = DateTime.fromSeconds(bulletin.date);
-    const diff = time.diffNow();
+    const diff = time.diff(now);
     let result;
     if (Math.abs(diff.as('hours')) < 1) {
         const mins = _.round(Math.abs(diff.as('minutes')));
         result = `${mins} min${mins > 1 ? 's' : ''} ago`;
-    } else if (time.hasSame(DateTime.local(), 'day')) {
+    } else if (time.hasSame(now, 'day')) {
         result = time.toFormat('h:mm a');
     } else {
         result = _.capitalize(time.toRelativeCalendar());
@@ -48,9 +48,11 @@ export function getBulletins(terminal) {
 export default class Alerts extends Component {
     static propTypes = {
         terminal: PropTypes.object,
+        time: PropTypes.object.isRequired,
     };
 
     renderAlert = (bulletin) => {
+        const {time} = this.props;
         const {title, description} = bulletin;
         const filteredDescription = description
             .replace(/<script>.*<\/script>/, '')
@@ -60,7 +62,7 @@ export default class Alerts extends Component {
         return (
             <li className="flex flex-col pb-8 relative" key={title}>
                 <span className="text text-lighten-700 text-bold mb-1">
-                    {getAlertTime(bulletin)}
+                    {getAlertTime(bulletin, time)}
                 </span>
                 <span className="font-medium text-lg mb-2">{title}</span>
                 <div

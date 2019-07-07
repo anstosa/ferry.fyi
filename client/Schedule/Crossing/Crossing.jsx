@@ -12,10 +12,11 @@ export default class Crossing extends Component {
         crossing: PropTypes.object.isRequired,
         schedule: PropTypes.arrayOf(PropTypes.object).isRequired,
         setElement: PropTypes.func.isRequired,
+        time: PropTypes.object.isRequired,
     };
 
     render = () => {
-        const {crossing, setElement} = this.props;
+        const {crossing, setElement, time} = this.props;
         const {hasPassed, vessel} = crossing;
         const isNext =
             crossing === _.find(this.props.schedule, {hasPassed: false});
@@ -34,9 +35,9 @@ export default class Crossing extends Component {
                 <Capacity crossing={crossing} />
                 <div className="flex flex-col justify-between items-start z-0">
                     <VesselTag vessel={vessel} />
-                    <Status className="mt-4" crossing={crossing} />
+                    <Status className="mt-4" crossing={crossing} time={time} />
                 </div>
-                <Time crossing={crossing} />
+                <Time crossing={crossing} time={time} />
             </li>
         );
     };

@@ -12,6 +12,7 @@ const TAB_ALERTS = 'alerts';
 export default class Footer extends Component {
     static propTypes = {
         terminal: PropTypes.object,
+        time: PropTypes.object.isRequired,
     };
 
     state = {
@@ -93,7 +94,7 @@ export default class Footer extends Component {
 
     renderToggleAlerts = () => {
         const {isOpen} = this.state;
-        const {terminal} = this.props;
+        const {terminal, time} = this.props;
         if (!getBulletins(terminal).length) {
             return null;
         }
@@ -120,7 +121,7 @@ export default class Footer extends Component {
                     }
                 }}
             >
-                {isOpen ? 'Alerts' : getLastAlertTime(terminal)}
+                {isOpen ? 'Alerts' : getLastAlertTime(terminal, time)}
                 <i
                     className={clsx(
                         'fas fa-lg ml-4',
@@ -133,7 +134,7 @@ export default class Footer extends Component {
 
     render = () => {
         const {isOpen, tab} = this.state;
-        const {terminal} = this.props;
+        const {terminal, time} = this.props;
         const showCameras = isOpen && tab === TAB_CAMERAS;
         const showAlerts = isOpen && tab === TAB_ALERTS;
         return (
@@ -143,7 +144,9 @@ export default class Footer extends Component {
                     <>
                         {this.renderToggle()}
                         {showCameras && <Cameras terminal={terminal} />}
-                        {showAlerts && <Alerts terminal={terminal} />}
+                        {showAlerts && (
+                            <Alerts terminal={terminal} time={time} />
+                        )}
                     </>
                 )}
             </>

@@ -9,6 +9,7 @@ import {
     updateCache,
     updateCrossings,
 } from './lib/wsf';
+import {DateTime} from 'luxon';
 import {dbInit} from './lib/db';
 import bodyParser from 'koa-bodyparser';
 import fs from 'fs';
@@ -41,7 +42,10 @@ router.get('/terminals/:terminalId', async (context) => {
 });
 router.get('/schedule/:departingId/:arrivingId', async (context) => {
     const {departingId, arrivingId} = context.params;
-    context.body = await getSchedule(departingId, arrivingId);
+    context.body = {
+        schedule: await getSchedule(departingId, arrivingId),
+        timestamp: DateTime.local().toSeconds(),
+    };
 });
 api.use(router.routes());
 api.use(router.allowedMethods());

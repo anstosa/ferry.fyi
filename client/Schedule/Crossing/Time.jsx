@@ -7,17 +7,18 @@ import React, {Component} from 'react';
 export default class Time extends Component {
     static propTypes = {
         crossing: PropTypes.object.isRequired,
+        time: PropTypes.object.isRequired,
     };
 
     render = () => {
-        const {crossing} = this.props;
+        const {crossing, time} = this.props;
         const {capacity = {}, hasPassed} = crossing;
         const {departureDelta = 0} = capacity;
         const delta = Duration.fromObject({seconds: departureDelta});
         let deltaMins = _.round(delta.as('minutes'));
         const scheduledTime = DateTime.fromSeconds(crossing.time);
         let estimatedTime = scheduledTime.plus(delta);
-        const diff = estimatedTime.diffNow();
+        const diff = estimatedTime.diff(time);
         if (Math.abs(deltaMins) <= 2) {
             deltaMins = 0;
             estimatedTime = scheduledTime;

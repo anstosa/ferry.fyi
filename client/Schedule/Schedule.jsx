@@ -1,3 +1,4 @@
+import {DateTime} from 'luxon';
 import {getSchedule} from '../schedule';
 import {getSlug, getTerminal} from '../terminals';
 import {withRouter} from 'react-router';
@@ -92,12 +93,13 @@ class Schedule extends Component {
             return;
         }
         this.setState({isUpdating: true});
-        const schedule = await getSchedule(terminal, mate);
-        this.setState({isUpdating: false, schedule});
+        const {schedule, timestamp} = await getSchedule(terminal, mate);
+        const time = DateTime.fromSeconds(timestamp);
+        this.setState({isUpdating: false, time, schedule});
     };
 
     renderSchedule = () => {
-        const {schedule} = this.state;
+        const {schedule, time} = this.state;
         if (!schedule) {
             return;
         }
@@ -111,13 +113,14 @@ class Schedule extends Component {
                         this.currentCrossing = element;
                     }
                 }}
+                time={time}
             />
         ));
         return <ul>{sailings}</ul>;
     };
 
     render = () => {
-        const {isUpdating, mate, terminal, schedule} = this.state;
+        const {isUpdating, mate, terminal, schedule, time} = this.state;
         const {match} = this.props;
         if (!terminal || !mate || !schedule) {
             return <Splash />;
@@ -148,7 +151,7 @@ class Schedule extends Component {
                         {this.renderSchedule()}
                     </div>
                 </article>
-                <Footer terminal={terminal} />
+                <Footer terminal={terminal} time={time} />
             </>
         );
     };

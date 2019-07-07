@@ -1,11 +1,14 @@
 import './app.scss';
 import {BrowserRouter, Redirect, Route} from 'react-router-dom';
+import {Settings} from 'luxon';
 import {ToastContainer} from 'react-toastify';
 import _ from 'lodash';
 import Analytics from './lib/Analytics';
 import React, {Component} from 'react';
 import Schedule from './Schedule/Schedule';
 import Splash from './Splash';
+
+Settings.defaultZoneName = 'America/Los_Angeles';
 
 export default class App extends Component {
     state = {

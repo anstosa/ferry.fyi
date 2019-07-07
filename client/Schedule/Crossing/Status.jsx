@@ -8,16 +8,17 @@ export default class Status extends Component {
     static propTypes = {
         className: PropTypes.string,
         crossing: PropTypes.object.isRequired,
+        time: PropTypes.object.isRequired,
     };
 
     render = () => {
-        const {className, crossing} = this.props;
+        const {className, crossing, time} = this.props;
         const {capacity = {}} = crossing;
         const {departureDelta = 0, isCancelled = false} = capacity;
         const delta = Duration.fromObject({seconds: departureDelta});
         const scheduledTime = DateTime.fromSeconds(crossing.time);
         const deltaMins = _.round(delta.as('minutes'));
-        const diff = scheduledTime.diffNow();
+        const diff = scheduledTime.diff(time);
 
         let statusText;
         let statusClass;
