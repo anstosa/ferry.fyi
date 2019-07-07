@@ -36,8 +36,7 @@ class Schedule extends Component {
         clearInterval(this.scheduleTick);
     };
 
-    componentDidUpdate(prevProps, prevState) {
-        const {schedule} = this.state;
+    componentDidUpdate(prevProps) {
         const {match} = this.props;
         const {terminalSlug, mateSlug} = match.params;
         if (terminalSlug !== prevProps.match.params.terminalSlug) {
