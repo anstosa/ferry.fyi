@@ -2,6 +2,7 @@ $fa-font-path: '../node_modules/@fortawesome/fontawesome-pro/webfonts';
 @import '@fortawesome/fontawesome-pro/scss/fontawesome';
 @import '@fortawesome/fontawesome-pro/scss/regular';
 @import '@fortawesome/fontawesome-pro/scss/solid';
+@import '@fortawesome/fontawesome-pro/scss/light';
 @import '@fortawesome/fontawesome-pro/scss/brands';
 @import 'react-toastify/dist/ReactToastify';
 
@@ -31,6 +32,7 @@ html {
     @import 'components/button';
     @import 'components/field';
     @import 'components/link';
+    @import 'components/list';
 }
 
 // Inject tailwind utility classes

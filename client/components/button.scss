@@ -69,6 +69,17 @@
         }
     }
 
+    &-invert {
+        @apply border-transparent;
+        @apply bg-white;
+        @apply text-wsf-green;
+
+        &:hover {
+            @apply border-transparent;
+            @apply bg-lighten-700;
+        }
+    }
+
     &-destructive {
         &:hover {
             @apply text-red-600;

@@ -8,8 +8,18 @@ export default class Menu extends Component {
         onClose: PropTypes.func.isRequired,
     };
 
+    state = {
+        iOs: false,
+        android: false,
+    };
+
+    renderStepIcon = (className) => (
+        <i className={clsx(className, 'mx-2 w-4 text-center')} />
+    );
+
     render = () => {
         const {isOpen, onClose} = this.props;
+        const {android, iOs} = this.state;
         return (
             <>
                 <div
@@ -49,67 +59,146 @@ export default class Menu extends Component {
                             onClick={onClose}
                         />
                     </div>
-                    <p className="mt-4">
-                        A better tracker for{' '}
-                        <a
-                            className="link"
-                            href="https://www.wsdot.wa.gov/ferries/"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                        >
-                            the Washington State Ferry system
-                        </a>
-                        .
-                    </p>
-                    <h2 className="font-medium text-lg mt-8">Feedback</h2>
-                    <p className="mt-2">
-                        See something wrong? Want to request a feature?{' '}
-                        <a
-                            className="link"
-                            href="https://github.com/anstosa/ferry.fyi/issues"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                        >
-                            File a ticket on GitHub
-                        </a>{' '}
-                        or{' '}
-                        <a
-                            className="link"
-                            href="mailto:dev@ferry.fyi"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                        >
-                            email dev@ferry.fyi
-                        </a>
-                        .
-                    </p>
-                    <h2 className="font-medium text-lg mt-8">Support</h2>
-                    <p className="mt-2">
-                        If Ferry FYI is useful to you please consider making{' '}
-                        <a
-                            className="link"
-                            href="https://ballydidean.farm/donate"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                        >
-                            a tax-deductible donation to Ballydídean Farm
-                            Sanctuary
-                        </a>{' '}
-                        to support animal welfare on Whidbey Island.
-                    </p>
-                    <div className="flex-grow" />
-                    <p className="mb-4 text-xs text-right">
-                        By{' '}
-                        <a
-                            className="link"
-                            href="https://ansel.santosa.family"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                        >
-                            Ansel Santosa
-                        </a>{' '}
-                        on Whidbey Island
-                    </p>
+                    <div className="overflow-y-auto flex-grow flex flex-col">
+                        <p className="mt-4">
+                            A better tracker for{' '}
+                            <a
+                                className="link"
+                                href="https://www.wsdot.wa.gov/ferries/"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                the Washington State Ferry system
+                            </a>
+                            .
+                        </p>
+                        <h2 className="font-medium text-lg mt-8">
+                            Install App
+                        </h2>
+                        <div className="mt-2">
+                            Want to install Ferry FYI as an app on your
+                            homescreen?
+                            {!iOs && !android && (
+                                <div className="flex mt-4">
+                                    <button
+                                        className={clsx(
+                                            'button button-invert',
+                                            'flex-grow'
+                                        )}
+                                        onClick={() =>
+                                            this.setState({iOs: true})
+                                        }
+                                    >
+                                        <i className="button-icon fab fa-lg fa-apple" />
+                                        <span className="button-label">
+                                            iOS
+                                        </span>
+                                    </button>
+                                    <button
+                                        className={clsx(
+                                            'button button-invert',
+                                            'flex-grow ml-4'
+                                        )}
+                                        onClick={() =>
+                                            this.setState({android: true})
+                                        }
+                                    >
+                                        <i className="button-icon fab fa-lg fa-android" />
+                                        <span className="button-label">
+                                            Android
+                                        </span>
+                                    </button>
+                                </div>
+                            )}
+                            {iOs && (
+                                <ol className="my-2 list-decimal list-inside">
+                                    <li>
+                                        {this.renderStepIcon('fab fa-safari')}
+                                        Safari
+                                    </li>
+                                    <li>
+                                        {this.renderStepIcon(
+                                            'fal fa-external-link'
+                                        )}
+                                        Share
+                                    </li>
+                                    <li>
+                                        {this.renderStepIcon(
+                                            'fal fa-plus-square'
+                                        )}
+                                        Add to Home Screen
+                                    </li>
+                                </ol>
+                            )}
+                            {android && (
+                                <ol className="my-2 list-decimal list-inside">
+                                    <li>
+                                        {this.renderStepIcon('fab fa-chrome')}
+                                        Chrome
+                                    </li>
+                                    <li>
+                                        {this.renderStepIcon(
+                                            'fas fa-ellipsis-v'
+                                        )}
+                                        Menu
+                                    </li>
+                                    <li>
+                                        {this.renderStepIcon('inline-block')}
+                                        Add to Home Screen
+                                    </li>
+                                </ol>
+                            )}
+                        </div>
+                        <h2 className="font-medium text-lg mt-8">Feedback</h2>
+                        <p className="mt-2">
+                            See something wrong? Want to request a feature?{' '}
+                            <a
+                                className="link"
+                                href="https://github.com/anstosa/ferry.fyi/issues"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                File a ticket on GitHub
+                            </a>{' '}
+                            or{' '}
+                            <a
+                                className="link"
+                                href="mailto:dev@ferry.fyi"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                email dev@ferry.fyi
+                            </a>
+                            .
+                        </p>
+                        <h2 className="font-medium text-lg mt-8">Support</h2>
+                        <p className="mt-2">
+                            If Ferry FYI is useful to you please consider making{' '}
+                            <a
+                                className="link"
+                                href="https://ballydidean.farm/donate"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                a tax-deductible donation to Ballydídean Farm
+                                Sanctuary
+                            </a>{' '}
+                            to support animal welfare on Whidbey Island.
+                        </p>
+                        <div className="flex-grow" />
+                        <p className="mb-4 text-xs text-right mt-8">
+                            By{' '}
+                            <a
+                                className="link"
+                                href="https://ansel.santosa.family"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                            >
+                                Ansel Santosa
+                            </a>{' '}
+                            on Whidbey Island
+                        </p>
+                    </div>
                 </div>
             </>
         );
