@@ -11,12 +11,21 @@ export default class Cameras extends Component {
     renderCamera = (camera, index, cameras) => {
         const {id, title, image, spacesToNext, location, owner} = camera;
         const isFirst = index === 0;
-        let totalToBooth = 0;
+        let totalToBooth;
         const mapsUrl = `https://www.google.com/maps/search/${location.latitude},${location.longitude}`;
-        _.find(cameras, (candidate) => {
-            totalToBooth += candidate.spacesToNext;
-            return candidate === camera;
-        });
+        if (_.isNull(_.first(cameras).spacesToNext)) {
+            totalToBooth = null;
+        } else {
+            totalToBooth = 0;
+            _.find(cameras, (candidate) => {
+                const {spacesToNext} = candidate;
+                if (_.isNull(spacesToNext)) {
+                    return true;
+                }
+                totalToBooth += candidate.spacesToNext;
+                return candidate === camera;
+            });
+        }
         return (
             <li
                 className={clsx(
