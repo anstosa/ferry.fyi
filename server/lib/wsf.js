@@ -141,10 +141,16 @@ export const getSchedule = async (departingId, arrivingId) => {
     });
     const now = DateTime.local();
     const schedule = _.first(response.TerminalCombos);
+    const seenVessels = [];
     return Promise.all(
         _.map(schedule.Times, async (departure) => {
             const time = wsfDateToTimestamp(departure.DepartingTime);
             const hasPassed = DateTime.fromSeconds(time) < now;
+            const vesselId = departure.VesselID;
+            const isFirstOfVessel = !_.includes(seenVessels, vesselId);
+            if (isFirstOfVessel) {
+                seenVessels.push(vesselId);
+            }
             return {
                 allowsPassengers: _.includes([1, 3], departure.LoadingRule),
                 allowsVehicles: _.includes([2, 3], departure.LoadingRule),
@@ -155,7 +161,7 @@ export const getSchedule = async (departingId, arrivingId) => {
                 ]),
                 hasPassed,
                 time,
-                vessel: await getVessel(departure.VesselID),
+                vessel: await getVessel(vesselId, isFirstOfVessel),
             };
         })
     );
@@ -167,9 +173,14 @@ export const getVessels = async () => {
 };
 
 // fetches a vessel from the cache (waiting if an update is in progress)
-export const getVessel = async (id) => {
+export const getVessel = async (id, resetDelay = false) => {
     await updateProgress.vesels;
-    return _.get(vesselsById, id);
+    const vessel = _.get(vesselsById, id);
+    if (resetDelay) {
+        return _.merge(_.cloneDeep(vessel), {departureDelta: null});
+    } else {
+        return vessel;
+    }
 };
 
 export const getTerminals = async () => {
