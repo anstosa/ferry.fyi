@@ -120,7 +120,14 @@ class Schedule extends Component {
     };
 
     render = () => {
-        const {isUpdating, mate, terminal, schedule, time} = this.state;
+        const {
+            isFooterOpen,
+            isUpdating,
+            mate,
+            terminal,
+            schedule,
+            time,
+        } = this.state;
         const {match} = this.props;
         if (!terminal || !mate || !schedule) {
             return <Splash />;
@@ -137,21 +144,27 @@ class Schedule extends Component {
                 />
                 <article
                     className={clsx(
-                        'w-full',
+                        'w-full max-h-full',
                         'flex-grow',
-                        'flex flex-col items-center'
+                        'flex flex-col items-center',
+                        'pr-safe-right pl-safe-left bg-black',
+                        isFooterOpen ? 'overflow-hidden' : 'overflow-y-auto'
                     )}
                 >
                     <div
                         className={clsx(
-                            'w-full max-w-6xl',
+                            'w-full max-w-6xl bg-white',
                             'lg:border-l lg:border-r border-gray-500'
                         )}
                     >
                         {this.renderSchedule()}
                     </div>
                 </article>
-                <Footer terminal={terminal} time={time} />
+                <Footer
+                    terminal={terminal}
+                    time={time}
+                    onChange={(isOpen) => this.setState({isFooterOpen: isOpen})}
+                />
             </>
         );
     };

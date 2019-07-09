@@ -1,4 +1,5 @@
 import {isOnline} from '../lib/api';
+import _ from 'lodash';
 import Alerts, {getBulletins, getLastAlertTime} from './Alerts';
 import Cameras from './Cameras';
 import clsx from 'clsx';
@@ -11,6 +12,7 @@ const TAB_ALERTS = 'alerts';
 
 export default class Footer extends Component {
     static propTypes = {
+        onChange: PropTypes.func,
         terminal: PropTypes.object,
         time: PropTypes.object.isRequired,
     };
@@ -23,22 +25,33 @@ export default class Footer extends Component {
     wrapFooter = (content) => {
         const {isOpen} = this.state;
         return (
-            <footer
+            <div
                 className={clsx(
-                    'fixed top-full inset-x z-10',
+                    'fixed top-0 inset-x z-10',
                     'bg-wsf-green text-white',
-                    'w-full h-screen shadow-lg',
+                    'w-full shadow-up-lg',
                     'flex justify-center',
                     'animate',
-                    !isOpen && '-mt-16'
+                    'pr-safe-right pl-safe-left mb-safe-top'
                 )}
-                style={isOpen ? {marginTop: '-100vh'} : {}}
+                style={{
+                    height: window.innerHeight,
+                    top: isOpen ? '0' : 'calc(100% - 4rem)',
+                }}
             >
                 <div className={clsx('w-full max-w-6xl', 'flex flex-col')}>
                     {content}
                 </div>
-            </footer>
+            </div>
         );
+    };
+
+    setOpen = (isOpen, tab = null) => {
+        const {onChange} = this.props;
+        this.setState({isOpen, tab});
+        if (_.isFunction(onChange)) {
+            onChange(isOpen);
+        }
     };
 
     renderToggle = () => {
@@ -67,13 +80,13 @@ export default class Footer extends Component {
                 )}
                 onClick={() => {
                     if (isOpen) {
-                        this.setState({isOpen: false, tab: null});
+                        this.setOpen(false);
                         ReactGA.event({
                             category: 'Navigation',
                             action: 'Close Cameras',
                         });
                     } else {
-                        this.setState({isOpen: true, tab: TAB_CAMERAS});
+                        this.setOpen(true, TAB_CAMERAS);
                         ReactGA.event({
                             category: 'Navigation',
                             action: 'Open Cameras',
@@ -107,13 +120,13 @@ export default class Footer extends Component {
                 )}
                 onClick={() => {
                     if (isOpen) {
-                        this.setState({isOpen: false, tab: null});
+                        this.setOpen(false);
                         ReactGA.event({
                             category: 'Navigation',
                             action: 'Close Alerts',
                         });
                     } else {
-                        this.setState({isOpen: true, tab: TAB_ALERTS});
+                        this.setOpen(true, TAB_ALERTS);
                         ReactGA.event({
                             category: 'Navigation',
                             action: 'Open Alerts',
@@ -139,7 +152,14 @@ export default class Footer extends Component {
         const showAlerts = isOpen && tab === TAB_ALERTS;
         return (
             <>
-                <div className="h-16 w-full" />
+                <div className="h-16 w-full mb" />
+                <div
+                    className={clsx(
+                        'fixed bottom-0 inset-x-0 z-10',
+                        'h-safe-bottom',
+                        'bg-wsf-green'
+                    )}
+                />
                 {this.wrapFooter(
                     <>
                         {this.renderToggle()}

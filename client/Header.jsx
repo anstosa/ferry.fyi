@@ -34,10 +34,11 @@ export default class Header extends Component {
     wrapHeader = (content) => (
         <header
             className={clsx(
-                'fixed top-0 inset-x z-10',
+                'fixed top-0 inset-x-0 z-10',
                 'bg-wsf-green text-white',
                 'w-full shadow-lg h-16',
-                'flex justify-center'
+                'flex justify-center',
+                'pr-safe-right pl-safe-left mt-safe-top'
             )}
         >
             <div className={clsx('w-full max-w-6xl p-4', 'flex items-center')}>
@@ -211,7 +212,14 @@ export default class Header extends Component {
         }
         return (
             <>
-                <div className="h-16 w-full" />
+                <div className="h-16 w-full mt-safe-top" />
+                <div
+                    className={clsx(
+                        'fixed top-0 inset-x-0 z-10',
+                        'h-safe-top',
+                        'bg-wsf-green'
+                    )}
+                />
                 <Menu
                     isOpen={isMenuOpen}
                     onClose={() => {

@@ -22,8 +22,7 @@ const whenReady = (callback) => {
 };
 
 whenReady(() => {
-    const root = document.createElement('div');
-    document.body.appendChild(root);
+    const root = document.querySelector('#root');
     const app = React.createElement(App);
     const renderAll = () => {
         ReactDOM.render(app, root);

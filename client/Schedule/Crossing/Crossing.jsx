@@ -21,13 +21,21 @@ export default class Crossing extends Component {
         const isNext =
             crossing === _.find(this.props.schedule, {hasPassed: false});
 
+        let background;
+        if (hasPassed) {
+            background = 'bg-gray-300';
+        } else if (isNext) {
+            background = 'bg-green-200';
+        } else {
+            background = 'bg-white';
+        }
+
         return (
             <li
                 className={clsx(
                     'relative py-4 px-2',
                     'border-b border-gray-500',
-                    hasPassed && 'bg-gray-300',
-                    isNext && 'bg-green-200',
+                    background,
                     'flex justify-between'
                 )}
                 ref={setElement}
