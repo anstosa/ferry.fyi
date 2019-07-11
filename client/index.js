@@ -2,6 +2,7 @@ import '@babel/polyfill';
 import App from './App';
 import React from 'react';
 import ReactDOM from 'react-dom';
+import Workbox from 'workbox-window';
 
 /**
  * @description Fires callback exactly once, after the document is loaded.
@@ -33,10 +34,15 @@ whenReady(() => {
 });
 
 if ('serviceWorker' in navigator) {
-    window.addEventListener('load', async () => {
-        const registration = await navigator.serviceWorker.register(
-            '/service-worker.js'
-        );
-        console.log('SW registered: ', registration);
+    window.addEventListener('load', () => {
+        const workbox = new Workbox('/service-worker.js');
+
+        workbox.addEventListener('installed', (event) => {
+            if (event.isUpdate) {
+                window.location.reload();
+            }
+        });
+
+        workbox.register();
     });
 }
