@@ -8,7 +8,7 @@ const RESERVATIONS_BASE_URL =
 
 const LEFT_EDGE = 65;
 const RIGHT_EDGE = 90;
-const CAPACITY_WIDTH = 100;
+const CAPACITY_WIDTH = 125;
 
 export default class Capacity extends Component {
     static propTypes = {
@@ -80,6 +80,14 @@ export default class Capacity extends Component {
         const totalWidth = window.innerWidth;
         const width = percent * totalWidth;
         return width >= CAPACITY_WIDTH + LEFT_EDGE;
+    };
+
+    willFitRight = () => {
+        const percent = this.state.percentFull / 100;
+        const totalWidth = window.innerWidth;
+        const width = percent * totalWidth;
+        const remainder = totalWidth - width;
+        return remainder >= CAPACITY_WIDTH + RIGHT_EDGE;
     };
 
     isRightEdge = () => {
@@ -162,7 +170,7 @@ export default class Capacity extends Component {
         <div
             className={clsx(
                 'flex flex-col pt-5',
-                this.willFitLeft() ? 'items-end' : 'items-start'
+                this.willFitRight() ? 'items-start' : 'items-end'
             )}
         >
             {this.renderSpace()}
@@ -189,9 +197,9 @@ export default class Capacity extends Component {
                         <span
                             className={clsx(
                                 'absolute top-0',
-                                this.willFitLeft()
-                                    ? 'right-0 mr-4'
-                                    : 'left-full ml-4'
+                                this.willFitRight()
+                                    ? 'left-full ml-4'
+                                    : 'right-0 mr-4'
                             )}
                         >
                             {this.renderStatus()}
