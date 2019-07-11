@@ -71,7 +71,7 @@ export default class Header extends Component {
                             'absolute top-full left-0',
                             'bg-wsf-green shadow-lg',
                             '-ml-4 py-2',
-                            'max-h-halfscreen overflow-y-auto'
+                            'max-h-halfscreen overflow-y-scroll scrolling-touch'
                         )}
                     >
                         {_.map(options, (option) => (

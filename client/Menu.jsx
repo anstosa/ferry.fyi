@@ -138,7 +138,12 @@ export default class Menu extends Component {
                             onClick={onClose}
                         />
                     </div>
-                    <div className="overflow-y-auto flex-grow flex flex-col">
+                    <div
+                        className={clsx(
+                            'overflow-y-scroll scrolling-touch',
+                            'flex-grow flex flex-col'
+                        )}
+                    >
                         <p className="mt-4">
                             A ferry schedule and tracker for the greater Seattle
                             area. Supports all{' '}

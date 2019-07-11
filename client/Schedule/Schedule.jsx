@@ -148,7 +148,7 @@ class Schedule extends Component {
                         'flex-grow',
                         'flex flex-col items-center',
                         'pr-safe-right pl-safe-left bg-black',
-                        isFooterOpen ? 'overflow-hidden' : 'overflow-y-auto'
+                        isFooterOpen ? 'overflow-hidden' : 'overflow-y-scroll'
                     )}
                 >
                     <div

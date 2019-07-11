@@ -76,7 +76,7 @@ export default class Alerts extends Component {
     render = () => {
         const {terminal} = this.props;
         return (
-            <div className="flex-grow overflow-y-auto">
+            <div className="flex-grow overflow-y-scroll scrolling-touch">
                 <ul className={clsx('px-8 py-4 relative')}>
                     {_.map(getBulletins(terminal), this.renderAlert)}
                 </ul>

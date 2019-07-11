@@ -114,7 +114,7 @@ export default class Cameras extends Component {
             terminal: {cameras},
         } = this.props;
         return (
-            <div className="flex-grow overflow-y-auto">
+            <div className="flex-grow overflow-y-scroll scrolling-touch">
                 <ul className={clsx('my-4 pl-12 relative max-w-lg')}>
                     <div
                         className={clsx(
