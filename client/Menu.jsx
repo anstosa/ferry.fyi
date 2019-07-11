@@ -17,9 +17,88 @@ export default class Menu extends Component {
         <i className={clsx(className, 'mx-2 w-4 text-center')} />
     );
 
+    renderInstall = () => {
+        const {android, iOs} = this.state;
+        const isInstalled = window.matchMedia('(display-mode: standalone)')
+            .matches;
+        if (isInstalled) {
+            return null;
+        } else {
+            return (
+                <>
+                    <h2 className="font-medium text-lg mt-8">Install App</h2>
+                    <div className="mt-2">
+                        Want to install Ferry FYI as an app on your homescreen?
+                        {!iOs && !android && (
+                            <div className="flex mt-4">
+                                <button
+                                    className={clsx(
+                                        'button button-invert',
+                                        'flex-grow'
+                                    )}
+                                    onClick={() => this.setState({iOs: true})}
+                                >
+                                    <i className="button-icon fab fa-lg fa-apple" />
+                                    <span className="button-label">iOS</span>
+                                </button>
+                                <button
+                                    className={clsx(
+                                        'button button-invert',
+                                        'flex-grow ml-4'
+                                    )}
+                                    onClick={() =>
+                                        this.setState({android: true})
+                                    }
+                                >
+                                    <i className="button-icon fab fa-lg fa-android" />
+                                    <span className="button-label">
+                                        Android
+                                    </span>
+                                </button>
+                            </div>
+                        )}
+                        {iOs && (
+                            <ol className="my-2 list-decimal list-inside">
+                                <li>
+                                    {this.renderStepIcon('fab fa-safari')}
+                                    Safari
+                                </li>
+                                <li>
+                                    {this.renderStepIcon(
+                                        'fal fa-external-link'
+                                    )}
+                                    Share
+                                </li>
+                                <li>
+                                    {this.renderStepIcon('fal fa-plus-square')}
+                                    Add to Home Screen
+                                </li>
+                            </ol>
+                        )}
+                        {android && (
+                            <ol className="my-2 list-decimal list-inside">
+                                <li>
+                                    {this.renderStepIcon('fab fa-chrome')}
+                                    Chrome
+                                </li>
+                                <li>
+                                    {this.renderStepIcon('fas fa-ellipsis-v')}
+                                    Menu
+                                </li>
+                                <li>
+                                    {this.renderStepIcon('inline-block')}
+                                    Add to Home Screen
+                                </li>
+                            </ol>
+                        )}
+                    </div>
+                </>
+            );
+        }
+    };
+
     render = () => {
         const {isOpen, onClose} = this.props;
-        const {android, iOs} = this.state;
         return (
             <>
                 <div
@@ -61,94 +140,19 @@ export default class Menu extends Component {
                     </div>
                     <div className="overflow-y-auto flex-grow flex flex-col">
                         <p className="mt-4">
-                            A better tracker for{' '}
+                            A ferry schedule and tracker for the greater Seattle
+                            area. Supports all{' '}
                             <a
                                 className="link"
                                 href="https://www.wsdot.wa.gov/ferries/"
                                 target="_blank"
                                 rel="noopener noreferrer"
                             >
-                                the Washington State Ferry system
-                            </a>
-                            .
+                                WSF
+                            </a>{' '}
+                            routes.
                         </p>
-                        <h2 className="font-medium text-lg mt-8">
-                            Install App
-                        </h2>
-                        <div className="mt-2">
-                            Want to install Ferry FYI as an app on your
-                            homescreen?
-                            {!iOs && !android && (
-                                <div className="flex mt-4">
-                                    <button
-                                        className={clsx(
-                                            'button button-invert',
-                                            'flex-grow'
-                                        )}
-                                        onClick={() =>
-                                            this.setState({iOs: true})
-                                        }
-                                    >
-                                        <i className="button-icon fab fa-lg fa-apple" />
-                                        <span className="button-label">
-                                            iOS
-                                        </span>
-                                    </button>
-                                    <button
-                                        className={clsx(
-                                            'button button-invert',
-                                            'flex-grow ml-4'
-                                        )}
-                                        onClick={() =>
-                                            this.setState({android: true})
-                                        }
-                                    >
-                                        <i className="button-icon fab fa-lg fa-android" />
-                                        <span className="button-label">
-                                            Android
-                                        </span>
-                                    </button>
-                                </div>
-                            )}
-                            {iOs && (
-                                <ol className="my-2 list-decimal list-inside">
-                                    <li>
-                                        {this.renderStepIcon('fab fa-safari')}
-                                        Safari
-                                    </li>
-                                    <li>
-                                        {this.renderStepIcon(
-                                            'fal fa-external-link'
-                                        )}
-                                        Share
-                                    </li>
-                                    <li>
-                                        {this.renderStepIcon(
-                                            'fal fa-plus-square'
-                                        )}
-                                        Add to Home Screen
-                                    </li>
-                                </ol>
-                            )}
-                            {android && (
-                                <ol className="my-2 list-decimal list-inside">
-                                    <li>
-                                        {this.renderStepIcon('fab fa-chrome')}
-                                        Chrome
-                                    </li>
-                                    <li>
-                                        {this.renderStepIcon(
-                                            'fas fa-ellipsis-v'
-                                        )}
-                                        Menu
-                                    </li>
-                                    <li>
-                                        {this.renderStepIcon('inline-block')}
-                                        Add to Home Screen
-                                    </li>
-                                </ol>
-                            )}
-                        </div>
+                        {this.renderInstall()}
                         <h2 className="font-medium text-lg mt-8">Feedback</h2>
                         <p className="mt-2">
                             See something wrong? Want to request a feature?{' '}
