@@ -11,8 +11,9 @@ const merge = require('webpack-merge');
 const path = require('path');
 const webpack = require('webpack');
 
-const TITLE = 'Ferry FYI';
-const DESCRIPTION = 'A better tracker for the Washington State Ferry system';
+const TITLE = 'Ferry FYI - Schedule and Tracker for the Greater Seattle Area';
+const DESCRIPTION =
+    'A ferry schedule and tracker for the greater Seattle area.';
 const COLOR = '#00735a';
 
 const commonConfig = merge([
