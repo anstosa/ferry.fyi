@@ -117,6 +117,7 @@ export default class Menu extends Component {
                         'bg-wsf-green text-white shadow-lg',
                         'w-full h-screen max-w-xs px-4',
                         'fixed top-0 left-0 z-20',
+                        'pt-safe-top pb-safe-bottom pl-safe-left',
                         isOpen ? 'ml-0' : '-ml-96'
                     )}
                 >

@@ -32,14 +32,20 @@ export default class Footer extends Component {
                     'w-full shadow-up-lg',
                     'flex justify-center',
                     'animate',
-                    'pr-safe-right pl-safe-left mb-safe-top'
+                    'pr-safe-right pl-safe-left mb-safe-bottom'
                 )}
                 style={{
                     height: window.innerHeight,
                     top: isOpen ? '0' : 'calc(100% - 4rem)',
                 }}
             >
-                <div className={clsx('w-full max-w-6xl', 'flex flex-col')}>
+                <div
+                    className={clsx(
+                        'w-full max-w-6xl',
+                        'flex flex-col',
+                        'pt-safe-top pb-safe-bottom'
+                    )}
+                >
                     {content}
                 </div>
             </div>
