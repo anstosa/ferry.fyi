@@ -15,7 +15,8 @@ const ALERT_FILTER = new RegExp(
         'traffic',
         'wait',
         'without traffic',
-    ].join('|')})`
+    ].join('|')})`,
+    'i'
 );
 
 function getAlertTime(bulletin, now = DateTime.local()) {
