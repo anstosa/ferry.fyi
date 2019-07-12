@@ -6,16 +6,16 @@ import React, {Component} from 'react';
 
 const ALERT_FILTER = new RegExp(
     `(${[
-        'traffic',
         'boat',
-        'wait',
-        'tide',
-        'without traffic',
-        'medical',
+        'cancelled',
         'emergency',
+        'medical',
         'police',
-    ].join('|')})`,
-    'i'
+        'tide',
+        'traffic',
+        'wait',
+        'without traffic',
+    ].join('|')})`
 );
 
 function getAlertTime(bulletin, now = DateTime.local()) {
