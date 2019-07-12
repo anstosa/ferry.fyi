@@ -17,6 +17,9 @@ import {Op} from './db';
 import _ from 'lodash';
 import Crossing from '../models/crossing';
 import request from 'request-promise';
+import sync from 'aigle';
+
+sync.mixin(_);
 
 const TERMINAL_DATA_OVERRIDES = {
     5: {
@@ -58,6 +61,9 @@ const API_SCHEDULE = 'https://www.wsdot.wa.gov/ferries/api/schedule/rest';
 const API_SCHEDULE_CACHE = `${API_SCHEDULE}/cacheflushdate`;
 const apiScheduleMates = () =>
     `${API_SCHEDULE}/terminalsandmates/${getToday()}${API_ACCESS}`;
+const apiScheduleRoute = (departingId, arrivingId) =>
+    `${API_SCHEDULE}/routedetails/` +
+    `${getToday()}/${departingId}/${arrivingId}${API_ACCESS}`;
 const apiScheduleToday = (departingId, arrivingId) =>
     `${API_SCHEDULE}/scheduletoday/` +
     `${departingId}/${arrivingId}/false${API_ACCESS}`;
@@ -212,6 +218,13 @@ async function updateSchedule() {
         const mateId = mate.ArrivingTerminalID;
         addMate(id, mateId);
     });
+
+    matesByTerminalId = {};
+    _.each(mates, (mate) => {
+        const id = mate.DepartingTerminalID;
+        const mateId = mate.ArrivingTerminalID;
+        addMate(id, mateId);
+    });
     log.debug('✔ (updated)');
 }
 
@@ -323,13 +336,26 @@ export const updateTerminals = async () => {
         });
     });
     const matesByTerminalId = await getMates();
-    _.each(matesByTerminalId, (mates, id) => {
-        assignTerminal(id, {
-            mates: _.map(mates, (mateId) =>
-                _.omit(terminalsById[mateId], 'mates')
-            ),
+    await sync.eachSeries(matesByTerminalId, async (mates, id) => {
+        const matesWithRoute = [];
+        await sync.eachSeries(mates, async (mateId) => {
+            const mate = _.cloneDeep(_.omit(terminalsById[mateId], 'mates'));
+            const route = _.first(
+                await request(apiScheduleRoute(id, mateId), {
+                    json: true,
+                })
+            );
+            mate.route = {
+                id: route.RouteID,
+                abbreviation: route.RouteAbbrev,
+                description: route.Description,
+                crossingTime: _.toNumber(route.CrossingTime),
+            };
+            matesWithRoute.push(mate);
         });
+        assignTerminal(id, {mates: matesWithRoute});
     });
+
     log.debug('✔ (updated)');
 };
 
