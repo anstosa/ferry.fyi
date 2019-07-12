@@ -166,17 +166,23 @@ export default class Capacity extends Component {
         return <span className={spaceClass}>{spaceText}</span>;
     };
 
-    renderStatus = () => (
-        <div
-            className={clsx(
-                'flex flex-col pt-5',
-                this.willFitRight() ? 'items-start' : 'items-end'
-            )}
-        >
-            {this.renderSpace()}
-            {this.renderReservations()}
-        </div>
-    );
+    renderStatus = () => {
+        const {percentFull} = this.state;
+        if (percentFull === 0) {
+            return null;
+        }
+        return (
+            <div
+                className={clsx(
+                    'flex flex-col pt-4',
+                    this.willFitRight() ? 'items-start' : 'items-end'
+                )}
+            >
+                {this.renderSpace()}
+                {this.renderReservations()}
+            </div>
+        );
+    };
 
     render = () => {
         if (!this.hasData()) {
