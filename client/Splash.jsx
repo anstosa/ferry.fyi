@@ -41,7 +41,7 @@ export default class Splash extends Component {
                         flex justify-center items-center
                     "
                 >
-                    Not working? Email{' '}
+                    Broken? Email&nbsp;
                     <a
                         className="link"
                         href="mailto:dev@ferry.fyi"
@@ -50,7 +50,6 @@ export default class Splash extends Component {
                     >
                         dev@ferry.fyi
                     </a>
-                    .
                 </div>
             );
         } else {
