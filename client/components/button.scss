@@ -2,7 +2,7 @@
     @apply appearance-none;
     @apply bg-transparent;
     @apply border-2;
-    @apply border-gray-900;
+    @apply border-gray-darkest;
     @apply content-center;
     @apply cursor-pointer;
     @apply flex;
@@ -12,7 +12,7 @@
     @apply h-12;
     @apply overflow-hidden;
     @apply rounded;
-    @apply text-gray-900;
+    @apply text-gray-darkest;
     @apply text-sm;
     @apply tracking-wide;
     @apply truncate;
@@ -54,7 +54,7 @@
 
     &-primary {
         @apply border-transparent;
-        @apply bg-wsf-green;
+        @apply bg-green-dark;
         @apply text-white;
 
         &:hover {
@@ -62,8 +62,8 @@
             @apply bg-black;
 
             &.button-destructive {
-                @apply border-red-600;
-                @apply bg-red-600;
+                @apply border-red-dark;
+                @apply bg-red-dark;
                 @apply text-white;
             }
         }
@@ -72,17 +72,17 @@
     &-invert {
         @apply border-transparent;
         @apply bg-white;
-        @apply text-wsf-green;
+        @apply text-green-dark;
 
         &:hover {
             @apply border-transparent;
-            @apply bg-lighten-700;
+            @apply bg-lighten-high;
         }
     }
 
     &-destructive {
         &:hover {
-            @apply text-red-600;
+            @apply text-red-dark;
         }
     }
 

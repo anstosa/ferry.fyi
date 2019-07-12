@@ -106,7 +106,7 @@ export default class Menu extends Component {
                         'fixed inset-0',
                         'animate',
                         isOpen ? 'z-20' : 'z-bottom pointer-events-none',
-                        isOpen ? 'bg-darken-300' : 'bg-transparent'
+                        isOpen ? 'bg-darken-low' : 'bg-transparent'
                     )}
                     onClick={onClose}
                 />
@@ -114,8 +114,8 @@ export default class Menu extends Component {
                     className={clsx(
                         'animate',
                         'flex flex-col',
-                        'bg-wsf-green text-white shadow-lg',
-                        'w-full h-screen max-w-xs px-4',
+                        'bg-green-dark text-white shadow-lg',
+                        'w-full h-screen max-w-xs',
                         'fixed top-0 left-0 z-20',
                         'pt-safe-top pb-safe-bottom pl-safe-left',
                         isOpen ? 'ml-0' : '-ml-96'
@@ -123,7 +123,7 @@ export default class Menu extends Component {
                 >
                     <div
                         className={clsx(
-                            'h-16 w-full py-4',
+                            'h-16 w-full p-4',
                             'text-2xl',
                             'flex items-center'
                         )}
@@ -141,7 +141,7 @@ export default class Menu extends Component {
                     </div>
                     <div
                         className={clsx(
-                            'overflow-y-scroll scrolling-touch',
+                            'overflow-y-scroll scrolling-touch px-4',
                             'flex-grow flex flex-col'
                         )}
                     >

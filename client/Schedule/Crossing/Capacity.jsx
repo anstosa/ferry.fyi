@@ -6,7 +6,7 @@ import React, {Component} from 'react';
 const RESERVATIONS_BASE_URL =
     'https://secureapps.wsdot.wa.gov/Ferries/Reservations/Vehicle/SailingSchedule.aspx?VRSTermId=';
 
-const LEFT_EDGE = 65;
+const LEFT_EDGE = 17;
 const RIGHT_EDGE = 90;
 const CAPACITY_WIDTH = 125;
 
@@ -119,7 +119,7 @@ export default class Capacity extends Component {
         if (this.hasAvailableReservations()) {
             reservationsText = (
                 <a
-                    className="text-xs link text-wsf-green"
+                    className="text-xs link text-green-dark"
                     href={RESERVATIONS_BASE_URL + departureId}
                     target="_blank"
                     rel="noreferrer noopener"
@@ -130,7 +130,7 @@ export default class Capacity extends Component {
             );
         } else if (this.allowsReservations()) {
             reservationsText = (
-                <span className="text-xs text-gray-600">Standby Only</span>
+                <span className="text-xs text-gray-dark">Standby Only</span>
             );
         }
         return reservationsText;
@@ -143,7 +143,7 @@ export default class Capacity extends Component {
 
         let spaceText = (
             <>
-                <i className="fas fa-car mr-1 text-darken-400" />
+                <i className="fas fa-car mr-1" />
                 {spaceLeft} spaces left
             </>
         );
@@ -151,16 +151,16 @@ export default class Capacity extends Component {
         if (this.isFull()) {
             spaceText = (
                 <>
-                    <i className="fas fa-do-not-enter mr-1 text-darken-400" />
+                    <i className="fas fa-do-not-enter mr-1" />
                     Boat full
                 </>
             );
             if (!hasPassed) {
-                spaceClass = clsx(spaceClass, 'font-bold text-red-700');
+                spaceClass = clsx(spaceClass, 'font-bold text-red-dark');
             }
         } else if (percentFull > 80) {
             if (!hasPassed) {
-                spaceClass = clsx(spaceClass, 'font-medium text-orange-600');
+                spaceClass = clsx(spaceClass, 'font-medium text-yellow-dark');
             }
         }
         return <span className={spaceClass}>{spaceText}</span>;
@@ -195,7 +195,7 @@ export default class Capacity extends Component {
                 <div
                     className={clsx(
                         'absolute w-0 top-0 left-0 h-full',
-                        'bg-darken-100'
+                        'bg-darken-lowest'
                     )}
                     style={{width: `${percentFull}%`}}
                 >

@@ -13,7 +13,7 @@ export default class VesselTag extends Component {
             <div
                 className={clsx(
                     'font-bold text-2xs text-white',
-                    'bg-gray-600 rounded p-1'
+                    'bg-gray-medium rounded p-1'
                 )}
             >
                 <i className="fas fa-ship mr-1" />

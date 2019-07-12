@@ -13,7 +13,7 @@ export default class Status extends Component {
 
     render = () => {
         const {className, crossing, time} = this.props;
-        const {capacity = {}} = crossing;
+        const {capacity = {}, hasPassed} = crossing;
         const {departureDelta = 0, isCancelled = false} = capacity;
         const delta = Duration.fromObject({seconds: departureDelta});
         const scheduledTime = DateTime.fromSeconds(crossing.time);
@@ -21,7 +21,7 @@ export default class Status extends Component {
         const diff = scheduledTime.diff(time);
 
         let statusText;
-        let statusClass;
+        let statusClass = hasPassed ? 'font-default' : 'font-medium';
         let scheduled;
         if (capacity) {
             if (isCancelled) {
@@ -29,11 +29,14 @@ export default class Status extends Component {
                 statusText = 'Cancelled';
                 statusClass = clsx(
                     statusClass,
-                    'text-red-700 font-bold uppercase'
+                    'text-red-dark font-bold uppercase'
                 );
             } else if (Math.abs(deltaMins) < 4) {
                 statusText = 'On time';
-                statusClass = clsx(statusClass, 'text-green-600');
+                statusClass = clsx(
+                    statusClass,
+                    !hasPassed && 'text-green-dark'
+                );
                 if (Math.abs(diff.as('hours')) < 1) {
                     scheduled = `${scheduledTime.toFormat('h:mm a')}`;
                 }
@@ -41,9 +44,13 @@ export default class Status extends Component {
                 const units = deltaMins === 1 ? 'min' : 'mins';
                 const direction = deltaMins < 0 ? 'ahead' : 'behind';
                 const color =
-                    deltaMins < 10 ? 'text-orange-500' : 'text-red-700';
+                    deltaMins < 10 ? 'text-yellow-dark' : 'text-red-dark';
                 statusText = `${deltaMins} ${units} ${direction}`;
-                statusClass = clsx(statusClass, color);
+                statusClass = clsx(
+                    statusClass,
+                    !hasPassed && color,
+                    'font-bold'
+                );
                 scheduled = `Scheduled ${scheduledTime.toFormat('h:mm a')}`;
             }
         }

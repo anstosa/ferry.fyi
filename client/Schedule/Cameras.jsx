@@ -36,7 +36,7 @@ export default class Cameras extends Component {
                 key={id}
             >
                 <div
-                    className="bg-lighten-100 w-full relative"
+                    className="bg-lighten-lowest w-full relative"
                     style={{
                         paddingTop: `${(image.height / image.width) * 100}%`,
                     }}
@@ -74,7 +74,7 @@ export default class Cameras extends Component {
                 {isFirst && (
                     <div
                         className={clsx(
-                            'bg-wsf-green',
+                            'bg-green-dark',
                             'w-12 h-full',
                             'absolute bottom-0 left-0 -ml-12 z-10'
                         )}
@@ -82,7 +82,7 @@ export default class Cameras extends Component {
                 )}
                 <div
                     className={clsx(
-                        'bg-wsf-green text-lighten-500',
+                        'bg-green-dark text-lighten-medium',
                         'w-12 py-2',
                         'absolute bottom-0 left-0 -ml-12 -mb-2 z-10',
                         'text-center'
@@ -93,7 +93,7 @@ export default class Cameras extends Component {
                 {spacesToNext > 0 && (
                     <div
                         className={clsx(
-                            'bg-wsf-green',
+                            'bg-green-dark',
                             'w-12 py-1',
                             'absolute top-0 left-0 -ml-12 mt-1/3 z-10',
                             'text-center'
@@ -118,8 +118,8 @@ export default class Cameras extends Component {
                 <ul className={clsx('my-4 pl-12 relative max-w-lg')}>
                     <div
                         className={clsx(
-                            'bg-wsf-green',
-                            'border-l-4 border-dotted border-lighten-500',
+                            'bg-green-dark',
+                            'border-l-4 border-dotted border-lighten-medium',
                             'w-1 h-full',
                             'absolute inset-y-0 left-0 ml-6'
                         )}

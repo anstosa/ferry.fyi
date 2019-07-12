@@ -28,7 +28,7 @@ export default class Footer extends Component {
             <div
                 className={clsx(
                     'fixed top-0 inset-x z-10',
-                    'bg-wsf-green text-white',
+                    'bg-green-dark text-white',
                     'w-full shadow-up-lg',
                     'flex justify-center',
                     'animate',
@@ -163,7 +163,7 @@ export default class Footer extends Component {
                     className={clsx(
                         'fixed bottom-0 inset-x-0 z-10',
                         'h-safe-bottom',
-                        'bg-wsf-green'
+                        'bg-green-dark'
                     )}
                 />
                 {this.wrapFooter(

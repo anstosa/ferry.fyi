@@ -63,7 +63,7 @@ export default class Splash extends Component {
         return (
             <div
                 className="
-                bg-wsf-green text-white
+                bg-green-dark text-white
                 fixed inset-0
                 flex flex-col justify-center items-center
             "

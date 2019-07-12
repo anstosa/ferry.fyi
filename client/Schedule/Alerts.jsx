@@ -62,7 +62,7 @@ export default class Alerts extends Component {
             .replace(/<ul>/g, '<ul class="list-disc pl-4">');
         return (
             <li className="flex flex-col pb-8 relative" key={title}>
-                <span className="text text-lighten-700 text-bold mb-1">
+                <span className="text text-lighten-high text-bold mb-1">
                     {getAlertTime(bulletin, time)}
                 </span>
                 <span className="font-medium text-lg mb-2">{title}</span>

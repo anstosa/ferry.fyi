@@ -5,7 +5,6 @@ import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 import Status from './Status';
 import Time from './Time';
-import VesselTag from '../../components/VesselTag';
 
 export default class Crossing extends Component {
     static propTypes = {
@@ -17,15 +16,15 @@ export default class Crossing extends Component {
 
     render = () => {
         const {crossing, setElement, time} = this.props;
-        const {hasPassed, vessel} = crossing;
+        const {hasPassed} = crossing;
         const isNext =
             crossing === _.find(this.props.schedule, {hasPassed: false});
 
         let background;
         if (hasPassed) {
-            background = 'bg-gray-300';
+            background = 'bg-gray-light';
         } else if (isNext) {
-            background = 'bg-green-200';
+            background = 'bg-blue-lightest';
         } else {
             background = 'bg-white';
         }
@@ -33,8 +32,8 @@ export default class Crossing extends Component {
         return (
             <li
                 className={clsx(
-                    'relative py-4 px-2',
-                    'border-b border-gray-500',
+                    'relative p-4',
+                    'border-b border-gray-medium',
                     background,
                     'flex justify-between'
                 )}
@@ -42,10 +41,9 @@ export default class Crossing extends Component {
             >
                 <Capacity crossing={crossing} />
                 <div className="flex flex-col justify-between items-start z-0">
-                    <VesselTag vessel={vessel} />
-                    <Status className="mt-4" crossing={crossing} time={time} />
+                    <Status className="mt-6" crossing={crossing} time={time} />
                 </div>
-                <Time crossing={crossing} time={time} />
+                <Time crossing={crossing} time={time} isNext={isNext} />
             </li>
         );
     };

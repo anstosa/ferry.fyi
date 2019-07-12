@@ -153,8 +153,8 @@ class Schedule extends Component {
                 >
                     <div
                         className={clsx(
-                            'w-full max-w-6xl bg-white',
-                            'lg:border-l lg:border-r border-gray-500'
+                            'w-full max-w-6xl bg-blue-lightest',
+                            'lg:border-l lg:border-r border-gray-medium'
                         )}
                     >
                         {this.renderSchedule()}

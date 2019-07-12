@@ -35,7 +35,7 @@ export default class Header extends Component {
         <header
             className={clsx(
                 'fixed top-0 inset-x-0 z-10',
-                'bg-wsf-green text-white',
+                'bg-green-dark text-white',
                 'w-full shadow-lg h-16',
                 'flex justify-center',
                 'pr-safe-right pl-safe-left mt-safe-top'
@@ -69,7 +69,7 @@ export default class Header extends Component {
                     <ul
                         className={clsx(
                             'absolute top-full left-0',
-                            'bg-wsf-green shadow-lg',
+                            'bg-green-dark shadow-lg',
                             '-ml-4 py-2',
                             'max-h-halfscreen overflow-y-scroll scrolling-touch'
                         )}
@@ -81,7 +81,7 @@ export default class Header extends Component {
                                         'whitespace-no-wrap',
                                         'block cursor-pointer',
                                         'px-4 py-2',
-                                        'hover:bg-lighten-500'
+                                        'hover:bg-lighten-high'
                                     )}
                                     to={`/${getSlug(option.id)}`}
                                     onClick={(event) => onSelect(event, option)}
@@ -176,7 +176,7 @@ export default class Header extends Component {
     renderReload = () => {
         if (!isOnline()) {
             return (
-                <div className="font-bold text-red-700 bg-white rounded p-2">
+                <div className="font-bold text-red-dark bg-white rounded p-2">
                     Offline
                     <i className="fas fa-signal-alt-slash ml-2" />
                 </div>
@@ -217,7 +217,7 @@ export default class Header extends Component {
                     className={clsx(
                         'fixed top-0 inset-x-0 z-10',
                         'h-safe-top',
-                        'bg-wsf-green'
+                        'bg-green-dark'
                     )}
                 />
                 <Menu

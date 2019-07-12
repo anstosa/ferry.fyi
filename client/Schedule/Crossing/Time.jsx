@@ -8,10 +8,11 @@ export default class Time extends Component {
     static propTypes = {
         crossing: PropTypes.object.isRequired,
         time: PropTypes.object.isRequired,
+        isNext: PropTypes.bool.isRequired,
     };
 
     render = () => {
-        const {crossing, time} = this.props;
+        const {crossing, isNext, time} = this.props;
         const {capacity = {}, hasPassed} = crossing;
         const {departureDelta = 0, isCancelled} = capacity;
         const delta = Duration.fromObject({seconds: departureDelta});
@@ -37,29 +38,44 @@ export default class Time extends Component {
             majorTime = estimatedTime.toFormat('h:mm');
             minorTime = estimatedTime.toFormat('a');
         }
+
         let color = 'text-black';
         if (isCancelled) {
-            color = 'text-red-700';
+            color = 'text-red-dark';
         } else if (hasPassed) {
-            color = 'text-gray-600';
+            color = 'text-gray-dark';
         } else if (deltaMins >= 10) {
-            color = 'text-red-700';
+            color = 'text-red-dark';
         } else if (deltaMins >= 4) {
-            color = 'text-orange-500';
+            color = 'text-yellow-dark';
+        }
+
+        let weight;
+        if (hasPassed) {
+            weight = 'font-default';
+        } else if (isNext) {
+            weight = 'font-bold';
+        } else {
+            weight = 'font-medium';
         }
         return (
             <div
-                className={clsx('flex flex-col', 'text-center w-20 z-0', color)}
+                className={clsx(
+                    'flex flex-col',
+                    'text-center w-16 z-0',
+                    color,
+                    weight
+                )}
             >
                 <span
                     className={clsx(
-                        'flex-grow text-2xl font-bold leading-none',
+                        'flex-grow text-2xl leading-none',
                         'flex flex-col justify-center'
                     )}
                 >
                     {majorTime}
                 </span>
-                <span className={clsx('text-sm font-bold')}>{minorTime}</span>
+                <span className={clsx('text-sm')}>{minorTime}</span>
             </div>
         );
     };
