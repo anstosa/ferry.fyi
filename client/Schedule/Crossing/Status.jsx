@@ -25,6 +25,7 @@ export default class Status extends Component {
         let scheduled;
         if (capacity) {
             if (isCancelled) {
+                scheduled = `${scheduledTime.toFormat('h:mm a')}`;
                 statusText = 'Cancelled';
                 statusClass = clsx(
                     statusClass,

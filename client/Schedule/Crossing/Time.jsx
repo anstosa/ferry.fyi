@@ -13,7 +13,7 @@ export default class Time extends Component {
     render = () => {
         const {crossing, time} = this.props;
         const {capacity = {}, hasPassed} = crossing;
-        const {departureDelta = 0} = capacity;
+        const {departureDelta = 0, isCancelled} = capacity;
         const delta = Duration.fromObject({seconds: departureDelta});
         let deltaMins = _.round(delta.as('minutes'));
         const scheduledTime = DateTime.fromSeconds(crossing.time);
@@ -26,7 +26,10 @@ export default class Time extends Component {
 
         let majorTime;
         let minorTime;
-        if (Math.abs(diff.as('hours')) < 1) {
+        if (isCancelled) {
+            majorTime = '--';
+            minorTime = '';
+        } else if (Math.abs(diff.as('hours')) < 1) {
             const mins = _.round(Math.abs(diff.as('minutes')));
             majorTime = mins + deltaMins;
             minorTime = `min${mins > 1 ? 's' : ''}${hasPassed ? ' ago' : ''}`;
@@ -35,7 +38,9 @@ export default class Time extends Component {
             minorTime = estimatedTime.toFormat('a');
         }
         let color = 'text-black';
-        if (hasPassed) {
+        if (isCancelled) {
+            color = 'text-red-700';
+        } else if (hasPassed) {
             color = 'text-gray-600';
         } else if (deltaMins >= 10) {
             color = 'text-red-700';
