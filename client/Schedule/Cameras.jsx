@@ -1,3 +1,4 @@
+import {locationToUrl} from '../lib/maps';
 import _ from 'lodash';
 import clsx from 'clsx';
 import PropTypes from 'prop-types';
@@ -12,7 +13,7 @@ export default class Cameras extends Component {
         const {id, title, image, spacesToNext, location, owner} = camera;
         const isFirst = index === 0;
         let totalToBooth;
-        const mapsUrl = `https://www.google.com/maps/search/${location.latitude},${location.longitude}`;
+        const mapsUrl = locationToUrl(location);
         if (_.isNull(_.first(cameras).spacesToNext)) {
             totalToBooth = null;
         } else {

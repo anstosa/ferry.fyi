@@ -151,23 +151,33 @@ export const getSchedule = async (departingId, arrivingId) => {
     return Promise.all(
         _.map(schedule.Times, async (departure) => {
             const time = wsfDateToTimestamp(departure.DepartingTime);
-            const hasPassed = DateTime.fromSeconds(time) < now;
             const vesselId = departure.VesselID;
             const isFirstOfVessel = !_.includes(seenVessels, vesselId);
+            const vessel = await getVessel(vesselId, isFirstOfVessel);
+            const capacity = _.get(capacityByTerminal, [
+                departingId,
+                arrivingId,
+                time,
+            ]);
+            let departureTime;
+            if (_.get(capacity, 'departedDelta')) {
+                departureTime = DateTime.fromSeconds(time).plus({
+                    seconds: capacity.departedDelta,
+                });
+            } else {
+                departureTime = DateTime.fromSeconds(time);
+            }
+            const hasPassed = departureTime < now;
             if (isFirstOfVessel) {
                 seenVessels.push(vesselId);
             }
             return {
                 allowsPassengers: _.includes([1, 3], departure.LoadingRule),
                 allowsVehicles: _.includes([2, 3], departure.LoadingRule),
-                capacity: _.get(capacityByTerminal, [
-                    departingId,
-                    arrivingId,
-                    time,
-                ]),
+                capacity,
                 hasPassed,
                 time,
-                vessel: await getVessel(vesselId, isFirstOfVessel),
+                vessel,
             };
         })
     );
@@ -405,11 +415,18 @@ async function recordTiming() {
         } else {
             departureDelta = _.get(vesselsById, [id, 'departureDelta']);
         }
+        const isAtDock = vessel.AtDock;
+        const previousVessel = _.get(vesselsById, id);
+        let dockedTime = null;
+        if (isAtDock && !previousVessel.isAtDock) {
+            dockedTime = DateTime.local();
+        }
         assignVessel(id, {
             arrivingTerminalId: vessel.ArrivingTerminalID,
             departingTerminalId: vessel.DepartingTerminalID,
             departedTime,
             departureDelta,
+            dockedTime,
             estimatedArrivalTime,
             heading: vessel.Heading,
             id,
@@ -435,14 +452,11 @@ async function recordCapacity() {
     _.each(terminals, (terminal) => {
         _.each(terminal.DepartingSpaces, (departure) => {
             _.each(departure.SpaceForArrivalTerminals, async (capacity) => {
+                const vessel = _.get(vesselsById, departure.VesselID, {});
                 const model = {
                     arrivalId: capacity.TerminalID,
                     departureId: terminal.TerminalID,
-                    departureDelta: _.get(
-                        vesselsById,
-                        [departure.VesselID, 'departureDelta'],
-                        null
-                    ),
+                    departureDelta: _.get(vessel, 'departureDelta', null),
                     departureTime: wsfDateToTimestamp(departure.Departure),
                     driveUpCapacity: capacity.DriveUpSpaceCount,
                     hasDriveUp: capacity.DisplayDriveUpSpace,

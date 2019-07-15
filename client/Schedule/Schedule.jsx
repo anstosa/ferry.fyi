@@ -23,7 +23,13 @@ class Schedule extends Component {
 
     currentCrossing = null;
 
-    state = {terminal: null, mate: null, schedule: [], isUpdating: false};
+    state = {
+        expanded: null,
+        terminal: null,
+        mate: null,
+        schedule: [],
+        isUpdating: false,
+    };
 
     componentDidMount = () => {
         const {match} = this.props;
@@ -87,27 +93,50 @@ class Schedule extends Component {
         await this.updateSchedule();
     };
 
+    onExpand = (crossing) => {
+        const {expanded} = this.state;
+        if (expanded === crossing) {
+            this.setState({expanded: null});
+        } else {
+            this.setState({expanded: crossing});
+        }
+    };
+
     updateSchedule = async () => {
         const {terminal, mate} = this.state;
+        let {expanded} = this.state;
         if (!terminal || !mate) {
             return;
         }
         this.setState({isUpdating: true});
         const {schedule, timestamp} = await getSchedule(terminal, mate);
         const time = DateTime.fromSeconds(timestamp);
-        this.setState({isUpdating: false, time, schedule});
+        const next = _.find(schedule, {hasPassed: false});
+        const previous = schedule[_.indexOf(schedule, next)];
+        if (!expanded || expanded === previous) {
+            expanded = next;
+        }
+        this.setState({expanded, isUpdating: false, time, schedule});
     };
 
     renderSchedule = () => {
-        const {schedule, time} = this.state;
+        const {
+            expanded,
+            schedule,
+            time,
+            mate: {route},
+        } = this.state;
         if (!schedule) {
             return;
         }
         const sailings = _.map(schedule, (crossing) => (
             <Crossing
                 crossing={crossing}
+                isExpanded={crossing.time === _.get(expanded, 'time')}
+                onExpand={this.onExpand}
                 key={crossing.time}
                 schedule={schedule}
+                route={route}
                 setElement={(element) => {
                     if (!this.currentCrossing && !crossing.hasPassed) {
                         this.currentCrossing = element;
@@ -147,7 +176,7 @@ class Schedule extends Component {
                         'w-full max-h-full',
                         'flex-grow',
                         'flex flex-col items-center',
-                        'pr-safe-right pl-safe-left bg-black',
+                        'pr-safe-right pl-safe-left bg-white',
                         isFooterOpen ? 'overflow-hidden' : 'overflow-y-scroll'
                     )}
                 >

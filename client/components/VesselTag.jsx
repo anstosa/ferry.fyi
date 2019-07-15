@@ -5,19 +5,21 @@ import React, {Component} from 'react';
 export default class VesselTag extends Component {
     static propTypes = {
         vessel: PropTypes.object.isRequired,
+        isAbbreviation: PropTypes.bool,
     };
 
     render = () => {
-        const {abbreviation} = this.props.vessel;
+        const {isAbbreviation, vessel} = this.props;
+        const {abbreviation, name} = vessel;
         return (
             <div
                 className={clsx(
                     'font-bold text-2xs text-white',
-                    'bg-gray-medium rounded p-1'
+                    'bg-gray-dark rounded p-1'
                 )}
             >
                 <i className="fas fa-ship mr-1" />
-                {abbreviation}
+                {isAbbreviation ? abbreviation : name}
             </div>
         );
     };
