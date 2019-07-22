@@ -11,7 +11,7 @@ const merge = require('webpack-merge');
 const path = require('path');
 const webpack = require('webpack');
 
-const NAME = 'FERRY FYI';
+const NAME = 'Ferry FYI';
 const TITLE = `${NAME} - Seattle Area Ferry Schedule and Tracker`;
 const DESCRIPTION =
     'A ferry schedule and tracker for the greater Seattle area.';
