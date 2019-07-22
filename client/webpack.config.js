@@ -11,7 +11,8 @@ const merge = require('webpack-merge');
 const path = require('path');
 const webpack = require('webpack');
 
-const TITLE = 'Ferry FYI - Schedule and Tracker for the Greater Seattle Area';
+const NAME = 'FERRY FYI';
+const TITLE = `${NAME} - Seattle Area Ferry Schedule and Tracker`;
 const DESCRIPTION =
     'A ferry schedule and tracker for the greater Seattle area.';
 const COLOR = '#00735a';
@@ -28,7 +29,7 @@ const commonConfig = merge([
             new WebappPlugin({
                 logo: './client/images/icon.png',
                 favicons: {
-                    appName: TITLE,
+                    appName: NAME,
                     appDescription: DESCRIPTION,
                     developerName: 'Ansel Santosa',
                     developerURL: 'https://santosa.dev',
