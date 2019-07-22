@@ -1,6 +1,7 @@
 import _ from 'lodash';
 import Capacity from './Capacity';
 import clsx from 'clsx';
+import ErrorBoundary from '../../lib/ErrorBoundary';
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 import Status from './Status';
@@ -47,6 +48,7 @@ export default class Crossing extends Component {
     renderDetails = () => {
         const {crossing, isExpanded, time, route} = this.props;
         const {vessel} = crossing;
+        const capacity = vessel.vehicleCapacity - vessel.tallVehicleCapacity;
         if (!isExpanded) {
             return null;
         }
@@ -65,14 +67,17 @@ export default class Crossing extends Component {
                             'border-r border-dashed border-gray-medium'
                         )}
                     >
-                        <div className="flex items-center">
+                        <div className="flex items-center mb-2">
                             <VesselTag vessel={vessel} />
-                            <VesselStatus
-                                className="flex-glow ml-4"
-                                vessel={vessel}
-                                time={time}
-                            />
+                            <ErrorBoundary>
+                                <VesselStatus
+                                    className="flex-glow ml-2"
+                                    vessel={vessel}
+                                    time={time}
+                                />
+                            </ErrorBoundary>
                         </div>
+                        Capacity: {capacity}
                     </div>
                     {route && (
                         <div className={clsx('flex-grow', 'pl-4')}>
