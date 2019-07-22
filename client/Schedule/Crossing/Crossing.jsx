@@ -77,7 +77,7 @@ export default class Crossing extends Component {
                                 />
                             </ErrorBoundary>
                         </div>
-                        Capacity: {capacity}
+                        <span className="text-xs">Capacity: {capacity}</span>
                     </div>
                     {route && (
                         <div className={clsx('flex-grow', 'pl-4')}>
