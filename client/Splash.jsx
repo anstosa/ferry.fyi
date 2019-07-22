@@ -10,7 +10,7 @@ export default class Splash extends Component {
 
     componentDidMount() {
         this.tickTimer = setInterval(this.tick, 600);
-        this.helpTimer = setTimeout(this.showHelp, 10 * 1000);
+        this.helpTimer = setTimeout(this.showHelp, 20 * 1000);
     }
 
     componentWillUnmount() {
