@@ -1,8 +1,8 @@
 import '@babel/polyfill';
+import {Workbox} from 'workbox-window';
 import App from './App';
 import React from 'react';
 import ReactDOM from 'react-dom';
-import Workbox from 'workbox-window';
 
 /**
  * @description Fires callback exactly once, after the document is loaded.
