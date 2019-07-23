@@ -160,9 +160,9 @@ export const getSchedule = async (departingId, arrivingId) => {
                 time,
             ]);
             let departureTime;
-            if (_.get(capacity, 'departedDelta')) {
+            if (_.get(capacity, 'departureDelta')) {
                 departureTime = DateTime.fromSeconds(time).plus({
-                    seconds: capacity.departedDelta,
+                    seconds: capacity.departureDelta,
                 });
             } else {
                 departureTime = DateTime.fromSeconds(time);
