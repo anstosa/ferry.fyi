@@ -30,14 +30,27 @@ export default class Capacity extends Component {
         }
     }
 
-    getEstimateFull() {
-        const {capacity, estimate} = this.props.crossing;
+    getEstimateLeft() {
+        const {estimate} = this.props.crossing;
         if (!estimate) {
             return null;
         }
-        const {totalCapacity} = capacity;
         const {driveUpCapacity = 0, reservableCapacity = 0} = estimate;
         const estimateLeft = driveUpCapacity + reservableCapacity;
+        return estimateLeft;
+    }
+
+    getEstimateFull() {
+        const estimateLeft = this.getEstimateLeft();
+        if (_.isNull(estimateLeft)) {
+            return null;
+        }
+        const {capacity} = this.props.crossing;
+        const totalCapacity = _.get(
+            capacity,
+            'totalCapacity',
+            this.getVesselCapacity()
+        );
         const estimateFull = _.min([
             ((totalCapacity - estimateLeft) / totalCapacity) * 100,
             100,
@@ -45,26 +58,33 @@ export default class Capacity extends Component {
         return estimateFull;
     }
 
+    getVesselCapacity() {
+        const {vessel} = this.props.crossing;
+        return vessel.vehicleCapacity - vessel.tallVehicleCapacity;
+    }
+
     updateCrossing = () => {
+        let spaceLeft = null;
+        let percentFull = null;
+
         const {capacity} = this.props.crossing;
-        if (!capacity) {
-            this.setState({percentFull: null, spaceLeft: null});
-            return;
+        if (capacity) {
+            const {
+                driveUpCapacity = 0,
+                reservableCapacity = 0,
+                totalCapacity,
+            } = capacity;
+
+            spaceLeft = driveUpCapacity + reservableCapacity;
+            percentFull = _.min([
+                ((totalCapacity - spaceLeft) / totalCapacity) * 100,
+                100,
+            ]);
         }
-        const {
-            driveUpCapacity = 0,
-            reservableCapacity = 0,
-            totalCapacity,
-        } = capacity;
 
-        const spaceLeft = driveUpCapacity + reservableCapacity;
-        const percentFull = _.min([
-            ((totalCapacity - spaceLeft) / totalCapacity) * 100,
-            100,
-        ]);
-
-        const estimateFull = this.getEstimateFull(totalCapacity);
-        this.setState({spaceLeft, percentFull, estimateFull});
+        const estimateLeft = this.getEstimateLeft();
+        const estimateFull = this.getEstimateFull();
+        this.setState({spaceLeft, percentFull, estimateLeft, estimateFull});
     };
 
     hasAvailableReservations = () => {
@@ -86,21 +106,30 @@ export default class Capacity extends Component {
     };
 
     isLeftEdge = () => {
-        const percent = this.state.percentFull / 100;
+        const {capacity} = this.props.crossing;
+        const {estimateFull, percentFull} = this.state;
+        const fullness = capacity ? percentFull : estimateFull;
+        const percent = fullness / 100;
         const totalWidth = window.innerWidth;
         const width = percent * totalWidth;
         return width <= LEFT_EDGE;
     };
 
     willFitLeft = () => {
-        const percent = this.state.percentFull / 100;
+        const {capacity} = this.props.crossing;
+        const {estimateFull, percentFull} = this.state;
+        const fullness = capacity ? percentFull : estimateFull;
+        const percent = fullness / 100;
         const totalWidth = window.innerWidth;
         const width = percent * totalWidth;
         return width >= CAPACITY_WIDTH + LEFT_EDGE;
     };
 
     willFitRight = () => {
-        const percent = this.state.percentFull / 100;
+        const {capacity} = this.props.crossing;
+        const {estimateFull, percentFull} = this.state;
+        const fullness = capacity ? percentFull : estimateFull;
+        const percent = fullness / 100;
         const totalWidth = window.innerWidth;
         const width = percent * totalWidth;
         const remainder = totalWidth - width;
@@ -108,7 +137,10 @@ export default class Capacity extends Component {
     };
 
     isRightEdge = () => {
-        const percent = this.state.percentFull / 100;
+        const {capacity} = this.props.crossing;
+        const {estimateFull, percentFull} = this.state;
+        const fullness = capacity ? percentFull : estimateFull;
+        const percent = fullness / 100;
         const totalWidth = window.innerWidth;
         const width = percent * totalWidth;
         const remainder = totalWidth - width;
@@ -117,23 +149,34 @@ export default class Capacity extends Component {
 
     isMiddleZone = () => !this.isLeftEdge() && !this.isRightEdge();
 
-    isEmpty = () => this.state.percentFull === 0;
+    isEmpty = () => {
+        const {capacity} = this.props.crossing;
+        const {estimateFull, percentFull} = this.state;
+        const fullness = capacity ? percentFull : estimateFull;
+        return fullness === 0;
+    };
 
-    isFull = () => this.state.spaceLeft <= 0;
-
-    hasData = () => {
-        const {spaceLeft, percentFull} = this.state;
-        return !_.isNull(spaceLeft) && !_.isNull(percentFull);
+    isFull = () => {
+        const {capacity} = this.props.crossing;
+        const {estimateLeft, spaceLeft} = this.state;
+        const spaces = capacity ? spaceLeft : estimateLeft;
+        return spaces <= 0;
     };
 
     renderReservations = () => {
         let reservationsText = null;
-        const departureId = _.get(this.props, [
-            'crossing',
-            'capacity',
-            'departureId',
-        ]);
-        if (this.hasAvailableReservations()) {
+        const departureId = _.get(
+            this.props,
+            ['crossing', 'capacity', 'departureId'],
+            null
+        );
+        if (_.isNull(departureId)) {
+            reservationsText = (
+                <span className="text-xs text-yellow-dark font-bold">
+                    Estimated
+                </span>
+            );
+        } else if (this.hasAvailableReservations()) {
             reservationsText = (
                 <a
                     className="text-xs link text-green-dark"
@@ -154,31 +197,46 @@ export default class Capacity extends Component {
     };
 
     renderSpace = () => {
-        const {spaceLeft, percentFull} = this.state;
+        const {estimateLeft, spaceLeft, percentFull} = this.state;
         const {crossing} = this.props;
-        const {hasPassed} = crossing;
+        const {capacity, estimate, hasPassed} = crossing;
 
-        let spaceText = (
-            <>
-                <i className="fas fa-car mr-1" />
-                {spaceLeft} spaces left
-            </>
-        );
+        let spaceText;
         let spaceClass = clsx('text-xs whitespace-no-wrap');
-        if (this.isFull()) {
+        if (capacity) {
             spaceText = (
                 <>
-                    <i className="fas fa-do-not-enter mr-1" />
-                    Boat full
+                    <i className="fas fa-car mr-1" />
+                    {spaceLeft} spaces left
                 </>
             );
-            if (!hasPassed) {
-                spaceClass = clsx(spaceClass, 'font-bold text-red-dark');
+            if (this.isFull()) {
+                spaceText = (
+                    <>
+                        <i className="fas fa-do-not-enter mr-1" />
+                        Boat full
+                    </>
+                );
+                if (!hasPassed) {
+                    spaceClass = clsx(spaceClass, 'font-bold text-red-dark');
+                }
+            } else if (percentFull > 80) {
+                if (!hasPassed) {
+                    spaceClass = clsx(
+                        spaceClass,
+                        'font-medium text-yellow-dark'
+                    );
+                }
             }
-        } else if (percentFull > 80) {
-            if (!hasPassed) {
-                spaceClass = clsx(spaceClass, 'font-medium text-yellow-dark');
-            }
+        } else if (estimate) {
+            spaceText = (
+                <>
+                    <i className="fas fa-question-circle mr-1" />
+                    {estimateLeft} spaces left
+                </>
+            );
+        } else {
+            return null;
         }
         return <span className={spaceClass}>{spaceText}</span>;
     };
@@ -202,35 +260,38 @@ export default class Capacity extends Component {
     };
 
     render = () => {
-        if (!this.hasData()) {
-            return null;
-        }
         const {estimateFull, percentFull} = this.state;
         const {hasPassed} = this.props.crossing;
+        const showCapacity = Boolean(percentFull);
         const showEstimate = estimateFull && !hasPassed;
+        if (!showCapacity && !showEstimate) {
+            return null;
+        }
 
         return (
             <>
-                <div
-                    className={clsx(
-                        'absolute w-0 top-0 left-0 h-full',
-                        'bg-darken-lower'
-                    )}
-                    style={{width: `${percentFull}%`}}
-                >
-                    {this.isMiddleZone() && (
-                        <span
-                            className={clsx(
-                                'absolute top-0',
-                                this.willFitRight()
-                                    ? 'left-full ml-4'
-                                    : 'right-0 mr-4'
-                            )}
-                        >
-                            {this.renderStatus()}
-                        </span>
-                    )}
-                </div>
+                {showCapacity && (
+                    <div
+                        className={clsx(
+                            'absolute w-0 top-0 left-0 h-full',
+                            'bg-darken-lower'
+                        )}
+                        style={{width: `${percentFull}%`}}
+                    >
+                        {this.isMiddleZone() && (
+                            <span
+                                className={clsx(
+                                    'absolute top-0',
+                                    this.willFitRight()
+                                        ? 'left-full ml-4'
+                                        : 'right-0 mr-4'
+                                )}
+                            >
+                                {this.renderStatus()}
+                            </span>
+                        )}
+                    </div>
+                )}
                 {showEstimate && (
                     <div
                         className={clsx(
@@ -238,10 +299,23 @@ export default class Capacity extends Component {
                             'bg-darken-stripes'
                         )}
                         style={{
-                            left: `${percentFull}%`,
+                            left: `${percentFull || 0}%`,
                             width: `${estimateFull - percentFull}%`,
                         }}
-                    />
+                    >
+                        {!showCapacity && this.isMiddleZone() && (
+                            <span
+                                className={clsx(
+                                    'absolute top-0',
+                                    this.willFitRight()
+                                        ? 'left-full ml-4'
+                                        : 'right-0 mr-4'
+                                )}
+                            >
+                                {this.renderStatus()}
+                            </span>
+                        )}
+                    </div>
                 )}
                 {this.isLeftEdge() && (
                     <span className="absolute top-0" style={{left: LEFT_EDGE}}>
