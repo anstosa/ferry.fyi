@@ -141,11 +141,26 @@ const getMates = async () => {
     return matesByTerminalId;
 };
 
+function hasPassed(capacity) {
+    if (!capacity) {
+        return;
+    }
+    const {departureTime} = capacity;
+    let estimatedTime = DateTime.fromSeconds(departureTime);
+    if (_.get(capacity, 'departureDelta')) {
+        estimatedTime = estimatedTime.plus({
+            seconds: capacity.departureDelta,
+        });
+    }
+    const now = DateTime.local();
+    const hasPassed = estimatedTime < now;
+    return hasPassed;
+}
+
 export const getSchedule = async (departingId, arrivingId) => {
     const response = await request(apiScheduleToday(departingId, arrivingId), {
         json: true,
     });
-    const now = DateTime.local();
     const schedule = _.first(response.TerminalCombos);
     const seenVessels = [];
     return Promise.all(
@@ -159,15 +174,6 @@ export const getSchedule = async (departingId, arrivingId) => {
                 arrivingId,
                 time,
             ]);
-            let departureTime;
-            if (_.get(capacity, 'departureDelta')) {
-                departureTime = DateTime.fromSeconds(time).plus({
-                    seconds: capacity.departureDelta,
-                });
-            } else {
-                departureTime = DateTime.fromSeconds(time);
-            }
-            const hasPassed = departureTime < now;
             if (isFirstOfVessel) {
                 seenVessels.push(vesselId);
             }
@@ -175,7 +181,7 @@ export const getSchedule = async (departingId, arrivingId) => {
                 allowsPassengers: _.includes([1, 3], departure.LoadingRule),
                 allowsVehicles: _.includes([2, 3], departure.LoadingRule),
                 capacity,
-                hasPassed,
+                hasPassed: hasPassed(capacity),
                 time,
                 vessel,
             };
@@ -371,14 +377,12 @@ export const updateTerminals = async () => {
 
 // set cache with all long-lived data from API
 export const updateCache = async () => {
-    logger.info('Started Cache Update');
     updateProgress.schedule = updateSchedule();
     await updateProgress.schedule;
     updateProgress.vessels = updateVessels();
     await updateProgress.vessels;
     updateProgress.terminals = updateTerminals();
     await updateProgress.terminals;
-    logger.info('Completed Cache Update');
 };
 
 export async function backfillCrossings() {
@@ -445,38 +449,89 @@ async function recordTiming() {
     logger.info('Completed Timing Update');
 }
 
+function getPreviousCapacity(departureId, arrivalId, departureTime) {
+    const schedule = _.get(capacityByTerminal, [departureId, arrivalId]);
+    const departureTimes = _.sortBy(_.keys(schedule));
+    const departureIndex = _.indexOf(departureTimes, departureTime);
+    if (departureIndex === 0) {
+        return null;
+    } else {
+        const previousDepartureTime = departureTimes[departureIndex - 1];
+        const previousCapacity = schedule[previousDepartureTime];
+        return previousCapacity;
+    }
+}
+
+function isEmpty(capacity) {
+    const {driveUpCapacity, reservableCapacity, totalCapacity} = capacity;
+    return driveUpCapacity + reservableCapacity === totalCapacity;
+}
+
+function isFull(capacity) {
+    const {driveUpCapacity, reservableCapacity} = capacity;
+    return driveUpCapacity === 0 && reservableCapacity === 0;
+}
+
+async function saveCapacity(capacity) {
+    const {arrivalId, departureId, departureTime} = capacity;
+    const where = {arrivalId, departureId, departureTime};
+    const instance = await Crossing.findOne({where});
+    if (instance) {
+        await instance.update(capacity);
+    } else {
+        await Crossing.create(capacity);
+    }
+}
+
 async function recordCapacity() {
     logger.info('Started Capacity Update');
     const terminals = await request(API_TERMINALS_SPACE, {json: true});
     _.each(terminals, (terminal) => {
         _.each(terminal.DepartingSpaces, (departure) => {
-            _.each(departure.SpaceForArrivalTerminals, async (capacity) => {
+            _.each(departure.SpaceForArrivalTerminals, async (spaceData) => {
                 const vessel = _.get(vesselsById, departure.VesselID, {});
+                const departureTime = wsfDateToTimestamp(departure.Departure);
+                const arrivalId = spaceData.TerminalID;
+                const departureId = terminal.TerminalID;
                 const model = {
-                    arrivalId: capacity.TerminalID,
-                    departureId: terminal.TerminalID,
+                    arrivalId,
+                    departureId,
                     departureDelta: _.get(vessel, 'departureDelta', null),
-                    departureTime: wsfDateToTimestamp(departure.Departure),
-                    driveUpCapacity: capacity.DriveUpSpaceCount,
-                    hasDriveUp: capacity.DisplayDriveUpSpace,
-                    hasReservations: capacity.DisplayReservableSpace,
+                    departureTime,
+                    driveUpCapacity: spaceData.DriveUpSpaceCount,
+                    hasDriveUp: spaceData.DisplayDriveUpSpace,
+                    hasReservations: spaceData.DisplayReservableSpace,
                     isCancelled: departure.IsCancelled,
-                    reservableCapacity: capacity.ReservableSpaceCount,
-                    totalCapacity: capacity.MaxSpaceCount,
+                    reservableCapacity: spaceData.ReservableSpaceCount,
+                    totalCapacity: spaceData.MaxSpaceCount,
                 };
+                const capacity = Crossing.build(model);
                 _.setWith(
                     capacityByTerminal,
-                    [model.departureId, model.arrivalId, model.departureTime],
-                    Crossing.build(model),
+                    [departureId, arrivalId, departureTime],
+                    capacity,
                     Object
                 );
-                const {arrivalId, departureId, departureTime} = model;
-                const where = {arrivalId, departureId, departureTime};
-                const instance = await Crossing.findOne({where});
-                if (instance) {
-                    await instance.update(model);
-                } else {
-                    await Crossing.create(model);
+                saveCapacity(capacity);
+
+                // Because of how WSF reports data, if the previous run is running so
+                // behind, it's scheduled to leave after the next run was scheduled,
+                // they'll stop reporting real-time data against it. So if the next run not
+                // empty, report the previous run as full.
+                const previousCapacity = await getPreviousCapacity(
+                    departureId,
+                    arrivalId,
+                    departureTime
+                );
+                if (
+                    previousCapacity &&
+                    !hasPassed(previousCapacity) &&
+                    !isFull(previousCapacity) &&
+                    !isEmpty(capacity)
+                ) {
+                    previousCapacity.driveUpCapacity = 0;
+                    previousCapacity.reservableCapacity = 0;
+                    saveCapacity(previousCapacity);
                 }
             });
         });
@@ -485,8 +540,6 @@ async function recordCapacity() {
 }
 
 export const updateCrossings = async () => {
-    logger.info('Started Crossing Update');
     await recordTiming();
     await recordCapacity();
-    logger.info('Completed Crossing Update');
 };
