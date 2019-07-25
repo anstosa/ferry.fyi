@@ -173,7 +173,7 @@ export default class Capacity extends Component {
         if (_.isNull(departureId)) {
             reservationsText = (
                 <span className="text-xs text-yellow-dark font-bold">
-                    Estimated
+                    Predicted
                 </span>
             );
         } else if (this.hasAvailableReservations()) {
@@ -231,8 +231,9 @@ export default class Capacity extends Component {
         } else if (estimate) {
             spaceText = (
                 <>
-                    <i className="fas fa-question-circle mr-1" />
-                    {estimateLeft} spaces left
+                    {estimateLeft > 0
+                        ? `${estimateLeft} spaces left`
+                        : 'Boat full'}
                 </>
             );
         } else {
