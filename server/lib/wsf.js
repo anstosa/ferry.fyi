@@ -9,13 +9,13 @@
  */
 
 // imports
-import * as log from './log';
 import {DateTime} from 'luxon';
 import {getCameras} from './wsf-cameras';
 import {getToday, wsfDateToTimestamp} from './date';
 import {Op} from './db';
 import _ from 'lodash';
 import Crossing from '../models/crossing';
+import logger from 'heroku-logger';
 import request from 'request-promise';
 import sync from 'aigle';
 
@@ -215,9 +215,9 @@ async function updateSchedule() {
         await request(API_SCHEDULE_CACHE, {json: true})
     );
     if (cacheFlushDate === cacheFlushDates.schedule) {
-        log.debug('Skipped Schedule Update');
+        logger.info('Skipped Schedule Update');
     } else {
-        log.debug('Started Schedule Update');
+        logger.info('Started Schedule Update');
     }
     cacheFlushDates.schedule = cacheFlushDate;
 
@@ -235,7 +235,7 @@ async function updateSchedule() {
         const mateId = mate.ArrivingTerminalID;
         addMate(id, mateId);
     });
-    log.debug('Completed Schedule Update');
+    logger.info('Completed Schedule Update');
 }
 
 async function updateVessels() {
@@ -243,9 +243,9 @@ async function updateVessels() {
         await request(API_VESSELS_CACHE, {json: true})
     );
     if (cacheFlushDate === cacheFlushDates.vessels) {
-        log.debug('Skipped Vessel Update');
+        logger.info('Skipped Vessel Update');
     } else {
-        log.debug('Started Vessel Update');
+        logger.info('Started Vessel Update');
     }
     cacheFlushDates.vessels = cacheFlushDate;
 
@@ -281,7 +281,7 @@ async function updateVessels() {
             yearRebuilt: vessel.YearRebuilt,
         });
     });
-    log.debug('Completed Vessel Update');
+    logger.info('Completed Vessel Update');
 }
 
 export const updateTerminals = async () => {
@@ -289,9 +289,9 @@ export const updateTerminals = async () => {
         await request(API_TERMINALS_CACHE, {json: true})
     );
     if (cacheFlushDate === cacheFlushDates.terminals) {
-        log.debug('Skipped Terminal Update');
+        logger.info('Skipped Terminal Update');
     } else {
-        log.debug('Started Terminal Update');
+        logger.info('Started Terminal Update');
     }
     cacheFlushDates.terminals = cacheFlushDate;
 
@@ -366,19 +366,19 @@ export const updateTerminals = async () => {
         assignTerminal(id, {mates: matesWithRoute});
     });
 
-    log.debug('Completed Terminal Update');
+    logger.info('Completed Terminal Update');
 };
 
 // set cache with all long-lived data from API
 export const updateCache = async () => {
-    log.debug('Started Cache Update');
+    logger.info('Started Cache Update');
     updateProgress.schedule = updateSchedule();
     await updateProgress.schedule;
     updateProgress.vessels = updateVessels();
     await updateProgress.vessels;
     updateProgress.terminals = updateTerminals();
     await updateProgress.terminals;
-    log.debug('Completed Cache Update');
+    logger.info('Completed Cache Update');
 };
 
 export async function backfillCrossings() {
@@ -401,7 +401,7 @@ export async function backfillCrossings() {
 }
 
 async function recordTiming() {
-    log.debug('Started Timing Update');
+    logger.info('Started Timing Update');
     const vessels = await request(API_VESSELS_LOCATIONS, {json: true});
     _.each(vessels, (vessel) => {
         const {VesselID: id} = vessel;
@@ -442,11 +442,11 @@ async function recordTiming() {
             },
         });
     });
-    log.debug('Completed Timing Update');
+    logger.info('Completed Timing Update');
 }
 
 async function recordCapacity() {
-    log.debug('Started Capacity Update');
+    logger.info('Started Capacity Update');
     const terminals = await request(API_TERMINALS_SPACE, {json: true});
     _.each(terminals, (terminal) => {
         _.each(terminal.DepartingSpaces, (departure) => {
@@ -481,12 +481,12 @@ async function recordCapacity() {
             });
         });
     });
-    log.debug('Completed Capacity Update');
+    logger.info('Completed Capacity Update');
 }
 
 export const updateCrossings = async () => {
-    log.debug('Started Crossing Update');
+    logger.info('Started Crossing Update');
     await recordTiming();
     await recordCapacity();
-    log.debug('Completed Crossing Update');
+    logger.info('Completed Crossing Update');
 };

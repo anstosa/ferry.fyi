@@ -1,4 +1,3 @@
-import * as log from './lib/log';
 import {
     backfillCrossings,
     getSchedule,
@@ -14,15 +13,16 @@ import {dbInit} from './lib/db';
 import bodyParser from 'koa-bodyparser';
 import fs from 'fs';
 import Koa from 'koa';
-import logger from 'koa-logger';
+import logger from 'heroku-logger';
 import mount from 'koa-mount';
 import path from 'path';
+import requestLogger from 'koa-logger';
 import Router from 'koa-router';
 import serve from 'koa-static';
 
 // start main app
 const app = new Koa();
-app.use(logger());
+app.use(requestLogger());
 
 // api app
 const api = new Koa();
@@ -71,7 +71,7 @@ app.use(mount('/', dist));
     await updateCache();
     await updateCrossings();
     await backfillCrossings();
-    app.listen(process.env.PORT, () => log.info('Server started!'));
+    app.listen(process.env.PORT, () => logger.info('Server started'));
     setInterval(updateCache, 30 * 1000);
     setInterval(updateCrossings, 10 * 1000);
 })();
