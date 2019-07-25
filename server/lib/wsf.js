@@ -270,31 +270,30 @@ async function updateSchedule() {
                     };
                 })
             );
-            if (!_.get(previousCapacityByTerminal, [terminalId, mateId])) {
-                const startTime = DateTime.fromSeconds(_.first(schedule).time)
-                    .minus({weeks: 1})
-                    .toSeconds();
-                const endTime = DateTime.fromSeconds(_.last(schedule).time)
-                    .minus({weeks: 1})
-                    .toSeconds();
-                const crossings = await Crossing.findAll({
-                    where: {
-                        departureTime: {[Op.gte]: startTime, [Op.lte]: endTime},
-                    },
-                });
-                _.each(crossings, (crossing) => {
-                    _.setWith(
-                        previousCapacityByTerminal,
-                        [
-                            crossing.departureId,
-                            crossing.arrivalId,
-                            crossing.departureTime,
-                        ],
-                        crossing,
-                        Object
-                    );
-                });
-            }
+
+            const startTime = DateTime.fromSeconds(_.first(schedule).time)
+                .minus({weeks: 1})
+                .toSeconds();
+            const endTime = DateTime.fromSeconds(_.last(schedule).time)
+                .minus({weeks: 1})
+                .toSeconds();
+            const crossings = await Crossing.findAll({
+                where: {
+                    departureTime: {[Op.gte]: startTime, [Op.lte]: endTime},
+                },
+            });
+            _.each(crossings, (crossing) => {
+                _.setWith(
+                    previousCapacityByTerminal,
+                    [
+                        crossing.departureId,
+                        crossing.arrivalId,
+                        crossing.departureTime,
+                    ],
+                    crossing,
+                    Object
+                );
+            });
             _.setWith(
                 scheduleByTerminal,
                 [terminalId, mateId],
