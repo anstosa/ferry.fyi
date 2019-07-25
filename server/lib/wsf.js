@@ -166,6 +166,7 @@ export const getSchedule = async (departingId, arrivingId) => {
     return Promise.all(
         _.map(schedule.Times, async (departure) => {
             const time = wsfDateToTimestamp(departure.DepartingTime);
+            const departureTime = DateTime.fromSeconds(time);
             const vesselId = departure.VesselID;
             const isFirstOfVessel = !_.includes(seenVessels, vesselId);
             const vessel = await getVessel(vesselId, isFirstOfVessel);
@@ -181,7 +182,8 @@ export const getSchedule = async (departingId, arrivingId) => {
                 allowsPassengers: _.includes([1, 3], departure.LoadingRule),
                 allowsVehicles: _.includes([2, 3], departure.LoadingRule),
                 capacity,
-                hasPassed: hasPassed(capacity),
+                hasPassed:
+                    hasPassed(capacity) || departureTime < DateTime.local(),
                 time,
                 vessel,
             };
