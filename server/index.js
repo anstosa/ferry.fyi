@@ -66,9 +66,9 @@ app.use(mount('/', dist));
 // start server
 (async () => {
     await dbInit;
+    app.listen(process.env.PORT, () => logger.info('Server started'));
     await updateCache();
     await updateCrossings();
-    app.listen(process.env.PORT, () => logger.info('Server started'));
     setInterval(updateCache, 30 * 1000);
     setInterval(updateCrossings, 10 * 1000);
 })();
