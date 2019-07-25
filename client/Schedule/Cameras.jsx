@@ -37,7 +37,7 @@ export default class Cameras extends Component {
                 key={id}
             >
                 <div
-                    className="bg-lighten-lowest w-full relative"
+                    className="bg-lighten-lower w-full relative"
                     style={{
                         paddingTop: `${(image.height / image.width) * 100}%`,
                     }}

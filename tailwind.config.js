@@ -23,14 +23,16 @@ module.exports = {
             white: '#fff',
 
             darken: {
-                lowest: 'rgba(0, 0, 0, 10%)',
+                lowest: 'rgba(0, 0, 0, 5%)',
+                lower: 'rgba(0, 0, 0, 10%)',
                 low: 'rgba(0, 0, 0, 30%)',
                 medium: 'rgba(0, 0, 0, 50%)',
                 high: 'rgba(0, 0, 0, 70%)',
                 highest: 'rgba(0, 0, 0, 90%)',
             },
             lighten: {
-                lowest: 'rgba(255, 255, 255, 10%)',
+                lowest: 'rgba(255, 255, 255, 5%)',
+                lower: 'rgba(255, 255, 255, 10%)',
                 low: 'rgba(255, 255, 255, 30%)',
                 medium: 'rgba(255, 255, 255, 50%)',
                 high: 'rgba(255, 255, 255, 70%)',

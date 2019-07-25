@@ -1,5 +1,6 @@
+import {DateTime} from 'luxon';
+import {dbInit} from './lib/db';
 import {
-    backfillCrossings,
     getSchedule,
     getTerminal,
     getTerminals,
@@ -8,8 +9,6 @@ import {
     updateCache,
     updateCrossings,
 } from './lib/wsf';
-import {DateTime} from 'luxon';
-import {dbInit} from './lib/db';
 import bodyParser from 'koa-bodyparser';
 import fs from 'fs';
 import Koa from 'koa';
@@ -62,7 +61,6 @@ browser.get('*', (context) => {
     );
 });
 dist.use(browser.routes());
-dist.use(browser.allowedMethods());
 app.use(mount('/', dist));
 
 // start server
@@ -70,7 +68,6 @@ app.use(mount('/', dist));
     await dbInit;
     await updateCache();
     await updateCrossings();
-    await backfillCrossings();
     app.listen(process.env.PORT, () => logger.info('Server started'));
     setInterval(updateCache, 30 * 1000);
     setInterval(updateCrossings, 10 * 1000);

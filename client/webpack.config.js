@@ -116,8 +116,8 @@ const productionConfig = merge([
         plugins: [
             new webpack.EnvironmentPlugin([
                 'BASE_URL',
-                'DEBUG',
                 'GOOGLE_ANALYTICS',
+                'LOG_LEVEL',
             ]),
         ],
     },

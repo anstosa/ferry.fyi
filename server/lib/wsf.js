@@ -93,8 +93,9 @@ const updateProgress = {
 };
 let matesByTerminalId = {};
 const vesselsById = {};
-const capacityByTerminal = {};
+const previousCapacityByTerminal = {};
 const terminalsById = {};
+const scheduleByTerminal = {};
 
 // safely initialize a mates object
 function initMates(id) {
@@ -158,37 +159,9 @@ function hasPassed(capacity) {
 }
 
 export const getSchedule = async (departingId, arrivingId) => {
-    const response = await request(apiScheduleToday(departingId, arrivingId), {
-        json: true,
-    });
-    const schedule = _.first(response.TerminalCombos);
-    const seenVessels = [];
-    return Promise.all(
-        _.map(schedule.Times, async (departure) => {
-            const time = wsfDateToTimestamp(departure.DepartingTime);
-            const departureTime = DateTime.fromSeconds(time);
-            const vesselId = departure.VesselID;
-            const isFirstOfVessel = !_.includes(seenVessels, vesselId);
-            const vessel = await getVessel(vesselId, isFirstOfVessel);
-            const capacity = _.get(capacityByTerminal, [
-                departingId,
-                arrivingId,
-                time,
-            ]);
-            if (isFirstOfVessel) {
-                seenVessels.push(vesselId);
-            }
-            return {
-                allowsPassengers: _.includes([1, 3], departure.LoadingRule),
-                allowsVehicles: _.includes([2, 3], departure.LoadingRule),
-                capacity,
-                hasPassed:
-                    hasPassed(capacity) || departureTime < DateTime.local(),
-                time,
-                vessel,
-            };
-        })
-    );
+    await updateProgress.schedule;
+    const schedule = _.get(scheduleByTerminal, [departingId, arrivingId]);
+    return _.sortBy(_.map(schedule), 'time');
 };
 
 export const getVessels = async () => {
@@ -218,17 +191,37 @@ export const getTerminal = async (id) => {
     return _.get(terminalsById, id);
 };
 
+async function backfillCrossings() {
+    const yesterday = _.round(
+        DateTime.local()
+            .minus({days: 1})
+            .toSeconds()
+    );
+    const crossings = await Crossing.findAll({
+        where: {departureTime: {[Op.gt]: yesterday}},
+    });
+    _.each(crossings, (capacity) => {
+        const crossing = _.get(scheduleByTerminal, [
+            capacity.departureId,
+            capacity.arrivalId,
+            capacity.departureTime,
+        ]);
+        crossing.capacity = capacity;
+    });
+}
+
 async function updateSchedule() {
     const cacheFlushDate = wsfDateToTimestamp(
         await request(API_SCHEDULE_CACHE, {json: true})
     );
     if (cacheFlushDate === cacheFlushDates.schedule) {
-        logger.info('Skipped Schedule Update');
+        logger.info('Skipped Schedule API Update');
+        return;
     } else {
-        logger.info('Started Schedule Update');
+        logger.info('Started Schedule API Update');
     }
     cacheFlushDates.schedule = cacheFlushDate;
-
+    logger.info('Started Mates Update');
     const mates = await request(apiScheduleMates(), {json: true});
     matesByTerminalId = {};
     _.each(mates, (mate) => {
@@ -236,14 +229,81 @@ async function updateSchedule() {
         const mateId = mate.ArrivingTerminalID;
         addMate(id, mateId);
     });
+    logger.info('Completed Mates Update');
+    logger.info('Started Schedule Update');
+    await sync.eachSeries(matesByTerminalId, (mates, terminalId) =>
+        sync.eachSeries(mates, async (mateId) => {
+            const response = await request(
+                apiScheduleToday(terminalId, mateId),
+                {
+                    json: true,
+                }
+            );
+            const scheduleData = _.first(response.TerminalCombos);
+            const seenVessels = [];
 
-    matesByTerminalId = {};
-    _.each(mates, (mate) => {
-        const id = mate.DepartingTerminalID;
-        const mateId = mate.ArrivingTerminalID;
-        addMate(id, mateId);
-    });
+            const schedule = await Promise.all(
+                _.map(scheduleData.Times, async (departure) => {
+                    const time = wsfDateToTimestamp(departure.DepartingTime);
+                    const departureTime = DateTime.fromSeconds(time);
+                    const hasPassed = departureTime < DateTime.local();
+                    const vesselId = departure.VesselID;
+                    const isFirstOfVessel = !_.includes(seenVessels, vesselId);
+                    const vessel = await getVessel(vesselId, isFirstOfVessel);
+                    if (isFirstOfVessel) {
+                        seenVessels.push(vesselId);
+                    }
+                    return {
+                        allowsPassengers: _.includes(
+                            [1, 3],
+                            departure.LoadingRule
+                        ),
+                        allowsVehicles: _.includes(
+                            [2, 3],
+                            departure.LoadingRule
+                        ),
+                        hasPassed,
+                        time,
+                        vessel,
+                    };
+                })
+            );
+            if (!_.get(previousCapacityByTerminal, [terminalId, mateId])) {
+                const startTime = DateTime.fromSeconds(_.first(schedule).time)
+                    .minus({weeks: 1})
+                    .toSeconds();
+                const endTime = DateTime.fromSeconds(_.last(schedule).time)
+                    .minus({weeks: 1})
+                    .toSeconds();
+                const crossings = await Crossing.findAll({
+                    where: {
+                        departureTime: {[Op.gte]: startTime, [Op.lte]: endTime},
+                    },
+                });
+                _.each(crossings, (crossing) => {
+                    _.setWith(
+                        previousCapacityByTerminal,
+                        [
+                            crossing.departureId,
+                            crossing.arrivalId,
+                            crossing.departureTime,
+                        ],
+                        crossing,
+                        Object
+                    );
+                });
+            }
+            _.setWith(
+                scheduleByTerminal,
+                [terminalId, mateId],
+                _.keyBy(schedule, 'time'),
+                Object
+            );
+        })
+    );
     logger.info('Completed Schedule Update');
+    logger.info('Completed Schedule API Update');
+    await backfillCrossings();
 }
 
 async function updateVessels() {
@@ -252,6 +312,7 @@ async function updateVessels() {
     );
     if (cacheFlushDate === cacheFlushDates.vessels) {
         logger.info('Skipped Vessel Update');
+        return;
     } else {
         logger.info('Started Vessel Update');
     }
@@ -298,6 +359,7 @@ export const updateTerminals = async () => {
     );
     if (cacheFlushDate === cacheFlushDates.terminals) {
         logger.info('Skipped Terminal Update');
+        return;
     } else {
         logger.info('Started Terminal Update');
     }
@@ -379,32 +441,13 @@ export const updateTerminals = async () => {
 
 // set cache with all long-lived data from API
 export const updateCache = async () => {
-    updateProgress.schedule = updateSchedule();
-    await updateProgress.schedule;
     updateProgress.vessels = updateVessels();
     await updateProgress.vessels;
+    updateProgress.schedule = updateSchedule();
+    await updateProgress.schedule;
     updateProgress.terminals = updateTerminals();
     await updateProgress.terminals;
 };
-
-export async function backfillCrossings() {
-    const yesterday = _.round(
-        DateTime.local()
-            .minus({days: 1})
-            .toSeconds()
-    );
-    const crossings = await Crossing.findAll({
-        where: {departureTime: {[Op.gt]: yesterday}},
-    });
-    _.each(crossings, (crossing) => {
-        _.setWith(
-            capacityByTerminal,
-            [crossing.departureId, crossing.arrivalId, crossing.departureTime],
-            crossing,
-            Object
-        );
-    });
-}
 
 async function recordTiming() {
     logger.info('Started Timing Update');
@@ -452,14 +495,18 @@ async function recordTiming() {
 }
 
 function getPreviousCapacity(departureId, arrivalId, departureTime) {
-    const schedule = _.get(capacityByTerminal, [departureId, arrivalId]);
+    const schedule = _.get(scheduleByTerminal, [departureId, arrivalId]);
     const departureTimes = _.sortBy(_.keys(schedule));
     const departureIndex = _.indexOf(departureTimes, departureTime);
     if (departureIndex === 0) {
         return null;
     } else {
         const previousDepartureTime = departureTimes[departureIndex - 1];
-        const previousCapacity = schedule[previousDepartureTime];
+        const previousCapacity = _.get(
+            schedule,
+            [previousDepartureTime, 'capacity'],
+            null
+        );
         return previousCapacity;
     }
 }
@@ -508,12 +555,12 @@ async function recordCapacity() {
                     totalCapacity: spaceData.MaxSpaceCount,
                 };
                 const capacity = Crossing.build(model);
-                _.setWith(
-                    capacityByTerminal,
-                    [departureId, arrivalId, departureTime],
-                    capacity,
-                    Object
-                );
+                const crossing = _.get(scheduleByTerminal, [
+                    departureId,
+                    arrivalId,
+                    departureTime,
+                ]);
+                crossing.capacity = capacity;
                 saveCapacity(capacity);
 
                 // Because of how WSF reports data, if the previous run is running so
@@ -541,7 +588,38 @@ async function recordCapacity() {
     logger.info('Completed Capacity Update');
 }
 
+function updateEstimates() {
+    _.each(scheduleByTerminal, (mates, departureId) =>
+        _.each(mates, (schedule, mateId) =>
+            _.each(schedule, (crossing) => {
+                const previousDepartureTime = DateTime.fromSeconds(
+                    crossing.time
+                )
+                    .minus({weeks: 1})
+                    .toSeconds();
+                const previousCapacity = _.get(previousCapacityByTerminal, [
+                    departureId,
+                    mateId,
+                    previousDepartureTime,
+                ]);
+                let estimate;
+                if (previousCapacity) {
+                    estimate = _.pick(previousCapacity, [
+                        'driveUpCapacity',
+                        'reservableCapacity',
+                    ]);
+                } else {
+                    estimate = null;
+                }
+                crossing.estimate = estimate;
+            })
+        )
+    );
+    logger.info('Updated Estimates');
+}
+
 export const updateCrossings = async () => {
     await recordTiming();
     await recordCapacity();
+    updateEstimates();
 };

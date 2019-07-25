@@ -19,6 +19,16 @@ html {
     font-family: 'Roboto', sans-serif;
 }
 
+.bg-darken-stripes {
+    background: repeating-linear-gradient(
+        -45deg,
+        theme('colors.transparent') 0px,
+        theme('colors.transparent') 10px,
+        theme('colors.darken.lowest') 10px,
+        theme('colors.darken.lowest') 20px
+    );
+}
+
 .fa-spin-pause {
     animation-play-state: paused;
 }

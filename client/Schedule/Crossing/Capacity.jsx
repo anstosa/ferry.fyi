@@ -30,8 +30,23 @@ export default class Capacity extends Component {
         }
     }
 
+    getEstimateFull() {
+        const {capacity, estimate} = this.props.crossing;
+        if (!estimate) {
+            return null;
+        }
+        const {totalCapacity} = capacity;
+        const {driveUpCapacity = 0, reservableCapacity = 0} = estimate;
+        const estimateLeft = driveUpCapacity + reservableCapacity;
+        const estimateFull = _.min([
+            ((totalCapacity - estimateLeft) / totalCapacity) * 100,
+            100,
+        ]);
+        return estimateFull;
+    }
+
     updateCrossing = () => {
-        const {capacity} = _.get(this.props, ['crossing']);
+        const {capacity} = this.props.crossing;
         if (!capacity) {
             this.setState({percentFull: null, spaceLeft: null});
             return;
@@ -47,7 +62,9 @@ export default class Capacity extends Component {
             ((totalCapacity - spaceLeft) / totalCapacity) * 100,
             100,
         ]);
-        this.setState({spaceLeft, percentFull});
+
+        const estimateFull = this.getEstimateFull(totalCapacity);
+        this.setState({spaceLeft, percentFull, estimateFull});
     };
 
     hasAvailableReservations = () => {
@@ -188,14 +205,16 @@ export default class Capacity extends Component {
         if (!this.hasData()) {
             return null;
         }
-        const {percentFull} = this.state;
+        const {estimateFull, percentFull} = this.state;
+        const {hasPassed} = this.props.crossing;
+        const showEstimate = estimateFull && !hasPassed;
 
         return (
             <>
                 <div
                     className={clsx(
                         'absolute w-0 top-0 left-0 h-full',
-                        'bg-darken-lowest'
+                        'bg-darken-lower'
                     )}
                     style={{width: `${percentFull}%`}}
                 >
@@ -212,6 +231,18 @@ export default class Capacity extends Component {
                         </span>
                     )}
                 </div>
+                {showEstimate && (
+                    <div
+                        className={clsx(
+                            'absolute w-1 top-0 h-full',
+                            'bg-darken-stripes'
+                        )}
+                        style={{
+                            left: `${percentFull}%`,
+                            width: `${estimateFull - percentFull}%`,
+                        }}
+                    />
+                )}
                 {this.isLeftEdge() && (
                     <span className="absolute top-0" style={{left: LEFT_EDGE}}>
                         {this.renderStatus()}

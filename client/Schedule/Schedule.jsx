@@ -36,11 +36,17 @@ class Schedule extends Component {
         const {terminalSlug, mateSlug} = match.params;
         this.setRoute(terminalSlug, mateSlug);
         this.checkScroll();
-        this.scheduleTick = setInterval(this.updateSchedule, 10 * 1000);
+
+        this.tick();
+    };
+
+    tick = async () => {
+        await this.updateSchedule();
+        this.scheduleTick = setTimeout(this.tick, 10 * 1000);
     };
 
     componentWillUnmount = () => {
-        clearInterval(this.scheduleTick);
+        clearTimeout(this.scheduleTick);
     };
 
     componentDidUpdate(prevProps) {
