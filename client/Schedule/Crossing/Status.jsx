@@ -13,17 +13,20 @@ export default class Status extends Component {
 
     render = () => {
         const {className, crossing, time} = this.props;
-        const {capacity = {}, hasPassed} = crossing;
-        const {departureDelta = 0, isCancelled = false} = capacity;
-        const delta = Duration.fromObject({seconds: departureDelta});
+        const {capacity, hasPassed} = crossing;
         const scheduledTime = DateTime.fromSeconds(crossing.time);
-        const deltaMins = _.round(delta.as('minutes'));
-        const diff = scheduledTime.diff(time);
+        const formattedScheduledTime = `${scheduledTime.toFormat('h:mm a')}`;
 
         let statusText;
         let statusClass = hasPassed ? 'font-default' : 'font-medium';
         let scheduled;
-        if (capacity) {
+
+        if (capacity && !_.isNull(capacity.departureDelta)) {
+            const {departureDelta, isCancelled = false} = capacity;
+            const delta = Duration.fromObject({seconds: departureDelta});
+            const deltaMins = _.round(delta.as('minutes'));
+            const estimatedTime = scheduledTime.plus(delta);
+            const diff = estimatedTime.diff(time);
             if (isCancelled) {
                 scheduled = `${scheduledTime.toFormat('h:mm a')}`;
                 statusText = 'Cancelled';
@@ -31,16 +34,7 @@ export default class Status extends Component {
                     statusClass,
                     'text-red-dark font-bold uppercase'
                 );
-            } else if (Math.abs(deltaMins) < 4) {
-                statusText = 'On time';
-                statusClass = clsx(
-                    statusClass,
-                    !hasPassed && 'text-green-dark'
-                );
-                if (Math.abs(diff.as('hours')) < 1) {
-                    scheduled = `${scheduledTime.toFormat('h:mm a')}`;
-                }
-            } else {
+            } else if (Math.abs(deltaMins) >= 4) {
                 const units = deltaMins === 1 ? 'min' : 'mins';
                 const direction = deltaMins < 0 ? 'ahead' : 'behind';
                 const color =
@@ -51,7 +45,23 @@ export default class Status extends Component {
                     !hasPassed && color,
                     'font-bold'
                 );
-                scheduled = `Scheduled ${scheduledTime.toFormat('h:mm a')}`;
+                scheduled = `Scheduled ${formattedScheduledTime}`;
+            } else {
+                statusText = 'On time';
+                statusClass = clsx(
+                    statusClass,
+                    !hasPassed && 'text-green-dark'
+                );
+                if (Math.abs(diff.as('hours')) < 1) {
+                    scheduled = `Scheduled ${formattedScheduledTime}`;
+                }
+            }
+        } else {
+            const diff = scheduledTime.diff(time);
+            statusClass = 'font-bold text-yellow-dark';
+            statusText = 'Punctuality Unknown';
+            if (Math.abs(diff.as('hours')) < 1) {
+                scheduled = formattedScheduledTime;
             }
         }
 
