@@ -206,7 +206,9 @@ async function backfillCrossings() {
             capacity.arrivalId,
             capacity.departureTime,
         ]);
-        crossing.capacity = capacity;
+        if (crossing) {
+            crossing.capacity = capacity;
+        }
     });
 }
 
@@ -560,7 +562,9 @@ async function recordCapacity() {
                     arrivalId,
                     departureTime,
                 ]);
-                crossing.capacity = capacity;
+                if (crossing) {
+                    crossing.capacity = capacity;
+                }
                 saveCapacity(capacity);
 
                 // Because of how WSF reports data, if the previous run is running so
