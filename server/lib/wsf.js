@@ -493,6 +493,20 @@ async function recordTiming() {
             },
         });
     });
+    await sync.eachSeries(scheduleByTerminal, (mates) =>
+        sync.eachSeries(mates, (schedule) => {
+            const seenVessels = [];
+            return sync.eachSeries(schedule, async (crossing) => {
+                const vesselId = crossing.vessel.id;
+                const isFirstOfVessel = !_.includes(seenVessels, vesselId);
+                const vessel = await getVessel(vesselId, isFirstOfVessel);
+                if (isFirstOfVessel) {
+                    seenVessels.push(vesselId);
+                }
+                crossing.vessel = vessel;
+            });
+        })
+    );
     logger.info('Completed Timing Update');
 }
 
