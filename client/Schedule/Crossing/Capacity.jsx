@@ -263,7 +263,8 @@ export default class Capacity extends Component {
         const {estimateFull, percentFull} = this.state;
         const {hasPassed} = this.props.crossing;
         const showCapacity = Boolean(percentFull);
-        const showEstimate = estimateFull && !hasPassed;
+        const showEstimate =
+            estimateFull && estimateFull > percentFull && !hasPassed;
         if (!showCapacity && !showEstimate) {
             return null;
         }
