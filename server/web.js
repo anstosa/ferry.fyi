@@ -6,8 +6,7 @@ import {
     getTerminals,
     getVessel,
     getVessels,
-    updateCache,
-    updateCrossings,
+    ingestCache,
 } from './lib/wsf';
 import bodyParser from 'koa-bodyparser';
 import fs from 'fs';
@@ -15,9 +14,13 @@ import Koa from 'koa';
 import logger from 'heroku-logger';
 import mount from 'koa-mount';
 import path from 'path';
+import Queue from 'bull';
 import requestLogger from 'koa-logger';
 import Router from 'koa-router';
 import serve from 'koa-static';
+
+const longUpdate = new Queue('long', process.env.REDIS_URL);
+const shortUpdate = new Queue('short', process.env.REDIS_URL);
 
 // start main app
 const app = new Koa();
@@ -67,8 +70,18 @@ app.use(mount('/', dist));
 (async () => {
     await dbInit;
     app.listen(process.env.PORT, () => logger.info('Server started'));
-    await updateCache();
-    await updateCrossings();
-    setInterval(updateCache, 30 * 1000);
-    setInterval(updateCrossings, 10 * 1000);
+    longUpdate.on('global:completed', (jobId, data) => {
+        ingestCache(JSON.parse(data));
+    });
+    longUpdate.add();
+    longUpdate.add(null, {
+        repeat: {every: 30 * 1000},
+    });
+    shortUpdate.on('global:completed', (jobId, data) => {
+        ingestCache(JSON.parse(data));
+    });
+    shortUpdate.add();
+    shortUpdate.add(null, {
+        repeat: {every: 10 * 1000},
+    });
 })();

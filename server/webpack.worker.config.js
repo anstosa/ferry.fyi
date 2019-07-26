@@ -6,10 +6,10 @@ const commonConfig = merge([
     {
         target: 'node',
         externals: [nodeExternals()],
-        entry: './server/index.js',
+        entry: './server/worker.js',
         output: {
             path: path.resolve(__dirname, 'dist'),
-            filename: 'server.js',
+            filename: 'worker.js',
         },
     },
 ]);
