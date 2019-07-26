@@ -1,15 +1,43 @@
 import {locationToUrl} from '../lib/maps';
 import _ from 'lodash';
 import clsx from 'clsx';
+import DateTime from 'luxon/src/datetime';
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 
 export default class Cameras extends Component {
     static propTypes = {
+        cameraTime: PropTypes.number,
         terminal: PropTypes.object,
     };
 
+    state = {};
+
+    constructor(props) {
+        super();
+        const {cameraTime} = props;
+        this.state = {cameraTime};
+    }
+
+    componentDidMount() {
+        this.cameraTick = setInterval(() => {
+            this.setState({cameraTime: DateTime.local().toSeconds()});
+        }, 10 * 1000);
+    }
+
+    componentWillUnmount() {
+        clearInterval(this.cameraTick);
+    }
+
+    componentDidUpdate(prevProps) {
+        const {cameraTime} = this.props;
+        if (cameraTime !== prevProps.cameraTime) {
+            this.setState({cameraTime});
+        }
+    }
+
     renderCamera = (camera, index, cameras) => {
+        const {cameraTime} = this.state;
         const {id, title, image, spacesToNext, location, owner} = camera;
         const isFirst = index === 0;
         let totalToBooth;
@@ -43,7 +71,7 @@ export default class Cameras extends Component {
                     }}
                 >
                     <img
-                        src={image.url}
+                        src={`${image.url}?${cameraTime}`}
                         className={clsx(
                             'absolute inset-0 w-full',
                             owner.name && 'border border-black'
