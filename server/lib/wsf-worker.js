@@ -464,6 +464,7 @@ async function updateTiming() {
             },
         });
     });
+    const now = DateTime.local();
     await sync.eachSeries(scheduleByTerminal, (mates) =>
         sync.eachSeries(mates, (schedule) => {
             const seenVessels = [];
@@ -475,6 +476,12 @@ async function updateTiming() {
                     seenVessels.push(vesselId);
                 }
                 crossing.vessel = vessel;
+                const {capacity, time} = crossing;
+                if (capacity) {
+                    crossing.hasPassed = hasPassed(capacity);
+                } else {
+                    crossing.hasPassed = DateTime.fromSeconds(time) < now;
+                }
             });
         })
     );
