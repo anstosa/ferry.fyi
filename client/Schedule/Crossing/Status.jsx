@@ -56,19 +56,19 @@ export default class Status extends Component {
                     scheduled = `Scheduled ${formattedScheduledTime}`;
                 }
             }
-        } else {
-            const diff = scheduledTime.diff(time);
-            statusClass = 'font-bold text-yellow-dark';
-            statusText = 'Punctuality Unknown';
-            if (Math.abs(diff.as('hours')) < 1) {
-                scheduled = formattedScheduledTime;
-            }
+        } else if (Math.abs(scheduledTime.diff(time).as('hours')) < 1) {
+            scheduled = formattedScheduledTime;
         }
 
         return (
             <span className={clsx(className, 'text-sm')}>
-                {scheduled ? `${scheduled} · ` : ''}
-                <span className={statusClass}>{statusText}</span>
+                {scheduled}
+                {statusText && (
+                    <>
+                        {' · '}
+                        <span className={statusClass}>{statusText}</span>
+                    </>
+                )}
             </span>
         );
     };
