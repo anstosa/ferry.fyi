@@ -6,10 +6,10 @@
     "scripts": {
         "service-worker": "webpack --env development --config client/webpack.service-worker.config.js",
         "client": "webpack --env development --watch --config client/webpack.config.js",
-        "heroku-postbuild": "npm run heroku-postbuild-client && npm run heroku-postbuild-server",
+        "heroku-postbuild": "npm run heroku-postbuild-client && npm run heroku-postbuild-web && npm run heroku-postbuild-worker",
         "heroku-postbuild-client": "webpack --env production --config client/webpack.config.js",
-        "heroku-postbuild-web": "webpack --env production --config server/webpack.config.js",
-        "heroku-postbuild-worker": "webpack --env production --config server/webpack.config.js",
+        "heroku-postbuild-web": "webpack --env production --config server/webpack.web.config.js",
+        "heroku-postbuild-worker": "webpack --env production --config server/webpack.worker.config.js",
         "heroku-web": "node server/dist/web.js",
         "heroku-worker": "node server/dist/worker.js",
         "migrate": "nodenv --exec sh scripts/migrate.sh",
