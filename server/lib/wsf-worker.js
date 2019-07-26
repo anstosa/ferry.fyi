@@ -515,70 +515,71 @@ function isFull(capacity) {
     return driveUpCapacity === 0 && reservableCapacity === 0;
 }
 
-async function saveCapacity(capacity) {
-    const {arrivalId, departureId, departureTime} = capacity;
-    const where = {arrivalId, departureId, departureTime};
-    const instance = await Crossing.findOne({where});
-    if (instance) {
-        await instance.update(capacity);
-    } else {
-        await Crossing.create(capacity);
-    }
-}
-
 async function updateCapacity() {
     logger.info('Started Capacity Update');
     const terminals = await request(API_TERMINALS_SPACE, {json: true});
-    _.each(terminals, (terminal) => {
-        _.each(terminal.DepartingSpaces, (departure) => {
-            _.each(departure.SpaceForArrivalTerminals, async (spaceData) => {
-                const vessel = _.get(vesselsById, departure.VesselID, {});
-                const departureTime = wsfDateToTimestamp(departure.Departure);
-                const arrivalId = spaceData.TerminalID;
-                const departureId = terminal.TerminalID;
-                const model = {
-                    arrivalId,
-                    departureId,
-                    departureDelta: _.get(vessel, 'departureDelta', null),
-                    departureTime,
-                    driveUpCapacity: spaceData.DriveUpSpaceCount,
-                    hasDriveUp: spaceData.DisplayDriveUpSpace,
-                    hasReservations: spaceData.DisplayReservableSpace,
-                    isCancelled: departure.IsCancelled,
-                    reservableCapacity: spaceData.ReservableSpaceCount,
-                    totalCapacity: spaceData.MaxSpaceCount,
-                };
-                const capacity = Crossing.build(model);
-                const crossing = _.get(scheduleByTerminal, [
-                    departureId,
-                    arrivalId,
-                    departureTime,
-                ]);
-                if (crossing) {
-                    crossing.capacity = capacity;
-                }
-                saveCapacity(capacity);
+    await sync.eachSeries(terminals, async (terminal) => {
+        await sync.eachSeries(terminal.DepartingSpaces, async (departure) => {
+            await sync.eachSeries(
+                departure.SpaceForArrivalTerminals,
+                async (spaceData) => {
+                    const vessel = _.get(vesselsById, departure.VesselID, {});
+                    const departureTime = wsfDateToTimestamp(
+                        departure.Departure
+                    );
+                    const arrivalId = spaceData.TerminalID;
+                    const departureId = terminal.TerminalID;
+                    const model = {
+                        arrivalId,
+                        departureId,
+                        departureDelta: _.get(vessel, 'departureDelta', null),
+                        departureTime,
+                        driveUpCapacity: spaceData.DriveUpSpaceCount,
+                        hasDriveUp: spaceData.DisplayDriveUpSpace,
+                        hasReservations: spaceData.DisplayReservableSpace,
+                        isCancelled: departure.IsCancelled,
+                        reservableCapacity: spaceData.ReservableSpaceCount,
+                        totalCapacity: spaceData.MaxSpaceCount,
+                    };
+                    const where = {arrivalId, departureId, departureTime};
+                    const [capacity, wasCreated] = await Crossing.findOrCreate({
+                        where,
+                        defaults: model,
+                    });
+                    if (!wasCreated) {
+                        await capacity.update(model);
+                    }
+                    const crossing = _.get(scheduleByTerminal, [
+                        departureId,
+                        arrivalId,
+                        departureTime,
+                    ]);
+                    if (crossing) {
+                        crossing.capacity = capacity;
+                    }
 
-                // Because of how WSF reports data, if the previous run is running so
-                // behind, it's scheduled to leave after the next run was scheduled,
-                // they'll stop reporting real-time data against it. So if the next run not
-                // empty, report the previous run as full.
-                const previousCapacity = await getPreviousCapacity(
-                    departureId,
-                    arrivalId,
-                    departureTime
-                );
-                if (
-                    previousCapacity &&
-                    !hasPassed(previousCapacity) &&
-                    !isFull(previousCapacity) &&
-                    !isEmpty(capacity)
-                ) {
-                    previousCapacity.driveUpCapacity = 0;
-                    previousCapacity.reservableCapacity = 0;
-                    saveCapacity(previousCapacity);
+                    // Because of how WSF reports data, if the previous run is running so
+                    // behind, it's scheduled to leave after the next run was scheduled,
+                    // they'll stop reporting real-time data against it. So if the next run not
+                    // empty, report the previous run as full.
+                    const previousCapacity = await getPreviousCapacity(
+                        departureId,
+                        arrivalId,
+                        departureTime
+                    );
+                    if (
+                        previousCapacity &&
+                        !hasPassed(previousCapacity) &&
+                        !isFull(previousCapacity) &&
+                        !isEmpty(capacity)
+                    ) {
+                        await previousCapacity.update({
+                            driveUpCapacity: 0,
+                            reservableCapacity: 0,
+                        });
+                    }
                 }
-            });
+            );
         });
     });
     logger.info('Completed Capacity Update');
