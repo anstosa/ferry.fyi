@@ -164,7 +164,7 @@ class Schedule extends Component {
             time,
         } = this.state;
         const {match} = this.props;
-        if (!terminal || !mate || !schedule) {
+        if (!terminal || !mate || _.isEmpty(schedule)) {
             return <Splash />;
         }
         return (

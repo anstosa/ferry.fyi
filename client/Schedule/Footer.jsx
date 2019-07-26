@@ -3,6 +3,7 @@ import _ from 'lodash';
 import Alerts, {getBulletins, getLastAlertTime} from './Alerts';
 import Cameras from './Cameras';
 import clsx from 'clsx';
+import DateTime from 'luxon/src/datetime';
 import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 import ReactGA from 'react-ga';
@@ -18,6 +19,7 @@ export default class Footer extends Component {
     };
 
     state = {
+        cameraTime: DateTime.local().toSeconds(),
         isOpen: false,
         tab: null,
     };
@@ -73,7 +75,7 @@ export default class Footer extends Component {
     };
 
     renderToggleCameras = () => {
-        const {isOpen} = this.state;
+        const {isOpen, isReloading} = this.state;
         if (!isOnline()) {
             return null;
         }
@@ -81,32 +83,55 @@ export default class Footer extends Component {
             <div
                 className={clsx(
                     'relative h-16 p-4',
-                    'flex items-center flex-shrink-0 justify-start',
-                    'cursor-pointer'
+                    'flex items-center justify-start',
+                    'cursor-pointer',
+                    isOpen ? 'flex-grow' : 'flex-shrink-0'
                 )}
-                onClick={() => {
-                    if (isOpen) {
-                        this.setOpen(false);
-                        ReactGA.event({
-                            category: 'Navigation',
-                            action: 'Close Cameras',
-                        });
-                    } else {
-                        this.setOpen(true, TAB_CAMERAS);
-                        ReactGA.event({
-                            category: 'Navigation',
-                            action: 'Open Cameras',
-                        });
-                    }
-                }}
             >
-                <i
-                    className={clsx(
-                        'fas fa-lg mr-4',
-                        isOpen ? 'fa-chevron-down' : 'fa-video'
-                    )}
-                />
-                Cameras
+                <div
+                    className="flex-grow"
+                    onClick={() => {
+                        if (isOpen) {
+                            this.setOpen(false);
+                            ReactGA.event({
+                                category: 'Navigation',
+                                action: 'Close Cameras',
+                            });
+                        } else {
+                            this.setOpen(true, TAB_CAMERAS);
+                            ReactGA.event({
+                                category: 'Navigation',
+                                action: 'Open Cameras',
+                            });
+                        }
+                    }}
+                >
+                    <i
+                        className={clsx(
+                            'fas fa-lg mr-4',
+                            isOpen ? 'fa-chevron-down' : 'fa-video'
+                        )}
+                    />
+                    Cameras
+                </div>
+                {isOpen && (
+                    <i
+                        className={clsx(
+                            'fas fa-redo fa-lg fa-spin cursor-pointer',
+                            !isReloading && 'fa-spin-pause'
+                        )}
+                        onClick={() => {
+                            this.setState({
+                                cameraTime: DateTime.local().toSeconds(),
+                                isReloading: true,
+                            });
+                            setTimeout(
+                                () => this.setState({isReloading: false}),
+                                1 * 1000
+                            );
+                        }}
+                    />
+                )}
             </div>
         );
     };
@@ -152,7 +177,7 @@ export default class Footer extends Component {
     };
 
     render = () => {
-        const {isOpen, tab} = this.state;
+        const {cameraTime, isOpen, tab} = this.state;
         const {terminal, time} = this.props;
         const showCameras = isOpen && tab === TAB_CAMERAS;
         const showAlerts = isOpen && tab === TAB_ALERTS;
@@ -169,7 +194,12 @@ export default class Footer extends Component {
                 {this.wrapFooter(
                     <>
                         {this.renderToggle()}
-                        {showCameras && <Cameras terminal={terminal} />}
+                        {showCameras && (
+                            <Cameras
+                                terminal={terminal}
+                                cameraTime={cameraTime}
+                            />
+                        )}
                         {showAlerts && (
                             <Alerts terminal={terminal} time={time} />
                         )}
