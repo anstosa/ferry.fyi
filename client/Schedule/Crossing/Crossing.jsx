@@ -28,7 +28,7 @@ export default class Crossing extends Component {
         return (
             <div
                 className={clsx(
-                    'relative p-4 h-20',
+                    'relative p-3 h-20',
                     'flex justify-between',
                     'cursor-pointer'
                 )}

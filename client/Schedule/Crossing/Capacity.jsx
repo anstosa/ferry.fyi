@@ -6,8 +6,8 @@ import React, {Component} from 'react';
 const RESERVATIONS_BASE_URL =
     'https://secureapps.wsdot.wa.gov/Ferries/Reservations/Vehicle/SailingSchedule.aspx?VRSTermId=';
 
-const LEFT_EDGE = 17;
-const RIGHT_EDGE = 90;
+const LEFT_EDGE = 13;
+const RIGHT_EDGE = 85;
 const CAPACITY_WIDTH = 125;
 
 export default class Capacity extends Component {
