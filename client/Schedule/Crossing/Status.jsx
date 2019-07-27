@@ -63,11 +63,9 @@ export default class Status extends Component {
         return (
             <span className={clsx(className, 'text-sm')}>
                 {scheduled}
+                {scheduled && statusText && ' · '}
                 {statusText && (
-                    <>
-                        {' · '}
-                        <span className={statusClass}>{statusText}</span>
-                    </>
+                    <span className={statusClass}>{statusText}</span>
                 )}
             </span>
         );
