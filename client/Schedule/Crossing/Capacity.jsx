@@ -298,7 +298,8 @@ export default class Capacity extends Component {
                     <div
                         className={clsx(
                             'absolute w-1 top-0 h-full',
-                            'bg-darken-stripes'
+                            'border-4 border-dashed border-darken-lower',
+                            percentFull && 'border-l-0'
                         )}
                         style={{
                             left: `${percentFull || 0}%`,
