@@ -21,9 +21,9 @@ html {
 
 .bg-prediction-gradient {
     background: linear-gradient(
-        to right,
-        transparent,
-        theme('colors.darken.lowest')
+        to left,
+        theme('colors.darken.lowest'),
+        transparent theme('spacing.20'),
     );
 }
 

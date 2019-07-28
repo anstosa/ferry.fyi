@@ -298,9 +298,7 @@ export default class Capacity extends Component {
                             'absolute w-1 top-0 h-full',
                             'bg-prediction-gradient',
                             'border-darken-lower',
-                            'border-r-4 border-r-dashed',
-                            'border-t-2 border-t-solid',
-                            'border-b-2 border-b-solid'
+                            'border-r-4 border-r-dashed'
                         )}
                         style={{
                             left: `${percentFull || 0}%`,
