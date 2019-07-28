@@ -85,7 +85,7 @@ export default class Footer extends Component {
                     'relative h-16 p-4',
                     'flex items-center justify-start',
                     'cursor-pointer',
-                    isOpen ? 'flex-grow' : 'flex-shrink-0'
+                    'flex-grow flex-no-wrap truncate'
                 )}
             >
                 <div
@@ -112,7 +112,7 @@ export default class Footer extends Component {
                             isOpen ? 'fa-chevron-down' : 'fa-video'
                         )}
                     />
-                    Cameras
+                    <span className="truncate">Cameras</span>
                 </div>
                 {isOpen && (
                     <i
@@ -147,6 +147,7 @@ export default class Footer extends Component {
                 className={clsx(
                     'relative h-16 p-4',
                     'flex items-center flex-grow justify-end',
+                    'flex-no-wrap truncate',
                     'cursor-pointer'
                 )}
                 onClick={() => {
@@ -165,7 +166,9 @@ export default class Footer extends Component {
                     }
                 }}
             >
-                {isOpen ? 'Alerts' : getLastAlertTime(terminal, time)}
+                <span className="truncate">
+                    {isOpen ? 'Alerts' : getLastAlertTime(terminal, time)}
+                </span>
                 <i
                     className={clsx(
                         'fas fa-lg ml-4',

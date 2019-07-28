@@ -50,14 +50,17 @@ export default class Header extends Component {
     renderDropdown = (terminals, key, onSelect) => {
         const terminal = _.first(terminals);
         if (terminals.length === 1) {
-            return terminal.name;
+            return <span className="truncate">{terminal.name}</span>;
         }
         const options = _.without(terminals, terminal);
         const isOpen = this.state[key];
         return (
-            <div className="relative cursor-pointer">
-                <div onClick={() => this.setState({[key]: !isOpen})}>
-                    <span>{terminal.name}</span>
+            <div className="relative cursor-pointer truncate">
+                <div
+                    className="truncate"
+                    onClick={() => this.setState({[key]: !isOpen})}
+                >
+                    <span className="truncate">{terminal.name}</span>
                     <i
                         className={clsx(
                             `fas fa-caret-${isOpen ? 'up' : 'down'}`,
@@ -186,7 +189,7 @@ export default class Header extends Component {
         return (
             <i
                 className={clsx(
-                    'fas fa-redo fa-lg fa-spin cursor-pointer',
+                    'fas fa-redo fa-lg fa-spin cursor-pointer ml-4',
                     !isReloading && 'fa-spin-pause'
                 )}
                 onClick={() => {
