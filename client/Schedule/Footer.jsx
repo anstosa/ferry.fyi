@@ -66,11 +66,27 @@ export default class Footer extends Component {
         const {isOpen, tab} = this.state;
         const showCameras = !isOpen || tab === TAB_CAMERAS;
         const showAlerts = !isOpen || tab === TAB_ALERTS;
+        const showMap = !isOpen;
         return (
             <div className="flex">
                 {showCameras && this.renderToggleCameras()}
+                {!showCameras && !isOpen && <div className="flex-grow" />}
+                {showMap && this.renderMapLink()}
                 {showAlerts && this.renderToggleAlerts()}
+                {!showAlerts && !isOpen && <div className="flex-grow" />}
             </div>
+        );
+    };
+
+    renderMapLink = () => {
+        const {vesselwatch} = this.props.terminal;
+        if (!vesselwatch) {
+            return null;
+        }
+        return (
+            <a className="h-16 py-4 flex items-center" href={vesselwatch}>
+                <i className="fas fa-lg fa-map-marked" />
+            </a>
         );
     };
 
