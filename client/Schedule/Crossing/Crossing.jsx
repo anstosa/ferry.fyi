@@ -107,7 +107,7 @@ export default class Crossing extends Component {
         return (
             <li
                 className={clsx(
-                    'border-b border-darken-lower',
+                    'border-b border-gray-medium',
                     background,
                     'flex flex-col'
                 )}

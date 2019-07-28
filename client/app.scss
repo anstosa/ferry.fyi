@@ -19,6 +19,14 @@ html {
     font-family: 'Roboto', sans-serif;
 }
 
+.bg-prediction-gradient {
+    background: linear-gradient(
+        to right,
+        transparent,
+        theme('colors.darken.lowest')
+    );
+}
+
 .fa-spin-pause {
     animation-play-state: paused;
 }

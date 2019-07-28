@@ -296,8 +296,11 @@ export default class Capacity extends Component {
                     <div
                         className={clsx(
                             'absolute w-1 top-0 h-full',
-                            'border-r-4 border-dashed border-darken-lower',
-                            'border-y-4 border-darken-lower'
+                            'bg-prediction-gradient',
+                            'border-darken-lower',
+                            'border-r-4 border-r-dashed',
+                            'border-t-2 border-t-solid',
+                            'border-b-2 border-b-solid'
                         )}
                         style={{
                             left: `${percentFull || 0}%`,

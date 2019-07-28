@@ -1,3 +1,20 @@
+function borderPlugin({addUtilities}) {
+    const newUtilities = {};
+    const DIRECTIONS = {top: 't', right: 'r', bottom: 'b', left: 'l'};
+
+    Object.keys(DIRECTIONS).forEach((direction) => {
+        const abbreviation = DIRECTIONS[direction];
+        ['solid', 'dashed', 'dotted', 'none'].forEach((style) => {
+            const utility = ['.border', abbreviation, style].join('-');
+            const key = ['border', direction, 'style'].join('-');
+            const value = style;
+            newUtilities[utility] = {[key]: value};
+        });
+    });
+
+    addUtilities(newUtilities);
+}
+
 module.exports = {
     prefix: '',
     important: false,
@@ -469,6 +486,7 @@ module.exports = {
     },
     corePlugins: {},
     plugins: [
+        borderPlugin,
         require('tailwindcss-aspect-ratio')({
             ratios: {
                 square: [1, 1],
