@@ -19,7 +19,7 @@ const customCaches = [CACHE_API, CACHE_FONTS, CACHE_OTHER];
 // Prefer faster load for rarely changing data
 workbox.routing.registerRoute(
     new RegExp('/api/(vessels|terminals)/.*'),
-    new workbox.strategies.CacheFirst({
+    new workbox.strategies.StaleWhileRevalidate({
         cacheName: CACHE_API,
         plugins: [
             new workbox.expiration.Plugin({
@@ -58,7 +58,7 @@ workbox.routing.registerRoute(
 // Aggresively cache other static resources
 workbox.routing.registerRoute(
     new RegExp('/.*'),
-    new workbox.strategies.CacheFirst({
+    new workbox.strategies.StaleWhileRevalidate({
         cacheName: CACHE_OTHER,
         plugins: [
             new workbox.expiration.Plugin({
