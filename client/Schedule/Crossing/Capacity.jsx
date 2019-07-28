@@ -172,9 +172,7 @@ export default class Capacity extends Component {
         );
         if (_.isNull(departureId)) {
             reservationsText = (
-                <span className="text-xs text-yellow-dark font-bold">
-                    Predicted
-                </span>
+                <span className="text-xs text-gray-dark">Predicted</span>
             );
         } else if (this.hasAvailableReservations()) {
             reservationsText = (
@@ -298,8 +296,8 @@ export default class Capacity extends Component {
                     <div
                         className={clsx(
                             'absolute w-1 top-0 h-full',
-                            'border-4 border-dashed border-darken-lower',
-                            percentFull && 'border-l-0'
+                            'border-r-4 border-dashed border-darken-lower',
+                            'border-y-4 border-darken-lower'
                         )}
                         style={{
                             left: `${percentFull || 0}%`,
