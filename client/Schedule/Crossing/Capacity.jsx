@@ -108,7 +108,8 @@ export default class Capacity extends Component {
     isLeftEdge = () => {
         const {capacity} = this.props.crossing;
         const {estimateFull, percentFull} = this.state;
-        const fullness = capacity ? percentFull : estimateFull;
+        const fullness =
+            capacity && percentFull > 0 ? percentFull : estimateFull;
         const percent = fullness / 100;
         const totalWidth = window.innerWidth;
         const width = percent * totalWidth;
@@ -118,7 +119,8 @@ export default class Capacity extends Component {
     willFitLeft = () => {
         const {capacity} = this.props.crossing;
         const {estimateFull, percentFull} = this.state;
-        const fullness = capacity ? percentFull : estimateFull;
+        const fullness =
+            capacity && percentFull > 0 ? percentFull : estimateFull;
         const percent = fullness / 100;
         const totalWidth = window.innerWidth;
         const width = percent * totalWidth;
@@ -128,7 +130,8 @@ export default class Capacity extends Component {
     willFitRight = () => {
         const {capacity} = this.props.crossing;
         const {estimateFull, percentFull} = this.state;
-        const fullness = capacity ? percentFull : estimateFull;
+        const fullness =
+            capacity && percentFull > 0 ? percentFull : estimateFull;
         const percent = fullness / 100;
         const totalWidth = window.innerWidth;
         const width = percent * totalWidth;
@@ -139,7 +142,8 @@ export default class Capacity extends Component {
     isRightEdge = () => {
         const {capacity} = this.props.crossing;
         const {estimateFull, percentFull} = this.state;
-        const fullness = capacity ? percentFull : estimateFull;
+        const fullness =
+            capacity && percentFull > 0 ? percentFull : estimateFull;
         const percent = fullness / 100;
         const totalWidth = window.innerWidth;
         const width = percent * totalWidth;
@@ -152,43 +156,48 @@ export default class Capacity extends Component {
     isEmpty = () => {
         const {capacity} = this.props.crossing;
         const {estimateFull, percentFull} = this.state;
-        const fullness = capacity ? percentFull : estimateFull;
+        const fullness =
+            capacity && percentFull > 0 ? percentFull : estimateFull;
         return fullness === 0;
     };
 
     isFull = () => {
         const {capacity} = this.props.crossing;
-        const {estimateLeft, spaceLeft} = this.state;
-        const spaces = capacity ? spaceLeft : estimateLeft;
+        const {estimateLeft, spaceLeft, percentFull} = this.state;
+        const spaces = capacity && percentFull > 0 ? spaceLeft : estimateLeft;
         return spaces <= 0;
     };
 
-    renderReservations = () => {
+    renderSpaceDetail = () => {
         let reservationsText = null;
+        const {percentFull} = this.state;
+        const {capacity, estimate} = this.props.crossing;
         const departureId = _.get(
             this.props,
             ['crossing', 'capacity', 'departureId'],
             null
         );
-        if (_.isNull(departureId)) {
+        if (capacity && percentFull > 0) {
+            if (this.hasAvailableReservations()) {
+                reservationsText = (
+                    <a
+                        className="text-xs link text-green-dark"
+                        href={RESERVATIONS_BASE_URL + departureId}
+                        target="_blank"
+                        rel="noreferrer noopener"
+                    >
+                        <i className="fas fa-external-link-square mr-1" />
+                        Reserve
+                    </a>
+                );
+            } else if (this.allowsReservations()) {
+                reservationsText = (
+                    <span className="text-xs text-gray-dark">Standby Only</span>
+                );
+            }
+        } else if (estimate) {
             reservationsText = (
-                <span className="text-xs text-gray-dark">Predicted</span>
-            );
-        } else if (this.hasAvailableReservations()) {
-            reservationsText = (
-                <a
-                    className="text-xs link text-green-dark"
-                    href={RESERVATIONS_BASE_URL + departureId}
-                    target="_blank"
-                    rel="noreferrer noopener"
-                >
-                    <i className="fas fa-external-link-square mr-1" />
-                    Reserve
-                </a>
-            );
-        } else if (this.allowsReservations()) {
-            reservationsText = (
-                <span className="text-xs text-gray-dark">Standby Only</span>
+                <span className="text-xs text-blue-light italic">Forecast</span>
             );
         }
         return reservationsText;
@@ -201,7 +210,7 @@ export default class Capacity extends Component {
 
         let spaceText;
         let spaceClass = clsx('text-xs whitespace-no-wrap');
-        if (capacity) {
+        if (capacity && percentFull > 0) {
             spaceText = (
                 <>
                     <i className="fas fa-car mr-1" />
@@ -227,6 +236,7 @@ export default class Capacity extends Component {
                 }
             }
         } else if (estimate) {
+            spaceClass = clsx(spaceClass, 'text-gray-medium');
             spaceText = (
                 <>
                     {estimateLeft > 0
@@ -241,8 +251,8 @@ export default class Capacity extends Component {
     };
 
     renderStatus = () => {
-        const {percentFull} = this.state;
-        if (percentFull === 0) {
+        const {capacity, estimate} = this.props.crossing;
+        if (!capacity && !estimate) {
             return null;
         }
         return (
@@ -253,7 +263,7 @@ export default class Capacity extends Component {
                 )}
             >
                 {this.renderSpace()}
-                {this.renderReservations()}
+                {this.renderSpaceDetail()}
             </div>
         );
     };
