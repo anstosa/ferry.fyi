@@ -55,9 +55,9 @@ export default class Header extends Component {
         const options = _.without(terminals, terminal);
         const isOpen = this.state[key];
         return (
-            <div className="relative cursor-pointer truncate">
+            <div className="relative cursor-pointer min-w-0">
                 <div
-                    className="truncate"
+                    className="min-w-0 flex items-center"
                     onClick={() => this.setState({[key]: !isOpen})}
                 >
                     <span className="truncate">{terminal.name}</span>

@@ -101,11 +101,11 @@ export default class Footer extends Component {
                     'relative h-16 p-4',
                     'flex items-center justify-start',
                     'cursor-pointer',
-                    'flex-grow flex-no-wrap truncate'
+                    'flex-grow flex-no-wrap min-w-0'
                 )}
             >
                 <div
-                    className="flex-grow"
+                    className="flex-grow flex items-center flex-no-wrap min-w-0"
                     onClick={() => {
                         if (isOpen) {
                             this.setOpen(false);
@@ -163,7 +163,7 @@ export default class Footer extends Component {
                 className={clsx(
                     'relative h-16 p-4',
                     'flex items-center flex-grow justify-end',
-                    'flex-no-wrap truncate',
+                    'flex-no-wrap min-w-0',
                     'cursor-pointer'
                 )}
                 onClick={() => {
