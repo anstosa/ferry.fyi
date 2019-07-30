@@ -90,7 +90,7 @@ export default class Crossing extends Component {
     };
 
     render = () => {
-        const {crossing} = this.props;
+        const {crossing, isExpanded} = this.props;
         const {hasPassed} = crossing;
         const isNext =
             crossing === _.find(this.props.schedule, {hasPassed: false});
@@ -104,14 +104,17 @@ export default class Crossing extends Component {
             background = 'bg-white';
         }
 
+        let border;
+        if (isNext) {
+            border = 'border-b-2 border-t-2 border-blue-medium -mt-1px';
+        } else if (isExpanded) {
+            border = 'border-b border-t border-gray-dark -mt-1px';
+        } else {
+            border = 'border-b border-gray-medium';
+        }
+
         return (
-            <li
-                className={clsx(
-                    'border-b border-gray-medium',
-                    background,
-                    'flex flex-col'
-                )}
-            >
+            <li className={clsx(border, background, 'flex flex-col')}>
                 {this.renderHeader()}
                 {this.renderDetails()}
             </li>
