@@ -1,8 +1,13 @@
 import _ from 'lodash';
 import clsx from 'clsx';
+import PropTypes from 'prop-types';
 import React, {Component} from 'react';
 
 export default class Splash extends Component {
+    static propTypes = {
+        message: PropTypes.string,
+    };
+
     state = {
         isHelpVisible: false,
         mark: 0,
@@ -59,6 +64,7 @@ export default class Splash extends Component {
 
     render = () => {
         const {mark} = this.state;
+        const {message} = this.props;
         return (
             <div
                 className="
@@ -79,6 +85,7 @@ export default class Splash extends Component {
                         />
                     ))}
                 </div>
+                {message && <span className="max-w-sm">{message}</span>}
                 {this.renderHelp()}
             </div>
         );

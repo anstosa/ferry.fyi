@@ -27,7 +27,7 @@ class Schedule extends Component {
         expanded: null,
         terminal: null,
         mate: null,
-        schedule: [],
+        schedule: null,
         isUpdating: false,
     };
 
@@ -165,7 +165,11 @@ class Schedule extends Component {
         } = this.state;
         const {match} = this.props;
         if (!terminal || !mate || _.isEmpty(schedule)) {
-            return <Splash />;
+            let message;
+            if (_.isArray(schedule)) {
+                message = 'Ferry FYI just updated! Fetching data from WSF...';
+            }
+            return <Splash message={message} />;
         }
         return (
             <>
