@@ -284,7 +284,7 @@ export default class Capacity extends Component {
                     <div
                         className={clsx(
                             'absolute w-0 top-0 left-0 h-full',
-                            'bg-darken-lower'
+                            hasPassed ? 'bg-darken-lower' : 'bg-blue-light'
                         )}
                         style={{width: `${percentFull}%`}}
                     >
