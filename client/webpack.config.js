@@ -15,7 +15,7 @@ const NAME = 'Ferry FYI';
 const TITLE = `${NAME} - Seattle Area Ferry Schedule and Tracker`;
 const DESCRIPTION =
     'A ferry schedule and tracker for the greater Seattle area.';
-const COLOR = '#00735a';
+const COLOR = '#016f52'; // sync with tailwind.config.js theme.green.dark
 
 const commonConfig = merge([
     {

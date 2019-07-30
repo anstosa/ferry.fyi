@@ -59,7 +59,7 @@ module.exports = {
             green: {
                 lightest: '#d7eae5',
                 light: '#9ccfc2',
-                dark: '#016f52',
+                dark: '#016f52', // sync with client/webpack.config.js COLOR
             },
 
             red: {
@@ -154,8 +154,8 @@ module.exports = {
         },
         boxShadow: {
             default: `
-              0 1px 3px 0 rgba(0, 0, 0, 0.1), 
-              0 1px 2px 0 rgba(0, 0, 0, 0.06)
+                0 1px 3px 0 rgba(0, 0, 0, 0.1), 
+                0 1px 2px 0 rgba(0, 0, 0, 0.06)
             `,
             md: `
                 0 4px 6px -1px rgba(0, 0, 0, 0.1),
