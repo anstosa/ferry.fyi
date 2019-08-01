@@ -85,7 +85,7 @@ export default class Splash extends Component {
                         />
                     ))}
                 </div>
-                {message && <span className="max-w-sm">{message}</span>}
+                {message && <span className="max-w-sm mt-8">{message}</span>}
                 {this.renderHelp()}
             </div>
         );
