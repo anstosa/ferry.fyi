@@ -66,14 +66,16 @@ export default class Footer extends Component {
         const {isOpen, tab} = this.state;
         const showCameras = !isOpen || tab === TAB_CAMERAS;
         const showAlerts = !isOpen || tab === TAB_ALERTS;
+        const alertsPlaceholder = !showAlerts && !isOpen;
+        const camerasPlaceholder = !showCameras && !isOpen;
         const showMap = !isOpen;
         return (
             <div className="flex">
                 {showCameras && this.renderToggleCameras()}
-                {!showCameras && !isOpen && <div className="flex-grow" />}
+                {camerasPlaceholder && <div className="flex-grow" />}
                 {showMap && this.renderMapLink()}
                 {showAlerts && this.renderToggleAlerts()}
-                {!showAlerts && !isOpen && <div className="flex-grow" />}
+                {alertsPlaceholder && <div className="flex-grow" />}
             </div>
         );
     };
