@@ -36,18 +36,14 @@ export default class VesselStatus extends Component {
             }
         } else {
             statusText = 'Sailing';
-            detailText = (
-                <a
-                    className="link"
-                    href={vesselwatch || locationToUrl(location)}
-                >
-                    {knotsToMph(speed)}mph {degreesToHeading(heading)}
-                </a>
-            );
+            detailText = `${knotsToMph(speed)}mph ${degreesToHeading(heading)}`;
         }
 
         return (
-            <span className={clsx('text-sm', className)}>
+            <a
+                className={clsx('link text-sm', className)}
+                href={vesselwatch || locationToUrl(location)}
+            >
                 <span>{statusText}</span>
                 {detailText && (
                     <>
@@ -55,7 +51,7 @@ export default class VesselStatus extends Component {
                         <span>{detailText}</span>
                     </>
                 )}
-            </span>
+            </a>
         );
     };
 }
