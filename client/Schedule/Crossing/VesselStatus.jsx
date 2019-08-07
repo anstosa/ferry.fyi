@@ -15,7 +15,14 @@ export default class VesselStatus extends Component {
 
     render = () => {
         const {className, vessel, time} = this.props;
-        const {dockedTime, isAtDock, location, heading, speed} = vessel;
+        const {
+            dockedTime,
+            isAtDock,
+            location,
+            heading,
+            speed,
+            vesselwatch,
+        } = vessel;
 
         let statusText;
         let detailText;
@@ -32,9 +39,7 @@ export default class VesselStatus extends Component {
             detailText = (
                 <a
                     className="link"
-                    href={locationToUrl(location)}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    href={vesselwatch || locationToUrl(location)}
                 >
                     {knotsToMph(speed)}mph {degreesToHeading(heading)}
                 </a>

@@ -123,6 +123,8 @@ const TERMINAL_DATA_OVERRIDES = {
             'https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=fvs',
     },
 };
+const VESSELWATCH_BASE =
+    'https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=';
 
 // API paths
 const API_ACCESS = `?apiaccesscode=${process.env.WSDOT_API_KEY}`;
@@ -362,6 +364,7 @@ async function updateVessels() {
     const vessels = await request(API_VESSELS_VERBOSE, {json: true});
     _.each(vessels, (vessel) => {
         const {VesselID: id} = vessel;
+        const name = vessel.VesselName;
         assignVessel(id, {
             abbreviation: vessel.VesselAbbrev,
             beam: vessel.Beam,
@@ -381,10 +384,11 @@ async function updateVessels() {
             isAdaAccessible: vessel.ADAAccessible,
             length: vessel.Length,
             maxClearance: vessel.TallDeckClearance,
-            name: vessel.VesselName,
+            name,
             passengerCapacity: vessel.MaxPassengerCount,
             speed: vessel.SpeedInKnots,
             tallVehicleCapacity: vessel.TallDeckSpace,
+            vesselwatch: `${VESSELWATCH_BASE}${name}`,
             vehicleCapacity: vessel.RegDeckSpace + vessel.TallDeckSpace,
             weight: vessel.Tonnage,
             yearBuilt: vessel.YearBuilt,
