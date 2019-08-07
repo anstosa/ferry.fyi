@@ -66,16 +66,12 @@ export default class Footer extends Component {
         const {isOpen, tab} = this.state;
         const showCameras = !isOpen || tab === TAB_CAMERAS;
         const showAlerts = !isOpen || tab === TAB_ALERTS;
-        const alertsPlaceholder = !showAlerts && !isOpen;
-        const camerasPlaceholder = !showCameras && !isOpen;
         const showMap = !isOpen;
         return (
             <div className="flex">
                 {showCameras && this.renderToggleCameras()}
-                {camerasPlaceholder && <div className="flex-grow" />}
                 {showMap && this.renderMapLink()}
                 {showAlerts && this.renderToggleAlerts()}
-                {alertsPlaceholder && <div className="flex-grow" />}
             </div>
         );
     };
@@ -95,7 +91,7 @@ export default class Footer extends Component {
     renderToggleCameras = () => {
         const {isOpen, isReloading} = this.state;
         if (!isOnline()) {
-            return null;
+            return <div className="flex-1" />;
         }
         return (
             <div
@@ -103,7 +99,7 @@ export default class Footer extends Component {
                     'relative h-16 p-4',
                     'flex items-center justify-start',
                     'cursor-pointer',
-                    'flex-grow flex-no-wrap min-w-0'
+                    'flex-1 flex-no-wrap min-w-0'
                 )}
             >
                 <div
@@ -158,13 +154,13 @@ export default class Footer extends Component {
         const {isOpen} = this.state;
         const {terminal, time} = this.props;
         if (!getBulletins(terminal).length) {
-            return null;
+            return <div className="flex-1" />;
         }
         return (
             <div
                 className={clsx(
                     'relative h-16 p-4',
-                    'flex items-center flex-grow justify-end',
+                    'flex items-center flex-1 justify-end',
                     'flex-no-wrap min-w-0',
                     'cursor-pointer'
                 )}
