@@ -53,44 +53,42 @@ export default class Crossing extends Component {
             return null;
         }
         return (
-            <>
+            <div
+                className={clsx(
+                    'p-4 flex',
+                    'text-sm',
+                    'shadow-inset bg-darken-lowest'
+                )}
+            >
                 <div
                     className={clsx(
-                        'w-full h-1',
-                        'border-t border-dashed border-gray-medium'
+                        'flex-grow pr-4',
+                        'border-r border-dashed border-gray-medium'
                     )}
-                />
-                <div className={clsx('p-4', 'flex', 'text-sm')}>
-                    <div
-                        className={clsx(
-                            'flex-grow pr-4',
-                            'border-r border-dashed border-gray-medium'
-                        )}
-                    >
-                        <div className="flex items-center mb-2">
-                            <VesselTag vessel={vessel} />
-                            <ErrorBoundary>
-                                <VesselStatus
-                                    className="flex-glow ml-2"
-                                    vessel={vessel}
-                                    time={time}
-                                />
-                            </ErrorBoundary>
-                        </div>
-                        <span className="text-xs">Capacity: {capacity}</span>
+                >
+                    <div className="flex items-center mb-2">
+                        <VesselTag vessel={vessel} />
+                        <ErrorBoundary>
+                            <VesselStatus
+                                className="flex-glow ml-2"
+                                vessel={vessel}
+                                time={time}
+                            />
+                        </ErrorBoundary>
                     </div>
-                    {route && (
-                        <div className={clsx('flex-grow', 'pl-4')}>
-                            Crossing: {route.crossingTime}mins
-                        </div>
-                    )}
+                    <span className="text-xs">Capacity: {capacity}</span>
                 </div>
-            </>
+                {route && (
+                    <div className={clsx('flex-grow', 'pl-4')}>
+                        Crossing: {route.crossingTime}mins
+                    </div>
+                )}
+            </div>
         );
     };
 
     render = () => {
-        const {crossing, isExpanded} = this.props;
+        const {crossing} = this.props;
         const {hasPassed} = crossing;
         const isNext =
             crossing === _.find(this.props.schedule, {hasPassed: false});
@@ -104,14 +102,7 @@ export default class Crossing extends Component {
             background = 'bg-white';
         }
 
-        let border;
-        if (isNext) {
-            border = 'border-b-2 border-t-2 border-blue-medium -mt-1px';
-        } else if (isExpanded) {
-            border = 'border-b border-t border-gray-dark -mt-1px';
-        } else {
-            border = 'border-b border-gray-medium';
-        }
+        const border = 'border-b border-gray-medium';
 
         return (
             <li className={clsx(border, background, 'flex flex-col')}>
