@@ -126,6 +126,8 @@ const TERMINAL_DATA_OVERRIDES = {
 const VESSELWATCH_BASE =
     'https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=';
 
+const ESTIMATE_COMPOSITE_WEEKS = 4;
+
 // API paths
 const API_ACCESS = `?apiaccesscode=${process.env.WSDOT_API_KEY}`;
 
@@ -159,7 +161,7 @@ const cacheFlushDates = {
 
 let matesByTerminalId = {};
 const vesselsById = {};
-const previousCapacityByTerminal = {};
+const estimates = {};
 const terminalsById = {};
 const scheduleByTerminal = {};
 
@@ -254,6 +256,47 @@ async function backfillCrossings() {
     });
 }
 
+// "Weekly Unique Identifier"
+// Accepts a timestamp from a scheduled sailing
+// Generates a key for use in comparing a sailing slot across weeks.
+function getWuid(departureTime) {
+    return DateTime.fromSeconds(departureTime).toFormat('CCC-HH-mm');
+}
+
+async function buildEstimates(departureId, arrivalId, schedule) {
+    const startTime = DateTime.fromSeconds(_.first(schedule).time)
+        .minus({weeks: ESTIMATE_COMPOSITE_WEEKS})
+        .toSeconds();
+    const crossings = await Crossing.findAll({
+        where: {
+            departureId,
+            arrivalId,
+            departureTime: {[Op.gte]: startTime},
+        },
+    });
+    _.each(schedule, (crossing) => {
+        const {wuid} = crossing;
+        const estimate = {};
+        _.times(ESTIMATE_COMPOSITE_WEEKS, (index) => {
+            const departureTime = DateTime.fromSeconds(crossing.time)
+                .minus({weeks: index + 1})
+                .toSeconds();
+            const previousCrossing = _.find(crossings, {departureTime});
+            const capacity = _.pick(previousCrossing, [
+                'driveUpCapacity',
+                'reservableCapacity',
+            ]);
+            _.mergeWith(estimate, capacity, (value, source) =>
+                _.concat(value, source)
+            );
+        });
+        _.each(estimate, (records, key) => {
+            estimate[key] = _.round(_.mean(_.filter(records))) || null;
+        });
+        _.setWith(estimates, [departureId, arrivalId, wuid], estimate, Object);
+    });
+}
+
 async function updateSchedule() {
     const cacheFlushDate = wsfDateToTimestamp(
         await request(API_SCHEDULE_CACHE, {json: true})
@@ -307,41 +350,19 @@ async function updateSchedule() {
                             departure.LoadingRule
                         ),
                         hasPassed,
+                        wuid: getWuid(time),
                         time,
                         vessel,
                     };
                 })
             );
-
-            const startTime = DateTime.fromSeconds(_.first(schedule).time)
-                .minus({weeks: 1})
-                .toSeconds();
-            const endTime = DateTime.fromSeconds(_.last(schedule).time)
-                .minus({weeks: 1})
-                .toSeconds();
-            const crossings = await Crossing.findAll({
-                where: {
-                    departureTime: {[Op.gte]: startTime, [Op.lte]: endTime},
-                },
-            });
-            _.each(crossings, (crossing) => {
-                _.setWith(
-                    previousCapacityByTerminal,
-                    [
-                        crossing.departureId,
-                        crossing.arrivalId,
-                        crossing.departureTime,
-                    ],
-                    crossing,
-                    Object
-                );
-            });
             _.setWith(
                 scheduleByTerminal,
                 [terminalId, mateId],
                 _.keyBy(schedule, 'time'),
                 Object
             );
+            await buildEstimates(terminalId, mateId, schedule);
         })
     );
     logger.info('Completed Schedule Update');
@@ -663,25 +684,11 @@ function updateEstimates() {
     _.each(scheduleByTerminal, (mates, departureId) =>
         _.each(mates, (schedule, mateId) =>
             _.each(schedule, (crossing) => {
-                const previousDepartureTime = DateTime.fromSeconds(
-                    crossing.time
-                )
-                    .minus({weeks: 1})
-                    .toSeconds();
-                const previousCapacity = _.get(previousCapacityByTerminal, [
+                const estimate = _.get(estimates, [
                     departureId,
                     mateId,
-                    previousDepartureTime,
+                    getWuid(crossing.time),
                 ]);
-                let estimate;
-                if (previousCapacity) {
-                    estimate = _.pick(previousCapacity, [
-                        'driveUpCapacity',
-                        'reservableCapacity',
-                    ]);
-                } else {
-                    estimate = null;
-                }
                 crossing.estimate = estimate;
             })
         )

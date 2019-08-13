@@ -258,7 +258,7 @@ export default class Capacity extends Component {
         return (
             <div
                 className={clsx(
-                    'flex flex-col pt-4',
+                    'flex flex-col pt-3',
                     this.willFitRight() ? 'items-start' : 'items-end'
                 )}
             >
@@ -272,8 +272,9 @@ export default class Capacity extends Component {
         const {estimateFull, percentFull} = this.state;
         const {hasPassed} = this.props.crossing;
         const showCapacity = Boolean(percentFull);
-        const showEstimate =
-            estimateFull && estimateFull > percentFull && !hasPassed;
+        const showEstimate = Boolean(
+            estimateFull && estimateFull > percentFull && !hasPassed
+        );
         if (!showCapacity && !showEstimate) {
             return null;
         }

@@ -10,7 +10,7 @@ async function clean(queue) {
 }
 
 (async () => {
-    logger.info('Warming cache');
+    logger.info('Warming cache...');
     await updateLong();
     await updateShort();
 
