@@ -5,12 +5,11 @@ A better tracker for the Washington State Ferry System
 ## Setting up dev environment
 
 1. Install [postgres](https://www.postgresql.org/)
-    1. Create a database named `ferryfyi` (`CREATE DATABASE ferryfyi;`)
 2. Install [redis](https://redis.io/)
 3. `git clone git@github.com:anstosa/ferry.fyi.git`
 4. `cd ferry.fyi`
 5. `npm install`
-6. `cp .env.sample .env` and fill out `.env` file
+6. `cd .env.sample .env` and fill out `.env` file
 7. `npm run migrate` to initialize database
 
 

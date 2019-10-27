@@ -10,7 +10,7 @@ import Splash from './Splash';
 
 Settings.defaultZoneName = 'America/Los_Angeles';
 
-export default class Application extends Component {
+export default class App extends Component {
     state = {
         isLoading: false,
         route: null,

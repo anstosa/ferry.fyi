@@ -1,6 +1,6 @@
 import '@babel/polyfill';
 import {Workbox} from 'workbox-window';
-import Application from './Application';
+import App from './App';
 import React from 'react';
 import ReactDOM from 'react-dom';
 
@@ -24,7 +24,7 @@ const whenReady = (callback) => {
 
 whenReady(() => {
     const root = document.querySelector('#root');
-    const app = React.createElement(Application);
+    const app = React.createElement(App);
     const renderAll = () => {
         ReactDOM.render(app, root);
     };
