@@ -267,7 +267,6 @@ async function buildEstimates(departureId, arrivalId, schedule) {
     if (!schedule || !_.first(schedule)) {
         return;
     }
-    console.log(_.keys(_.first(schedule)));
     const startTime = DateTime.fromSeconds(_.first(schedule).time)
         .minus({weeks: ESTIMATE_COMPOSITE_WEEKS})
         .toSeconds();
