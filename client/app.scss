@@ -1,10 +1,9 @@
-$fa-font-path: '../node_modules/@fortawesome/fontawesome-pro/webfonts';
-@import '@fortawesome/fontawesome-pro/scss/fontawesome';
-@import '@fortawesome/fontawesome-pro/scss/regular';
-@import '@fortawesome/fontawesome-pro/scss/solid';
-@import '@fortawesome/fontawesome-pro/scss/light';
-@import '@fortawesome/fontawesome-pro/scss/brands';
-@import 'react-toastify/dist/ReactToastify';
+$fa-font-path: "./fonts";
+@import "./scss/fontawesome/fontawesome";
+@import "./scss/fontawesome/regular";
+@import "./scss/fontawesome/solid";
+@import "./scss/fontawesome/light";
+@import "./scss/fontawesome/brands";
 
 // Inject Tailwind CSSs base styles, including normalization.
 @tailwind base;
@@ -15,33 +14,33 @@ $fa-font-path: '../node_modules/@fortawesome/fontawesome-pro/webfonts';
 // Imports
 
 html {
-    @apply bg-green-dark; // iPhone X letterbox
-    font-family: 'Roboto', sans-serif;
+  @apply bg-green-dark; // iPhone X letterbox
+  font-family: "Roboto", sans-serif;
 }
 
 .bg-prediction-gradient {
-    background: linear-gradient(
-        to left,
-        theme('colors.darken.lowest'),
-        transparent theme('spacing.20'),
-    );
+  background: linear-gradient(
+    to left,
+    theme("colors.darken.lowest"),
+    transparent theme("spacing.20")
+  );
 }
 
 .fa-spin-pause {
-    animation-play-state: paused;
+  animation-play-state: paused;
 }
 
 // Components
 @responsive {
-    .animate {
-        transition: all 0.15s ease-out;
-    }
+  .animate {
+    transition: all 0.15s ease-out;
+  }
 
-    @import 'components/alert';
-    @import 'components/button';
-    @import 'components/field';
-    @import 'components/link';
-    @import 'components/list';
+  @import "components/alert";
+  @import "components/button";
+  @import "components/field";
+  @import "components/link";
+  @import "components/list";
 }
 
 // Inject tailwind utility classes

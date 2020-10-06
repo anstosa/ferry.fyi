@@ -1,0 +1,13 @@
+{
+  "extends": "../tsconfig",
+  "compilerOptions": {
+    "outDir": "../dist/server",
+    "target": "es2019",
+    "noEmit": false,
+    "module": "CommonJS"
+  },
+  "include": ["./**/*",],
+  "exclude": [
+    "./devServer.ts"
+  ],
+}

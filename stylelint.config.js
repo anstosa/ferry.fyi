@@ -1,36 +1,33 @@
 module.exports = {
-    extends: 'stylelint-config-recommended',
-    ignoreFiles: [],
-    rules: {
-        'at-rule-no-unknown': [
-            true,
-            {
-                ignoreAtRules: [
-                    'extends',
-                    'apply',
-                    'mixin',
-                    'each',
-                    'if',
-                    'else',
-                    'elseif',
-                    'include',
-                    'tailwind',
-                    'responsive',
-                ],
-            },
+  plugins: ["stylelint-order", "stylelint-scss"],
+  ignoreFiles: [
+    "**/*.js",
+    "**/*.cjs",
+    "**/*.ts",
+    "**/*.tsx",
+    "client/scss/fontawesome/*",
+  ],
+  rules: {
+    "max-nesting-depth": 5,
+    "order/properties-alphabetical-order": true,
+    "selector-class-pattern": null,
+    "scss/at-rule-no-unknown": [
+      true,
+      {
+        ignoreAtRules: [
+          // tailwind
+          "apply",
+          "components",
+          "extends",
+          "include",
+          "mixin",
+          "responsive",
+          "screen",
+          "tailwind",
+          "utilities",
         ],
-        'block-no-empty': false,
-        'unit-whitelist': [
-            'em',
-            'rem',
-            's',
-            '%',
-            'deg',
-            'px',
-            'vh',
-            'vw',
-            'ms',
-            'fr',
-        ],
-    },
+      },
+    ],
+    "string-quotes": "double",
+  },
 };

@@ -1,0 +1,18 @@
+{
+  "extends": "../tsconfig",
+  "compilerOptions": {
+    "jsx": "react",
+    "sourceMap": true,
+    "outDir": "../dist/client",
+    "target": "ES5",
+    "lib": [
+      "DOM",
+      "DOM.Iterable",
+      "ESNext"
+    ],
+    "noEmit": false,
+    "module": "CommonJS"
+  },
+  "include": ["./**/*"],
+  "exclude": []
+}
