@@ -91,7 +91,6 @@
         "robotstxt-webpack-plugin": "^7.0.0",
         "sass-loader": "^10.0.2",
         "scroll-into-view": "^1.15.0",
-        "sequelize-cli": "^6.2.0",
         "style-loader": "^1.3.0",
         "stylelint": "^13.7.2",
         "stylelint-config-recommended": "^3.0.0",
@@ -132,6 +131,7 @@
         "pg-hstore": "^2.3.3",
         "request": "^2.88.2",
         "request-promise": "^4.2.6",
+        "sequelize-cli": "^6.2.0",
         "sequelize": "^6.3.5",
         "xml-js": "^1.6.11"
     }
