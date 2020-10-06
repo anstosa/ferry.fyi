@@ -7,6 +7,7 @@ import React, { FunctionComponent, ReactNode } from "react";
 const ALERT_FILTER = new RegExp(
   `(${[
     "boat",
+    "advised",
     "cancelled",
     "emergency",
     "medical",
