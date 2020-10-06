@@ -2,6 +2,7 @@ import { Capacity } from "./Capacity";
 import { DateTime } from "luxon";
 import { ErrorBoundary } from "../../lib/ErrorBoundary";
 import { find, isNull } from "lodash";
+import { isDark } from "../../lib/theme";
 import { Route, Slot } from "../../../server/lib/wsf";
 import { Status } from "./Status";
 import { Time } from "./Time";
@@ -101,17 +102,18 @@ export const SlotInfo: FunctionComponent<Props> = (props) => {
 
   let background: string;
   if (hasPassed) {
-    background = "bg-gray-light";
+    background = isDark ? "bg-gray-darkest" : "bg-gray-light";
   } else if (isNext) {
-    background = "bg-blue-lightest";
+    background = isDark ? "bg-blue-darkest" : "bg-blue-lightest";
   } else {
-    background = "bg-white";
+    background = isDark ? "bg-black" : "bg-white";
   }
 
   return (
     <li
       className={clsx(
-        "border-b border-gray-medium",
+        "border-b",
+        isDark ? "border-gray-dark" : "border-gray-medium",
         "flex flex-col",
         background
       )}

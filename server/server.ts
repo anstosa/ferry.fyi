@@ -57,13 +57,17 @@ app.use(mount("/api", api));
 
 // static files app
 const dist = new Koa();
-dist.use(serve(path.resolve(__dirname, "../client")));
+const clientDist = path.resolve(
+  __dirname,
+  "../",
+  process.env.NODE_ENV === "development" ? "dist/" : "",
+  "client/"
+);
+dist.use(serve(clientDist));
 const browser = new Router();
 browser.get(/.*/, (context) => {
   context.type = "html";
-  context.body = fs.readFileSync(
-    path.resolve(__dirname, "../client/index.html")
-  );
+  context.body = fs.readFileSync(path.resolve(clientDist, "index.html"));
 });
 dist.use(browser.routes());
 app.use(mount("/", dist));

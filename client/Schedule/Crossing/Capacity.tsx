@@ -1,3 +1,4 @@
+import { isDark } from "../../lib/theme";
 import { isNull, min } from "lodash";
 import { Slot } from "../../../server/lib/wsf";
 import clsx from "clsx";
@@ -148,7 +149,10 @@ export const Capacity: FunctionComponent<Props> = (props) => {
       if (hasAvailableReservations()) {
         reservationsText = (
           <a
-            className="text-xs link text-green-dark"
+            className={clsx(
+              "text-xs link",
+              isDark ? "text-green-light" : "text-green-dark"
+            )}
             href={RESERVATIONS_BASE_URL + departureId}
             target="_blank"
             rel="noreferrer noopener"
@@ -159,12 +163,26 @@ export const Capacity: FunctionComponent<Props> = (props) => {
         );
       } else if (allowsReservations()) {
         reservationsText = (
-          <span className="text-xs text-gray-dark">Standby Only</span>
+          <span
+            className={clsx(
+              "text-xs",
+              isDark ? "text-gray-light" : "text-gray-dark"
+            )}
+          >
+            Standby Only
+          </span>
         );
       }
     } else if (estimate) {
       reservationsText = (
-        <span className="text-xs text-blue-light italic">Forecast</span>
+        <span
+          className={clsx(
+            "text-xs italic",
+            isDark ? "text-blue-medium" : "text-blue-light"
+          )}
+        >
+          Forecast
+        </span>
       );
     }
     return reservationsText;
@@ -188,11 +206,19 @@ export const Capacity: FunctionComponent<Props> = (props) => {
           </>
         );
         if (!hasPassed) {
-          spaceClass = clsx(spaceClass, "font-bold text-red-dark");
+          spaceClass = clsx(
+            spaceClass,
+            "font-bold",
+            isDark ? "text-red-light" : "text-red-dark"
+          );
         }
       } else if (percentFull > 80) {
         if (!hasPassed) {
-          spaceClass = clsx(spaceClass, "font-medium text-yellow-dark");
+          spaceClass = clsx(
+            spaceClass,
+            "font-medium",
+            isDark ? "text-yellow-light" : "text-yellow-dark"
+          );
         }
       }
     } else if (estimate && !isNull(estimateLeft)) {
@@ -237,7 +263,14 @@ export const Capacity: FunctionComponent<Props> = (props) => {
         <div
           className={clsx(
             "absolute w-0 top-0 left-0 h-full",
-            hasPassed ? "bg-darken-lower" : "bg-blue-light"
+            // eslint-disable-next-line no-nested-ternary
+            hasPassed
+              ? isDark
+                ? "bg-lighten-lower"
+                : "bg-darken-lower"
+              : isDark
+              ? "bg-blue-dark"
+              : "bg-blue-light"
           )}
           style={{ width: `${percentFull}%` }}
         >
@@ -257,8 +290,8 @@ export const Capacity: FunctionComponent<Props> = (props) => {
         <div
           className={clsx(
             "absolute w-1 top-0 h-full",
-            "bg-prediction-gradient",
-            "border-darken-lower",
+            `bg-prediction-gradient${isDark && "--dark"}`,
+            isDark ? "border-lighten-lower" : "border-darken-lower",
             "border-r-4 border-r-dashed"
           )}
           style={{

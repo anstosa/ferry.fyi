@@ -1,4 +1,5 @@
 import { DateTime, Duration } from "luxon";
+import { isDark } from "../../lib/theme";
 import { isNull, round } from "lodash";
 import { Slot } from "../../../server/lib/wsf";
 import clsx from "clsx";
@@ -9,6 +10,10 @@ interface Props {
   slot: Slot;
   time: DateTime;
 }
+
+const textGreen = isDark ? "text-green-light" : "text-green-dark";
+const textRed = isDark ? "text-red-light" : "text-red-dark";
+const textYellow = isDark ? "text-yellow-light" : "text-yellow-dark";
 
 export const Status: FunctionComponent<Props> = (props) => {
   const { className, slot, time } = props;
@@ -29,17 +34,17 @@ export const Status: FunctionComponent<Props> = (props) => {
     if (isCancelled) {
       scheduled = `${scheduledTime.toFormat("h:mm a")}`;
       statusText = "Cancelled";
-      statusClass = clsx(statusClass, "text-red-dark font-bold uppercase");
+      statusClass = clsx(statusClass, "font-bold uppercase", textRed);
     } else if (Math.abs(deltaMins) >= 4) {
       const units = deltaMins === 1 ? "min" : "mins";
       const direction = deltaMins < 0 ? "ahead" : "behind";
-      const color = deltaMins < 10 ? "text-yellow-dark" : "text-red-dark";
+      const color = deltaMins < 10 ? textYellow : textRed;
       statusText = `${deltaMins} ${units} ${direction}`;
       statusClass = clsx(statusClass, !hasPassed && color, "font-bold");
       scheduled = `Scheduled ${formattedScheduledTime}`;
     } else {
       statusText = "On time";
-      statusClass = clsx(statusClass, !hasPassed && "text-green-dark");
+      statusClass = clsx(statusClass, !hasPassed && textGreen);
       if (Math.abs(diff.as("hours")) < 1) {
         scheduled = `Scheduled ${formattedScheduledTime}`;
       }

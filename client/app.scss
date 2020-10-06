@@ -26,6 +26,14 @@ html {
   );
 }
 
+.bg-prediction-gradient--dark {
+  background: linear-gradient(
+    to left,
+    theme("colors.lighten.lower"),
+    transparent theme("spacing.20")
+  );
+}
+
 .fa-spin-pause {
   animation-play-state: paused;
 }

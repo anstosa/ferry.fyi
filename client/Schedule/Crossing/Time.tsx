@@ -1,4 +1,5 @@
 import { DateTime, Duration } from "luxon";
+import { isDark } from "../../lib/theme";
 import { round } from "lodash";
 import { Slot } from "../../../server/lib/wsf";
 import clsx from "clsx";
@@ -38,15 +39,15 @@ export const Time: FunctionComponent<Props> = (props) => {
     minorTime = estimatedTime.toFormat("a");
   }
 
-  let color = "text-black";
+  let color = isDark ? "text-white" : "text-black";
   if (isCancelled) {
-    color = "text-red-dark";
+    color = isDark ? "text-red-light" : "text-red-dark";
   } else if (hasPassed) {
-    color = "text-gray-dark";
+    color = isDark ? "text-gray-medium" : "text-gray-dark";
   } else if (deltaMins >= 10) {
-    color = "text-red-dark";
+    color = isDark ? "text-red-light" : "text-red-dark";
   } else if (deltaMins >= 4) {
-    color = "text-yellow-dark";
+    color = isDark ? "text-yellow-light" : "text-yellow-dark";
   }
 
   let weight;

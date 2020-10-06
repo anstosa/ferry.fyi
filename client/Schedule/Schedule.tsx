@@ -4,6 +4,7 @@ import { Footer } from "./Footer";
 import { getSchedule } from "../schedule";
 import { getSlug, getTerminal } from "../terminals";
 import { Header } from "../Header";
+import { isDark } from "../lib/theme";
 import { Slot, Terminal } from "../../server/lib/wsf";
 import { SlotInfo } from "./Crossing/SlotInfo";
 import { Splash } from "../Splash";
@@ -193,14 +194,16 @@ export const Schedule: FunctionComponent = () => {
           "w-full max-h-full",
           "flex-grow",
           "flex flex-col items-center",
-          "pr-safe-right pl-safe-left bg-white",
+          "pr-safe-right pl-safe-left",
+          isDark ? "bg-black text-white" : "bg-white text-black",
           isFooterOpen ? "overflow-hidden" : "overflow-y-scroll"
         )}
       >
         <div
           className={clsx(
             "w-full max-w-6xl bg-blue-lightest",
-            "lg:border-l lg:border-r border-gray-medium"
+            "lg:border-l lg:border-r",
+            isDark ? "border-gray-dark" : "border-gray-medium"
           )}
         >
           {renderSchedule()}
