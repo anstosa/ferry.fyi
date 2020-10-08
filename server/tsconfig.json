@@ -4,10 +4,12 @@
     "outDir": "../dist/server",
     "target": "es2019",
     "noEmit": false,
-    "module": "CommonJS"
+    "module": "CommonJS",
+    "baseUrl": "./",
+    "paths": {
+      "~/*": ["../*"]
+    }
   },
-  "include": ["./**/*",],
-  "exclude": [
-    "./devServer.ts"
-  ],
+  "include": ["./**/*"],
+  "exclude": ["./devServer.ts"]
 }

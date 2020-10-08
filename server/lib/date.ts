@@ -1,8 +1,8 @@
 import { DateTime } from "luxon";
-import { isEmpty, isNull, round, toNumber } from "lodash";
+import { isNull, round, toNumber } from "lodash";
 
-export const wsfDateToTimestamp = (wsfDate: string): number => {
-  if (isEmpty(wsfDate)) {
+export const wsfDateToTimestamp = (wsfDate?: string): number => {
+  if (!wsfDate) {
     return 0;
   }
   const match = wsfDate.match(/\/Date\((\d+)-\d+\)\//);

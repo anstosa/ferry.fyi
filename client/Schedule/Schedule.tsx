@@ -5,9 +5,10 @@ import { getSchedule } from "../schedule";
 import { getSlug, getTerminal } from "../terminals";
 import { Header } from "../Header";
 import { isDark } from "../lib/theme";
-import { Slot, Terminal } from "../../server/lib/wsf";
+import { Slot } from "../../server/lib/schedule";
 import { SlotInfo } from "./Crossing/SlotInfo";
 import { Splash } from "../Splash";
+import { Terminal } from "../../server/lib/terminals";
 import { useHistory, useLocation, useParams } from "react-router-dom";
 import clsx from "clsx";
 import React, {

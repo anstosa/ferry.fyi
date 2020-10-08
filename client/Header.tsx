@@ -3,7 +3,7 @@ import { isOnline } from "./lib/api";
 import { Link } from "react-router-dom";
 import { map, without } from "lodash";
 import { Menu } from "./Menu";
-import { Terminal } from "../server/lib/wsf";
+import { Terminal } from "../server/lib/terminals";
 import clsx from "clsx";
 import React, {
   FunctionComponent,

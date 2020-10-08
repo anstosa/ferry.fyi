@@ -2,7 +2,7 @@ import { Camera } from "../../server/lib/cameras";
 import { DateTime } from "luxon";
 import { find, isNil, isNull, map } from "lodash";
 import { locationToUrl } from "../lib/maps";
-import { Terminal } from "../../server/lib/wsf";
+import { Terminal } from "../../server/lib/terminals";
 import clsx from "clsx";
 import React, {
   FunctionComponent,

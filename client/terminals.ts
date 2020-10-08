@@ -1,6 +1,6 @@
 import { assign, findKey, isString, keys, map, sortBy, toLower } from "lodash";
 import { get } from "./lib/api";
-import { Terminal, TerminalsById } from "../server/lib/wsf";
+import { Terminal, TerminalsById } from "../server/lib/terminals";
 
 const TERMINAL_ALIASES: { [slug: string]: number } = {
   ana: 1,

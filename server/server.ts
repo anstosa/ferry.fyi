@@ -1,14 +1,9 @@
 import { DateTime } from "luxon";
 import { dbInit } from "./lib/db";
-import {
-  getSchedule,
-  getTerminal,
-  getTerminals,
-  getVessel,
-  getVessels,
-  updateLong,
-  updateShort,
-} from "./lib/wsf";
+import { getSchedule } from "./lib/schedule";
+import { getTerminal, getTerminals } from "./lib/terminals";
+import { getVessel, getVessels } from "./lib/vessels";
+import { updateLong, updateShort } from "./lib/wsf";
 import bodyParser from "koa-bodyparser";
 import fs from "fs";
 import Koa from "koa";
@@ -76,7 +71,10 @@ app.use(mount("/", dist));
 (async () => {
   await dbInit;
   app.listen(process.env.PORT, () => logger.info("Server started"));
-  await Promise.all([updateLong(), updateShort()]);
+  logger.info("Initializing WSF");
+  await updateLong();
+  await updateShort();
+  logger.info("WSF Initialized");
   setInterval(updateLong, 30 * 1000);
   setInterval(updateShort, 10 * 1000);
 })();

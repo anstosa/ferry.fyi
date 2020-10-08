@@ -1,5 +1,5 @@
 import { get } from "./lib/api";
-import { Terminal } from "../server/lib/wsf";
+import { Terminal } from "../server/lib/terminals";
 
 const getApiSchedule = (departingId: number, arrivingId: number): string =>
   `/schedule/${departingId}/${arrivingId}`;

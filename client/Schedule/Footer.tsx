@@ -3,7 +3,7 @@ import { Cameras } from "./Cameras";
 import { DateTime } from "luxon";
 import { isFunction } from "lodash";
 import { isOnline } from "../lib/api";
-import { Terminal } from "../../server/lib/wsf";
+import { Terminal } from "../../server/lib/terminals";
 import clsx from "clsx";
 import React, { FunctionComponent, ReactNode, useState } from "react";
 import ReactGA from "react-ga";

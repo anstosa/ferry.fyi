@@ -1,5 +1,5 @@
 import { isDark } from "../lib/theme";
-import { Vessel } from "../../server/lib/wsf";
+import { Vessel } from "../../server/lib/vessels";
 import clsx from "clsx";
 import React, { FunctionComponent } from "react";
 

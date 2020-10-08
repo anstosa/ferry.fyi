@@ -1,6 +1,6 @@
 import { isDark } from "../../lib/theme";
 import { isNull, min } from "lodash";
-import { Slot } from "../../../server/lib/wsf";
+import { Slot } from "../../../server/lib/schedule";
 import clsx from "clsx";
 import React, {
   FunctionComponent,

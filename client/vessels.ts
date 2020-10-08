@@ -1,6 +1,6 @@
 import { assign, map, sortBy } from "lodash";
 import { get } from "./lib/api";
-import { Vessel, VesselsById } from "../server/lib/wsf";
+import { Vessel, VesselsById } from "../server/lib/vessels";
 
 const API_VESSELS = "/vessels";
 const getApiVessel = (id: number): string => `/vessels/${id}`;

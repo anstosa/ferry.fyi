@@ -1,4 +1,4 @@
-import { Bulletin, Terminal } from "../../server/lib/wsf";
+import { Bulletin, Terminal } from "../../server/lib/terminals";
 import { capitalize, filter, map, reverse, round, sortBy } from "lodash";
 import { DateTime } from "luxon";
 import clsx from "clsx";

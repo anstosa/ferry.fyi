@@ -41,6 +41,7 @@
         "@types/luxon": "^1.25.0",
         "@types/mini-css-extract-plugin": "^0.9.1",
         "@types/node": "^14.11.2",
+        "@types/node-fetch": "^2.5.7",
         "@types/node-sass": "^4.11.1",
         "@types/nodemon": "^1.19.0",
         "@types/pg": "^7.14.5",
@@ -127,12 +128,11 @@
         "koa-static": "^5.0.0",
         "lodash": "^4.17.20",
         "luxon": "^1.25.0",
+        "node-fetch": "^2.6.1",
         "pg": "^8.3.3",
         "pg-hstore": "^2.3.3",
         "request": "^2.88.2",
-        "request-promise": "^4.2.6",
-        "sequelize-cli": "^6.2.0",
         "sequelize": "^6.3.5",
-        "xml-js": "^1.6.11"
+        "sequelize-cli": "^6.2.0"
     }
 }

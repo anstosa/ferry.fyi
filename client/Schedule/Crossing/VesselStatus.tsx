@@ -2,7 +2,7 @@ import { DateTime } from "luxon";
 import { degreesToHeading } from "../../lib/compass";
 import { knotsToMph } from "../../lib/speed";
 import { locationToUrl } from "../../lib/maps";
-import { Vessel } from "../../../server/lib/wsf";
+import { Vessel } from "../../../server/lib/vessels";
 import clsx from "clsx";
 import React, { FunctionComponent } from "react";
 
