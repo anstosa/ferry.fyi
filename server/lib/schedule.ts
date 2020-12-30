@@ -181,7 +181,10 @@ const updateTiming = (): any => {
     sync.each(mates, (schedule) => {
       const seenVessels: number[] = [];
       sync.each(schedule, (slot) => {
-        const vesselId = slot.vessel.id;
+        const vesselId = slot.vessel?.id;
+        if (!vesselId) {
+          return;
+        }
         const isFirstOfVessel = !includes(seenVessels, vesselId);
         const vessel = getVessel(vesselId, isFirstOfVessel);
         if (isFirstOfVessel) {
