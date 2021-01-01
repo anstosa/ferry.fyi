@@ -606,26 +606,11 @@ const CAMERAS_BY_TERMINAL_ID: { [key: number]: Camera[] } = {
   ],
   14: [
     {
-      id: 9164,
-      location: { latitude: 47.948045, longitude: -122.30362 },
-      title: "South Holding",
-      image: {
-        url: "https://images.wsdot.wa.gov/wsf/Mukilteo/Terminal/mukterm.jpg",
-        width: 352,
-        height: 261,
-      },
-      owner: null,
-      isActive: true,
-      feetToNext: 0,
-      spacesToNext: 0,
-      orderFromTerminal: 0,
-    },
-    {
       id: 9165,
       location: { latitude: 47.948244, longitude: -122.302963 },
-      title: "North Holding",
+      title: "Holding",
       image: {
-        url: "https://images.wsdot.wa.gov/wsf/Mukilteo/North/North.jpg",
+        url: "https://images.wsdot.wa.gov/wsf/Mukilteo/Terminal/mukterm.jpg",
         width: 352,
         height: 261,
       },
