@@ -39,7 +39,7 @@ export const Capacity: FunctionComponent<Props> = (props) => {
   }, [slot]);
 
   const getEstimateLeft = (): number | null => {
-    if (!estimate) {
+    if (!estimate || isNull(estimate.driveUpCapacity)) {
       return null;
     }
     const { driveUpCapacity = 0, reservableCapacity = 0 } = estimate;
