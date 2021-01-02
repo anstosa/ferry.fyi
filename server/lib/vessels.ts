@@ -178,7 +178,7 @@ export const getVessels = (): VesselsById => vesselsById;
 // fetches a vessel from the cache
 export const getVessel = (id: number, resetDelay = false): Vessel => {
   const vessel = cloneDeep(vesselsById[id]);
-  if (resetDelay) {
+  if (vessel && resetDelay) {
     delete vessel.departureDelta;
   }
   return vessel;
