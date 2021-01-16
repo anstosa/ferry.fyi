@@ -131,7 +131,8 @@ interface RouteResponse {
 
 const API_SCHEDULE = "https://www.wsdot.wa.gov/ferries/api/schedule/rest";
 const API_CACHE = `${API_SCHEDULE}/cacheflushdate`;
-const API_MATES = `${API_SCHEDULE}/terminalsandmates/${getToday()}`;
+const apiMatesRoute = (): string =>
+  `${API_SCHEDULE}/terminalsandmates/${getToday()}`;
 const apiRoute = (departingId: number, arrivingId: number): string =>
   `${API_SCHEDULE}/routedetails/${getToday()}/${departingId}/${arrivingId}`;
 const apiToday = (departingId: number, arrivingId: number): string =>
@@ -275,7 +276,7 @@ export const updateSchedule = async (): Promise<void> => {
   }
   lastFlushDate = cacheFlushDate;
   logger.info("Started Mates Update");
-  const mates = await wsfRequest<MatesResponse[]>(API_MATES);
+  const mates = await wsfRequest<MatesResponse[]>(apiMatesRoute());
   each(keys(matesByTerminalId), (key) => {
     delete matesByTerminalId[toNumber(key)];
   });
