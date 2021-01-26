@@ -18,7 +18,7 @@ export const db = new Sequelize(process.env.DATABASE_URL, {
   logging: Boolean(process.env.DEBUG),
   protocol: DIALECT_POSTGRES,
   pool: {
-    max: 10,
+    max: 20,
   },
 });
 
