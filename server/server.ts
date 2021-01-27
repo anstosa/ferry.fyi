@@ -1,3 +1,4 @@
+import { createJob } from "lib/jobs";
 import { DateTime } from "luxon";
 import { dbInit } from "./lib/db";
 import { getSchedule } from "./lib/schedule";
@@ -74,7 +75,7 @@ app.use(mount("/", dist));
   logger.info("Initializing WSF");
   await updateLong();
   await updateShort();
+  createJob(updateLong, 30 * 1000);
+  createJob(updateShort, 10 * 1000);
   logger.info("WSF Initialized");
-  setInterval(updateLong, 30 * 1000);
-  setInterval(updateShort, 10 * 1000);
 })();
