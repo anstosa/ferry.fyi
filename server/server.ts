@@ -1,4 +1,4 @@
-import { createJob } from "lib/jobs";
+import { createJob } from "./lib/jobs";
 import { DateTime } from "luxon";
 import { dbInit } from "./lib/db";
 import { getSchedule } from "./lib/schedule";
