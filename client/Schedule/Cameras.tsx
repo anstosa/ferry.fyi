@@ -1,35 +1,30 @@
-import { Camera } from "../../server/lib/cameras";
 import { DateTime } from "luxon";
 import { find, isNil, isNull, map } from "lodash";
-import { locationToUrl } from "../lib/maps";
-import { Terminal } from "../../server/lib/terminals";
+import { locationToUrl } from "~/lib/maps";
 import clsx from "clsx";
-import React, {
-  FunctionComponent,
-  ReactNode,
-  useEffect,
-  useState,
-} from "react";
+import React, { FC, ReactNode, useEffect, useState } from "react";
+import type { Camera } from "shared/models/cameras";
+import type { Terminal } from "shared/models/terminals";
 
 interface Props {
   cameraTime: number;
   terminal: Terminal;
 }
 
-export const Cameras: FunctionComponent<Props> = (props) => {
+export const Cameras: FC<Props> = (props) => {
   const {
     terminal: { cameras },
   } = props;
   const [cameraTime, setCameraTime] = useState<number>(props.cameraTime);
-  const [cameraInterval, setCameraInterval] = useState<NodeJS.Timeout | null>(
-    null
-  );
+  const [cameraInterval, setCameraInterval] = useState<
+    NodeJS.Timeout | undefined
+  >();
 
   useEffect(() => {
     setCameraInterval(
-      setInterval(() => {
+      (setInterval(() => {
         setCameraTime(DateTime.local().toSeconds());
-      }, 10 * 1000)
+      }, 10 * 1000) as unknown) as NodeJS.Timeout
     );
     return () => {
       if (cameraInterval) {
@@ -57,7 +52,7 @@ export const Cameras: FunctionComponent<Props> = (props) => {
           return true;
         }
         totalToBooth =
-          (totalToBooth as number) + (candidate?.spacesToNext || 0);
+          (totalToBooth as number) + (candidate?.spacesToNext ?? 0);
         return candidate === camera;
       });
     }

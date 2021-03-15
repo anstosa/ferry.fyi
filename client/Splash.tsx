@@ -1,17 +1,12 @@
 import { times } from "lodash";
 import clsx from "clsx";
-import React, {
-  FunctionComponent,
-  ReactNode,
-  useEffect,
-  useState,
-} from "react";
+import React, { FC, ReactNode, useEffect, useState } from "react";
 
 interface Props {
   message?: string;
 }
 
-export const Splash: FunctionComponent<Props> = (props) => {
+export const Splash: FC<Props> = (props) => {
   const { message } = props;
   const [isHelpVisible, setHelpVisible] = useState<boolean>(false);
   const [mark, setMark] = useState<number>(0);

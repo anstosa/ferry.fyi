@@ -1,108 +1,108 @@
 .button {
-    @apply appearance-none;
+  @apply appearance-none;
+  @apply bg-transparent;
+  @apply border-2;
+  @apply border-gray-darkest;
+  @apply content-center;
+  @apply cursor-pointer;
+  @apply flex;
+  @apply font-medium;
+  @apply items-center;
+  @apply justify-center;
+  @apply h-12;
+  @apply overflow-hidden;
+  @apply rounded;
+  @apply text-gray-darkest;
+  @apply text-sm;
+  @apply tracking-wide;
+  @apply truncate;
+  @apply whitespace-nowrap;
+  @apply px-8;
+
+  &-small {
+    @apply h-8;
+    @apply px-2;
+    @apply text-xs;
+  }
+
+  &:disabled,
+  &-disabled {
+    @apply opacity-25;
+    @apply pointer-events-none;
+    @apply cursor-default;
+  }
+
+  &:hover {
+    @apply border-transparent;
+    @apply bg-black;
+    @apply text-white;
+  }
+
+  &:focus {
+    @apply outline-none;
+  }
+
+  &-stealth {
     @apply bg-transparent;
-    @apply border-2;
-    @apply border-gray-darkest;
-    @apply content-center;
-    @apply cursor-pointer;
-    @apply flex;
-    @apply font-medium;
-    @apply items-center;
-    @apply justify-center;
-    @apply h-12;
-    @apply overflow-hidden;
-    @apply rounded;
-    @apply text-gray-darkest;
-    @apply text-sm;
-    @apply tracking-wide;
-    @apply truncate;
-    @apply whitespace-no-wrap;
-    @apply px-8;
-
-    &-small {
-        @apply h-8;
-        @apply px-2;
-        @apply text-xs;
-    }
-
-    &:disabled,
-    &-disabled {
-        @apply opacity-25;
-        @apply pointer-events-none;
-        @apply cursor-default;
-    }
+    @apply border-0;
 
     &:hover {
-        @apply border-transparent;
-        @apply bg-black;
+      @apply bg-transparent;
+      @apply text-black;
+    }
+  }
+
+  &-primary {
+    @apply border-transparent;
+    @apply bg-green-dark;
+    @apply text-white;
+
+    &:hover {
+      @apply border-transparent;
+      @apply bg-black;
+
+      &.button-destructive {
+        @apply border-red-dark;
+        @apply bg-red-dark;
         @apply text-white;
+      }
     }
+  }
 
-    &:focus {
-        @apply outline-none;
+  &-invert {
+    @apply border-transparent;
+    @apply bg-white;
+    @apply text-green-dark;
+
+    &:hover {
+      @apply border-transparent;
+      @apply bg-lighten-high;
     }
+  }
 
-    &-stealth {
-        @apply bg-transparent;
-        @apply border-0;
-
-        &:hover {
-            @apply bg-transparent;
-            @apply text-black;
-        }
+  &-destructive {
+    &:hover {
+      @apply text-red-dark;
     }
+  }
 
-    &-primary {
-        @apply border-transparent;
-        @apply bg-green-dark;
-        @apply text-white;
+  &-icon + &-label {
+    @apply ml-2;
+  }
 
-        &:hover {
-            @apply border-transparent;
-            @apply bg-black;
+  &-label + &-icon {
+    @apply ml-2;
+  }
 
-            &.button-destructive {
-                @apply border-red-dark;
-                @apply bg-red-dark;
-                @apply text-white;
-            }
-        }
+  &-group {
+    &-left {
+      @apply rounded-r-none;
     }
-
-    &-invert {
-        @apply border-transparent;
-        @apply bg-white;
-        @apply text-green-dark;
-
-        &:hover {
-            @apply border-transparent;
-            @apply bg-lighten-high;
-        }
+    &-middle {
+      @apply rounded-none;
     }
-
-    &-destructive {
-        &:hover {
-            @apply text-red-dark;
-        }
+    &-right {
+      @apply rounded-l-none;
     }
-
-    &-icon + &-label {
-        @apply ml-2;
-    }
-
-    &-label + &-icon {
-        @apply ml-2;
-    }
-
-    &-group {
-        &-left {
-            @apply rounded-r-none;
-        }
-        &-middle {
-            @apply rounded-none;
-        }
-        &-right {
-            @apply rounded-l-none;
-        }
-    }
+  }
 }

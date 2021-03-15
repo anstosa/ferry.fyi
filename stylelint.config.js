@@ -11,6 +11,7 @@ module.exports = {
     "max-nesting-depth": 5,
     "order/properties-alphabetical-order": true,
     "selector-class-pattern": null,
+    indentation: 2,
     "scss/at-rule-no-unknown": [
       true,
       {

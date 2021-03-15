@@ -1,6 +1,6 @@
 import { isNull } from "lodash";
 import clsx from "clsx";
-import React, { FunctionComponent, ReactNode, useState } from "react";
+import React, { FC, ReactNode, useState } from "react";
 
 interface Props {
   isOpen: boolean;
@@ -12,7 +12,7 @@ enum Platform {
   ios = "ios",
 }
 
-export const Menu: FunctionComponent<Props> = (props) => {
+export const Menu: FC<Props> = (props) => {
   const { isOpen, onClose } = props;
   const [platform, setPlatform] = useState<Platform | null>(null);
 

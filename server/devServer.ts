@@ -2,13 +2,14 @@
 // because some of them rely on environment variables (like ./config/passport)
 import { config } from "dotenv";
 import path from "path";
-config({ path: path.join(__dirname, "../.env") });
+config({ path: path.join(__dirname, "../.env.local") });
 
 import nodemon from "nodemon";
 
 nodemon({
   watch: ["."],
   script: "server.ts",
+  exec: "ts-node -r tsconfig-paths/register server.ts",
   ext: "ts",
 });
 

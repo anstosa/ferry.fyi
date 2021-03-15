@@ -1,7 +1,8 @@
+import { Crossing as CrossingType } from "shared/models/schedules";
 import { DataTypes, Model } from "sequelize";
-import { db } from "../lib/db";
+import { db } from "~/lib/db";
 
-export default class Crossing extends Model {
+class Crossing extends Model implements CrossingType {
   arrivalId!: number;
   departureDelta!: number | null;
   departureId!: number;
@@ -29,3 +30,5 @@ Crossing.init(
   },
   { sequelize: db, modelName: "Crossing" }
 );
+
+export default Crossing;

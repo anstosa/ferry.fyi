@@ -49,10 +49,7 @@ module.exports = {
     "@typescript-eslint/no-inferrable-types": "off",
     "@typescript-eslint/no-empty-function": "warn",
     "@typescript-eslint/no-explicit-any": "off",
-    "@typescript-eslint/explicit-function-return-type": [
-      "error",
-      { allowExpressions: true },
-    ],
+    "@typescript-eslint/explicit-function-return-type": "off",
     "prettier/prettier": "error",
     "sort-imports-es6-autofix/sort-imports-es6": [
       "error",

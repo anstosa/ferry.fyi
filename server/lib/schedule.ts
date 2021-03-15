@@ -26,31 +26,16 @@ import {
   toNumber,
 } from "lodash";
 import { getToday, wsfDateToTimestamp } from "./date";
-import { getVessel, Vessel } from "./vessels";
+import { getVessel } from "./vessels";
 import { Op } from "sequelize";
-import { Route } from "./terminals";
+import { Route } from "shared/models/terminals";
+import { Slot, Crossing as CrossingType} from "shared/models/schedules";
 import { wsfRequest } from "./api";
-import Crossing from "../models/crossing";
+import Crossing from "~/models/crossing";
 import logger from "heroku-logger";
 import sync from "aigle";
 
 // types
-
-export interface CrossingEstimate {
-  driveUpCapacity: number;
-  reservableCapacity: number | null;
-}
-
-export interface Slot {
-  allowsPassengers: boolean;
-  allowsVehicles: boolean;
-  crossing?: Crossing;
-  estimate?: CrossingEstimate;
-  hasPassed: boolean;
-  time: number;
-  vessel: Vessel;
-  wuid: string;
-}
 
 enum LoadingRules {
   Passenger = 1,
@@ -65,6 +50,27 @@ enum Seasons {
   Winter = 3,
 }
 
+interface TerminalScheduleTimeResponse {
+  DepartingTime: string;
+  ArrivingTime: string | null;
+  LoadingRule: LoadingRules;
+  VesselID: number;
+  VesselName: string;
+  VesselHandicapAccessible: boolean;
+  Routes: number[];
+  AnnotationIndexes: number[];
+}
+interface TerminalScheduleResponse {
+  DepartingTerminalID: number;
+  DepartingTerminalName: string;
+  ArrivingTerminalID: number;
+  ArrivingTerminalName: string;
+  SailingNotes: string;
+  Annotations: string[];
+  AnnotationsIVR: string[];
+  Times: TerminalScheduleTimeResponse[];
+}
+
 interface ScheduleTodayResponse {
   ScheduleID: number;
   ScheduleName: string;
@@ -73,25 +79,7 @@ interface ScheduleTodayResponse {
   ScheduleStart: string;
   ScheduleEnd: string;
   AllRoutes: number[];
-  TerminalCombos: Array<{
-    DepartingTerminalID: number;
-    DepartingTerminalName: string;
-    ArrivingTerminalID: number;
-    ArrivingTerminalName: string;
-    SailingNotes: string;
-    Annotations: string[];
-    AnnotationsIVR: string[];
-    Times: Array<{
-      DepartingTime: string;
-      ArrivingTime: string | null;
-      LoadingRule: LoadingRules;
-      VesselID: number;
-      VesselName: string;
-      VesselHandicapAccessible: boolean;
-      Routes: number[];
-      AnnotationIndexes: number[];
-    }>;
-  }>;
+  TerminalCombos: TerminalScheduleResponse[];
 }
 
 interface MatesResponse {
@@ -101,6 +89,17 @@ interface MatesResponse {
   ArrivingDescription: string;
 }
 
+interface AlertResponse {
+  BulletinID: number;
+  BulletinFlag: boolean;
+  CommunicationFlag: boolean;
+  PublishDate?: string;
+  AlertDescription?: string;
+  DisruptionDescription?: string;
+  AlertFullTitle: string;
+  AlertFullText: string;
+  IVRText?: string;
+}
 interface RouteResponse {
   RouteID: number;
   RouteAbbrev: string;
@@ -114,17 +113,11 @@ interface RouteResponse {
   AdaNotes?: string;
   GeneralRouteNotes?: string;
   SeasonalRouteNotes?: string;
-  Alerts: Array<{
-    BulletinID: number;
-    BulletinFlag: boolean;
-    CommunicationFlag: boolean;
-    PublishDate?: string;
-    AlertDescription?: string;
-    DisruptionDescription?: string;
-    AlertFullTitle: string;
-    AlertFullText: string;
-    IVRText?: string;
-  }>;
+  Alerts: AlertResponse[];
+}
+
+interface ServerSlot extends Slot {
+  crossing?: Crossing
 }
 
 // API paths
@@ -144,7 +137,7 @@ let lastFlushDate: number | null = null;
 interface SchedulesByTerminal {
   [departureId: number]: {
     [arrivalId: number]: {
-      [departureTime: number]: Slot;
+      [departureTime: number]: ServerSlot;
     };
   };
 }
@@ -176,7 +169,7 @@ const backfillCrossings = async (): Promise<void> => {
   });
 };
 
-const updateTiming = (): any => {
+const updateTiming = (): void => {
   const now = DateTime.local();
   sync.each(scheduleByTerminal, (mates) =>
     sync.each(mates, (schedule) => {
@@ -211,7 +204,7 @@ export const getWuid = (departureTime: number): string =>
 
 // exported functions
 
-export const hasPassed = (crossing: Crossing): boolean => {
+export const hasPassed = (crossing: CrossingType): boolean => {
   if (!crossing) {
     return false;
   }
@@ -240,16 +233,16 @@ export const getPreviousCrossing = (
   } else {
     const previousDepartureTime = departureTimes[departureIndex - 1];
     const previousCapacity = schedule?.[previousDepartureTime]?.crossing;
-    return previousCapacity || null;
+    return previousCapacity ?? null;
   }
 };
 
-export const isCrossingEmpty = (crossing: Crossing): boolean => {
+export const isCrossingEmpty = (crossing: CrossingType): boolean => {
   const { driveUpCapacity, reservableCapacity, totalCapacity } = crossing;
   return driveUpCapacity + reservableCapacity === totalCapacity;
 };
 
-export const isCrossingFull = (crossing: Crossing): boolean => {
+export const isCrossingFull = (crossing: CrossingType): boolean => {
   const { driveUpCapacity, reservableCapacity } = crossing;
   return driveUpCapacity === 0 && reservableCapacity === 0;
 };

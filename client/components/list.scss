@@ -1,9 +1,7 @@
 .list-decimal {
-    li {
-        @apply list-decimal;
-
-        + li {
-            @apply mt-2;
-        }
+  li {
+    + li {
+      @apply mt-2;
     }
+  }
 }

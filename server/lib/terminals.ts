@@ -9,8 +9,9 @@
 // imports
 
 import { assign, cloneDeep, each, has, map, omit, toNumber } from "lodash";
-import { Camera, getCameras } from "./cameras";
+import { getCameras } from "./cameras";
 import { getMates, getRoute } from "./schedule";
+import { Terminal } from "shared/models/terminals";
 import { wsfDateToTimestamp } from "./date";
 import { wsfRequest } from "./api";
 import logger from "heroku-logger";
@@ -25,23 +26,37 @@ interface TerminalOverride {
   };
 }
 
-export interface Bulletin {
-  title: string;
-  description: string;
-  date: number;
+interface TerminalGISResponse {
+  ZoomLevel: number;
+  Latitude?: number;
+  Longitude?: number;
 }
 
-interface WaitTime {
-  title?: string;
-  description: string;
-  time: number;
+interface TerminalTransitLinkReponse {
+  LinkURL: string;
+  LinkName: string;
+  SortSeq?: number;
 }
 
-export interface Route {
-  id: number;
-  abbreviation: string;
-  description: string;
-  crossingTime: number;
+interface TerminalWaitReponse {
+  RouteID?: number;
+  RouteName?: string;
+  WaitTimeNotes: string;
+  WaitTimeLastUpdated?: string;
+}
+
+interface TerminalVisitorLinkResponse {
+  LinkURL: string;
+  LinkName: string;
+  SortSeq?: number;
+}
+
+interface TerminalBulletinResponse {
+  BulletinTitle: string;
+  BulletinText: string;
+  BulletinSortSeq: number;
+  BulletinLastUpdated?: string;
+  BulletinLastUpdatedSortable?: string;
 }
 
 interface TerminalVerboseResponse {
@@ -66,11 +81,7 @@ interface TerminalVerboseResponse {
   Country?: string;
   MapLink?: string;
   Directions?: string;
-  DispGISZoomLoc: Array<{
-    ZoomLevel: number;
-    Latitude?: number;
-    Longitude?: number;
-  }>;
+  DispGISZoomLoc: TerminalGISResponse[];
   ParkingInfo?: string;
   ParkingShuttleInfo?: string;
   AirportInfo?: string;
@@ -81,17 +92,8 @@ interface TerminalVerboseResponse {
   TrainInfo?: string;
   TaxiInfo?: string;
   HovInfo?: string;
-  TransitLinks: Array<{
-    LinkURL: string;
-    LinkName: string;
-    SortSeq?: number;
-  }>;
-  WaitTimes: Array<{
-    RouteID?: number;
-    RouteName?: string;
-    WaitTimeNotes: string;
-    WaitTimeLastUpdated?: string;
-  }>;
+  TransitLinks: TerminalTransitLinkReponse[];
+  WaitTimes: TerminalWaitReponse[];
   AdditionalInfo?: string;
   LostAndFoundInfo?: string;
   SecurityInfo?: string;
@@ -110,63 +112,34 @@ interface TerminalVerboseResponse {
   TypeDesc?: string;
   REALTIME_SHUTOFF_FLAG: boolean;
   REALTIME_SHUTOFF_MESSAGE?: string;
-  VisitorLinks: Array<{
-    LinkURL: string;
-    LinkName: string;
-    SortSeq?: number;
-  }>;
-  Bulletins: Array<{
-    BulletinTitle: string;
-    BulletinText: string;
-    BulletinSortSeq: number;
-    BulletinLastUpdated?: string;
-    BulletinLastUpdatedSortable?: string;
-  }>;
+  VisitorLinks: TerminalVisitorLinkResponse[];
+  Bulletins: TerminalBulletinResponse[];
   IsNoFareCollected?: boolean;
   NoFareCollectedMsg?: string;
   RealtimeIntroMsg?: string;
 }
 
-export interface Terminal {
-  abbreviation: string;
-  bulletins: Bulletin[];
-  cameras: Camera[];
-  hasElevator: boolean;
-  hasOverheadLoading: boolean;
-  hasRestroom: boolean;
-  hasWaitingRoom: boolean;
-  hasFood: boolean;
-  id: number;
-  info: {
-    ada?: string;
-    airport?: string;
-    bicycle?: string;
-    construction?: string;
-    food?: string;
-    lost?: string;
-    motorcycle?: string;
-    parking?: string;
-    security?: string;
-    train?: string;
-    truck?: string;
-  };
-  location: {
-    link?: string;
-    latitude?: number;
-    longitude?: number;
-    address: {
-      line1?: string;
-      line2?: string;
-      city?: string;
-      state?: string;
-      zip?: string;
-    };
-  };
-  name: string;
-  waitTimes: WaitTime[];
-  mates?: Terminal[];
-  route?: Route;
-  vesselwatch?: string;
+interface ArrivalSpaceResponse {
+  TerminalID: number;
+  TerminalName: string;
+  VesselID: number;
+  VesselName: string;
+  DisplayReservableSpace: boolean;
+  ReservableSpaceCount?: number;
+  ReservableSpaceHexColor?: string;
+  DisplayDriveUpSpace: boolean;
+  DriveUpSpaceCount?: number;
+  DriveUpSpaceHexColor?: string;
+  MaxSpaceCount: number;
+  ArrivalTerminalIDs: number[];
+}
+
+interface DepartureSpaceResponse {
+  Departure: string;
+  IsCancelled: boolean;
+  VesselID: number;
+  MaxSpaceCount: number;
+  SpaceForArrivalTerminals: ArrivalSpaceResponse[];
 }
 
 interface SpaceResponse {
@@ -176,31 +149,12 @@ interface SpaceResponse {
   TerminalName: string;
   TerminalAbbrev: string;
   SortSeq: number;
-  DepartingSpaces: Array<{
-    Departure: string;
-    IsCancelled: boolean;
-    VesselID: number;
-    MaxSpaceCount: number;
-    SpaceForArrivalTerminals: Array<{
-      TerminalID: number;
-      TerminalName: string;
-      VesselID: number;
-      VesselName: string;
-      DisplayReservableSpace: boolean;
-      ReservableSpaceCount?: number;
-      ReservableSpaceHexColor?: string;
-      DisplayDriveUpSpace: boolean;
-      DriveUpSpaceCount?: number;
-      DriveUpSpaceHexColor?: string;
-      MaxSpaceCount: number;
-      ArrivalTerminalIDs: number[];
-    }>;
-  }>;
+  DepartingSpaces: DepartureSpaceResponse[];
   IsNoFareCollected?: boolean;
   NoFareCollectedMsg?: string;
 }
 
-const TERMINAL_DATA_OVERRIDES: { [key: number]: TerminalOverride } = {
+const TERMINAL_DATA_OVERRIDES: Record<number, TerminalOverride> = {
   1: {
     vesselwatch:
       "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=anasjsid",
@@ -303,8 +257,6 @@ const TERMINAL_DATA_OVERRIDES: { [key: number]: TerminalOverride } = {
   },
 };
 
-export type TerminalsById = Record<number, Terminal>;
-
 // API paths
 
 const API_TERMINALS = "https://www.wsdot.wa.gov/ferries/api/terminals/rest";
@@ -316,7 +268,7 @@ const API_VERBOSE = `${API_TERMINALS}/terminalverbose`;
 
 let lastFlushDate: number | null = null;
 
-const terminalsById: TerminalsById = {};
+const terminalsById: Record<number, Terminal> = {};
 
 // local functions
 
@@ -333,7 +285,8 @@ function assignTerminal(id: number, terminal: Partial<Terminal>): void {
 
 // exported functions
 
-export const getTerminals = (): TerminalsById => terminalsById;
+// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+export const getTerminals = () => terminalsById;
 
 export const getTerminal = (id: number): Terminal => terminalsById?.[id];
 
@@ -377,14 +330,14 @@ export const updateTerminals = async (): Promise<void> => {
       info: {
         ada: terminal.AdaInfo,
         airport:
-          (terminal.AirportInfo || "") + (terminal.AirportShuttleInfo || ""),
+          (terminal.AirportInfo ?? "") + (terminal.AirportShuttleInfo ?? ""),
         bicycle: terminal.BikeInfo,
         construction: terminal.ConstructionInfo,
         food: terminal.FoodServiceInfo,
         lost: terminal.LostAndFoundInfo,
         motorcycle: terminal.MotorcycleInfo,
         parking:
-          (terminal.ParkingInfo || "") + (terminal.ParkingShuttleInfo || ""),
+          (terminal.ParkingInfo ?? "") + (terminal.ParkingShuttleInfo ?? ""),
         security: terminal.SecurityInfo,
         train: terminal.TrainInfo,
         truck: terminal.TruckInfo,

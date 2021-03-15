@@ -1,14 +1,13 @@
 {
   "extends": "../tsconfig",
   "compilerOptions": {
+    "baseUrl": ".",
     "outDir": "../dist/server",
-    "target": "es2019",
-    "noEmit": false,
-    "module": "CommonJS",
-    "baseUrl": "./",
     "paths": {
-      "~/*": ["../*"]
-    }
+      "~/*": ["./*"],
+      "shared/*": ["../shared/*"]
+    },
+    "target": "ES6"
   },
   "include": ["./**/*"],
   "exclude": ["./devServer.ts"]

@@ -10,7 +10,7 @@
 
 import { assign, cloneDeep, each, has } from "lodash";
 import { DateTime } from "luxon";
-import { MapPoint } from "./cameras";
+import { Vessel } from "shared/models/vessels";
 import { wsfDateToTimestamp } from "./date";
 import { wsfRequest } from "./api";
 import logger from "heroku-logger";
@@ -104,49 +104,6 @@ interface VesselsVerboseResponse {
   MaxPassengerCountForInternational?: number;
 }
 
-export interface Vessel {
-  abbreviation: string;
-  arrivingTerminalId?: number;
-  departingTerminalId?: number;
-  beam: string;
-  classId: number;
-  departedTime?: number;
-  departureDelta?: number;
-  dockedTime?: number;
-  estimatedArrivalTime?: number;
-  hasCarDeckRestroom: boolean;
-  hasElevator: boolean;
-  hasGalley: boolean;
-  hasRestroom: boolean;
-  hasWiFi: boolean;
-  heading?: number;
-  horsepower: number;
-  id: number;
-  inMaintenance: boolean;
-  inService: boolean;
-  info: {
-    ada?: string;
-    crossing?: string;
-  };
-  isAdaAccessible: boolean;
-  isAtDock?: boolean;
-  length?: string;
-  location?: MapPoint;
-  maxClearance: number;
-  mmsi?: number;
-  name: string;
-  passengerCapacity: number;
-  speed: number;
-  tallVehicleCapacity: number;
-  vesselwatch: string;
-  vehicleCapacity: number;
-  weight: number;
-  yearBuilt: number;
-  yearRebuilt: number;
-}
-
-export type VesselsById = Record<number, Vessel>;
-
 // API paths
 
 const VESSELWATCH_BASE =
@@ -159,7 +116,7 @@ const API_VERBOSE = `${API_VESSELS}/vesselverbose`;
 // local state
 
 let lastFlushDate: number | null = null;
-const vesselsById: VesselsById = {};
+const vesselsById: Record<number, Vessel> = {};
 
 // local functions
 
@@ -173,7 +130,8 @@ const assignVessel = (id: number, vessel: Partial<Vessel>): void => {
 
 // exported functions
 
-export const getVessels = (): VesselsById => vesselsById;
+// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+export const getVessels = () => vesselsById;
 
 // fetches a vessel from the cache
 export const getVessel = (id: number, resetDelay = false): Vessel => {
@@ -225,7 +183,7 @@ export const updateVessels = async (): Promise<void> => {
       speed: vessel.SpeedInKnots,
       tallVehicleCapacity: vessel.TallDeckSpace,
       vesselwatch: `${VESSELWATCH_BASE}${vessel.VesselName}`,
-      vehicleCapacity: (vessel.RegDeckSpace || 0) + (vessel.TallDeckSpace || 0),
+      vehicleCapacity: (vessel.RegDeckSpace ?? 0) + (vessel.TallDeckSpace ?? 0),
       weight: vessel.Tonnage,
       yearBuilt: vessel.YearBuilt,
       yearRebuilt: vessel.YearRebuilt,

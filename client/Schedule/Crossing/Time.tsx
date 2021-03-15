@@ -1,9 +1,9 @@
 import { DateTime, Duration } from "luxon";
-import { isDark } from "../../lib/theme";
+import { isDark } from "~/lib/theme";
 import { round } from "lodash";
-import { Slot } from "../../../server/lib/schedule";
 import clsx from "clsx";
-import React, { FunctionComponent } from "react";
+import React, { FC } from "react";
+import type { Slot } from "shared/models/schedules";
 
 interface Props {
   slot: Slot;
@@ -11,11 +11,11 @@ interface Props {
   isNext: boolean;
 }
 
-export const Time: FunctionComponent<Props> = (props) => {
+export const Time: FC<Props> = (props) => {
   const { slot, isNext, time } = props;
   const { crossing, hasPassed } = slot;
-  const { departureDelta, isCancelled } = crossing || {};
-  const delta = Duration.fromObject({ seconds: departureDelta || 0 });
+  const { departureDelta, isCancelled } = crossing ?? {};
+  const delta = Duration.fromObject({ seconds: departureDelta ?? 0 });
   let deltaMins = round(delta.as("minutes"));
   const scheduledTime = DateTime.fromSeconds(slot.time);
   let estimatedTime = scheduledTime.plus(delta);

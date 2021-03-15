@@ -1,16 +1,16 @@
 import { Capacity } from "./Capacity";
 import { DateTime } from "luxon";
-import { ErrorBoundary } from "../../lib/ErrorBoundary";
+import { ErrorBoundary } from "~/lib/ErrorBoundary";
 import { find, isNull } from "lodash";
-import { isDark } from "../../lib/theme";
-import { Route } from "../../../server/lib/terminals";
-import { Slot } from "../../../server/lib/schedule";
+import { isDark } from "~/lib/theme";
 import { Status } from "./Status";
 import { Time } from "./Time";
 import { VesselStatus } from "./VesselStatus";
-import { VesselTag } from "../../components/VesselTag";
+import { VesselTag } from "~/components/VesselTag";
 import clsx from "clsx";
-import React, { FunctionComponent, ReactNode, useEffect, useRef } from "react";
+import React, { FC, ReactNode, useEffect, useRef } from "react";
+import type { Route } from "shared/models/terminals";
+import type { Slot } from "shared/models/schedules";
 
 interface Props {
   slot: Slot;
@@ -22,7 +22,7 @@ interface Props {
   time: DateTime;
 }
 
-export const SlotInfo: FunctionComponent<Props> = (props) => {
+export const SlotInfo: FC<Props> = (props) => {
   const wrapper = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

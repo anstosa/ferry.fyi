@@ -1,12 +1,12 @@
 import { assign, map, sortBy } from "lodash";
-import { get } from "./lib/api";
-import { Vessel, VesselsById } from "../server/lib/vessels";
+import { get } from "~/lib/api";
+import { Vessel } from "shared/models/vessels";
 
 const API_VESSELS = "/vessels";
 const getApiVessel = (id: number): string => `/vessels/${id}`;
 
 let hasAll = false;
-const vesselCache: VesselsById = {};
+const vesselCache: Record<number, Vessel> = {};
 
 // get vessel data by id
 // loads from cache if possible

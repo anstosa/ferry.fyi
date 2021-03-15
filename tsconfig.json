@@ -9,11 +9,12 @@
     "lib": ["ESNext"],
     "module": "CommonJS",
     "moduleResolution": "node",
-    "noEmit": true,
+    "noEmit": false,
     "preserveSymlinks": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "strict": true,
     "strictNullChecks": true,
+    "target": "ES5",
   }
 }

@@ -1,18 +1,12 @@
 import { getSlug, getTerminals } from "./terminals";
-import { isOnline } from "./lib/api";
+import { isOnline } from "~/lib/api";
 import { Link } from "react-router-dom";
 import { map, without } from "lodash";
 import { Menu } from "./Menu";
-import { Terminal } from "../server/lib/terminals";
 import clsx from "clsx";
-import React, {
-  FunctionComponent,
-  MouseEvent,
-  ReactNode,
-  useEffect,
-  useState,
-} from "react";
+import React, { FC, MouseEvent, ReactNode, useEffect, useState } from "react";
 import ReactGA from "react-ga";
+import type { Terminal } from "shared/models/terminals";
 
 interface Props {
   isReloading: boolean;
@@ -22,7 +16,7 @@ interface Props {
   terminal: Terminal;
 }
 
-export const Header: FunctionComponent<Props> = (props) => {
+export const Header: FC<Props> = (props) => {
   const { isReloading, mate, reload, terminal, setRoute } = props;
   const [isMenuOpen, setMenuOpen] = useState<boolean>(false);
   const [isTerminalOpen, setTerminalOpen] = useState<boolean>(false);

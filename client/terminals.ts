@@ -1,8 +1,8 @@
 import { assign, findKey, isString, keys, map, sortBy, toLower } from "lodash";
-import { get } from "./lib/api";
-import { Terminal, TerminalsById } from "../server/lib/terminals";
+import { get } from "~/lib/api";
+import type { Terminal } from "shared/models/terminals";
 
-const TERMINAL_ALIASES: { [slug: string]: number } = {
+const TERMINAL_ALIASES: Record<string, number> = {
   ana: 1,
   bbi: 3,
   bre: 4,
@@ -49,7 +49,7 @@ const TERMINAL_ALIASES: { [slug: string]: number } = {
   shawisland: 18,
 };
 
-const CANONICAL_TERMINALS: { [slug: string]: number } = {
+const CANONICAL_TERMINALS: Record<string, number> = {
   anacortes: 1,
   bainbridge: 3,
   bremerton: 4,
@@ -83,7 +83,7 @@ const API_TERMINALS = "/terminals";
 const getApiTerminal = (id: number): string => `/terminals/${id}`;
 
 let hasAll = false;
-const terminalCache: TerminalsById = {};
+const terminalCache: Record<number, Terminal> = {};
 
 export const getSlug = (targetId: number): string =>
   findKey(CANONICAL_TERMINALS, (id) => id === targetId) as string;

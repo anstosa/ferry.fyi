@@ -1,14 +1,14 @@
-import { isDark } from "../lib/theme";
-import { Vessel } from "../../server/lib/vessels";
+import { isDark } from "~/lib/theme";
 import clsx from "clsx";
-import React, { FunctionComponent } from "react";
+import React, { FC } from "react";
+import type { Vessel } from "shared/models/vessels";
 
 interface Props {
   vessel: Vessel;
   isAbbreviation?: boolean;
 }
 
-export const VesselTag: FunctionComponent<Props> = (props) => {
+export const VesselTag: FC<Props> = (props) => {
   const { isAbbreviation, vessel } = props;
   const { abbreviation, name } = vessel;
 

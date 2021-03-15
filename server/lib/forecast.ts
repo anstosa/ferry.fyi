@@ -13,15 +13,14 @@ import {
   setWith,
   times,
 } from "lodash";
-import { CrossingEstimate, Slot } from "./schedule";
+import { CrossingEstimate, Slot } from "shared/models/schedules";
 import { DateTime } from "luxon";
 import { Op } from "sequelize";
-import Crossing from "../models/crossing";
+import Crossing from "~/models/crossing";
 
 const ESTIMATE_COMPOSITE_WEEKS = 6;
 
 // local state
-
 const estimates: {
   [departureId: number]: {
     [arrivalId: number]: {
@@ -59,8 +58,8 @@ export const buildEstimates = async (
   });
   each(schedule, (crossing) => {
     const { wuid } = crossing;
-    const estimate: { [key: string]: number | null } = {};
-    const data: { [key: string]: any[] } = {
+    const estimate: Record<string, number | null> = {};
+    const data: Record<string, any[]> = {
       driveUpCapacity: [],
       reservableCapacity: [],
     };

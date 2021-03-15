@@ -1,10 +1,10 @@
 import { DateTime } from "luxon";
-import { degreesToHeading } from "../../lib/compass";
-import { knotsToMph } from "../../lib/speed";
-import { locationToUrl } from "../../lib/maps";
-import { Vessel } from "../../../server/lib/vessels";
+import { degreesToHeading } from "~/lib/compass";
+import { knotsToMph } from "~/lib/speed";
+import { locationToUrl } from "~/lib/maps";
 import clsx from "clsx";
-import React, { FunctionComponent } from "react";
+import React, { FC } from "react";
+import type { Vessel } from "shared/models/vessels";
 
 interface Props {
   className?: string;
@@ -12,7 +12,7 @@ interface Props {
   time: DateTime;
 }
 
-export const VesselStatus: FunctionComponent<Props> = (props) => {
+export const VesselStatus: FC<Props> = (props) => {
   const { className, vessel, time } = props;
   const {
     dockedTime,
@@ -43,7 +43,7 @@ export const VesselStatus: FunctionComponent<Props> = (props) => {
   return (
     <a
       className={clsx("link text-sm", className)}
-      href={vesselwatch || (location && locationToUrl(location))}
+      href={vesselwatch ?? (location && locationToUrl(location))}
     >
       <span>{statusText}</span>
       {detailText && (

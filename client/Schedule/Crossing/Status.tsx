@@ -1,9 +1,9 @@
 import { DateTime, Duration } from "luxon";
-import { isDark } from "../../lib/theme";
+import { isDark } from "~/lib/theme";
 import { isNull, round } from "lodash";
-import { Slot } from "../../../server/lib/schedule";
 import clsx from "clsx";
-import React, { FunctionComponent } from "react";
+import React, { FC } from "react";
+import type { Slot } from "shared/models/schedules";
 
 interface Props {
   className?: string;
@@ -15,7 +15,7 @@ const textGreen = isDark ? "text-green-light" : "text-green-dark";
 const textRed = isDark ? "text-red-light" : "text-red-dark";
 const textYellow = isDark ? "text-yellow-light" : "text-yellow-dark";
 
-export const Status: FunctionComponent<Props> = (props) => {
+export const Status: FC<Props> = (props) => {
   const { className, slot, time } = props;
   const { crossing, hasPassed } = slot;
   const scheduledTime = DateTime.fromSeconds(slot.time);

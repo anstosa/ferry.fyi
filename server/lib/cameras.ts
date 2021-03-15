@@ -1,27 +1,6 @@
-export interface MapPoint {
-  latitude: number;
-  longitude: number;
-}
+import { Camera } from "shared/models/cameras";
 
-export interface CameraImage {
-  url: string;
-  width: number;
-  height: number;
-}
-
-export interface Camera {
-  id: number;
-  location: MapPoint;
-  title: string;
-  image: CameraImage;
-  owner: { name: string; url: string } | null;
-  isActive: boolean;
-  feetToNext: number | null;
-  spacesToNext: number | null;
-  orderFromTerminal: number;
-}
-
-const CAMERAS_BY_TERMINAL_ID: { [key: number]: Camera[] } = {
+const CAMERAS_BY_TERMINAL_ID: Record<number, Camera[]> = {
   1: [
     {
       id: 9047,

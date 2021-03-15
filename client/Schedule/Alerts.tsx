@@ -1,8 +1,8 @@
-import { Bulletin, Terminal } from "../../server/lib/terminals";
 import { capitalize, filter, map, reverse, round, sortBy } from "lodash";
 import { DateTime } from "luxon";
 import clsx from "clsx";
-import React, { FunctionComponent, ReactNode } from "react";
+import React, { FC, ReactNode } from "react";
+import type { Bulletin, Terminal } from "shared/models/terminals";
 
 const ALERT_FILTER = new RegExp(
   `(${[
@@ -33,7 +33,7 @@ const getAlertTime = (
   } else if (time.hasSame(now, "day")) {
     result = time.toFormat("h:mm a");
   } else {
-    result = capitalize(time.toRelativeCalendar() || "");
+    result = capitalize(time.toRelativeCalendar() ?? "");
   }
   return result;
 };
@@ -55,7 +55,7 @@ interface Props {
   time: DateTime;
 }
 
-export const Alerts: FunctionComponent<Props> = (props) => {
+export const Alerts: FC<Props> = (props) => {
   const { terminal, time } = props;
 
   const renderAlert = (bulletin: Bulletin): ReactNode => {

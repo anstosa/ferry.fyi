@@ -10,7 +10,7 @@ import {
 } from "./schedule";
 import { getVessel, updateVessels, updateVesselStatus } from "./vessels";
 import { wsfDateToTimestamp } from "./date";
-import Crossing from "../models/crossing";
+import Crossing from "~/models/crossing";
 import logger from "heroku-logger";
 import sync from "aigle";
 
@@ -29,7 +29,7 @@ const updateCapacity = async (): Promise<void> => {
           const model: Partial<Crossing> = {
             arrivalId,
             departureId: terminal.TerminalID,
-            departureDelta: vessel?.departureDelta || null,
+            departureDelta: vessel?.departureDelta ?? null,
             departureTime,
             driveUpCapacity: spaceData.DriveUpSpaceCount,
             hasDriveUp: spaceData.DisplayDriveUpSpace,

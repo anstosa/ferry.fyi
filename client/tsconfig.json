@@ -1,18 +1,15 @@
 {
   "extends": "../tsconfig",
   "compilerOptions": {
+    "baseUrl": ".",
     "jsx": "react",
-    "sourceMap": true,
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
     "outDir": "../dist/client",
-    "target": "ES5",
-    "lib": [
-      "DOM",
-      "DOM.Iterable",
-      "ESNext"
-    ],
-    "noEmit": false,
-    "module": "CommonJS",
+    "sourceMap": true,
+    "paths": {
+      "~/*": ["./*"],
+      "shared/*": ["../shared/*"]
+    }
   },
-  "include": ["./**/*"],
-  "exclude": []
+  "include": ["./**/*"]
 }

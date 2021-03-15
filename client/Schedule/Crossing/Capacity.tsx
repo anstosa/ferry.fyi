@@ -1,13 +1,8 @@
-import { isDark } from "../../lib/theme";
-import { isNull, min } from "lodash";
-import { Slot } from "../../../server/lib/schedule";
+import { isDark } from "~/lib/theme";
+import { isNil, min } from "lodash";
 import clsx from "clsx";
-import React, {
-  FunctionComponent,
-  ReactNode,
-  useEffect,
-  useState,
-} from "react";
+import React, { FC, ReactNode, useEffect, useState } from "react";
+import type { Crossing, Slot } from "shared/models/schedules";
 
 const RESERVATIONS_BASE_URL =
   "https://secureapps.wsdot.wa.gov/Ferries/Reservations/Vehicle/SailingSchedule.aspx?VRSTermId=";
@@ -20,39 +15,40 @@ interface Props {
   slot: Slot;
 }
 
-export const Capacity: FunctionComponent<Props> = (props) => {
+export const Capacity: FC<Props> = (props) => {
   const { slot } = props;
-  const [percentFull, setPercentFull] = useState<number | null>(null);
-  const [spaceLeft, setSpaceLeft] = useState<number | null>(null);
-  const [estimateFull, setEstimateFull] = useState<number | null>(null);
-  const [estimateLeft, setEstimateLeft] = useState<number | null>(null);
+  const [percentFull, setPercentFull] = useState<number | null>();
+  const [spaceLeft, setSpaceLeft] = useState<number | null>();
+  const [estimateFull, setEstimateFull] = useState<number | null>();
+  const [estimateLeft, setEstimateLeft] = useState<number | null>();
 
   const {
     estimate,
-    crossing,
     hasPassed,
     vessel: { vehicleCapacity, tallVehicleCapacity },
   } = slot;
+
+  const crossing = slot.crossing as Crossing;
 
   useEffect(() => {
     updateCrossing();
   }, [slot]);
 
   const getEstimateLeft = (): number | null => {
-    if (!estimate || isNull(estimate.driveUpCapacity)) {
+    if (!estimate || isNil(estimate.driveUpCapacity)) {
       return null;
     }
     const { driveUpCapacity = 0, reservableCapacity = 0 } = estimate;
-    const estimateLeft = driveUpCapacity + (reservableCapacity || 0);
+    const estimateLeft = driveUpCapacity + (reservableCapacity ?? 0);
     return estimateLeft;
   };
 
   const getEstimateFull = (): number | null => {
     const estimateLeft = getEstimateLeft();
-    if (isNull(estimateLeft)) {
+    if (isNil(estimateLeft)) {
       return null;
     }
-    const totalCapacity = crossing?.totalCapacity || getVesselCapacity();
+    const totalCapacity = crossing?.totalCapacity ?? getVesselCapacity();
     const estimateFull = min([
       ((totalCapacity - estimateLeft) / totalCapacity) * 100,
       100,
@@ -63,8 +59,8 @@ export const Capacity: FunctionComponent<Props> = (props) => {
   const getVesselCapacity = (): number => vehicleCapacity - tallVehicleCapacity;
 
   const updateCrossing = (): void => {
-    let spaceLeft: number | null = null;
-    let percentFull: number | null = null;
+    let spaceLeft: number | undefined;
+    let percentFull: number | undefined;
 
     if (crossing) {
       const {
@@ -74,8 +70,10 @@ export const Capacity: FunctionComponent<Props> = (props) => {
       } = crossing;
 
       spaceLeft = driveUpCapacity + reservableCapacity;
-      percentFull =
-        min([((totalCapacity - spaceLeft) / totalCapacity) * 100, 100]) || null;
+      percentFull = min([
+        ((totalCapacity - spaceLeft) / totalCapacity) * 100,
+        100,
+      ]);
     }
 
     setEstimateLeft(getEstimateLeft());
@@ -85,13 +83,13 @@ export const Capacity: FunctionComponent<Props> = (props) => {
   };
 
   const hasAvailableReservations = (): boolean =>
-    (crossing?.reservableCapacity || 0) > 0;
+    (crossing?.reservableCapacity ?? 0) > 0;
 
-  const allowsReservations = (): boolean => crossing?.hasReservations || false;
+  const allowsReservations = (): boolean => crossing?.hasReservations ?? false;
 
   const isLeftEdge = (): boolean => {
     const fullness =
-      crossing && percentFull ? percentFull || 0 : estimateFull || 0;
+      crossing && percentFull ? percentFull ?? 0 : estimateFull ?? 0;
     const percent = fullness / 100;
     const totalWidth = window.innerWidth;
     const width = percent * totalWidth;
@@ -101,7 +99,7 @@ export const Capacity: FunctionComponent<Props> = (props) => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const willFitLeft = (): boolean => {
     const fullness =
-      crossing && percentFull ? percentFull || 0 : estimateFull || 0;
+      crossing && percentFull ? percentFull ?? 0 : estimateFull ?? 0;
     const percent = fullness / 100;
     const totalWidth = window.innerWidth;
     const width = percent * totalWidth;
@@ -110,7 +108,7 @@ export const Capacity: FunctionComponent<Props> = (props) => {
 
   const willFitRight = (): boolean => {
     const fullness =
-      crossing && percentFull ? percentFull || 0 : estimateFull || 0;
+      crossing && percentFull ? percentFull ?? 0 : estimateFull ?? 0;
     const percent = fullness / 100;
     const totalWidth = window.innerWidth;
     const width = percent * totalWidth;
@@ -120,7 +118,7 @@ export const Capacity: FunctionComponent<Props> = (props) => {
 
   const isRightEdge = (): boolean => {
     const fullness =
-      crossing && percentFull ? percentFull || 0 : estimateFull || 0;
+      crossing && percentFull ? percentFull ?? 0 : estimateFull ?? 0;
     const percent = fullness / 100;
     const totalWidth = window.innerWidth;
     const width = percent * totalWidth;
@@ -133,13 +131,13 @@ export const Capacity: FunctionComponent<Props> = (props) => {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const isEmpty = (): boolean => {
     const fullness =
-      crossing && percentFull ? percentFull || 0 : estimateFull || 0;
+      crossing && percentFull ? percentFull ?? 0 : estimateFull ?? 0;
     return fullness === 0;
   };
 
   const isFull = (): boolean => {
     const spaces = crossing && percentFull ? spaceLeft : estimateLeft;
-    return !isNull(spaces) && spaces <= 0;
+    return !isNil(spaces) && spaces <= 0;
   };
 
   const renderSpaceDetail = (): ReactNode => {
@@ -221,7 +219,7 @@ export const Capacity: FunctionComponent<Props> = (props) => {
           );
         }
       }
-    } else if (estimate && !isNull(estimateLeft)) {
+    } else if (estimate && !isNil(estimateLeft)) {
       spaceClass = clsx(spaceClass, "text-gray-medium");
       spaceText = (
         <>{estimateLeft > 0 ? `${estimateLeft} spaces left` : "Boat full"}</>
@@ -251,7 +249,7 @@ export const Capacity: FunctionComponent<Props> = (props) => {
 
   const showCapacity = Boolean(percentFull);
   const showEstimate = Boolean(
-    !hasPassed && !isNull(estimateFull) && estimateFull > (percentFull || 0)
+    !hasPassed && !isNil(estimateFull) && estimateFull > (percentFull ?? 0)
   );
   if (!showCapacity && !showEstimate) {
     return null;
@@ -286,7 +284,7 @@ export const Capacity: FunctionComponent<Props> = (props) => {
           )}
         </div>
       )}
-      {showEstimate && !isNull(estimateFull) && (
+      {showEstimate && !isNil(estimateFull) && (
         <div
           className={clsx(
             "absolute w-1 top-0 h-full",
@@ -295,8 +293,8 @@ export const Capacity: FunctionComponent<Props> = (props) => {
             "border-r-4 border-r-dashed"
           )}
           style={{
-            left: `${percentFull || 0}%`,
-            width: `${estimateFull - (percentFull || 0)}%`,
+            left: `${percentFull ?? 0}%`,
+            width: `${estimateFull - (percentFull ?? 0)}%`,
           }}
         >
           {!showCapacity && isMiddleZone() && (

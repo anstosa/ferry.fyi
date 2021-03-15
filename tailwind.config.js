@@ -1,4 +1,5 @@
-function borderPlugin({ addUtilities }) {
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+const borderPlugin = ({ addUtilities }) => {
   const newUtilities = {};
   const DIRECTIONS = { top: "t", right: "r", bottom: "b", left: "l" };
 
@@ -13,13 +14,10 @@ function borderPlugin({ addUtilities }) {
   });
 
   addUtilities(newUtilities);
-}
+};
 
 module.exports = {
-  future: {
-    removeDeprecatedGapUtilities: true,
-    purgeLayersByDefault: true,
-  },
+  purge: ["./src/**.jsx", "./src/**.html"],
   prefix: "",
   important: false,
   separator: ":",

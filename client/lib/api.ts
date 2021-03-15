@@ -19,4 +19,4 @@ export const post = async (
   return response.json();
 };
 
-export const isOnline = (): boolean => window?.navigator?.onLine || true;
+export const isOnline = (): boolean => window?.navigator?.onLine ?? true;

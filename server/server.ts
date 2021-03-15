@@ -1,10 +1,10 @@
-import { createJob } from "./lib/jobs";
+import { createJob } from "~/lib/jobs";
 import { DateTime } from "luxon";
-import { dbInit } from "./lib/db";
-import { getSchedule } from "./lib/schedule";
-import { getTerminal, getTerminals } from "./lib/terminals";
-import { getVessel, getVessels } from "./lib/vessels";
-import { updateLong, updateShort } from "./lib/wsf";
+import { dbInit } from "~/lib/db";
+import { getSchedule } from "~/lib/schedule";
+import { getTerminal, getTerminals } from "~/lib/terminals";
+import { getVessel, getVessels } from "~/lib/vessels";
+import { updateLong, updateShort } from "~/lib/wsf";
 import bodyParser from "koa-bodyparser";
 import fs from "fs";
 import Koa from "koa";

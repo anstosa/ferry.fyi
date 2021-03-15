@@ -2,19 +2,16 @@
 // because some of them rely on environment variables (like ./config/passport)
 import { config } from "dotenv";
 import path from "path";
-config({ path: path.join(__dirname, "../.env") });
+config({ path: path.join(__dirname, "../.env.local") });
 
-/* eslint-disable @typescript-eslint/no-var-requires */
-const DotenvPlugin = require("dotenv-webpack");
-const LiveReloadPlugin = require("webpack-livereload-plugin");
-const RobotstxtPlugin = require("robotstxt-webpack-plugin");
-const WebappPlugin = require("webapp-webpack-plugin");
-/* eslint-enable @typescript-eslint/no-var-requires */
-
+import { filter } from "lodash";
+import DotenvPlugin from "dotenv-webpack";
+import FaviconsPlugin from "favicons-webpack-plugin";
 import HtmlPlugin from "html-webpack-plugin";
-import merge from "webpack-merge";
+import LiveReloadPlugin from "webpack-livereload-plugin";
 import MiniCssExtractPlugin from "mini-css-extract-plugin";
 import StyleLintPlugin from "stylelint-webpack-plugin";
+import TsConfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 import webpack from "webpack";
 import WorkboxPlugin from "workbox-webpack-plugin";
 
@@ -30,133 +27,119 @@ enum Mode {
   none = "none",
 }
 
-const commonConfig = merge([
-  {
-    entry: "./client/index.tsx",
-    output: {
-      path: path.resolve(__dirname, "../dist/client"),
-      filename: "client.js",
-      publicPath: "/",
-    },
+const isDevelopment = process.env.NODE_ENV === Mode.development;
+
+module.exports = {
+  mode: isDevelopment ? Mode.development : Mode.production,
+  entry: "./client/index.tsx",
+  output: {
+    path: path.resolve(__dirname, "../dist/client"),
+    filename: "client.js",
+    publicPath: "/",
+  },
+  devtool: "inline-source-map",
+  watchOptions: {
+    ignored: "../dist/.*",
+  },
+  plugins: filter([
+    new FaviconsPlugin({
+      logo: "./client/images/icon.png",
+      mode: "webapp",
+      favicons: {
+        appName: NAME,
+        appDescription: DESCRIPTION,
+        developerName: "Ansel Santosa",
+        developerURL: "https://santosa.dev",
+        background: COLOR,
+        theme_color: COLOR,
+      },
+    }),
+    new HtmlPlugin({
+      description: DESCRIPTION,
+      template: "./client/index.html",
+      title: TITLE,
+      url: process.env.BASE_URL,
+      color: COLOR,
+    }),
+    new WorkboxPlugin.InjectManifest({
+      swSrc: "./client/service-worker.ts",
+    }),
+    new StyleLintPlugin({
+      files: "(client|server)/**/*.(s(c|a)ss|css)",
+    }),
+    new MiniCssExtractPlugin({
+      filename: "[name].css",
+      chunkFilename: "[id].css",
+    }),
+    new webpack.EnvironmentPlugin([
+      "BASE_URL",
+      "GOOGLE_ANALYTICS",
+      "LOG_LEVEL",
+      "NODE_ENV",
+    ]),
+    ...(isDevelopment
+      ? [
+          new DotenvPlugin({
+            path: path.resolve(__dirname, "../.env.local"),
+          }),
+          new LiveReloadPlugin({
+            appendScriptTag: true,
+          }),
+        ]
+      : []),
+  ]),
+  resolve: {
+    extensions: [".css", ".scss", ".js", ".jsx", ".ts", ".tsx"],
     plugins: [
-      new WebappPlugin({
-        logo: "./client/images/icon.png",
-        favicons: {
-          appName: NAME,
-          appDescription: DESCRIPTION,
-          developerName: "Ansel Santosa",
-          developerURL: "https://santosa.dev",
-          background: COLOR,
-          theme_color: COLOR,
-        },
-      }),
-      new RobotstxtPlugin({
-        policy: [
-          {
-            userAgent: "*",
-            disallow: "",
-          },
-        ],
-        host: process.env.BASE_URL,
-      }),
-      new HtmlPlugin({
-        description: DESCRIPTION,
-        template: "./client/index.html",
-        title: TITLE,
-        url: process.env.BASE_URL,
-        color: COLOR,
-      }),
-      new WorkboxPlugin.InjectManifest({
-        swSrc: "./client/service-worker.ts",
-      }),
-      new StyleLintPlugin(),
-      new MiniCssExtractPlugin({
-        filename: "[name].css",
-        chunkFilename: "[id].css",
+      new TsConfigPathsPlugin({
+        configFile: path.resolve(__dirname, "tsconfig.json"),
       }),
     ],
-    resolve: {
-      extensions: [".css", ".scss", ".js", ".jsx", ".ts", ".tsx"],
-    },
-    module: {
-      rules: [
-        {
-          test: /\.(ttf|jpe?g|gif|svg|png|otf|woff|woff2|eot)$/,
-          loader: "file-loader?name=[name].[ext]",
-        },
-        {
-          test: /\.css$/,
-          use: [
-            { loader: "style-loader" },
-            { loader: "css-loader", options: { modules: true } },
-          ],
-        },
-        {
-          test: /\.(sa|sc)ss$/,
-          use: [
-            {
-              loader: MiniCssExtractPlugin.loader,
-              options: {
-                hmr: process.env.NODE_ENV === Mode.development,
-              },
-            },
-            { loader: "css-loader", options: { importLoaders: 1 } },
-            "postcss-loader",
-            "sass-loader",
-          ],
-        },
-        {
-          enforce: "pre",
-          test: /\.tsx?$/,
-          exclude: /node_modules/,
-          loader: "ts-loader",
-        },
-        {
-          enforce: "pre",
-          test: /\.tsx?$/,
-          exclude: /node_modules/,
-          loader: "eslint-loader",
+  },
+  module: {
+    rules: [
+      {
+        test: /\.(ttf|jpe?g|gif|svg|png|otf|woff|woff2|eot)$/,
+        use: {
+          loader: "file-loader",
           options: {
-            failOnError: true,
+            name: "[name].[ext]",
           },
         },
-      ],
-    },
-  },
-]);
-
-const productionConfig = merge([
-  {
-    plugins: [
-      new webpack.EnvironmentPlugin([
-        "BASE_URL",
-        "GOOGLE_ANALYTICS",
-        "LOG_LEVEL",
-        "NODE_ENV",
-      ]),
+      },
+      {
+        test: /\.css$/,
+        use: [
+          { loader: "style-loader" },
+          { loader: "css-loader", options: { modules: true } },
+        ],
+      },
+      {
+        test: /\.(sa|sc)ss$/,
+        use: [
+          {
+            loader: MiniCssExtractPlugin.loader,
+          },
+          { loader: "css-loader", options: { importLoaders: 1 } },
+          "postcss-loader",
+          "sass-loader",
+        ],
+      },
+      {
+        enforce: "pre",
+        test: /\.tsx?$/,
+        exclude: /node_modules/,
+        loader: "ts-loader",
+      },
+      {
+        enforce: "pre",
+        test: /\.tsx?$/,
+        exclude: /node_modules/,
+        loader: "eslint-loader",
+        options: {
+          failOnError: true,
+        },
+      },
     ],
   },
-]);
-
-const developmentConfig = merge([
-  {
-    devtool: "inline-source-map",
-    watchOptions: {
-      ignored: "../dist/.*",
-    },
-    plugins: [
-      new DotenvPlugin(),
-      new LiveReloadPlugin({
-        appendScriptTag: true,
-      }),
-    ],
-  },
-]);
-
-module.exports = (mode: Mode | undefined) => {
-  if (mode === Mode.production) {
-    return merge(commonConfig, productionConfig, { mode });
-  } else {
-    return merge(commonConfig, developmentConfig, { mode });
-  }
 };

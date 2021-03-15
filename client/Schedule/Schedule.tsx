@@ -1,30 +1,25 @@
 import { DateTime } from "luxon";
 import { find, indexOf, isArray, isEmpty, map } from "lodash";
 import { Footer } from "./Footer";
-import { getSchedule } from "../schedule";
-import { getSlug, getTerminal } from "../terminals";
-import { Header } from "../Header";
-import { isDark } from "../lib/theme";
-import { Slot } from "../../server/lib/schedule";
+import { getSchedule } from "~/schedule";
+import { getSlug, getTerminal } from "~/terminals";
+import { Header } from "~/Header";
+import { isDark } from "~/lib/theme";
 import { SlotInfo } from "./Crossing/SlotInfo";
-import { Splash } from "../Splash";
-import { Terminal } from "../../server/lib/terminals";
+import { Splash } from "~/Splash";
 import { useHistory, useLocation, useParams } from "react-router-dom";
 import clsx from "clsx";
-import React, {
-  FunctionComponent,
-  ReactNode,
-  useEffect,
-  useState,
-} from "react";
+import React, { FC, ReactNode, useEffect, useState } from "react";
 import scrollIntoView from "scroll-into-view";
+import type { Slot } from "shared/models/schedules";
+import type { Terminal } from "shared/models/terminals";
 
 interface Params {
   terminalSlug: string;
   mateSlug?: string;
 }
 
-export const Schedule: FunctionComponent = () => {
+export const Schedule: FC = () => {
   const { terminalSlug, mateSlug } = useParams<Params>();
   const { pathname } = useLocation();
   const history = useHistory();
@@ -52,7 +47,7 @@ export const Schedule: FunctionComponent = () => {
 
   const tick = async (): Promise<void> => {
     await updateSchedule();
-    setTickTimeout(setTimeout(tick, 10 * 1000) as NodeJS.Timeout);
+    setTickTimeout((setTimeout(tick, 10 * 1000) as unknown) as NodeJS.Timeout);
   };
 
   useEffect(() => {
@@ -81,7 +76,7 @@ export const Schedule: FunctionComponent = () => {
       mate = await getTerminal(mateSlug);
     }
     if (!mate || !find(terminal.mates, { id: mate.id })) {
-      mate = terminal?.mates?.[0] || null;
+      mate = terminal?.mates?.[0] ?? null;
     }
     setMate(mate);
 

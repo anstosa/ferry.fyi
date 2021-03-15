@@ -1,12 +1,11 @@
 import { Alerts, getBulletins, getLastAlertTime } from "./Alerts";
 import { Cameras } from "./Cameras";
 import { DateTime } from "luxon";
-import { isFunction } from "lodash";
-import { isOnline } from "../lib/api";
-import { Terminal } from "../../server/lib/terminals";
+import { isOnline } from "~/lib/api";
 import clsx from "clsx";
-import React, { FunctionComponent, ReactNode, useState } from "react";
+import React, { FC, ReactNode, useState } from "react";
 import ReactGA from "react-ga";
+import type { Terminal } from "shared/models/terminals";
 
 enum Tabs {
   cameras = "cameras",
@@ -19,7 +18,7 @@ interface Props {
   time: DateTime;
 }
 
-export const Footer: FunctionComponent<Props> = (props) => {
+export const Footer: FC<Props> = (props) => {
   const { onChange, terminal, time } = props;
   const [cameraTime, setCameraTime] = useState<number>(
     DateTime.local().toSeconds()
@@ -61,9 +60,7 @@ export const Footer: FunctionComponent<Props> = (props) => {
   const toggleTab = (isOpen: boolean, tab: Tabs | null = null): void => {
     setOpen(isOpen);
     setTab(tab);
-    if (isFunction(onChange)) {
-      onChange(isOpen);
-    }
+    onChange?.(isOpen);
   };
 
   const renderToggle = (): ReactNode => {
