@@ -4,9 +4,9 @@
     "description": "A better tracker for the Washington State Ferry System",
     "scripts": {
         "build:client": "NODE_ENV=production webpack --config client/webpack.config.ts",
-        "build:server": "cd server && tsc --build",
+        "build:server": "cd server && tsc --build && cp tsconfig.json ../dist/server",
         "client": "NODE_ENV=development webpack --watch --config client/webpack.config.ts",
-        "heroku": "node ./dist/server/server.js",
+        "heroku": "cd dist/server && node -r tsconfig-paths/register server.js",
         "heroku-postbuild": "npm run build:client && npm run build:server",
         "lint": "npm run lint:css && npm run lint:js",
         "lint:fix": "npm run lint:css:fix && npm run lint:js:fix",
@@ -109,7 +109,6 @@
         "tailwindcss": "^2.0.3",
         "ts-loader": "^8.0.18",
         "ts-node": "^9.1.1",
-        "tsconfig-paths": "^3.9.0",
         "tsconfig-paths-webpack-plugin": "^3.4.1",
         "typescript": "^4.2.3",
         "webpack": "^5.25.0",
@@ -140,6 +139,7 @@
         "pg-hstore": "^2.3.3",
         "request": "^2.88.2",
         "sequelize": "^6.5.0",
-        "sequelize-cli": "^6.2.0"
+        "sequelize-cli": "^6.2.0",
+        "tsconfig-paths": "^3.9.0"
     }
 }
