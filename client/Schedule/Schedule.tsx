@@ -1,8 +1,8 @@
 import { DateTime } from "luxon";
-import { find, indexOf, isArray, isEmpty, map } from "lodash";
+import { find, isArray, isEmpty, map } from "lodash";
 import { Footer } from "./Footer";
 import { getSchedule } from "~/schedule";
-import { getSlug, getTerminal } from "~/terminals";
+import { getSlug, getTerminal } from "~/lib/terminals";
 import { Header } from "~/Header";
 import { isDark } from "~/lib/theme";
 import { SlotInfo } from "./Crossing/SlotInfo";
@@ -47,6 +47,7 @@ export const Schedule: FC = () => {
 
   const tick = async (): Promise<void> => {
     await updateSchedule();
+    // TODO fix type hack
     setTickTimeout((setTimeout(tick, 10 * 1000) as unknown) as NodeJS.Timeout);
   };
 
@@ -130,15 +131,6 @@ export const Schedule: FC = () => {
 
     const time = DateTime.fromSeconds(timestamp);
     setTime(time);
-
-    const next = find(schedule, { hasPassed: false });
-    if (!next) {
-      return;
-    }
-    const previous = schedule[indexOf(schedule, next)];
-    if (!expanded || expanded === previous) {
-      setExpanded(next);
-    }
   };
 
   const renderSchedule = (): ReactNode => {
