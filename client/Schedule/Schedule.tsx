@@ -1,7 +1,7 @@
 import { DateTime } from "luxon";
 import { find, isArray, isEmpty, map } from "lodash";
 import { Footer } from "./Footer";
-import { getSchedule } from "~/schedule";
+import { getSchedule } from "~/lib/schedule";
 import { getSlug, getTerminal } from "~/lib/terminals";
 import { Header } from "~/Header";
 import { isDark } from "~/lib/theme";

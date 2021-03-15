@@ -2,12 +2,7 @@ import { times } from "lodash";
 import clsx from "clsx";
 import React, { FC, ReactNode, useEffect, useState } from "react";
 
-interface Props {
-  message?: string;
-}
-
-export const Splash: FC<Props> = (props) => {
-  const { message } = props;
+export const Splash: FC<{ message?: string }> = ({ message }) => {
   const [isHelpVisible, setHelpVisible] = useState<boolean>(false);
   const [mark, setMark] = useState<number>(0);
   const [tickTimer, setTickTimer] = useState<NodeJS.Timeout | null>(null);
@@ -35,8 +30,8 @@ export const Splash: FC<Props> = (props) => {
     return (
       <div
         className="
-            fixed inset-x-0 bottom-0 w-full h-20
-            flex justify-center items-center
+          fixed inset-x-0 bottom-0 w-full h-20
+          flex justify-center items-center
         "
       >
         Broken? Email
@@ -58,7 +53,7 @@ export const Splash: FC<Props> = (props) => {
         bg-green-dark text-white
         fixed inset-0
         flex flex-col justify-center items-center
-    "
+      "
     >
       <i className="fas fa-3x fa-ship" />
       <div className="w-12 flex justify-between mt-8">

@@ -7,6 +7,33 @@ import React, { FC, ReactNode, useState } from "react";
 import ReactGA from "react-ga";
 import type { Terminal } from "shared/models/terminals";
 
+const WrapFooter: FC<{ isOpen: boolean }> = ({ isOpen = false, children }) => (
+  <div
+    className={clsx(
+      "fixed top-0 inset-x z-10",
+      "bg-green-dark text-white",
+      "w-full shadow-up-lg",
+      "flex justify-center",
+      "animate",
+      "pr-safe-right pl-safe-left mb-safe-bottom"
+    )}
+    style={{
+      height: window.innerHeight,
+      top: isOpen ? "0" : "calc(100% - 4rem)",
+    }}
+  >
+    <div
+      className={clsx(
+        "w-full max-w-6xl",
+        "flex flex-col",
+        "pt-safe-top pb-safe-bottom"
+      )}
+    >
+      {children}
+    </div>
+  </div>
+);
+
 enum Tabs {
   cameras = "cameras",
   alerts = "alerts",
@@ -18,8 +45,7 @@ interface Props {
   time: DateTime;
 }
 
-export const Footer: FC<Props> = (props) => {
-  const { onChange, terminal, time } = props;
+export const Footer: FC<Props> = ({ onChange, terminal, time }) => {
   const [cameraTime, setCameraTime] = useState<number>(
     DateTime.local().toSeconds()
   );
@@ -29,33 +55,6 @@ export const Footer: FC<Props> = (props) => {
 
   const showCameras = !isOpen || tab === Tabs.cameras;
   const showAlerts = !isOpen || tab === Tabs.alerts;
-
-  const wrapFooter = (content: ReactNode): ReactNode => (
-    <div
-      className={clsx(
-        "fixed top-0 inset-x z-10",
-        "bg-green-dark text-white",
-        "w-full shadow-up-lg",
-        "flex justify-center",
-        "animate",
-        "pr-safe-right pl-safe-left mb-safe-bottom"
-      )}
-      style={{
-        height: window.innerHeight,
-        top: isOpen ? "0" : "calc(100% - 4rem)",
-      }}
-    >
-      <div
-        className={clsx(
-          "w-full max-w-6xl",
-          "flex flex-col",
-          "pt-safe-top pb-safe-bottom"
-        )}
-      >
-        {content}
-      </div>
-    </div>
-  );
 
   const toggleTab = (isOpen: boolean, tab: Tabs | null = null): void => {
     setOpen(isOpen);
@@ -186,15 +185,11 @@ export const Footer: FC<Props> = (props) => {
   return (
     <>
       <div className="h-48 w-full" />
-      {wrapFooter(
-        <>
-          {renderToggle()}
-          {showCameras && (
-            <Cameras terminal={terminal} cameraTime={cameraTime} />
-          )}
-          {showAlerts && <Alerts terminal={terminal} time={time} />}
-        </>
-      )}
+      <WrapFooter isOpen={isOpen}>
+        {renderToggle()}
+        {showCameras && <Cameras terminal={terminal} cameraTime={cameraTime} />}
+        {showAlerts && <Alerts terminal={terminal} time={time} />}
+      </WrapFooter>
       <div className="h-safe-bottom w-full bg-green-dark" />
     </>
   );

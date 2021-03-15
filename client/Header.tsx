@@ -1,4 +1,4 @@
-import { getSlug, getTerminals } from "./terminals";
+import { getSlug, getTerminals } from "./lib/terminals";
 import { isOnline } from "~/lib/api";
 import { Link } from "react-router-dom";
 import { map, without } from "lodash";
@@ -8,6 +8,21 @@ import React, { FC, MouseEvent, ReactNode, useEffect, useState } from "react";
 import ReactGA from "react-ga";
 import type { Terminal } from "shared/models/terminals";
 
+const WrapHeader: FC = ({ children }) => (
+  <header
+    className={clsx(
+      "fixed top-0 inset-x-0 z-10",
+      "bg-green-dark text-white",
+      "w-full shadow-lg h-16",
+      "flex justify-center",
+      "pr-safe-right pl-safe-left mt-safe-top"
+    )}
+  >
+    <div className={clsx("w-full max-w-6xl p-4", "flex items-center")}>
+      {children}
+    </div>
+  </header>
+);
 interface Props {
   isReloading: boolean;
   mate: Terminal;
@@ -32,24 +47,8 @@ export const Header: FC<Props> = (props) => {
     fetchTerminals();
   }, []);
 
-  const wrapHeader = (content: ReactNode): ReactNode => (
-    <header
-      className={clsx(
-        "fixed top-0 inset-x-0 z-10",
-        "bg-green-dark text-white",
-        "w-full shadow-lg h-16",
-        "flex justify-center",
-        "pr-safe-right pl-safe-left mt-safe-top"
-      )}
-    >
-      <div className={clsx("w-full max-w-6xl p-4", "flex items-center")}>
-        {content}
-      </div>
-    </header>
-  );
-
   if (!terminal) {
-    return <>{wrapHeader("Ferry FYI")}</>;
+    return <WrapHeader>Ferry FYI</WrapHeader>;
   }
 
   const renderDropdown = (
@@ -89,7 +88,7 @@ export const Header: FC<Props> = (props) => {
                 <li key={id}>
                   <Link
                     className={clsx(
-                      "whitespace-no-wrap",
+                      "whitespace-nowrap",
                       "block cursor-pointer",
                       "px-4 py-2",
                       "hover:bg-lighten-high"
@@ -230,16 +229,14 @@ export const Header: FC<Props> = (props) => {
           });
         }}
       />
-      {wrapHeader(
-        <div className="flex w-full items-center">
-          {renderMenuToggle()}
-          {renderTerminal()}
-          {renderSwap()}
-          {renderMate()}
-          <div className="flex-grow" />
-          {renderReload()}
-        </div>
-      )}
+      <WrapHeader>
+        {renderMenuToggle()}
+        {renderTerminal()}
+        {renderSwap()}
+        {renderMate()}
+        <div className="flex-grow" />
+        {renderReload()}
+      </WrapHeader>
       <div className="h-48 w-full" />
     </>
   );

@@ -96,16 +96,6 @@ export const Capacity: FC<Props> = (props) => {
     return width <= LEFT_EDGE;
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const willFitLeft = (): boolean => {
-    const fullness =
-      crossing && percentFull ? percentFull ?? 0 : estimateFull ?? 0;
-    const percent = fullness / 100;
-    const totalWidth = window.innerWidth;
-    const width = percent * totalWidth;
-    return width >= CAPACITY_WIDTH + LEFT_EDGE;
-  };
-
   const willFitRight = (): boolean => {
     const fullness =
       crossing && percentFull ? percentFull ?? 0 : estimateFull ?? 0;
@@ -127,13 +117,6 @@ export const Capacity: FC<Props> = (props) => {
   };
 
   const isMiddleZone = (): boolean => !isLeftEdge() && !isRightEdge();
-
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const isEmpty = (): boolean => {
-    const fullness =
-      crossing && percentFull ? percentFull ?? 0 : estimateFull ?? 0;
-    return fullness === 0;
-  };
 
   const isFull = (): boolean => {
     const spaces = crossing && percentFull ? spaceLeft : estimateLeft;
@@ -188,7 +171,7 @@ export const Capacity: FC<Props> = (props) => {
 
   const renderSpace = (): ReactNode => {
     let spaceText;
-    let spaceClass = clsx("text-xs whitespace-no-wrap");
+    let spaceClass = clsx("text-xs whitespace-nowrap");
     if (crossing && percentFull) {
       spaceText = (
         <>

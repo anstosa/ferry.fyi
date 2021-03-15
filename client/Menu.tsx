@@ -1,4 +1,3 @@
-import { isNull } from "lodash";
 import clsx from "clsx";
 import React, { FC, ReactNode, useState } from "react";
 
@@ -12,81 +11,88 @@ enum Platform {
   ios = "ios",
 }
 
-export const Menu: FC<Props> = (props) => {
-  const { isOpen, onClose } = props;
-  const [platform, setPlatform] = useState<Platform | null>(null);
+const InstallStepIcon: FC<{ className?: string }> = ({ className }) => (
+  <i className={clsx(className, "mx-2 w-4 text-center")} />
+);
 
-  const renderStepIcon = (className: string): ReactNode => (
-    <i className={clsx(className, "mx-2 w-4 text-center")} />
-  );
+const InstallInstructions: FC = () => {
+  const [platform, setPlatform] = useState<Platform | undefined>();
 
-  const renderInstall = (): ReactNode => {
-    const isInstalled = window.matchMedia("(display-mode: standalone)").matches;
+  const isInstalled = window.matchMedia("(display-mode: standalone)").matches;
 
-    if (isInstalled) {
-      return null;
-    }
+  if (isInstalled) {
+    return null;
+  }
 
-    return (
-      <>
-        <h2 className="font-medium text-lg mt-8">Install App</h2>
-        <div className="mt-2">
-          Want to install Ferry FYI as an app on your homescreen?
-          {isNull(platform) && (
-            <div className="flex mt-4">
-              <button
-                className={clsx("button button-invert", "flex-grow")}
-                onClick={() => setPlatform(Platform.ios)}
-              >
-                <i className="button-icon fab fa-lg fa-apple" />
-                <span className="button-label">iOS</span>
-              </button>
-              <button
-                className={clsx("button button-invert", "flex-grow ml-4")}
-                onClick={() => setPlatform(Platform.android)}
-              >
-                <i className="button-icon fab fa-lg fa-android" />
-                <span className="button-label">Android</span>
-              </button>
-            </div>
-          )}
-          {platform === Platform.ios && (
-            <ol className="my-2 list-decimal list-inside">
-              <li>
-                {renderStepIcon("fab fa-safari")}
-                Safari
-              </li>
-              <li>
-                {renderStepIcon("fal fa-external-link")}
-                Share
-              </li>
-              <li>
-                {renderStepIcon("fal fa-plus-square")}
-                Add to Home Screen
-              </li>
-            </ol>
-          )}
-          {platform === Platform.android && (
-            <ol className="my-2 list-decimal list-inside">
-              <li>
-                {renderStepIcon("fab fa-chrome")}
-                Chrome
-              </li>
-              <li>
-                {renderStepIcon("fas fa-ellipsis-v")}
-                Menu
-              </li>
-              <li>
-                {renderStepIcon("inline-block")}
-                Add to Home Screen
-              </li>
-            </ol>
-          )}
-        </div>
-      </>
+  let steps: ReactNode;
+
+  if (platform === Platform.ios) {
+    steps = (
+      <ol className="my-2 list-decimal list-inside">
+        <li>
+          <InstallStepIcon className="fab fa-safari" />
+          Safari
+        </li>
+        <li>
+          <InstallStepIcon className="fal fa-external-link" />
+          Share
+        </li>
+        <li>
+          <InstallStepIcon className="fal fa-plus-square" />
+          Add to Home Screen
+        </li>
+      </ol>
     );
-  };
+  } else if (platform === Platform.android) {
+    steps = (
+      <ol className="my-2 list-decimal list-inside">
+        <li>
+          <InstallStepIcon className="fab fa-chrome" />
+          Chrome
+        </li>
+        <li>
+          <InstallStepIcon className="fas fa-ellipsis-v" />
+          Menu
+        </li>
+        <li>
+          <InstallStepIcon className="inline-block" />
+          Add to Home Screen
+        </li>
+      </ol>
+    );
+  } else {
+    steps = (
+      <div className="flex mt-4">
+        <button
+          className={clsx("button button-invert", "flex-grow")}
+          onClick={() => setPlatform(Platform.ios)}
+        >
+          <i className="button-icon fab fa-lg fa-apple" />
+          <span className="button-label">iOS</span>
+        </button>
+        <button
+          className={clsx("button button-invert", "flex-grow ml-4")}
+          onClick={() => setPlatform(Platform.android)}
+        >
+          <i className="button-icon fab fa-lg fa-android" />
+          <span className="button-label">Android</span>
+        </button>
+      </div>
+    );
+  }
 
+  return (
+    <>
+      <h2 className="font-medium text-lg mt-8">Install App</h2>
+      <div className="mt-2">
+        Want to install Ferry FYI as an app on your homescreen?
+      </div>
+      {steps}
+    </>
+  );
+};
+
+export const Menu: FC<Props> = ({ isOpen, onClose }) => {
   if (!isOpen) {
     return null;
   }
@@ -143,7 +149,7 @@ export const Menu: FC<Props> = (props) => {
             </a>{" "}
             routes.
           </p>
-          {renderInstall()}
+          <InstallInstructions />
           <h2 className="font-medium text-lg mt-8">Feedback</h2>
           <p className="mt-2">
             See something wrong? Want to request a feature?{" "}

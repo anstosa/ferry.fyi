@@ -9,6 +9,7 @@
 // imports
 
 import { buildEstimates, getEstimate } from "./forecast";
+import { Crossing as CrossingType, Slot } from "shared/models/schedules";
 import { DateTime } from "luxon";
 import {
   each,
@@ -29,7 +30,6 @@ import { getToday, wsfDateToTimestamp } from "./date";
 import { getVessel } from "./vessels";
 import { Op } from "sequelize";
 import { Route } from "shared/models/terminals";
-import { Slot, Crossing as CrossingType} from "shared/models/schedules";
 import { wsfRequest } from "./api";
 import Crossing from "~/models/crossing";
 import logger from "heroku-logger";
@@ -117,7 +117,7 @@ interface RouteResponse {
 }
 
 interface ServerSlot extends Slot {
-  crossing?: Crossing
+  crossing?: Crossing;
 }
 
 // API paths
