@@ -2,7 +2,7 @@
   "extends": "../tsconfig",
   "compilerOptions": {
     "baseUrl": ".",
-    "outDir": "../dist/server",
+    "outDir": "../dist",
     "paths": {
       "~/*": ["./*"],
       "shared/*": ["../shared/*"]
