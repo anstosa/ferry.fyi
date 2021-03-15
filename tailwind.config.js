@@ -17,7 +17,7 @@ const borderPlugin = ({ addUtilities }) => {
 };
 
 module.exports = {
-  purge: ["./src/**.tsx", "./src/**.html"],
+  purge: ["./client/**/*.tsx", "./client/**/*.html"],
   prefix: "",
   important: false,
   separator: ":",
