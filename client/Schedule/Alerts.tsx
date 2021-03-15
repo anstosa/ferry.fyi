@@ -1,4 +1,12 @@
-import { capitalize, filter, map, reverse, round, sortBy } from "lodash";
+import {
+  capitalize,
+  filter,
+  map,
+  reverse,
+  round,
+  sortBy,
+  toNumber,
+} from "lodash";
 import { DateTime } from "luxon";
 import clsx from "clsx";
 import React, { FC, ReactNode } from "react";
@@ -19,6 +27,44 @@ const ALERT_FILTER = new RegExp(
   ].join("|")})`,
   "i"
 );
+
+const WAIT_NUMBER_HOURS_MATCH = /^.*(\d+) (Hour|Hr) Wait.*$/i;
+const WAIT_SPELL_HOURS_MATCH = /^.*(one|two|three|four|five|six) (1\/2){0,1} (Hour|Hr) Wait.*$/i;
+const WAIT_MINUTES_MATCH = /^.*(\d+) (Minute|Min) Wait.*$/i;
+const HOURS_BY_SPELLED: Record<string, number> = {
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+};
+
+export const getWaitTime = ({ title }: Bulletin): string | null => {
+  let match = title.match(WAIT_NUMBER_HOURS_MATCH);
+  if (match) {
+    const [, hours] = match;
+    return `${hours}hr wait`;
+  }
+
+  match = title.match(WAIT_SPELL_HOURS_MATCH);
+  if (match) {
+    const [, hours, minutes] = match;
+    return `${HOURS_BY_SPELLED[hours]}${minutes === "1/2" ? ".5" : ""}hr wait`;
+  }
+
+  match = title.match(WAIT_MINUTES_MATCH);
+  if (match) {
+    const [, minutesString] = match;
+    const minutes = toNumber(minutesString);
+    if (minutes >= 60) {
+      return `${minutes / 60}hr wait`;
+    } else {
+      return `${minutes}min wait`;
+    }
+  }
+  return null;
+};
 
 const getAlertTime = (
   bulletin: Bulletin,

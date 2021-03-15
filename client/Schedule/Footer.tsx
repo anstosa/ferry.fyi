@@ -1,4 +1,4 @@
-import { Alerts, getBulletins, getLastAlertTime } from "./Alerts";
+import { Alerts, getBulletins, getLastAlertTime, getWaitTime } from "./Alerts";
 import { Cameras } from "./Cameras";
 import { DateTime } from "luxon";
 import { isOnline } from "~/lib/api";
@@ -79,7 +79,7 @@ export const Footer: FC<Props> = ({ onChange, terminal, time }) => {
       return null;
     }
     return (
-      <a className="h-16 py-4 flex items-center" href={vesselwatch}>
+      <a className="h-16 py-4 px-8 flex items-center" href={vesselwatch}>
         <i className="fas fa-lg fa-map-marked" />
       </a>
     );
@@ -142,16 +142,34 @@ export const Footer: FC<Props> = ({ onChange, terminal, time }) => {
   };
 
   const renderToggleAlerts = (): ReactNode => {
-    if (!getBulletins(terminal).length) {
+    const bulletins = getBulletins(terminal);
+    if (!bulletins.length) {
       return <div className="flex-1" />;
     }
+
+    let summary: ReactNode;
+
+    let backgroundColor: string;
+    const latest = bulletins[0];
+    const hours = Math.abs(
+      DateTime.fromSeconds(latest.date).diffNow().as("hours")
+    );
+    if (hours < 6) {
+      summary = getWaitTime(latest) || getLastAlertTime(terminal);
+      backgroundColor = "bg-red-dark";
+    } else {
+      summary = null;
+      backgroundColor = "";
+    }
+
     return (
       <div
         className={clsx(
           "relative h-16 p-4",
           "flex items-center flex-1 justify-end",
           "flex-no-wrap min-w-0",
-          "cursor-pointer"
+          "cursor-pointer",
+          { [backgroundColor]: !isOpen }
         )}
         onClick={() => {
           if (isOpen) {
@@ -169,14 +187,12 @@ export const Footer: FC<Props> = ({ onChange, terminal, time }) => {
           }
         }}
       >
-        <span className="truncate">
-          {isOpen ? "Alerts" : getLastAlertTime(terminal)}
-        </span>
+        <span className="truncate">{isOpen ? "Alerts" : summary}</span>
         <i
-          className={clsx(
-            "fas fa-lg ml-4",
-            isOpen ? "fa-chevron-down" : "fa-exclamation-triangle"
-          )}
+          className={clsx("fas fa-lg ml-4", {
+            "fa-chevron-down": isOpen,
+            "fa-exclamation-triangle": !isOpen,
+          })}
         />
       </div>
     );
