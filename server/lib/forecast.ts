@@ -6,6 +6,7 @@ import {
   filter,
   find,
   isEmpty,
+  isNil,
   isUndefined,
   mean,
   mergeWith,
@@ -56,6 +57,7 @@ export const buildEstimates = async (
       departureTime: { [Op.gte]: startTime },
     },
   });
+  let previousOffset: number | null = null;
   each(schedule, (crossing) => {
     const { wuid } = crossing;
     const estimate: Record<string, number | null> = {};
@@ -78,9 +80,30 @@ export const buildEstimates = async (
       };
       mergeWith(data, dataPoint, (array, value) => concat(array, value));
     });
-    each(data, (records, key) => {
-      estimate[key] = round(mean(filter(records)));
-    });
+
+    estimate.reservableCapacity = round(mean(filter(data.reservableCapacity)));
+    estimate.driveUpCapacity =
+      round(mean(filter(data.driveUpCapacity))) * (previousOffset ?? 1);
+
+    let estimatedTotal: number | null = null;
+    if (crossing.crossing && estimate.driveUpCapacity) {
+      estimatedTotal =
+        crossing.crossing.totalCapacity -
+        estimate.driveUpCapacity +
+        (estimate.reservableCapacity ?? 0);
+    }
+
+    const crossingData = find(crossings, { departureTime: crossing.time });
+    let actualTotal: number | null = null;
+    if (crossingData) {
+      actualTotal =
+        crossingData.totalCapacity -
+        crossingData.driveUpCapacity +
+        (estimate.reservableCapacity ?? 0);
+    }
+    if (!isNil(estimatedTotal) && !isNil(actualTotal)) {
+      previousOffset = estimatedTotal / actualTotal;
+    }
     setWith(estimates, [departureId, arrivalId, wuid], estimate, Object);
   });
 };
