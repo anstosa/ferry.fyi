@@ -4,13 +4,16 @@ import { config } from "dotenv";
 import path from "path";
 config({ path: path.join(__dirname, "../.env.local") });
 
+import { BundleAnalyzerPlugin } from "webpack-bundle-analyzer";
 import { filter } from "lodash";
 import DotenvPlugin from "dotenv-webpack";
 import FaviconsPlugin from "favicons-webpack-plugin";
+import ForkTsCheckerWebpackPlugin from "fork-ts-checker-webpack-plugin";
 import HtmlPlugin from "html-webpack-plugin";
 import LiveReloadPlugin from "webpack-livereload-plugin";
 import MiniCssExtractPlugin from "mini-css-extract-plugin";
 import StyleLintPlugin from "stylelint-webpack-plugin";
+import TerserPlugin from "terser-webpack-plugin";
 import TsConfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 import webpack from "webpack";
 import WorkboxPlugin from "workbox-webpack-plugin";
@@ -31,19 +34,29 @@ const isDevelopment = process.env.NODE_ENV === Mode.development;
 
 module.exports = {
   mode: isDevelopment ? Mode.development : Mode.production,
-  entry: "./client/index.tsx",
+  context: __dirname,
+  cache: { type: "filesystem" },
+  entry: "index.tsx",
   output: {
     path: path.resolve(__dirname, "../dist/client"),
-    filename: "client.js",
+    filename: "[name].[chunkhash].js",
     publicPath: "/",
   },
-  devtool: "inline-source-map",
+  devtool: isDevelopment ? "eval-cheap-module-source-map" : false,
   watchOptions: {
     ignored: "../dist/.*",
   },
+  optimization: {
+    runtimeChunk: true,
+    minimize: !isDevelopment,
+    minimizer: [new TerserPlugin()],
+  },
   plugins: filter([
+    new BundleAnalyzerPlugin({
+      analyzerMode: isDevelopment ? "server" : "static",
+    }),
     new FaviconsPlugin({
-      logo: "./client/images/icon.png",
+      logo: "images/icon.png",
       mode: "webapp",
       favicons: {
         appName: NAME,
@@ -54,18 +67,19 @@ module.exports = {
         theme_color: COLOR,
       },
     }),
+    new ForkTsCheckerWebpackPlugin(),
     new HtmlPlugin({
       description: DESCRIPTION,
-      template: "./client/index.html",
+      template: "index.html",
       title: TITLE,
       url: process.env.BASE_URL,
       color: COLOR,
     }),
     new WorkboxPlugin.InjectManifest({
-      swSrc: "./client/service-worker.ts",
+      swSrc: "service-worker.ts",
     }),
     new StyleLintPlugin({
-      files: "(client|server)/**/*.(s(c|a)ss|css)",
+      files: "**/*.(s(c|a)ss|css)",
     }),
     new MiniCssExtractPlugin({
       filename: "[name].css",
@@ -89,7 +103,8 @@ module.exports = {
       : []),
   ]),
   resolve: {
-    extensions: [".css", ".scss", ".js", ".jsx", ".ts", ".tsx"],
+    symlinks: false,
+    extensions: [".css", ".scss", ".js", ".ts", ".tsx"],
     plugins: [
       new TsConfigPathsPlugin({
         configFile: path.resolve(__dirname, "tsconfig.json"),
@@ -128,13 +143,18 @@ module.exports = {
       {
         enforce: "pre",
         test: /\.tsx?$/,
-        exclude: /node_modules/,
-        loader: "ts-loader",
+        include: [__dirname, path.resolve(__dirname, "../shared")],
+        use: {
+          loader: "ts-loader",
+          options: {
+            transpileOnly: true,
+          },
+        },
       },
       {
         enforce: "pre",
         test: /\.tsx?$/,
-        exclude: /node_modules/,
+        include: [__dirname, path.resolve(__dirname, "../shared")],
         loader: "eslint-loader",
         options: {
           failOnError: true,
