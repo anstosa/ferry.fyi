@@ -39,7 +39,7 @@ whenReady(() => {
 
 if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") {
   window.addEventListener("load", () => {
-    const workbox = new Workbox("/service-worker.ts");
+    const workbox = new Workbox("/service-worker.js");
 
     workbox.addEventListener("installed", (event) => {
       if (event.isUpdate) {

@@ -6,6 +6,7 @@ config({ path: path.join(__dirname, "../.env.local") });
 
 import { BundleAnalyzerPlugin } from "webpack-bundle-analyzer";
 import { filter } from "lodash";
+import CssMinimizerPlugin from "css-minimizer-webpack-plugin";
 import DotenvPlugin from "dotenv-webpack";
 import FaviconsPlugin from "favicons-webpack-plugin";
 import ForkTsCheckerWebpackPlugin from "fork-ts-checker-webpack-plugin";
@@ -49,7 +50,7 @@ module.exports = {
   optimization: {
     runtimeChunk: true,
     minimize: !isDevelopment,
-    minimizer: [new TerserPlugin()],
+    minimizer: [new TerserPlugin(), new CssMinimizerPlugin()],
   },
   plugins: filter([
     new BundleAnalyzerPlugin({
