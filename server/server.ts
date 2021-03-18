@@ -14,12 +14,12 @@ import path from "path";
 import requestLogger from "koa-logger";
 import Router from "koa-router";
 import serve from "koa-static";
-import sslify from "koa-sslify";
+import sslify, { xForwardedProtoResolver } from "koa-sslify";
 
 // start main app
 const app = new Koa();
 if (process.env.NODE_ENV === "production") {
-  app.use(sslify());
+  app.use(sslify({ resolver: xForwardedProtoResolver }));
 }
 app.use(requestLogger());
 
