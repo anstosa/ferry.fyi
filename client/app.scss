@@ -4,6 +4,7 @@ $fa-font-path: "./fonts";
 @import "./scss/fontawesome/solid";
 @import "./scss/fontawesome/light";
 @import "./scss/fontawesome/brands";
+@import "./scss/googlewebfonts";
 
 // Inject Tailwind CSSs base styles, including normalization.
 @tailwind base;
