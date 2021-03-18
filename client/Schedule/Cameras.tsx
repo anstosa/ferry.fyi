@@ -74,6 +74,7 @@ export const Cameras: FC<Props> = (props) => {
               "absolute inset-0 w-full",
               owner?.name && "border border-black"
             )}
+            alt={`Traffic Camera: ${title}`}
           />
         </div>
         <span className="font-bold text-lg mt-2">
