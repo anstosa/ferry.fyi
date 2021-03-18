@@ -65,6 +65,10 @@ const clientDist = path.resolve(
 );
 dist.use(serve(clientDist));
 const browser = new Router();
+browser.get("/robots.txt", (context) => {
+  context.type = "text/plain";
+  context.body = "User-agent: *\nDisallow: /";
+});
 browser.get(/.*/, (context) => {
   context.type = "html";
   context.body = fs.readFileSync(path.resolve(clientDist, "index.html"));
