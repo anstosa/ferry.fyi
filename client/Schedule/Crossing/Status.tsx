@@ -1,6 +1,7 @@
 import { DateTime, Duration } from "luxon";
 import { isDark } from "~/lib/theme";
-import { isNull, round } from "lodash";
+import { isNull } from "~/lib/identity";
+import { round } from "~/lib/math";
 import clsx from "clsx";
 import React, { FC } from "react";
 import type { Slot } from "shared/models/schedules";

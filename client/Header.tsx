@@ -1,8 +1,8 @@
 import { getSlug, getTerminals } from "./lib/terminals";
 import { isOnline } from "~/lib/api";
 import { Link } from "react-router-dom";
-import { map, without } from "lodash";
 import { Menu } from "./Menu";
+import { without } from "~/lib/arrays";
 import clsx from "clsx";
 import React, { FC, MouseEvent, ReactNode, useEffect, useState } from "react";
 import ReactGA from "react-ga";
@@ -83,7 +83,7 @@ export const Header: FC<Props> = (props) => {
               "max-h-halfscreen overflow-y-scroll scrolling-touch"
             )}
           >
-            {map(otherTerminals, (terminal) => {
+            {otherTerminals.map((terminal) => {
               const { id, name } = terminal;
               return (
                 <li key={id}>

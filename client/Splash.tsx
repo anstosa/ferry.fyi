@@ -1,4 +1,3 @@
-import { times } from "lodash";
 import clsx from "clsx";
 import React, { FC, ReactNode, useEffect, useState } from "react";
 
@@ -57,7 +56,7 @@ export const Splash: FC<{ message?: string }> = ({ message }) => {
     >
       <i className="fas fa-3x fa-ship" />
       <div className="w-12 flex justify-between mt-8">
-        {times(3, (index) => (
+        {[1, 2, 3].map((index) => (
           <i
             key={index}
             className={clsx(

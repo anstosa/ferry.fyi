@@ -1,5 +1,5 @@
 import { DateTime } from "luxon";
-import { find, isArray, isEmpty, map } from "lodash";
+import { findWhere, isArray, isEmpty } from "~/lib/arrays";
 import { Footer } from "./Footer";
 import { getSchedule } from "~/lib/schedule";
 import { getSlug, getTerminal } from "~/lib/terminals";
@@ -76,7 +76,7 @@ export const Schedule: FC = () => {
     if (mateSlug) {
       mate = await getTerminal(mateSlug);
     }
-    if (!mate || !find(terminal.mates, { id: mate.id })) {
+    if (!mate || !findWhere(terminal.mates, { id: mate.id })) {
       mate = terminal?.mates?.[0] ?? null;
     }
     setMate(mate);
@@ -134,11 +134,11 @@ export const Schedule: FC = () => {
   };
 
   const renderSchedule = (): ReactNode => {
-    const currentSlot = find(schedule, { hasPassed: false });
+    const currentSlot = findWhere(schedule, { hasPassed: false });
     if (!schedule) {
       return;
     }
-    const sailings = map(schedule, (slot) => {
+    const sailings = schedule.map((slot) => {
       const { time: slotTime } = slot;
       return (
         <SlotInfo

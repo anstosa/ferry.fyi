@@ -1,8 +1,9 @@
 import { Capacity } from "./Capacity";
 import { DateTime } from "luxon";
 import { ErrorBoundary } from "~/lib/ErrorBoundary";
-import { find, isNull } from "lodash";
+import { findWhere } from "~/lib/arrays";
 import { isDark } from "~/lib/theme";
+import { isNull } from "~/lib/identity";
 import { Status } from "./Status";
 import { Time } from "./Time";
 import { VesselStatus } from "./VesselStatus";
@@ -26,7 +27,7 @@ export const SlotInfo: FC<Props> = (props) => {
   const wrapper = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!isNull(wrapper) && !isNull(wrapper.current)) {
+    if (!isNull(wrapper.current)) {
       setElement(wrapper.current);
     }
   }, [wrapper]);
@@ -42,7 +43,7 @@ export const SlotInfo: FC<Props> = (props) => {
   } = props;
 
   const { hasPassed } = slot;
-  const isNext = slot === find(schedule, { hasPassed: false });
+  const isNext = slot === findWhere(schedule, { hasPassed: false });
 
   const renderHeader = (): ReactNode => (
     <section

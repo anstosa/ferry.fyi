@@ -1,13 +1,7 @@
-import {
-  capitalize,
-  filter,
-  map,
-  reverse,
-  round,
-  sortBy,
-  toNumber,
-} from "lodash";
+import { capitalize } from "~/lib/strings";
 import { DateTime } from "luxon";
+import { Order, sortBy } from "~/lib/arrays";
+import { round } from "~/lib/math";
 import clsx from "clsx";
 import React, { FC, ReactNode } from "react";
 import type { Bulletin, Terminal } from "shared/models/terminals";
@@ -56,7 +50,7 @@ export const getWaitTime = ({ title }: Bulletin): string | null => {
   match = title.match(WAIT_MINUTES_MATCH);
   if (match) {
     const [, minutesString] = match;
-    const minutes = toNumber(minutesString);
+    const minutes = Number(minutesString);
     if (minutes >= 60) {
       return `${minutes / 60}hr wait`;
     } else {
@@ -90,10 +84,10 @@ export const getLastAlertTime = (terminal: Terminal): string => {
 };
 
 export const getBulletins = ({ bulletins }: Terminal): Bulletin[] => {
-  const filteredBulletins = filter(bulletins, ({ title }) =>
+  const filteredBulletins = bulletins.filter(({ title }) =>
     ALERT_FILTER.test(title)
   );
-  return reverse(sortBy(filteredBulletins, "date"));
+  return sortBy(filteredBulletins, "date", Order.DESC);
 };
 
 interface Props {
@@ -128,7 +122,7 @@ export const Alerts: FC<Props> = (props) => {
   return (
     <aside className="flex-grow overflow-y-scroll scrolling-touch">
       <ul className={clsx("px-8 py-4 relative")}>
-        {map(getBulletins(terminal), renderAlert)}
+        {getBulletins(terminal).map(renderAlert)}
       </ul>
     </aside>
   );

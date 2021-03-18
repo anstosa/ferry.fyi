@@ -1,5 +1,5 @@
 import { DateTime } from "luxon";
-import { find, isNil, isNull, map } from "lodash";
+import { isNil, isNull } from "~/lib/identity";
 import { locationToUrl } from "~/lib/maps";
 import clsx from "clsx";
 import React, { FC, ReactNode, useEffect, useState } from "react";
@@ -46,7 +46,7 @@ export const Cameras: FC<Props> = (props) => {
       totalToBooth = null;
     } else {
       totalToBooth = 0;
-      find(cameras, (candidate) => {
+      cameras.find((candidate) => {
         const { spacesToNext } = candidate;
         if (isNull(spacesToNext)) {
           return true;
@@ -148,7 +148,7 @@ export const Cameras: FC<Props> = (props) => {
             "absolute inset-y-0 left-0 ml-6"
           )}
         />
-        <ul>{map(cameras, renderCamera)}</ul>
+        <ul>{cameras.map(renderCamera)}</ul>
       </div>
     </aside>
   );

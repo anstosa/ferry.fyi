@@ -1,5 +1,5 @@
-import { assign, map, sortBy } from "lodash";
 import { get } from "~/lib/api";
+import { sortBy } from "~/lib/arrays";
 import { Vessel } from "shared/models/vessels";
 
 const API_VESSELS = "/vessels";
@@ -22,9 +22,9 @@ export const getVessel = async (id: number): Promise<Vessel> => {
 
 export const getVessels = async (): Promise<Vessel[]> => {
   if (!hasAll) {
-    assign(vesselCache, await get(API_VESSELS));
+    Object.assign(vesselCache, await get(API_VESSELS));
     // eslint-disable-next-line require-atomic-updates
     hasAll = true;
   }
-  return sortBy(map(vesselCache), "name");
+  return sortBy(Object.values(vesselCache), "name");
 };

@@ -1,5 +1,5 @@
 import { isDark } from "~/lib/theme";
-import { isNil, min } from "lodash";
+import { isNil, isNull } from "~/lib/identity";
 import clsx from "clsx";
 import React, { FC, ReactNode, useEffect, useState } from "react";
 import type { Crossing, Slot } from "shared/models/schedules";
@@ -45,14 +45,14 @@ export const Capacity: FC<Props> = (props) => {
 
   const getEstimateFull = (): number | null => {
     const estimateLeft = getEstimateLeft();
-    if (isNil(estimateLeft)) {
+    if (isNull(estimateLeft)) {
       return null;
     }
     const totalCapacity = crossing?.totalCapacity ?? getVesselCapacity();
-    const estimateFull = min([
+    const estimateFull = Math.min(
       ((totalCapacity - estimateLeft) / totalCapacity) * 100,
-      100,
-    ]) as number;
+      100
+    ) as number;
     return estimateFull;
   };
 
@@ -70,10 +70,10 @@ export const Capacity: FC<Props> = (props) => {
       } = crossing;
 
       spaceLeft = driveUpCapacity + reservableCapacity;
-      percentFull = min([
+      percentFull = Math.min(
         ((totalCapacity - spaceLeft) / totalCapacity) * 100,
-        100,
-      ]);
+        100
+      );
     }
 
     setEstimateLeft(getEstimateLeft());
