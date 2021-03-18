@@ -8,7 +8,7 @@ import ReactGA from "react-ga";
 import type { Terminal } from "shared/models/terminals";
 
 const WrapFooter: FC<{ isOpen: boolean }> = ({ isOpen = false, children }) => (
-  <div
+  <footer
     className={clsx(
       "fixed top-0 inset-x z-10",
       "bg-green-dark text-white",
@@ -31,7 +31,7 @@ const WrapFooter: FC<{ isOpen: boolean }> = ({ isOpen = false, children }) => (
     >
       {children}
     </div>
-  </div>
+  </footer>
 );
 
 enum Tabs {

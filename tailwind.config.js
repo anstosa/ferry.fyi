@@ -104,7 +104,11 @@ module.exports = {
       },
     },
   },
-  variants: {},
+  variants: {
+    extend: {
+      inset: ["responsive", "focus"],
+    },
+  },
   corePlugins: {},
   plugins: [borderPlugin],
 };

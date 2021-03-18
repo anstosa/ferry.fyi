@@ -45,7 +45,7 @@ export const SlotInfo: FC<Props> = (props) => {
   const isNext = slot === find(schedule, { hasPassed: false });
 
   const renderHeader = (): ReactNode => (
-    <div
+    <section
       className={clsx(
         "relative p-3 h-20",
         "flex justify-between",
@@ -53,6 +53,7 @@ export const SlotInfo: FC<Props> = (props) => {
       )}
       ref={wrapper}
       onClick={onClick}
+      aria-label={`${time.toLocaleString(DateTime.DATETIME_SHORT)} sailing`}
     >
       <Capacity slot={slot} />
       <div className="flex flex-col justify-between items-start z-0">
@@ -60,7 +61,7 @@ export const SlotInfo: FC<Props> = (props) => {
         <Status className="" slot={slot} time={time} />
       </div>
       <Time slot={slot} time={time} isNext={isNext} />
-    </div>
+    </section>
   );
 
   const renderDetails = (): ReactNode => {

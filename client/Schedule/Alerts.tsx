@@ -126,10 +126,10 @@ export const Alerts: FC<Props> = (props) => {
   };
 
   return (
-    <div className="flex-grow overflow-y-scroll scrolling-touch">
+    <aside className="flex-grow overflow-y-scroll scrolling-touch">
       <ul className={clsx("px-8 py-4 relative")}>
         {map(getBulletins(terminal), renderAlert)}
       </ul>
-    </div>
+    </aside>
   );
 };

@@ -177,7 +177,7 @@ export const Schedule: FC = () => {
         reload={updateSchedule}
         isReloading={isUpdating}
       />
-      <article
+      <main
         className={clsx(
           "w-full max-h-full",
           "flex-grow",
@@ -186,6 +186,7 @@ export const Schedule: FC = () => {
           isDark ? "bg-black text-white" : "bg-white text-black",
           isFooterOpen ? "overflow-hidden" : "overflow-y-scroll"
         )}
+        id="main"
       >
         <div
           className={clsx(
@@ -196,7 +197,7 @@ export const Schedule: FC = () => {
         >
           {renderSchedule()}
         </div>
-      </article>
+      </main>
       <Footer terminal={terminal} time={time} onChange={setFooterOpen} />
     </>
   );

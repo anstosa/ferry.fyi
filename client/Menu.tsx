@@ -108,7 +108,7 @@ export const Menu: FC<Props> = ({ isOpen, onClose }) => {
         )}
         onClick={onClose}
       />
-      <div
+      <nav
         className={clsx(
           "animate",
           "flex flex-col",
@@ -200,7 +200,7 @@ export const Menu: FC<Props> = ({ isOpen, onClose }) => {
             on Whidbey Island
           </p>
         </div>
-      </div>
+      </nav>
     </>
   );
 };
