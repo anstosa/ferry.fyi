@@ -128,6 +128,7 @@ export const Menu: FC<Props> = ({ isOpen, onClose }) => {
           <i
             className={clsx("fas fa-chevron-left text-md", "cursor-pointer")}
             onClick={onClose}
+            aria-label="Close Menu"
           />
         </div>
         <div

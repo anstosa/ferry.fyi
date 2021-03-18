@@ -79,7 +79,11 @@ export const Footer: FC<Props> = ({ onChange, terminal, time }) => {
       return null;
     }
     return (
-      <a className="h-16 py-4 px-8 flex items-center" href={vesselwatch}>
+      <a
+        className="h-16 py-4 px-8 flex items-center"
+        href={vesselwatch}
+        aria-label="Open VesselWatch"
+      >
         <i className="fas fa-lg fa-map-marked" />
       </a>
     );
@@ -130,6 +134,7 @@ export const Footer: FC<Props> = ({ onChange, terminal, time }) => {
               "fas fa-redo fa-lg fa-spin cursor-pointer",
               !isReloading && "fa-spin-pause"
             )}
+            aria-label="Refresh Images"
             onClick={() => {
               setReloading(true);
               setCameraTime(DateTime.local().toSeconds());

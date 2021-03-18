@@ -67,6 +67,7 @@ export const Header: FC<Props> = (props) => {
         <div
           className="min-w-0 flex items-center"
           onClick={() => setOpen(!isOpen)}
+          aria-label="Expand Terminals"
         >
           <span className="truncate">{terminal.name}</span>
           <i
@@ -115,6 +116,7 @@ export const Header: FC<Props> = (props) => {
           href={terminal.location.link}
           target="_blank"
           rel="noopener noreferrer"
+          aria-label={`Get Directions to ${terminal.name}`}
         >
           <i className="fas fa-directions" />
         </a>
@@ -144,9 +146,14 @@ export const Header: FC<Props> = (props) => {
             action: "Swap Terminals",
           })
         }
+        aria-label="Swap Terminals"
       >
-        {isSwapHovering && <i className="fas fa-exchange-alt" />}
-        {!isSwapHovering && <i className="fas fa-arrow-right" />}
+        <i
+          className={clsx("fas", {
+            "fa-exchange-alt": isSwapHovering,
+            "fa-arrow-right": !isSwapHovering,
+          })}
+        />
       </Link>
     );
   };
@@ -178,6 +185,7 @@ export const Header: FC<Props> = (props) => {
           action: "Open Menu",
         });
       }}
+      aria-label="Open Menu"
     />
   );
 
@@ -196,6 +204,7 @@ export const Header: FC<Props> = (props) => {
           "fas fa-redo fa-lg fa-spin cursor-pointer ml-4",
           !isReloading && "fa-spin-pause"
         )}
+        aria-label="Refresh Data"
         onClick={() => {
           if (!isReloading) {
             reload();
