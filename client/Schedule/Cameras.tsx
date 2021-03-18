@@ -139,7 +139,7 @@ export const Cameras: FC<Props> = (props) => {
 
   return (
     <div className="flex-grow overflow-y-scroll scrolling-touch">
-      <ul className={clsx("my-4 pl-12 relative max-w-lg")}>
+      <div className={clsx("my-4 pl-12 relative max-w-lg")}>
         <div
           className={clsx(
             "bg-green-dark",
@@ -148,8 +148,8 @@ export const Cameras: FC<Props> = (props) => {
             "absolute inset-y-0 left-0 ml-6"
           )}
         />
-        {map(cameras, renderCamera)}
-      </ul>
+        <ul>{map(cameras, renderCamera)}</ul>
+      </div>
     </div>
   );
 };
