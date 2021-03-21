@@ -1,6 +1,7 @@
 import { Alerts, getBulletins, getLastAlertTime, getWaitTime } from "./Alerts";
 import { Cameras } from "./Cameras";
 import { DateTime } from "luxon";
+import { isDark } from "~/lib/theme";
 import { isOnline } from "~/lib/api";
 import clsx from "clsx";
 import React, { FC, ReactNode, useState } from "react";
@@ -10,12 +11,13 @@ import type { Terminal } from "shared/models/terminals";
 const WrapFooter: FC<{ isOpen: boolean }> = ({ isOpen = false, children }) => (
   <footer
     className={clsx(
-      "fixed top-0 inset-x z-10",
+      "fixed top-0 inset-x",
       "bg-green-dark text-white",
       "w-full shadow-up-lg",
       "flex justify-center",
       "animate",
-      "pr-safe-right pl-safe-left mb-safe-bottom"
+      "pr-safe-right pl-safe-left mb-safe-bottom",
+      isOpen ? "z-20" : "z-10"
     )}
     style={{
       height: window.innerHeight,
@@ -205,7 +207,12 @@ export const Footer: FC<Props> = ({ onChange, terminal, time }) => {
 
   return (
     <>
-      <div className="h-48 w-full" />
+      <div
+        className={clsx(
+          "h-16 w-full flex-shrink-0",
+          isDark ? "bg-black" : "bg-white"
+        )}
+      />
       <WrapFooter isOpen={isOpen}>
         {renderToggle()}
         {showCameras && <Cameras terminal={terminal} cameraTime={cameraTime} />}

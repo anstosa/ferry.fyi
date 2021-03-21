@@ -103,7 +103,7 @@ export const Menu: FC<Props> = ({ isOpen, onClose }) => {
         className={clsx(
           "fixed inset-0",
           "animate",
-          isOpen ? "z-20" : "z-bottom pointer-events-none",
+          isOpen ? "z-30" : "z-bottom pointer-events-none",
           isOpen ? "bg-darken-low" : "bg-transparent"
         )}
         onClick={onClose}
@@ -114,7 +114,7 @@ export const Menu: FC<Props> = ({ isOpen, onClose }) => {
           "flex flex-col",
           "bg-green-dark text-white shadow-lg",
           "w-full h-screen max-w-xs",
-          "fixed top-0 left-0 z-20",
+          "fixed top-0 left-0 z-30",
           "pt-safe-top pb-safe-bottom pl-safe-left",
           isOpen ? "ml-0" : "-ml-96"
         )}

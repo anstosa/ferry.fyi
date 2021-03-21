@@ -35,6 +35,14 @@ html {
   );
 }
 
+.bg-overscroll-gradient {
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    theme("colors.green.dark")
+  );
+}
+
 .fa-spin-pause {
   animation-play-state: paused;
 }

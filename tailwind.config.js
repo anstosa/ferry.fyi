@@ -89,6 +89,7 @@ module.exports = {
         "2px": "2px",
         "1/3": "calc(100% / 3)",
         "2/5": "40%",
+        halfscreen: "50vh",
         full: "100%",
         "safe-bottom": "env(safe-area-inset-bottom)",
         "safe-left": "env(safe-area-inset-left)",

@@ -1,4 +1,5 @@
 import { getSlug, getTerminals } from "./lib/terminals";
+import { isDark } from "~/lib/theme";
 import { isOnline } from "~/lib/api";
 import { Link } from "react-router-dom";
 import { Menu } from "./Menu";
@@ -11,7 +12,7 @@ import type { Terminal } from "shared/models/terminals";
 const WrapHeader: FC = ({ children }) => (
   <header
     className={clsx(
-      "fixed top-0 inset-x-0 z-10",
+      "fixed top-0 inset-x-0 z-20",
       "bg-green-dark text-white",
       "w-full shadow-lg h-16",
       "flex justify-center",
@@ -75,34 +76,44 @@ export const Header: FC<Props> = (props) => {
           />
         </div>
         {isOpen && (
-          <ul
+          <div
             className={clsx(
               "absolute top-full left-0",
               "bg-green-dark shadow-lg",
               "-ml-4 py-2",
-              "max-h-halfscreen overflow-y-scroll scrolling-touch"
+              "max-h-halfscreen",
+              "flex items-stretch"
             )}
           >
-            {otherTerminals.map((terminal) => {
-              const { id, name } = terminal;
-              return (
-                <li key={id}>
-                  <Link
-                    className={clsx(
-                      "whitespace-nowrap",
-                      "block cursor-pointer",
-                      "px-4 py-2",
-                      "hover:bg-lighten-high"
-                    )}
-                    to={`/${getSlug(id)}`}
-                    onClick={(event) => onSelect(event, terminal)}
-                  >
-                    {name}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+            <ul className={clsx("overflow-y-scroll scrolling-touch", "pb-2")}>
+              {otherTerminals.map((terminal) => {
+                const { id, name } = terminal;
+                return (
+                  <li key={id}>
+                    <Link
+                      className={clsx(
+                        "whitespace-nowrap",
+                        "block cursor-pointer",
+                        "px-4 py-2",
+                        "hover:bg-lighten-high"
+                      )}
+                      to={`/${getSlug(id)}`}
+                      onClick={(event) => onSelect(event, terminal)}
+                    >
+                      {name}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+            <div
+              className={clsx(
+                "absolute bottom-0 left-0",
+                "w-full h-10",
+                "bg-overscroll-gradient"
+              )}
+            />
+          </div>
         )}
       </div>
     );
@@ -223,7 +234,7 @@ export const Header: FC<Props> = (props) => {
       <div className="w-full h-safe-top" />
       <div
         className={clsx(
-          "fixed top-0 inset-x-0 z-10",
+          "fixed top-0 inset-x-0 z-20",
           "h-safe-top",
           "bg-green-dark"
         )}
@@ -246,7 +257,12 @@ export const Header: FC<Props> = (props) => {
         <div className="flex-grow" />
         {renderReload()}
       </WrapHeader>
-      <div className="h-48 w-full" />
+      <div
+        className={clsx(
+          "h-16 w-full flex-shrink-0",
+          isDark ? "bg-black" : "bg-white"
+        )}
+      />
     </>
   );
 };

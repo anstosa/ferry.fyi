@@ -180,7 +180,7 @@ export const Schedule: FC = () => {
       <main
         className={clsx(
           "w-full max-h-full",
-          "flex-grow",
+          "flex-grow flex-shrink",
           "flex flex-col items-center",
           "pr-safe-right pl-safe-left",
           isDark ? "bg-black text-white" : "bg-white text-black",
