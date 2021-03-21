@@ -3,7 +3,6 @@ import { isDark } from "~/lib/theme";
 import { isOnline } from "~/lib/api";
 import { Link } from "react-router-dom";
 import { Menu } from "./Menu";
-import { without } from "~/lib/arrays";
 import clsx from "clsx";
 import React, { FC, MouseEvent, ReactNode, useEffect, useState } from "react";
 import ReactGA from "react-ga";
@@ -58,11 +57,13 @@ export const Header: FC<Props> = (props) => {
     setOpen: (state: boolean) => void,
     onSelect: (event: MouseEvent, terminal: Terminal) => void
   ): ReactNode => {
-    const { name } = terminals[0];
+    const selectedTerminal = terminals[0];
     if (terminals.length === 1) {
-      return <span className="truncate">{name}</span>;
+      return <span className="truncate">{selectedTerminal.name}</span>;
     }
-    const otherTerminals = without(terminals, terminal);
+    const otherTerminals = terminals.filter(
+      ({ id }) => id !== selectedTerminal.id
+    );
     return (
       <div className="relative cursor-pointer min-w-0">
         <div
@@ -70,7 +71,7 @@ export const Header: FC<Props> = (props) => {
           onClick={() => setOpen(!isOpen)}
           aria-label="Expand Terminals"
         >
-          <span className="truncate">{terminal.name}</span>
+          <span className="truncate">{selectedTerminal.name}</span>
           <i
             className={clsx(`fas fa-caret-${isOpen ? "up" : "down"}`, "ml-2")}
           />
@@ -132,7 +133,7 @@ export const Header: FC<Props> = (props) => {
           <i className="fas fa-directions" />
         </a>
         {renderDropdown(
-          [terminal, ...without(terminals, terminal)],
+          [terminal, ...terminals.filter(({ id }) => id !== terminal.id)],
           isTerminalOpen,
           setTerminalOpen,
           () => setTerminalOpen(false)
@@ -173,9 +174,9 @@ export const Header: FC<Props> = (props) => {
     if (!mate) {
       return null;
     }
-    const { mates } = terminal;
+    const { mates = [] } = terminal;
     return renderDropdown(
-      [mate, ...without(mates, mate)],
+      [mate, ...mates.filter(({ id }) => id !== mate.id)],
       isMateOpen,
       setMateOpen,
       (event, terminal) => {
