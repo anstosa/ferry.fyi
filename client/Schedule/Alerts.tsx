@@ -22,9 +22,9 @@ const ALERT_FILTER = new RegExp(
   "i"
 );
 
-const WAIT_NUMBER_HOURS_MATCH = /^.*(\d+) (Hour|Hr) Wait.*$/i;
-const WAIT_SPELL_HOURS_MATCH = /^.*(one|two|three|four|five|six) (1\/2){0,1} (Hour|Hr) Wait.*$/i;
-const WAIT_MINUTES_MATCH = /^.*(\d+) (Minute|Min) Wait.*$/i;
+const WAIT_NUMBER_HOURS_MATCH = /^[^\d]*(\d+) (Hour|Hr) Wait.*$/i;
+const WAIT_SPELL_HOURS_MATCH = /^.*(one|two|three|four|five|six)( 1\/2){0,1} (Hour|Hr) Wait.*$/i;
+const WAIT_MINUTES_MATCH = /^[^\d]*(\d+) (Minute|Min) Wait.*$/i;
 const HOURS_BY_SPELLED: Record<string, number> = {
   one: 1,
   two: 2,
