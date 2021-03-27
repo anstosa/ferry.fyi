@@ -67,7 +67,7 @@ dist.use(serve(clientDist));
 const browser = new Router();
 browser.get("/robots.txt", (context) => {
   context.type = "text/plain";
-  context.body = "User-agent: *\nDisallow: /";
+  context.body = "User-agent: *\nAllow: /";
 });
 browser.get(/.*/, (context) => {
   context.type = "html";
