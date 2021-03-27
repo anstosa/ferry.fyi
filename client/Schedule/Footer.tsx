@@ -67,7 +67,7 @@ export const Footer: FC<Props> = ({ onChange, terminal, time }) => {
   const renderToggle = (): ReactNode => {
     const showMap = !isOpen;
     return (
-      <div className="flex">
+      <div className="flex justify-between">
         {showCameras && renderToggleCameras()}
         {showMap && renderMapLink()}
         {showAlerts && renderToggleAlerts()}
@@ -82,7 +82,7 @@ export const Footer: FC<Props> = ({ onChange, terminal, time }) => {
     }
     return (
       <a
-        className="h-16 py-4 px-8 flex items-center"
+        className="h-16 p-4 flex items-center"
         href={vesselwatch}
         aria-label="Open VesselWatch"
       >
@@ -93,43 +93,35 @@ export const Footer: FC<Props> = ({ onChange, terminal, time }) => {
 
   const renderToggleCameras = (): ReactNode => {
     if (!isOnline()) {
-      return <div className="flex-1" />;
+      return null;
     }
     return (
       <div
         className={clsx(
-          "relative h-16 p-4",
-          "flex items-center justify-start",
+          "relative h-16 w-16",
+          "flex items-center justify-center",
           "cursor-pointer",
-          "flex-1 flex-no-wrap min-w-0"
+          "flex-no-wrap min-w-0"
         )}
+        onClick={() => {
+          if (isOpen) {
+            toggleTab(false);
+            ReactGA.event({
+              category: "Navigation",
+              action: "Close Cameras",
+            });
+          } else {
+            toggleTab(true, Tabs.cameras);
+            ReactGA.event({
+              category: "Navigation",
+              action: "Open Cameras",
+            });
+          }
+        }}
       >
-        <div
-          className="flex-grow flex items-center flex-no-wrap min-w-0"
-          onClick={() => {
-            if (isOpen) {
-              toggleTab(false);
-              ReactGA.event({
-                category: "Navigation",
-                action: "Close Cameras",
-              });
-            } else {
-              toggleTab(true, Tabs.cameras);
-              ReactGA.event({
-                category: "Navigation",
-                action: "Open Cameras",
-              });
-            }
-          }}
-        >
-          <i
-            className={clsx(
-              "fas fa-lg mr-4",
-              isOpen ? "fa-chevron-down" : "fa-video"
-            )}
-          />
-          <span className="truncate">Cameras</span>
-        </div>
+        <i
+          className={clsx("fas fa-lg", isOpen ? "fa-chevron-down" : "fa-video")}
+        />
         {isOpen && (
           <i
             className={clsx(
@@ -151,7 +143,7 @@ export const Footer: FC<Props> = ({ onChange, terminal, time }) => {
   const renderToggleAlerts = (): ReactNode => {
     const bulletins = getBulletins(terminal);
     if (!bulletins.length) {
-      return <div className="flex-1" />;
+      return <div className="w-16 h-16" />;
     }
 
     let summary: ReactNode;
@@ -173,10 +165,10 @@ export const Footer: FC<Props> = ({ onChange, terminal, time }) => {
       <div
         className={clsx(
           "relative h-16 p-4",
-          "flex items-center flex-1 justify-end",
+          "flex items-center justify-end",
           "flex-no-wrap min-w-0",
           "cursor-pointer",
-          { [backgroundColor]: !isOpen }
+          { [backgroundColor]: !isOpen, "flex-1": isOpen || summary }
         )}
         onClick={() => {
           if (isOpen) {
