@@ -16,7 +16,10 @@ const ALERT_FILTER = new RegExp(
     "police",
     "tide",
     "traffic",
-    "wait",
+    "hour wait",
+    "hr wait",
+    "minute wait",
+    "min wait",
     "without traffic",
   ].join("|")})`,
   "i"
