@@ -47,7 +47,9 @@ export const getWaitTime = ({ title }: Bulletin): string | null => {
   match = title.match(WAIT_SPELL_HOURS_MATCH);
   if (match) {
     const [, hours, minutes] = match;
-    return `${HOURS_BY_SPELLED[hours]}${minutes === "1/2" ? ".5" : ""}hr wait`;
+    return `${HOURS_BY_SPELLED[hours.toLowerCase()]}${
+      minutes === "1/2" ? ".5" : ""
+    }hr wait`;
   }
 
   match = title.match(WAIT_MINUTES_MATCH);
