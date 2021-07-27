@@ -86,7 +86,7 @@ export const Header: FC<Props> = (props) => {
               "flex items-stretch"
             )}
           >
-            <ul className={clsx("overflow-y-scroll scrolling-touch", "pb-2")}>
+            <ul className={clsx("overflow-y-scroll scrolling-touch", "pb-5")}>
               {otherTerminals.map((terminal) => {
                 const { id, name } = terminal;
                 return (
@@ -110,7 +110,7 @@ export const Header: FC<Props> = (props) => {
             <div
               className={clsx(
                 "absolute bottom-0 left-0",
-                "w-full h-10",
+                "w-full h-8",
                 "bg-overscroll-gradient"
               )}
             />
