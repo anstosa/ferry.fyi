@@ -179,10 +179,10 @@ export const Header: FC<Props> = (props) => {
       [mate, ...mates.filter(({ id }) => id !== mate.id)],
       isMateOpen,
       setMateOpen,
-      (event, terminal) => {
+      (event, selectedTerminal) => {
         event.preventDefault();
         setMateOpen(false);
-        setRoute(getSlug(mate.id), getSlug(terminal.id));
+        setRoute(getSlug(terminal.id), getSlug(selectedTerminal.id));
       }
     );
   };
