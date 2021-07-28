@@ -111,6 +111,7 @@ export const Header: FC<Props> = (props) => {
               className={clsx(
                 "absolute bottom-0 left-0",
                 "w-full h-8",
+                "pointer-events-none",
                 "bg-overscroll-gradient"
               )}
             />
