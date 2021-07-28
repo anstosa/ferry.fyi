@@ -10,7 +10,7 @@ A better tracker for the Washington State Ferry System
 3. `cd ferry.fyi`
 4. `yarn`
 5. `cp .envrc.sample .envrc` and fill out `.envrc` file (use [`direnv`](https://direnv.net/) or similar to populate variables)
-6. `yarn migrate` to initialize database
+6. `yarn db:migrate` to initialize database
 
 
 ## Running locally

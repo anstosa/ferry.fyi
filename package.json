@@ -10,17 +10,20 @@
     "build:client": "NODE_ENV=production webpack --config client/webpack.config.ts",
     "build:server": "cd server && tsc --build && cp tsconfig.json ../dist/server",
     "client": "NODE_ENV=development webpack --watch --config client/webpack.config.ts",
+    "db:reset": "./scripts/resetdb.sh",
+    "db:migrate": "nodenv --exec sh scripts/migrate.sh",
+    "db:sync": "curl `heroku pg:backups url --app ferry-fyi` > /tmp/ferryfyi.dump && ./scripts/loaddb.sh /tmp/ferryfyi.dump",
     "heroku": "cd dist/server && node -r tsconfig-paths/register server.js",
     "heroku-postbuild": "yarn build:client && yarn build:server",
     "lint": "yarn lint:css && yarn lint:js",
-    "lint:fix": "yarn lint:css:fix && yarn lint:js:fix",
     "lint:css": "stylelint \"**/*.scss\"",
     "lint:css:fix": "yarn lint:css --fix",
+    "lint:fix": "yarn lint:css:fix && yarn lint:js:fix",
     "lint:js": "eslint --ext .ts,.tsx client/ server/",
     "lint:js:fix": "yarn lint:js --fix",
-    "migrate": "nodenv --exec sh scripts/migrate.sh",
     "postinstall": "rm -rf node_modules/.cache/webpack",
-    "server": "cd server && ts-node devServer.ts"
+    "server": "cd server && ts-node devServer.ts",
+    "type-check": "tsc --noEmit"
   },
   "repository": {
     "type": "git",
