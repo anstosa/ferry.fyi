@@ -22,9 +22,9 @@ export const Cameras: FC<Props> = (props) => {
 
   useEffect(() => {
     setCameraInterval(
-      (setInterval(() => {
+      setInterval(() => {
         setCameraTime(DateTime.local().toSeconds());
-      }, 10 * 1000) as unknown) as NodeJS.Timeout
+      }, 10 * 1000) as unknown as NodeJS.Timeout
     );
     return () => {
       if (cameraInterval) {

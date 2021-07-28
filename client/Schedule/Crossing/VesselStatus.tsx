@@ -14,14 +14,8 @@ interface Props {
 
 export const VesselStatus: FC<Props> = (props) => {
   const { className, vessel, time } = props;
-  const {
-    dockedTime,
-    isAtDock,
-    location,
-    heading,
-    speed,
-    vesselwatch,
-  } = vessel;
+  const { dockedTime, isAtDock, location, heading, speed, vesselwatch } =
+    vessel;
 
   let statusText: string;
   let detailText: string | undefined;

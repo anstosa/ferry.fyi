@@ -1,13 +1,6 @@
-// dotenv config has to happen before other imports
-// because some of them rely on environment variables (like ./config/passport)
-import { config } from "dotenv";
-import path from "path";
-config({ path: path.join(__dirname, "../.env.local") });
-
 import { BundleAnalyzerPlugin } from "webpack-bundle-analyzer";
 import { filter } from "lodash";
 import CssMinimizerPlugin from "css-minimizer-webpack-plugin";
-import DotenvPlugin from "dotenv-webpack";
 import FaviconsPlugin from "favicons-webpack-plugin";
 import ForkTsCheckerWebpackPlugin from "fork-ts-checker-webpack-plugin";
 import HtmlPlugin from "html-webpack-plugin";
@@ -94,9 +87,6 @@ module.exports = {
     ]),
     ...(isDevelopment
       ? [
-          new DotenvPlugin({
-            path: path.resolve(__dirname, "../.env.local"),
-          }),
           new LiveReloadPlugin({
             appendScriptTag: true,
           }),

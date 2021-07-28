@@ -32,15 +32,8 @@ export const SlotInfo: FC<Props> = (props) => {
     }
   }, [wrapper]);
 
-  const {
-    slot,
-    isExpanded,
-    onClick,
-    route,
-    schedule,
-    setElement,
-    time,
-  } = props;
+  const { slot, isExpanded, onClick, route, schedule, setElement, time } =
+    props;
 
   const { hasPassed } = slot;
   const isNext = slot === findWhere(schedule, { hasPassed: false });

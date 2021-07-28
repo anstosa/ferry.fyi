@@ -226,7 +226,7 @@ export const getPreviousCrossing = (
   departureTime: number
 ): Crossing | null => {
   const schedule = scheduleByTerminal?.[departureId]?.[arrivalId];
-  const departureTimes = sortBy((keys(schedule) as unknown) as number[]);
+  const departureTimes = sortBy(keys(schedule) as unknown as number[]);
   const departureIndex = indexOf(departureTimes, departureTime);
   if (departureIndex === 0) {
     return null;

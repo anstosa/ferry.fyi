@@ -8,16 +8,16 @@ A better tracker for the Washington State Ferry System
     1. Create a database named `ferryfyi` (`CREATE DATABASE ferryfyi;`)
 2. `git clone git@github.com:anstosa/ferry.fyi.git`
 3. `cd ferry.fyi`
-4. `npm install`
-5. `cp .env.sample .env.local` and fill out `.env.local` file
-6. `npm run migrate` to initialize database
+4. `yarn`
+5. `cp .envrc.sample .envrc` and fill out `.envrc` file (use [`direnv`](https://direnv.net/) or similar to populate variables)
+6. `yarn migrate` to initialize database
 
 
 ## Running locally
 
-1. `npm run client`
-2. (in another terminal) `npm run server`
-4. http://localhost:4040
+1. Run `yarn client`
+2. Run `yarn server` (in another terminal)
+4. Go to http://localhost:4040
 
 ## Credits
 

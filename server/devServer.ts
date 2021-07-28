@@ -1,9 +1,3 @@
-// dotenv config has to happen before other imports
-// because some of them rely on environment variables (like ./config/passport)
-import { config } from "dotenv";
-import path from "path";
-config({ path: path.join(__dirname, "../.env.local") });
-
 import nodemon from "nodemon";
 
 nodemon({

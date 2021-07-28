@@ -48,7 +48,7 @@ export const Schedule: FC = () => {
   const tick = async (): Promise<void> => {
     await updateSchedule();
     // TODO fix type hack
-    setTickTimeout((setTimeout(tick, 10 * 1000) as unknown) as NodeJS.Timeout);
+    setTickTimeout(setTimeout(tick, 10 * 1000) as unknown as NodeJS.Timeout);
   };
 
   useEffect(() => {
@@ -119,10 +119,10 @@ export const Schedule: FC = () => {
       return;
     }
     setUpdating(true);
-    const { schedule, timestamp } = ((await getSchedule(
+    const { schedule, timestamp } = (await getSchedule(
       terminal,
       mate
-    )) as unknown) as {
+    )) as unknown as {
       schedule: Slot[];
       timestamp: number;
     };

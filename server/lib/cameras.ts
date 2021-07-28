@@ -346,8 +346,7 @@ const CAMERAS_BY_TERMINAL_ID: Record<number, Camera[]> = {
       location: { latitude: 47.5232, longitude: -122.39359 },
       title: "Holding",
       image: {
-        url:
-          "https://images.wsdot.wa.gov/wsf/fauntleroy/terminal/fauntleroy.jpg",
+        url: "https://images.wsdot.wa.gov/wsf/fauntleroy/terminal/fauntleroy.jpg",
         width: 352,
         height: 261,
       },
@@ -362,8 +361,7 @@ const CAMERAS_BY_TERMINAL_ID: Record<number, Camera[]> = {
       location: { latitude: 47.52263, longitude: -122.392938 },
       title: "Way looking North",
       image: {
-        url:
-          "https://images.wsdot.wa.gov/wsf/fauntleroy/terminal/fauntterminal.jpg",
+        url: "https://images.wsdot.wa.gov/wsf/fauntleroy/terminal/fauntterminal.jpg",
         width: 352,
         height: 261,
       },
@@ -378,8 +376,7 @@ const CAMERAS_BY_TERMINAL_ID: Record<number, Camera[]> = {
       location: { latitude: 47.524794, longitude: -122.392652 },
       title: "St looking North",
       image: {
-        url:
-          "https://images.wsdot.wa.gov/wsf/fauntleroy/terminal/faunttrenton.jpg",
+        url: "https://images.wsdot.wa.gov/wsf/fauntleroy/terminal/faunttrenton.jpg",
         width: 352,
         height: 261,
       },
@@ -394,8 +391,7 @@ const CAMERAS_BY_TERMINAL_ID: Record<number, Camera[]> = {
       location: { latitude: 47.526718, longitude: -122.392883 },
       title: "Way and Cloverdale St.",
       image: {
-        url:
-          "https://www.seattle.gov/trafficcams/images/Fauntleroy_SW_Cloverdale_NS.jpg",
+        url: "https://www.seattle.gov/trafficcams/images/Fauntleroy_SW_Cloverdale_NS.jpg",
         width: 352,
         height: 240,
       },
@@ -413,8 +409,7 @@ const CAMERAS_BY_TERMINAL_ID: Record<number, Camera[]> = {
       location: { latitude: 47.530459, longitude: -122.392633 },
       title: "Park looking North",
       image: {
-        url:
-          "https://images.wsdot.wa.gov/wsf/fauntleroy/terminal/fauntlincoln.jpg",
+        url: "https://images.wsdot.wa.gov/wsf/fauntleroy/terminal/fauntlincoln.jpg",
         width: 352,
         height: 261,
       },
