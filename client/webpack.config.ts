@@ -6,6 +6,7 @@ import ForkTsCheckerWebpackPlugin from "fork-ts-checker-webpack-plugin";
 import HtmlPlugin from "html-webpack-plugin";
 import LiveReloadPlugin from "webpack-livereload-plugin";
 import MiniCssExtractPlugin from "mini-css-extract-plugin";
+import path from "path";
 import StyleLintPlugin from "stylelint-webpack-plugin";
 import TerserPlugin from "terser-webpack-plugin";
 import TsConfigPathsPlugin from "tsconfig-paths-webpack-plugin";

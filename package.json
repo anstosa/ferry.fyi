@@ -23,7 +23,9 @@
     "lint:js:fix": "yarn lint:js --fix",
     "postinstall": "rm -rf node_modules/.cache/webpack",
     "server": "cd server && ts-node devServer.ts",
-    "type-check": "tsc --noEmit"
+    "type-check": "yarn type-check:client && yarn type-check:server",
+    "type-check:client": "cd client && tsc --project tsconfig.json --noEmit",
+    "type-check:server": "cd client && tsc --project tsconfig.json --noEmit"
   },
   "repository": {
     "type": "git",
