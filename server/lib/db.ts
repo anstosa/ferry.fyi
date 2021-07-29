@@ -10,10 +10,13 @@ if (!isString(process.env.DATABASE_URL)) {
 export const db = new Sequelize(process.env.DATABASE_URL, {
   dialect: DIALECT_POSTGRES,
   dialectOptions: {
-    ssl: {
-      require: true,
-      rejectUnauthorized: false,
-    },
+    ssl:
+      process.env.NODE_ENV === "production"
+        ? {
+            require: true,
+            rejectUnauthorized: false,
+          }
+        : false,
   },
   logging: Boolean(process.env.DEBUG),
   protocol: DIALECT_POSTGRES,

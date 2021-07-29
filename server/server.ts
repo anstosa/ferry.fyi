@@ -33,7 +33,7 @@ router.get("/vessels", async (context) => {
 router.get("/vessels/:vesselId", async (context) => {
   const { vesselId } = context.params;
   // eslint-disable-next-line require-atomic-updates
-  context.body = await getVessel(vesselId);
+  context.body = await getVessel(Number(vesselId));
 });
 router.get("/terminals", async (context) => {
   context.body = await getTerminals();
@@ -41,13 +41,13 @@ router.get("/terminals", async (context) => {
 router.get("/terminals/:terminalId", async (context) => {
   const { terminalId } = context.params;
   // eslint-disable-next-line require-atomic-updates
-  context.body = await getTerminal(terminalId);
+  context.body = await getTerminal(Number(terminalId));
 });
 router.get("/schedule/:departingId/:arrivingId", async (context) => {
   const { departingId, arrivingId } = context.params;
   // eslint-disable-next-line require-atomic-updates
   context.body = {
-    schedule: await getSchedule(departingId, arrivingId),
+    schedule: await getSchedule(Number(departingId), Number(arrivingId)),
     timestamp: DateTime.local().toSeconds(),
   };
 });
