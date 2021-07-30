@@ -96,36 +96,45 @@ export const Footer: FC<Props> = ({ onChange, terminal, time }) => {
       return null;
     }
     return (
-      <div
-        className={clsx(
-          "relative h-16 w-16",
-          "flex items-center justify-center",
-          "cursor-pointer",
-          "flex-no-wrap min-w-0"
-        )}
-        onClick={() => {
-          if (isOpen) {
-            toggleTab(false);
-            ReactGA.event({
-              category: "Navigation",
-              action: "Close Cameras",
-            });
-          } else {
-            toggleTab(true, Tabs.cameras);
-            ReactGA.event({
-              category: "Navigation",
-              action: "Open Cameras",
-            });
-          }
-        }}
-      >
-        <i
-          className={clsx("fas fa-lg", isOpen ? "fa-chevron-down" : "fa-video")}
-        />
+      <>
+        <div
+          className={clsx(
+            "relative h-16 w-16",
+            "flex items-center justify-center",
+            "cursor-pointer",
+            "flex-no-wrap min-w-0"
+          )}
+          onClick={() => {
+            if (isOpen) {
+              toggleTab(false);
+              ReactGA.event({
+                category: "Navigation",
+                action: "Close Cameras",
+              });
+            } else {
+              toggleTab(true, Tabs.cameras);
+              ReactGA.event({
+                category: "Navigation",
+                action: "Open Cameras",
+              });
+            }
+          }}
+        >
+          <i
+            className={clsx(
+              "fas fa-lg",
+              isOpen ? "fa-chevron-down" : "fa-video"
+            )}
+          />
+        </div>
         {isOpen && (
           <i
             className={clsx(
               "fas fa-redo fa-lg fa-spin cursor-pointer",
+              "relative h-16 w-16",
+              "flex items-center justify-center",
+              "cursor-pointer",
+              "flex-no-wrap min-w-0",
               !isReloading && "fa-spin-pause"
             )}
             aria-label="Refresh Images"
@@ -136,7 +145,7 @@ export const Footer: FC<Props> = ({ onChange, terminal, time }) => {
             }}
           />
         )}
-      </div>
+      </>
     );
   };
 
