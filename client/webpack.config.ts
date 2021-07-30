@@ -35,7 +35,7 @@ module.exports = {
   output: {
     path: path.resolve(__dirname, "../dist/client"),
     filename: "[name].[chunkhash].js",
-    publicPath: "/",
+    publicPath: `${process.env.BASE_URL}/`,
   },
   devtool: isDevelopment ? "eval-cheap-module-source-map" : false,
   watchOptions: {
