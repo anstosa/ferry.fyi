@@ -1,4 +1,5 @@
 import ForkTsCheckerWebpackPlugin from "fork-ts-checker-webpack-plugin";
+import nodeExternals from "webpack-node-externals";
 import path from "path";
 import TsConfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
@@ -7,10 +8,10 @@ module.exports = {
   context: __dirname,
   cache: { type: "filesystem" },
   entry: "server.ts",
+  externals: [nodeExternals()],
   output: {
     path: path.resolve(__dirname, "../dist/server"),
     filename: "server.js",
-    publicPath: `${process.env.BASE_URL}/`,
   },
   target: "node",
   watchOptions: {
