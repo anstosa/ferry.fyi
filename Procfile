@@ -1,2 +1,2 @@
-release: scripts/migrate.sh
-web: npm run heroku
+release: yarn db:migrate
+web: yarn heroku
