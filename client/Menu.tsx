@@ -1,5 +1,14 @@
+import AndroidIcon from "~/images/icons/brands/android.svg";
+import AppleIcon from "~/images/icons/brands/apple.svg";
+import ChevronLeftIcon from "~/images/icons/solid/chevron-left.svg";
+import ChromeIcon from "~/images/icons/brands/chrome.svg";
 import clsx from "clsx";
+import ExternalLinkIcon from "~/images/icons/solid/external-link-square.svg";
+import MenuIcon from "~/images/icons/solid/ellipsis-v.svg";
+import PlusIcon from "~/images/icons/solid/plus-square.svg";
 import React, { FC, ReactNode, useState } from "react";
+import SafariIcon from "~/images/icons/brands/safari.svg";
+import ShipIcon from "~/images/icons/solid/ship.svg";
 
 interface Props {
   isOpen: boolean;
@@ -11,8 +20,8 @@ enum Platform {
   ios = "ios",
 }
 
-const InstallStepIcon: FC<{ className?: string }> = ({ className }) => (
-  <i className={clsx(className, "mx-2 w-4 text-center")} />
+const InstallStep: FC = ({ children }) => (
+  <div className="mx-2 w-4 text-center inline-block">{children}</div>
 );
 
 const InstallInstructions: FC = () => {
@@ -30,15 +39,21 @@ const InstallInstructions: FC = () => {
     steps = (
       <ol className="my-2 list-decimal list-inside">
         <li>
-          <InstallStepIcon className="fab fa-safari" />
+          <InstallStep>
+            <SafariIcon />
+          </InstallStep>
           Safari
         </li>
         <li>
-          <InstallStepIcon className="fal fa-external-link" />
+          <InstallStep>
+            <ExternalLinkIcon />
+          </InstallStep>
           Share
         </li>
         <li>
-          <InstallStepIcon className="fal fa-plus-square" />
+          <InstallStep>
+            <PlusIcon />
+          </InstallStep>
           Add to Home Screen
         </li>
       </ol>
@@ -47,15 +62,19 @@ const InstallInstructions: FC = () => {
     steps = (
       <ol className="my-2 list-decimal list-inside">
         <li>
-          <InstallStepIcon className="fab fa-chrome" />
+          <InstallStep>
+            <ChromeIcon />
+          </InstallStep>
           Chrome
         </li>
         <li>
-          <InstallStepIcon className="fas fa-ellipsis-v" />
+          <InstallStep>
+            <MenuIcon />
+          </InstallStep>
           Menu
         </li>
         <li>
-          <InstallStepIcon className="inline-block" />
+          <InstallStep />
           Add to Home Screen
         </li>
       </ol>
@@ -67,14 +86,14 @@ const InstallInstructions: FC = () => {
           className={clsx("button button-invert", "flex-grow")}
           onClick={() => setPlatform(Platform.ios)}
         >
-          <i className="button-icon fab fa-lg fa-apple" />
+          <AppleIcon className="inline-block button-icon text-2xl" />
           <span className="button-label">iOS</span>
         </button>
         <button
           className={clsx("button button-invert", "flex-grow ml-4")}
           onClick={() => setPlatform(Platform.android)}
         >
-          <i className="button-icon fab fa-lg fa-android" />
+          <AndroidIcon className="inline-block button-icon text-2xl" />
           <span className="button-label">Android</span>
         </button>
       </div>
@@ -122,11 +141,11 @@ export const Menu: FC<Props> = ({ isOpen, onClose }) => {
         <div
           className={clsx("h-16 w-full p-4", "text-2xl", "flex items-center")}
         >
-          <i className="fas fa-ship mr-4" />
+          <ShipIcon className="inline-block mr-4" />
           <h1 className="font-bold">Ferry FYI</h1>
           <div className="flex-grow" />
-          <i
-            className={clsx("fas fa-chevron-left text-md", "cursor-pointer")}
+          <ChevronLeftIcon
+            className="cursor-pointer text-md"
             onClick={onClose}
             aria-label="Close Menu"
           />

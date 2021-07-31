@@ -1,6 +1,9 @@
 import { isDark } from "~/lib/theme";
 import { isNil, isNull } from "~/lib/identity";
+import CarIcon from "~/images/icons/solid/car.svg";
 import clsx from "clsx";
+import DoNotEnterIcon from "~/images/icons/solid/do-not-enter.svg";
+import ExternalLinkIcon from "~/images/icons/solid/external-link-square.svg";
 import React, { FC, ReactNode, useEffect, useState } from "react";
 import type { Crossing, Slot } from "shared/models/schedules";
 
@@ -138,7 +141,7 @@ export const Capacity: FC<Props> = (props) => {
             target="_blank"
             rel="noreferrer noopener"
           >
-            <i className="fas fa-external-link-square mr-1" />
+            <ExternalLinkIcon className="inline-block mr-1" />
             Reserve
           </a>
         );
@@ -175,14 +178,14 @@ export const Capacity: FC<Props> = (props) => {
     if (crossing && percentFull) {
       spaceText = (
         <>
-          <i className="fas fa-car mr-1" />
+          <CarIcon className="inline-block mr-1" />
           {spaceLeft} spaces left
         </>
       );
       if (isFull()) {
         spaceText = (
           <>
-            <i className="fas fa-do-not-enter mr-1" />
+            <DoNotEnterIcon className="inline-block mr-1" />
             Boat full
           </>
         );

@@ -106,13 +106,25 @@ module.exports = {
   module: {
     rules: [
       {
-        test: /\.(ttf|jpe?g|gif|svg|png|otf|woff|woff2|eot)$/,
+        test: /\.(ttf|jpe?g|gif|png|otf|woff|woff2|eot)$/,
         use: {
           loader: "file-loader",
           options: {
             name: "[name].[ext]",
           },
         },
+      },
+      {
+        test: /\.svg$/,
+        use: [
+          {
+            loader: "@svgr/webpack",
+            options: {
+              icon: true,
+              svgProps: { fill: "currentColor", className: "inline-block" },
+            },
+          },
+        ],
       },
       {
         test: /\.css$/,

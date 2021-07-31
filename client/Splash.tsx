@@ -1,5 +1,7 @@
+import CircleIcon from "~/images/icons/solid/circle.svg";
 import clsx from "clsx";
 import React, { FC, ReactNode, useEffect, useState } from "react";
+import ShipIcon from "~/images/icons/solid/ship.svg";
 
 export const Splash: FC<{ message?: string }> = ({ message }) => {
   const [isHelpVisible, setHelpVisible] = useState<boolean>(false);
@@ -9,7 +11,7 @@ export const Splash: FC<{ message?: string }> = ({ message }) => {
 
   useEffect(() => {
     setTickTimer(
-      setInterval(() => setMark((mark) => (mark === 2 ? 0 : mark + 1)), 600)
+      setInterval(() => setMark((mark) => (mark === 3 ? 0 : mark + 1)), 600)
     );
     setHelpTimer(setTimeout(() => setHelpVisible(true), 20 * 1000));
     return () => {
@@ -54,13 +56,13 @@ export const Splash: FC<{ message?: string }> = ({ message }) => {
         flex flex-col justify-center items-center
       "
     >
-      <i className="fas fa-3x fa-ship" />
+      <ShipIcon className="text-6xl" />
       <div className="w-12 flex justify-between mt-8">
         {[1, 2, 3].map((index) => (
-          <i
+          <CircleIcon
             key={index}
             className={clsx(
-              "fas fa-xs fa-circle",
+              "text-sm",
               mark === index ? "visible" : "invisible"
             )}
           />

@@ -3,9 +3,14 @@ import { Cameras } from "./Cameras";
 import { DateTime } from "luxon";
 import { isDark } from "~/lib/theme";
 import { isOnline } from "~/lib/api";
+import ChevronDownIcon from "~/images/icons/solid/chevron-down.svg";
 import clsx from "clsx";
+import MapIcon from "~/images/icons/solid/map-marked.svg";
 import React, { FC, ReactNode, useState } from "react";
 import ReactGA from "react-ga";
+import ReloadIcon from "~/images/icons/solid/redo.svg";
+import VideoIcon from "~/images/icons/solid/video.svg";
+import WarningIcon from "~/images/icons/solid/exclamation-triangle.svg";
 import type { Terminal } from "shared/models/terminals";
 
 const WrapFooter: FC<{ isOpen: boolean }> = ({ isOpen = false, children }) => (
@@ -86,7 +91,7 @@ export const Footer: FC<Props> = ({ onChange, terminal, time }) => {
         href={vesselwatch}
         aria-label="Open VesselWatch"
       >
-        <i className="fas fa-lg fa-map-marked" />
+        <MapIcon className="text-2xl" />
       </a>
     );
   };
@@ -120,22 +125,20 @@ export const Footer: FC<Props> = ({ onChange, terminal, time }) => {
             }
           }}
         >
-          <i
-            className={clsx(
-              "fas fa-lg",
-              isOpen ? "fa-chevron-down" : "fa-video"
-            )}
-          />
+          {isOpen ? (
+            <ChevronDownIcon className="text-2xl" />
+          ) : (
+            <VideoIcon className="text-2xl" />
+          )}
         </div>
         {isOpen && (
-          <i
+          <div
             className={clsx(
-              "fas fa-redo fa-lg fa-spin cursor-pointer",
+              "cursor-pointer",
               "relative h-16 w-16",
               "flex items-center justify-center",
               "cursor-pointer",
-              "flex-no-wrap min-w-0",
-              !isReloading && "fa-spin-pause"
+              "flex-no-wrap min-w-0"
             )}
             aria-label="Refresh Images"
             onClick={() => {
@@ -143,7 +146,11 @@ export const Footer: FC<Props> = ({ onChange, terminal, time }) => {
               setCameraTime(DateTime.local().toSeconds());
               setTimeout(() => setReloading(false), 1 * 1000);
             }}
-          />
+          >
+            <ReloadIcon
+              className={clsx("text-2xl spin", !isReloading && "spin-pause")}
+            />
+          </div>
         )}
       </>
     );
@@ -196,12 +203,9 @@ export const Footer: FC<Props> = ({ onChange, terminal, time }) => {
         }}
       >
         <span className="truncate">{isOpen ? "Alerts" : summary}</span>
-        <i
-          className={clsx("fas fa-lg ml-4", {
-            "fa-chevron-down": isOpen,
-            "fa-exclamation-triangle": !isOpen,
-          })}
-        />
+        <div className="text-2xl ml-4">
+          {isOpen ? <ChevronDownIcon /> : <WarningIcon />}
+        </div>
       </div>
     );
   };

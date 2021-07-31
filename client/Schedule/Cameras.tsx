@@ -1,7 +1,10 @@
 import { DateTime } from "luxon";
 import { isNil, isNull } from "~/lib/identity";
 import { locationToUrl } from "~/lib/maps";
+import CarIcon from "~/images/icons/solid/car.svg";
 import clsx from "clsx";
+import MapIcon from "~/images/icons/solid/map-marker.svg";
+import ParkingIcon from "~/images/icons/solid/parking.svg";
 import React, { FC, ReactNode, useEffect, useState } from "react";
 import type { Camera } from "shared/models/cameras";
 import type { Terminal } from "shared/models/terminals";
@@ -88,13 +91,13 @@ export const Cameras: FC<Props> = (props) => {
           </a>
           {Boolean(totalToBooth) && (
             <span className={clsx("ml-4 font-normal text-sm")}>
-              <i className={clsx("fas fa-car mr-2")} />
+              <CarIcon className="inline-block mr-2" />
               {totalToBooth} to tollbooth
             </span>
           )}
           {totalToBooth === 0 && (
             <span className={clsx("ml-4 font-normal text-sm")}>
-              <i className={clsx("fas fa-parking mr-2")} />
+              <ParkingIcon className="inline-block mr-2" />
               Past tollbooth
             </span>
           )}
@@ -116,7 +119,7 @@ export const Cameras: FC<Props> = (props) => {
             "text-center"
           )}
         >
-          <i className={clsx("fas fa-lg fa-map-marker ml-1")} />
+          <MapIcon className="text-2xl inline-block ml-1" />
         </div>
         {Boolean(spacesToNext) && (
           <div
@@ -128,7 +131,7 @@ export const Cameras: FC<Props> = (props) => {
             )}
           >
             <div className="flex flex-col ml-1">
-              <i className={clsx("fas fa-car")} />
+              <CarIcon className="inline-block mr-2" />
               <span className="text-sm">{spacesToNext}</span>
             </div>
           </div>

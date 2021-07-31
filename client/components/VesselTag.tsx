@@ -1,6 +1,7 @@
 import { isDark } from "~/lib/theme";
 import clsx from "clsx";
 import React, { FC } from "react";
+import ShipIcon from "~/images/icons/solid/ship.svg";
 import type { Vessel } from "shared/models/vessels";
 
 interface Props {
@@ -20,7 +21,7 @@ export const VesselTag: FC<Props> = (props) => {
         "rounded p-1"
       )}
     >
-      <i className="fas fa-ship mr-1" />
+      <ShipIcon className="inline-block mr-1" />
       {isAbbreviation ? abbreviation : name}
     </div>
   );

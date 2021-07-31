@@ -1,12 +1,6 @@
 module.exports = {
   plugins: ["stylelint-order", "stylelint-scss"],
-  ignoreFiles: [
-    "**/*.js",
-    "**/*.cjs",
-    "**/*.ts",
-    "**/*.tsx",
-    "client/scss/fontawesome/*",
-  ],
+  ignoreFiles: ["**/*.js", "**/*.cjs", "**/*.ts", "**/*.tsx"],
   rules: {
     "max-nesting-depth": 5,
     "order/properties-alphabetical-order": true,

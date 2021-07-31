@@ -3,9 +3,17 @@ import { isDark } from "~/lib/theme";
 import { isOnline } from "~/lib/api";
 import { Link } from "react-router-dom";
 import { Menu } from "./Menu";
+import ArrowRightIcon from "~/images/icons/solid/arrow-right.svg";
+import CaretDownIcon from "~/images/icons/solid/caret-down.svg";
+import CaretUpIcon from "~/images/icons/solid/caret-up.svg";
 import clsx from "clsx";
+import DirectionsIcon from "~/images/icons/solid/directions.svg";
+import ExchangeIcon from "~/images/icons/solid/exchange.svg";
+import MenuIcon from "~/images/icons/solid/bars.svg";
+import OfflineIcon from "~/images/icons/solid/signal-alt-slash.svg";
 import React, { FC, MouseEvent, ReactNode, useEffect, useState } from "react";
 import ReactGA from "react-ga";
+import ReloadIcon from "~/images/icons/solid/redo.svg";
 import type { Terminal } from "shared/models/terminals";
 
 const WrapHeader: FC = ({ children }) => (
@@ -72,9 +80,9 @@ export const Header: FC<Props> = (props) => {
           aria-label="Expand Terminals"
         >
           <span className="truncate">{selectedTerminal.name}</span>
-          <i
-            className={clsx(`fas fa-caret-${isOpen ? "up" : "down"}`, "ml-2")}
-          />
+          <div className="inline-block ml-2">
+            {isOpen ? <CaretUpIcon /> : <CaretDownIcon />}
+          </div>
         </div>
         {isOpen && (
           <div
@@ -131,7 +139,7 @@ export const Header: FC<Props> = (props) => {
           rel="noopener noreferrer"
           aria-label={`Get Directions to ${terminal.name}`}
         >
-          <i className="fas fa-directions" />
+          <DirectionsIcon />
         </a>
         {renderDropdown(
           [terminal, ...terminals.filter(({ id }) => id !== terminal.id)],
@@ -161,12 +169,7 @@ export const Header: FC<Props> = (props) => {
         }
         aria-label="Swap Terminals"
       >
-        <i
-          className={clsx("fas", {
-            "fa-exchange-alt": isSwapHovering,
-            "fa-arrow-right": !isSwapHovering,
-          })}
-        />
+        {isSwapHovering ? <ExchangeIcon /> : <ArrowRightIcon />}
       </Link>
     );
   };
@@ -189,8 +192,8 @@ export const Header: FC<Props> = (props) => {
   };
 
   const renderMenuToggle = (): ReactNode => (
-    <i
-      className="fas fa-bars fa-lg mr-4 cursor-pointer"
+    <MenuIcon
+      className="text-2xl inline-block mr-4 cursor-poiner"
       onClick={() => {
         setMenuOpen(true);
         ReactGA.event({
@@ -207,15 +210,15 @@ export const Header: FC<Props> = (props) => {
       return (
         <div className="font-bold text-red-dark bg-white rounded p-2">
           Offline
-          <i className="fas fa-signal-alt-slash ml-2" />
+          <OfflineIcon className="inline-block ml-2" />
         </div>
       );
     }
     return (
-      <i
+      <ReloadIcon
         className={clsx(
-          "fas fa-redo fa-lg fa-spin cursor-pointer ml-4",
-          !isReloading && "fa-spin-pause"
+          "text-2xl spin cursor-pointer ml-4",
+          !isReloading && "spin-pause"
         )}
         aria-label="Refresh Data"
         onClick={() => {
