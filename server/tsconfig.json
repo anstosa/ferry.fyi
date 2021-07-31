@@ -6,7 +6,8 @@
     "paths": {
       "~/*": ["./*"],
       "shared/*": ["../shared/*"]
-    }
+    },
+    "target": "ES6"
   },
   "include": ["./**/*"],
   "exclude": ["./devServer.ts"]
