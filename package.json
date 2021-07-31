@@ -9,12 +9,13 @@
   "scripts": {
     "build": "yarn build:client && yarn build:server",
     "build:client": "NODE_ENV=production webpack --config client/webpack.config.ts",
-    "build:server": "cd server && tsc --build && cp tsconfig.json ../dist/server",
+    "build:server": "NODE_ENV=production webpack --config server/webpack.config.ts",
+    "clean": "rm -rf dist/*",
     "client": "NODE_ENV=development webpack --watch --config client/webpack.config.ts",
     "db:migrate": "sequelize db:migrate",
     "db:reset": "./scripts/resetdb.sh",
     "db:sync": "curl `heroku pg:backups url --app ferry-fyi` > /tmp/ferryfyi.dump && ./scripts/loaddb.sh /tmp/ferryfyi.dump",
-    "heroku": "cd dist/server && node -r tsconfig-paths/register --project tsconfig.json server.js",
+    "heroku": "cd dist/server && node server.js",
     "heroku-postbuild": "yarn build",
     "lint": "yarn lint:css && yarn lint:js",
     "lint:css": "stylelint \"**/*.scss\"",
@@ -161,7 +162,6 @@
     "pg-hstore": "^2.3.3",
     "request": "^2.88.2",
     "sequelize": "^6.5.0",
-    "sequelize-cli": "^6.2.0",
-    "tsconfig-paths": "^3.10.1"
+    "sequelize-cli": "^6.2.0"
   }
 }

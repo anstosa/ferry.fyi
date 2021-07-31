@@ -2,12 +2,11 @@
   "extends": "../tsconfig",
   "compilerOptions": {
     "baseUrl": ".",
-    "outDir": "../dist",
+    "outDir": "../dist/server",
     "paths": {
       "~/*": ["./*"],
       "shared/*": ["../shared/*"]
-    },
-    "target": "ES6"
+    }
   },
   "include": ["./**/*"],
   "exclude": ["./devServer.ts"]
