@@ -33,7 +33,6 @@ import { Route } from "shared/models/terminals";
 import { wsfRequest } from "./api";
 import Crossing from "~/models/crossing";
 import logger from "heroku-logger";
-import sync from "aigle";
 
 // types
 
@@ -171,10 +170,10 @@ const backfillCrossings = async (): Promise<void> => {
 
 const updateTiming = (): void => {
   const now = DateTime.local();
-  sync.each(scheduleByTerminal, (mates) =>
-    sync.each(mates, (schedule) => {
+  each(scheduleByTerminal, (mates) => {
+    each(mates, (schedule) => {
       const seenVessels: number[] = [];
-      sync.each(schedule, (slot) => {
+      each(schedule, (slot) => {
         const vesselId = slot.vessel?.id;
         if (!vesselId) {
           return;
@@ -192,8 +191,8 @@ const updateTiming = (): void => {
           slot.hasPassed = DateTime.fromSeconds(time) < now;
         }
       });
-    })
-  );
+    });
+  });
 };
 
 // "Weekly Unique Identifier"
@@ -278,56 +277,60 @@ export const updateSchedule = async (): Promise<void> => {
   );
   logger.info("Completed Mates Update");
   logger.info("Started Schedule Update");
-  await sync.eachSeries(matesByTerminalId, (mates, terminalId) =>
-    sync.eachSeries(mates, async (mateId) => {
-      const response = await wsfRequest<ScheduleTodayResponse>(
-        apiToday(toNumber(terminalId), mateId)
-      );
-      if (!response) {
-        return;
-      }
-      const {
-        TerminalCombos: [{ Times }],
-      } = response;
-      const seenVessels: number[] = [];
+  await Promise.all(
+    map(matesByTerminalId, (mates, terminalId) =>
+      Promise.all(
+        map(mates, async (mateId) => {
+          const response = await wsfRequest<ScheduleTodayResponse>(
+            apiToday(toNumber(terminalId), mateId)
+          );
+          if (!response) {
+            return;
+          }
+          const {
+            TerminalCombos: [{ Times }],
+          } = response;
+          const seenVessels: number[] = [];
 
-      const schedule = filter(
-        map(Times, ({ DepartingTime, VesselID, LoadingRule }) => {
-          const time = wsfDateToTimestamp(DepartingTime);
-          if (isNull(time)) {
-            return null;
-          }
-          const departureTime = DateTime.fromSeconds(time);
-          const isFirstOfVessel = !includes(seenVessels, VesselID);
-          const vessel = getVessel(VesselID, isFirstOfVessel);
-          if (isFirstOfVessel) {
-            seenVessels.push(VesselID);
-          }
-          return {
-            allowsPassengers: includes(
-              [LoadingRules.Passenger, LoadingRules.Both],
-              LoadingRule
-            ),
-            allowsVehicles: includes(
-              [LoadingRules.Vehicle, LoadingRules.Both],
-              LoadingRule
-            ),
-            hasPassed: departureTime < DateTime.local(),
-            wuid: getWuid(time),
-            time,
-            vessel,
-          };
+          const schedule = filter(
+            map(Times, ({ DepartingTime, VesselID, LoadingRule }) => {
+              const time = wsfDateToTimestamp(DepartingTime);
+              if (isNull(time)) {
+                return null;
+              }
+              const departureTime = DateTime.fromSeconds(time);
+              const isFirstOfVessel = !includes(seenVessels, VesselID);
+              const vessel = getVessel(VesselID, isFirstOfVessel);
+              if (isFirstOfVessel) {
+                seenVessels.push(VesselID);
+              }
+              return {
+                allowsPassengers: includes(
+                  [LoadingRules.Passenger, LoadingRules.Both],
+                  LoadingRule
+                ),
+                allowsVehicles: includes(
+                  [LoadingRules.Vehicle, LoadingRules.Both],
+                  LoadingRule
+                ),
+                hasPassed: departureTime < DateTime.local(),
+                wuid: getWuid(time),
+                time,
+                vessel,
+              };
+            })
+          ) as Slot[];
+
+          setWith(
+            scheduleByTerminal,
+            [terminalId, mateId],
+            keyBy(schedule, "time"),
+            Object
+          );
+          await buildEstimates(toNumber(terminalId), mateId, schedule);
         })
-      ) as Slot[];
-
-      setWith(
-        scheduleByTerminal,
-        [terminalId, mateId],
-        keyBy(schedule, "time"),
-        Object
-      );
-      await buildEstimates(toNumber(terminalId), mateId, schedule);
-    })
+      )
+    )
   );
   logger.info("Completed Schedule Update");
   logger.info("Completed Schedule API Update");

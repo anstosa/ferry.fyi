@@ -15,7 +15,6 @@ import { Terminal } from "shared/models/terminals";
 import { wsfDateToTimestamp } from "./date";
 import { wsfRequest } from "./api";
 import logger from "heroku-logger";
-import sync from "aigle";
 
 // types
 
@@ -360,15 +359,19 @@ export const updateTerminals = async (): Promise<void> => {
       ),
     });
   });
-  await sync.each(getMates(), async (mates, terminalId) => {
-    const matesWithRoute: Terminal[] = [];
-    await sync.each(mates, async (mateId) => {
-      const mate = cloneDeep(omit(terminalsById[mateId], "mates"));
-      mate.route = await getRoute(toNumber(terminalId), mateId);
-      matesWithRoute.push(mate);
-    });
-    assignTerminal(toNumber(terminalId), { mates: matesWithRoute });
-  });
+  await Promise.all(
+    map(getMates(), async (mates, terminalId) => {
+      const matesWithRoute: Terminal[] = [];
+      await Promise.all(
+        map(mates, async (mateId) => {
+          const mate = cloneDeep(omit(terminalsById[mateId], "mates"));
+          mate.route = await getRoute(toNumber(terminalId), mateId);
+          matesWithRoute.push(mate);
+        })
+      );
+      assignTerminal(toNumber(terminalId), { mates: matesWithRoute });
+    })
+  );
 
   logger.info("Completed Terminal Update");
 };

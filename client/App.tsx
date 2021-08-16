@@ -18,13 +18,13 @@ export const App: FC = () => {
   useRecordPageViews();
 
   return (
-    <>
+    <div className="selection:bg-white selection:green-dark">
       <Route path="/:terminalSlug/:mateSlug?" component={Schedule} />
       <Route
         path="/"
         exact
         render={() => <Redirect to={{ pathname: DEFAULT_ROUTE }} />}
       />
-    </>
+    </div>
   );
 };
