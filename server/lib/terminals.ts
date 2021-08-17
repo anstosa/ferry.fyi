@@ -170,7 +170,7 @@ const TERMINAL_DATA_OVERRIDES: Record<number, TerminalOverride> = {
     vesselwatch:
       "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=mukcl",
     location: {
-      link: "https://www.google.com/maps/place/Clinton+Ferry+Terminal/@47.9750653,-122.3514909,18.57z/data=!4m8!1m2!2m1!1sclinton+ferry!3m4!1s0x0:0xfc1a9b74eba33fab!8m2!3d47.9751021!4d-122.350086",
+      link: "https://www.google.com/maps/place/Clinton+Terminal/@47.9743143,-122.3515173,18.02z/data=!4m9!1m2!2m1!1sclinton+ferry!3m5!1s0x0:0x4547960899aef08e!8m2!3d47.9750777!4d-122.3497722!15sCg1jbGludG9uIGZlcnJ5Wg8iDWNsaW50b24gZmVycnmSAQ5mZXJyeV90ZXJtaW5hbA",
     },
   },
   7: {
