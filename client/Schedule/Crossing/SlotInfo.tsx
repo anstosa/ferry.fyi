@@ -69,12 +69,7 @@ export const SlotInfo: FC<Props> = (props) => {
       <div
         className={clsx("p-4 flex", "text-sm", "shadow-inset bg-darken-lowest")}
       >
-        <div
-          className={clsx(
-            "flex-grow pr-4",
-            "border-r border-dashed border-gray-medium"
-          )}
-        >
+        <div className={clsx("flex-grow pr-4")}>
           <div className="flex items-center mb-2">
             <VesselTag vessel={vessel} />
             <ErrorBoundary>
@@ -87,11 +82,6 @@ export const SlotInfo: FC<Props> = (props) => {
           </div>
           <span className="text-xs">Capacity: {capacity}</span>
         </div>
-        {route && (
-          <div className={clsx("flex-grow", "pl-4")}>
-            Crossing: {route.crossingTime}mins
-          </div>
-        )}
       </div>
     );
   };
