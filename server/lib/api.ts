@@ -6,7 +6,7 @@ const API_ACCESS = `?apiaccesscode=${process.env.WSDOT_API_KEY}`;
 
 export const wsfRequest = async <T>(path: string): Promise<T | undefined> => {
   const url = `${path}${includes(path, "cacheflushdate") ? "" : API_ACCESS}`;
-  logger.debug(`WSF request <${url}>`);
+  // logger.debug(`WSF request <${url}>`);
   try {
     const response = await fetch(url, {
       method: "GET",

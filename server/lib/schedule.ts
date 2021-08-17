@@ -164,6 +164,10 @@ const backfillCrossings = async (): Promise<void> => {
       scheduleByTerminal?.[departureId]?.[arrivalId]?.[departureTime];
     if (slot) {
       slot.crossing = crossing;
+    } else {
+      console.log(
+        `No Matching slot for crossing ${departureId}-${arrivalId}-${departureTime}`
+      );
     }
   });
 };
