@@ -1,15 +1,15 @@
 import { DateTime } from "luxon";
 import { findWhere, isArray, isEmpty } from "~/lib/arrays";
-import { Footer } from "./Footer";
+import { Footer } from "~/components/Footer";
 import { getSchedule } from "~/lib/schedule";
 import { getSlug, getTerminal } from "~/lib/terminals";
-import { Header } from "~/Header";
+import { Header } from "~/components/Header";
 import { isDark } from "~/lib/theme";
 import { SlotInfo } from "./Crossing/SlotInfo";
-import { Splash } from "~/Splash";
+import { Splash } from "~/components/Splash";
 import { useHistory, useLocation, useParams } from "react-router-dom";
 import clsx from "clsx";
-import React, { FC, ReactNode, useEffect, useState } from "react";
+import React, { ReactElement, useEffect, useState } from "react";
 import scrollIntoView from "scroll-into-view";
 import type { Slot } from "shared/models/schedules";
 import type { Terminal } from "shared/models/terminals";
@@ -19,7 +19,7 @@ interface Params {
   mateSlug?: string;
 }
 
-export const Schedule: FC = () => {
+export const Schedule = (): ReactElement => {
   const { terminalSlug, mateSlug } = useParams<Params>();
   const { pathname } = useLocation();
   const history = useHistory();
@@ -133,10 +133,10 @@ export const Schedule: FC = () => {
     setTime(time);
   };
 
-  const renderSchedule = (): ReactNode => {
+  const renderSchedule = (): ReactElement | null => {
     const currentSlot = findWhere(schedule, { hasPassed: false });
     if (!schedule) {
-      return;
+      return null;
     }
     const sailings = schedule.map((slot) => {
       const { time: slotTime } = slot;
@@ -165,7 +165,7 @@ export const Schedule: FC = () => {
     if (isArray(schedule)) {
       message = "Ferry FYI just updated! Fetching data from WSF...";
     }
-    return <Splash message={message} />;
+    return <Splash>{message}</Splash>;
   }
 
   return (

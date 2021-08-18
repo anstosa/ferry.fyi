@@ -4,7 +4,7 @@ import CarIcon from "~/images/icons/solid/car.svg";
 import clsx from "clsx";
 import DoNotEnterIcon from "~/images/icons/solid/do-not-enter.svg";
 import ExternalLinkIcon from "~/images/icons/solid/external-link-square.svg";
-import React, { FC, ReactNode, useEffect, useState } from "react";
+import React, { ReactElement, useEffect, useState } from "react";
 import type { Crossing, Slot } from "shared/models/schedules";
 
 const RESERVATIONS_BASE_URL =
@@ -18,8 +18,7 @@ interface Props {
   slot: Slot;
 }
 
-export const Capacity: FC<Props> = (props) => {
-  const { slot } = props;
+export const Capacity = ({ slot }: Props): ReactElement | null => {
   const [percentFull, setPercentFull] = useState<number | null>();
   const [spaceLeft, setSpaceLeft] = useState<number | null>();
   const [estimateFull, setEstimateFull] = useState<number | null>();
@@ -126,7 +125,7 @@ export const Capacity: FC<Props> = (props) => {
     return !isNil(spaces) && spaces <= 0;
   };
 
-  const renderSpaceDetail = (): ReactNode => {
+  const renderSpaceDetail = (): ReactElement | null => {
     let reservationsText = null;
     if (crossing && percentFull) {
       const { departureId } = crossing;
@@ -172,7 +171,7 @@ export const Capacity: FC<Props> = (props) => {
     return reservationsText;
   };
 
-  const renderSpace = (): ReactNode => {
+  const renderSpace = (): ReactElement | null => {
     let spaceText;
     let spaceClass = clsx("text-xs whitespace-nowrap");
     if (crossing && percentFull) {
@@ -216,7 +215,7 @@ export const Capacity: FC<Props> = (props) => {
     return <span className={spaceClass}>{spaceText}</span>;
   };
 
-  const renderStatus = (): ReactNode => {
+  const renderStatus = (): ReactElement | null => {
     if (!crossing && !estimate) {
       return null;
     }

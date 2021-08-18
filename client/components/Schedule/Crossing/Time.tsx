@@ -2,7 +2,7 @@ import { DateTime, Duration } from "luxon";
 import { isDark } from "~/lib/theme";
 import { round } from "~/lib/math";
 import clsx from "clsx";
-import React, { FC } from "react";
+import React, { ReactElement } from "react";
 import type { Slot } from "shared/models/schedules";
 
 interface Props {
@@ -11,8 +11,7 @@ interface Props {
   isNext: boolean;
 }
 
-export const Time: FC<Props> = (props) => {
-  const { slot, isNext, time } = props;
+export const Time = ({ slot, isNext, time }: Props): ReactElement => {
   const { crossing, hasPassed } = slot;
   const { departureDelta, isCancelled } = crossing ?? {};
   const delta = Duration.fromObject({ seconds: departureDelta ?? 0 });

@@ -1,6 +1,6 @@
 import { Capacity } from "./Capacity";
 import { DateTime } from "luxon";
-import { ErrorBoundary } from "~/lib/ErrorBoundary";
+import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { findWhere } from "~/lib/arrays";
 import { isDark } from "~/lib/theme";
 import { isNull } from "~/lib/identity";
@@ -9,7 +9,7 @@ import { Time } from "./Time";
 import { VesselStatus } from "./VesselStatus";
 import { VesselTag } from "~/components/VesselTag";
 import clsx from "clsx";
-import React, { FC, ReactNode, useEffect, useRef } from "react";
+import React, { ReactElement, ReactNode, useEffect, useRef } from "react";
 import type { Route } from "shared/models/terminals";
 import type { Slot } from "shared/models/schedules";
 
@@ -23,7 +23,11 @@ interface Props {
   time: DateTime;
 }
 
-export const SlotInfo: FC<Props> = (props) => {
+export const SlotInfo = (props: Props): ReactElement => {
+  const { slot, isExpanded, onClick, schedule, setElement, time } = props;
+  const { hasPassed } = slot;
+  const isNext = slot === findWhere(schedule, { hasPassed: false });
+
   const wrapper = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -31,12 +35,6 @@ export const SlotInfo: FC<Props> = (props) => {
       setElement(wrapper.current);
     }
   }, [wrapper]);
-
-  const { slot, isExpanded, onClick, route, schedule, setElement, time } =
-    props;
-
-  const { hasPassed } = slot;
-  const isNext = slot === findWhere(schedule, { hasPassed: false });
 
   const renderHeader = (): ReactNode => (
     <section

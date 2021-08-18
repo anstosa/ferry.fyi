@@ -1,19 +1,18 @@
-import { getSlug, getTerminals } from "./lib/terminals";
+import { getSlug, getTerminals } from "../../lib/terminals";
 import { isDark } from "~/lib/theme";
 import { isOnline } from "~/lib/api";
 import { Link } from "react-router-dom";
-import { Menu } from "./Menu";
+import { Menu } from "../Menu";
+import { ReloadButton } from "~/components/ReloadButton";
+import { TerminalDropdown } from "./TerminalDropdown";
 import ArrowRightIcon from "~/images/icons/solid/arrow-right.svg";
-import CaretDownIcon from "~/images/icons/solid/caret-down.svg";
-import CaretUpIcon from "~/images/icons/solid/caret-up.svg";
 import clsx from "clsx";
 import DirectionsIcon from "~/images/icons/solid/directions.svg";
 import ExchangeIcon from "~/images/icons/solid/exchange.svg";
 import MenuIcon from "~/images/icons/solid/bars.svg";
 import OfflineIcon from "~/images/icons/solid/signal-alt-slash.svg";
-import React, { FC, MouseEvent, ReactNode, useEffect, useState } from "react";
+import React, { FC, ReactNode, useEffect, useState } from "react";
 import ReactGA from "react-ga";
-import ReloadIcon from "~/images/icons/solid/redo.svg";
 import type { Terminal } from "shared/models/terminals";
 
 const WrapHeader: FC = ({ children }) => (
@@ -31,6 +30,7 @@ const WrapHeader: FC = ({ children }) => (
     </div>
   </header>
 );
+
 interface Props {
   isReloading: boolean;
   mate: Terminal;
@@ -59,75 +59,19 @@ export const Header: FC<Props> = (props) => {
     return <WrapHeader>Ferry FYI</WrapHeader>;
   }
 
-  const renderDropdown = (
-    terminals: Terminal[],
-    isOpen: boolean,
-    setOpen: (state: boolean) => void,
-    onSelect: (event: MouseEvent, terminal: Terminal) => void
-  ): ReactNode => {
-    const selectedTerminal = terminals[0];
-    if (terminals.length === 1) {
-      return <span className="truncate">{selectedTerminal.name}</span>;
-    }
-    const otherTerminals = terminals.filter(
-      ({ id }) => id !== selectedTerminal.id
-    );
-    return (
-      <div className="relative cursor-pointer min-w-0">
-        <div
-          className="min-w-0 flex items-center"
-          onClick={() => setOpen(!isOpen)}
-          aria-label="Expand Terminals"
-        >
-          <span className="truncate">{selectedTerminal.name}</span>
-          <div className="inline-block ml-2">
-            {isOpen ? <CaretUpIcon /> : <CaretDownIcon />}
-          </div>
-        </div>
-        {isOpen && (
-          <div
-            className={clsx(
-              "absolute top-full left-0",
-              "bg-green-dark shadow-lg",
-              "-ml-4 py-2",
-              "max-h-halfscreen",
-              "flex items-stretch"
-            )}
-          >
-            <ul className={clsx("overflow-y-scroll scrolling-touch", "pb-5")}>
-              {otherTerminals.map((terminal) => {
-                const { id, name } = terminal;
-                return (
-                  <li key={id}>
-                    <Link
-                      className={clsx(
-                        "whitespace-nowrap",
-                        "block cursor-pointer",
-                        "px-4 py-2",
-                        "hover:bg-lighten-high"
-                      )}
-                      to={`/${getSlug(id)}`}
-                      onClick={(event) => onSelect(event, terminal)}
-                    >
-                      {name}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-            <div
-              className={clsx(
-                "absolute bottom-0 left-0",
-                "w-full h-8",
-                "pointer-events-none",
-                "bg-overscroll-gradient"
-              )}
-            />
-          </div>
-        )}
-      </div>
-    );
-  };
+  const renderMenuToggle = (): ReactNode => (
+    <MenuIcon
+      className="text-2xl inline-block mr-4 cursor-poiner"
+      onClick={() => {
+        setMenuOpen(true);
+        ReactGA.event({
+          category: "Navigation",
+          action: "Open Menu",
+        });
+      }}
+      aria-label="Open Menu"
+    />
+  );
 
   const renderTerminal = (): ReactNode => {
     return (
@@ -141,12 +85,15 @@ export const Header: FC<Props> = (props) => {
         >
           <DirectionsIcon />
         </a>
-        {renderDropdown(
-          [terminal, ...terminals.filter(({ id }) => id !== terminal.id)],
-          isTerminalOpen,
-          setTerminalOpen,
-          () => setTerminalOpen(false)
-        )}
+        <TerminalDropdown
+          terminals={[
+            terminal,
+            ...terminals.filter(({ id }) => id !== terminal.id),
+          ]}
+          isOpen={isTerminalOpen}
+          setOpen={setTerminalOpen}
+          onSelect={() => setTerminalOpen(false)}
+        />
       </>
     );
   };
@@ -179,31 +126,19 @@ export const Header: FC<Props> = (props) => {
       return null;
     }
     const { mates = [] } = terminal;
-    return renderDropdown(
-      [mate, ...mates.filter(({ id }) => id !== mate.id)],
-      isMateOpen,
-      setMateOpen,
-      (event, selectedTerminal) => {
-        event.preventDefault();
-        setMateOpen(false);
-        setRoute(getSlug(terminal.id), getSlug(selectedTerminal.id));
-      }
+    return (
+      <TerminalDropdown
+        terminals={[mate, ...mates.filter(({ id }) => id !== mate.id)]}
+        isOpen={isMateOpen}
+        setOpen={setMateOpen}
+        onSelect={(event, selectedTerminal) => {
+          event.preventDefault();
+          setMateOpen(false);
+          setRoute(getSlug(terminal.id), getSlug(selectedTerminal.id));
+        }}
+      />
     );
   };
-
-  const renderMenuToggle = (): ReactNode => (
-    <MenuIcon
-      className="text-2xl inline-block mr-4 cursor-poiner"
-      onClick={() => {
-        setMenuOpen(true);
-        ReactGA.event({
-          category: "Navigation",
-          action: "Open Menu",
-        });
-      }}
-      aria-label="Open Menu"
-    />
-  );
 
   const renderReload = (): ReactNode => {
     if (!isOnline()) {
@@ -215,12 +150,9 @@ export const Header: FC<Props> = (props) => {
       );
     }
     return (
-      <ReloadIcon
-        className={clsx(
-          "text-2xl spin cursor-pointer ml-4",
-          !isReloading && "spin-pause"
-        )}
-        aria-label="Refresh Data"
+      <ReloadButton
+        isReloading={isReloading}
+        ariaLabel="Refresh Data"
         onClick={() => {
           if (!isReloading) {
             reload();

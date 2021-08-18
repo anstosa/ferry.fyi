@@ -3,7 +3,7 @@ import { isDark } from "~/lib/theme";
 import { isNull } from "~/lib/identity";
 import { round } from "~/lib/math";
 import clsx from "clsx";
-import React, { FC } from "react";
+import React, { ReactElement } from "react";
 import type { Slot } from "shared/models/schedules";
 
 interface Props {
@@ -16,8 +16,7 @@ const textGreen = isDark ? "text-green-light" : "text-green-dark";
 const textRed = isDark ? "text-red-light" : "text-red-dark";
 const textYellow = isDark ? "text-yellow-light" : "text-yellow-dark";
 
-export const Status: FC<Props> = (props) => {
-  const { className, slot, time } = props;
+export const Status = ({ className, slot, time }: Props): ReactElement => {
   const { crossing, hasPassed } = slot;
   const scheduledTime = DateTime.fromSeconds(slot.time);
   const formattedScheduledTime = `${scheduledTime.toFormat("h:mm a")}`;

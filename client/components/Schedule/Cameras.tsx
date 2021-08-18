@@ -5,7 +5,7 @@ import CarIcon from "~/images/icons/solid/car.svg";
 import clsx from "clsx";
 import MapIcon from "~/images/icons/solid/map-marker.svg";
 import ParkingIcon from "~/images/icons/solid/parking.svg";
-import React, { FC, ReactNode, useEffect, useState } from "react";
+import React, { ReactElement, ReactNode, useEffect, useState } from "react";
 import type { Camera } from "shared/models/cameras";
 import type { Terminal } from "shared/models/terminals";
 
@@ -14,7 +14,7 @@ interface Props {
   terminal: Terminal;
 }
 
-export const Cameras: FC<Props> = (props) => {
+export const Cameras = (props: Props): ReactElement => {
   const {
     terminal: { cameras },
   } = props;

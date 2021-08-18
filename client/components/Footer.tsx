@@ -1,19 +1,28 @@
-import { Alerts, getBulletins, getLastAlertTime, getWaitTime } from "./Alerts";
-import { Cameras } from "./Cameras";
+import {
+  Alerts,
+  getBulletins,
+  getLastAlertTime,
+  getWaitTime,
+} from "./Schedule/Alerts";
+import { Cameras } from "./Schedule/Cameras";
 import { DateTime } from "luxon";
 import { isDark } from "~/lib/theme";
 import { isOnline } from "~/lib/api";
+import { ReloadButton } from "~/components/ReloadButton";
 import ChevronDownIcon from "~/images/icons/solid/chevron-down.svg";
 import clsx from "clsx";
 import MapIcon from "~/images/icons/solid/map-marked.svg";
-import React, { FC, ReactNode, useState } from "react";
+import React, { FC, ReactElement, ReactNode, useState } from "react";
 import ReactGA from "react-ga";
-import ReloadIcon from "~/images/icons/solid/redo.svg";
-import VideoIcon from "~/images/icons/solid/video.svg";
+import VideoIcon from "~/images/icons/solid/cctv.svg";
 import WarningIcon from "~/images/icons/solid/exclamation-triangle.svg";
 import type { Terminal } from "shared/models/terminals";
 
-const WrapFooter: FC<{ isOpen: boolean }> = ({ isOpen = false, children }) => (
+interface WrapFooterProps {
+  isOpen: boolean;
+}
+
+const WrapFooter: FC<WrapFooterProps> = ({ isOpen = false, children }) => (
   <footer
     className={clsx(
       "fixed top-0 inset-x",
@@ -52,7 +61,7 @@ interface Props {
   time: DateTime;
 }
 
-export const Footer: FC<Props> = ({ onChange, terminal, time }) => {
+export const Footer = ({ onChange, terminal, time }: Props): ReactElement => {
   const [cameraTime, setCameraTime] = useState<number>(
     DateTime.local().toSeconds()
   );
@@ -69,7 +78,7 @@ export const Footer: FC<Props> = ({ onChange, terminal, time }) => {
     onChange?.(isOpen);
   };
 
-  const renderToggle = (): ReactNode => {
+  const renderToggle = (): ReactElement => {
     const showMap = !isOpen;
     return (
       <div className="flex justify-between">
@@ -80,7 +89,7 @@ export const Footer: FC<Props> = ({ onChange, terminal, time }) => {
     );
   };
 
-  const renderMapLink = (): ReactNode => {
+  const renderMapLink = (): ReactElement | null => {
     const { vesselwatch } = terminal;
     if (!vesselwatch) {
       return null;
@@ -96,7 +105,7 @@ export const Footer: FC<Props> = ({ onChange, terminal, time }) => {
     );
   };
 
-  const renderToggleCameras = (): ReactNode => {
+  const renderToggleCameras = (): ReactElement | null => {
     if (!isOnline()) {
       return null;
     }
@@ -134,21 +143,20 @@ export const Footer: FC<Props> = ({ onChange, terminal, time }) => {
         {isOpen && (
           <div
             className={clsx(
-              "cursor-pointer",
               "relative h-16 w-16",
               "flex items-center justify-center",
               "cursor-pointer",
               "flex-no-wrap min-w-0"
             )}
-            aria-label="Refresh Images"
-            onClick={() => {
-              setReloading(true);
-              setCameraTime(DateTime.local().toSeconds());
-              setTimeout(() => setReloading(false), 1 * 1000);
-            }}
           >
-            <ReloadIcon
-              className={clsx("text-2xl spin", !isReloading && "spin-pause")}
+            <ReloadButton
+              ariaLabel="RefreshImages"
+              isReloading={isReloading}
+              onClick={() => {
+                setReloading(true);
+                setCameraTime(DateTime.local().toSeconds());
+                setTimeout(() => setReloading(false), 1 * 1000);
+              }}
             />
           </div>
         )}
@@ -156,7 +164,7 @@ export const Footer: FC<Props> = ({ onChange, terminal, time }) => {
     );
   };
 
-  const renderToggleAlerts = (): ReactNode => {
+  const renderToggleAlerts = (): ReactElement | null => {
     const bulletins = getBulletins(terminal);
     if (!bulletins.length) {
       return <div className="w-16 h-16" />;

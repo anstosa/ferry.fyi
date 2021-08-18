@@ -3,7 +3,7 @@ import { degreesToHeading } from "~/lib/compass";
 import { knotsToMph } from "~/lib/speed";
 import { locationToUrl } from "~/lib/maps";
 import clsx from "clsx";
-import React, { FC } from "react";
+import React, { ReactElement } from "react";
 import type { Vessel } from "shared/models/vessels";
 
 interface Props {
@@ -12,8 +12,11 @@ interface Props {
   time: DateTime;
 }
 
-export const VesselStatus: FC<Props> = (props) => {
-  const { className, vessel, time } = props;
+export const VesselStatus = ({
+  className,
+  vessel,
+  time,
+}: Props): ReactElement => {
   const { dockedTime, isAtDock, location, heading, speed, vesselwatch } =
     vessel;
 

@@ -3,7 +3,7 @@ import clsx from "clsx";
 import React, { FC, ReactNode, useEffect, useState } from "react";
 import ShipIcon from "~/images/icons/solid/ship.svg";
 
-export const Splash: FC<{ message?: string }> = ({ message }) => {
+export const Splash: FC = ({ children }) => {
   const [isHelpVisible, setHelpVisible] = useState<boolean>(false);
   const [mark, setMark] = useState<number>(0);
   const [tickTimer, setTickTimer] = useState<NodeJS.Timeout | null>(null);
@@ -68,7 +68,7 @@ export const Splash: FC<{ message?: string }> = ({ message }) => {
           />
         ))}
       </div>
-      {message && <span className="max-w-sm mt-8">{message}</span>}
+      {children && <span className="max-w-sm mt-8">{children}</span>}
       {renderHelp()}
     </div>
   );

@@ -1,6 +1,6 @@
 import { isDark } from "~/lib/theme";
 import clsx from "clsx";
-import React, { FC } from "react";
+import React, { ReactElement } from "react";
 import ShipIcon from "~/images/icons/solid/ship.svg";
 import type { Vessel } from "shared/models/vessels";
 
@@ -9,8 +9,7 @@ interface Props {
   isAbbreviation?: boolean;
 }
 
-export const VesselTag: FC<Props> = (props) => {
-  const { isAbbreviation, vessel } = props;
+export const VesselTag = ({ isAbbreviation, vessel }: Props): ReactElement => {
   const { abbreviation, name } = vessel;
 
   return (

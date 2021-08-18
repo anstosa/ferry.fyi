@@ -1,16 +1,16 @@
 import "./app.scss";
 import { Redirect, Route } from "react-router-dom";
-import { Schedule } from "./Schedule/Schedule";
+import { Schedule } from "./components/Schedule";
 import { Settings } from "luxon";
 import { useRecordPageViews } from "~/lib/analytics";
-import React, { FC, useEffect } from "react";
+import React, { ReactElement, useEffect } from "react";
 import ReactGA from "react-ga";
 
 Settings.defaultZoneName = "America/Los_Angeles";
 
 const DEFAULT_ROUTE = "/mukilteo";
 
-export const App: FC = () => {
+export const App = (): ReactElement => {
   useEffect(() => {
     ReactGA.initialize(process.env.GOOGLE_ANALYTICS as string);
   }, []);

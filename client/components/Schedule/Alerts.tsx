@@ -3,7 +3,7 @@ import { DateTime } from "luxon";
 import { Order, sortBy } from "~/lib/arrays";
 import { round } from "~/lib/math";
 import clsx from "clsx";
-import React, { FC, ReactNode } from "react";
+import React, { ReactElement, ReactNode } from "react";
 import type { Bulletin, Terminal } from "shared/models/terminals";
 
 const ALERT_FILTER = new RegExp(
@@ -101,9 +101,7 @@ interface Props {
   time: DateTime;
 }
 
-export const Alerts: FC<Props> = (props) => {
-  const { terminal, time } = props;
-
+export const Alerts = ({ terminal, time }: Props): ReactElement => {
   const renderAlert = (bulletin: Bulletin): ReactNode => {
     const { title, description } = bulletin;
     const filteredDescription = description
