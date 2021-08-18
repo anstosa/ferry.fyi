@@ -28,3 +28,8 @@ export interface Slot {
   vessel: Vessel;
   wuid: string;
 }
+
+export interface GetScheduleResponse {
+  schedule: Slot[];
+  timestamp: number;
+}

@@ -19,15 +19,13 @@ export const Cameras = (props: Props): ReactElement => {
     terminal: { cameras },
   } = props;
   const [cameraTime, setCameraTime] = useState<number>(props.cameraTime);
-  const [cameraInterval, setCameraInterval] = useState<
-    NodeJS.Timeout | undefined
-  >();
+  const [cameraInterval, setCameraInterval] = useState<number | null>(null);
 
   useEffect(() => {
     setCameraInterval(
-      setInterval(() => {
+      window.setInterval(() => {
         setCameraTime(DateTime.local().toSeconds());
-      }, 10 * 1000) as unknown as NodeJS.Timeout
+      }, 10 * 1000)
     );
     return () => {
       if (cameraInterval) {
@@ -54,8 +52,7 @@ export const Cameras = (props: Props): ReactElement => {
         if (isNull(spacesToNext)) {
           return true;
         }
-        totalToBooth =
-          (totalToBooth as number) + (candidate?.spacesToNext ?? 0);
+        totalToBooth = Number(totalToBooth) + (candidate?.spacesToNext ?? 0);
         return candidate === camera;
       });
     }

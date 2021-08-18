@@ -35,26 +35,6 @@ html {
   );
 }
 
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.spin {
-  animation-duration: 5000ms;
-  animation-iteration-count: infinite;
-  animation-name: spin;
-  animation-timing-function: linear; 
-}
-
-.spin-pause {
-  animation-play-state: paused;
-}
-
 // Components
 @responsive {
   .animate {

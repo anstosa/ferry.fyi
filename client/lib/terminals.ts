@@ -101,7 +101,7 @@ export const getTerminal = async (key: string | number): Promise<Terminal> => {
   }
   let terminal: Terminal = terminalCache?.[id];
   if (!terminal) {
-    terminal = (await get(getApiTerminal(id))) as unknown as Terminal;
+    terminal = await get<Terminal>(getApiTerminal(id));
     // eslint-disable-next-line require-atomic-updates
     terminalCache[id] = terminal;
   }

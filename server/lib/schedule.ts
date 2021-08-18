@@ -229,12 +229,12 @@ export const getPreviousCrossing = (
   departureTime: number
 ): Crossing | null => {
   const schedule = scheduleByTerminal?.[departureId]?.[arrivalId];
-  const departureTimes = sortBy(keys(schedule) as unknown as number[]);
-  const departureIndex = indexOf(departureTimes, departureTime);
+  const departureTimes = sortBy(keys(schedule));
+  const departureIndex = indexOf(departureTimes, String(departureTime));
   if (departureIndex === 0) {
     return null;
   } else {
-    const previousDepartureTime = departureTimes[departureIndex - 1];
+    const previousDepartureTime = Number(departureTimes[departureIndex - 1]);
     const previousCapacity = schedule?.[previousDepartureTime]?.crossing;
     return previousCapacity ?? null;
   }

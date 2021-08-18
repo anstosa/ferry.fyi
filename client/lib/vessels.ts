@@ -13,7 +13,7 @@ const vesselCache: Record<number, Vessel> = {};
 export const getVessel = async (id: number): Promise<Vessel> => {
   let vessel = vesselCache?.[id];
   if (!vessel) {
-    vessel = (await get(getApiVessel(id))) as unknown as Vessel;
+    vessel = await get<Vessel>(getApiVessel(id));
     // eslint-disable-next-line require-atomic-updates
     vesselCache[id] = vessel;
   }

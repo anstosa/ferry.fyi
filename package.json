@@ -146,6 +146,7 @@
     "color-convert": "^2.0.1",
     "colors": "^1.4.0",
     "draft-js": "^0.11.7",
+    "framer-motion": "^4.1.17",
     "heroku-logger": "^0.3.3",
     "koa": "^2.13.1",
     "koa-bodyparser": "^4.3.0",

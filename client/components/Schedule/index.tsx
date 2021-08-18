@@ -34,7 +34,7 @@ export const Schedule = (): ReactElement => {
   const [time, setTime] = useState<DateTime>(DateTime.local());
   const [isUpdating, setUpdating] = useState<boolean>(false);
   const [isFooterOpen, setFooterOpen] = useState<boolean>(false);
-  const [tickTimeout, setTickTimeout] = useState<NodeJS.Timeout | null>();
+  const [tickTimeout, setTickTimeout] = useState<number | null>(null);
 
   useEffect(() => {
     tick();
@@ -48,7 +48,7 @@ export const Schedule = (): ReactElement => {
   const tick = async (): Promise<void> => {
     await updateSchedule();
     // TODO fix type hack
-    setTickTimeout(setTimeout(tick, 10 * 1000) as unknown as NodeJS.Timeout);
+    setTickTimeout(window.setTimeout(tick, 10 * 1000));
   };
 
   useEffect(() => {
@@ -119,13 +119,7 @@ export const Schedule = (): ReactElement => {
       return;
     }
     setUpdating(true);
-    const { schedule, timestamp } = (await getSchedule(
-      terminal,
-      mate
-    )) as unknown as {
-      schedule: Slot[];
-      timestamp: number;
-    };
+    const { schedule, timestamp } = await getSchedule(terminal, mate);
     setSchedule(schedule);
     setUpdating(false);
 

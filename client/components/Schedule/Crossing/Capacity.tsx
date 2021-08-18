@@ -5,7 +5,7 @@ import clsx from "clsx";
 import DoNotEnterIcon from "~/images/icons/solid/do-not-enter.svg";
 import ExternalLinkIcon from "~/images/icons/solid/external-link-square.svg";
 import React, { ReactElement, useEffect, useState } from "react";
-import type { Crossing, Slot } from "shared/models/schedules";
+import type { Slot } from "shared/models/schedules";
 
 const RESERVATIONS_BASE_URL =
   "https://secureapps.wsdot.wa.gov/Ferries/Reservations/Vehicle/SailingSchedule.aspx?VRSTermId=";
@@ -30,7 +30,7 @@ export const Capacity = ({ slot }: Props): ReactElement | null => {
     vessel: { vehicleCapacity, tallVehicleCapacity },
   } = slot;
 
-  const crossing = slot.crossing as Crossing;
+  const { crossing } = slot;
 
   useEffect(() => {
     updateCrossing();
@@ -54,7 +54,7 @@ export const Capacity = ({ slot }: Props): ReactElement | null => {
     const estimateFull = Math.min(
       ((totalCapacity - estimateLeft) / totalCapacity) * 100,
       100
-    ) as number;
+    );
     return estimateFull;
   };
 
