@@ -1,3 +1,4 @@
+import { AnimatePresence, motion } from "framer-motion";
 import { getSlug } from "~/lib/terminals";
 import { Link } from "react-router-dom";
 import CaretDownIcon from "~/images/icons/solid/caret-down.svg";
@@ -34,25 +35,30 @@ export const TerminalDropdown = (props: Props): ReactElement => {
           {isOpen ? <CaretUpIcon /> : <CaretDownIcon />}
         </div>
       </div>
+      {/* Background overlay. Click to close */}
       {isOpen && (
-        <>
-          {/* Background overlay. Click to close */}
-          <div
-            className={clsx(
-              "fixed w-screen h-screen top-0 left-0",
-              "cursor-default"
-            )}
-            onClick={() => setOpen(false)}
-          />
-          {/* The actual dropdown */}
-          <div
+        <div
+          className={clsx(
+            "fixed w-screen h-screen top-0 left-0",
+            "cursor-default"
+          )}
+          onClick={() => setOpen(false)}
+        />
+      )}
+      {/* The actual dropdown */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
             className={clsx(
               "absolute top-full left-0",
               "bg-green-dark shadow-lg",
               "-ml-4 py-2",
-              "max-h-halfscreen",
               "flex items-stretch"
             )}
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "50vh", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ type: "easeInOut" }}
           >
             <ul className={clsx("overflow-y-scroll scrolling-touch", "pb-5")}>
               {otherTerminals.map((terminal) => {
@@ -83,9 +89,9 @@ export const TerminalDropdown = (props: Props): ReactElement => {
                 "bg-gradient-to-b from-transparent to-green-dark"
               )}
             />
-          </div>
-        </>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

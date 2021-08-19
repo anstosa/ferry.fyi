@@ -185,7 +185,7 @@ export const Schedule = (): ReactElement => {
           className={clsx(
             "w-full max-w-6xl bg-blue-lightest",
             "lg:border-l lg:border-r",
-            "border-gray-medium dark: border-gray-dark"
+            "border-gray-medium dark:border-gray-dark"
           )}
         >
           {renderSchedule()}
