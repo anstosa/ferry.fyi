@@ -1,5 +1,4 @@
 import { getSlug, getTerminals } from "../../lib/terminals";
-import { isDark } from "~/lib/theme";
 import { isOnline } from "~/lib/api";
 import { Link } from "react-router-dom";
 import { Menu } from "../Menu";
@@ -195,10 +194,7 @@ export const Header: FC<Props> = (props) => {
         {renderReload()}
       </WrapHeader>
       <div
-        className={clsx(
-          "h-16 w-full flex-shrink-0",
-          isDark ? "bg-black" : "bg-white"
-        )}
+        className={clsx("h-16 w-full flex-shrink-0", "bg-white dark:bg-black")}
       />
     </>
   );

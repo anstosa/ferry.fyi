@@ -1,5 +1,6 @@
 import { BundleAnalyzerPlugin } from "webpack-bundle-analyzer";
 import { filter } from "lodash";
+import { TailwindConfig } from "tailwindcss/tailwind-config";
 import CssMinimizerPlugin from "css-minimizer-webpack-plugin";
 import FaviconsPlugin from "favicons-webpack-plugin";
 import ForkTsCheckerWebpackPlugin from "fork-ts-checker-webpack-plugin";
@@ -7,17 +8,23 @@ import HtmlPlugin from "html-webpack-plugin";
 import LiveReloadPlugin from "webpack-livereload-plugin";
 import MiniCssExtractPlugin from "mini-css-extract-plugin";
 import path from "path";
+import resolveConfig from "tailwindcss/resolveConfig";
 import StyleLintPlugin from "stylelint-webpack-plugin";
+import tailwindConfig from "../tailwind.config.js";
 import TerserPlugin from "terser-webpack-plugin";
 import TsConfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 import webpack from "webpack";
 import WorkboxPlugin from "workbox-webpack-plugin";
 
+const {
+  theme: { colors },
+} = resolveConfig(tailwindConfig as unknown as TailwindConfig);
+
 const NAME = "Ferry FYI";
 const TITLE = `${NAME} - Seattle Area Ferry Schedule and Tracker`;
 const DESCRIPTION =
   "A ferry schedule and tracker for the greater Seattle area.";
-const COLOR = "#016f52"; // sync with client/tailwind.config.js
+const COLOR = colors?.green.dark;
 
 enum Mode {
   development = "development",

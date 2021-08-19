@@ -2,7 +2,6 @@ import { Capacity } from "./Capacity";
 import { DateTime } from "luxon";
 import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { findWhere } from "~/lib/arrays";
-import { isDark } from "~/lib/theme";
 import { isNull } from "~/lib/identity";
 import { Status } from "./Status";
 import { Time } from "./Time";
@@ -86,18 +85,18 @@ export const SlotInfo = (props: Props): ReactElement => {
 
   let background: string;
   if (hasPassed) {
-    background = isDark ? "bg-gray-darkest" : "bg-gray-light";
+    background = "bg-gray-light dark:bg-gray-darkest";
   } else if (isNext) {
-    background = isDark ? "bg-blue-darkest" : "bg-blue-lightest";
+    background = "bg-blue-lightest dark:bg-blue-darkest";
   } else {
-    background = isDark ? "bg-black" : "bg-white";
+    background = "bg-white dark:bg-black";
   }
 
   return (
     <li
       className={clsx(
         "border-b",
-        isDark ? "border-gray-dark" : "border-gray-medium",
+        "border-gray-medium dark:border-gray-dark",
         "flex flex-col",
         background
       )}

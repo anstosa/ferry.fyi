@@ -1,4 +1,3 @@
-import { isDark } from "~/lib/theme";
 import { isNil, isNull } from "~/lib/identity";
 import CarIcon from "~/images/icons/solid/car.svg";
 import clsx from "clsx";
@@ -134,7 +133,7 @@ export const Capacity = ({ slot }: Props): ReactElement | null => {
           <a
             className={clsx(
               "text-xs link",
-              isDark ? "text-green-light" : "text-green-dark"
+              "text-dark-green dark:text-green-light"
             )}
             href={RESERVATIONS_BASE_URL + departureId}
             target="_blank"
@@ -147,10 +146,7 @@ export const Capacity = ({ slot }: Props): ReactElement | null => {
       } else if (allowsReservations()) {
         reservationsText = (
           <span
-            className={clsx(
-              "text-xs",
-              isDark ? "text-gray-light" : "text-gray-dark"
-            )}
+            className={clsx("text-xs", "text-gray-dark dark:text-gray-light")}
           >
             Standby Only
           </span>
@@ -161,7 +157,7 @@ export const Capacity = ({ slot }: Props): ReactElement | null => {
         <span
           className={clsx(
             "text-xs italic",
-            isDark ? "text-blue-medium" : "text-blue-light"
+            "text-blue-light dark:text-blue-medium"
           )}
         >
           Forecast
@@ -192,7 +188,7 @@ export const Capacity = ({ slot }: Props): ReactElement | null => {
           spaceClass = clsx(
             spaceClass,
             "font-bold",
-            isDark ? "text-red-light" : "text-red-dark"
+            "text-red-dark dark:text-red-light"
           );
         }
       } else if (percentFull > 80) {
@@ -200,7 +196,7 @@ export const Capacity = ({ slot }: Props): ReactElement | null => {
           spaceClass = clsx(
             spaceClass,
             "font-medium",
-            isDark ? "text-yellow-light" : "text-yellow-dark"
+            "text-yellow-dark dark:text-yellow-light"
           );
         }
       }
@@ -248,12 +244,8 @@ export const Capacity = ({ slot }: Props): ReactElement | null => {
             "absolute w-0 top-0 left-0 h-full",
             // eslint-disable-next-line no-nested-ternary
             hasPassed
-              ? isDark
-                ? "bg-lighten-lower"
-                : "bg-darken-lower"
-              : isDark
-              ? "bg-blue-dark"
-              : "bg-blue-light"
+              ? "bg-darken-lower dark:bg-lighten-lower"
+              : "bg-blue-light dark:bg-blue-dark"
           )}
           style={{ width: `${percentFull}%` }}
         >
@@ -273,8 +265,9 @@ export const Capacity = ({ slot }: Props): ReactElement | null => {
         <div
           className={clsx(
             "absolute w-1 top-0 h-full",
-            `bg-prediction-gradient${isDark && "--dark"}`,
-            isDark ? "border-lighten-lower" : "border-darken-lower",
+            "bg-prediction-gradient",
+            "dark:bg-prediction-gradient--dark",
+            "border-darken-lower dark:border-lighten-lower",
             "border-r-4 border-r-dashed"
           )}
           style={{

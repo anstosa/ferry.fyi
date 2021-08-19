@@ -1,5 +1,4 @@
 import { DateTime, Duration } from "luxon";
-import { isDark } from "~/lib/theme";
 import { round } from "~/lib/math";
 import clsx from "clsx";
 import React, { ReactElement } from "react";
@@ -38,15 +37,15 @@ export const Time = ({ slot, isNext, time }: Props): ReactElement => {
     minorTime = estimatedTime.toFormat("a");
   }
 
-  let color = isDark ? "text-white" : "text-black";
+  let color = "text-black dark:text-white";
   if (isCancelled) {
-    color = isDark ? "text-red-light" : "text-red-dark";
+    color = "text-red-dark dark:text-red-light";
   } else if (hasPassed) {
-    color = isDark ? "text-gray-medium" : "text-gray-dark";
+    color = "text-gray-dark dark:text-gray-medium";
   } else if (deltaMins >= 10) {
-    color = isDark ? "text-red-light" : "text-red-dark";
+    color = "text-red-dark dark:text-red-light";
   } else if (deltaMins >= 4) {
-    color = isDark ? "text-yellow-light" : "text-yellow-dark";
+    color = "text-yellow-dark dark:text-yellow-light";
   }
 
   let weight;

@@ -6,8 +6,8 @@ import {
 } from "./Schedule/Alerts";
 import { Cameras } from "./Schedule/Cameras";
 import { DateTime } from "luxon";
-import { isDark } from "~/lib/theme";
 import { isOnline } from "~/lib/api";
+import { motion } from "framer-motion";
 import { ReloadButton } from "~/components/ReloadButton";
 import ChevronDownIcon from "~/images/icons/solid/chevron-down.svg";
 import clsx from "clsx";
@@ -23,7 +23,10 @@ interface WrapFooterProps {
 }
 
 const WrapFooter: FC<WrapFooterProps> = ({ isOpen = false, children }) => (
-  <footer
+  <motion.footer
+    initial={{ top: "calc(100% - 4rem)" }}
+    animate={{ top: isOpen ? 0 : "calc(100% - 4rem)" }}
+    exit={{ top: "calc(100% - 4rem)" }}
     className={clsx(
       "fixed top-0 inset-x",
       "bg-green-dark text-white",
@@ -33,10 +36,8 @@ const WrapFooter: FC<WrapFooterProps> = ({ isOpen = false, children }) => (
       "pr-safe-right pl-safe-left mb-safe-bottom",
       isOpen ? "z-20" : "z-10"
     )}
-    style={{
-      height: window.innerHeight,
-      top: isOpen ? "0" : "calc(100% - 4rem)",
-    }}
+    transition={{ type: "easeInOut" }}
+    style={{ height: window.innerHeight }}
   >
     <div
       className={clsx(
@@ -47,7 +48,7 @@ const WrapFooter: FC<WrapFooterProps> = ({ isOpen = false, children }) => (
     >
       {children}
     </div>
-  </footer>
+  </motion.footer>
 );
 
 enum Tabs {
@@ -221,10 +222,7 @@ export const Footer = ({ onChange, terminal, time }: Props): ReactElement => {
   return (
     <>
       <div
-        className={clsx(
-          "h-16 w-full flex-shrink-0",
-          isDark ? "bg-black" : "bg-white"
-        )}
+        className={clsx("h-16 w-full flex-shrink-0", "bg-white dark:bg-black")}
       />
       <WrapFooter isOpen={isOpen}>
         {renderToggle()}

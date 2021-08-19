@@ -78,6 +78,7 @@
     "@types/sequelize": "^4.28.9",
     "@types/stylelint": "^13.13.1",
     "@types/stylelint-webpack-plugin": "^2.1.0",
+    "@types/tailwindcss": "^2.2.1",
     "@types/terser-webpack-plugin": "^5.0.2",
     "@types/validator": "^13.1.3",
     "@types/webpack": "^5.28.0",

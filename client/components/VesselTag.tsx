@@ -1,4 +1,3 @@
-import { isDark } from "~/lib/theme";
 import clsx from "clsx";
 import React, { ReactElement } from "react";
 import ShipIcon from "~/images/icons/solid/ship.svg";
@@ -16,7 +15,8 @@ export const VesselTag = ({ isAbbreviation, vessel }: Props): ReactElement => {
     <div
       className={clsx(
         "font-bold text-2xs",
-        isDark ? "bg-gray-medium text-black" : "bg-gray-dark text-white",
+        "bg-gray-dark text-white",
+        "dark:bg-gray-medium dark:text-black",
         "rounded p-1"
       )}
     >

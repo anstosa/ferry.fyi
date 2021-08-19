@@ -4,7 +4,6 @@ import { Footer } from "~/components/Footer";
 import { getSchedule } from "~/lib/schedule";
 import { getSlug, getTerminal } from "~/lib/terminals";
 import { Header } from "~/components/Header";
-import { isDark } from "~/lib/theme";
 import { SlotInfo } from "./Crossing/SlotInfo";
 import { Splash } from "~/components/Splash";
 import { useHistory, useLocation, useParams } from "react-router-dom";
@@ -177,7 +176,7 @@ export const Schedule = (): ReactElement => {
           "flex-grow flex-shrink",
           "flex flex-col items-center",
           "pr-safe-right pl-safe-left",
-          isDark ? "bg-black text-white" : "bg-white text-black",
+          "bg-white text-black dark:bg-black dark:text-white",
           isFooterOpen ? "overflow-hidden" : "overflow-y-scroll"
         )}
         id="main"
@@ -186,7 +185,7 @@ export const Schedule = (): ReactElement => {
           className={clsx(
             "w-full max-w-6xl bg-blue-lightest",
             "lg:border-l lg:border-r",
-            isDark ? "border-gray-dark" : "border-gray-medium"
+            "border-gray-medium dark: border-gray-dark"
           )}
         >
           {renderSchedule()}

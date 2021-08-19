@@ -27,20 +27,8 @@ html {
   );
 }
 
-.bg-overscroll-gradient {
-  background: linear-gradient(
-    to bottom,
-    transparent,
-    theme("colors.green.dark")
-  );
-}
-
 // Components
 @responsive {
-  .animate {
-    transition: all 0.15s ease-out;
-  }
-
   @import "components/alert";
   @import "components/button";
   @import "components/field";

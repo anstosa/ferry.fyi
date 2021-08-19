@@ -1,5 +1,4 @@
 import { DateTime, Duration } from "luxon";
-import { isDark } from "~/lib/theme";
 import { isNull } from "~/lib/identity";
 import { round } from "~/lib/math";
 import clsx from "clsx";
@@ -12,9 +11,9 @@ interface Props {
   time: DateTime;
 }
 
-const textGreen = isDark ? "text-green-light" : "text-green-dark";
-const textRed = isDark ? "text-red-light" : "text-red-dark";
-const textYellow = isDark ? "text-yellow-light" : "text-yellow-dark";
+const textGreen = "text-green-dark dark:text-green-light";
+const textRed = "text-red-dark dark:text-red-light";
+const textYellow = "text-yellow-dark dark:text-yellow-light";
 
 export const Status = ({ className, slot, time }: Props): ReactElement => {
   const { crossing, hasPassed } = slot;

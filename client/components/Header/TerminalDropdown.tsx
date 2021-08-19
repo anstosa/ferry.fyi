@@ -80,7 +80,7 @@ export const TerminalDropdown = (props: Props): ReactElement => {
                 "absolute bottom-0 left-0",
                 "w-full h-8",
                 "pointer-events-none",
-                "bg-overscroll-gradient"
+                "bg-gradient-to-b from-transparent to-green-dark"
               )}
             />
           </div>

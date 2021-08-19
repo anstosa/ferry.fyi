@@ -1,11 +1,19 @@
+import { AnimatePresence, motion } from "framer-motion";
 import { DateTime } from "luxon";
 import { isNil, isNull } from "~/lib/identity";
 import { locationToUrl } from "~/lib/maps";
+import { useScrollPosition } from "~/lib/scroll";
 import CarIcon from "~/images/icons/solid/car.svg";
 import clsx from "clsx";
 import MapIcon from "~/images/icons/solid/map-marker.svg";
 import ParkingIcon from "~/images/icons/solid/parking.svg";
-import React, { ReactElement, ReactNode, useEffect, useState } from "react";
+import React, {
+  ReactElement,
+  ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import type { Camera } from "shared/models/cameras";
 import type { Terminal } from "shared/models/terminals";
 
@@ -20,7 +28,10 @@ export const Cameras = (props: Props): ReactElement => {
   } = props;
   const [cameraTime, setCameraTime] = useState<number>(props.cameraTime);
   const [cameraInterval, setCameraInterval] = useState<number | null>(null);
+  const wrapper = useRef<HTMLDivElement | null>(null);
+  const { y } = useScrollPosition(wrapper);
 
+  // Update images ever 10 seconds
   useEffect(() => {
     setCameraInterval(
       window.setInterval(() => {
@@ -88,7 +99,7 @@ export const Cameras = (props: Props): ReactElement => {
           </a>
           {Boolean(totalToBooth) && (
             <span className={clsx("ml-4 font-normal text-sm")}>
-              <CarIcon className="inline-block mr-2" />
+              <CarIcon className="inline-block" />
               {totalToBooth} to tollbooth
             </span>
           )}
@@ -127,8 +138,8 @@ export const Cameras = (props: Props): ReactElement => {
               "text-center"
             )}
           >
-            <div className="flex flex-col ml-1">
-              <CarIcon className="inline-block mr-2" />
+            <div className="flex flex-col ml-1 items-center">
+              <CarIcon className="inline-block" />
               <span className="text-sm">{spacesToNext}</span>
             </div>
           </div>
@@ -138,7 +149,10 @@ export const Cameras = (props: Props): ReactElement => {
   };
 
   return (
-    <aside className="flex-grow overflow-y-scroll scrolling-touch">
+    <aside
+      className="flex-grow overflow-y-scroll scrolling-touch"
+      ref={wrapper}
+    >
       <div className={clsx("my-4 pl-12 relative max-w-lg")}>
         <div
           className={clsx(
@@ -148,6 +162,23 @@ export const Cameras = (props: Props): ReactElement => {
             "absolute inset-y-0 left-0 ml-6"
           )}
         />
+        {/* Top shadow on scroll */}
+        <AnimatePresence>
+          {y > 0 && (
+            <motion.div
+              className={clsx(
+                "fixed top-16 left-0 w-full h-2",
+                "pointer-events-none z-20",
+                "bg-gradient-to-b from-darken-medium to-transparent"
+              )}
+              initial={{ opacity: 0.5 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0.5 }}
+              transition={{ duration: 0.1 }}
+            />
+          )}
+        </AnimatePresence>
+
         <ul>{cameras.map(renderCamera)}</ul>
       </div>
     </aside>
