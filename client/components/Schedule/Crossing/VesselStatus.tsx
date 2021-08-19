@@ -33,7 +33,7 @@ export const VesselStatus = ({
   } else {
     statusText = "Sailing";
     detailText = `${knotsToMph(speed)}mph ${
-      heading && degreesToHeading(heading)
+      (heading && degreesToHeading(heading)) || ""
     }`;
   }
 
