@@ -1,0 +1,344 @@
+{
+  "1233": {
+    "title": "Holding",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9035": {
+    "title": "Holding",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9037": {
+    "title": "Holding",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9038": {
+    "title": "Holding",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9039": {
+    "title": "Holding",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9040": {
+    "title": "Holding",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9041": {
+    "title": "Hwy & Bunker (North)",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9042": {
+    "title": "Hwy & Bunker (South)",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9043": {
+    "title": "Hwy & 112th (North)",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9044": {
+    "title": "Hwy & 112th (South)",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9045": {
+    "title": "Holding",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9046": {
+    "title": "SW Tahlequah Rd",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9047": {
+    "title": "Terminal",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9048": {
+    "title": "Holding",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9049": {
+    "title": "Terminal Rd",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9151": {
+    "title": "Terminal",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9152": {
+    "title": "Sign East",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9153": {
+    "title": "Sign West",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9154": {
+    "title": "Barber",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9155": {
+    "title": "W Dayton St",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9156": {
+    "title": "VMS Sign",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9157": {
+    "title": "Holding",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9159": {
+    "title": "Underpass",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9160": {
+    "title": "Pine",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9161": {
+    "title": "Clover Ln",
+    "feetToNext": 4080,
+    "spacesToNext": 185,
+    "orderFromTerminal": 0
+  },
+  "9162": {
+    "title": "76th - North",
+    "feetToNext": 2360,
+    "spacesToNext": 107,
+    "orderFromTerminal": 0
+  },
+  "9163": {
+    "title": "76th - South",
+    "feetToNext": 0,
+    "spacesToNext": 0,
+    "orderFromTerminal": 0
+  },
+  "9165": {
+    "title": "Holding",
+    "feetToNext": 0,
+    "spacesToNext": 0,
+    "orderFromTerminal": 1
+  },
+  "9166": {
+    "title": "Terminal",
+    "feetToNext": 0,
+    "spacesToNext": 0,
+    "orderFromTerminal": 1
+  },
+  "9167": {
+    "title": "Terminal",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9168": {
+    "title": "Street",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9169": {
+    "title": "Terminal",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9170": {
+    "title": "Street",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9172": {
+    "title": "Uphill",
+    "feetToNext": 0,
+    "spacesToNext": 0,
+    "orderFromTerminal": 2
+  },
+  "9173": {
+    "title": "Dock",
+    "feetToNext": 0,
+    "spacesToNext": 0,
+    "orderFromTerminal": 0
+  },
+  "9174": {
+    "title": "E SR 525",
+    "feetToNext": 2290,
+    "spacesToNext": 100,
+    "orderFromTerminal": 3
+  },
+  "9175": {
+    "title": "W SR 525",
+    "feetToNext": 0,
+    "spacesToNext": 0,
+    "orderFromTerminal": 4
+  },
+  "9377": {
+    "title": "Way and Cloverdale St.",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9391": {
+    "title": "Terminal",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9394": {
+    "title": "5th St - North",
+    "feetToNext": 1550,
+    "spacesToNext": 70,
+    "orderFromTerminal": 2
+  },
+  "9402": {
+    "title": "Way looking North",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9403": {
+    "title": "St looking North",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9404": {
+    "title": "Park looking North",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9476": {
+    "title": "Winslow Way South",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9477": {
+    "title": "Winslow Way North",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9478": {
+    "title": "High School Rd North",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9479": {
+    "title": "High School Rd South",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9688": {
+    "title": "Holding",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9689": {
+    "title": "Booth",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9692": {
+    "title": "Approach",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9693": {
+    "title": "Holding",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9717": {
+    "title": "Holding (South)",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9728": {
+    "title": "5th St - South",
+    "feetToNext": 0,
+    "spacesToNext": 0,
+    "orderFromTerminal": 3
+  },
+  "9741": {
+    "title": "Holding",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9742": {
+    "title": "Booth",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9794": {
+    "title": "Overflow Holding",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  },
+  "9813": {
+    "title": "Washington Blvd",
+    "feetToNext": null,
+    "spacesToNext": null,
+    "orderFromTerminal": 0
+  }
+}

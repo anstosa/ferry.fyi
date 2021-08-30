@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { DateTime } from "luxon";
-import { isNil, isNull } from "~/lib/identity";
+import { isNil, isNull } from "shared/lib/identity";
 import { locationToUrl } from "~/lib/maps";
 import { useScrollPosition } from "~/lib/scroll";
 import CarIcon from "~/images/icons/solid/car.svg";

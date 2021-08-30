@@ -1,9 +1,9 @@
 import { Vessel } from "./vessels";
 
 export interface Crossing {
-  arrivalId: number;
+  arrivalId: string;
   departureDelta: number | null;
-  departureId: number;
+  departureId: string;
   departureTime: number;
   driveUpCapacity: number;
   hasDriveUp: boolean;
@@ -24,12 +24,15 @@ export interface Slot {
   crossing?: Crossing;
   estimate?: CrossingEstimate;
   hasPassed: boolean;
+  mateId: string;
   time: number;
   vessel: Vessel;
   wuid: string;
 }
 
-export interface GetScheduleResponse {
-  schedule: Slot[];
-  timestamp: number;
+export interface Schedule {
+  date: string;
+  key: string;
+  slots: Slot[];
+  terminalId: string;
 }

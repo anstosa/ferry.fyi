@@ -1,8 +1,8 @@
 import { get } from "~/lib/api";
-import { GetScheduleResponse } from "shared/models/schedules";
+import { GetScheduleResponse } from "shared/api/schedules";
 import type { Terminal } from "shared/models/terminals";
 
-const getApiSchedule = (departingId: number, arrivingId: number): string =>
+const getApiSchedule = (departingId: string, arrivingId: string): string =>
   `/schedule/${departingId}/${arrivingId}`;
 
 export const getSchedule = (

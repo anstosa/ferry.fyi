@@ -1,0 +1,11 @@
+{
+  "extends": "../tsconfig",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "shared": ["./*"]
+    },
+    "target": "ES6"
+  },
+  "include": ["./**/*.ts"]
+}

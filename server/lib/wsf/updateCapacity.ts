@@ -1,38 +1,32 @@
-import { getCapacity, updateTerminals } from "./terminals";
-import {
-  getPreviousCrossing,
-  getSchedule,
-  hasPassed,
-  isCrossingEmpty,
-  isCrossingFull,
-  updateEstimates,
-  updateSchedule,
-} from "./schedule";
-import { getVessel, updateVessels, updateVesselStatus } from "./vessels";
-import { map } from "lodash";
+import { API_TERMINALS } from "./updateTerminals";
+import { getPreviousCrossing, getSchedule } from "./updateSchedule";
+import { Vessel } from "~/models/Vessel";
 import { wsfDateToTimestamp } from "./date";
-import Crossing from "~/models/crossing";
+import { wsfRequest } from "./api";
+import Crossing from "~/models/Crossing";
 import logger from "heroku-logger";
 
-const updateCapacity = async (): Promise<void> => {
+const API_SPACE = `${API_TERMINALS}/terminalsailingspace`;
+
+export const updateCapacity = async (): Promise<void> => {
   logger.info("Started Capacity Update");
-  const terminals = await getCapacity();
+  const terminals = await wsfRequest<SpaceResponse[]>(API_SPACE);
   if (!terminals) {
     return;
   }
   await Promise.all([
-    map(terminals, async (terminal) => {
+    terminals.map(async (terminal) => {
       await Promise.all([
-        map(terminal.DepartingSpaces, async (departure) => {
+        terminal.DepartingSpaces.map(async (departure) => {
           await Promise.all([
-            map(departure.SpaceForArrivalTerminals, async (spaceData) => {
-              const vessel = getVessel(departure.VesselID);
+            departure.SpaceForArrivalTerminals.map(async (spaceData) => {
+              const vessel = Vessel.getByIndex(String(departure.VesselID));
               const departureTime = wsfDateToTimestamp(departure.Departure);
               await Promise.all([
-                map(spaceData.ArrivalTerminalIDs, async (arrivalId) => {
+                spaceData.ArrivalTerminalIDs.map(async (ArrivalID) => {
                   const model: Partial<Crossing> = {
-                    arrivalId,
-                    departureId: terminal.TerminalID,
+                    arrivalId: String(ArrivalID),
+                    departureId: String(terminal.TerminalID),
                     departureDelta: vessel?.departureDelta ?? null,
                     departureTime,
                     driveUpCapacity: spaceData.DriveUpSpaceCount,
@@ -43,7 +37,7 @@ const updateCapacity = async (): Promise<void> => {
                     totalCapacity: spaceData.MaxSpaceCount,
                   };
                   const where = {
-                    arrivalId,
+                    arrivalId: String(ArrivalID),
                     departureId: terminal.TerminalID,
                     departureTime,
                   };
@@ -54,9 +48,10 @@ const updateCapacity = async (): Promise<void> => {
                   if (!wasCreated) {
                     await crossing.update(model);
                   }
-                  const slot = getSchedule(terminal.TerminalID, arrivalId)[
-                    departureTime
-                  ];
+                  const slot = getSchedule(
+                    String(terminal.TerminalID),
+                    String(ArrivalID)
+                  )[departureTime];
 
                   if (slot) {
                     slot.crossing = crossing;
@@ -67,15 +62,15 @@ const updateCapacity = async (): Promise<void> => {
                   // they'll stop reporting real-time data against it. So if the next run not
                   // empty, report the previous run as full.
                   const previousCrossing = await getPreviousCrossing(
-                    terminal.TerminalID,
-                    arrivalId,
+                    String(terminal.TerminalID),
+                    String(ArrivalID),
                     departureTime
                   );
                   if (
                     previousCrossing &&
-                    !hasPassed(previousCrossing) &&
-                    !isCrossingFull(previousCrossing) &&
-                    !isCrossingEmpty(crossing)
+                    !previousCrossing.hasPassed() &&
+                    !previousCrossing.isFull() &&
+                    !crossing.isEmpty()
                   ) {
                     await previousCrossing.update({
                       driveUpCapacity: 0,
@@ -91,18 +86,4 @@ const updateCapacity = async (): Promise<void> => {
     }),
   ]);
   logger.info("Completed Capacity Update");
-};
-
-export const updateLong = async (): Promise<any> => {
-  await updateVessels();
-  // schedule relies on vessels
-  await updateSchedule();
-  // terminals relies on schedule
-  await updateTerminals();
-};
-
-export const updateShort = async (): Promise<void> => {
-  await updateVesselStatus();
-  await updateCapacity();
-  updateEstimates();
 };

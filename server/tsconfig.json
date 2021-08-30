@@ -9,6 +9,6 @@
     },
     "target": "ES6"
   },
-  "include": ["./**/*"],
+  "include": ["./typings/*.d.ts", "./**/*.ts", "./**/*.tsx"],
   "exclude": ["./devServer.ts"]
 }

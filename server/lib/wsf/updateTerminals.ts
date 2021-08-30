@@ -1,0 +1,110 @@
+import { Camera } from "~/models/Camera";
+import { Route } from "~/models/Route";
+import { Terminal } from "~/models/Terminal";
+import { wsfDateToTimestamp } from "./date";
+import { wsfRequest } from "./api";
+import logger from "heroku-logger";
+
+export const API_TERMINALS =
+  "https://www.wsdot.wa.gov/ferries/api/terminals/rest";
+const API_CACHE = `${API_TERMINALS}/cacheflushdate`;
+const API_VERBOSE = `${API_TERMINALS}/terminalverbose`;
+
+let lastFlushDate: number | null = null;
+
+export const updateTerminals = async (): Promise<void> => {
+  const cacheFlushDate = wsfDateToTimestamp(
+    await wsfRequest<string>(API_CACHE)
+  );
+  if (cacheFlushDate === lastFlushDate) {
+    logger.info("Skipped Terminal Update");
+    return;
+  } else {
+    logger.info("Started Terminal Update");
+  }
+  lastFlushDate = cacheFlushDate;
+
+  const terminals = await wsfRequest<TerminalVerboseResponse[]>(API_VERBOSE);
+  if (!terminals) {
+    return;
+  }
+  terminals
+    .map((TerminalData) => {
+      const data = {
+        abbreviation: TerminalData.TerminalAbbrev,
+        bulletins: TerminalData.Bulletins.map(
+          ({ BulletinTitle, BulletinText, BulletinLastUpdated }) => ({
+            title: BulletinTitle,
+            description: BulletinText,
+            date: wsfDateToTimestamp(BulletinLastUpdated),
+          })
+        ),
+        cameras: Camera.getByTerminalId(String(TerminalData.TerminalID)).map(
+          (camera) => camera.serialize()
+        ),
+        hasElevator: TerminalData.Elevator,
+        hasOverheadLoading: TerminalData.OverheadPassengerLoading,
+        hasRestroom: TerminalData.Restroom,
+        hasWaitingRoom: TerminalData.WaitingRoom,
+        hasFood: TerminalData.FoodService,
+        id: String(TerminalData.TerminalID),
+        info: {
+          ada: TerminalData.AdaInfo,
+          airport:
+            (TerminalData.AirportInfo ?? "") +
+            (TerminalData.AirportShuttleInfo ?? ""),
+          bicycle: TerminalData.BikeInfo,
+          construction: TerminalData.ConstructionInfo,
+          food: TerminalData.FoodServiceInfo,
+          lost: TerminalData.LostAndFoundInfo,
+          motorcycle: TerminalData.MotorcycleInfo,
+          parking:
+            (TerminalData.ParkingInfo ?? "") +
+            (TerminalData.ParkingShuttleInfo ?? ""),
+          security: TerminalData.SecurityInfo,
+          train: TerminalData.TrainInfo,
+          truck: TerminalData.TruckInfo,
+        },
+        location: {
+          link: TerminalData.MapLink,
+          latitude: TerminalData.Latitude,
+          longitude: TerminalData.Longitude,
+          address: {
+            line1: TerminalData.AddressLineOne,
+            line2: TerminalData.AddressLineTwo,
+            city: TerminalData.City,
+            state: TerminalData.State,
+            zip: TerminalData.ZipCode,
+          },
+        },
+        name: TerminalData.TerminalName,
+        waitTimes: TerminalData.WaitTimes.map(
+          ({ RouteName, WaitTimeNotes, WaitTimeLastUpdated }) => ({
+            title: RouteName,
+            description: WaitTimeNotes,
+            time: wsfDateToTimestamp(WaitTimeLastUpdated),
+          })
+        ),
+      };
+
+      const [terminal, wasCreated] = Terminal.getOrCreate(
+        String(TerminalData.TerminalID),
+        data
+      );
+      if (!wasCreated) {
+        terminal.update(data);
+      }
+      terminal.save();
+      return terminal;
+    })
+    .forEach((terminal) => {
+      // setting routes depends on all the terminals already being cached
+      terminal.update({
+        mates: Route.getMatesByTerminalId(terminal.id),
+        route: Route.getByTerminalId(terminal.id),
+      });
+      terminal.save();
+    });
+
+  logger.info("Completed Terminal Update");
+};

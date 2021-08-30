@@ -1,8 +1,8 @@
 import { Capacity } from "./Capacity";
 import { DateTime } from "luxon";
 import { ErrorBoundary } from "~/components/ErrorBoundary";
-import { findWhere } from "~/lib/arrays";
-import { isNull } from "~/lib/identity";
+import { findWhere } from "shared/lib/arrays";
+import { isNull } from "shared/lib/identity";
 import { Status } from "./Status";
 import { Time } from "./Time";
 import { VesselStatus } from "./VesselStatus";

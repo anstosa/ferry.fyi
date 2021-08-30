@@ -1,7 +1,7 @@
-import { getSlug, getTerminals } from "../../lib/terminals";
+import { getSlug, getTerminals } from "~/lib/terminals";
 import { isOnline } from "~/lib/api";
 import { Link } from "react-router-dom";
-import { Menu } from "../Menu";
+import { Menu } from "~/components/Menu";
 import { ReloadButton } from "~/components/ReloadButton";
 import { TerminalDropdown } from "./TerminalDropdown";
 import ArrowRightIcon from "~/images/icons/solid/arrow-right.svg";

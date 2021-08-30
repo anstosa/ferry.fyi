@@ -20,7 +20,7 @@ module.exports = {
   plugins: [new ForkTsCheckerWebpackPlugin()],
   resolve: {
     symlinks: false,
-    extensions: [".js", ".ts"],
+    extensions: [".js", ".ts", ".json"],
     plugins: [
       new TsConfigPathsPlugin({
         configFile: path.resolve(__dirname, "tsconfig.json"),

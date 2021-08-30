@@ -1,11 +1,10 @@
-import { includes } from "lodash";
 import fetch from "node-fetch";
 import logger from "heroku-logger";
 
 const API_ACCESS = `?apiaccesscode=${process.env.WSDOT_API_KEY}`;
 
 export const wsfRequest = async <T>(path: string): Promise<T | undefined> => {
-  const url = `${path}${includes(path, "cacheflushdate") ? "" : API_ACCESS}`;
+  const url = `${path}${path.includes("cacheflushdate") ? "" : API_ACCESS}`;
   // logger.debug(`WSF request <${url}>`);
   try {
     const response = await fetch(url, {

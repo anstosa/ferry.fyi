@@ -1,4 +1,4 @@
-import { isNil, isNull } from "~/lib/identity";
+import { isNil, isNull } from "shared/lib/identity";
 import CarIcon from "~/images/icons/solid/car.svg";
 import clsx from "clsx";
 import DoNotEnterIcon from "~/images/icons/solid/do-not-enter.svg";

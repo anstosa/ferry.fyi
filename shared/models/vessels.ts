@@ -5,7 +5,7 @@ export interface Vessel {
   arrivingTerminalId?: number;
   departingTerminalId?: number;
   beam: string;
-  classId: number;
+  classId: string;
   departedTime?: number;
   departureDelta?: number;
   dockedTime?: number;
@@ -17,7 +17,7 @@ export interface Vessel {
   hasWiFi: boolean;
   heading?: number;
   horsepower: number;
-  id: number;
+  id: string;
   inMaintenance: boolean;
   inService: boolean;
   info: {

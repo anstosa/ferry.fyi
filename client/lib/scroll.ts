@@ -1,4 +1,4 @@
-import { debounce } from "./timing";
+import { debounce } from "shared/lib/timing";
 import { useEffect, useState } from "react";
 
 interface ScrollPosition {

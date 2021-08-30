@@ -1,5 +1,4 @@
 import { BundleAnalyzerPlugin } from "webpack-bundle-analyzer";
-import { filter } from "lodash";
 import { TailwindConfig } from "tailwindcss/tailwind-config";
 import CssMinimizerPlugin from "css-minimizer-webpack-plugin";
 import FaviconsPlugin from "favicons-webpack-plugin";
@@ -53,7 +52,7 @@ module.exports = {
     minimize: !isDevelopment,
     minimizer: [new TerserPlugin(), new CssMinimizerPlugin()],
   },
-  plugins: filter([
+  plugins: [
     new BundleAnalyzerPlugin({
       analyzerMode: isDevelopment ? "server" : "static",
     }),
@@ -100,7 +99,7 @@ module.exports = {
           }),
         ]
       : []),
-  ]),
+  ].filter((plugin) => Boolean(plugin)),
   resolve: {
     symlinks: false,
     extensions: [".css", ".scss", ".js", ".ts", ".tsx"],

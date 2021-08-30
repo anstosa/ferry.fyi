@@ -1,3 +1,4 @@
+import { entries } from "./objects";
 import { isNil } from "./identity";
 
 export const without = <T>(array: T[] = [], element: T): T[] => {
@@ -16,6 +17,19 @@ export const isEmpty = (input: unknown[] | null | undefined): boolean => {
     return true;
   }
   return input.length === 0;
+};
+
+// eslint-disable-next-line @typescript-eslint/ban-types
+export const keyBy = <T extends object>(
+  array: T[],
+  key: keyof T
+): Record<any, T> => {
+  const result: Record<any, T> = {};
+  array.forEach((object) => {
+    const index = object[key] as any;
+    result[index] = object as T;
+  });
+  return result;
 };
 
 export enum Order {
@@ -49,7 +63,7 @@ export const findWhere = <T extends Record<string, any>>(
     return;
   }
   return input.find((element) => {
-    return Object.entries(target).every(([key, value]) => {
+    return entries(target).every(([key, value]) => {
       return element[key] === value;
     });
   });

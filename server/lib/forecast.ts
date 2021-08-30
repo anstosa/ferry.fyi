@@ -1,30 +1,20 @@
 // imports
 
-import {
-  concat,
-  each,
-  filter,
-  find,
-  isEmpty,
-  isNil,
-  isUndefined,
-  mean,
-  mergeWith,
-  round,
-  setWith,
-  times,
-} from "lodash";
 import { CrossingEstimate, Slot } from "shared/models/schedules";
 import { DateTime } from "luxon";
+import { findWhere, isEmpty } from "shared/lib/arrays";
+import { isNil, isUndefined } from "shared/lib/identity";
+import { mean, round } from "shared/lib/math";
 import { Op } from "sequelize";
-import Crossing from "~/models/crossing";
+import { setNested } from "shared/lib/objects";
+import Crossing from "~/models/Crossing";
 
 const ESTIMATE_COMPOSITE_WEEKS = 6;
 
 // local state
 const estimates: {
-  [departureId: number]: {
-    [arrivalId: number]: {
+  [departureId: string]: {
+    [arrivalId: string]: {
       [wuid: string]: CrossingEstimate;
     };
   };
@@ -33,14 +23,14 @@ const estimates: {
 // exported functions
 
 export const getEstimate = (
-  departureId: number,
-  arrivalId: number,
+  departureId: string,
+  arrivalId: string,
   wuid: string
 ): CrossingEstimate | undefined => estimates[departureId]?.[arrivalId]?.[wuid];
 
 export const buildEstimates = async (
-  departureId: number,
-  arrivalId: number,
+  departureId: string,
+  arrivalId: string,
   schedule?: Slot[]
 ): Promise<void> => {
   if (isUndefined(schedule) || isEmpty(schedule)) {
@@ -58,32 +48,34 @@ export const buildEstimates = async (
     },
   });
   let previousOffset: number | null = null;
-  each(schedule, (crossing) => {
+  schedule.forEach((crossing) => {
     const { wuid } = crossing;
     const estimate: Record<string, number | null> = {};
     const data: Record<string, any[]> = {
       driveUpCapacity: [],
       reservableCapacity: [],
     };
-    times(ESTIMATE_COMPOSITE_WEEKS, (index) => {
+    for (let index = 0; index < 6; index++) {
       const departureTime = DateTime.fromSeconds(crossing.time)
         .minus({ weeks: index + 1 })
         .toSeconds();
-      const slot = find(crossings, { departureTime });
+      const slot = findWhere(crossings, { departureTime });
       if (isUndefined(slot)) {
         return;
       }
       const { driveUpCapacity, reservableCapacity } = slot;
-      const dataPoint: CrossingEstimate = {
-        driveUpCapacity,
-        reservableCapacity,
-      };
-      mergeWith(data, dataPoint, (array, value) => concat(array, value));
-    });
+      data.driveUpCapacity = data.driveUpCapacity.concat(driveUpCapacity);
+      data.reservableCapacity =
+        data.reservableCapacity.concat(reservableCapacity);
+    }
 
-    estimate.reservableCapacity = round(mean(filter(data.reservableCapacity)));
-    estimate.driveUpCapacity =
-      round(mean(filter(data.driveUpCapacity))) * (previousOffset ?? 1);
+    estimate.reservableCapacity = round(
+      mean(data.reservableCapacity.filter((capacity) => Boolean(capacity)))
+    );
+    estimate.driveUpCapacity = round(
+      mean(data.driveUpCapacity.filter((capacity) => Boolean(capacity))) *
+        (previousOffset ?? 1)
+    );
 
     let estimatedTotal: number | null = null;
     if (crossing.crossing && estimate.driveUpCapacity) {
@@ -93,7 +85,7 @@ export const buildEstimates = async (
         (estimate.reservableCapacity ?? 0);
     }
 
-    const crossingData = find(crossings, { departureTime: crossing.time });
+    const crossingData = findWhere(crossings, { departureTime: crossing.time });
     let actualTotal: number | null = null;
     if (crossingData) {
       actualTotal =
@@ -104,6 +96,6 @@ export const buildEstimates = async (
     if (!isNil(estimatedTotal) && !isNil(actualTotal)) {
       previousOffset = estimatedTotal / actualTotal;
     }
-    setWith(estimates, [departureId, arrivalId, wuid], estimate, Object);
+    setNested(estimates, [departureId, arrivalId, wuid], estimate);
   });
 };

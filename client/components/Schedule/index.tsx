@@ -1,5 +1,5 @@
 import { DateTime } from "luxon";
-import { findWhere, isArray, isEmpty } from "~/lib/arrays";
+import { findWhere, isArray, isEmpty } from "shared/lib/arrays";
 import { Footer } from "~/components/Footer";
 import { getSchedule } from "~/lib/schedule";
 import { getSlug, getTerminal } from "~/lib/terminals";

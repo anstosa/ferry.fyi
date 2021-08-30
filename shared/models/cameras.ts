@@ -10,7 +10,8 @@ export interface CameraImage {
 }
 
 export interface Camera {
-  id: number;
+  id: string;
+  terminalId: string;
   location: MapPoint;
   title: string;
   image: CameraImage;

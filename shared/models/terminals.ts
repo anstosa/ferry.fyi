@@ -1,22 +1,51 @@
 import { Camera } from "./cameras";
 
+export interface Address {
+  line1?: string;
+  line2?: string;
+  city?: string;
+  state?: string;
+  zip?: string;
+}
+
 export interface Bulletin {
   title: string;
   description: string;
   date: number;
 }
 
-interface WaitTime {
+export interface WaitTime {
   title?: string;
   description: string;
   time: number;
 }
 
 export interface Route {
-  id: number;
+  id: string;
   abbreviation: string;
   description: string;
   crossingTime: number;
+}
+
+export interface TerminalInfo {
+  ada?: string;
+  airport?: string;
+  bicycle?: string;
+  construction?: string;
+  food?: string;
+  lost?: string;
+  motorcycle?: string;
+  parking?: string;
+  security?: string;
+  train?: string;
+  truck?: string;
+}
+
+export interface TerminalLocation {
+  link?: string;
+  latitude?: number;
+  longitude?: number;
+  address: Address;
 }
 
 export interface Terminal {
@@ -28,32 +57,9 @@ export interface Terminal {
   hasRestroom: boolean;
   hasWaitingRoom: boolean;
   hasFood: boolean;
-  id: number;
-  info: {
-    ada?: string;
-    airport?: string;
-    bicycle?: string;
-    construction?: string;
-    food?: string;
-    lost?: string;
-    motorcycle?: string;
-    parking?: string;
-    security?: string;
-    train?: string;
-    truck?: string;
-  };
-  location: {
-    link?: string;
-    latitude?: number;
-    longitude?: number;
-    address: {
-      line1?: string;
-      line2?: string;
-      city?: string;
-      state?: string;
-      zip?: string;
-    };
-  };
+  id: string;
+  info: TerminalInfo;
+  location: TerminalLocation;
   name: string;
   waitTimes: WaitTime[];
   mates?: Terminal[];

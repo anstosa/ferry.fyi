@@ -1,4 +1,4 @@
-import { isString } from "lodash";
+import { isString } from "shared/lib/strings";
 import { Sequelize } from "sequelize";
 
 const DIALECT_POSTGRES = "postgres";
