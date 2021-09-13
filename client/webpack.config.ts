@@ -1,6 +1,7 @@
 import { BundleAnalyzerPlugin } from "webpack-bundle-analyzer";
 import { filter } from "lodash";
 import { TailwindConfig } from "tailwindcss/tailwind-config";
+import CopyPlugin from "copy-webpack-plugin";
 import CssMinimizerPlugin from "css-minimizer-webpack-plugin";
 import FaviconsPlugin from "favicons-webpack-plugin";
 import ForkTsCheckerWebpackPlugin from "fork-ts-checker-webpack-plugin";
@@ -93,6 +94,18 @@ module.exports = {
       "LOG_LEVEL",
       "NODE_ENV",
     ]),
+    new CopyPlugin({
+      patterns: [
+        {
+          from: "images/icon_maskable.png",
+          to: path.resolve(__dirname, "../dist/client/assets/"),
+        },
+        {
+          from: "images/icon_monochrome.png",
+          to: path.resolve(__dirname, "../dist/client/assets/"),
+        },
+      ],
+    }),
     ...(isDevelopment
       ? [
           new LiveReloadPlugin({
