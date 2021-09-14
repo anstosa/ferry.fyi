@@ -1,0 +1,4 @@
+#Mon Sep 13 18:08:31 PDT 2021
+base.0=/home/ansto/ferry.fyi/app/build/intermediates/dex/release/minifyReleaseWithR8/classes.dex
+path.0=classes.dex
+renamed.0=classes.dex

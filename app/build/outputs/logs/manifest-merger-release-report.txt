@@ -1,0 +1,376 @@
+-- Merging decision tree log ---
+manifest
+ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:22:1-163:12
+INJECTED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:22:1-163:12
+INJECTED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:22:1-163:12
+INJECTED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:22:1-163:12
+MERGED from [com.google.androidbrowserhelper:locationdelegation:1.0.1] /home/ansto/.gradle/caches/transforms-2/files-2.1/6533a4776060e2dafc326b30a0222ee1/locationdelegation-1.0.1/AndroidManifest.xml:2:1-17:12
+MERGED from [com.google.androidbrowserhelper:androidbrowserhelper:2.2.1] /home/ansto/.gradle/caches/transforms-2/files-2.1/43500dace97d54a90d7f296959ce8d3a/androidbrowserhelper-2.2.1/AndroidManifest.xml:17:1-36:12
+MERGED from [com.google.android.gms:play-services-location:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/54bfc5b629ab063b236b358a8da4bd9c/play-services-location-17.0.0/AndroidManifest.xml:2:1-9:12
+MERGED from [androidx.browser:browser:1.3.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/963df8e848637d5dcc4b558ad75c146e/browser-1.3.0/AndroidManifest.xml:17:1-24:12
+MERGED from [com.google.android.gms:play-services-base:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/af7ff4cdb9585a03f0fe804445629944/play-services-base-17.0.0/AndroidManifest.xml:17:1-29:12
+MERGED from [com.google.android.gms:play-services-places-placereport:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/fe7ad5c5f8622be9f18d8f564c1bbb7e/play-services-places-placereport-17.0.0/AndroidManifest.xml:17:1-24:12
+MERGED from [com.google.android.gms:play-services-tasks:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/81ec65fe9c26b4c9a52779021a5107ed/play-services-tasks-17.0.0/AndroidManifest.xml:2:1-9:12
+MERGED from [com.google.android.gms:play-services-basement:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/937c5050898784d30c656655e5f36fd6/play-services-basement-17.0.0/AndroidManifest.xml:17:1-28:12
+MERGED from [androidx.fragment:fragment:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/1513b62a9123b8bc87d5b3d3a2111c7e/fragment-1.0.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.legacy:legacy-support-core-ui:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/26c27a93496e808418c6ce0af4a5e09c/legacy-support-core-ui-1.0.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.legacy:legacy-support-core-utils:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/3c5e939b0e6b29bdf460a7fe7fc8149e/legacy-support-core-utils-1.0.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.loader:loader:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/f2d63b2c28ee1d548ef27f10c2385caa/loader-1.0.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.viewpager:viewpager:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/84abe344207c34d4a56c6167bf93e6d4/viewpager-1.0.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.coordinatorlayout:coordinatorlayout:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/0de5a5a7f36e155ee93907dfd1c4b4a9/coordinatorlayout-1.0.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.drawerlayout:drawerlayout:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/f76237f51a0f7e63bcb3c74d5b185ef8/drawerlayout-1.0.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.slidingpanelayout:slidingpanelayout:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/033c795406e41888727686d5fd780672/slidingpanelayout-1.0.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.customview:customview:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/9f97f489f2a5c174c803b63b463795b0/customview-1.0.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.swiperefreshlayout:swiperefreshlayout:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/9c1469f5a2ad2b4764c3c283cf3fcf11/swiperefreshlayout-1.0.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.asynclayoutinflater:asynclayoutinflater:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/9bda4bd38cbbd129d40467c328b01419/asynclayoutinflater-1.0.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.core:core:1.1.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/e601daed4ba62929db8b322b2974c8f8/core-1.1.0/AndroidManifest.xml:17:1-26:12
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/90ecde5404179819368e2359ab771b50/versionedparcelable-1.1.0/AndroidManifest.xml:17:1-27:12
+MERGED from [androidx.interpolator:interpolator:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/722883bbeda4a23af2c332d7342ff3d3/interpolator-1.0.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.lifecycle:lifecycle-viewmodel:2.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/a083c62b9e4cc3ecf72de4541567bc2c/lifecycle-viewmodel-2.0.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.cursoradapter:cursoradapter:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/5dbc57b58024a8f25b5db3778841ef05/cursoradapter-1.0.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.documentfile:documentfile:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/fb5e65a69b576ac546080993fe26d407/documentfile-1.0.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.localbroadcastmanager:localbroadcastmanager:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/7b69e6173655717e69f5c7f6f1302d3b/localbroadcastmanager-1.0.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.print:print:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/8fe2a3deec1ef3dd659aa5f55d73edd7/print-1.0.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.lifecycle:lifecycle-livedata:2.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/227916b3f0008a165e996ac0bce20467/lifecycle-livedata-2.0.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.lifecycle:lifecycle-livedata-core:2.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/96d0ad977091c6484e2db42674538c87/lifecycle-livedata-core-2.0.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.arch.core:core-runtime:2.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/9a82a1a22af6402c2242c9ee80e8919f/core-runtime-2.0.0/AndroidManifest.xml:17:1-22:12
+MERGED from [androidx.lifecycle:lifecycle-runtime:2.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/1fed12a61eaf3956026778ada29c2705/lifecycle-runtime-2.0.0/AndroidManifest.xml:17:1-22:12
+INJECTED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:22:1-163:12
+INJECTED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:22:1-163:12
+INJECTED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:22:1-163:12
+	package
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:23:5-24
+		INJECTED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml
+		INJECTED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml
+	android:versionName
+		INJECTED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:22:1-163:12
+		INJECTED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml
+	android:versionCode
+		INJECTED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:22:1-163:12
+		INJECTED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml
+	xmlns:android
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:22:11-69
+uses-permission#android.permission.INTERNET
+ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:26:9-70
+	android:name
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:26:26-68
+application
+ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:31:5-162:19
+MERGED from [com.google.androidbrowserhelper:locationdelegation:1.0.1] /home/ansto/.gradle/caches/transforms-2/files-2.1/6533a4776060e2dafc326b30a0222ee1/locationdelegation-1.0.1/AndroidManifest.xml:13:5-15:19
+MERGED from [com.google.androidbrowserhelper:locationdelegation:1.0.1] /home/ansto/.gradle/caches/transforms-2/files-2.1/6533a4776060e2dafc326b30a0222ee1/locationdelegation-1.0.1/AndroidManifest.xml:13:5-15:19
+MERGED from [com.google.android.gms:play-services-location:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/54bfc5b629ab063b236b358a8da4bd9c/play-services-location-17.0.0/AndroidManifest.xml:7:5-20
+MERGED from [com.google.android.gms:play-services-location:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/54bfc5b629ab063b236b358a8da4bd9c/play-services-location-17.0.0/AndroidManifest.xml:7:5-20
+MERGED from [com.google.android.gms:play-services-base:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/af7ff4cdb9585a03f0fe804445629944/play-services-base-17.0.0/AndroidManifest.xml:22:5-27:19
+MERGED from [com.google.android.gms:play-services-base:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/af7ff4cdb9585a03f0fe804445629944/play-services-base-17.0.0/AndroidManifest.xml:22:5-27:19
+MERGED from [com.google.android.gms:play-services-places-placereport:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/fe7ad5c5f8622be9f18d8f564c1bbb7e/play-services-places-placereport-17.0.0/AndroidManifest.xml:22:5-20
+MERGED from [com.google.android.gms:play-services-places-placereport:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/fe7ad5c5f8622be9f18d8f564c1bbb7e/play-services-places-placereport-17.0.0/AndroidManifest.xml:22:5-20
+MERGED from [com.google.android.gms:play-services-tasks:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/81ec65fe9c26b4c9a52779021a5107ed/play-services-tasks-17.0.0/AndroidManifest.xml:7:5-20
+MERGED from [com.google.android.gms:play-services-tasks:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/81ec65fe9c26b4c9a52779021a5107ed/play-services-tasks-17.0.0/AndroidManifest.xml:7:5-20
+MERGED from [com.google.android.gms:play-services-basement:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/937c5050898784d30c656655e5f36fd6/play-services-basement-17.0.0/AndroidManifest.xml:22:5-26:19
+MERGED from [com.google.android.gms:play-services-basement:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/937c5050898784d30c656655e5f36fd6/play-services-basement-17.0.0/AndroidManifest.xml:22:5-26:19
+MERGED from [androidx.core:core:1.1.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/e601daed4ba62929db8b322b2974c8f8/core-1.1.0/AndroidManifest.xml:24:5-89
+MERGED from [androidx.core:core:1.1.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/e601daed4ba62929db8b322b2974c8f8/core-1.1.0/AndroidManifest.xml:24:5-89
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/90ecde5404179819368e2359ab771b50/versionedparcelable-1.1.0/AndroidManifest.xml:24:5-25:19
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/90ecde5404179819368e2359ab771b50/versionedparcelable-1.1.0/AndroidManifest.xml:24:5-25:19
+	android:appComponentFactory
+		ADDED from [androidx.core:core:1.1.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/e601daed4ba62929db8b322b2974c8f8/core-1.1.0/AndroidManifest.xml:24:18-86
+	android:supportsRtl
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:37:9-35
+	android:label
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:35:9-40
+	android:icon
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:34:9-43
+	android:allowBackup
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:33:9-35
+	android:theme
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:38:9-68
+	android:name
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:32:9-35
+meta-data#asset_statements
+ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:40:9-42:58
+	android:resource
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:42:13-55
+	android:name
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:41:13-44
+meta-data#web_manifest_url
+ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:45:13-47:58
+	android:value
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:47:17-55
+	android:name
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:46:17-48
+meta-data#twa_generator
+ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:50:9-52:52
+	android:value
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:52:13-49
+	android:name
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:51:13-41
+activity#fyi.ferry.LauncherActivity
+ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:56:9-124:20
+	android:label
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:58:13-49
+	android:alwaysRetainTaskState
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:57:13-49
+	android:name
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:56:19-50
+meta-data#android.support.customtabs.trusted.DEFAULT_URL
+ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:59:13-60:53
+	android:value
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:60:17-50
+	android:name
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:59:24-85
+meta-data#android.support.customtabs.trusted.STATUS_BAR_COLOR
+ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:62:13-64:58
+	android:resource
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:64:17-55
+	android:name
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:63:17-83
+meta-data#android.support.customtabs.trusted.NAVIGATION_BAR_COLOR
+ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:66:13-68:61
+	android:resource
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:68:17-58
+	android:name
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:67:17-87
+meta-data#android.support.customtabs.trusted.NAVIGATION_BAR_COLOR_DARK
+ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:70:13-72:65
+	android:resource
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:72:17-62
+	android:name
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:71:17-92
+meta-data#androix.browser.trusted.NAVIGATION_BAR_DIVIDER_COLOR
+ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:74:13-76:68
+	android:resource
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:76:17-65
+	android:name
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:75:17-84
+meta-data#androix.browser.trusted.NAVIGATION_BAR_DIVIDER_COLOR_DARK
+ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:78:13-80:72
+	android:resource
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:80:17-69
+	android:name
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:79:17-89
+meta-data#android.support.customtabs.trusted.SPLASH_IMAGE_DRAWABLE
+ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:82:13-83:54
+	android:resource
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:83:17-52
+	android:name
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:82:24-95
+meta-data#android.support.customtabs.trusted.SPLASH_SCREEN_BACKGROUND_COLOR
+ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:85:13-86:60
+	android:resource
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:86:17-58
+	android:name
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:85:24-104
+meta-data#android.support.customtabs.trusted.SPLASH_SCREEN_FADE_OUT_DURATION
+ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:88:13-89:71
+	android:value
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:89:17-69
+	android:name
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:88:24-105
+meta-data#android.support.customtabs.trusted.FILE_PROVIDER_AUTHORITY
+ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:91:13-92:60
+	android:value
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:92:17-58
+	android:name
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:91:24-97
+meta-data#android.app.shortcuts
+ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:94:13-97
+	android:resource
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:94:61-94
+	android:name
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:94:24-60
+meta-data#android.support.customtabs.trusted.FALLBACK_STRATEGY
+ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:96:13-97:56
+	android:value
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:97:17-53
+	android:name
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:96:24-91
+meta-data#android.support.customtabs.trusted.SCREEN_ORIENTATION
+ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:103:13-104:54
+	android:value
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:104:17-52
+	android:name
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:103:24-92
+intent-filter#action:name:android.intent.action.MAIN+category:name:android.intent.category.LAUNCHER
+ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:110:13-113:29
+action#android.intent.action.MAIN
+ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:111:17-69
+	android:name
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:111:25-66
+category#android.intent.category.LAUNCHER
+ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:112:17-77
+	android:name
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:112:27-74
+intent-filter#action:name:android.intent.action.VIEW+category:name:android.intent.category.BROWSABLE+category:name:android.intent.category.DEFAULT+data:host:@string/hostName+data:scheme:https
+ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:115:13-121:29
+	android:autoVerify
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:115:28-53
+action#android.intent.action.VIEW
+ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:116:17-68
+	android:name
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:116:25-66
+category#android.intent.category.DEFAULT
+ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:117:17-76
+	android:name
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:117:27-73
+category#android.intent.category.BROWSABLE
+ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:118:17-77
+	android:name
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:118:27-75
+data
+ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:119:17-120:54
+	android:host
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:120:21-52
+	android:scheme
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:119:23-45
+activity#com.google.androidbrowserhelper.trusted.FocusActivity
+ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:126:9-90
+	android:name
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:126:19-87
+activity#com.google.androidbrowserhelper.trusted.WebViewFallbackActivity
+ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:128:9-129:62
+	android:configChanges
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:129:13-59
+	android:name
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:128:19-97
+provider#androidx.core.content.FileProvider
+ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:131:9-139:20
+	android:grantUriPermissions
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:134:13-47
+	android:authorities
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:133:13-60
+	android:exported
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:135:13-37
+	android:name
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:132:13-62
+meta-data#android.support.FILE_PROVIDER_PATHS
+ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:136:13-138:53
+	android:resource
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:138:17-50
+	android:name
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:137:17-67
+service#fyi.ferry.DelegationService
+ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:141:9-156:19
+	android:enabled
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:143:13-55
+	android:exported
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:144:13-56
+	android:name
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:142:13-46
+meta-data#android.support.customtabs.trusted.SMALL_ICON
+ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:147:17-149:73
+	android:resource
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:149:21-70
+	android:name
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:148:21-81
+intent-filter#action:name:android.support.customtabs.trusted.TRUSTED_WEB_ACTIVITY_SERVICE+category:name:android.intent.category.DEFAULT
+ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:152:13-155:29
+action#android.support.customtabs.trusted.TRUSTED_WEB_ACTIVITY_SERVICE
+ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:153:17-105
+	android:name
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:153:25-103
+activity#com.google.androidbrowserhelper.locationdelegation.PermissionRequestActivity
+ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:159:13-160:89
+MERGED from [com.google.androidbrowserhelper:locationdelegation:1.0.1] /home/ansto/.gradle/caches/transforms-2/files-2.1/6533a4776060e2dafc326b30a0222ee1/locationdelegation-1.0.1/AndroidManifest.xml:14:9-113
+MERGED from [com.google.androidbrowserhelper:locationdelegation:1.0.1] /home/ansto/.gradle/caches/transforms-2/files-2.1/6533a4776060e2dafc326b30a0222ee1/locationdelegation-1.0.1/AndroidManifest.xml:14:9-113
+	android:name
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:159:23-123
+uses-sdk
+INJECTED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml reason: use-sdk injection requested
+INJECTED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml
+INJECTED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml
+MERGED from [com.google.androidbrowserhelper:locationdelegation:1.0.1] /home/ansto/.gradle/caches/transforms-2/files-2.1/6533a4776060e2dafc326b30a0222ee1/locationdelegation-1.0.1/AndroidManifest.xml:7:5-9:41
+MERGED from [com.google.androidbrowserhelper:locationdelegation:1.0.1] /home/ansto/.gradle/caches/transforms-2/files-2.1/6533a4776060e2dafc326b30a0222ee1/locationdelegation-1.0.1/AndroidManifest.xml:7:5-9:41
+MERGED from [com.google.androidbrowserhelper:androidbrowserhelper:2.2.1] /home/ansto/.gradle/caches/transforms-2/files-2.1/43500dace97d54a90d7f296959ce8d3a/androidbrowserhelper-2.2.1/AndroidManifest.xml:22:5-24:41
+MERGED from [com.google.androidbrowserhelper:androidbrowserhelper:2.2.1] /home/ansto/.gradle/caches/transforms-2/files-2.1/43500dace97d54a90d7f296959ce8d3a/androidbrowserhelper-2.2.1/AndroidManifest.xml:22:5-24:41
+MERGED from [com.google.android.gms:play-services-location:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/54bfc5b629ab063b236b358a8da4bd9c/play-services-location-17.0.0/AndroidManifest.xml:5:5-44
+MERGED from [com.google.android.gms:play-services-location:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/54bfc5b629ab063b236b358a8da4bd9c/play-services-location-17.0.0/AndroidManifest.xml:5:5-44
+MERGED from [androidx.browser:browser:1.3.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/963df8e848637d5dcc4b558ad75c146e/browser-1.3.0/AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.browser:browser:1.3.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/963df8e848637d5dcc4b558ad75c146e/browser-1.3.0/AndroidManifest.xml:20:5-22:41
+MERGED from [com.google.android.gms:play-services-base:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/af7ff4cdb9585a03f0fe804445629944/play-services-base-17.0.0/AndroidManifest.xml:20:5-44
+MERGED from [com.google.android.gms:play-services-base:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/af7ff4cdb9585a03f0fe804445629944/play-services-base-17.0.0/AndroidManifest.xml:20:5-44
+MERGED from [com.google.android.gms:play-services-places-placereport:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/fe7ad5c5f8622be9f18d8f564c1bbb7e/play-services-places-placereport-17.0.0/AndroidManifest.xml:20:5-44
+MERGED from [com.google.android.gms:play-services-places-placereport:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/fe7ad5c5f8622be9f18d8f564c1bbb7e/play-services-places-placereport-17.0.0/AndroidManifest.xml:20:5-44
+MERGED from [com.google.android.gms:play-services-tasks:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/81ec65fe9c26b4c9a52779021a5107ed/play-services-tasks-17.0.0/AndroidManifest.xml:5:5-44
+MERGED from [com.google.android.gms:play-services-tasks:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/81ec65fe9c26b4c9a52779021a5107ed/play-services-tasks-17.0.0/AndroidManifest.xml:5:5-44
+MERGED from [com.google.android.gms:play-services-basement:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/937c5050898784d30c656655e5f36fd6/play-services-basement-17.0.0/AndroidManifest.xml:20:5-44
+MERGED from [com.google.android.gms:play-services-basement:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/937c5050898784d30c656655e5f36fd6/play-services-basement-17.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.fragment:fragment:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/1513b62a9123b8bc87d5b3d3a2111c7e/fragment-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.fragment:fragment:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/1513b62a9123b8bc87d5b3d3a2111c7e/fragment-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.legacy:legacy-support-core-ui:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/26c27a93496e808418c6ce0af4a5e09c/legacy-support-core-ui-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.legacy:legacy-support-core-ui:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/26c27a93496e808418c6ce0af4a5e09c/legacy-support-core-ui-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.legacy:legacy-support-core-utils:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/3c5e939b0e6b29bdf460a7fe7fc8149e/legacy-support-core-utils-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.legacy:legacy-support-core-utils:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/3c5e939b0e6b29bdf460a7fe7fc8149e/legacy-support-core-utils-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.loader:loader:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/f2d63b2c28ee1d548ef27f10c2385caa/loader-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.loader:loader:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/f2d63b2c28ee1d548ef27f10c2385caa/loader-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.viewpager:viewpager:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/84abe344207c34d4a56c6167bf93e6d4/viewpager-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.viewpager:viewpager:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/84abe344207c34d4a56c6167bf93e6d4/viewpager-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.coordinatorlayout:coordinatorlayout:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/0de5a5a7f36e155ee93907dfd1c4b4a9/coordinatorlayout-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.coordinatorlayout:coordinatorlayout:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/0de5a5a7f36e155ee93907dfd1c4b4a9/coordinatorlayout-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.drawerlayout:drawerlayout:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/f76237f51a0f7e63bcb3c74d5b185ef8/drawerlayout-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.drawerlayout:drawerlayout:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/f76237f51a0f7e63bcb3c74d5b185ef8/drawerlayout-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.slidingpanelayout:slidingpanelayout:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/033c795406e41888727686d5fd780672/slidingpanelayout-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.slidingpanelayout:slidingpanelayout:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/033c795406e41888727686d5fd780672/slidingpanelayout-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.customview:customview:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/9f97f489f2a5c174c803b63b463795b0/customview-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.customview:customview:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/9f97f489f2a5c174c803b63b463795b0/customview-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.swiperefreshlayout:swiperefreshlayout:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/9c1469f5a2ad2b4764c3c283cf3fcf11/swiperefreshlayout-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.swiperefreshlayout:swiperefreshlayout:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/9c1469f5a2ad2b4764c3c283cf3fcf11/swiperefreshlayout-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.asynclayoutinflater:asynclayoutinflater:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/9bda4bd38cbbd129d40467c328b01419/asynclayoutinflater-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.asynclayoutinflater:asynclayoutinflater:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/9bda4bd38cbbd129d40467c328b01419/asynclayoutinflater-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.core:core:1.1.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/e601daed4ba62929db8b322b2974c8f8/core-1.1.0/AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.core:core:1.1.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/e601daed4ba62929db8b322b2974c8f8/core-1.1.0/AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/90ecde5404179819368e2359ab771b50/versionedparcelable-1.1.0/AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/90ecde5404179819368e2359ab771b50/versionedparcelable-1.1.0/AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.interpolator:interpolator:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/722883bbeda4a23af2c332d7342ff3d3/interpolator-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.interpolator:interpolator:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/722883bbeda4a23af2c332d7342ff3d3/interpolator-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-viewmodel:2.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/a083c62b9e4cc3ecf72de4541567bc2c/lifecycle-viewmodel-2.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-viewmodel:2.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/a083c62b9e4cc3ecf72de4541567bc2c/lifecycle-viewmodel-2.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.cursoradapter:cursoradapter:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/5dbc57b58024a8f25b5db3778841ef05/cursoradapter-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.cursoradapter:cursoradapter:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/5dbc57b58024a8f25b5db3778841ef05/cursoradapter-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.documentfile:documentfile:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/fb5e65a69b576ac546080993fe26d407/documentfile-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.documentfile:documentfile:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/fb5e65a69b576ac546080993fe26d407/documentfile-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.localbroadcastmanager:localbroadcastmanager:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/7b69e6173655717e69f5c7f6f1302d3b/localbroadcastmanager-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.localbroadcastmanager:localbroadcastmanager:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/7b69e6173655717e69f5c7f6f1302d3b/localbroadcastmanager-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.print:print:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/8fe2a3deec1ef3dd659aa5f55d73edd7/print-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.print:print:1.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/8fe2a3deec1ef3dd659aa5f55d73edd7/print-1.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-livedata:2.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/227916b3f0008a165e996ac0bce20467/lifecycle-livedata-2.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-livedata:2.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/227916b3f0008a165e996ac0bce20467/lifecycle-livedata-2.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-livedata-core:2.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/96d0ad977091c6484e2db42674538c87/lifecycle-livedata-core-2.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-livedata-core:2.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/96d0ad977091c6484e2db42674538c87/lifecycle-livedata-core-2.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.arch.core:core-runtime:2.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/9a82a1a22af6402c2242c9ee80e8919f/core-runtime-2.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.arch.core:core-runtime:2.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/9a82a1a22af6402c2242c9ee80e8919f/core-runtime-2.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-runtime:2.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/1fed12a61eaf3956026778ada29c2705/lifecycle-runtime-2.0.0/AndroidManifest.xml:20:5-44
+MERGED from [androidx.lifecycle:lifecycle-runtime:2.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/1fed12a61eaf3956026778ada29c2705/lifecycle-runtime-2.0.0/AndroidManifest.xml:20:5-44
+INJECTED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml
+INJECTED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml
+	android:targetSdkVersion
+		INJECTED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml
+		INJECTED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml
+	android:minSdkVersion
+		INJECTED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml
+		ADDED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml
+		INJECTED from /home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml
+uses-permission#android.permission.ACCESS_FINE_LOCATION
+ADDED from [com.google.androidbrowserhelper:locationdelegation:1.0.1] /home/ansto/.gradle/caches/transforms-2/files-2.1/6533a4776060e2dafc326b30a0222ee1/locationdelegation-1.0.1/AndroidManifest.xml:11:5-79
+	android:name
+		ADDED from [com.google.androidbrowserhelper:locationdelegation:1.0.1] /home/ansto/.gradle/caches/transforms-2/files-2.1/6533a4776060e2dafc326b30a0222ee1/locationdelegation-1.0.1/AndroidManifest.xml:11:22-76
+queries
+ADDED from [com.google.androidbrowserhelper:androidbrowserhelper:2.2.1] /home/ansto/.gradle/caches/transforms-2/files-2.1/43500dace97d54a90d7f296959ce8d3a/androidbrowserhelper-2.2.1/AndroidManifest.xml:26:5-34:15
+intent#action:name:android.intent.action.VIEW+category:name:android.intent.category.BROWSABLE+data:scheme:https
+ADDED from [com.google.androidbrowserhelper:androidbrowserhelper:2.2.1] /home/ansto/.gradle/caches/transforms-2/files-2.1/43500dace97d54a90d7f296959ce8d3a/androidbrowserhelper-2.2.1/AndroidManifest.xml:27:9-33:18
+activity#com.google.android.gms.common.api.GoogleApiActivity
+ADDED from [com.google.android.gms:play-services-base:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/af7ff4cdb9585a03f0fe804445629944/play-services-base-17.0.0/AndroidManifest.xml:23:9-26:75
+	android:exported
+		ADDED from [com.google.android.gms:play-services-base:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/af7ff4cdb9585a03f0fe804445629944/play-services-base-17.0.0/AndroidManifest.xml:25:13-37
+	android:theme
+		ADDED from [com.google.android.gms:play-services-base:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/af7ff4cdb9585a03f0fe804445629944/play-services-base-17.0.0/AndroidManifest.xml:26:13-72
+	android:name
+		ADDED from [com.google.android.gms:play-services-base:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/af7ff4cdb9585a03f0fe804445629944/play-services-base-17.0.0/AndroidManifest.xml:24:13-79
+meta-data#com.google.android.gms.version
+ADDED from [com.google.android.gms:play-services-basement:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/937c5050898784d30c656655e5f36fd6/play-services-basement-17.0.0/AndroidManifest.xml:23:9-25:69
+	android:value
+		ADDED from [com.google.android.gms:play-services-basement:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/937c5050898784d30c656655e5f36fd6/play-services-basement-17.0.0/AndroidManifest.xml:25:13-66
+	android:name
+		ADDED from [com.google.android.gms:play-services-basement:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/937c5050898784d30c656655e5f36fd6/play-services-basement-17.0.0/AndroidManifest.xml:24:13-58

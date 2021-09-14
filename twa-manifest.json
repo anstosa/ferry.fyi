@@ -1,0 +1,43 @@
+{
+  "packageId": "fyi.ferry",
+  "host": "www.ferry.fyi",
+  "name": "Ferry FYI",
+  "launcherName": "Ferry FYI",
+  "display": "standalone",
+  "themeColor": "#016F52",
+  "navigationColor": "#016F52",
+  "navigationColorDark": "#016F52",
+  "navigationDividerColor": "#016F52",
+  "navigationDividerColorDark": "#016F52",
+  "backgroundColor": "#016F52",
+  "enableNotifications": true,
+  "startUrl": "/?android=1",
+  "iconUrl": "https://www.ferry.fyi/assets/android-chrome-512x512.png",
+  "maskableIconUrl": "https://www.ferry.fyi/assets/icon_maskable.png",
+  "monochromeIconUrl": "https://www.ferry.fyi/assets/icon_monochrome.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "/home/ansto/ferry.fyi/android.keystore",
+    "alias": "android"
+  },
+  "appVersionName": "2",
+  "appVersionCode": 2,
+  "shortcuts": [],
+  "generatorApp": "bubblewrap-cli",
+  "webManifestUrl": "https://www.ferry.fyi/assets/manifest.json",
+  "fallbackType": "webview",
+  "features": {
+    "locationDelegation": {
+      "enabled": true
+    }
+  },
+  "alphaDependencies": {
+    "enabled": false
+  },
+  "enableSiteSettingsShortcut": false,
+  "isChromeOSOnly": false,
+  "orientation": "default",
+  "fingerprints": [],
+  "additionalTrustedOrigins": [],
+  "appVersion": "2"
+}
