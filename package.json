@@ -145,6 +145,7 @@
     "workbox-window": "^6.1.1"
   },
   "dependencies": {
+    "@types/koa-compress": "^4.0.3",
     "clsx": "^1.1.1",
     "color-convert": "^2.0.1",
     "colors": "^1.4.0",
@@ -153,6 +154,7 @@
     "heroku-logger": "^0.3.3",
     "koa": "^2.13.1",
     "koa-bodyparser": "^4.3.0",
+    "koa-compress": "^5.1.0",
     "koa-logger": "^3.2.1",
     "koa-mount": "^4.0.0",
     "koa-router": "^10.0.0",
@@ -165,6 +167,7 @@
     "pg-hstore": "^2.3.3",
     "request": "^2.88.2",
     "sequelize": "^6.5.0",
-    "sequelize-cli": "^6.2.0"
+    "sequelize-cli": "^6.2.0",
+    "zlib": "^1.0.5"
   }
 }

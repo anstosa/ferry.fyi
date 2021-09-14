@@ -6,6 +6,7 @@ import { getTerminal, getTerminals } from "~/lib/terminals";
 import { getVessel, getVessels } from "~/lib/vessels";
 import { updateLong, updateShort } from "~/lib/wsf";
 import bodyParser from "koa-bodyparser";
+import compress from "koa-compress";
 import fs from "fs";
 import Koa from "koa";
 import logger from "heroku-logger";
@@ -15,6 +16,7 @@ import requestLogger from "koa-logger";
 import Router from "koa-router";
 import serve from "koa-static";
 import sslify, { xForwardedProtoResolver } from "koa-sslify";
+import zlib from "zlib";
 
 // start main app
 const app = new Koa();
@@ -22,6 +24,20 @@ if (process.env.NODE_ENV === "production") {
   app.use(sslify({ resolver: xForwardedProtoResolver }));
 }
 app.use(requestLogger());
+app.use(
+  compress({
+    filter(content_type) {
+      return /text/i.test(content_type);
+    },
+    threshold: 2048,
+    gzip: {
+      flush: zlib.constants.Z_SYNC_FLUSH,
+    },
+    deflate: {
+      flush: zlib.constants.Z_SYNC_FLUSH,
+    },
+  })
+);
 
 // api app
 const api = new Koa();
