@@ -16,7 +16,6 @@ import requestLogger from "koa-logger";
 import Router from "koa-router";
 import serve from "koa-static";
 import sslify, { xForwardedProtoResolver } from "koa-sslify";
-import zlib from "zlib";
 
 // start main app
 const app = new Koa();
@@ -24,20 +23,7 @@ if (process.env.NODE_ENV === "production") {
   app.use(sslify({ resolver: xForwardedProtoResolver }));
 }
 app.use(requestLogger());
-app.use(
-  compress({
-    filter(content_type) {
-      return /text/i.test(content_type);
-    },
-    threshold: 2048,
-    gzip: {
-      flush: zlib.constants.Z_SYNC_FLUSH,
-    },
-    deflate: {
-      flush: zlib.constants.Z_SYNC_FLUSH,
-    },
-  })
-);
+app.use(compress());
 
 // api app
 const api = new Koa();
