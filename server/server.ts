@@ -23,7 +23,6 @@ if (process.env.NODE_ENV === "production") {
   app.use(sslify({ resolver: xForwardedProtoResolver }));
 }
 app.use(requestLogger());
-app.use(compress());
 
 // api app
 const api = new Koa();
@@ -59,6 +58,7 @@ app.use(mount("/api", api));
 
 // static files app
 const dist = new Koa();
+dist.use(compress());
 const clientDist = path.resolve(
   __dirname,
   "../",
