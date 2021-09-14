@@ -104,6 +104,10 @@ module.exports = {
           from: "images/icon_monochrome.png",
           to: path.resolve(__dirname, "../dist/client/assets/"),
         },
+        {
+          from: "assetLinks.json",
+          to: path.resolve(__dirname, "../dist/client/.well-known/"),
+        },
       ],
     }),
     ...(isDevelopment

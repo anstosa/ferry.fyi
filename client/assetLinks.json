@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "fyi.ferry",
+      "sha256_cert_fingerprints": [
+        "DA:FB:7E:B4:7F:20:3F:EF:78:F1:A5:DB:72:4B:1D:81:27:A8:0E:CA:4B:ED:0E:3D:03:60:0C:8D:40:0A:7A:D3"
+      ]
+    }
+  }
+]
