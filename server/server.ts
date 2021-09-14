@@ -65,7 +65,7 @@ const clientDist = path.resolve(
   process.env.NODE_ENV === "development" ? "dist/" : "",
   "client/"
 );
-dist.use(serve(clientDist));
+dist.use(serve(clientDist, { hidden: true }));
 const browser = new Router();
 browser.get("/robots.txt", (context) => {
   context.type = "text/plain";

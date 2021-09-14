@@ -105,7 +105,7 @@ module.exports = {
           to: path.resolve(__dirname, "../dist/client/assets/"),
         },
         {
-          from: "assetLinks.json",
+          from: "assetlinks.json",
           to: path.resolve(__dirname, "../dist/client/.well-known/"),
         },
       ],
