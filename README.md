@@ -4,7 +4,7 @@ A better tracker for the Washington State Ferry System
 
 An alternative to the WSDOT mobile app. With Ferry FYI, you get:
 
-✨ Polished, modern UI
+✨ Polished, modern UI with dark mode support
 🔮 Forecasted sailing fullness
 ⌚ More accurate delay reporting
 📢 Filtered WSF bulletins
