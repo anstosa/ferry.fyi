@@ -69,6 +69,7 @@ module.exports = {
         background: COLOR,
         theme_color: COLOR,
       },
+      manifest: path.resolve(__dirname, "manifest.json"),
     }),
     new ForkTsCheckerWebpackPlugin(),
     new HtmlPlugin({

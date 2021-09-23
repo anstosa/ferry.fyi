@@ -1,9 +1,7 @@
 import AndroidIcon from "~/images/icons/brands/android.svg";
 import AppleIcon from "~/images/icons/brands/apple.svg";
-import ChromeIcon from "~/images/icons/brands/chrome.svg";
 import clsx from "clsx";
 import ExternalLinkIcon from "~/images/icons/solid/external-link-square.svg";
-import MenuIcon from "~/images/icons/solid/ellipsis-v.svg";
 import PlusIcon from "~/images/icons/solid/plus-square.svg";
 import React, { FC, ReactElement, ReactNode, useState } from "react";
 import SafariIcon from "~/images/icons/brands/safari.svg";
