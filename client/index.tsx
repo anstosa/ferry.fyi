@@ -50,3 +50,5 @@ if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") {
     workbox.register();
   });
 }
+
+window.addEventListener("beforeinstallprompt", (e: any) => e.prompt());

@@ -1,4 +1,16 @@
+# node
 node_modules/
+
+# direnv
 .env.local
+
+# build
 dist/
+
+# testing
 latest.dump
+
+# android
+android.keystore
+app-release-*
+.gradle/

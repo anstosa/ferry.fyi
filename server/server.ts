@@ -6,6 +6,7 @@ import { Terminal } from "~/models/Terminal";
 import { updateLong, updateShort } from "~/lib/wsf";
 import { Vessel } from "~/models/Vessel";
 import bodyParser from "koa-bodyparser";
+import compress from "koa-compress";
 import fs from "fs";
 import Koa from "koa";
 import logger from "heroku-logger";
@@ -66,13 +67,14 @@ app.use(mount("/api", api));
 
 // create Koa app to serve static files
 const dist = new Koa();
+dist.use(compress());
 const clientDist = path.resolve(
   __dirname,
   "../",
   process.env.NODE_ENV === "development" ? "dist/" : "",
   "client/"
 );
-dist.use(serve(clientDist));
+dist.use(serve(clientDist, { hidden: true }));
 const browser = new Router();
 browser.get("/robots.txt", (context) => {
   context.type = "text/plain";

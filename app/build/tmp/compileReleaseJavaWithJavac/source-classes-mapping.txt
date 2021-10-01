@@ -1,0 +1,8 @@
+fyi/ferry/LauncherActivity.java
+ fyi.ferry.LauncherActivity
+fyi/ferry/Application.java
+ fyi.ferry.Application
+fyi/ferry/DelegationService.java
+ fyi.ferry.DelegationService
+fyi/ferry/BuildConfig.java
+ fyi.ferry.BuildConfig

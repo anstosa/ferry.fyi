@@ -1,5 +1,6 @@
 import { BundleAnalyzerPlugin } from "webpack-bundle-analyzer";
 import { TailwindConfig } from "tailwindcss/tailwind-config";
+import CopyPlugin from "copy-webpack-plugin";
 import CssMinimizerPlugin from "css-minimizer-webpack-plugin";
 import FaviconsPlugin from "favicons-webpack-plugin";
 import ForkTsCheckerWebpackPlugin from "fork-ts-checker-webpack-plugin";
@@ -67,6 +68,7 @@ module.exports = {
         background: COLOR,
         theme_color: COLOR,
       },
+      manifest: path.resolve(__dirname, "manifest.json"),
     }),
     new ForkTsCheckerWebpackPlugin(),
     new HtmlPlugin({
@@ -92,6 +94,22 @@ module.exports = {
       "LOG_LEVEL",
       "NODE_ENV",
     ]),
+    new CopyPlugin({
+      patterns: [
+        {
+          from: "images/icon_maskable.png",
+          to: path.resolve(__dirname, "../dist/client/assets/"),
+        },
+        {
+          from: "images/icon_monochrome.png",
+          to: path.resolve(__dirname, "../dist/client/assets/"),
+        },
+        {
+          from: "assetlinks.json",
+          to: path.resolve(__dirname, "../dist/client/.well-known/"),
+        },
+      ],
+    }),
     ...(isDevelopment
       ? [
           new LiveReloadPlugin({
