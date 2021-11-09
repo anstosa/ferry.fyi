@@ -4,9 +4,11 @@ import { Footer } from "~/components/Footer";
 import { getSchedule } from "~/lib/schedule";
 import { getSlug, getTerminal } from "~/lib/terminals";
 import { Header } from "~/components/Header";
+import { Route } from "shared/models/routes";
 import { SlotInfo } from "./Crossing/SlotInfo";
 import { Splash } from "~/components/Splash";
 import { useHistory, useLocation, useParams } from "react-router-dom";
+import { values } from "shared/lib/objects";
 import clsx from "clsx";
 import React, { ReactElement, useEffect, useState } from "react";
 import scrollIntoView from "scroll-into-view";
@@ -29,7 +31,7 @@ export const Schedule = (): ReactElement => {
   const [expanded, setExpanded] = useState<Slot | null>(null);
   const [terminal, setTerminal] = useState<Terminal | null>(null);
   const [mate, setMate] = useState<Terminal | null>(null);
-  const [schedule, setSchedule] = useState<Slot[] | null>(null);
+  const [slots, setSlots] = useState<Slot[] | null>(null);
   const [time, setTime] = useState<DateTime>(DateTime.local());
   const [isUpdating, setUpdating] = useState<boolean>(false);
   const [isFooterOpen, setFooterOpen] = useState<boolean>(false);
@@ -99,7 +101,7 @@ export const Schedule = (): ReactElement => {
     if (pathname !== path) {
       history.push(path);
     }
-    setSchedule(null);
+    setSlots(null);
     setScrolled(false);
     setCurrentElement(null);
     await updateSchedule();
@@ -119,7 +121,7 @@ export const Schedule = (): ReactElement => {
     }
     setUpdating(true);
     const { schedule, timestamp } = await getSchedule(terminal, mate);
-    setSchedule(schedule);
+    setSlots(schedule.slots);
     setUpdating(false);
 
     const time = DateTime.fromSeconds(timestamp);
@@ -127,20 +129,26 @@ export const Schedule = (): ReactElement => {
   };
 
   const renderSchedule = (): ReactElement | null => {
-    const currentSlot = findWhere(schedule, { hasPassed: false });
-    if (!schedule) {
+    if (!slots) {
       return null;
     }
-    const sailings = schedule.map((slot) => {
+    const currentSlot = findWhere(slots, { hasPassed: false });
+    const sailings = slots.map((slot) => {
       const { time: slotTime } = slot;
+      let route: Route | undefined;
+      if (terminal) {
+        route = values(terminal.routes)?.find(({ terminalIds }) =>
+          terminalIds.includes(terminal.id)
+        );
+      }
       return (
         <SlotInfo
           slot={slot}
           isExpanded={slotTime === expanded?.time}
           onClick={() => toggleExpand(slot)}
           key={slotTime}
-          schedule={schedule}
-          route={mate?.route}
+          schedule={slots}
+          route={route}
           setElement={(element: HTMLDivElement) => {
             if (slot === currentSlot) {
               setCurrentElement(element);
@@ -153,9 +161,9 @@ export const Schedule = (): ReactElement => {
     return <ul>{sailings}</ul>;
   };
 
-  if (!terminal || !mate || isEmpty(schedule)) {
+  if (!terminal || !mate || isEmpty(slots)) {
     let message: string | undefined;
-    if (isArray(schedule)) {
+    if (isArray(slots)) {
       message = "Ferry FYI just updated! Fetching data from WSF...";
     }
     return <Splash>{message}</Splash>;

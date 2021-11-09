@@ -1,8 +1,11 @@
 import { createJob } from "~/lib/jobs";
 import { DateTime } from "luxon";
 import { dbInit } from "~/lib/db";
-import { getSchedule } from "~/lib/wsf/updateSchedule";
+import { entries } from "shared/lib/objects";
+import { Schedule } from "./models/Schedule";
 import { Terminal } from "~/models/Terminal";
+import { Terminal as TerminalClass } from "shared/models/terminals";
+import { toWsfDate } from "./lib/wsf/date";
 import { updateLong, updateShort } from "~/lib/wsf";
 import { Vessel } from "~/models/Vessel";
 import bodyParser from "koa-bodyparser";
@@ -37,28 +40,53 @@ router.get("/vessels", async (context) => {
 });
 router.get("/vessels/:vesselId", async (context) => {
   const { vesselId } = context.params;
-  // eslint-disable-next-line require-atomic-updates
-  context.body = await Vessel.getByIndex(vesselId);
+  const vessel = await Vessel.getByIndex(vesselId);
+  if (vessel) {
+    // eslint-disable-next-line require-atomic-updates
+    context.body = vessel.serialize();
+  } else {
+    // eslint-disable-next-line require-atomic-updates
+    context.status = 404;
+  }
 });
 
 // terminals
 router.get("/terminals", async (context) => {
-  context.body = await Terminal.getAll();
+  const terminals = await Terminal.getAll();
+  const results: Record<string, TerminalClass> = {};
+  entries(terminals).forEach(([key, terminal]) => {
+    results[key] = terminal.serialize();
+  });
+  context.body = results;
 });
 router.get("/terminals/:terminalId", async (context) => {
   const { terminalId } = context.params;
-  // eslint-disable-next-line require-atomic-updates
-  context.body = await Terminal.getByIndex(terminalId);
+  const terminal = await Terminal.getByIndex(terminalId);
+  if (terminal) {
+    // eslint-disable-next-line require-atomic-updates
+    context.body = terminal.serialize();
+  } else {
+    // eslint-disable-next-line require-atomic-updates
+    context.status = 404;
+  }
 });
 
 // schedule
 router.get("/schedule/:departingId/:arrivingId", async (context) => {
   const { departingId, arrivingId } = context.params;
-  // eslint-disable-next-line require-atomic-updates
-  context.body = {
-    schedule: await getSchedule(departingId, arrivingId),
-    timestamp: DateTime.local().toSeconds(),
-  };
+  const schedule = await Schedule.getByIndex(
+    Schedule.generateKey(departingId, arrivingId, toWsfDate())
+  );
+  if (schedule) {
+    // eslint-disable-next-line require-atomic-updates
+    context.body = {
+      schedule: schedule.serialize(),
+      timestamp: DateTime.local().toSeconds(),
+    };
+  } else {
+    // eslint-disable-next-line require-atomic-updates
+    context.status = 404;
+  }
 });
 
 api.use(router.routes());

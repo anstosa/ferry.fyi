@@ -1,4 +1,5 @@
 import { BundleAnalyzerPlugin } from "webpack-bundle-analyzer";
+import { createProxyMiddleware } from "http-proxy-middleware";
 import { TailwindConfig } from "tailwindcss/tailwind-config";
 import CopyPlugin from "copy-webpack-plugin";
 import CssMinimizerPlugin from "css-minimizer-webpack-plugin";
@@ -34,24 +35,54 @@ enum Mode {
 
 const isDevelopment = process.env.NODE_ENV === Mode.development;
 
+if (!process.env.BASE_URL) {
+  throw new Error("Must set BASE_URL");
+}
+
 module.exports = {
+  // don't allow any errors in production
+  bail: !isDevelopment,
   mode: isDevelopment ? Mode.development : Mode.production,
   context: __dirname,
-  cache: { type: "filesystem" },
+  // cache: { type: "filesystem" },
   entry: "index.tsx",
   output: {
     path: path.resolve(__dirname, "../dist/client"),
     filename: "[name].[chunkhash].js",
     publicPath: `${process.env.BASE_URL}/`,
   },
-  devtool: isDevelopment ? "eval-cheap-module-source-map" : false,
-  watchOptions: {
-    ignored: "../dist/.*",
+  devtool: isDevelopment ? "eval-source-map" : false,
+  devServer: {
+    historyApiFallback: true,
+    hot: true,
+    port: 3000,
+    devMiddleware: {
+      publicPath: process.env.ROOT_URL,
+    },
+    onBeforeSetupMiddleware({ app }: any): void {
+      app.use(
+        createProxyMiddleware(
+          [
+            // API
+            "/api",
+            // social auth endpoints
+            "/auth",
+          ],
+          {
+            target: `http://localhost:${process.env.PORT}/`,
+          }
+        )
+      );
+    },
   },
   optimization: {
     runtimeChunk: true,
     minimize: !isDevelopment,
     minimizer: [new TerserPlugin(), new CssMinimizerPlugin()],
+    splitChunks: {
+      chunks: "all",
+      name: false,
+    },
   },
   plugins: [
     new BundleAnalyzerPlugin({
@@ -117,7 +148,7 @@ module.exports = {
           }),
         ]
       : []),
-  ].filter((plugin) => Boolean(plugin)),
+  ].filter(Boolean),
   resolve: {
     symlinks: false,
     extensions: [".css", ".scss", ".js", ".ts", ".tsx"],

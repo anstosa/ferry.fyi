@@ -35,4 +35,5 @@ export interface Schedule {
   key: string;
   slots: Slot[];
   terminalId: string;
+  mateId: string;
 }

@@ -1,6 +1,8 @@
 import { Camera } from "~/models/Camera";
 import { Route } from "~/models/Route";
+import { sortBy } from "shared/lib/arrays";
 import { Terminal } from "~/models/Terminal";
+import { WSF } from "~/typings/wsf";
 import { wsfDateToTimestamp } from "./date";
 import { wsfRequest } from "./api";
 import logger from "heroku-logger";
@@ -24,7 +26,9 @@ export const updateTerminals = async (): Promise<void> => {
   }
   lastFlushDate = cacheFlushDate;
 
-  const terminals = await wsfRequest<TerminalVerboseResponse[]>(API_VERBOSE);
+  const terminals = await wsfRequest<WSF.TerminalVerboseResponse[]>(
+    API_VERBOSE
+  );
   if (!terminals) {
     return;
   }
@@ -39,8 +43,9 @@ export const updateTerminals = async (): Promise<void> => {
             date: wsfDateToTimestamp(BulletinLastUpdated),
           })
         ),
-        cameras: Camera.getByTerminalId(String(TerminalData.TerminalID)).map(
-          (camera) => camera.serialize()
+        cameras: sortBy(
+          Camera.getByTerminalId(String(TerminalData.TerminalID)),
+          "orderFromTerminal"
         ),
         hasElevator: TerminalData.Elevator,
         hasOverheadLoading: TerminalData.OverheadPassengerLoading,
@@ -101,10 +106,10 @@ export const updateTerminals = async (): Promise<void> => {
       // setting routes depends on all the terminals already being cached
       terminal.update({
         mates: Route.getMatesByTerminalId(terminal.id),
-        route: Route.getByTerminalId(terminal.id),
+        routes: Route.getByTerminalId(terminal.id),
       });
       terminal.save();
     });
 
-  logger.info("Completed Terminal Update");
+  logger.info(`Updated ${Object.keys(Terminal.getAll()).length} Terminals`);
 };

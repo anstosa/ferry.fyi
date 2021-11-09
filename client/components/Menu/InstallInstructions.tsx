@@ -1,7 +1,7 @@
-import AndroidIcon from "~/images/icons/brands/android.svg";
 import AppleIcon from "~/images/icons/brands/apple.svg";
 import clsx from "clsx";
 import ExternalLinkIcon from "~/images/icons/solid/external-link-square.svg";
+import GooglePlayIcon from "~/images/icons/brands/google-play.svg";
 import PlusIcon from "~/images/icons/solid/plus-square.svg";
 import React, { FC, ReactElement, ReactNode, useState } from "react";
 import SafariIcon from "~/images/icons/brands/safari.svg";
@@ -63,7 +63,7 @@ export const InstallInstructions = (): ReactElement | null => {
           target="blank"
           className={clsx("button button-invert", "flex-grow ml-4")}
         >
-          <AndroidIcon className="inline-block button-icon text-2xl" />
+          <GooglePlayIcon className="inline-block button-icon text-2xl" />
           <span className="button-label">Android</span>
         </a>
       </div>
@@ -72,7 +72,7 @@ export const InstallInstructions = (): ReactElement | null => {
 
   return (
     <>
-      <h2 className="font-medium text-lg mt-8">Install App</h2>
+      <h2 className="font-bold text-lg mt-8">Install App</h2>
       <div className="mt-2">Want to install Ferry FYI as an app?</div>
       {steps}
     </>

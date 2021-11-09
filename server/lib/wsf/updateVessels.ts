@@ -1,5 +1,6 @@
 import { DateTime } from "luxon";
 import { Vessel } from "~/models/Vessel";
+import { WSF } from "~/typings/wsf";
 import { wsfDateToTimestamp } from "./date";
 import { wsfRequest } from "./api";
 import logger from "heroku-logger";
@@ -25,7 +26,7 @@ export const updateVessels = async (): Promise<void> => {
   }
   lastFlushDate = cacheFlushDate;
 
-  const vessels = await wsfRequest<VesselsVerboseResponse[]>(API_VERBOSE);
+  const vessels = await wsfRequest<WSF.VesselsVerboseResponse[]>(API_VERBOSE);
   if (!vessels) {
     return;
   }
@@ -41,8 +42,8 @@ export const updateVessels = async (): Promise<void> => {
       hasWiFi: VesselData.PublicWifi,
       horsepower: VesselData.Horsepower,
       id: String(VesselData.VesselID),
-      inMaintenance: VesselData.Status === VesselStatus.IN_MAINTENANCE,
-      inService: VesselData.Status === VesselStatus.IN_SERVICE,
+      inMaintenance: VesselData.Status === WSF.VesselStatus.IN_MAINTENANCE,
+      inService: VesselData.Status === WSF.VesselStatus.IN_SERVICE,
       info: {
         ada: VesselData.ADAInfo,
       },
@@ -70,12 +71,14 @@ export const updateVessels = async (): Promise<void> => {
     }
     vessel.save();
   });
-  logger.info("Completed Vessel Update");
+  logger.info(`Updated ${Object.keys(Vessel.getAll()).length} Vessels`);
 };
 
 export const updateVesselStatus = async (): Promise<any> => {
   logger.info("Started Vessel Status Update");
-  const vessels = await wsfRequest<VesselsLocationResponse[]>(API_LOCATIONS);
+  const vessels = await wsfRequest<WSF.VesselsLocationResponse[]>(
+    API_LOCATIONS
+  );
   if (!vessels) {
     return;
   }
@@ -122,5 +125,5 @@ export const updateVesselStatus = async (): Promise<any> => {
     }
     vessel.save();
   });
-  logger.info("Completed Vessel Status Update");
+  logger.info(`Updated ${Object.keys(Vessel.getAll()).length} Vessel Statuses`);
 };

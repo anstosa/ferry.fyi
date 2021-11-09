@@ -2,8 +2,7 @@
   "name": "ferry.fyi",
   "version": "2.0.0",
   "engines": {
-    "node": "^15.8.0",
-    "npm": "^7.5.4"
+    "node": "^14.17.6"
   },
   "description": "A better tracker for the Washington State Ferry System",
   "scripts": {
@@ -11,7 +10,7 @@
     "build:client": "NODE_ENV=production webpack --config client/webpack.config.ts",
     "build:server": "NODE_ENV=production webpack --config server/webpack.config.ts",
     "clean": "rm -rf dist/*",
-    "client": "NODE_ENV=development webpack --watch --config client/webpack.config.ts",
+    "client": "webpack serve --config client/webpack.config.ts --progress",
     "db:migrate": "sequelize db:migrate",
     "db:reset": "./scripts/resetdb.sh",
     "db:sync": "curl `heroku pg:backups url --app ferry-fyi` > /tmp/ferryfyi.dump && ./scripts/loaddb.sh /tmp/ferryfyi.dump",
@@ -108,6 +107,7 @@
     "file-loader": "^6.2.0",
     "fork-ts-checker-webpack-plugin": "^6.1.1",
     "html-webpack-plugin": "^5.3.1",
+    "http-proxy-middleware": "^2.0.1",
     "mini-css-extract-plugin": "^2.1.0",
     "ngrok": "^4.1.0",
     "node-env-run": "^4.0.2",
@@ -139,6 +139,7 @@
     "webpack": "^5.47.1",
     "webpack-bundle-analyzer": "^4.4.0",
     "webpack-cli": "^4.5.0",
+    "webpack-dev-server": "^4.4.0",
     "webpack-livereload-plugin": "^3.0.1",
     "webpack-node-externals": "^3.0.0",
     "workbox-webpack-plugin": "^6.1.1",

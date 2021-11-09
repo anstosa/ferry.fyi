@@ -4,7 +4,7 @@ import {
   CameraImage,
   MapPoint,
 } from "shared/models/cameras";
-import { entries, isKeyof } from "shared/lib/objects";
+import { isKeyof, values } from "shared/lib/objects";
 import { isNull } from "shared/lib/identity";
 import CAMERA_DATA_OVERRIDES from "shared/data/cameras.json";
 
@@ -24,30 +24,32 @@ export class Camera extends CacheableModel implements CameraClass {
   title!: string;
 
   static getByTerminalId(targetTerminalId: string): Camera[] {
-    return entries(Camera.getAll())
-      .map(([, camera]) => camera)
-      .filter(({ terminalId }) => terminalId === targetTerminalId);
+    return values(Camera.getAll()).filter(
+      ({ terminalId }) => terminalId === targetTerminalId
+    );
   }
 
-  save = (): void => {
+  save(): void {
     // merge in any data overrides
     const index = this.getIndex();
     if (!isNull(index) && isKeyof(CAMERA_DATA_OVERRIDES, index)) {
       Object.assign(this, CAMERA_DATA_OVERRIDES[index]);
     }
     super.save();
-  };
+  }
 
-  serialize = (): CameraClass => ({
-    feetToNext: this.feetToNext,
-    id: this.id,
-    image: this.image,
-    isActive: this.isActive,
-    location: this.location,
-    orderFromTerminal: this.orderFromTerminal,
-    owner: this.owner,
-    spacesToNext: this.spacesToNext,
-    terminalId: this.terminalId,
-    title: this.title,
-  });
+  serialize(): CameraClass {
+    return CacheableModel.serialize({
+      feetToNext: this.feetToNext,
+      id: this.id,
+      image: this.image,
+      isActive: this.isActive,
+      location: this.location,
+      orderFromTerminal: this.orderFromTerminal,
+      owner: this.owner,
+      spacesToNext: this.spacesToNext,
+      terminalId: this.terminalId,
+      title: this.title,
+    });
+  }
 }

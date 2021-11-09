@@ -9,6 +9,7 @@ import type { Bulletin, Terminal } from "shared/models/terminals";
 const ALERT_FILTER = new RegExp(
   `(${[
     "boat",
+    "alternate",
     "advised",
     "cancelled",
     "emergency",

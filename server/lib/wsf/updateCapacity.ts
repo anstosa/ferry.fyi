@@ -1,7 +1,9 @@
 import { API_TERMINALS } from "./updateTerminals";
-import { getPreviousCrossing, getSchedule } from "./updateSchedule";
+import { getPreviousCrossing } from "./updateSchedule";
+import { Schedule } from "~/models/Schedule";
+import { toWsfDate, wsfDateToTimestamp } from "./date";
 import { Vessel } from "~/models/Vessel";
-import { wsfDateToTimestamp } from "./date";
+import { WSF } from "~/typings/wsf";
 import { wsfRequest } from "./api";
 import Crossing from "~/models/Crossing";
 import logger from "heroku-logger";
@@ -10,7 +12,7 @@ const API_SPACE = `${API_TERMINALS}/terminalsailingspace`;
 
 export const updateCapacity = async (): Promise<void> => {
   logger.info("Started Capacity Update");
-  const terminals = await wsfRequest<SpaceResponse[]>(API_SPACE);
+  const terminals = await wsfRequest<WSF.SpaceResponse[]>(API_SPACE);
   if (!terminals) {
     return;
   }
@@ -48,10 +50,19 @@ export const updateCapacity = async (): Promise<void> => {
                   if (!wasCreated) {
                     await crossing.update(model);
                   }
-                  const slot = getSchedule(
-                    String(terminal.TerminalID),
-                    String(ArrivalID)
-                  )[departureTime];
+                  const schedule = Schedule.getByIndex(
+                    Schedule.generateKey(
+                      String(terminal.TerminalID),
+                      String(ArrivalID),
+                      toWsfDate(departureTime)
+                    )
+                  );
+
+                  if (!schedule) {
+                    return;
+                  }
+
+                  const slot = schedule.getSlot(departureTime);
 
                   if (slot) {
                     slot.crossing = crossing;

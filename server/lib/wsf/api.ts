@@ -24,7 +24,7 @@ export const wsfRequest = async <T>(path: string): Promise<T | undefined> => {
     }
     const json = await response.json();
     return json;
-  } catch (error) {
+  } catch (error: any) {
     logger.error(`WSF request error <${url}>: ${error.message}`, error);
   }
 };

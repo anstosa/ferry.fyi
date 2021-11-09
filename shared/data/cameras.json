@@ -147,16 +147,22 @@
     "title": "Clover Ln",
     "feetToNext": 4080,
     "spacesToNext": 185,
-    "orderFromTerminal": 0
+    "orderFromTerminal": 4
   },
   "9162": {
     "title": "76th - North",
     "feetToNext": 2360,
     "spacesToNext": 107,
-    "orderFromTerminal": 0
+    "orderFromTerminal": 5
   },
   "9163": {
     "title": "76th - South",
+    "feetToNext": 0,
+    "spacesToNext": 0,
+    "orderFromTerminal": 6
+  },
+  "9164": {
+    "title": "Holding",
     "feetToNext": 0,
     "spacesToNext": 0,
     "orderFromTerminal": 0
@@ -165,6 +171,12 @@
     "title": "Holding",
     "feetToNext": 0,
     "spacesToNext": 0,
+    "orderFromTerminal": 0
+  },
+  "9944": {
+    "title": "Tollbooth",
+    "feetToNext": 100,
+    "spacesToNext": 10,
     "orderFromTerminal": 1
   },
   "9166": {

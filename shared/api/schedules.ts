@@ -1,6 +1,6 @@
-import { Slot } from "shared/models/schedules";
+import { Schedule } from "shared/models/schedules";
 
 export interface GetScheduleResponse {
-  schedule: Slot[];
+  schedule: Schedule;
   timestamp: number;
 }

@@ -28,8 +28,14 @@ export const wsfDateToTimestamp = (wsfDate?: string): number => {
  * "today" is a tricky concept.
  * WSF's "day" ends around 3am the following morning
  **/
-export const getToday = (): string => {
-  let date = DateTime.local().setZone("America/Los_Angeles");
+export const toWsfDate = (input?: number | DateTime): string => {
+  let date;
+  if (input) {
+    date = typeof input === "number" ? DateTime.fromSeconds(input) : input;
+  } else {
+    date = DateTime.local();
+  }
+  date.setZone("America/Los_Angeles");
   if (date.hour < 3) {
     date = date.minus({ days: 1 });
   }

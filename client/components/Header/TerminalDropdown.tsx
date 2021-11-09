@@ -53,10 +53,11 @@ export const TerminalDropdown = (props: Props): ReactElement => {
               "absolute top-full left-0",
               "bg-green-dark shadow-lg",
               "-ml-4 py-2",
-              "flex items-stretch"
+              "flex items-stretch",
+              "max-h-halfscreen"
             )}
             initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "50vh", opacity: 1 }}
+            animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ type: "easeInOut" }}
           >

@@ -77,7 +77,7 @@ export const Menu = ({ isOpen, onClose }: Props): ReactElement | null => (
               routes.
             </p>
             <InstallInstructions />
-            <h2 className="font-medium text-lg mt-8">Feedback</h2>
+            <h2 className="font-bold text-lg mt-8">Feedback</h2>
             <p className="mt-2">
               See something wrong? Want to request a feature?{" "}
               <a
@@ -99,7 +99,7 @@ export const Menu = ({ isOpen, onClose }: Props): ReactElement | null => (
               </a>
               .
             </p>
-            <h2 className="font-medium text-lg mt-8">Support</h2>
+            <h2 className="font-bold text-lg mt-8">Support</h2>
             <p className="mt-2">
               If Ferry FYI is useful to you please consider making{" "}
               <a

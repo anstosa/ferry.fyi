@@ -16,33 +16,37 @@ export class Route extends CacheableModel implements RouteClass {
   terminalIds!: string[];
 
   static getMatesByTerminalId(terminalId: string): Terminal[] {
-    const route = this.getByTerminalId(terminalId);
-    if (!route) {
-      return [];
-    }
-    return without(route.terminalIds, terminalId).map(
-      Terminal.getByIndex
-    ) as Terminal[];
+    const terminalIds: string[] = [];
+    values(this.getByTerminalId(terminalId)).forEach((route) => {
+      terminalIds.splice(0, 0, ...route.terminalIds);
+    });
+    return without([...new Set(terminalIds)], terminalId)
+      .sort()
+      .map((terminalId) => Terminal.getByIndex(terminalId)) as Terminal[];
   }
 
-  static getByTerminalId(terminalId: string): Route | null {
-    return (
-      values(this.getAll()).find(({ terminalIds }) =>
-        terminalIds.includes(terminalId)
-      ) ?? null
-    );
+  static getByTerminalId(terminalId: string): Record<string, Route> {
+    const routes: Record<string, Route> = {};
+    values(this.getAll()).forEach((route) => {
+      if (route.terminalIds.includes(terminalId)) {
+        routes[route.id] = route;
+      }
+    });
+    return routes;
   }
 
   static getByDate(targetDate: string): Route[] {
     return values(this.getAll()).filter(({ date }) => date === targetDate);
   }
 
-  serialize = (): RouteClass => ({
-    id: this.id,
-    abbreviation: this.abbreviation,
-    date: this.date,
-    description: this.description,
-    crossingTime: this.crossingTime,
-    terminalIds: this.terminalId,
-  });
+  serialize(): RouteClass {
+    return CacheableModel.serialize({
+      id: this.id,
+      abbreviation: this.abbreviation,
+      date: this.date,
+      description: this.description,
+      crossingTime: this.crossingTime,
+      terminalIds: this.terminalIds,
+    });
+  }
 }

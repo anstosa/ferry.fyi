@@ -1,24 +1,25 @@
-import { getToday } from "./date";
 import { Route } from "~/models/Route";
+import { toWsfDate } from "./date";
 import { values } from "shared/lib/objects";
+import { WSF } from "~/typings/wsf";
 import { wsfRequest } from "./api";
 import logger from "heroku-logger";
 
 const API_SCHEDULE = "https://www.wsdot.wa.gov/ferries/api/schedule/rest";
-const getMatesApi = (date: string = getToday()): string =>
+const getMatesApi = (date: string = toWsfDate()): string =>
   `${API_SCHEDULE}/terminalsandmates/${date}`;
 const getRouteApi = (
   departingId: string,
   arrivingId: string,
-  date: string = getToday()
+  date: string = toWsfDate()
 ): string =>
   `${API_SCHEDULE}/routedetails/${date}/${departingId}/${arrivingId}`;
 
 export const updateRoutes = async (
-  date: string = getToday()
+  date: string = toWsfDate()
 ): Promise<void> => {
   logger.info("Started Routes Update");
-  const mates = await wsfRequest<MatesResponse[]>(getMatesApi(date));
+  const mates = await wsfRequest<WSF.MatesResponse[]>(getMatesApi(date));
   if (!mates) {
     return;
   }
@@ -26,19 +27,20 @@ export const updateRoutes = async (
     mates.map(async ({ DepartingTerminalID, ArrivingTerminalID }) => {
       const departingId = String(DepartingTerminalID);
       const arrivingId = String(ArrivingTerminalID);
-      const RouteData = await wsfRequest<RouteResponse>(
-        getRouteApi(departingId, arrivingId)
-      );
-      if (!RouteData) {
+      const [routeData] =
+        (await wsfRequest<WSF.RoutesResponse>(
+          getRouteApi(departingId, arrivingId)
+        )) ?? [];
+      if (!routeData) {
         return null;
       }
       const data = {
-        id: String(RouteData.RouteID),
-        abbreviation: RouteData.RouteAbbrev,
-        description: RouteData.Description,
-        crossingTime: Number(RouteData.CrossingTime),
+        id: String(routeData.RouteID),
+        abbreviation: routeData.RouteAbbrev,
+        description: routeData.Description,
+        crossingTime: Number(routeData.CrossingTime),
       };
-      const [route, wasCreated] = Route.getOrCreate(String(RouteData.RouteID), {
+      const [route, wasCreated] = Route.getOrCreate(String(routeData.RouteID), {
         ...data,
         terminalIds: [departingId, arrivingId],
       });
@@ -61,5 +63,5 @@ export const updateRoutes = async (
       route.purge();
     }
   });
-  logger.info("Completed Mates Update");
+  logger.info(`Updated ${Object.keys(Route.getAll()).length} Routes`);
 };

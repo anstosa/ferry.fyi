@@ -1,4 +1,6 @@
+import { entries } from "../../shared/lib/objects";
 import { isNull } from "shared/lib/identity";
+import { isObject } from "shared/lib/objects";
 
 const cache: Record<string, Record<string, any>> = {};
 
@@ -25,7 +27,7 @@ export class CacheableModel implements Record<string, any> {
   static getAll<T extends typeof CacheableModel>(
     this: T
   ): Record<string, InstanceType<T>> {
-    return cache[this.cacheKey];
+    return cache[this.cacheKey] ?? {};
   }
 
   static getOrCreate<T extends typeof CacheableModel>(
@@ -50,9 +52,48 @@ export class CacheableModel implements Record<string, any> {
     return cache[this.cacheKey]?.[index] || null;
   }
 
+  /**
+   * recursively serializes the CacheableModel calling serialize on any children
+   */
+  static serialize = <T extends Record<string, any>>(
+    input: T,
+    flags: Record<string, true> = {}
+  ): T => {
+    const result = { ...input };
+    entries(input).forEach(([key, value]: [keyof T, any]) => {
+      if (value instanceof CacheableModel) {
+        // serialize models
+        result[key] = value.serialize(flags);
+      } else if (Array.isArray(value)) {
+        // serialize arrays of models
+        result[key] = value.map((item) => {
+          if (item instanceof CacheableModel) {
+            return item.serialize(flags);
+          } else {
+            return item;
+          }
+        }) as any;
+      } else if (isObject(value)) {
+        // serialize objects of models
+        result[key] = entries(value).reduce(
+          (memo, [key, value]: [string, any]) => {
+            if (value instanceof CacheableModel) {
+              memo[key] = value.serialize(flags);
+            } else {
+              memo[key] = value;
+            }
+            return memo;
+          },
+          {} as any
+        );
+      }
+    });
+    return result;
+  };
+
   getIndex = (): string | null => this[this.class.index] || null;
 
-  save = (): void => {
+  save(): void {
     const index = this.getIndex();
     if (isNull(index)) {
       throw new Error(
@@ -63,7 +104,7 @@ export class CacheableModel implements Record<string, any> {
       cache[this.class.cacheKey] = {};
     }
     cache[this.class.cacheKey][index] = this;
-  };
+  }
 
   purge = (): void => {
     const index = this.getIndex();
@@ -78,7 +119,8 @@ export class CacheableModel implements Record<string, any> {
     Object.assign(this, data);
   };
 
-  serialize<T>(this: T): any {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  serialize(flags: Record<string, true> = {}): any {
     throw new Error("CacheableModel.serialize must be implemented");
   }
 }

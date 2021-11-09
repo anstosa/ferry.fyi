@@ -1,4 +1,5 @@
 import { Camera } from "./cameras";
+import { Route } from "shared/models/routes";
 
 export interface Address {
   line1?: string;
@@ -18,13 +19,6 @@ export interface WaitTime {
   title?: string;
   description: string;
   time: number;
-}
-
-export interface Route {
-  id: string;
-  abbreviation: string;
-  description: string;
-  crossingTime: number;
 }
 
 export interface TerminalInfo {
@@ -47,7 +41,6 @@ export interface TerminalLocation {
   longitude?: number;
   address: Address;
 }
-
 export interface Terminal {
   abbreviation: string;
   bulletins: Bulletin[];
@@ -63,6 +56,6 @@ export interface Terminal {
   name: string;
   waitTimes: WaitTime[];
   mates?: Terminal[];
-  route?: Route;
+  routes?: Record<string, Route>;
   vesselwatch?: string;
 }
