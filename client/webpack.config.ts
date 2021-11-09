@@ -109,9 +109,6 @@ module.exports = {
       url: process.env.BASE_URL,
       color: COLOR,
     }),
-    new WorkboxPlugin.InjectManifest({
-      swSrc: "service-worker.ts",
-    }),
     new StyleLintPlugin({
       files: "**/*.(s(c|a)ss|css)",
     }),
@@ -147,7 +144,11 @@ module.exports = {
             appendScriptTag: true,
           }),
         ]
-      : []),
+      : [
+          new WorkboxPlugin.InjectManifest({
+            swSrc: "service-worker.ts",
+          }),
+        ]),
   ].filter(Boolean),
   resolve: {
     symlinks: false,
