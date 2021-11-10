@@ -1,11 +1,14 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { getSlug } from "~/lib/terminals";
 import { Link } from "react-router-dom";
+import { useWindowSize } from "~/lib/window";
 import CaretDownIcon from "~/images/icons/solid/caret-down.svg";
 import CaretUpIcon from "~/images/icons/solid/caret-up.svg";
 import clsx from "clsx";
 import React, { MouseEvent, ReactElement } from "react";
 import type { Terminal } from "shared/contracts/terminals";
+
+const ABBREVIATION_BREAKPOINT = 400;
 
 interface Props {
   terminals: Terminal[];
@@ -17,8 +20,16 @@ interface Props {
 export const TerminalDropdown = (props: Props): ReactElement => {
   const { terminals, isOpen, setOpen, onSelect } = props;
   const selectedTerminal = terminals[0];
+  const { width } = useWindowSize();
+
   if (terminals.length === 1) {
-    return <span className="truncate">{selectedTerminal.name}</span>;
+    return (
+      <span className="truncate">
+        {width > ABBREVIATION_BREAKPOINT
+          ? selectedTerminal.name
+          : selectedTerminal.abbreviation}
+      </span>
+    );
   }
   const otherTerminals = terminals.filter(
     ({ id }) => id !== selectedTerminal.id
@@ -30,7 +41,11 @@ export const TerminalDropdown = (props: Props): ReactElement => {
         onClick={() => setOpen(!isOpen)}
         aria-label="Expand Terminals"
       >
-        <span className="truncate">{selectedTerminal.name}</span>
+        <span className="truncate">
+          {width > ABBREVIATION_BREAKPOINT
+            ? selectedTerminal.name
+            : selectedTerminal.abbreviation}
+        </span>
         <div className="inline-block ml-2">
           {isOpen ? <CaretUpIcon /> : <CaretDownIcon />}
         </div>
