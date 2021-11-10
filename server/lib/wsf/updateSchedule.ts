@@ -1,7 +1,7 @@
 import { DateTime } from "luxon";
 import { isNull } from "shared/lib/identity";
 import { Schedule } from "~/models/Schedule";
-import { Slot } from "shared/models/schedules";
+import { Slot } from "shared/contracts/schedules";
 import { Terminal } from "~/models/Terminal";
 import { toWsfDate, wsfDateToTimestamp } from "./date";
 import { values } from "shared/lib/objects";

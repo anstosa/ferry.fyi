@@ -1,7 +1,7 @@
 import { get } from "~/lib/api";
 import { sortBy } from "shared/lib/arrays";
 import { values } from "shared/lib/objects";
-import { Vessel } from "shared/models/vessels";
+import { Vessel } from "shared/contracts/vessels";
 
 const API_VESSELS = "/vessels";
 const getApiVessel = (id: string): string => `/vessels/${id}`;

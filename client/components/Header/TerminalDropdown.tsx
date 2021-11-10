@@ -5,7 +5,7 @@ import CaretDownIcon from "~/images/icons/solid/caret-down.svg";
 import CaretUpIcon from "~/images/icons/solid/caret-up.svg";
 import clsx from "clsx";
 import React, { MouseEvent, ReactElement } from "react";
-import type { Terminal } from "shared/models/terminals";
+import type { Terminal } from "shared/contracts/terminals";
 
 interface Props {
   terminals: Terminal[];

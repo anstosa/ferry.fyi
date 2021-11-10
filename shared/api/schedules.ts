@@ -1,4 +1,4 @@
-import { Schedule } from "shared/models/schedules";
+import { Schedule } from "shared/contracts/schedules";
 
 export interface GetScheduleResponse {
   schedule: Schedule;

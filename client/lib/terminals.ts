@@ -2,7 +2,7 @@ import { entries, findKey, keys, values } from "shared/lib/objects";
 import { get } from "~/lib/api";
 import { sortBy } from "shared/lib/arrays";
 import TERMINAL_DATA_OVERRIDES from "shared/data/terminals.json";
-import type { Terminal } from "shared/models/terminals";
+import type { Terminal } from "shared/contracts/terminals";
 
 // create mapping of terminal ids to slugs
 const terminalIdByCanonicalSlug: Record<string, string> = {};

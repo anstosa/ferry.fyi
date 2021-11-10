@@ -1,6 +1,6 @@
-import { isEmpty } from "./arrays";
+import { isArray, isEmpty } from "./arrays";
 // eslint-disable-next-line @typescript-eslint/ban-types
-export const isObject = (input: unknown): input is object =>
+export const isObject = (input: unknown): input is Record<string, any> =>
   typeof input === "object" && input !== null;
 
 export const findKey = (
@@ -66,3 +66,71 @@ export const entries = Object.entries as <T>(
 export const values = Object.values as <T>(
   object: T
 ) => T extends ArrayLike<infer U> ? U[] : T[keyof T][];
+
+export const isEqual = (a: unknown, b: unknown): boolean => {
+  const getType = (input: unknown): string => {
+    return Object.prototype.toString.call(input).slice(8, -1).toLowerCase();
+  };
+
+  const areArraysEqual = (a: unknown[], b: unknown[]): boolean => {
+    if (a.length !== b.length) {
+      return false;
+    }
+
+    for (let i = 0; i < a.length; i++) {
+      if (!isEqual(a[i], b[i])) {
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  const areObjectsEqual = (
+    a: Record<string, any>,
+    b: Record<string, any>
+  ): boolean => {
+    if (Object.keys(a).length !== Object.keys(b).length) {
+      return false;
+    }
+
+    for (const key in a) {
+      if (
+        Object.prototype.hasOwnProperty.call(a, key) &&
+        !isEqual(a[key], b[key])
+      ) {
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  const areFunctionsEqual = (a: Function, b: Function): boolean => {
+    return a.toString() === b.toString();
+  };
+
+  const arePrimativesEqual = (a: unknown, b: unknown): boolean => a === b;
+
+  // Get the object type
+  const type = getType(a);
+
+  // If the two items are not the same type, return false
+  if (type !== getType(b)) {
+    return false;
+  }
+
+  // Compare based on type
+  if (isArray(a) && isArray(b)) {
+    return areArraysEqual(a, b);
+  }
+  if (isObject(a) && isObject(b)) {
+    return areObjectsEqual(a, b);
+  }
+  if (typeof a === "function" && typeof b === "function") {
+    return areFunctionsEqual(a, b);
+  }
+  return arePrimativesEqual(a, b);
+};

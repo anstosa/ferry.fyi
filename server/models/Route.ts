@@ -1,5 +1,5 @@
 import { CacheableModel } from "./CacheableModel";
-import { Route as RouteClass } from "shared/models/routes";
+import { Route as RouteClass } from "shared/contracts/routes";
 import { Terminal } from "./Terminal";
 import { values } from "shared/lib/objects";
 import { without } from "shared/lib/arrays";

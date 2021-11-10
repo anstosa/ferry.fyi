@@ -3,7 +3,7 @@ import {
   Camera as CameraClass,
   CameraImage,
   MapPoint,
-} from "shared/models/cameras";
+} from "shared/contracts/cameras";
 import { isKeyof, values } from "shared/lib/objects";
 import { isNull } from "shared/lib/identity";
 import CAMERA_DATA_OVERRIDES from "shared/data/cameras.json";

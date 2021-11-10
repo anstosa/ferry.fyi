@@ -1,4 +1,4 @@
-import { CrossingEstimate } from "shared/models/schedules";
+import { CrossingEstimate } from "shared/contracts/schedules";
 import { DateTime } from "luxon";
 import { findWhere, isEmpty } from "shared/lib/arrays";
 import { isNil } from "shared/lib/identity";

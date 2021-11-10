@@ -1,6 +1,5 @@
-import { entries } from "../../shared/lib/objects";
+import { entries, isObject } from "shared/lib/objects";
 import { isNull } from "shared/lib/identity";
-import { isObject } from "shared/lib/objects";
 
 const cache: Record<string, Record<string, any>> = {};
 

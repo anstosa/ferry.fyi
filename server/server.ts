@@ -2,12 +2,14 @@ import { createJob } from "~/lib/jobs";
 import { DateTime } from "luxon";
 import { dbInit } from "~/lib/db";
 import { entries } from "shared/lib/objects";
-import { Schedule } from "./models/Schedule";
+import { Schedule } from "~/models/Schedule";
+import { sendNotFound, sendResponse } from "~/lib/api";
 import { Terminal } from "~/models/Terminal";
-import { Terminal as TerminalClass } from "shared/models/terminals";
+import { Terminal as TerminalClass } from "shared/contracts/terminals";
 import { toWsfDate } from "./lib/wsf/date";
 import { updateLong, updateShort } from "~/lib/wsf";
 import { Vessel } from "~/models/Vessel";
+import { Vessel as VesselClass } from "shared/contracts/vessels";
 import bodyParser from "koa-bodyparser";
 import compress from "koa-compress";
 import fs from "fs";
@@ -36,17 +38,20 @@ const router = new Router();
 
 // vessels
 router.get("/vessels", async (context) => {
-  context.body = await Vessel.getAll();
+  const vessels = await Vessel.getAll();
+  const results: Record<string, VesselClass> = {};
+  entries(vessels).forEach(([key, vessel]) => {
+    results[key] = vessel.serialize();
+  });
+  sendResponse(context, results);
 });
 router.get("/vessels/:vesselId", async (context) => {
   const { vesselId } = context.params;
   const vessel = await Vessel.getByIndex(vesselId);
   if (vessel) {
-    // eslint-disable-next-line require-atomic-updates
-    context.body = vessel.serialize();
+    sendResponse(context, vessel.serialize());
   } else {
-    // eslint-disable-next-line require-atomic-updates
-    context.status = 404;
+    sendNotFound(context);
   }
 });
 
@@ -57,17 +62,15 @@ router.get("/terminals", async (context) => {
   entries(terminals).forEach(([key, terminal]) => {
     results[key] = terminal.serialize();
   });
-  context.body = results;
+  sendResponse(context, results);
 });
 router.get("/terminals/:terminalId", async (context) => {
   const { terminalId } = context.params;
   const terminal = await Terminal.getByIndex(terminalId);
   if (terminal) {
-    // eslint-disable-next-line require-atomic-updates
-    context.body = terminal.serialize();
+    sendResponse(context, terminal.serialize());
   } else {
-    // eslint-disable-next-line require-atomic-updates
-    context.status = 404;
+    sendNotFound(context);
   }
 });
 
@@ -78,14 +81,12 @@ router.get("/schedule/:departingId/:arrivingId", async (context) => {
     Schedule.generateKey(departingId, arrivingId, toWsfDate())
   );
   if (schedule) {
-    // eslint-disable-next-line require-atomic-updates
-    context.body = {
+    sendResponse(context, {
       schedule: schedule.serialize(),
       timestamp: DateTime.local().toSeconds(),
-    };
+    });
   } else {
-    // eslint-disable-next-line require-atomic-updates
-    context.status = 404;
+    sendNotFound(context);
   }
 });
 

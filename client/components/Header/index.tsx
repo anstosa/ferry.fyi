@@ -1,9 +1,9 @@
 import { getSlug, getTerminals } from "~/lib/terminals";
-import { isOnline } from "~/lib/api";
 import { Link } from "react-router-dom";
 import { Menu } from "~/components/Menu";
 import { ReloadButton } from "~/components/ReloadButton";
 import { TerminalDropdown } from "./TerminalDropdown";
+import { useOnline, useWSF } from "~/lib/api";
 import ArrowRightIcon from "~/images/icons/solid/arrow-right.svg";
 import clsx from "clsx";
 import DirectionsIcon from "~/images/icons/solid/directions.svg";
@@ -12,7 +12,7 @@ import MenuIcon from "~/images/icons/solid/bars.svg";
 import OfflineIcon from "~/images/icons/solid/signal-alt-slash.svg";
 import React, { FC, ReactNode, useEffect, useState } from "react";
 import ReactGA from "react-ga";
-import type { Terminal } from "shared/models/terminals";
+import type { Terminal } from "shared/contracts/terminals";
 
 const WrapHeader: FC = ({ children }) => (
   <header
@@ -45,6 +45,8 @@ export const Header: FC<Props> = (props) => {
   const [isMateOpen, setMateOpen] = useState<boolean>(false);
   const [isSwapHovering, setSwapHovering] = useState<boolean>(false);
   const [terminals, setTerminals] = useState<Terminal[]>([]);
+  const isOnline = useOnline();
+  const isWsfOffline = useWSF().offline;
 
   const fetchTerminals = async (): Promise<void> => {
     setTerminals(await getTerminals());
@@ -140,10 +142,18 @@ export const Header: FC<Props> = (props) => {
   };
 
   const renderReload = (): ReactNode => {
-    if (!isOnline()) {
+    if (!isOnline) {
       return (
-        <div className="font-bold text-red-dark bg-white rounded p-2">
+        <div className="font-bold text-red-dark bg-white rounded p-2 whitespace-nowrap">
           Offline
+          <OfflineIcon className="inline-block ml-2" />
+        </div>
+      );
+    }
+    if (isWsfOffline) {
+      return (
+        <div className="font-bold text-yellow-dark bg-white rounded p-2 whitespace-nowrap">
+          WSF Down
           <OfflineIcon className="inline-block ml-2" />
         </div>
       );

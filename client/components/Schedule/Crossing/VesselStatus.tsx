@@ -4,7 +4,7 @@ import { knotsToMph } from "~/lib/speed";
 import { locationToUrl } from "~/lib/maps";
 import clsx from "clsx";
 import React, { ReactElement } from "react";
-import type { Vessel } from "shared/models/vessels";
+import type { Vessel } from "shared/contracts/vessels";
 
 interface Props {
   className?: string;

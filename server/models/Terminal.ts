@@ -4,7 +4,7 @@ import {
   TerminalInfo,
   TerminalLocation,
   WaitTime,
-} from "shared/models/terminals";
+} from "shared/contracts/terminals";
 import { CacheableModel } from "./CacheableModel";
 import { Camera } from "~/models/Camera";
 import { isKeyof } from "shared/lib/objects";

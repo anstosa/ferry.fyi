@@ -6,9 +6,9 @@ import {
 } from "./Schedule/Alerts";
 import { Cameras } from "./Schedule/Cameras";
 import { DateTime } from "luxon";
-import { isOnline } from "~/lib/api";
 import { motion } from "framer-motion";
 import { ReloadButton } from "~/components/ReloadButton";
+import { useOnline } from "~/lib/api";
 import ChevronDownIcon from "~/images/icons/solid/chevron-down.svg";
 import clsx from "clsx";
 import MapIcon from "~/images/icons/solid/map-marked.svg";
@@ -16,7 +16,7 @@ import React, { FC, ReactElement, ReactNode, useState } from "react";
 import ReactGA from "react-ga";
 import VideoIcon from "~/images/icons/solid/cctv.svg";
 import WarningIcon from "~/images/icons/solid/exclamation-triangle.svg";
-import type { Terminal } from "shared/models/terminals";
+import type { Terminal } from "shared/contracts/terminals";
 
 interface WrapFooterProps {
   isOpen: boolean;
@@ -69,6 +69,7 @@ export const Footer = ({ onChange, terminal, time }: Props): ReactElement => {
   const [isOpen, setOpen] = useState<boolean>(false);
   const [tab, setTab] = useState<Tabs | null>(null);
   const [isReloading, setReloading] = useState<boolean>(false);
+  const isOnline = useOnline();
 
   const showCameras = !isOpen || tab === Tabs.cameras;
   const showAlerts = !isOpen || tab === Tabs.alerts;
@@ -107,7 +108,7 @@ export const Footer = ({ onChange, terminal, time }: Props): ReactElement => {
   };
 
   const renderToggleCameras = (): ReactElement | null => {
-    if (!isOnline()) {
+    if (!isOnline) {
       return null;
     }
     return (

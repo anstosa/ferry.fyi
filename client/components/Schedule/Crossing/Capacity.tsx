@@ -4,7 +4,7 @@ import clsx from "clsx";
 import DoNotEnterIcon from "~/images/icons/solid/do-not-enter.svg";
 import ExternalLinkIcon from "~/images/icons/solid/external-link-square.svg";
 import React, { ReactElement, useEffect, useState } from "react";
-import type { Slot } from "shared/models/schedules";
+import type { Slot } from "shared/contracts/schedules";
 
 const RESERVATIONS_BASE_URL =
   "https://secureapps.wsdot.wa.gov/Ferries/Reservations/Vehicle/SailingSchedule.aspx?VRSTermId=";

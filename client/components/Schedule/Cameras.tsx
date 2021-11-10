@@ -14,8 +14,8 @@ import React, {
   useRef,
   useState,
 } from "react";
-import type { Camera } from "shared/models/cameras";
-import type { Terminal } from "shared/models/terminals";
+import type { Camera } from "shared/contracts/cameras";
+import type { Terminal } from "shared/contracts/terminals";
 
 interface Props {
   cameraTime: number;

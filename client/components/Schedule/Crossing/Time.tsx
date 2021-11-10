@@ -2,7 +2,7 @@ import { DateTime, Duration } from "luxon";
 import { round } from "shared/lib/math";
 import clsx from "clsx";
 import React, { ReactElement } from "react";
-import type { Slot } from "shared/models/schedules";
+import type { Slot } from "shared/contracts/schedules";
 
 interface Props {
   slot: Slot;

@@ -1,19 +1,20 @@
 import { DateTime } from "luxon";
-import { findWhere, isArray, isEmpty } from "shared/lib/arrays";
+import { findWhere, isEmpty } from "shared/lib/arrays";
 import { Footer } from "~/components/Footer";
 import { getSchedule } from "~/lib/schedule";
 import { getSlug, getTerminal } from "~/lib/terminals";
 import { Header } from "~/components/Header";
-import { Route } from "shared/models/routes";
+import { Route } from "shared/contracts/routes";
 import { SlotInfo } from "./Crossing/SlotInfo";
 import { Splash } from "~/components/Splash";
 import { useHistory, useLocation, useParams } from "react-router-dom";
 import { values } from "shared/lib/objects";
 import clsx from "clsx";
+import IslandIcon from "~/images/icons/solid/island-tropical.svg";
 import React, { ReactElement, useEffect, useState } from "react";
 import scrollIntoView from "scroll-into-view";
-import type { Slot } from "shared/models/schedules";
-import type { Terminal } from "shared/models/terminals";
+import type { Slot } from "shared/contracts/schedules";
+import type { Terminal } from "shared/contracts/terminals";
 
 interface Params {
   terminalSlug: string;
@@ -132,6 +133,20 @@ export const Schedule = (): ReactElement => {
     if (!slots) {
       return null;
     }
+    if (isEmpty(slots)) {
+      return (
+        <div
+          className={clsx(
+            "absolute inset-0",
+            "bg-blue-lightest text-gray-500",
+            "flex justify-center items-center"
+          )}
+        >
+          No sailings scheduled
+          <IslandIcon className="text-2xl ml-4" />
+        </div>
+      );
+    }
     const currentSlot = findWhere(slots, { hasPassed: false });
     const sailings = slots.map((slot) => {
       const { time: slotTime } = slot;
@@ -161,12 +176,8 @@ export const Schedule = (): ReactElement => {
     return <ul>{sailings}</ul>;
   };
 
-  if (!terminal || !mate || isEmpty(slots)) {
-    let message: string | undefined;
-    if (isArray(slots)) {
-      message = "Ferry FYI just updated! Fetching data from WSF...";
-    }
-    return <Splash>{message}</Splash>;
+  if (!terminal || !mate) {
+    return <Splash />;
   }
 
   return (
@@ -181,6 +192,7 @@ export const Schedule = (): ReactElement => {
       <main
         className={clsx(
           "w-full max-h-full",
+          "relative",
           "flex-grow flex-shrink",
           "flex flex-col items-center",
           "pr-safe-right pl-safe-left",

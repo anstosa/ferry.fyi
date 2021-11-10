@@ -3,14 +3,14 @@ import { DateTime } from "luxon";
 import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { findWhere } from "shared/lib/arrays";
 import { isNull } from "shared/lib/identity";
-import { Route } from "shared/models/routes";
+import { Route } from "shared/contracts/routes";
 import { Status } from "./Status";
 import { Time } from "./Time";
 import { VesselStatus } from "./VesselStatus";
 import { VesselTag } from "~/components/VesselTag";
 import clsx from "clsx";
 import React, { ReactElement, ReactNode, useEffect, useRef } from "react";
-import type { Slot } from "shared/models/schedules";
+import type { Slot } from "shared/contracts/schedules";
 
 interface Props {
   slot: Slot;

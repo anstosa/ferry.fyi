@@ -4,7 +4,7 @@ import { Order, sortBy } from "shared/lib/arrays";
 import { round } from "shared/lib/math";
 import clsx from "clsx";
 import React, { ReactElement, ReactNode } from "react";
-import type { Bulletin, Terminal } from "shared/models/terminals";
+import type { Bulletin, Terminal } from "shared/contracts/terminals";
 
 const ALERT_FILTER = new RegExp(
   `(${[

@@ -1,4 +1,4 @@
-import { Crossing as CrossingType } from "shared/models/schedules";
+import { Crossing as CrossingType } from "shared/contracts/schedules";
 import { DataTypes, Model } from "sequelize";
 import { DateTime } from "luxon";
 import { db } from "~/lib/db";

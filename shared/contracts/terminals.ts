@@ -1,5 +1,5 @@
 import { Camera } from "./cameras";
-import { Route } from "shared/models/routes";
+import { Route } from "./routes";
 
 export interface Address {
   line1?: string;

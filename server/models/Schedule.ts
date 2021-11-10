@@ -1,7 +1,7 @@
 import { CacheableModel } from "./CacheableModel";
 import { entries } from "shared/lib/objects";
 import { keyBy } from "shared/lib/arrays";
-import { Schedule as ScheduleClass, Slot } from "shared/models/schedules";
+import { Schedule as ScheduleClass, Slot } from "shared/contracts/schedules";
 import Crossing from "~/models/Crossing";
 
 interface ServerSlot extends Slot {
