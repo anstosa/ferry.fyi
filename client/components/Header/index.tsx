@@ -7,6 +7,7 @@ import { useOnline, useWSF } from "~/lib/api";
 import ArrowRightIcon from "~/images/icons/solid/arrow-right.svg";
 import clsx from "clsx";
 import DirectionsIcon from "~/images/icons/solid/directions.svg";
+import DumpsterFireIcon from "~/images/icons/solid/dumpster-fire.svg";
 import ExchangeIcon from "~/images/icons/solid/exchange.svg";
 import MenuIcon from "~/images/icons/solid/bars.svg";
 import OfflineIcon from "~/images/icons/solid/signal-alt-slash.svg";
@@ -146,7 +147,7 @@ export const Header: FC<Props> = (props) => {
       return (
         <div className="font-bold text-red-dark bg-white rounded p-2 whitespace-nowrap">
           Offline
-          <OfflineIcon className="inline-block ml-2" />
+          <DumpsterFireIcon className="inline-block ml-2" />
         </div>
       );
     }
