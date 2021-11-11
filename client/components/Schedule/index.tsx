@@ -138,7 +138,7 @@ export const Schedule = (): ReactElement => {
         <div
           className={clsx(
             "absolute inset-0",
-            "bg-blue-lightest text-gray-500",
+            "bg-blue-lightest dark:bg-gray-darkest text-gray-500",
             "flex justify-center items-center"
           )}
         >
