@@ -243,9 +243,11 @@ export const Capacity = ({ slot }: Props): ReactElement | null => {
           className={clsx(
             "absolute w-0 top-0 left-0 h-full",
             // eslint-disable-next-line no-nested-ternary
-            hasPassed
-              ? "bg-darken-lower dark:bg-lighten-lower"
-              : "bg-blue-light dark:bg-blue-dark"
+            {
+              "bg-darken-lower dark:bg-lighten-lower": hasPassed && !isFull(),
+              "bg-full dark:bg-full--dark": hasPassed && isFull(),
+              "bg-blue-light dark:bg-blue-dark": !hasPassed,
+            }
           )}
           style={{ width: `${percentFull}%` }}
         >

@@ -90,7 +90,6 @@ export const Header: FunctionComponent<Props> = (props) => {
     });
     if (closestTerminal) {
       setClosestTerminal(closestTerminal);
-      console.debug(closestTerminal);
     }
   }, [location, terminals]);
 
@@ -214,7 +213,7 @@ export const Header: FunctionComponent<Props> = (props) => {
   };
 
   return (
-    <AnimatePresence>
+    <>
       <div className="w-full h-safe-top" />
       <div
         className={clsx(
@@ -241,37 +240,39 @@ export const Header: FunctionComponent<Props> = (props) => {
         <div className="flex-grow" />
         {renderReload()}
       </WrapHeader>
-      {!isNull(closestTerminal) &&
-        closestTerminal.id !== terminal.id &&
-        !closestDismissed && (
-          <Alert info>
-            Looks like your closest terminal is {closestTerminal.name}.
-            <div className="button-group mt-5">
-              <Link
-                className={clsx(
-                  "button button-group-left",
-                  "truncate",
-                  "bg-blue-dark border-transparent text-white",
-                  "hover:bg-blue-darkest"
-                )}
-                to={`/${getSlug(closestTerminal.id)}`}
-              >
-                <ApproveIcon />
-                Switch to {closestTerminal?.name}
-              </Link>
-              <button
-                className="button button-group-right truncate"
-                onClick={() => setClosestDismissed(true)}
-              >
-                <RejectIcon />
-                Stay on {terminal.name}
-              </button>
-            </div>
-          </Alert>
-        )}
+      <AnimatePresence>
+        {!isNull(closestTerminal) &&
+          closestTerminal.id !== terminal.id &&
+          !closestDismissed && (
+            <Alert info>
+              Looks like your closest terminal is {closestTerminal.name}.
+              <div className="button-group mt-5">
+                <Link
+                  className={clsx(
+                    "button button-group-left",
+                    "truncate",
+                    "bg-blue-dark border-transparent text-white",
+                    "hover:bg-blue-darkest"
+                  )}
+                  to={`/${getSlug(closestTerminal.id)}`}
+                >
+                  <ApproveIcon />
+                  Switch to {closestTerminal?.name}
+                </Link>
+                <button
+                  className="button button-group-right truncate"
+                  onClick={() => setClosestDismissed(true)}
+                >
+                  <RejectIcon />
+                  Stay on {terminal.name}
+                </button>
+              </div>
+            </Alert>
+          )}
+      </AnimatePresence>
       <div
         className={clsx("h-16 w-full flex-shrink-0", "bg-white dark:bg-black")}
       />
-    </AnimatePresence>
+    </>
   );
 };

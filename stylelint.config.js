@@ -20,6 +20,7 @@ module.exports = {
           "screen",
           "tailwind",
           "utilities",
+          "variants",
         ],
       },
     ],

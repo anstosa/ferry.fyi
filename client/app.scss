@@ -11,20 +11,68 @@ html {
   font-family: "Roboto", sans-serif;
 }
 
-.bg-prediction-gradient {
-  background: linear-gradient(
-    to left,
-    theme("colors.darken.lowest"),
-    transparent theme("spacing.20")
-  );
+@keyframes loading {
+  from { background-position: 0; }
+  to { background-position: 100%; }
 }
 
-.bg-prediction-gradient--dark {
-  background: linear-gradient(
-    to left,
-    theme("colors.lighten.lower"),
-    transparent theme("spacing.20")
-  );
+@variants dark {
+  .bg-prediction-gradient {
+    background: linear-gradient(
+      to left,
+      theme("colors.darken.lowest"),
+      transparent theme("spacing.20")
+    );
+  }
+
+  .bg-prediction-gradient--dark {
+    background: linear-gradient(
+      to left,
+      theme("colors.lighten.lower"),
+      transparent theme("spacing.20")
+    );
+  }
+
+  .bg-full {
+    background: repeating-linear-gradient(
+      135deg,
+      theme("colors.darken.lower"),
+      theme("colors.darken.lower") 10px,
+      theme("colors.darken.lowest") 10px,
+      theme("colors.darken.lowest") 20px,
+    );
+  }
+
+  .bg-full--dark {
+    background: repeating-linear-gradient(
+      135deg,
+      theme("colors.lighten.lower"),
+      theme("colors.lighten.lower") 10px,
+      theme("colors.lighten.lowest") 10px,
+      theme("colors.lighten.lowest") 20px,
+    );
+  }
+
+  .bg-loading {
+    animation: 10s linear infinte loading;
+    background: linear-gradient(
+      to right,
+      theme("colors.blue.light"),
+      theme("colors.blue.light") 100px,
+      theme("colors.blue.300") 120px,
+      theme("colors.blue.light") 140px,
+    );
+
+    &--dark {
+      background: linear-gradient(
+        to right,
+        theme("colors.blue.dark"),
+        theme("colors.blue.dark") 50px,
+        theme("colors.blue.medium") 100px,
+        theme("colors.blue.dark") 150px,
+      );
+    }
+  }
 }
 
 // Components
