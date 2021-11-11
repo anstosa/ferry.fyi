@@ -1,7 +1,7 @@
 import { CrossingEstimate } from "shared/contracts/schedules";
 import { DateTime } from "luxon";
 import { findWhere, isEmpty } from "shared/lib/arrays";
-import { isNil } from "shared/lib/identity";
+import { isNull } from "shared/lib/identity";
 import { mean, round } from "shared/lib/math";
 import { Op } from "sequelize";
 import { Schedule } from "~/models/Schedule";
@@ -46,17 +46,21 @@ export const updateEstimates = async (): Promise<void> => {
             continue;
           }
           const { driveUpCapacity, reservableCapacity } = crossing;
-          data.driveUpCapacity.push(driveUpCapacity);
-          data.reservableCapacity.push(reservableCapacity);
+          if (typeof driveUpCapacity === "number") {
+            data.driveUpCapacity.push(driveUpCapacity);
+          }
+          if (typeof reservableCapacity === "number") {
+            data.reservableCapacity.push(reservableCapacity);
+          }
         }
 
         const estimate: CrossingEstimate = {
-          reservableCapacity: round(
-            mean(data.reservableCapacity.filter(Boolean))
-          ),
-          driveUpCapacity: round(
-            mean(data.driveUpCapacity.filter(Boolean)) * (previousOffset ?? 1)
-          ),
+          reservableCapacity: isEmpty(data.reservableCapacity)
+            ? null
+            : round(mean(data.reservableCapacity)),
+          driveUpCapacity: isEmpty(data.driveUpCapacity)
+            ? 0
+            : round(mean(data.driveUpCapacity) * (previousOffset ?? 1)),
         };
 
         let estimatedTotal: number | null = null;
@@ -77,7 +81,7 @@ export const updateEstimates = async (): Promise<void> => {
             crossingData.driveUpCapacity +
             (estimate.reservableCapacity ?? 0);
         }
-        if (!isNil(estimatedTotal) && !isNil(actualTotal)) {
+        if (!isNull(estimatedTotal) && !isNull(actualTotal)) {
           previousOffset = estimatedTotal / actualTotal;
         }
         slot.estimate = estimate;
