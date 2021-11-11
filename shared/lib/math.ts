@@ -8,3 +8,7 @@ export const mean = (input: number[]): number => {
   input.forEach((number) => (sum += number));
   return sum / input.length;
 };
+
+export const constrain = (input: number, min: number, max: number): number => {
+  return Math.min(Math.max(input, min), max);
+};
