@@ -9,7 +9,6 @@ import { Menu } from "~/components/Menu";
 import { ReloadButton } from "~/components/ReloadButton";
 import { TerminalDropdown } from "./TerminalDropdown";
 import { useOnline, useWSF } from "~/lib/api";
-import ApproveIcon from "~/images/icons/solid/check.svg";
 import ArrowRightIcon from "~/images/icons/solid/arrow-right.svg";
 import clsx from "clsx";
 import DirectionsIcon from "~/images/icons/solid/directions.svg";
@@ -24,7 +23,6 @@ import React, {
   useState,
 } from "react";
 import ReactGA from "react-ga";
-import RejectIcon from "~/images/icons/solid/times.svg";
 import type { Terminal } from "shared/contracts/terminals";
 
 const WrapHeader: FunctionComponent = ({ children }) => (
@@ -257,14 +255,12 @@ export const Header: FunctionComponent<Props> = (props) => {
                   )}
                   to={`/${getSlug(closestTerminal.id)}`}
                 >
-                  <ApproveIcon className="mr-5" />
                   Switch to {closestTerminal?.name}
                 </Link>
                 <button
                   className="button button-group-right truncate"
                   onClick={() => setClosestDismissed(true)}
                 >
-                  <RejectIcon className="mr-5" />
                   Stay on {terminal.name}
                 </button>
               </div>
