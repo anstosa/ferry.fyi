@@ -5,9 +5,10 @@ import { getSchedule } from "~/lib/schedule";
 import { getSlug, getTerminal } from "~/lib/terminals";
 import { Header } from "~/components/Header";
 import { Route } from "shared/contracts/routes";
+import { RouteSelector } from "~/components/RouteSelector";
 import { SlotInfo } from "./Crossing/SlotInfo";
 import { Splash } from "~/components/Splash";
-import { useHistory, useLocation, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { values } from "shared/lib/objects";
 import clsx from "clsx";
 import IslandIcon from "~/images/icons/solid/island-tropical.svg";
@@ -16,15 +17,18 @@ import scrollIntoView from "scroll-into-view";
 import type { Slot } from "shared/contracts/schedules";
 import type { Terminal } from "shared/contracts/terminals";
 
-interface Params {
-  terminalSlug: string;
-  mateSlug?: string;
+interface Props {
+  onTerminalChange: (terminal: Terminal | null) => void;
+  onMateChange: (mate: Terminal | null) => void;
 }
 
-export const Schedule = (): ReactElement => {
-  const { terminalSlug, mateSlug } = useParams<Params>();
+export const Schedule = ({
+  onTerminalChange,
+  onMateChange,
+}: Props): ReactElement => {
+  const { terminalSlug, mateSlug } = useParams();
   const { pathname } = useLocation();
-  const history = useHistory();
+  const navigate = useNavigate();
   const [hasScrolled, setScrolled] = useState<boolean>(false);
   const [currentElement, setCurrentElement] = useState<HTMLDivElement | null>(
     null
@@ -54,12 +58,22 @@ export const Schedule = (): ReactElement => {
   };
 
   useEffect(() => {
-    setRoute(terminalSlug, mateSlug);
+    if (terminalSlug) {
+      setRoute(terminalSlug, mateSlug);
+    }
   }, [terminalSlug, mateSlug]);
 
   useEffect(() => {
     updateSchedule();
   }, [terminal, mate]);
+
+  useEffect(() => {
+    onTerminalChange(terminal);
+  }, [terminal]);
+
+  useEffect(() => {
+    onMateChange(mate);
+  }, [mate]);
 
   useEffect(() => {
     if (!hasScrolled && currentElement) {
@@ -100,7 +114,7 @@ export const Schedule = (): ReactElement => {
     }
 
     if (pathname !== path) {
-      history.push(path);
+      navigate(path);
     }
     setSlots(null);
     setScrolled(false);
@@ -182,13 +196,13 @@ export const Schedule = (): ReactElement => {
 
   return (
     <>
-      <Header
-        terminal={terminal}
-        mate={mate}
-        setRoute={setRoute}
-        reload={updateSchedule}
-        isReloading={isUpdating}
-      />
+      <Header reload={updateSchedule} isReloading={isUpdating}>
+        {terminal ? (
+          <RouteSelector terminal={terminal} mate={mate} setRoute={setRoute} />
+        ) : (
+          "Ferry FYI"
+        )}
+      </Header>
       <main
         className={clsx(
           "w-full max-h-full",

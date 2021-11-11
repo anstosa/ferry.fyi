@@ -12,7 +12,12 @@ import { useOnline } from "~/lib/api";
 import ChevronDownIcon from "~/images/icons/solid/chevron-down.svg";
 import clsx from "clsx";
 import MapIcon from "~/images/icons/solid/map-marked.svg";
-import React, { FC, ReactElement, ReactNode, useState } from "react";
+import React, {
+  FunctionComponent,
+  ReactElement,
+  ReactNode,
+  useState,
+} from "react";
 import ReactGA from "react-ga";
 import VideoIcon from "~/images/icons/solid/cctv.svg";
 import WarningIcon from "~/images/icons/solid/exclamation-triangle.svg";
@@ -22,7 +27,10 @@ interface WrapFooterProps {
   isOpen: boolean;
 }
 
-const WrapFooter: FC<WrapFooterProps> = ({ isOpen = false, children }) => (
+const WrapFooter: FunctionComponent<WrapFooterProps> = ({
+  isOpen = false,
+  children,
+}) => (
   <motion.footer
     initial={{ top: "calc(100% - 4rem)" }}
     animate={{ top: isOpen ? 0 : "calc(100% - 4rem)" }}

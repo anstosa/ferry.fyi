@@ -1,5 +1,5 @@
 declare module "*.svg" {
-  import React from "react";
-  const GooglePlayIcon: React.FC<React.SVGAttributes<SVGElement>>;
+  import { FunctionComponent, SVGAttributes } from "react";
+  const GooglePlayIcon: FunctionComponent<SVGAttributes<SVGElement>>;
   export default GooglePlayIcon;
 }

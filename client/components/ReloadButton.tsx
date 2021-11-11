@@ -1,6 +1,11 @@
 import { motion } from "framer-motion";
 import clsx from "clsx";
-import React, { FC, ReactElement, useEffect, useState } from "react";
+import React, {
+  FunctionComponent,
+  ReactElement,
+  useEffect,
+  useState,
+} from "react";
 import ReloadIcon from "~/images/icons/solid/redo.svg";
 
 interface SpinWrapperProps {
@@ -11,7 +16,10 @@ interface SpinWrapperProps {
  * Wrap the button in a component that animates it
  * 360 degree spin and makes sure that it completes the current rotation before stopping
  **/
-const SpinWrapper: FC<SpinWrapperProps> = ({ children, isLoading }) => {
+const SpinWrapper: FunctionComponent<SpinWrapperProps> = ({
+  children,
+  isLoading,
+}) => {
   const [isLastSpin, setLastSpin] = useState(false);
   const [isSpinning, setSpinning] = useState<boolean>(false);
   const [spinInterval, setSpinInterval] = useState<number | null>(null);
@@ -45,7 +53,6 @@ const SpinWrapper: FC<SpinWrapperProps> = ({ children, isLoading }) => {
   if (isSpinning) {
     return (
       <motion.div
-        className="ml-4"
         initial={{ transform: "rotate(0deg)" }}
         animate={{ transform: "rotate(360deg)" }}
         transition={{
@@ -58,7 +65,7 @@ const SpinWrapper: FC<SpinWrapperProps> = ({ children, isLoading }) => {
       </motion.div>
     );
   } else {
-    return <div className="ml-4">{children}</div>;
+    return <>children</>;
   }
 };
 

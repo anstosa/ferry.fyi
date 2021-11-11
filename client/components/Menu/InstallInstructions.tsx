@@ -32,7 +32,7 @@ export const InstallInstructions = (): ReactElement | null => {
           <InstallStep>
             <SafariIcon />
           </InstallStep>
-          Safari
+          Open in Safari
         </li>
         <li>
           <InstallStep>
@@ -60,7 +60,6 @@ export const InstallInstructions = (): ReactElement | null => {
         </button>
         <a
           href="https://play.google.com/store/apps/details?id=fyi.ferry"
-          target="blank"
           className={clsx("button button-invert", "flex-grow ml-4")}
         >
           <GooglePlayIcon className="inline-block button-icon text-2xl" />
@@ -71,10 +70,10 @@ export const InstallInstructions = (): ReactElement | null => {
   }
 
   return (
-    <>
+    <div className="mb-4">
       <h2 className="font-bold text-lg mt-8">Install App</h2>
       <div className="mt-2">Want to install Ferry FYI as an app?</div>
       {steps}
-    </>
+    </div>
   );
 };
