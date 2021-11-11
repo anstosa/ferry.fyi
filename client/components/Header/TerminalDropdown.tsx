@@ -8,7 +8,7 @@ import clsx from "clsx";
 import React, { MouseEvent, ReactElement } from "react";
 import type { Terminal } from "shared/contracts/terminals";
 
-const ABBREVIATION_BREAKPOINT = 400;
+const ABBREVIATION_BREAKPOINT = 350;
 
 interface Props {
   terminals: Terminal[];

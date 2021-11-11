@@ -88,7 +88,6 @@ export const Header: FunctionComponent<Props> = (props) => {
         closestDistance = distance;
         closestTerminal = terminal;
       }
-      console.debug(`${terminal.name} is ${distance}mi away`);
     });
     if (closestTerminal) {
       setClosestTerminal(closestTerminal);
