@@ -37,8 +37,8 @@ export interface TerminalInfo {
 
 export interface TerminalLocation {
   link?: string;
-  latitude?: number;
-  longitude?: number;
+  latitude: number;
+  longitude: number;
   address: Address;
 }
 export interface Terminal {

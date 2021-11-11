@@ -95,6 +95,9 @@
   }
 
   &-group {
+    @apply flex;
+    @apply flex-nowrap;
+
     &-left {
       @apply rounded-r-none;
     }

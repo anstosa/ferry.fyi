@@ -1,20 +1,31 @@
 .alert {
   @apply bg-gray-light;
-  @apply my-4;
-  @apply p-4;
-  @apply rounded;
+  @apply py-10;
+  @apply px-4;
+  @apply shadow-lg;
   @apply w-full;
 
-  &-info {
+  &--info {
     @apply bg-blue-light;
+
+    .alert__close {
+      @apply text-blue-dark;
+    }
   }
 
-  &-warning {
+  &--warning {
     @apply bg-yellow-light;
+
+    .alert__close {
+      @apply text-yellow-dark;
+    }
   }
 
-  &-error {
+  &--error {
     @apply bg-red-light;
-    @apply text-white;
+
+    .alert__close {
+      @apply text-red-dark;
+    }
   }
 }

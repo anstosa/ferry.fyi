@@ -1,9 +1,15 @@
+import { Alert } from "../Alert";
+import { AnimatePresence } from "framer-motion";
+import { getDistance, useGeo } from "~/lib/geo";
 import { getSlug, getTerminals } from "~/lib/terminals";
+import { isEmpty } from "../../../shared/lib/arrays";
+import { isNull } from "shared/lib/identity";
 import { Link } from "react-router-dom";
 import { Menu } from "~/components/Menu";
 import { ReloadButton } from "~/components/ReloadButton";
 import { TerminalDropdown } from "./TerminalDropdown";
 import { useOnline, useWSF } from "~/lib/api";
+import ApproveIcon from "~/images/icons/solid/check.svg";
 import ArrowRightIcon from "~/images/icons/solid/arrow-right.svg";
 import clsx from "clsx";
 import DirectionsIcon from "~/images/icons/solid/directions.svg";
@@ -11,11 +17,17 @@ import DumpsterFireIcon from "~/images/icons/solid/dumpster-fire.svg";
 import ExchangeIcon from "~/images/icons/solid/exchange.svg";
 import MenuIcon from "~/images/icons/solid/bars.svg";
 import OfflineIcon from "~/images/icons/solid/signal-alt-slash.svg";
-import React, { FC, ReactNode, useEffect, useState } from "react";
+import React, {
+  FunctionComponent,
+  ReactNode,
+  useEffect,
+  useState,
+} from "react";
 import ReactGA from "react-ga";
+import RejectIcon from "~/images/icons/solid/times.svg";
 import type { Terminal } from "shared/contracts/terminals";
 
-const WrapHeader: FC = ({ children }) => (
+const WrapHeader: FunctionComponent = ({ children }) => (
   <header
     className={clsx(
       "fixed top-0 inset-x-0 z-20",
@@ -39,7 +51,7 @@ interface Props {
   terminal: Terminal;
 }
 
-export const Header: FC<Props> = (props) => {
+export const Header: FunctionComponent<Props> = (props) => {
   const { isReloading, mate, reload, terminal, setRoute } = props;
   const [isMenuOpen, setMenuOpen] = useState<boolean>(false);
   const [isTerminalOpen, setTerminalOpen] = useState<boolean>(false);
@@ -48,6 +60,9 @@ export const Header: FC<Props> = (props) => {
   const [terminals, setTerminals] = useState<Terminal[]>([]);
   const isOnline = useOnline();
   const isWsfOffline = useWSF().offline;
+  const location = useGeo();
+  const [closestTerminal, setClosestTerminal] = useState<Terminal | null>(null);
+  const [closestDismissed, setClosestDismissed] = useState<boolean>(false);
 
   const fetchTerminals = async (): Promise<void> => {
     setTerminals(await getTerminals());
@@ -56,6 +71,28 @@ export const Header: FC<Props> = (props) => {
   useEffect(() => {
     fetchTerminals();
   }, []);
+
+  useEffect(() => {
+    if (!location || isEmpty(terminals)) {
+      return;
+    }
+    let closestTerminal: Terminal | undefined;
+    const closestDistance: number = Infinity;
+    terminals.forEach((terminal) => {
+      const { latitude, longitude } = terminal.location;
+      if (!latitude || !longitude) {
+        return;
+      }
+      const distance = getDistance(location, { latitude, longitude });
+      if (distance < closestDistance) {
+        closestTerminal = terminal;
+      }
+    });
+    if (closestTerminal) {
+      setClosestTerminal(closestTerminal);
+      console.debug(closestTerminal);
+    }
+  }, [location, terminals]);
 
   if (!terminal) {
     return <WrapHeader>Ferry FYI</WrapHeader>;
@@ -177,7 +214,7 @@ export const Header: FC<Props> = (props) => {
   };
 
   return (
-    <>
+    <AnimatePresence>
       <div className="w-full h-safe-top" />
       <div
         className={clsx(
@@ -204,9 +241,37 @@ export const Header: FC<Props> = (props) => {
         <div className="flex-grow" />
         {renderReload()}
       </WrapHeader>
+      {!isNull(closestTerminal) &&
+        closestTerminal.id !== terminal.id &&
+        !closestDismissed && (
+          <Alert info>
+            Looks like your closest terminal is {closestTerminal.name}.
+            <div className="button-group mt-5">
+              <Link
+                className={clsx(
+                  "button button-group-left",
+                  "truncate",
+                  "bg-blue-dark border-transparent text-white",
+                  "hover:bg-blue-darkest"
+                )}
+                to={`/${getSlug(closestTerminal.id)}`}
+              >
+                <ApproveIcon />
+                Switch to {closestTerminal?.name}
+              </Link>
+              <button
+                className="button button-group-right truncate"
+                onClick={() => setClosestDismissed(true)}
+              >
+                <RejectIcon />
+                Stay on {terminal.name}
+              </button>
+            </div>
+          </Alert>
+        )}
       <div
         className={clsx("h-16 w-full flex-shrink-0", "bg-white dark:bg-black")}
       />
-    </>
+    </AnimatePresence>
   );
 };
