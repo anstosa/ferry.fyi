@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { getSlug } from "~/lib/terminals";
 import { Link } from "react-router-dom";
+import { Order, sortBy } from "shared/lib/arrays";
 import { useWindowSize } from "~/lib/window";
 import CaretDownIcon from "~/images/icons/solid/caret-down.svg";
 import CaretUpIcon from "~/images/icons/solid/caret-up.svg";
@@ -31,8 +32,10 @@ export const TerminalDropdown = (props: Props): ReactElement => {
       </span>
     );
   }
-  const otherTerminals = terminals.filter(
-    ({ id }) => id !== selectedTerminal.id
+  const otherTerminals = sortBy(
+    terminals.filter(({ id }) => id !== selectedTerminal.id),
+    "popularity",
+    Order.DESC
   );
   return (
     <div className="relative cursor-pointer min-w-0">

@@ -56,6 +56,7 @@ export interface Terminal {
   name: string;
   waitTimes: WaitTime[];
   mates?: Terminal[];
+  popularity: number;
   routes?: Record<string, Route>;
   vesselwatch?: string;
 }
