@@ -42,7 +42,7 @@ export const Status = ({ className, slot, time }: Props): ReactElement => {
       statusClass = clsx(statusClass, !hasPassed && color, "font-bold");
       scheduled = `Scheduled ${formattedScheduledTime}`;
     } else {
-      statusText = "On time";
+      statusText = "";
       statusClass = clsx(statusClass, !hasPassed && textGreen);
       if (Math.abs(diff.as("hours")) < 1) {
         scheduled = `Scheduled ${formattedScheduledTime}`;
