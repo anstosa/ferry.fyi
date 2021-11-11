@@ -77,7 +77,7 @@ export const Header: FunctionComponent<Props> = (props) => {
       return;
     }
     let closestTerminal: Terminal | undefined;
-    const closestDistance: number = Infinity;
+    let closestDistance: number = Infinity;
     terminals.forEach((terminal) => {
       const { latitude, longitude } = terminal.location;
       if (!latitude || !longitude) {
@@ -85,8 +85,10 @@ export const Header: FunctionComponent<Props> = (props) => {
       }
       const distance = getDistance(location, { latitude, longitude });
       if (distance < closestDistance) {
+        closestDistance = distance;
         closestTerminal = terminal;
       }
+      console.debug(`${terminal.name} is ${distance}mi away`);
     });
     if (closestTerminal) {
       setClosestTerminal(closestTerminal);
