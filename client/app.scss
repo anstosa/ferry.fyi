@@ -53,6 +53,26 @@ html {
     );
   }
 
+  .bg-loaded {
+    background: repeating-linear-gradient(
+      135deg,
+      theme("colors.blue.light"),
+      theme("colors.blue.light") 10px,
+      theme("colors.blue.lightest") 10px,
+      theme("colors.blue.lightest") 20px,
+    );
+  }
+
+  .bg-loaded--dark {
+    background: repeating-linear-gradient(
+      135deg,
+      theme("colors.blue.dark"),
+      theme("colors.blue.dark") 10px,
+      theme("colors.blue.darkest") 10px,
+      theme("colors.blue.darkest") 20px,
+    );
+  }
+
   .bg-loading {
     animation: 10s linear infinte loading;
     background: linear-gradient(

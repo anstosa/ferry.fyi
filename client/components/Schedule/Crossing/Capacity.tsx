@@ -246,7 +246,8 @@ export const Capacity = ({ slot }: Props): ReactElement | null => {
             {
               "bg-darken-lower dark:bg-lighten-lower": hasPassed && !isFull(),
               "bg-full dark:bg-full--dark": hasPassed && isFull(),
-              "bg-blue-light dark:bg-blue-dark": !hasPassed,
+              "bg-blue-light dark:bg-blue-dark": !hasPassed && !isFull(),
+              "bg-loaded dark:bg-loaded--dark": !hasPassed && isFull(),
             }
           )}
           style={{ width: `${percentFull}%` }}

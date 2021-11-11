@@ -256,14 +256,14 @@ export const Header: FunctionComponent<Props> = (props) => {
                   )}
                   to={`/${getSlug(closestTerminal.id)}`}
                 >
-                  <ApproveIcon />
+                  <ApproveIcon className="mr-5" />
                   Switch to {closestTerminal?.name}
                 </Link>
                 <button
                   className="button button-group-right truncate"
                   onClick={() => setClosestDismissed(true)}
                 >
-                  <RejectIcon />
+                  <RejectIcon className="mr-5" />
                   Stay on {terminal.name}
                 </button>
               </div>
