@@ -30,9 +30,15 @@ export interface Slot {
   wuid: string;
 }
 
+export interface ValidRange {
+  from: number;
+  to: number;
+}
+
 export interface Schedule {
   date: string;
   key: string;
+  validRange: ValidRange | null;
   slots: Slot[];
   terminalId: string;
   mateId: string;

@@ -1,3 +1,4 @@
+import { DateButton } from "../DateButton";
 import { DateTime } from "luxon";
 import { findWhere, isEmpty } from "shared/lib/arrays";
 import { Footer } from "~/components/Footer";
@@ -14,7 +15,10 @@ import clsx from "clsx";
 import IslandIcon from "~/images/icons/solid/island-tropical.svg";
 import React, { ReactElement, useEffect, useState } from "react";
 import scrollIntoView from "scroll-into-view";
-import type { Slot } from "shared/contracts/schedules";
+import type {
+  Schedule as ScheduleClass,
+  Slot,
+} from "shared/contracts/schedules";
 import type { Terminal } from "shared/contracts/terminals";
 
 interface Props {
@@ -26,7 +30,7 @@ export const Schedule = ({
   onTerminalChange,
   onMateChange,
 }: Props): ReactElement => {
-  const { terminalSlug, mateSlug } = useParams();
+  const { terminalSlug, mateSlug, date: dateInput } = useParams();
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const [hasScrolled, setScrolled] = useState<boolean>(false);
@@ -36,11 +40,14 @@ export const Schedule = ({
   const [expanded, setExpanded] = useState<Slot | null>(null);
   const [terminal, setTerminal] = useState<Terminal | null>(null);
   const [mate, setMate] = useState<Terminal | null>(null);
-  const [slots, setSlots] = useState<Slot[] | null>(null);
+  const [schedule, setSchedule] = useState<ScheduleClass | null>(null);
   const [time, setTime] = useState<DateTime>(DateTime.local());
   const [isUpdating, setUpdating] = useState<boolean>(false);
   const [isFooterOpen, setFooterOpen] = useState<boolean>(false);
   const [tickTimeout, setTickTimeout] = useState<number | null>(null);
+  const [date, setDate] = useState<DateTime>(
+    dateInput ? DateTime.fromISO(dateInput) : DateTime.local()
+  );
 
   useEffect(() => {
     tick();
@@ -61,7 +68,7 @@ export const Schedule = ({
     if (terminalSlug) {
       setRoute(terminalSlug, mateSlug);
     }
-  }, [terminalSlug, mateSlug]);
+  }, [terminalSlug, mateSlug, date]);
 
   useEffect(() => {
     updateSchedule();
@@ -81,6 +88,10 @@ export const Schedule = ({
       setScrolled(true);
     }
   }, [hasScrolled, currentElement]);
+
+  useEffect(() => {
+    onMateChange(mate);
+  }, [mate]);
 
   const setRoute = async (
     terminalSlug: string,
@@ -106,17 +117,22 @@ export const Schedule = ({
       delete localStorage.mateSlug;
     }
 
+    const query =
+      date.toISODate() === DateTime.local().toISODate()
+        ? ""
+        : `?date=${date.toISODate()}`;
+
     let path;
     if (terminal?.mates?.length === 1) {
-      path = `/${terminalSlug}`;
+      path = `/${terminalSlug}${query}`;
     } else {
-      path = `/${terminalSlug}/${mateSlug}`;
+      path = `/${terminalSlug}/${mateSlug}${query}`;
     }
 
     if (pathname !== path) {
       navigate(path);
     }
-    setSlots(null);
+    setSchedule(null);
     setScrolled(false);
     setCurrentElement(null);
     await updateSchedule();
@@ -135,8 +151,8 @@ export const Schedule = ({
       return;
     }
     setUpdating(true);
-    const { schedule, timestamp } = await getSchedule(terminal, mate);
-    setSlots(schedule.slots);
+    const { schedule, timestamp } = await getSchedule(terminal, mate, date);
+    setSchedule(schedule);
     setUpdating(false);
 
     const time = DateTime.fromSeconds(timestamp);
@@ -144,9 +160,10 @@ export const Schedule = ({
   };
 
   const renderSchedule = (): ReactElement | null => {
-    if (!slots) {
+    if (!schedule?.slots) {
       return null;
     }
+    const { slots } = schedule;
     if (isEmpty(slots)) {
       return (
         <div
@@ -161,7 +178,7 @@ export const Schedule = ({
         </div>
       );
     }
-    const currentSlot = findWhere(slots, { hasPassed: false });
+    const currentSlot = findWhere(schedule.slots, { hasPassed: false });
     const sailings = slots.map((slot) => {
       const { time: slotTime } = slot;
       let route: Route | undefined;
@@ -197,11 +214,18 @@ export const Schedule = ({
   return (
     <>
       <Header reload={updateSchedule} isReloading={isUpdating}>
+        <div className="flex-grow" />
         {terminal ? (
           <RouteSelector terminal={terminal} mate={mate} setRoute={setRoute} />
         ) : (
           "Ferry FYI"
         )}
+        <div className="flex-grow" />
+        <DateButton
+          defaultDate={date}
+          onDateChange={setDate}
+          validRange={schedule?.validRange || undefined}
+        />
       </Header>
       <main
         className={clsx(

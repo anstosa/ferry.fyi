@@ -90,6 +90,10 @@ export class CacheableModel implements Record<string, any> {
     return result;
   };
 
+  static purge(): void {
+    cache[this.cacheKey] = {};
+  }
+
   getIndex = (): string | null => this[this.class.index] || null;
 
   save(): void {

@@ -1,13 +1,16 @@
-import { createJob } from "~/lib/jobs";
 import { DateTime } from "luxon";
 import { dbInit } from "~/lib/db";
 import { entries } from "shared/lib/objects";
+import { Route } from "./models/Route";
 import { Schedule } from "~/models/Schedule";
+import { scheduleJob } from "node-schedule";
 import { sendNotFound, sendResponse } from "~/lib/api";
 import { Terminal } from "~/models/Terminal";
 import { Terminal as TerminalClass } from "shared/contracts/terminals";
 import { toWsfDate } from "./lib/wsf/date";
+import { updateEstimates } from "./lib/forecast";
 import { updateLong, updateShort } from "~/lib/wsf";
+import { updateSchedules } from "./lib/wsf/updateSchedules";
 import { Vessel } from "~/models/Vessel";
 import { Vessel as VesselClass } from "shared/contracts/vessels";
 import bodyParser from "koa-bodyparser";
@@ -75,10 +78,15 @@ router.get("/terminals/:terminalId", async (context) => {
 });
 
 // schedule
-router.get("/schedule/:departingId/:arrivingId", async (context) => {
-  const { departingId, arrivingId } = context.params;
+router.get("/schedule/:departingId/:arrivingId/:date*", async (context) => {
+  const { departingId, arrivingId, date: dateInput } = context.params;
+  const date = dateInput || toWsfDate();
+  if (!Schedule.hasFetchedDate(date)) {
+    await updateSchedules(date);
+    await updateEstimates();
+  }
   const schedule = await Schedule.getByIndex(
-    Schedule.generateKey(departingId, arrivingId, toWsfDate())
+    Schedule.generateKey(departingId, arrivingId, date)
   );
   if (schedule) {
     sendResponse(context, {
@@ -125,8 +133,14 @@ app.use(mount("/", dist));
   // populate WSF cache immediately
   await updateLong();
   await updateShort();
-  // keep WSF cache up to date
-  createJob(updateLong, 30 * 1000);
-  createJob(updateShort, 10 * 1000);
+  // run slow updates every minute
+  scheduleJob({ second: 0 }, updateLong);
+  // run fast updates every 30 seconds
+  scheduleJob({ second: [0, 30] }, updateShort);
+  // clear cache at 4am
+  scheduleJob({ hour: 4, minute: 0, second: 0 }, () => {
+    Schedule.purge();
+    Route.purge();
+  });
   logger.info("WSF Initialized");
 })();

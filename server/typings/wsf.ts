@@ -177,7 +177,13 @@ export namespace WSF {
   }
 
   // https://www.wsdot.wa.gov/ferries/api/schedule/documentation/rest.html#tabscheduletoday
-  export interface ScheduleTodayResponse {
+  export interface ValidRangeResponse {
+    DateFrom: string;
+    DateThru: string;
+  }
+
+  // https://www.wsdot.wa.gov/ferries/api/schedule/documentation/rest.html#tabscheduletoday
+  export interface ScheduleResponse {
     ScheduleID: number;
     ScheduleName: string;
     ScheduleSeason: Seasons;

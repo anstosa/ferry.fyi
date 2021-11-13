@@ -1,6 +1,5 @@
 import { Route } from "~/models/Route";
 import { toWsfDate } from "./date";
-import { values } from "shared/lib/objects";
 import { WSF } from "~/typings/wsf";
 import { wsfRequest } from "./api";
 import logger from "heroku-logger";
@@ -23,7 +22,7 @@ export const updateRoutes = async (
   if (!mates) {
     return;
   }
-  const updatedRoutes = await Promise.all(
+  await Promise.all(
     mates.map(async ({ DepartingTerminalID, ArrivingTerminalID }) => {
       const departingId = String(DepartingTerminalID);
       const arrivingId = String(ArrivingTerminalID);
@@ -56,12 +55,5 @@ export const updateRoutes = async (
       return route;
     })
   );
-  // purge non-updated routes
-  const routes = values(Route.getAll());
-  routes.forEach((route) => {
-    if (!updatedRoutes?.includes(route)) {
-      route.purge();
-    }
-  });
   logger.info(`Updated ${Object.keys(Route.getAll()).length} Routes`);
 };

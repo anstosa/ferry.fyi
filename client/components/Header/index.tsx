@@ -36,6 +36,7 @@ export const Header: FunctionComponent<Props> = (props) => {
         <ReloadButton
           isReloading
           ariaLabel="Open Menu"
+          className="mr-4"
           onClick={() => {
             setMenuOpen(true);
             ReactGA.event({

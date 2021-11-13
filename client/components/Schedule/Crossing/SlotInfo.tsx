@@ -25,7 +25,9 @@ interface Props {
 export const SlotInfo = (props: Props): ReactElement => {
   const { slot, isExpanded, onClick, schedule, setElement, time } = props;
   const { hasPassed } = slot;
-  const isNext = slot === findWhere(schedule, { hasPassed: false });
+  const isNext =
+    time.toISODate !== DateTime.local().toISODate &&
+    slot === findWhere(schedule, { hasPassed: false });
 
   const wrapper = useRef<HTMLDivElement>(null);
 

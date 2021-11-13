@@ -2,7 +2,7 @@ import { updateCameras } from "./updateCameras";
 import { updateCapacity } from "./updateCapacity";
 import { updateEstimates } from "../forecast";
 import { updateRoutes } from "./updateRoutes";
-import { updateSchedule } from "./updateSchedule";
+import { updateSchedules } from "./updateSchedules";
 import { updateTerminals } from "./updateTerminals";
 import { updateVessels, updateVesselStatus } from "./updateVessels";
 
@@ -14,7 +14,7 @@ export const updateLong = async (): Promise<any> => {
   // terminals relies on routes
   await updateTerminals();
   // schedule relies on terminals
-  await updateSchedule();
+  await updateSchedules();
 };
 
 export const updateShort = async (): Promise<void> => {

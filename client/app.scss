@@ -6,6 +6,57 @@
 
 // Imports
 
+@import "./node_modules/react-day-picker/lib/style";
+
+.DayPicker {
+  @apply bg-white;
+  @apply text-gray-900;
+  @apply rounded;
+  @apply rounded-tr-none;
+
+  .DayPicker-Caption {
+    @apply text-green-dark;
+  }
+
+  .DayPicker-NavButton {
+    @apply text-green-dark;
+  }
+
+  .DayPicker-Weekday {
+    &:nth-child(6),
+    &:nth-child(7) {
+      @apply font-bold;
+      @apply rounded-none;
+      @apply bg-green-lightest;
+    }
+  }
+
+  .DayPicker-Day {
+    @apply rounded-sm;
+    
+    &.DayPicker-Day--selected:not(.DayPicker-Day--disabled):not(.DayPicker-Day--outside) {
+      @apply bg-green-dark;
+      @apply text-white;
+      @apply font-bold;
+    }
+
+    &:hover:not(.DayPicker--interactionDisabled):not(.DayPicker-Day--disabled):not(.DayPicker-Day--selected):not(.DayPicker-Day--outside) {
+      @apply bg-green-light;
+    }
+
+    &:nth-child(6),
+    &:nth-child(7) {
+      @apply rounded-none;
+      @apply bg-green-lightest;
+    }
+
+    &--today {
+      @apply text-green-dark;
+    }
+  }
+}
+
+
 html {
   @apply bg-green-dark; // iPhone X letterbox
   font-family: "Roboto", sans-serif;

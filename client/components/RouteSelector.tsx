@@ -122,7 +122,6 @@ export const RouteSelector = (props: Props): ReactElement => {
       {renderTerminal()}
       {renderSwap()}
       {renderMate()}
-      <div className="flex-grow" />
       <AnimatePresence>
         {!isNull(closestTerminal) &&
           closestTerminal.id !== terminal.id &&

@@ -4,6 +4,7 @@ import { Schedule } from "~/models/Schedule";
 import { Slot } from "shared/contracts/schedules";
 import { Terminal } from "~/models/Terminal";
 import { toWsfDate, wsfDateToTimestamp } from "./date";
+import { ValidRange } from "../../../shared/contracts/schedules";
 import { values } from "shared/lib/objects";
 import { Vessel } from "~/models/Vessel";
 import { WSF } from "~/typings/wsf";
@@ -15,6 +16,7 @@ import logger from "heroku-logger";
 
 const API_SCHEDULE = "https://www.wsdot.wa.gov/ferries/api/schedule/rest";
 const API_CACHE = `${API_SCHEDULE}/cacheflushdate`;
+const API_RANGE = `${API_SCHEDULE}/validdaterange`;
 const getScheduleApi = (
   departureId: string,
   arrivalId: string,
@@ -80,16 +82,18 @@ export const getPreviousCrossing = (
   }
 };
 
-export const updateSchedule = async (): Promise<void> => {
+export const updateSchedules = async (
+  date: string = toWsfDate()
+): Promise<void> => {
   const cacheFlushDate = wsfDateToTimestamp(
     await wsfRequest<string>(API_CACHE)
   );
-  if (cacheFlushDate === lastFlushDate) {
-    logger.info("Skipped Schedule Update");
+  if (cacheFlushDate === lastFlushDate && Schedule.hasFetchedDate(date)) {
+    logger.info(`Skipped Schedule Update for ${date}`);
     return;
   }
   lastFlushDate = cacheFlushDate;
-  logger.info("Started Schedule Update");
+  logger.info(`Started Schedule Update for ${date}`);
   // get all combinations of [departureId, arrivalId]
   const schedulesToUpdate = values(Terminal.getAll()).reduce(
     (result, terminal) => {
@@ -99,10 +103,17 @@ export const updateSchedule = async (): Promise<void> => {
     },
     [] as Array<[string, string]>
   );
-  const updatedSchedules = await Promise.all(
+  const rangeResponse = await wsfRequest<WSF.ValidRangeResponse>(API_RANGE);
+  const validRange: ValidRange | null = rangeResponse
+    ? {
+        to: wsfDateToTimestamp(rangeResponse.DateThru),
+        from: wsfDateToTimestamp(rangeResponse.DateFrom),
+      }
+    : null;
+  await Promise.all(
     schedulesToUpdate.map(async ([terminalId, mateId]) => {
-      const response = await wsfRequest<WSF.ScheduleTodayResponse>(
-        getScheduleApi(terminalId, mateId)
+      const response = await wsfRequest<WSF.ScheduleResponse>(
+        getScheduleApi(terminalId, mateId, date)
       );
       if (!response) {
         return;
@@ -150,7 +161,6 @@ export const updateSchedule = async (): Promise<void> => {
         })
       );
 
-      const date = toWsfDate();
       const key = Schedule.generateKey(terminalId, mateId, date);
 
       const data = {
@@ -159,6 +169,7 @@ export const updateSchedule = async (): Promise<void> => {
         mateId,
         slots: slots.filter(Boolean) as Slot[],
         terminalId,
+        validRange,
       };
 
       const [schedule, wasCreated] = Schedule.getOrCreate(key, data);
@@ -169,13 +180,6 @@ export const updateSchedule = async (): Promise<void> => {
       return schedule;
     })
   );
-  // purge non-updated routes
-  const schedules = values(Schedule.getAll());
-  schedules.forEach((schedule) => {
-    if (!updatedSchedules?.includes(schedule)) {
-      schedule.purge();
-    }
-  });
   logger.info(`Updated ${Object.keys(Schedule.getAll()).length} Schedules`);
   updateTiming();
 };

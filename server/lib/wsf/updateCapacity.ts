@@ -1,5 +1,5 @@
 import { API_TERMINALS } from "./updateTerminals";
-import { getPreviousCrossing } from "./updateSchedule";
+import { getPreviousCrossing } from "./updateSchedules";
 import { Schedule } from "~/models/Schedule";
 import { toWsfDate, wsfDateToTimestamp } from "./date";
 import { Vessel } from "~/models/Vessel";

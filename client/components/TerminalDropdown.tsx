@@ -49,7 +49,12 @@ export const TerminalDropdown = (props: Props): ReactElement => {
             ? selectedTerminal.name
             : selectedTerminal.abbreviation}
         </span>
-        <div className="inline-block ml-2">
+        <div
+          className={clsx(
+            "absolute top-full -mt-1 flex justify-center w-full",
+            "text-lighten-medium"
+          )}
+        >
           {isOpen ? <CaretUpIcon /> : <CaretDownIcon />}
         </div>
       </div>
