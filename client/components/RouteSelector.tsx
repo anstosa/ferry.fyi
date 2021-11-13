@@ -56,6 +56,9 @@ export const RouteSelector = (props: Props): ReactElement => {
     });
     if (closestTerminal) {
       setClosestTerminal(closestTerminal);
+      if (closestTerminal.id === terminal.id) {
+        setClosestDismissed(true);
+      }
     }
   }, [location, terminals]);
 
