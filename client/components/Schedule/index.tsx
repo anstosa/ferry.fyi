@@ -64,16 +64,30 @@ export const Schedule = ({
     setTickTimeout(window.setTimeout(tick, 10 * 1000));
   };
 
+  // remove date if outside of range
+  useEffect(() => {
+    if (
+      schedule?.validRange &&
+      date < DateTime.fromSeconds(schedule.validRange.from) &&
+      date > DateTime.fromSeconds(schedule.validRange.to)
+    ) {
+      setDate(DateTime.local());
+    }
+  }, [schedule?.validRange, date]);
+
+  // update route on parameter change
   useEffect(() => {
     if (terminalSlug) {
       setRoute(terminalSlug, mateSlug);
     }
   }, [terminalSlug, mateSlug, date]);
 
+  // update schedule on parameter change
   useEffect(() => {
     updateSchedule();
-  }, [terminal, mate]);
+  }, [terminal, mate, date]);
 
+  // update parents on parameter change
   useEffect(() => {
     onTerminalChange(terminal);
   }, [terminal]);
@@ -119,7 +133,7 @@ export const Schedule = ({
 
     const query =
       date.toISODate() === DateTime.local().toISODate()
-        ? ""
+        ? "?"
         : `?date=${date.toISODate()}`;
 
     let path;

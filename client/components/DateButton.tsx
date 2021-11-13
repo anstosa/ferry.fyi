@@ -71,7 +71,10 @@ export const DateButton = ({
             ]}
             selectedDays={[date.toJSDate()]}
             firstDayOfWeek={1}
-            onDayClick={(day) => {
+            onDayClick={(day, { disabled }) => {
+              if (disabled) {
+                return;
+              }
               setDate(DateTime.fromJSDate(day));
               setOpen(false);
             }}
