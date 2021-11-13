@@ -6,46 +6,102 @@ import AboutIcon from "~/images/icons/solid/address-card.svg";
 import ChevronLeftIcon from "~/images/icons/solid/chevron-left.svg";
 import clsx from "clsx";
 import FeedbackIcon from "~/images/icons/solid/question-circle.svg";
-import React, { FunctionComponent, ReactElement, SVGAttributes } from "react";
+import React, {
+  FunctionComponent,
+  ReactElement,
+  SVGAttributes,
+  useState,
+} from "react";
 import ReloadIcon from "~/images/icons/solid/redo.svg";
 import ScheduleIcon from "~/images/icons/solid/calendar-alt.svg";
+import ShareIcon from "~/images/icons/solid/share-square.svg";
 import ShipIcon from "~/images/icons/solid/ship.svg";
+
+export interface ShareOptions {
+  sharedText: string;
+  shareButtonText: string;
+}
 
 interface Props {
   isOpen: boolean;
   reload?: () => void;
   onClose: () => void;
+  share?: ShareOptions;
 }
 
-interface MenuItem {
+interface BaseMenuItem {
   Icon: FunctionComponent<SVGAttributes<SVGElement>>;
   label: string;
+}
+
+interface LinkMenuItem extends BaseMenuItem {
   path: string;
 }
 
-const NAVIGATION: MenuItem[] = [
-  {
-    Icon: ScheduleIcon,
-    label: "Schedule",
-    path: "/",
-  },
-  {
-    Icon: AboutIcon,
-    label: "About",
-    path: "/about",
-  },
-  {
-    Icon: FeedbackIcon,
-    label: "Feedback",
-    path: "/feedback",
-  },
-];
+interface ButtonMenuItem extends BaseMenuItem {
+  onClick: () => void;
+}
+
+type MenuItem = LinkMenuItem | ButtonMenuItem;
 
 export const Menu = ({
   isOpen,
   onClose,
   reload,
+  share,
 }: Props): ReactElement | null => {
+  const [shareMenuText, setShareMenuText] = useState<string>(
+    share?.shareButtonText ?? "Share"
+  );
+  const navigation: MenuItem[] = [
+    {
+      Icon: ScheduleIcon,
+      label: "Schedule",
+      path: "/",
+    },
+    {
+      Icon: AboutIcon,
+      label: "About",
+      path: "/about",
+    },
+    {
+      Icon: FeedbackIcon,
+      label: "Feedback",
+      path: "/feedback",
+    },
+    ...(reload
+      ? [
+          {
+            Icon: ReloadIcon,
+            label: "Refresh Data",
+            onClick: () => {
+              reload();
+              onClose();
+            },
+          },
+        ]
+      : []),
+    ...(share && "canShare" in navigator
+      ? [
+          {
+            Icon: ShareIcon,
+            label: shareMenuText,
+            onClick: async (): Promise<void> => {
+              try {
+                await navigator.share({
+                  title: "Ferry FYI",
+                  text: share.sharedText,
+                  url: window.location.href,
+                });
+                setShareMenuText("Shared!");
+              } catch (error) {
+                console.error("Failed to share", error);
+              }
+            },
+          },
+        ]
+      : []),
+  ];
   return (
     <AnimatePresence>
       <>
@@ -103,31 +159,34 @@ export const Menu = ({
               )}
             >
               <ul>
-                {NAVIGATION.map(({ Icon, label, path }) => (
-                  <li key={label}>
-                    <Link
-                      to={path}
-                      className={clsx("flex py-4 hover:bg-lighten-lower")}
-                    >
+                {navigation.map((item) => {
+                  const { Icon, label } = item;
+                  const wrapperClass = clsx("flex py-4 hover:bg-lighten-lower");
+                  const content = (
+                    <>
+                      {" "}
                       <Icon className="mr-4 text-2xl" />
                       <span className="flex-grow text-xl">{label}</span>
-                    </Link>
-                  </li>
-                ))}
-                {reload && (
-                  <li>
-                    <div
-                      onClick={() => {
-                        reload();
-                        onClose();
-                      }}
-                      className={clsx("flex py-4 hover:bg-lighten-lower")}
-                    >
-                      <ReloadIcon className="mr-4 text-2xl" />
-                      <span className="flex-grow text-xl">Refresh Data</span>
-                    </div>
-                  </li>
-                )}
+                    </>
+                  );
+                  if ("path" in item) {
+                    return (
+                      <li key={label}>
+                        <Link to={item.path} className={wrapperClass}>
+                          {content}
+                        </Link>
+                      </li>
+                    );
+                  } else {
+                    return (
+                      <li key={label}>
+                        <div onClick={item.onClick} className={wrapperClass}>
+                          {content}
+                        </div>
+                      </li>
+                    );
+                  }
+                })}
               </ul>
               <div className="flex-grow" />
               <InstallInstructions />

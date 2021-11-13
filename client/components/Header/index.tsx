@@ -1,4 +1,4 @@
-import { Menu } from "~/components/Menu";
+import { Menu, ShareOptions } from "~/components/Menu";
 import { ReloadButton } from "~/components/ReloadButton";
 import clsx from "clsx";
 import MenuIcon from "~/images/icons/solid/bars.svg";
@@ -24,10 +24,11 @@ const WrapHeader: FunctionComponent = ({ children }) => (
 interface Props {
   reload?: () => void;
   isReloading?: boolean;
+  share?: ShareOptions;
 }
 
 export const Header: FunctionComponent<Props> = (props) => {
-  const { isReloading, reload, children } = props;
+  const { isReloading, reload, children, share } = props;
   const [isMenuOpen, setMenuOpen] = useState<boolean>(false);
 
   const renderMenuToggle = (): ReactNode => {
@@ -82,6 +83,7 @@ export const Header: FunctionComponent<Props> = (props) => {
             action: "Close Menu",
           });
         }}
+        share={share}
       />
       <WrapHeader>
         {renderMenuToggle()}

@@ -30,6 +30,7 @@ export const Schedule = ({
   onTerminalChange,
   onMateChange,
 }: Props): ReactElement => {
+  const today = DateTime.local();
   const { terminalSlug, mateSlug, date: dateInput } = useParams();
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -41,13 +42,27 @@ export const Schedule = ({
   const [terminal, setTerminal] = useState<Terminal | null>(null);
   const [mate, setMate] = useState<Terminal | null>(null);
   const [schedule, setSchedule] = useState<ScheduleClass | null>(null);
-  const [time, setTime] = useState<DateTime>(DateTime.local());
+  const [time, setTime] = useState<DateTime>(today);
   const [isUpdating, setUpdating] = useState<boolean>(false);
   const [isFooterOpen, setFooterOpen] = useState<boolean>(false);
   const [tickTimeout, setTickTimeout] = useState<number | null>(null);
   const [date, setDate] = useState<DateTime>(
-    dateInput ? DateTime.fromISO(dateInput) : DateTime.local()
+    dateInput ? DateTime.fromISO(dateInput) : today
   );
+
+  const isToday = date.toISODate() === today.toISODate();
+
+  const formattedDate = [date.toFormat("ccc")];
+
+  if (date.month !== today.month) {
+    formattedDate.push(date.toFormat("MMM"));
+  }
+
+  formattedDate.push(date.toFormat("d"));
+
+  if (date.year !== today.year) {
+    formattedDate.push(date.toFormat("y"));
+  }
 
   useEffect(() => {
     tick();
@@ -71,7 +86,7 @@ export const Schedule = ({
       date < DateTime.fromSeconds(schedule.validRange.from) &&
       date > DateTime.fromSeconds(schedule.validRange.to)
     ) {
-      setDate(DateTime.local());
+      setDate(today);
     }
   }, [schedule?.validRange, date]);
 
@@ -131,10 +146,7 @@ export const Schedule = ({
       delete localStorage.mateSlug;
     }
 
-    const query =
-      date.toISODate() === DateTime.local().toISODate()
-        ? "?"
-        : `?date=${date.toISODate()}`;
+    const query = isToday ? "?" : `?date=${date.toISODate()}`;
 
     let path;
     if (terminal?.mates?.length === 1) {
@@ -227,7 +239,16 @@ export const Schedule = ({
 
   return (
     <>
-      <Header reload={updateSchedule} isReloading={isUpdating}>
+      <Header
+        reload={updateSchedule}
+        isReloading={isUpdating}
+        share={{
+          shareButtonText: "Share Schedule",
+          sharedText: `Schedule for ${terminal.name} to ${mate.name}${
+            isToday ? "" : ` for ${formattedDate.join(" ")}`
+          }`,
+        }}
+      >
         <div className="flex-grow" />
         {terminal ? (
           <RouteSelector terminal={terminal} mate={mate} setRoute={setRoute} />
