@@ -94,6 +94,7 @@ export const Menu = ({
                   url: window.location.href,
                 });
                 setShareMenuText("Shared!");
+                setTimeout(() => setShareMenuText(share.shareButtonText), 5000);
               } catch (error) {
                 console.error("Failed to share", error);
               }
@@ -154,14 +155,14 @@ export const Menu = ({
             </div>
             <div
               className={clsx(
-                "overflow-y-auto scrolling-touch px-4",
+                "overflow-y-auto scrolling-touch",
                 "flex-grow flex flex-col"
               )}
             >
               <ul>
                 {navigation.map((item) => {
                   const { Icon, label } = item;
-                  const wrapperClass = clsx("flex py-4 hover:bg-lighten-lower");
+                  const wrapperClass = clsx("flex p-4 hover:bg-lighten-lower");
                   const content = (
                     <>
                       {" "}
@@ -189,7 +190,9 @@ export const Menu = ({
                 })}
               </ul>
               <div className="flex-grow" />
-              <InstallInstructions />
+              <div className="p-4">
+                <InstallInstructions />
+              </div>
             </div>
           </motion.nav>
         )}
