@@ -27,44 +27,35 @@ interface Props {
 export const Map = ({ terminal, mate, vessels }: Props): ReactElement => {
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<Mapbox | null>(null);
-  const [top, setTop] = useState<number>(47);
-  const [left, setLeft] = useState<number>(-121);
-  const [bottom, setBottom] = useState<number>(49);
-  const [right, setRight] = useState<number>(-123);
   const [markers, setMarkers] = useState<Marker[]>([]);
 
-  const maybeUpdateBounds = ({
-    lon,
-    lat,
-  }: {
-    lon: number;
-    lat: number;
-  }): void => {
-    if (lat > top) {
-      setTop(lat);
-    }
-    if (lon < left) {
-      setLeft(lon);
-    }
-    if (lat < bottom) {
-      setBottom(lat);
-    }
-    if (lon > right) {
-      setRight(lon);
-    }
-  };
-
-  // update map zoom when points change
-  useEffect(() => {
-    if (map) {
-      map.fitBounds(
-        new LngLatBounds({ lat: top, lon: left }, { lat: bottom, lon: right }),
-        { padding: 25 }
-      );
-    }
-  }, [map, top, left, bottom, right]);
-
   const updateMarkers = (): void => {
+    let top: number = 47;
+    let left: number = -121;
+    let bottom: number = 49;
+    let right: number = -123;
+
+    const maybeUpdateBounds = ({
+      lon,
+      lat,
+    }: {
+      lon: number;
+      lat: number;
+    }): void => {
+      if (lat > top) {
+        top = lat;
+      }
+      if (lon < left) {
+        left = lon;
+      }
+      if (lat < bottom) {
+        bottom = lat;
+      }
+      if (lon > right) {
+        right = lon;
+      }
+    };
+
     const newMarkers: Marker[] = [];
     if (!map) {
       return;
@@ -134,6 +125,10 @@ export const Map = ({ terminal, mate, vessels }: Props): ReactElement => {
         })
     );
     setMarkers(newMarkers);
+    map.fitBounds(
+      new LngLatBounds({ lat: bottom, lon: left }, { lat: top, lon: right }),
+      { padding: 40 }
+    );
   };
 
   useEffect(updateMarkers, [map, vessels, terminal, mate]);
@@ -145,10 +140,7 @@ export const Map = ({ terminal, mate, vessels }: Props): ReactElement => {
     const map = new Mapbox({
       accessToken: process.env.MAPBOX_ACCESS_TOKEN,
       container: mapRef.current,
-      bounds: new LngLatBounds(
-        { lat: top, lon: left },
-        { lat: bottom, lon: right }
-      ),
+      bounds: new LngLatBounds({ lat: 47, lon: -121 }, { lat: 49, lon: -123 }),
       style: isDark
         ? "mapbox://styles/ferryfyi/ckvzb5jy11hmj14o4imlemf5h"
         : "mapbox://styles/ferryfyi/ckvzbpoh21ggd14pdjorf1z5x",
