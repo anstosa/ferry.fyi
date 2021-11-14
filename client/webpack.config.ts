@@ -118,6 +118,7 @@ module.exports = {
     }),
     new webpack.EnvironmentPlugin([
       "BASE_URL",
+      "MAPBOX_ACCESS_TOKEN",
       "GOOGLE_ANALYTICS",
       "LOG_LEVEL",
       "NODE_ENV",

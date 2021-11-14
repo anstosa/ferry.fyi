@@ -6,9 +6,11 @@ import {
 } from "./Schedule/Alerts";
 import { Cameras } from "./Schedule/Cameras";
 import { DateTime } from "luxon";
+import { Map } from "./Schedule/Map";
 import { motion } from "framer-motion";
 import { ReloadButton } from "~/components/ReloadButton";
 import { useOnline } from "~/lib/api";
+import { Vessel } from "shared/contracts/vessels";
 import ChevronDownIcon from "~/images/icons/solid/chevron-down.svg";
 import clsx from "clsx";
 import MapIcon from "~/images/icons/solid/map-marked.svg";
@@ -61,16 +63,25 @@ const WrapFooter: FunctionComponent<WrapFooterProps> = ({
 
 enum Tabs {
   cameras = "cameras",
+  map = "map",
   alerts = "alerts",
 }
 
 interface Props {
   onChange: (isOpen: boolean) => void;
   terminal: Terminal;
+  mate: Terminal;
   time: DateTime;
+  vessels: Vessel[];
 }
 
-export const Footer = ({ onChange, terminal, time }: Props): ReactElement => {
+export const Footer = ({
+  onChange,
+  terminal,
+  mate,
+  time,
+  vessels,
+}: Props): ReactElement => {
   const [cameraTime, setCameraTime] = useState<number>(
     DateTime.local().toSeconds()
   );
@@ -80,6 +91,7 @@ export const Footer = ({ onChange, terminal, time }: Props): ReactElement => {
   const isOnline = useOnline();
 
   const showCameras = !isOpen || tab === Tabs.cameras;
+  const showMap = !isOpen || tab === Tabs.map;
   const showAlerts = !isOpen || tab === Tabs.alerts;
 
   const toggleTab = (isOpen: boolean, tab: Tabs | null = null): void => {
@@ -89,29 +101,56 @@ export const Footer = ({ onChange, terminal, time }: Props): ReactElement => {
   };
 
   const renderToggle = (): ReactElement => {
-    const showMap = !isOpen;
     return (
       <div className="flex justify-between">
         {showCameras && renderToggleCameras()}
-        {showMap && renderMapLink()}
+        {showMap && renderToggleMap()}
         {showAlerts && renderToggleAlerts()}
       </div>
     );
   };
 
-  const renderMapLink = (): ReactElement | null => {
-    const { vesselwatch } = terminal;
-    if (!vesselwatch) {
+  const renderToggleMap = (): ReactElement | null => {
+    if (!isOnline) {
       return null;
     }
     return (
-      <a
-        className="h-16 p-4 flex items-center"
-        href={vesselwatch}
-        aria-label="Open VesselWatch"
+      <div
+        className={clsx(
+          "relative h-16",
+          "flex items-center",
+          "cursor-pointer",
+          "flex-no-wrap min-w-0",
+          {
+            "w-16 justify-center": !isOpen,
+            "p-4 w-full justify-between": isOpen,
+          }
+        )}
+        onClick={() => {
+          if (isOpen) {
+            toggleTab(false);
+            ReactGA.event({
+              category: "Navigation",
+              action: "Close Map",
+            });
+          } else {
+            toggleTab(true, Tabs.map);
+            ReactGA.event({
+              category: "Navigation",
+              action: "Open Map",
+            });
+          }
+        }}
       >
-        <MapIcon className="text-2xl" />
-      </a>
+        {isOpen ? (
+          <>
+            Map
+            <ChevronDownIcon className="text-2xl" />
+          </>
+        ) : (
+          <MapIcon className="text-2xl" />
+        )}
+      </div>
     );
   };
 
@@ -235,8 +274,15 @@ export const Footer = ({ onChange, terminal, time }: Props): ReactElement => {
       />
       <WrapFooter isOpen={isOpen}>
         {renderToggle()}
-        {showCameras && <Cameras terminal={terminal} cameraTime={cameraTime} />}
-        {showAlerts && <Alerts terminal={terminal} time={time} />}
+        {isOpen && tab === Tabs.cameras && (
+          <Cameras terminal={terminal} cameraTime={cameraTime} />
+        )}
+        {isOpen && tab === Tabs.map && (
+          <Map terminal={terminal} mate={mate} vessels={vessels} />
+        )}
+        {isOpen && tab === Tabs.alerts && (
+          <Alerts terminal={terminal} time={time} />
+        )}
       </WrapFooter>
       <div className="h-safe-bottom w-full bg-green-dark" />
     </>

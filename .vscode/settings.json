@@ -50,5 +50,6 @@
       "source.fixAll.stylelint": true
     },
     "editor.defaultFormatter": "stylelint.vscode-stylelint"
-  }
+  },
+  "svg.preview.background": "custom"
 }

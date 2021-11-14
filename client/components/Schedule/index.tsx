@@ -11,6 +11,7 @@ import { SlotInfo } from "./Crossing/SlotInfo";
 import { Splash } from "~/components/Splash";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { values } from "shared/lib/objects";
+import { Vessel } from "shared/contracts/vessels";
 import clsx from "clsx";
 import IslandIcon from "~/images/icons/solid/island-tropical.svg";
 import React, { ReactElement, useEffect, useState } from "react";
@@ -49,6 +50,14 @@ export const Schedule = ({
   const [date, setDate] = useState<DateTime>(
     dateInput ? DateTime.fromISO(dateInput) : today
   );
+
+  const vessels: Vessel[] = [];
+
+  schedule?.slots?.forEach(({ vessel }) => {
+    if (!vessels.find(({ id }) => id === vessel.id)) {
+      vessels.push(vessel);
+    }
+  });
 
   const isToday = date.toISODate() === today.toISODate();
 
@@ -284,7 +293,13 @@ export const Schedule = ({
           {renderSchedule()}
         </div>
       </main>
-      <Footer terminal={terminal} time={time} onChange={setFooterOpen} />
+      <Footer
+        terminal={terminal}
+        mate={mate}
+        vessels={vessels}
+        time={time}
+        onChange={setFooterOpen}
+      />
     </>
   );
 };
