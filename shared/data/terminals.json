@@ -22,10 +22,10 @@
   },
   "5": {
     "slug": "clinton",
-    "abbreviation": "WBY",
+    "abbreviation": "CLI",
     "aliases": ["cli", "whidbey", "whidbeyisland", "wbi", "wby", "wi"],
     "vesselwatch": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=mukcl",
-    "name": "Whidbey",
+    "name": "Clinton",
     "location": {
       "latitude": 47.97497,
       "longitude": -122.351113,
