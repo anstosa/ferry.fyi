@@ -63,15 +63,21 @@ export const App = (): ReactElement => {
         {element}
         <AnimatePresence>
           {!isOnline && !offlineDismissed && (
-            <Alert warning onClose={() => setOfflineDismissed(true)}>
-              <OfflineIcon className="inline-block ml-2" />
+            <Alert
+              warning
+              onClose={() => setOfflineDismissed(true)}
+              Icon={OfflineIcon}
+            >
               Your device is offline! You can still view the schedule, but
               things may not be up to date.
             </Alert>
           )}
           {isWsfOffline && !wsfDismissed && (
-            <Alert warning onClose={() => setWsfDismissed(true)}>
-              <DumpsterFireIcon className="inline-block ml-2" />
+            <Alert
+              warning
+              onClose={() => setWsfDismissed(true)}
+              Icon={DumpsterFireIcon}
+            >
               WSF web services are offline! You can still use the app but things
               may not be up to date.
             </Alert>

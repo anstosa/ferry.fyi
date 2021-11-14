@@ -1,19 +1,21 @@
 import { motion } from "framer-motion";
 import CloseIcon from "~/images/icons/solid/times.svg";
 import clsx from "clsx";
-import React, { FunctionComponent } from "react";
+import React, { FunctionComponent, SVGAttributes } from "react";
 
 interface Props {
   onClose?: () => void;
   info?: boolean;
   warning?: boolean;
   error?: boolean;
+  Icon?: FunctionComponent<SVGAttributes<SVGElement>>;
 }
 
 export const Alert: FunctionComponent<Props> = ({
   children,
   onClose,
   info,
+  Icon,
   warning,
   error,
 }) => {
@@ -23,6 +25,7 @@ export const Alert: FunctionComponent<Props> = ({
         "alert--info": info,
         "alert--warning": warning,
         "alert--error": error,
+        "flex items-center": Boolean(Icon),
       })}
       initial={{ bottom: "-100%", opacity: 0 }}
       animate={{ bottom: 0, opacity: 1 }}
@@ -35,6 +38,7 @@ export const Alert: FunctionComponent<Props> = ({
           onClick={() => onClose()}
         />
       )}
+      {Icon && <Icon className="text-4xl mr-4" />}
       {children}
     </motion.div>
   );
