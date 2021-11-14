@@ -162,8 +162,12 @@ export const RouteSelector = (props: Props): ReactElement => {
                   )}
                   to={`/${getSlug(closestTerminal.id)}`}
                 >
-                  Switch to {closestTerminal?.name}
+                  <LocationIcon className="button-icon" />
+                  <span className="button-label">
+                    Switch to {closestTerminal?.name}
+                  </span>
                 </Link>
+
                 <button
                   className="button button-group-right truncate"
                   onClick={() => setClosestDismissed(true)}
