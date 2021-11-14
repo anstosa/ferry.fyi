@@ -2,13 +2,14 @@ import { Alert } from "~/components/Alert";
 import { AnimatePresence } from "framer-motion";
 import { getDistance, useGeo } from "~/lib/geo";
 import { getSlug, getTerminals } from "~/lib/terminals";
-import { isEmpty } from "shared/lib/arrays";
+import { isEmpty, without } from "shared/lib/arrays";
 import { isNull } from "shared/lib/identity";
 import { Link } from "react-router-dom";
 import { TerminalDropdown } from "./TerminalDropdown";
 import ArrowRightIcon from "~/images/icons/solid/arrow-right.svg";
 import clsx from "clsx";
 import ExchangeIcon from "~/images/icons/solid/exchange.svg";
+import LocationIcon from "~/images/icons/solid/location.svg";
 import React, { ReactElement, ReactNode, useEffect, useState } from "react";
 import ReactGA from "react-ga";
 import type { Terminal } from "shared/contracts/terminals";
@@ -62,14 +63,29 @@ export const RouteSelector = (props: Props): ReactElement => {
     }
   }, [location, terminals]);
 
+  const sorter = (a: Terminal, b: Terminal): number => {
+    if (a.id === closestTerminal?.id) {
+      return -1;
+    } else {
+      return b.popularity - a.popularity;
+    }
+  };
+
   const renderTerminal = (): ReactNode => {
+    const sortedTerminals = [...terminals];
+    sortedTerminals.sort(sorter);
     return (
       <>
         <TerminalDropdown
-          terminals={[
-            terminal,
-            ...terminals.filter(({ id }) => id !== terminal.id),
-          ]}
+          terminals={without(sortedTerminals, terminal, "id").map(
+            (terminal) => ({
+              ...(terminal.id === closestTerminal?.id && {
+                Icon: LocationIcon,
+              }),
+              terminal,
+            })
+          )}
+          selected={terminal}
           isOpen={isTerminalOpen}
           setOpen={setTerminalOpen}
           onSelect={() => setTerminalOpen(false)}
@@ -106,9 +122,14 @@ export const RouteSelector = (props: Props): ReactElement => {
       return null;
     }
     const { mates = [] } = terminal;
+    const sortedMates = [...mates];
+    sortedMates.sort(sorter);
     return (
       <TerminalDropdown
-        terminals={[mate, ...mates.filter(({ id }) => id !== mate.id)]}
+        terminals={without(sortedMates, mate, "id").map((terminal) => ({
+          terminal,
+        }))}
+        selected={mate}
         isOpen={isMateOpen}
         setOpen={setMateOpen}
         onSelect={(event, selectedTerminal) => {

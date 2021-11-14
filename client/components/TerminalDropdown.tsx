@@ -1,42 +1,47 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { getSlug } from "~/lib/terminals";
+import { isEmpty } from "shared/lib/arrays";
 import { Link } from "react-router-dom";
-import { Order, sortBy } from "shared/lib/arrays";
 import { useWindowSize } from "~/lib/window";
 import CaretDownIcon from "~/images/icons/solid/caret-down.svg";
 import CaretUpIcon from "~/images/icons/solid/caret-up.svg";
 import clsx from "clsx";
-import React, { MouseEvent, ReactElement } from "react";
+import React, {
+  FunctionComponent,
+  MouseEvent,
+  ReactElement,
+  SVGAttributes,
+} from "react";
 import type { Terminal } from "shared/contracts/terminals";
 
 const ABBREVIATION_BREAKPOINT = 350;
 
+export interface TerminalOption {
+  Icon?: FunctionComponent<SVGAttributes<SVGElement>>;
+  terminal: Terminal;
+}
+
 interface Props {
-  terminals: Terminal[];
+  terminals: TerminalOption[];
+  selected: Terminal;
   isOpen: boolean;
   setOpen: (state: boolean) => void;
   onSelect: (event: MouseEvent, terminal: Terminal) => void;
 }
 
 export const TerminalDropdown = (props: Props): ReactElement => {
-  const { terminals, isOpen, setOpen, onSelect } = props;
-  const selectedTerminal = terminals[0];
+  const { terminals, isOpen, selected, setOpen, onSelect } = props;
   const { width } = useWindowSize();
 
-  if (terminals.length === 1) {
+  if (isEmpty(terminals)) {
     return (
       <span className="truncate">
         {width > ABBREVIATION_BREAKPOINT
-          ? selectedTerminal.name
-          : selectedTerminal.abbreviation}
+          ? selected.name
+          : selected.abbreviation}
       </span>
     );
   }
-  const otherTerminals = sortBy(
-    terminals.filter(({ id }) => id !== selectedTerminal.id),
-    "popularity",
-    Order.DESC
-  );
   return (
     <div className="relative cursor-pointer min-w-0">
       <div
@@ -46,8 +51,8 @@ export const TerminalDropdown = (props: Props): ReactElement => {
       >
         <span className="truncate">
           {width > ABBREVIATION_BREAKPOINT
-            ? selectedTerminal.name
-            : selectedTerminal.abbreviation}
+            ? selected.name
+            : selected.abbreviation}
         </span>
         <div
           className={clsx(
@@ -75,7 +80,7 @@ export const TerminalDropdown = (props: Props): ReactElement => {
             className={clsx(
               "absolute top-full left-0",
               "bg-green-dark shadow-lg",
-              "-ml-4 py-2",
+              "-ml-11 py-2",
               "flex items-stretch",
               "max-h-halfscreen"
             )}
@@ -85,7 +90,7 @@ export const TerminalDropdown = (props: Props): ReactElement => {
             transition={{ type: "easeInOut" }}
           >
             <ul className={clsx("overflow-y-scroll scrolling-touch", "pb-5")}>
-              {otherTerminals.map((terminal) => {
+              {terminals.map(({ Icon, terminal }) => {
                 const { id, name } = terminal;
                 return (
                   <li key={id}>
@@ -94,11 +99,17 @@ export const TerminalDropdown = (props: Props): ReactElement => {
                         "whitespace-nowrap",
                         "block cursor-pointer",
                         "px-4 py-2",
-                        "hover:bg-lighten-high"
+                        "hover:bg-lighten-high",
+                        "flex items-center"
                       )}
                       to={`/${getSlug(id)}`}
                       onClick={(event) => onSelect(event, terminal)}
                     >
+                      {Icon ? (
+                        <Icon className="mr-3" />
+                      ) : (
+                        <div className="w-4 mr-3" />
+                      )}
                       {name}
                     </Link>
                   </li>

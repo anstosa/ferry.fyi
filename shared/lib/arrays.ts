@@ -1,12 +1,16 @@
 import { entries } from "./objects";
 import { isNil } from "./identity";
 
-export const without = <T>(array: T[] = [], element: T): T[] => {
-  const targetIndex = array.indexOf(element);
-  if (targetIndex === -1) {
-    return array;
+export const without = <T>(array: T[] = [], element: T, key?: keyof T): T[] => {
+  if (key) {
+    return array.filter((item) => item[key] !== element[key]);
   } else {
-    return array.filter((value, index) => index !== targetIndex);
+    const targetIndex = array.indexOf(element);
+    if (targetIndex === -1) {
+      return array;
+    } else {
+      return array.filter((value, index) => index !== targetIndex);
+    }
   }
 };
 
@@ -39,7 +43,7 @@ export enum Order {
 
 export const sortBy = <T extends Record<string, any>>(
   input: T[],
-  key: string,
+  key: keyof T,
   order: Order = Order.ASC
 ): T[] => {
   const compare = (a: T, b: T): -1 | 0 | 1 => {
