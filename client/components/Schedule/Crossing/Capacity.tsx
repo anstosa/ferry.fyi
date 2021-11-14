@@ -1,4 +1,5 @@
 import { isNil, isNull } from "shared/lib/identity";
+import { round } from "shared/lib/math";
 import CarIcon from "~/images/icons/solid/car.svg";
 import clsx from "clsx";
 import DoNotEnterIcon from "~/images/icons/solid/do-not-enter.svg";
@@ -200,15 +201,9 @@ export const Capacity = ({ slot }: Props): ReactElement | null => {
           );
         }
       }
-    } else if (estimate && !isNil(estimateLeft)) {
+    } else if (estimate && !isNil(estimateFull)) {
       spaceClass = clsx(spaceClass, "text-gray-medium");
-      spaceText = (
-        <>
-          {estimateLeft > 0
-            ? `${estimateLeft} ${estimateLeft === 1 ? "space" : "spaces"} left`
-            : "Boat full"}
-        </>
-      );
+      spaceText = `${round(estimateFull)}% full`;
     } else {
       return null;
     }
