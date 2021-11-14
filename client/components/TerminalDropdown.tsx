@@ -46,7 +46,13 @@ export const TerminalDropdown = (props: Props): ReactElement => {
     <div className="relative cursor-pointer min-w-0">
       <div
         className="min-w-0 flex items-center"
-        onClick={() => setOpen(!isOpen)}
+        onClick={(event) => {
+          if (terminals.length === 1) {
+            onSelect(event, terminals[0].terminal);
+          } else {
+            setOpen(!isOpen);
+          }
+        }}
         aria-label="Expand Terminals"
       >
         <span className="truncate">
