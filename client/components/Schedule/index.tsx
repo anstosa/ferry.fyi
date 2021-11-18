@@ -196,7 +196,17 @@ export const Schedule = ({
 
   const renderSchedule = (): ReactElement | null => {
     if (!schedule?.slots) {
-      return null;
+      return (
+        <div
+          className={clsx(
+            "absolute inset-0",
+            "bg-blue-lightest dark:bg-gray-darkest text-gray-500",
+            "flex justify-center items-center"
+          )}
+        >
+          Loading schedule...
+        </div>
+      );
     }
     const { slots } = schedule;
     if (isEmpty(slots)) {
