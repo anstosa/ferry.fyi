@@ -133,6 +133,16 @@ export const Schedule = ({
     }
   }, [currentElement]);
 
+  const getPath = (): string => {
+    const query = isToday ? "?" : `?date=${date.toISODate()}`;
+
+    if (terminal?.mates?.length === 1) {
+      return `/${terminalSlug}${query}`;
+    } else {
+      return `/${terminalSlug}/${mateSlug}${query}`;
+    }
+  };
+
   const setRoute = async (
     terminalSlug: string,
     mateSlug?: string
@@ -156,14 +166,7 @@ export const Schedule = ({
       delete localStorage.mateSlug;
     }
 
-    const query = isToday ? "?" : `?date=${date.toISODate()}`;
-
-    let path;
-    if (terminal?.mates?.length === 1) {
-      path = `/${terminalSlug}${query}`;
-    } else {
-      path = `/${terminalSlug}/${mateSlug}${query}`;
-    }
+    const path = getPath();
     setSchedule(null);
     setCurrentElement(null);
     if (pathname !== path) {
@@ -265,6 +268,7 @@ export const Schedule = ({
         <meta name="twitter:title" content={title} />
         <meta property="og:title" content={title} />
         <meta itemProp="name" content={title} />
+        <link rel="canonical" href={`${process.env.BASE_URL}${getPath()}`} />
       </Helmet>
       <Header
         reload={updateSchedule}

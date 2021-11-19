@@ -1,10 +1,14 @@
 import { FeedbackContent } from "./FeedbackContent";
+import { Helmet } from "react-helmet";
 import { Page } from "./Page";
 import DonateIcon from "~/images/icons/solid/heart.svg";
 import React, { ReactElement } from "react";
 
 export const About = (): ReactElement => (
   <Page>
+    <Helmet>
+      <link rel="canonical" href={`${process.env.BASE_URL}/about`} />
+    </Helmet>
     <p className="mt-4">
       A ferry schedule and tracker for the greater Seattle area. Supports all{" "}
       <a
