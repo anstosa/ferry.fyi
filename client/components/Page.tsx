@@ -1,7 +1,6 @@
 import { Header } from "./Header/index";
 import clsx from "clsx";
 import React, { FunctionComponent, ReactElement } from "react";
-import ShipIcon from "~/images/icons/solid/ship.svg";
 
 export const Page: FunctionComponent = ({ children }): ReactElement => (
   <div
@@ -12,10 +11,7 @@ export const Page: FunctionComponent = ({ children }): ReactElement => (
     )}
   >
     <Header>
-      <h1 className="font-bold text-2xl">
-        <ShipIcon className="inline-block mr-4" />
-        Ferry FYI
-      </h1>
+      <h1 className="font-bold text-2xl">Ferry FYI</h1>
     </Header>
     {children}
   </div>

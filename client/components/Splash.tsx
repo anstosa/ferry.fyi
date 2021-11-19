@@ -1,7 +1,7 @@
 import CircleIcon from "~/images/icons/solid/circle.svg";
 import clsx from "clsx";
+import logo from "~/images/icon_monochrome.png";
 import React, { FC, ReactNode, useEffect, useState } from "react";
-import ShipIcon from "~/images/icons/solid/ship.svg";
 
 export const Splash: FC = ({ children }) => {
   const [isHelpVisible, setHelpVisible] = useState<boolean>(false);
@@ -56,7 +56,7 @@ export const Splash: FC = ({ children }) => {
         flex flex-col justify-center items-center
       "
     >
-      <ShipIcon className="text-6xl" />
+      <img src={logo} className="w-20" />
       <div className="w-12 flex justify-between mt-8">
         {[1, 2, 3].map((index) => (
           <CircleIcon
