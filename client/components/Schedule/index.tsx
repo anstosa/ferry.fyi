@@ -5,6 +5,7 @@ import { Footer } from "~/components/Footer";
 import { getSchedule } from "~/lib/schedule";
 import { getSlug, getTerminal } from "~/lib/terminals";
 import { Header } from "~/components/Header";
+import { Helmet } from "react-helmet";
 import { Route } from "shared/contracts/routes";
 import { RouteSelector } from "~/components/RouteSelector";
 import { SlotInfo } from "./Crossing/SlotInfo";
@@ -257,8 +258,18 @@ export const Schedule = ({
     return <Splash />;
   }
 
+  const title = `${terminal.name} to ${mate.name}${
+    isToday ? "" : ` on ${formattedDate.join(" ")}`
+  } - Ferry FYI`;
+
   return (
     <>
+      <Helmet>
+        <title>{title}</title>
+        <meta name="twitter:title" content={title} />
+        <meta property="og:title" content={title} />
+        <meta itemProp="name" content={title} />
+      </Helmet>
       <Header
         reload={updateSchedule}
         isReloading={isUpdating}
