@@ -10,6 +10,7 @@ import { RouteSelector } from "~/components/RouteSelector";
 import { SlotInfo } from "./Crossing/SlotInfo";
 import { Splash } from "~/components/Splash";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useQuery } from "~/lib/browser";
 import { values } from "shared/lib/objects";
 import { Vessel } from "shared/contracts/vessels";
 import clsx from "clsx";
@@ -32,7 +33,8 @@ export const Schedule = ({
   onMateChange,
 }: Props): ReactElement => {
   const today = DateTime.local();
-  const { terminalSlug, mateSlug, date: dateInput } = useParams();
+  const { terminalSlug, mateSlug } = useParams();
+  const { date: dateInput } = useQuery();
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const [hasScrolled, setScrolled] = useState<boolean>(false);
@@ -40,15 +42,19 @@ export const Schedule = ({
     null
   );
   const [expanded, setExpanded] = useState<Slot | null>(null);
-  const [terminal, setTerminal] = useState<Terminal | null>(null);
-  const [mate, setMate] = useState<Terminal | null>(null);
+  const [[terminal, mate], setTerminals] = useState<Array<Terminal | null>>([
+    null,
+  ]);
   const [schedule, setSchedule] = useState<ScheduleClass | null>(null);
   const [time, setTime] = useState<DateTime>(today);
   const [isUpdating, setUpdating] = useState<boolean>(false);
   const [isFooterOpen, setFooterOpen] = useState<boolean>(false);
   const [tickTimeout, setTickTimeout] = useState<number | null>(null);
+
+  const inputDate = dateInput ? DateTime.fromISO(dateInput) : null;
+
   const [date, setDate] = useState<DateTime>(
-    dateInput ? DateTime.fromISO(dateInput) : today
+    inputDate && inputDate > today ? inputDate : today
   );
 
   const vessels: Vessel[] = [];
@@ -108,6 +114,7 @@ export const Schedule = ({
 
   // update schedule on parameter change
   useEffect(() => {
+    console.log("Updating schedule");
     updateSchedule();
   }, [terminal, mate, date]);
 
@@ -136,7 +143,6 @@ export const Schedule = ({
     mateSlug?: string
   ): Promise<void> => {
     const terminal = await getTerminal(terminalSlug);
-    setTerminal(terminal);
     let mate: Terminal | null = null;
     if (mateSlug) {
       mate = await getTerminal(mateSlug);
@@ -144,7 +150,7 @@ export const Schedule = ({
     if (!mate || !findWhere(terminal.mates, { id: mate.id })) {
       mate = terminal?.mates?.[0] ?? null;
     }
-    setMate(mate);
+    setTerminals([terminal, mate]);
 
     terminalSlug = getSlug(terminal.id);
     localStorage.terminalSlug = terminalSlug;
@@ -170,7 +176,6 @@ export const Schedule = ({
     setSchedule(null);
     setScrolled(false);
     setCurrentElement(null);
-    await updateSchedule();
   };
 
   const toggleExpand = (slot: Slot): void => {
@@ -182,7 +187,7 @@ export const Schedule = ({
   };
 
   const updateSchedule = async (): Promise<void> => {
-    if (!terminal || !mate) {
+    if (isUpdating || !terminal || !mate) {
       return;
     }
     setUpdating(true);
