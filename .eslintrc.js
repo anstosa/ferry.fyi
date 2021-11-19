@@ -12,6 +12,7 @@ module.exports = {
     Promise: "readonly",
     require: "readonly",
     module: "readonly",
+    gtag: "readonly",
   },
   parser: "@typescript-eslint/parser",
   parserOptions: {

@@ -6,6 +6,7 @@ import AboutIcon from "~/images/icons/solid/address-card.svg";
 import ChevronLeftIcon from "~/images/icons/solid/chevron-left.svg";
 import clsx from "clsx";
 import FeedbackIcon from "~/images/icons/solid/question-circle.svg";
+import logo from "~/images/icon_monochrome.png";
 import React, {
   FunctionComponent,
   ReactElement,
@@ -15,7 +16,6 @@ import React, {
 import ReloadIcon from "~/images/icons/solid/redo.svg";
 import ScheduleIcon from "~/images/icons/solid/calendar-alt.svg";
 import ShareIcon from "~/images/icons/solid/share-square.svg";
-import ShipIcon from "~/images/icons/solid/ship.svg";
 
 export interface ShareOptions {
   sharedText: string;
@@ -144,7 +144,7 @@ export const Menu = ({
                 "flex items-center"
               )}
             >
-              <ShipIcon className="inline-block mr-4" />
+              <img src={logo} className="inline-block mr-4 w-10" />
               <h1 className="font-bold">Ferry FYI</h1>
               <div className="flex-grow" />
               <ChevronLeftIcon
@@ -162,11 +162,13 @@ export const Menu = ({
               <ul>
                 {navigation.map((item) => {
                   const { Icon, label } = item;
-                  const wrapperClass = clsx("flex p-4 hover:bg-lighten-lower");
+                  const wrapperClass = clsx(
+                    "flex py-4 px-6 hover:bg-lighten-lower"
+                  );
                   const content = (
                     <>
                       {" "}
-                      <Icon className="mr-4 text-2xl" />
+                      <Icon className="mr-6 text-2xl" />
                       <span className="flex-grow text-xl">{label}</span>
                     </>
                   );

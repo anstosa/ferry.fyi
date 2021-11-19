@@ -3,3 +3,7 @@ declare module "*.svg" {
   const GooglePlayIcon: FunctionComponent<SVGAttributes<SVGElement>>;
   export default GooglePlayIcon;
 }
+
+declare module "*.png" {
+  export default string;
+}
