@@ -37,7 +37,6 @@ export const Schedule = ({
   const { date: dateInput } = useQuery();
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const [hasScrolled, setScrolled] = useState<boolean>(false);
   const [currentElement, setCurrentElement] = useState<HTMLDivElement | null>(
     null
   );
@@ -128,11 +127,10 @@ export const Schedule = ({
   }, [mate]);
 
   useEffect(() => {
-    if (!hasScrolled && currentElement) {
+    if (currentElement) {
       scrollIntoView(currentElement, { align: { top: 0.3 } });
-      setScrolled(true);
     }
-  }, [hasScrolled, currentElement]);
+  }, [currentElement]);
 
   useEffect(() => {
     onMateChange(mate);
@@ -169,13 +167,11 @@ export const Schedule = ({
     } else {
       path = `/${terminalSlug}/${mateSlug}${query}`;
     }
-
+    setSchedule(null);
+    setCurrentElement(null);
     if (pathname !== path) {
       navigate(path);
     }
-    setSchedule(null);
-    setScrolled(false);
-    setCurrentElement(null);
   };
 
   const toggleExpand = (slot: Slot): void => {
