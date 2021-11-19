@@ -3,57 +3,38 @@ import { About } from "./components/About";
 import { Alert } from "./components/Alert";
 import { AnimatePresence } from "framer-motion";
 import { Feedback } from "./components/Feedback";
+import { Home } from "./components/Home";
 import { Schedule } from "./components/Schedule";
 import { Settings } from "luxon";
 import { Splash } from "./components/Splash";
-import { Terminal } from "shared/contracts/terminals";
-import { useLocation, useNavigate, useRoutes } from "react-router-dom";
 import { useOnline, useWSF } from "./lib/api";
 import { useRecordPageViews } from "~/lib/analytics";
+import { useRoutes } from "react-router-dom";
 import DumpsterFireIcon from "~/images/icons/solid/dumpster-fire.svg";
 import OfflineIcon from "~/images/icons/solid/signal-alt-slash.svg";
-import React, { ReactElement, useEffect, useState } from "react";
+import React, { ReactElement, useEffect } from "react";
 import ReactGA from "react-ga";
 
 Settings.defaultZoneName = "America/Los_Angeles";
-
-const DEFAULT_ROUTE = "/mukilteo";
 
 export const App = (): ReactElement => {
   useEffect(() => {
     ReactGA.initialize(process.env.GOOGLE_ANALYTICS as string);
   }, []);
-  const navigate = useNavigate();
   const isOnline = useOnline();
   const isWsfOffline = useWSF().offline;
   const [offlineDismissed, setOfflineDismissed] = React.useState(false);
   const [wsfDismissed, setWsfDismissed] = React.useState(false);
-  const [terminal, setTerminal] = useState<Terminal | null>(null);
-  const [mate, setMate] = useState<Terminal | null>(null);
   useRecordPageViews();
-  const { pathname } = useLocation();
-
-  useEffect(() => {
-    if (pathname === "/") {
-      if (terminal) {
-        navigate(`/${terminal.id}/${mate?.id}`);
-      } else {
-        navigate(DEFAULT_ROUTE);
-      }
-    }
-  }, [pathname]);
-
-  const renderSchedule = (): ReactElement => (
-    <Schedule onTerminalChange={setTerminal} onMateChange={setMate} />
-  );
 
   const element = useRoutes([
+    { path: "", element: <Home /> },
     { path: "about", element: <About /> },
     { path: "feedback", element: <Feedback /> },
     {
       path: ":terminalSlug",
-      element: renderSchedule(),
-      children: [{ path: ":mateSlug", element: renderSchedule() }],
+      element: <Schedule />,
+      children: [{ path: ":mateSlug", element: <Schedule /> }],
     },
   ]);
 

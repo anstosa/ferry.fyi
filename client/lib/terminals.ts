@@ -1,6 +1,8 @@
 import { entries, findKey, keys, values } from "shared/lib/objects";
 import { get } from "~/lib/api";
-import { sortBy } from "shared/lib/arrays";
+import { getDistance, useGeo } from "./geo";
+import { isEmpty, sortBy } from "shared/lib/arrays";
+import { useEffect, useState } from "react";
 import TERMINAL_DATA_OVERRIDES from "shared/data/terminals.json";
 import type { Terminal } from "shared/contracts/terminals";
 
@@ -49,4 +51,64 @@ export const getTerminals = async (): Promise<Terminal[]> => {
     hasAll = true;
   }
   return sortBy(values(terminalCache), "name");
+};
+
+interface TerminalState {
+  terminals: Terminal[];
+  closestTerminal: Terminal | null;
+}
+
+export const getTerminalSorter =
+  (closestTerminal?: Terminal | null) =>
+  (a: Terminal, b: Terminal): number => {
+    if (a.id === closestTerminal?.id) {
+      return -1;
+    } else if (b.id === closestTerminal?.id) {
+      return 1;
+    } else {
+      return b.popularity - a.popularity;
+    }
+  };
+
+export const useTerminals = (): TerminalState => {
+  const location = useGeo();
+  const [terminals, setTerminals] = useState<Terminal[]>([]);
+  const [closestTerminal, setClosestTerminal] =
+    useState<TerminalState["closestTerminal"]>(null);
+
+  const fetchTerminals = async (): Promise<void> => {
+    setTerminals(await getTerminals());
+  };
+
+  useEffect(() => {
+    fetchTerminals();
+  }, []);
+
+  useEffect(() => {
+    if (!location || isEmpty(terminals)) {
+      return;
+    }
+    let closestTerminal: Terminal | undefined;
+    let closestDistance: number = Infinity;
+    terminals.forEach((terminal) => {
+      const { latitude, longitude } = terminal.location;
+      if (!latitude || !longitude) {
+        return;
+      }
+      const distance = getDistance(location, { latitude, longitude });
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestTerminal = terminal;
+      }
+      if (closestTerminal) {
+        setClosestTerminal(closestTerminal);
+      }
+    });
+  }, [location, terminals]);
+
+  useEffect(() => {
+    setTerminals([...terminals.sort(getTerminalSorter(closestTerminal))]);
+  }, [closestTerminal]);
+
+  return { terminals, closestTerminal };
 };

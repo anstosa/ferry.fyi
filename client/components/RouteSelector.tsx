@@ -1,11 +1,11 @@
 import { Alert } from "~/components/Alert";
 import { AnimatePresence } from "framer-motion";
-import { getDistance, useGeo } from "~/lib/geo";
-import { getSlug, getTerminals } from "~/lib/terminals";
-import { isEmpty, without } from "shared/lib/arrays";
+import { getSlug, useTerminals } from "~/lib/terminals";
+import { getTerminalSorter } from "../lib/terminals";
 import { isNull } from "shared/lib/identity";
 import { Link } from "react-router-dom";
 import { TerminalDropdown } from "./TerminalDropdown";
+import { without } from "shared/lib/arrays";
 import ArrowRightIcon from "~/images/icons/solid/arrow-right.svg";
 import clsx from "clsx";
 import ExchangeIcon from "~/images/icons/solid/exchange.svg";
@@ -25,66 +25,25 @@ export const RouteSelector = (props: Props): ReactElement => {
   const [isTerminalOpen, setTerminalOpen] = useState<boolean>(false);
   const [isMateOpen, setMateOpen] = useState<boolean>(false);
   const [isSwapHovering, setSwapHovering] = useState<boolean>(false);
-  const [terminals, setTerminals] = useState<Terminal[]>([]);
-  const location = useGeo();
-  const [closestTerminal, setClosestTerminal] = useState<Terminal | null>(null);
   const [closestDismissed, setClosestDismissed] = useState<boolean>(false);
-
-  const fetchTerminals = async (): Promise<void> => {
-    setTerminals(await getTerminals());
-  };
+  const { terminals, closestTerminal } = useTerminals();
 
   useEffect(() => {
-    fetchTerminals();
-  }, []);
-
-  useEffect(() => {
-    if (!location || isEmpty(terminals)) {
-      return;
-    }
-    let closestTerminal: Terminal | undefined;
-    let closestDistance: number = Infinity;
-    terminals.forEach((terminal) => {
-      const { latitude, longitude } = terminal.location;
-      if (!latitude || !longitude) {
-        return;
-      }
-      const distance = getDistance(location, { latitude, longitude });
-      if (distance < closestDistance) {
-        closestDistance = distance;
-        closestTerminal = terminal;
-      }
-    });
-    if (closestTerminal) {
-      setClosestTerminal(closestTerminal);
-      if (closestTerminal.id === terminal.id) {
-        setClosestDismissed(true);
-      }
+    if (closestTerminal?.id === terminal.id) {
+      setClosestDismissed(true);
     }
   }, [location, terminals]);
 
-  const sorter = (a: Terminal, b: Terminal): number => {
-    if (a.id === closestTerminal?.id) {
-      return -1;
-    } else {
-      return b.popularity - a.popularity;
-    }
-  };
-
   const renderTerminal = (): ReactNode => {
-    const sortedTerminals = [...terminals];
-    sortedTerminals.sort(sorter);
     return (
       <>
         <TerminalDropdown
-          terminals={without(sortedTerminals, terminal, "id").map(
-            (terminal) => ({
-              ...(terminal.id === closestTerminal?.id && {
-                Icon: LocationIcon,
-              }),
-              terminal,
-            })
-          )}
+          terminals={without(terminals, terminal, "id").map((terminal) => ({
+            ...(terminal.id === closestTerminal?.id && {
+              Icon: LocationIcon,
+            }),
+            terminal,
+          }))}
           selected={terminal}
           isOpen={isTerminalOpen}
           setOpen={setTerminalOpen}
@@ -122,13 +81,13 @@ export const RouteSelector = (props: Props): ReactElement => {
       return null;
     }
     const { mates = [] } = terminal;
-    const sortedMates = [...mates];
-    sortedMates.sort(sorter);
     return (
       <TerminalDropdown
-        terminals={without(sortedMates, mate, "id").map((terminal) => ({
-          terminal,
-        }))}
+        terminals={without(mates.sort(getTerminalSorter()), mate, "id").map(
+          (terminal) => ({
+            terminal,
+          })
+        )}
         selected={mate}
         isOpen={isMateOpen}
         setOpen={setMateOpen}

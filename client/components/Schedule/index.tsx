@@ -25,8 +25,8 @@ import type {
 import type { Terminal } from "shared/contracts/terminals";
 
 interface Props {
-  onTerminalChange: (terminal: Terminal | null) => void;
-  onMateChange: (mate: Terminal | null) => void;
+  onTerminalChange?: (terminal: Terminal | null) => void;
+  onMateChange?: (mate: Terminal | null) => void;
 }
 
 export const Schedule = ({
@@ -120,11 +120,11 @@ export const Schedule = ({
 
   // update parents on parameter change
   useEffect(() => {
-    onTerminalChange(terminal);
+    onTerminalChange?.(terminal);
   }, [terminal]);
 
   useEffect(() => {
-    onMateChange(mate);
+    onMateChange?.(mate);
   }, [mate]);
 
   useEffect(() => {
@@ -132,10 +132,6 @@ export const Schedule = ({
       scrollIntoView(currentElement, { align: { top: 0.3 } });
     }
   }, [currentElement]);
-
-  useEffect(() => {
-    onMateChange(mate);
-  }, [mate]);
 
   const setRoute = async (
     terminalSlug: string,
