@@ -23,13 +23,13 @@
 23-->
 24<manifest xmlns:android="http://schemas.android.com/apk/res/android"
 25    package="fyi.ferry"
-26    android:versionCode="2"
-27    android:versionName="2" >
+26    android:versionCode="4"
+27    android:versionName="2.5" >
 28
 29    <uses-sdk
 30        android:minSdkVersion="19"
 30-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml
-31        android:targetSdkVersion="30" />
+31        android:targetSdkVersion="31" />
 31-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml
 32
 33    <uses-permission android:name="android.permission.INTERNET" />
@@ -40,25 +40,25 @@
 34-->[com.google.androidbrowserhelper:locationdelegation:1.0.1] /home/ansto/.gradle/caches/transforms-2/files-2.1/6533a4776060e2dafc326b30a0222ee1/locationdelegation-1.0.1/AndroidManifest.xml:11:22-76
 35
 36    <queries>
-36-->[com.google.androidbrowserhelper:androidbrowserhelper:2.2.1] /home/ansto/.gradle/caches/transforms-2/files-2.1/43500dace97d54a90d7f296959ce8d3a/androidbrowserhelper-2.2.1/AndroidManifest.xml:26:5-34:15
+36-->[com.google.androidbrowserhelper:androidbrowserhelper:2.3.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/572def1352afcb56982bb86acf89682d/androidbrowserhelper-2.3.0/AndroidManifest.xml:26:5-34:15
 37        <intent>
-37-->[com.google.androidbrowserhelper:androidbrowserhelper:2.2.1] /home/ansto/.gradle/caches/transforms-2/files-2.1/43500dace97d54a90d7f296959ce8d3a/androidbrowserhelper-2.2.1/AndroidManifest.xml:27:9-33:18
+37-->[com.google.androidbrowserhelper:androidbrowserhelper:2.3.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/572def1352afcb56982bb86acf89682d/androidbrowserhelper-2.3.0/AndroidManifest.xml:27:9-33:18
 38            <action android:name="android.intent.action.VIEW" />
-38-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:116:17-68
-38-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:116:25-66
+38-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:117:17-68
+38-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:117:25-66
 39
 40            <category android:name="android.intent.category.BROWSABLE" />
-40-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:118:17-77
-40-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:118:27-75
+40-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:119:17-77
+40-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:119:27-75
 41
 42            <data android:scheme="https" />
-42-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:119:17-120:54
-42-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:119:23-45
+42-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:120:17-121:54
+42-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:120:23-45
 43        </intent>
 44    </queries>
 45
 46    <application
-46-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:31:5-162:19
+46-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:31:5-163:19
 47        android:name="fyi.ferry.Application"
 47-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:32:9-35
 48        android:allowBackup="true"
@@ -93,197 +93,199 @@
 62-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:52:13-49
 63
 64        <activity
-64-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:56:9-124:20
+64-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:56:9-125:20
 65            android:name="fyi.ferry.LauncherActivity"
 65-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:56:19-50
 66            android:alwaysRetainTaskState="true"
 66-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:57:13-49
-67            android:label="@string/launcherName" >
-67-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:58:13-49
-68            <meta-data
-68-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:59:13-60:53
-69                android:name="android.support.customtabs.trusted.DEFAULT_URL"
-69-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:59:24-85
-70                android:value="@string/launchUrl" />
-70-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:60:17-50
-71            <meta-data
-71-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:62:13-64:58
-72                android:name="android.support.customtabs.trusted.STATUS_BAR_COLOR"
-72-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:63:17-83
-73                android:resource="@color/colorPrimary" />
-73-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:64:17-55
-74            <meta-data
-74-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:66:13-68:61
-75                android:name="android.support.customtabs.trusted.NAVIGATION_BAR_COLOR"
-75-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:67:17-87
-76                android:resource="@color/navigationColor" />
-76-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:68:17-58
-77            <meta-data
-77-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:70:13-72:65
-78                android:name="android.support.customtabs.trusted.NAVIGATION_BAR_COLOR_DARK"
-78-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:71:17-92
-79                android:resource="@color/navigationColorDark" />
-79-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:72:17-62
-80            <meta-data
-80-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:74:13-76:68
-81                android:name="androix.browser.trusted.NAVIGATION_BAR_DIVIDER_COLOR"
-81-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:75:17-84
-82                android:resource="@color/navigationDividerColor" />
-82-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:76:17-65
-83            <meta-data
-83-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:78:13-80:72
-84                android:name="androix.browser.trusted.NAVIGATION_BAR_DIVIDER_COLOR_DARK"
-84-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:79:17-89
-85                android:resource="@color/navigationDividerColorDark" />
-85-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:80:17-69
-86            <meta-data
-86-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:82:13-83:54
-87                android:name="android.support.customtabs.trusted.SPLASH_IMAGE_DRAWABLE"
-87-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:82:24-95
-88                android:resource="@drawable/splash" />
-88-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:83:17-52
-89            <meta-data
-89-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:85:13-86:60
-90                android:name="android.support.customtabs.trusted.SPLASH_SCREEN_BACKGROUND_COLOR"
-90-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:85:24-104
-91                android:resource="@color/backgroundColor" />
-91-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:86:17-58
-92            <meta-data
-92-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:88:13-89:71
-93                android:name="android.support.customtabs.trusted.SPLASH_SCREEN_FADE_OUT_DURATION"
-93-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:88:24-105
-94                android:value="@integer/splashScreenFadeOutDuration" />
-94-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:89:17-69
-95            <meta-data
-95-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:91:13-92:60
-96                android:name="android.support.customtabs.trusted.FILE_PROVIDER_AUTHORITY"
-96-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:91:24-97
-97                android:value="@string/providerAuthority" />
-97-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:92:17-58
-98            <meta-data
-98-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:94:13-97
-99                android:name="android.app.shortcuts"
-99-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:94:24-60
-100                android:resource="@xml/shortcuts" />
-100-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:94:61-94
-101            <meta-data
-101-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:96:13-97:56
-102                android:name="android.support.customtabs.trusted.FALLBACK_STRATEGY"
-102-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:96:24-91
-103                android:value="@string/fallbackType" />
-103-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:97:17-53
-104            <meta-data
-104-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:103:13-104:54
-105                android:name="android.support.customtabs.trusted.SCREEN_ORIENTATION"
-105-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:103:24-92
-106                android:value="@string/orientation" />
-106-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:104:17-52
-107
-108            <intent-filter>
-108-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:110:13-113:29
-109                <action android:name="android.intent.action.MAIN" />
-109-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:111:17-69
-109-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:111:25-66
-110
-111                <category android:name="android.intent.category.LAUNCHER" />
-111-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:112:17-77
-111-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:112:27-74
-112            </intent-filter>
-113            <intent-filter android:autoVerify="true" >
-113-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:115:13-121:29
-113-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:115:28-53
-114                <action android:name="android.intent.action.VIEW" />
-114-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:116:17-68
-114-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:116:25-66
-115
-116                <category android:name="android.intent.category.DEFAULT" />
-116-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:117:17-76
-116-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:117:27-73
-117                <category android:name="android.intent.category.BROWSABLE" />
-117-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:118:17-77
-117-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:118:27-75
-118
-119                <data
-119-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:119:17-120:54
-120                    android:host="@string/hostName"
-120-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:120:21-52
-121                    android:scheme="https" />
-121-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:119:23-45
-122            </intent-filter>
-123        </activity>
-124        <activity android:name="com.google.androidbrowserhelper.trusted.FocusActivity" />
-124-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:126:9-90
-124-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:126:19-87
-125        <activity
-125-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:128:9-129:62
-126            android:name="com.google.androidbrowserhelper.trusted.WebViewFallbackActivity"
-126-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:128:19-97
-127            android:configChanges="orientation|screenSize" />
-127-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:129:13-59
-128
-129        <provider
-129-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:131:9-139:20
-130            android:name="androidx.core.content.FileProvider"
-130-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:132:13-62
-131            android:authorities="@string/providerAuthority"
-131-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:133:13-60
-132            android:exported="false"
-132-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:135:13-37
-133            android:grantUriPermissions="true" >
-133-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:134:13-47
-134            <meta-data
-134-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:136:13-138:53
-135                android:name="android.support.FILE_PROVIDER_PATHS"
-135-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:137:17-67
-136                android:resource="@xml/filepaths" />
-136-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:138:17-50
-137        </provider>
-138
-139        <service
-139-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:141:9-156:19
-140            android:name="fyi.ferry.DelegationService"
-140-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:142:13-46
-141            android:enabled="@bool/enableNotification"
-141-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:143:13-55
-142            android:exported="@bool/enableNotification" >
-142-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:144:13-56
-143            <meta-data
-143-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:147:17-149:73
-144                android:name="android.support.customtabs.trusted.SMALL_ICON"
-144-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:148:21-81
-145                android:resource="@drawable/ic_notification_icon" />
-145-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:149:21-70
-146
-147            <intent-filter>
-147-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:152:13-155:29
-148                <action android:name="android.support.customtabs.trusted.TRUSTED_WEB_ACTIVITY_SERVICE" />
-148-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:153:17-105
-148-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:153:25-103
-149
-150                <category android:name="android.intent.category.DEFAULT" />
-150-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:117:17-76
-150-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:117:27-73
-151            </intent-filter>
-152        </service>
-153
-154        <activity android:name="com.google.androidbrowserhelper.locationdelegation.PermissionRequestActivity" />
-154-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:159:13-160:89
-154-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:159:23-123
-155        <activity
-155-->[com.google.android.gms:play-services-base:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/af7ff4cdb9585a03f0fe804445629944/play-services-base-17.0.0/AndroidManifest.xml:23:9-26:75
-156            android:name="com.google.android.gms.common.api.GoogleApiActivity"
-156-->[com.google.android.gms:play-services-base:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/af7ff4cdb9585a03f0fe804445629944/play-services-base-17.0.0/AndroidManifest.xml:24:13-79
-157            android:exported="false"
-157-->[com.google.android.gms:play-services-base:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/af7ff4cdb9585a03f0fe804445629944/play-services-base-17.0.0/AndroidManifest.xml:25:13-37
-158            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
-158-->[com.google.android.gms:play-services-base:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/af7ff4cdb9585a03f0fe804445629944/play-services-base-17.0.0/AndroidManifest.xml:26:13-72
-159
-160        <meta-data
-160-->[com.google.android.gms:play-services-basement:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/937c5050898784d30c656655e5f36fd6/play-services-basement-17.0.0/AndroidManifest.xml:23:9-25:69
-161            android:name="com.google.android.gms.version"
-161-->[com.google.android.gms:play-services-basement:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/937c5050898784d30c656655e5f36fd6/play-services-basement-17.0.0/AndroidManifest.xml:24:13-58
-162            android:value="@integer/google_play_services_version" />
-162-->[com.google.android.gms:play-services-basement:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/937c5050898784d30c656655e5f36fd6/play-services-basement-17.0.0/AndroidManifest.xml:25:13-66
-163    </application>
-164
-165</manifest>
+67            android:exported="true"
+67-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:59:13-36
+68            android:label="@string/launcherName" >
+68-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:58:13-49
+69            <meta-data
+69-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:60:13-61:53
+70                android:name="android.support.customtabs.trusted.DEFAULT_URL"
+70-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:60:24-85
+71                android:value="@string/launchUrl" />
+71-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:61:17-50
+72            <meta-data
+72-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:63:13-65:58
+73                android:name="android.support.customtabs.trusted.STATUS_BAR_COLOR"
+73-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:64:17-83
+74                android:resource="@color/colorPrimary" />
+74-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:65:17-55
+75            <meta-data
+75-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:67:13-69:61
+76                android:name="android.support.customtabs.trusted.NAVIGATION_BAR_COLOR"
+76-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:68:17-87
+77                android:resource="@color/navigationColor" />
+77-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:69:17-58
+78            <meta-data
+78-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:71:13-73:65
+79                android:name="android.support.customtabs.trusted.NAVIGATION_BAR_COLOR_DARK"
+79-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:72:17-92
+80                android:resource="@color/navigationColorDark" />
+80-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:73:17-62
+81            <meta-data
+81-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:75:13-77:68
+82                android:name="androix.browser.trusted.NAVIGATION_BAR_DIVIDER_COLOR"
+82-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:76:17-84
+83                android:resource="@color/navigationDividerColor" />
+83-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:77:17-65
+84            <meta-data
+84-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:79:13-81:72
+85                android:name="androix.browser.trusted.NAVIGATION_BAR_DIVIDER_COLOR_DARK"
+85-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:80:17-89
+86                android:resource="@color/navigationDividerColorDark" />
+86-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:81:17-69
+87            <meta-data
+87-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:83:13-84:54
+88                android:name="android.support.customtabs.trusted.SPLASH_IMAGE_DRAWABLE"
+88-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:83:24-95
+89                android:resource="@drawable/splash" />
+89-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:84:17-52
+90            <meta-data
+90-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:86:13-87:60
+91                android:name="android.support.customtabs.trusted.SPLASH_SCREEN_BACKGROUND_COLOR"
+91-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:86:24-104
+92                android:resource="@color/backgroundColor" />
+92-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:87:17-58
+93            <meta-data
+93-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:89:13-90:71
+94                android:name="android.support.customtabs.trusted.SPLASH_SCREEN_FADE_OUT_DURATION"
+94-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:89:24-105
+95                android:value="@integer/splashScreenFadeOutDuration" />
+95-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:90:17-69
+96            <meta-data
+96-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:92:13-93:60
+97                android:name="android.support.customtabs.trusted.FILE_PROVIDER_AUTHORITY"
+97-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:92:24-97
+98                android:value="@string/providerAuthority" />
+98-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:93:17-58
+99            <meta-data
+99-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:95:13-97
+100                android:name="android.app.shortcuts"
+100-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:95:24-60
+101                android:resource="@xml/shortcuts" />
+101-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:95:61-94
+102            <meta-data
+102-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:97:13-98:56
+103                android:name="android.support.customtabs.trusted.FALLBACK_STRATEGY"
+103-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:97:24-91
+104                android:value="@string/fallbackType" />
+104-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:98:17-53
+105            <meta-data
+105-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:104:13-105:54
+106                android:name="android.support.customtabs.trusted.SCREEN_ORIENTATION"
+106-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:104:24-92
+107                android:value="@string/orientation" />
+107-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:105:17-52
+108
+109            <intent-filter>
+109-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:111:13-114:29
+110                <action android:name="android.intent.action.MAIN" />
+110-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:112:17-69
+110-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:112:25-66
+111
+112                <category android:name="android.intent.category.LAUNCHER" />
+112-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:113:17-77
+112-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:113:27-74
+113            </intent-filter>
+114            <intent-filter android:autoVerify="true" >
+114-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:116:13-122:29
+114-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:116:28-53
+115                <action android:name="android.intent.action.VIEW" />
+115-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:117:17-68
+115-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:117:25-66
+116
+117                <category android:name="android.intent.category.DEFAULT" />
+117-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:118:17-76
+117-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:118:27-73
+118                <category android:name="android.intent.category.BROWSABLE" />
+118-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:119:17-77
+118-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:119:27-75
+119
+120                <data
+120-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:120:17-121:54
+121                    android:host="@string/hostName"
+121-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:121:21-52
+122                    android:scheme="https" />
+122-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:120:23-45
+123            </intent-filter>
+124        </activity>
+125        <activity android:name="com.google.androidbrowserhelper.trusted.FocusActivity" />
+125-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:127:9-90
+125-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:127:19-87
+126        <activity
+126-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:129:9-130:62
+127            android:name="com.google.androidbrowserhelper.trusted.WebViewFallbackActivity"
+127-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:129:19-97
+128            android:configChanges="orientation|screenSize" />
+128-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:130:13-59
+129
+130        <provider
+130-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:132:9-140:20
+131            android:name="androidx.core.content.FileProvider"
+131-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:133:13-62
+132            android:authorities="@string/providerAuthority"
+132-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:134:13-60
+133            android:exported="false"
+133-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:136:13-37
+134            android:grantUriPermissions="true" >
+134-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:135:13-47
+135            <meta-data
+135-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:137:13-139:53
+136                android:name="android.support.FILE_PROVIDER_PATHS"
+136-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:138:17-67
+137                android:resource="@xml/filepaths" />
+137-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:139:17-50
+138        </provider>
+139
+140        <service
+140-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:142:9-157:19
+141            android:name="fyi.ferry.DelegationService"
+141-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:143:13-46
+142            android:enabled="@bool/enableNotification"
+142-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:144:13-55
+143            android:exported="@bool/enableNotification" >
+143-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:145:13-56
+144            <meta-data
+144-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:148:17-150:73
+145                android:name="android.support.customtabs.trusted.SMALL_ICON"
+145-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:149:21-81
+146                android:resource="@drawable/ic_notification_icon" />
+146-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:150:21-70
+147
+148            <intent-filter>
+148-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:153:13-156:29
+149                <action android:name="android.support.customtabs.trusted.TRUSTED_WEB_ACTIVITY_SERVICE" />
+149-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:154:17-105
+149-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:154:25-103
+150
+151                <category android:name="android.intent.category.DEFAULT" />
+151-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:118:17-76
+151-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:118:27-73
+152            </intent-filter>
+153        </service>
+154
+155        <activity android:name="com.google.androidbrowserhelper.locationdelegation.PermissionRequestActivity" />
+155-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:160:13-161:89
+155-->/home/ansto/ferry.fyi/app/src/main/AndroidManifest.xml:160:23-123
+156        <activity
+156-->[com.google.android.gms:play-services-base:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/af7ff4cdb9585a03f0fe804445629944/play-services-base-17.0.0/AndroidManifest.xml:23:9-26:75
+157            android:name="com.google.android.gms.common.api.GoogleApiActivity"
+157-->[com.google.android.gms:play-services-base:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/af7ff4cdb9585a03f0fe804445629944/play-services-base-17.0.0/AndroidManifest.xml:24:13-79
+158            android:exported="false"
+158-->[com.google.android.gms:play-services-base:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/af7ff4cdb9585a03f0fe804445629944/play-services-base-17.0.0/AndroidManifest.xml:25:13-37
+159            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+159-->[com.google.android.gms:play-services-base:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/af7ff4cdb9585a03f0fe804445629944/play-services-base-17.0.0/AndroidManifest.xml:26:13-72
+160
+161        <meta-data
+161-->[com.google.android.gms:play-services-basement:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/937c5050898784d30c656655e5f36fd6/play-services-basement-17.0.0/AndroidManifest.xml:23:9-25:69
+162            android:name="com.google.android.gms.version"
+162-->[com.google.android.gms:play-services-basement:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/937c5050898784d30c656655e5f36fd6/play-services-basement-17.0.0/AndroidManifest.xml:24:13-58
+163            android:value="@integer/google_play_services_version" />
+163-->[com.google.android.gms:play-services-basement:17.0.0] /home/ansto/.gradle/caches/transforms-2/files-2.1/937c5050898784d30c656655e5f36fd6/play-services-basement-17.0.0/AndroidManifest.xml:25:13-66
+164    </application>
+165
+166</manifest>

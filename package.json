@@ -1,6 +1,6 @@
 {
   "name": "ferry.fyi",
-  "version": "2.0.0",
+  "version": "2.5.0",
   "engines": {
     "node": "^14.17.6"
   },
@@ -9,6 +9,7 @@
     "build": "yarn build:client && yarn build:server",
     "build:client": "NODE_ENV=production webpack --config client/webpack.config.ts",
     "build:server": "NODE_ENV=production webpack --config server/webpack.config.ts",
+    "build:android": "bubblewrap build",
     "clean": "rm -rf dist/*",
     "client": "webpack serve --config client/webpack.config.ts --progress",
     "db:migrate": "sequelize db:migrate",

@@ -20,8 +20,8 @@
     "path": "/home/ansto/ferry.fyi/android.keystore",
     "alias": "android"
   },
-  "appVersionName": "2",
-  "appVersionCode": 2,
+  "appVersionName": "2.5",
+  "appVersionCode": 4,
   "shortcuts": [],
   "generatorApp": "bubblewrap-cli",
   "webManifestUrl": "https://www.ferry.fyi/assets/manifest.json",
@@ -39,5 +39,5 @@
   "orientation": "default",
   "fingerprints": [],
   "additionalTrustedOrigins": [],
-  "appVersion": "2"
+  "appVersion": "2.5"
 }

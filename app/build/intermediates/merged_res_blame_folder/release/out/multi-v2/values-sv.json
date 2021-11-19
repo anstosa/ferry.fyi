@@ -38,7 +38,7 @@
                     }
                 },
                 {
-                    "source": "/home/ansto/.gradle/caches/transforms-2/files-2.1/963df8e848637d5dcc4b558ad75c146e/browser-1.3.0/res/values-sv/values-sv.xml",
+                    "source": "/home/ansto/.gradle/caches/transforms-2/files-2.1/b76183546e9802347e4b2c9dd5e9649b/browser-1.4.0/res/values-sv/values-sv.xml",
                     "from": {
                         "startLines": "2,3,4,5",
                         "startColumns": "4,4,4,4",

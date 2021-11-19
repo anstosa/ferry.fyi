@@ -805,7 +805,6 @@ com.google.androidbrowserhelper.trusted.SharingUtils:
     private void <init>()
 com.google.android.gms.common.api.internal.zacd
 androidx.print.PrintHelper$PrintUriAdapter$1
-androidx.browser.R$style
 androidx.annotation.RequiresApi
 com.google.android.gms.common.providers.PooledExecutorsProvider
 androidx.concurrent.futures.AbstractResolvableFuture$AtomicHelper
@@ -968,7 +967,6 @@ com.google.android.gms.location.GeofencingApi:
     public abstract com.google.android.gms.common.api.PendingResult addGeofences(com.google.android.gms.common.api.GoogleApiClient,com.google.android.gms.location.GeofencingRequest,android.app.PendingIntent)
     public abstract com.google.android.gms.common.api.PendingResult removeGeofences(com.google.android.gms.common.api.GoogleApiClient,android.app.PendingIntent)
     public abstract com.google.android.gms.common.api.PendingResult removeGeofences(com.google.android.gms.common.api.GoogleApiClient,java.util.List)
-androidx.browser.R$attr
 com.google.android.gms.common.internal.GetServiceRequest:
     public android.os.Bundle getExtraArgs()
 androidx.core.view.ScaleGestureDetectorCompat
@@ -2247,7 +2245,6 @@ androidx.swiperefreshlayout.R$layout
 com.google.android.gms.signin.internal.zac:
     public void zab(com.google.android.gms.signin.internal.zaj)
 androidx.customview.R$integer
-androidx.browser.R$integer
 com.google.android.gms.common.util.Base64Utils
 androidx.core.widget.AutoSizeableTextView
 androidx.browser.browseractions.BrowserActionsIntent
@@ -2928,28 +2925,6 @@ androidx.coordinatorlayout.R$style
 androidx.browser.browseractions.BrowserActionsFallbackMenuUi
 androidx.browser.R$dimen:
     private void <init>()
-    public static final int compat_button_inset_horizontal_material
-    public static final int compat_button_inset_vertical_material
-    public static final int compat_button_padding_horizontal_material
-    public static final int compat_button_padding_vertical_material
-    public static final int compat_control_corner_material
-    public static final int compat_notification_large_icon_max_height
-    public static final int compat_notification_large_icon_max_width
-    public static final int notification_action_icon_size
-    public static final int notification_action_text_size
-    public static final int notification_big_circle_margin
-    public static final int notification_content_margin_start
-    public static final int notification_large_icon_height
-    public static final int notification_large_icon_width
-    public static final int notification_main_column_padding_top
-    public static final int notification_media_narrow_margin
-    public static final int notification_right_icon_size
-    public static final int notification_right_side_padding_top
-    public static final int notification_small_icon_background_padding
-    public static final int notification_small_icon_size_as_large
-    public static final int notification_subtext_size
-    public static final int notification_top_pad
-    public static final int notification_top_pad_large_text
 androidx.core.graphics.TypefaceCompatApi24Impl
 androidx.core.provider.FontsContractCompat$4$1
 androidx.viewpager.R$dimen
@@ -2960,7 +2935,6 @@ com.google.android.gms.dynamite.zzb
 com.google.android.gms.location.DetectedActivity
 androidx.browser.trusted.TrustedWebActivityDisplayMode$DefaultMode:
     private static final int ID
-androidx.browser.R$drawable
 androidx.core.app.NotificationCompat$CarExtender$UnreadConversation$Builder
 androidx.loader.content.ModernAsyncTask
 androidx.coordinatorlayout.widget.CoordinatorLayout
@@ -3743,7 +3717,6 @@ com.google.android.gms.common.util.DeviceProperties:
 com.google.android.gms.tasks.OnCanceledListener
 android.support.v4.os.IResultReceiver
 androidx.core.graphics.drawable.RoundedBitmapDrawable
-androidx.browser.R$styleable
 com.google.android.gms.common.api.internal.zabs:
     public abstract com.google.android.gms.common.api.internal.BaseImplementation$ApiMethodImpl enqueue(com.google.android.gms.common.api.internal.BaseImplementation$ApiMethodImpl)
     public abstract com.google.android.gms.common.ConnectionResult blockingConnect()
