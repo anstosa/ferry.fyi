@@ -11,14 +11,5 @@
       "shared/*": ["../shared/*"]
     }
   },
-  "include": [
-    "./**/*.ts",
-    "./**/*.tsx",
-    "../shared/lib/strings.ts",
-    "../shared/lib/timing.ts",
-    "../shared/lib/objects.ts",
-    "../shared/lib/math.ts",
-    "../shared/lib/identity.ts",
-    "../shared/lib/arrays.ts"
-  ]
+  "include": ["./**/*.ts", "./**/*.tsx"]
 }

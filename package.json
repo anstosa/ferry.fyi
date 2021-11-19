@@ -147,6 +147,7 @@
     "workbox-window": "^6.1.1"
   },
   "dependencies": {
+    "@types/gtag.js": "^0.0.8",
     "@types/koa-compress": "^4.0.3",
     "@types/mapbox-gl": "^2.4.2",
     "clsx": "^1.1.1",

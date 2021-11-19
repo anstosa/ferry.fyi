@@ -1,3 +1,5 @@
+/* global gtag */
+
 import { App } from "./App";
 import { BrowserRouter } from "react-router-dom";
 import { Workbox } from "workbox-window";
@@ -52,3 +54,7 @@ if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") {
 }
 
 window.addEventListener("beforeinstallprompt", (e: any) => e.prompt());
+
+gtag("event", "conversion", {
+  send_to: `${process.env.AW_TAG_ID}/78vaCLmvr4QDEJvr0tUC`,
+});

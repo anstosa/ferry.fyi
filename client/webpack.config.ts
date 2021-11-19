@@ -103,6 +103,7 @@ module.exports = {
     }),
     new ForkTsCheckerWebpackPlugin(),
     new HtmlPlugin({
+      AW_TAG_ID: process.env.AW_TAG_ID,
       description: DESCRIPTION,
       template: "index.html",
       title: TITLE,
@@ -117,6 +118,7 @@ module.exports = {
       chunkFilename: "[id].css",
     }),
     new webpack.EnvironmentPlugin([
+      "AW_TAG_ID",
       "BASE_URL",
       "MAPBOX_ACCESS_TOKEN",
       "GOOGLE_ANALYTICS",
