@@ -2,8 +2,8 @@ import nodemon from "nodemon";
 
 nodemon({
   watch: ["."],
-  script: "server.ts",
-  exec: "ts-node -r tsconfig-paths/register server.ts",
+  script: "server.tsx",
+  exec: "ts-node -r tsconfig-paths/register server.tsx",
   ext: "ts",
 });
 

@@ -1,10 +1,13 @@
+import { App } from "../client/App";
 import { DateTime } from "luxon";
 import { dbInit } from "~/lib/db";
 import { entries } from "shared/lib/objects";
+import { renderToString } from "react-dom/server";
 import { Route } from "./models/Route";
 import { Schedule } from "~/models/Schedule";
 import { scheduleJob } from "node-schedule";
 import { sendNotFound, sendResponse } from "~/lib/api";
+import { StaticRouter } from "react-router-dom/server";
 import { Terminal } from "~/models/Terminal";
 import { Terminal as TerminalClass } from "shared/contracts/terminals";
 import { toWsfDate } from "./lib/wsf/date";
@@ -20,6 +23,7 @@ import Koa from "koa";
 import logger from "heroku-logger";
 import mount from "koa-mount";
 import path from "path";
+import React from "react";
 import requestLogger from "koa-logger";
 import Router from "koa-router";
 import serve from "koa-static";
@@ -118,8 +122,22 @@ browser.get("/robots.txt", (context) => {
   context.body = "User-agent: *\nAllow: /";
 });
 browser.get(/.*/, (context) => {
-  context.type = "html";
-  context.body = fs.readFileSync(path.resolve(clientDist, "index.html"));
+  const app = renderToString(
+    <StaticRouter location={context.path}>
+      <App />
+    </StaticRouter>
+  );
+  fs.readFile(
+    path.resolve(clientDist, "index.html"),
+    { encoding: "utf8" },
+    (error, index) => {
+      context.type = "html";
+      context.body = index.replace(
+        'id="root"></div>',
+        `'id="root">${app}</div>'`
+      );
+    }
+  );
 });
 dist.use(browser.routes());
 app.use(mount("/", dist));

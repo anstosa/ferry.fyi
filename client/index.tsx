@@ -27,7 +27,7 @@ const whenReady = (callback: () => void): void => {
 whenReady(() => {
   const root = document.querySelector("#root");
   const renderAll = (): void => {
-    ReactDOM.render(
+    ReactDOM.hydrate(
       <BrowserRouter>
         <App />
       </BrowserRouter>,
