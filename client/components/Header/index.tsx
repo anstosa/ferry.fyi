@@ -31,6 +31,14 @@ export const Header: FunctionComponent<Props> = (props) => {
   const { isReloading, reload, children, share } = props;
   const [isMenuOpen, setMenuOpen] = useState<boolean>(false);
 
+  const openNav = () => {
+    setMenuOpen(true);
+    ReactGA.event({
+      category: "Navigation",
+      action: "Open Menu",
+    });
+  };
+
   const renderMenuToggle = (): ReactNode => {
     if (isReloading) {
       return (
@@ -51,13 +59,7 @@ export const Header: FunctionComponent<Props> = (props) => {
       return (
         <MenuIcon
           className="text-2xl inline-block mr-4 cursor-poiner"
-          onClick={() => {
-            setMenuOpen(true);
-            ReactGA.event({
-              category: "Navigation",
-              action: "Open Menu",
-            });
-          }}
+          onClick={openNav}
           aria-label="Open Menu"
         />
       );
@@ -83,6 +85,7 @@ export const Header: FunctionComponent<Props> = (props) => {
             action: "Close Menu",
           });
         }}
+        onOpen={openNav}
         share={share}
       />
       <WrapHeader>
