@@ -140,7 +140,11 @@ export const updateSchedules = async (
             seenVessels.push(vessel);
           }
           const crossing = await Crossing.findOne({
-            where: { departureTime: time },
+            where: {
+              departureId: terminalId,
+              arrivalId: mateId,
+              departureTime: time,
+            },
           });
           return {
             allowsPassengers: [
