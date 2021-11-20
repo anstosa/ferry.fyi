@@ -11,8 +11,8 @@ import {
 import { render } from "react-dom";
 import { renderToString } from "react-dom/server";
 import { Vessel } from "shared/contracts/vessels";
-import CurrentTerminalIcon from "~/images/icons/solid/map-marker.svg";
-import MateTerminalIcon from "~/images/icons/solid/map-marker-alt.svg";
+import CurrentTerminalIcon from "~/images/icons/solid/location.svg";
+import MateTerminalIcon from "~/images/icons/solid/map-marker.svg";
 import OtherTerminalIcon from "~/images/icons/regular/map-marker-alt.svg";
 import React, { ReactElement, useEffect, useRef, useState } from "react";
 import VesselIcon from "~/images/icons/solid/location-arrow.svg";
@@ -82,7 +82,10 @@ export const Map = ({ terminal, mate, vessels }: Props): ReactElement => {
         return new Marker({ anchor: "bottom", element: marker })
           .setLngLat(lngLat)
           .setPopup(
-            new Popup({ offset: 25, closeButton: false }).setHTML(
+            new Popup({
+              offset: t === terminal ? 0 : 25,
+              closeButton: false,
+            }).setHTML(
               renderToString(
                 <>
                   <div className="text-black">{t.name}</div>
