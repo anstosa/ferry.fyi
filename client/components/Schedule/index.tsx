@@ -139,7 +139,7 @@ export const Schedule = ({
     if (terminal?.mates?.length === 1) {
       return `/${terminalSlug}${query}`;
     } else {
-      return `/${terminalSlug}/${mateSlug}${query}`;
+      return `/${terminalSlug}/${mateSlug ?? ""}${query}`;
     }
   };
 
