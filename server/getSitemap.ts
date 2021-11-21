@@ -7,20 +7,14 @@ import logger from "heroku-logger";
 let sitemap: Buffer;
 
 export const getSitemap = async (): Promise<Buffer> => {
-  logger.info("1");
   if (sitemap) {
-    logger.info("2");
     return sitemap;
   }
   const stream = new SitemapStream({ hostname: "https://ferry.fyi/" });
-  logger.info("3");
-  logger.info("4");
 
   stream.write({ url: "/" });
   stream.write({ url: "/about" });
   stream.write({ url: "/feedback" });
-
-  logger.info("5");
 
   const terminals = entries(await Terminal.getAll());
 
@@ -39,13 +33,10 @@ export const getSitemap = async (): Promise<Buffer> => {
       });
     });
   });
-  logger.info("6");
 
   // cache the response
   // eslint-disable-next-line require-atomic-updates
   streamToPromise(stream).then((result) => (sitemap = result));
-  logger.info("7");
   stream.end();
-  logger.info("8");
   return sitemap;
 };
