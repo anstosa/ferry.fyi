@@ -191,7 +191,14 @@ browser.get(/.*/, (context) => {
       { encoding: "utf-8" },
       (error, data) => {
         context.type = "html";
-        context.body = title ? data.replace(DEFAULT_TITLE, title) : data;
+        context.body = title
+          ? data
+              .replace(DEFAULT_TITLE, title)
+              .replace(
+                `rel="canonical" href="${process.env.BASE_URL}"`,
+                `rel="canonical" href="${process.env.BASE_URL}${context.path}"`
+              )
+          : data;
         resolve();
       }
     );
