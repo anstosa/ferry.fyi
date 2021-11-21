@@ -1,4 +1,3 @@
-import { ContextReplacementPlugin } from "webpack";
 import { DateTime } from "luxon";
 import { dbInit } from "~/lib/db";
 import { entries } from "shared/lib/objects";
@@ -157,6 +156,7 @@ browser.get(/.*/, (context) => {
         ) || terminal.mates[0];
 
       const dateMatch = context.search.match(/date=([\d-]+)&?/);
+      let dateSegment: string = "";
 
       if (dateMatch) {
         const [, dateInput] = dateMatch;
@@ -176,10 +176,12 @@ browser.get(/.*/, (context) => {
           formattedDate.push(date.toFormat("y"));
         }
 
-        title = `${terminal.name} to ${mate.name}${
-          isToday ? "" : ` on ${formattedDate.join(" ")}`
-        } - Ferry FYI`;
+        if (!isToday) {
+          dateSegment = ` on ${formattedDate.join(" ")}`;
+        }
       }
+
+      title = `${terminal.name} to ${mate.name}${dateSegment} - Ferry FYI`;
     }
   }
 
