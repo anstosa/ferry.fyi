@@ -1,6 +1,8 @@
+import { ContextReplacementPlugin } from "webpack";
 import { DateTime } from "luxon";
 import { dbInit } from "~/lib/db";
 import { entries } from "shared/lib/objects";
+import { getSitemap } from "./getSitemap";
 import { Route } from "./models/Route";
 import { Schedule } from "~/models/Schedule";
 import { scheduleJob } from "node-schedule";
@@ -112,18 +114,30 @@ const clientDist = path.resolve(
   "client/"
 );
 dist.use(serve(clientDist, { hidden: true }));
+
 const browser = new Router();
 browser.get("/robots.txt", (context) => {
   context.type = "text/plain";
   context.body = "User-agent: *\nAllow: /";
 });
-
+browser.get(
+  "/sitemap.xml",
+  (context) =>
+    new Promise<void>((resolve) =>
+      getSitemap()
+        .then((sitemap) => {
+          context.type = "text/xml";
+          context.body = sitemap;
+          resolve();
+        })
+        .catch(() => {
+          context.status = 500;
+        })
+    )
+);
 browser.get(/.*/, (context) => {
   // sync from webpack.config.ts
   const DEFAULT_TITLE = /Ferry FYI - Seattle Area Ferry Schedule and Tracker/;
-
-  logger.info(context.path);
-  logger.info(context.search);
 
   let title: string | undefined;
   const terminalMatch = context.path.match(/^\/(\w+)\/?(\w*)\/?$/);

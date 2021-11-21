@@ -177,6 +177,7 @@
     "request": "^2.88.2",
     "sequelize": "^6.5.0",
     "sequelize-cli": "^6.2.0",
+    "sitemap": "^7.0.0",
     "zlib": "^1.0.5"
   }
 }
