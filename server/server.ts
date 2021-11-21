@@ -120,7 +120,7 @@ browser.get("/robots.txt", (context) => {
 
 browser.get(/.*/, (context) => {
   // sync from webpack.config.ts
-  const DEFAULT_TITLE = /Ferry FYI - Area Ferry Schedule and Tracker/g;
+  const DEFAULT_TITLE = /Ferry FYI - Seattle Area Ferry Schedule and Tracker/;
 
   logger.info(context.path);
   logger.info(context.search);
@@ -169,14 +169,17 @@ browser.get(/.*/, (context) => {
     }
   }
 
-  fs.readFile(
-    path.resolve(clientDist, "index.html"),
-    { encoding: "utf-8" },
-    (error, data) => {
-      context.type = "html";
-      context.body = title ? data.replace(DEFAULT_TITLE, title) : data;
-    }
-  );
+  return new Promise<void>((resolve) => {
+    fs.readFile(
+      path.resolve(clientDist, "index.html"),
+      { encoding: "utf-8" },
+      (error, data) => {
+        context.type = "html";
+        context.body = title ? data.replace(DEFAULT_TITLE, title) : data;
+        resolve();
+      }
+    );
+  });
 });
 dist.use(browser.routes());
 app.use(mount("/", dist));
