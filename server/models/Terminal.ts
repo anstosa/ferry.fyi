@@ -17,22 +17,24 @@ export class Terminal extends CacheableModel implements TerminalClass {
   static index = "id";
 
   abbreviation!: string;
+  aliases!: string[];
   bulletins!: Bulletin[];
   cameras!: Camera[];
   hasElevator!: boolean;
+  hasFood!: boolean;
   hasOverheadLoading!: boolean;
   hasRestroom!: boolean;
   hasWaitingRoom!: boolean;
-  hasFood!: boolean;
   id!: string;
   info!: TerminalInfo;
   location!: TerminalLocation;
-  name!: string;
-  waitTimes!: WaitTime[];
   mates!: Terminal[];
+  name!: string;
   popularity!: number;
   routes!: Record<string, Route>;
+  slug!: string;
   vesselwatch!: string;
+  waitTimes!: WaitTime[];
 
   save(): void {
     // merge in any data overrides

@@ -117,9 +117,66 @@ browser.get("/robots.txt", (context) => {
   context.type = "text/plain";
   context.body = "User-agent: *\nAllow: /";
 });
+
 browser.get(/.*/, (context) => {
-  context.type = "html";
-  context.body = fs.readFileSync(path.resolve(clientDist, "index.html"));
+  // sync from webpack.config.ts
+  const DEFAULT_TITLE = /Ferry FYI - Area Ferry Schedule and Tracker/g;
+
+  logger.info(context.path);
+  logger.info(context.search);
+
+  let title: string | undefined;
+  const terminalMatch = context.path.match(/^\/(\w+)\/?(\w*)\/?$/);
+  if (terminalMatch) {
+    const [, terminalSlug, mateSlug] = terminalMatch;
+    const terminals: Terminal[] = entries(Terminal.getAll()).map(
+      ([, terminal]) => terminal
+    );
+    const terminal = terminals.find(
+      ({ slug, aliases }) =>
+        slug === terminalSlug || aliases.includes(terminalSlug)
+    );
+    if (terminal) {
+      const mate =
+        terminals.find(
+          ({ slug, aliases }) => slug === mateSlug || aliases.includes(mateSlug)
+        ) || terminal.mates[0];
+
+      const dateMatch = context.search.match(/date=([\d-]+)&?/);
+
+      if (dateMatch) {
+        const [, dateInput] = dateMatch;
+        const date = DateTime.fromISO(dateInput);
+        const today = DateTime.local();
+        const isToday = date.toISODate() === today.toISODate();
+
+        const formattedDate = [date.toFormat("ccc")];
+
+        if (date.month !== today.month) {
+          formattedDate.push(date.toFormat("MMM"));
+        }
+
+        formattedDate.push(date.toFormat("d"));
+
+        if (date.year !== today.year) {
+          formattedDate.push(date.toFormat("y"));
+        }
+
+        title = `${terminal.name} to ${mate.name}${
+          isToday ? "" : ` on ${formattedDate.join(" ")}`
+        } - Ferry FYI`;
+      }
+    }
+  }
+
+  fs.readFile(
+    path.resolve(clientDist, "index.html"),
+    { encoding: "utf-8" },
+    (error, data) => {
+      context.type = "html";
+      context.body = title ? data.replace(DEFAULT_TITLE, title) : data;
+    }
+  );
 });
 dist.use(browser.routes());
 app.use(mount("/", dist));

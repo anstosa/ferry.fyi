@@ -257,6 +257,7 @@ export const Schedule = ({
     return <Splash />;
   }
 
+  // sync to server.ts
   const title = `${terminal.name} to ${mate.name}${
     isToday ? "" : ` on ${formattedDate.join(" ")}`
   } - Ferry FYI`;

@@ -21,8 +21,10 @@ const {
   theme: { colors },
 } = resolveConfig(tailwindConfig as unknown as TailwindConfig);
 
+// Sync with server.ts
 const NAME = "Ferry FYI";
 const TITLE = `${NAME} - Seattle Area Ferry Schedule and Tracker`;
+
 const DESCRIPTION =
   "A ferry schedule and tracker for the greater Seattle area.";
 const COLOR = colors?.green.dark;
