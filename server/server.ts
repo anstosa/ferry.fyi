@@ -136,7 +136,7 @@ browser.get(
 );
 browser.get(/.*/, (context) => {
   // sync from webpack.config.ts
-  const DEFAULT_TITLE = /Ferry FYI - Seattle Area Ferry Schedule and Tracker/;
+  const DEFAULT_TITLE = /Ferry FYI - Seattle Area Ferry Schedule and Tracker/g;
 
   let title: string | undefined;
   const terminalMatch = context.path.match(/^\/(\w+)\/?(\w*)\/?$/);
