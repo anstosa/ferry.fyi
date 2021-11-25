@@ -11,7 +11,7 @@ interface Props {
   Icon?: FunctionComponent<SVGAttributes<SVGElement>>;
 }
 
-export const Alert: FunctionComponent<Props> = ({
+export const Notification: FunctionComponent<Props> = ({
   children,
   onClose,
   info,

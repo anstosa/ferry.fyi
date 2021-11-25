@@ -1,6 +1,6 @@
-import { FeedbackContent } from "./FeedbackContent";
+import { Content as FeedbackContent } from "./Feedback";
 import { Helmet } from "react-helmet";
-import { Page } from "./Page";
+import { Page } from "../components/Page";
 import DonateIcon from "~/images/icons/solid/heart.svg";
 import React, { ReactElement } from "react";
 

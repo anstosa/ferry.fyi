@@ -1,4 +1,4 @@
-import { Menu, ShareOptions } from "~/components/Menu";
+import { Menu, ShareOptions } from "~/views/Menu";
 import { ReloadButton } from "~/components/ReloadButton";
 import clsx from "clsx";
 import MenuIcon from "~/images/icons/solid/bars.svg";
@@ -65,6 +65,7 @@ export const Header: FunctionComponent<Props> = (props) => {
       );
     }
   };
+
   return (
     <>
       <div className="w-full h-safe-top" />

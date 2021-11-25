@@ -1,4 +1,4 @@
-import { Header } from "./Header/index";
+import { Header } from "../views/Header";
 import clsx from "clsx";
 import React, { FunctionComponent, ReactElement } from "react";
 

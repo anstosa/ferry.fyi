@@ -1,8 +1,10 @@
+import { Helmet } from "react-helmet";
+import { Page } from "../components/Page";
 import EmailIcon from "~/images/icons/solid/envelope.svg";
 import GitHubIcon from "~/images/icons/brands/github.svg";
 import React, { ReactElement } from "react";
 
-export const FeedbackContent = (): ReactElement => (
+export const Content = (): ReactElement => (
   <>
     <h2 className="font-bold text-lg mt-8">Feedback</h2>
     <p className="mt-2">See something wrong? Want to request a feature?</p>
@@ -27,4 +29,13 @@ export const FeedbackContent = (): ReactElement => (
       </a>
     </div>
   </>
+);
+
+export const Feedback = (): ReactElement => (
+  <Page>
+    <Helmet>
+      <link rel="canonical" href={`${process.env.BASE_URL}/feedback`} />
+    </Helmet>
+    <Content />
+  </Page>
 );

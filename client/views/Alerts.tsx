@@ -1,5 +1,7 @@
 import { capitalize } from "shared/lib/strings";
 import { DateTime } from "luxon";
+import { Header } from "./Header";
+import { InlineLoader } from "~/components/InlineLoader";
 import { Order, sortBy } from "shared/lib/arrays";
 import { round } from "shared/lib/math";
 import clsx from "clsx";
@@ -98,11 +100,14 @@ export const getBulletins = ({ bulletins }: Terminal): Bulletin[] => {
 };
 
 interface Props {
-  terminal: Terminal;
+  terminal: Terminal | null;
   time: DateTime;
 }
 
 export const Alerts = ({ terminal, time }: Props): ReactElement => {
+  if (!terminal) {
+    return <InlineLoader>Loading cameras...</InlineLoader>;
+  }
   const renderAlert = (bulletin: Bulletin): ReactNode => {
     const { title, description } = bulletin;
     const filteredDescription = description
@@ -125,10 +130,20 @@ export const Alerts = ({ terminal, time }: Props): ReactElement => {
   };
 
   return (
-    <aside className="flex-grow overflow-y-scroll scrolling-touch">
-      <ul className={clsx("px-8 py-4 relative")}>
-        {getBulletins(terminal).map(renderAlert)}
-      </ul>
-    </aside>
+    <>
+      <Header
+        share={{
+          shareButtonText: "Share Alerts",
+          sharedText: `Alerts for ${terminal.name} Ferry Terminal`,
+        }}
+      >
+        {terminal.name} Alerts
+      </Header>
+      <main className="flex-grow overflow-y-scroll scrolling-touch text-white">
+        <ul className={clsx("px-8 py-4 relative")}>
+          {getBulletins(terminal).map(renderAlert)}
+        </ul>
+      </main>
+    </>
   );
 };

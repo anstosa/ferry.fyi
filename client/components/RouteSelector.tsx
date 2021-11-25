@@ -1,9 +1,9 @@
-import { Alert } from "~/components/Alert";
 import { AnimatePresence } from "framer-motion";
 import { getSlug, useTerminals } from "~/lib/terminals";
 import { getTerminalSorter } from "../lib/terminals";
 import { isNull } from "shared/lib/identity";
 import { Link } from "react-router-dom";
+import { Notification } from "~/components/Notification";
 import { TerminalDropdown } from "./TerminalDropdown";
 import { without } from "shared/lib/arrays";
 import ArrowRightIcon from "~/images/icons/solid/arrow-right.svg";
@@ -109,7 +109,7 @@ export const RouteSelector = (props: Props): ReactElement => {
         {!isNull(closestTerminal) &&
           closestTerminal.id !== terminal.id &&
           !closestDismissed && (
-            <Alert info>
+            <Notification info>
               Looks like your closest terminal is {closestTerminal.name}.
               <div className="button-group mt-5">
                 <Link
@@ -134,7 +134,7 @@ export const RouteSelector = (props: Props): ReactElement => {
                   Stay on {terminal.name}
                 </button>
               </div>
-            </Alert>
+            </Notification>
           )}
       </AnimatePresence>
     </>

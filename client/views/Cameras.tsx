@@ -1,5 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { DateTime } from "luxon";
+import { Header } from "./Header";
+import { InlineLoader } from "~/components/InlineLoader";
 import { isNil, isNull } from "shared/lib/identity";
 import { locationToUrl } from "~/lib/maps";
 import { useScrollPosition } from "~/lib/scroll";
@@ -18,15 +20,17 @@ import type { Camera } from "shared/contracts/cameras";
 import type { Terminal } from "shared/contracts/terminals";
 
 interface Props {
-  cameraTime: number;
-  terminal: Terminal;
+  terminal: Terminal | null;
 }
 
-export const Cameras = (props: Props): ReactElement => {
-  const {
-    terminal: { cameras },
-  } = props;
-  const [cameraTime, setCameraTime] = useState<number>(props.cameraTime);
+export const Cameras = ({ terminal }: Props): ReactElement => {
+  if (!terminal) {
+    return <InlineLoader>Loading cameras...</InlineLoader>;
+  }
+  const { cameras } = terminal;
+  const [cameraTime, setCameraTime] = useState<number>(
+    DateTime.local().toSeconds()
+  );
   const [cameraInterval, setCameraInterval] = useState<number | null>(null);
   const wrapper = useRef<HTMLDivElement | null>(null);
   const { y } = useScrollPosition(wrapper);
@@ -45,9 +49,7 @@ export const Cameras = (props: Props): ReactElement => {
     };
   }, []);
 
-  useEffect(() => {
-    setCameraTime(props.cameraTime);
-  }, [props.cameraTime]);
+  const reload = () => setCameraTime(DateTime.local().toSeconds());
 
   const renderCamera = (camera: Camera, index: number): ReactNode => {
     const { id, title, image, spacesToNext, location, owner } = camera;
@@ -99,7 +101,7 @@ export const Cameras = (props: Props): ReactElement => {
           </a>
           {Boolean(totalToBooth) && (
             <span className={clsx("ml-4 font-normal text-sm")}>
-              <CarIcon className="inline-block" />
+              <CarIcon className="inline-block mr-2" />
               {totalToBooth} to tollbooth
             </span>
           )}
@@ -149,38 +151,49 @@ export const Cameras = (props: Props): ReactElement => {
   };
 
   return (
-    <aside
-      className="flex-grow overflow-y-scroll scrolling-touch"
-      ref={wrapper}
-    >
-      <div className={clsx("my-4 pl-12 relative max-w-lg")}>
-        <div
-          className={clsx(
-            "bg-green-dark",
-            "border-l-4 border-dotted border-lighten-medium",
-            "w-1 h-full",
-            "absolute inset-y-0 left-0 ml-6"
-          )}
-        />
-        {/* Top shadow on scroll */}
-        <AnimatePresence>
-          {y > 0 && (
-            <motion.div
-              className={clsx(
-                "fixed top-16 left-0 w-full h-2",
-                "pointer-events-none z-20",
-                "bg-gradient-to-b from-darken-medium to-transparent"
-              )}
-              initial={{ opacity: 0.5 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0.5 }}
-              transition={{ duration: 0.1 }}
-            />
-          )}
-        </AnimatePresence>
+    <>
+      <Header
+        reload={reload}
+        share={{
+          shareButtonText: "Share Cameras",
+          sharedText: `Cameras for ${terminal.name} Ferry Terminal`,
+        }}
+      >
+        {terminal.name} Cameras
+      </Header>
+      <main
+        className="flex-grow overflow-y-scroll scrolling-touch text-white"
+        ref={wrapper}
+      >
+        <div className={clsx("my-4 pl-12 relative max-w-lg")}>
+          <div
+            className={clsx(
+              "bg-green-dark",
+              "border-l-4 border-dotted border-lighten-medium",
+              "w-1 h-full",
+              "absolute inset-y-0 left-0 ml-6"
+            )}
+          />
+          {/* Top shadow on scroll */}
+          <AnimatePresence>
+            {y > 0 && (
+              <motion.div
+                className={clsx(
+                  "fixed top-16 left-0 w-full h-2",
+                  "pointer-events-none z-20",
+                  "bg-gradient-to-b from-darken-medium to-transparent"
+                )}
+                initial={{ opacity: 0.5 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0.5 }}
+                transition={{ duration: 0.1 }}
+              />
+            )}
+          </AnimatePresence>
 
-        <ul>{cameras.map(renderCamera)}</ul>
-      </div>
-    </aside>
+          <ul>{cameras.map(renderCamera)}</ul>
+        </div>
+      </main>
+    </>
   );
 };

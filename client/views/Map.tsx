@@ -1,3 +1,4 @@
+import { Header } from "./Header";
 import { isDark } from "~/lib/theme";
 import { isEmpty } from "shared/lib/arrays";
 import { isNull } from "shared/lib/identity";
@@ -18,9 +19,14 @@ import React, { ReactElement, useEffect, useRef, useState } from "react";
 import VesselIcon from "~/images/icons/solid/location-arrow.svg";
 import type { Terminal } from "shared/contracts/terminals";
 
+const DEFAULT_TOP = 47;
+const DEFAULT_LEFT = -121;
+const DEFAULT_BOTTOM = 49;
+const DEFAULT_RIGHT = -123;
+
 interface Props {
-  terminal: Terminal;
-  mate: Terminal;
+  terminal: Terminal | null;
+  mate: Terminal | null;
   vessels: Vessel[];
 }
 
@@ -30,10 +36,11 @@ export const Map = ({ terminal, mate, vessels }: Props): ReactElement => {
   const [markers, setMarkers] = useState<Marker[]>([]);
 
   const updateMarkers = (): void => {
-    let top: number = 47;
-    let left: number = -121;
-    let bottom: number = 49;
-    let right: number = -123;
+    // default coords based on Puget Sound
+    let top: number = DEFAULT_TOP;
+    let left: number = DEFAULT_LEFT;
+    let bottom: number = DEFAULT_BOTTOM;
+    let right: number = DEFAULT_RIGHT;
 
     const maybeUpdateBounds = ({
       lon,
@@ -57,12 +64,16 @@ export const Map = ({ terminal, mate, vessels }: Props): ReactElement => {
     };
 
     const newMarkers: Marker[] = [];
-    if (!map) {
+
+    if (!map || !terminal || !mate) {
       return;
     }
+
+    // remove existing markers
     if (!isEmpty(markers)) {
       markers.forEach((marker) => marker.remove());
     }
+    // add terminal markers
     newMarkers.concat(
       [terminal, ...(terminal.mates || [])].map((t: Terminal) => {
         const marker = document.createElement("div");
@@ -96,9 +107,11 @@ export const Map = ({ terminal, mate, vessels }: Props): ReactElement => {
           .addTo(map);
       })
     );
+
+    // add vessel markers
     newMarkers.concat(
       vessels
-        .filter(({ location }) => Boolean(location))
+        .filter(({ location, inService }) => Boolean(location) && inService)
         .map((vessel: Vessel) => {
           const marker = document.createElement("div");
           marker.className = "text-3xl text-green-dark";
@@ -127,15 +140,20 @@ export const Map = ({ terminal, mate, vessels }: Props): ReactElement => {
             .addTo(map);
         })
     );
+
     setMarkers(newMarkers);
+
+    // fit map to markers
     map.fitBounds(
       new LngLatBounds({ lat: bottom, lon: left }, { lat: top, lon: right }),
       { padding: 40 }
     );
   };
 
+  // update markers when anything changes
   useEffect(updateMarkers, [map, vessels, terminal, mate]);
 
+  // initialize map when mapRef is available
   useEffect(() => {
     if (isNull(mapRef.current)) {
       return;
@@ -143,7 +161,10 @@ export const Map = ({ terminal, mate, vessels }: Props): ReactElement => {
     const map = new Mapbox({
       accessToken: process.env.MAPBOX_ACCESS_TOKEN,
       container: mapRef.current,
-      bounds: new LngLatBounds({ lat: 47, lon: -121 }, { lat: 49, lon: -123 }),
+      bounds: new LngLatBounds(
+        { lat: DEFAULT_TOP, lon: DEFAULT_LEFT },
+        { lat: DEFAULT_BOTTOM, lon: DEFAULT_RIGHT }
+      ),
       style: isDark
         ? "mapbox://styles/ferryfyi/ckvzb5jy11hmj14o4imlemf5h"
         : "mapbox://styles/ferryfyi/ckvzbpoh21ggd14pdjorf1z5x",
@@ -155,7 +176,19 @@ export const Map = ({ terminal, mate, vessels }: Props): ReactElement => {
 
   return (
     <>
-      <div ref={mapRef} className="map-container flex-grow" />
+      <Header
+        share={
+          (terminal &&
+            mate && {
+              shareButtonText: "Share Map",
+              sharedText: `Map for ${terminal.name} to ${mate.name} ferry route`,
+            }) ??
+          undefined
+        }
+      >
+        {terminal && mate && `${terminal.name} to ${mate.name}`} Map
+      </Header>
+      <main ref={mapRef} className="map-container flex-grow" />
     </>
   );
 };

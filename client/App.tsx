@@ -1,10 +1,10 @@
 import "./app.scss";
-import { About } from "./components/About";
-import { Alert } from "./components/Alert";
+import { About } from "./views/About";
 import { AnimatePresence } from "framer-motion";
-import { Feedback } from "./components/Feedback";
-import { Home } from "./components/Home";
-import { Schedule } from "./components/Schedule";
+import { Feedback } from "./views/Feedback";
+import { Home } from "./views/Home";
+import { Notification } from "./components/Notification";
+import { Route } from "./views/Route";
 import { Settings } from "luxon";
 import { Splash } from "./components/Splash";
 import { useOnline, useWSF } from "./lib/api";
@@ -33,8 +33,21 @@ export const App = (): ReactElement => {
     { path: "feedback", element: <Feedback /> },
     {
       path: ":terminalSlug",
-      element: <Schedule />,
-      children: [{ path: ":mateSlug", element: <Schedule /> }],
+      children: [
+        { path: "", element: <Route view="schedule" /> },
+        { path: "cameras", element: <Route view="cameras" /> },
+        { path: "map", element: <Route view="map" /> },
+        { path: "alerts", element: <Route view="alerts" /> },
+        {
+          path: ":mateSlug",
+          children: [
+            { path: "", element: <Route view="schedule" /> },
+            { path: "cameras", element: <Route view="cameras" /> },
+            { path: "map", element: <Route view="map" /> },
+            { path: "alerts", element: <Route view="alerts" /> },
+          ],
+        },
+      ],
     },
   ]);
 
@@ -44,24 +57,24 @@ export const App = (): ReactElement => {
         {element}
         <AnimatePresence>
           {!isOnline && !offlineDismissed && (
-            <Alert
+            <Notification
               warning
               onClose={() => setOfflineDismissed(true)}
               Icon={OfflineIcon}
             >
               Your device is offline! You can still view the schedule, but
               things may not be up to date.
-            </Alert>
+            </Notification>
           )}
           {isWsfOffline && !wsfDismissed && (
-            <Alert
+            <Notification
               warning
               onClose={() => setWsfDismissed(true)}
               Icon={DumpsterFireIcon}
             >
               WSF web services are offline! You can still use the app but things
               may not be up to date.
-            </Alert>
+            </Notification>
           )}
         </AnimatePresence>
       </>
