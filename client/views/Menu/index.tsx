@@ -189,7 +189,7 @@ export const Menu = ({
             "flex flex-col",
             "bg-green-dark text-white shadow-lg",
             "w-full h-screen max-w-xs",
-            "fixed top-0 z-30",
+            "fixed top-0 z-30 -left-full",
             "pt-safe-top pb-safe-bottom pl-safe-left"
           )}
           style={

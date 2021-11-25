@@ -4,6 +4,7 @@ import { Header } from "./Header";
 import { InlineLoader } from "~/components/InlineLoader";
 import { isNil, isNull } from "shared/lib/identity";
 import { locationToUrl } from "~/lib/maps";
+import { ReloadButton } from "../components/ReloadButton";
 import { useScrollPosition } from "~/lib/scroll";
 import CarIcon from "~/images/icons/solid/car.svg";
 import clsx from "clsx";
@@ -159,7 +160,12 @@ export const Cameras = ({ terminal }: Props): ReactElement => {
           sharedText: `Cameras for ${terminal.name} Ferry Terminal`,
         }}
       >
-        {terminal.name} Cameras
+        <span className="text-center flex-1">{terminal.name} Cameras</span>
+        <ReloadButton
+          onClick={() => reload()}
+          ariaLabel="Reload Cameras"
+          isReloading={false}
+        />
       </Header>
       <main
         className="flex-grow overflow-y-scroll scrolling-touch text-white"

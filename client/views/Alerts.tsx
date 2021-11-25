@@ -137,7 +137,8 @@ export const Alerts = ({ terminal, time }: Props): ReactElement => {
           sharedText: `Alerts for ${terminal.name} Ferry Terminal`,
         }}
       >
-        {terminal.name} Alerts
+        <span className="text-center flex-1">{terminal.name} Alerts</span>
+        <div className="h-6 w-6 ml-4" />
       </Header>
       <main className="flex-grow overflow-y-scroll scrolling-touch text-white">
         <ul className={clsx("px-8 py-4 relative")}>

@@ -186,7 +186,10 @@ export const Map = ({ terminal, mate, vessels }: Props): ReactElement => {
           undefined
         }
       >
-        {terminal && mate && `${terminal.name} to ${mate.name}`} Map
+        <span className="text-center flex-1">
+          {terminal && mate && `${terminal.name} to ${mate.name}`} Map
+        </span>
+        <div className="h-6 w-6 ml-4" />
       </Header>
       <main ref={mapRef} className="map-container flex-grow" />
     </>
