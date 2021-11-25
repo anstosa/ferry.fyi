@@ -1,8 +1,8 @@
 import { colors } from "~/lib/theme";
 import { DateTime } from "luxon";
 import { getBulletins, getLastAlertTime, getWaitTime } from "../views/Alerts";
+import { GetPath } from "~/views/Route";
 import { NavLink } from "react-router-dom";
-import { View } from "~/views/Route";
 import clsx from "clsx";
 import MapIcon from "~/images/icons/solid/map-marked.svg";
 import React, { FunctionComponent, ReactElement, ReactNode } from "react";
@@ -53,7 +53,7 @@ const FooterLink: FunctionComponent<{ path: string }> = ({
 
 interface Props {
   terminal: Terminal;
-  getPath: (view?: View) => string;
+  getPath: GetPath;
 }
 
 export const Footer = ({ terminal, getPath }: Props): ReactElement => {
@@ -89,7 +89,7 @@ export const Footer = ({ terminal, getPath }: Props): ReactElement => {
           backgroundColor,
           { "flex-1": summary }
         )}
-        to={getPath("alerts")}
+        to={getPath({ view: "alerts" })}
       >
         <span className="truncate">{summary}</span>
         <WarningIcon className="text-2xl" />
@@ -103,13 +103,13 @@ export const Footer = ({ terminal, getPath }: Props): ReactElement => {
         className={clsx("h-16 w-full flex-shrink-0", "bg-white dark:bg-black")}
       />
       <WrapFooter>
-        <FooterLink path={getPath("schedule")}>
+        <FooterLink path={getPath({ view: "schedule" })}>
           <ScheduleIcon className="text-2xl" />
         </FooterLink>
-        <FooterLink path={getPath("cameras")}>
+        <FooterLink path={getPath({ view: "cameras" })}>
           <VideoIcon className="text-2xl" />
         </FooterLink>
-        <FooterLink path={getPath("map")}>
+        <FooterLink path={getPath({ view: "map" })}>
           <MapIcon className="text-2xl" />
         </FooterLink>
         {renderAlerts()}

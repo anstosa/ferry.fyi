@@ -21,6 +21,12 @@ import type { Schedule as ScheduleClass } from "shared/contracts/schedules";
 import type { Terminal } from "shared/contracts/terminals";
 
 export type View = "schedule" | "cameras" | "map" | "alerts";
+
+export type GetPath = (input?: {
+  view?: View;
+  terminal?: Terminal;
+  mate?: Terminal;
+}) => string;
 interface Props {
   onTerminalChange?: (terminal: Terminal | null) => void;
   onMateChange?: (mate: Terminal | null) => void;
@@ -125,17 +131,27 @@ export const Route = ({
     onMateChange?.(mate);
   }, [mate]);
 
-  const getPath = (inputView: View = view): string => {
+  const getPath: GetPath = (input = {}) => {
+    const newTerminal = input.terminal || terminal;
+    const newMate = input.mate || mate;
+    const newView = input.view || view;
+
+    if (!newTerminal) {
+      return "";
+    }
+
     const query = isToday ? "?" : `?date=${date.toISODate()}`;
 
     let terminalPath: string;
-    if (terminal?.mates?.length === 1) {
-      terminalPath = `/${terminalSlug}`;
+    if (newTerminal?.mates?.length === 1) {
+      terminalPath = `/${getSlug(newTerminal.id)}`;
     } else {
-      terminalPath = `/${terminalSlug}${mateSlug ? `/${mateSlug}` : ""}`;
+      terminalPath = `/${getSlug(newTerminal.id)}${
+        newMate ? `/${getSlug(newMate.id)}` : ""
+      }`;
     }
 
-    const subviewPath = inputView === "schedule" ? "" : `/${inputView}`;
+    const subviewPath = newView === "schedule" ? "" : `/${newView}`;
 
     return `${terminalPath}${subviewPath}${query}`;
   };
@@ -163,7 +179,7 @@ export const Route = ({
       delete localStorage.mateSlug;
     }
 
-    const path = getPath();
+    const path = getPath({ terminal, mate: mate ?? undefined });
     setSchedule(null);
     if (pathname !== path) {
       navigate(path);
