@@ -101,6 +101,7 @@ export const Schedule = ({ schedule, time }: Props): ReactElement => {
     <>
       <main
         className={clsx(
+          "overflow-y-auto",
           "w-full max-h-full",
           "relative",
           "flex-grow flex-shrink",
