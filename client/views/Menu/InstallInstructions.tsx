@@ -70,10 +70,10 @@ export const InstallInstructions = (): ReactElement | null => {
   }
 
   return (
-    <div className="mb-4">
+    <>
       <h2 className="font-bold text-lg mt-8">Install App</h2>
       <div className="mt-2">Want to install Ferry FYI as an app?</div>
       {steps}
-    </div>
+    </>
   );
 };
