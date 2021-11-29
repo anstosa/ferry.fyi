@@ -111,7 +111,7 @@ export const Map = ({ terminal, mate, vessels }: Props): ReactElement => {
     // add vessel markers
     newMarkers.concat(
       vessels
-        .filter(({ location, inService }) => Boolean(location) && inService)
+        .filter(({ location }) => Boolean(location))
         .map((vessel: Vessel) => {
           const marker = document.createElement("div");
           marker.className = "text-3xl text-green-dark";
