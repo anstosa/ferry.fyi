@@ -1,7 +1,7 @@
 import { DateTime } from "luxon";
 import { dbInit } from "~/lib/db";
 import { entries } from "shared/lib/objects";
-import { getSitemap } from "./getSitemap";
+import { getSitemap, getTitle } from "./getSitemap";
 import { Route } from "./models/Route";
 import { Schedule } from "~/models/Schedule";
 import { scheduleJob } from "node-schedule";
@@ -156,32 +156,14 @@ browser.get(/.*/, (context) => {
         ) || terminal.mates[0];
 
       const dateMatch = context.search.match(/date=([\d-]+)&?/);
-      let dateSegment: string = "";
 
       if (dateMatch) {
         const [, dateInput] = dateMatch;
         const date = DateTime.fromISO(dateInput);
-        const today = DateTime.local();
-        const isToday = date.toISODate() === today.toISODate();
-
-        const formattedDate = [date.toFormat("ccc")];
-
-        if (date.month !== today.month) {
-          formattedDate.push(date.toFormat("MMM"));
-        }
-
-        formattedDate.push(date.toFormat("d"));
-
-        if (date.year !== today.year) {
-          formattedDate.push(date.toFormat("y"));
-        }
-
-        if (!isToday) {
-          dateSegment = ` on ${formattedDate.join(" ")}`;
-        }
+        title = getTitle(terminal, mate, date);
+      } else {
+        title = getTitle(terminal, mate);
       }
-
-      title = `${terminal.name} to ${mate.name}${dateSegment} - Ferry FYI`;
     }
   }
 
