@@ -3,7 +3,7 @@ import { ReloadButton } from "~/components/ReloadButton";
 import clsx from "clsx";
 import MenuIcon from "~/images/icons/solid/bars.svg";
 import React, { FunctionComponent, ReactNode, useState } from "react";
-import ReactGA from "react-ga";
+import ReactGA from "react-ga4";
 
 const WrapHeader: FunctionComponent = ({ children }) => (
   <header

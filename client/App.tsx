@@ -13,7 +13,7 @@ import { useRoutes } from "react-router-dom";
 import DumpsterFireIcon from "~/images/icons/solid/dumpster-fire.svg";
 import OfflineIcon from "~/images/icons/solid/signal-alt-slash.svg";
 import React, { ReactElement, useEffect } from "react";
-import ReactGA from "react-ga";
+import ReactGA from "react-ga4";
 
 Settings.defaultZoneName = "America/Los_Angeles";
 

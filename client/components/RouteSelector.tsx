@@ -11,7 +11,7 @@ import clsx from "clsx";
 import ExchangeIcon from "~/images/icons/solid/exchange.svg";
 import LocationIcon from "~/images/icons/solid/location.svg";
 import React, { ReactElement, ReactNode, useEffect, useState } from "react";
-import ReactGA from "react-ga";
+import ReactGA from "react-ga4";
 import type { Terminal } from "shared/contracts/terminals";
 
 interface Props {
