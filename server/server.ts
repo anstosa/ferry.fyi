@@ -82,6 +82,15 @@ router.get("/terminals/:terminalId", async (context) => {
 router.get("/schedule/:departingId/:arrivingId/:date*", async (context) => {
   const { departingId, arrivingId, date: dateInput } = context.params;
   const date = dateInput || toWsfDate();
+  const today = DateTime.local().set({
+    hour: 3,
+    minute: 0,
+    second: 0,
+    millisecond: 0,
+  });
+  if (DateTime.fromISO(date) < today) {
+    return sendNotFound(context);
+  }
   if (!Schedule.hasFetchedDate(date)) {
     await updateSchedules(date);
     await updateEstimates();
