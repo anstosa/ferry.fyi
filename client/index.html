@@ -31,26 +31,31 @@
 
     <link href='https://api.mapbox.com/mapbox-gl-js/v2.3.1/mapbox-gl.css' rel='stylesheet' />
 
-    <script async src="https://www.googletagmanager.com/gtag/js?id=<%= htmlWebpackPlugin.options.AW_TAG_ID %>"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-
-      gtag('config', '<%= htmlWebpackPlugin.options.AW_TAG_ID %>');
-    </script>
+    <!-- Google Tag Manager -->
+    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','<%= htmlWebpackPlugin.options.GTM_CONTAINER_ID %>');</script>
+    <!-- End Google Tag Manager -->
 
 </head>
 <body class="h-full overflow-hidden">
-    <a
-        class="
-          absolute -top-10 left-0 z-50
-          p-2 bg-black text-white
-          focus:top-0
-        "
-        href="#main"
-        tabIndex={1}
-    >Skip to main</a>
-    <div class="h-full flex flex-col" id="root"></div>
+
+  <!-- Google Tag Manager (noscript) -->
+  <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=<%= htmlWebpackPlugin.options.GTM_CONTAINER_ID %>"
+  height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+  <!-- End Google Tag Manager (noscript) -->
+
+  <a
+      class="
+        absolute -top-10 left-0 z-50
+        p-2 bg-black text-white
+        focus:top-0
+      "
+      href="#main"
+      tabIndex={1}
+  >Skip to main</a>
+  <div class="h-full flex flex-col" id="root"></div>
 </body>
 </html>
