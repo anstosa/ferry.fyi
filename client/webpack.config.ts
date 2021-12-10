@@ -121,7 +121,7 @@ module.exports = {
       chunkFilename: "[id].css",
     }),
     new webpack.EnvironmentPlugin([
-      "AW_TAG_ID",
+      "GTM_CONTAINER_ID",
       "BASE_URL",
       "MAPBOX_ACCESS_TOKEN",
       "GOOGLE_ANALYTICS",
