@@ -106,7 +106,7 @@ module.exports = {
     }),
     new ForkTsCheckerWebpackPlugin(),
     new HtmlPlugin({
-      AW_TAG_ID: process.env.AW_TAG_ID,
+      GTM_CONTAINER_ID: process.env.GTM_CONTAINER_ID,
       description: DESCRIPTION,
       template: "index.html",
       title: TITLE,
