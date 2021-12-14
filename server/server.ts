@@ -88,7 +88,7 @@ router.get("/schedule/:departingId/:arrivingId/:date*", async (context) => {
     second: 0,
     millisecond: 0,
   });
-  if (DateTime.fromISO(date) < today) {
+  if (DateTime.fromISO(date).set({ hour: 12 }) < today) {
     return sendNotFound(context);
   }
   if (!Schedule.hasFetchedDate(date)) {
