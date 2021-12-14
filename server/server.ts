@@ -189,6 +189,10 @@ browser.get(/.*/, (context) => {
                 `rel="canonical" href="${process.env.BASE_URL}"`,
                 `rel="canonical" href="${process.env.BASE_URL}${context.path}"`
               )
+              .replace(
+                `property="og:url" content="${process.env.BASE_URL}"`,
+                `property="og:url" content="${process.env.BASE_URL}${context.path}"`
+              )
           : data;
         resolve();
       }
