@@ -16,6 +16,7 @@ import { toShortDateString } from "~/lib/date";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "~/lib/browser";
 import { Vessel } from "shared/contracts/vessels";
+import ExternalIcon from "~/images/icons/regular/external-link-square.svg";
 import React, { ReactElement, useEffect, useState } from "react";
 import type { Schedule as ScheduleClass } from "shared/contracts/schedules";
 import type { Terminal } from "shared/contracts/terminals";
@@ -214,6 +215,17 @@ export const Route = ({
                 isToday ? "" : ` for ${toShortDateString(date)}`
               }`,
             }}
+            items={[
+              ...(terminal.terminalUrl
+                ? [
+                    {
+                      Icon: ExternalIcon,
+                      label: "WSF Schedule Page",
+                      url: terminal.terminalUrl,
+                    },
+                  ]
+                : []),
+            ]}
           >
             <div className="flex-grow" />
             {terminal ? (

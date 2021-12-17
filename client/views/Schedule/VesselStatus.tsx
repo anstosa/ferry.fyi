@@ -17,7 +17,7 @@ export const VesselStatus = ({
   vessel,
   time,
 }: Props): ReactElement => {
-  const { dockedTime, isAtDock, location, heading, speed, vesselwatch } =
+  const { dockedTime, isAtDock, location, heading, speed, vesselWatchUrl } =
     vessel;
 
   let statusText: string;
@@ -40,7 +40,7 @@ export const VesselStatus = ({
   return (
     <a
       className={clsx("link text-sm", className)}
-      href={vesselwatch ?? (location && locationToUrl(location))}
+      href={vesselWatchUrl ?? (location && locationToUrl(location))}
     >
       <span>{statusText}</span>
       {detailText && (

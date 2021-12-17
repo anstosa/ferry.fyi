@@ -29,6 +29,7 @@ interface Props {
   onClose: () => void;
   onOpen: () => void;
   share?: ShareOptions;
+  items?: MenuItem[];
 }
 
 interface BaseMenuItem {
@@ -36,15 +37,22 @@ interface BaseMenuItem {
   label: string;
 }
 
-interface LinkMenuItem extends BaseMenuItem {
+interface InternalLinkMenuItem extends BaseMenuItem {
   path: string;
+}
+
+interface ExternalLinkMenuItem extends BaseMenuItem {
+  url: string;
 }
 
 interface ButtonMenuItem extends BaseMenuItem {
   onClick: () => void;
 }
 
-type MenuItem = LinkMenuItem | ButtonMenuItem;
+export type MenuItem =
+  | InternalLinkMenuItem
+  | ExternalLinkMenuItem
+  | ButtonMenuItem;
 
 export const Menu = ({
   isOpen,
@@ -52,6 +60,7 @@ export const Menu = ({
   onOpen,
   reload,
   share,
+  items = [],
 }: Props): ReactElement | null => {
   const [shareMenuText, setShareMenuText] = useState<string>(
     share?.shareButtonText ?? "Share"
@@ -108,6 +117,7 @@ export const Menu = ({
           },
         ]
       : []),
+    ...items,
   ];
   return (
     <AnimatePresence>
@@ -237,6 +247,19 @@ export const Menu = ({
                       <Link to={item.path} className={wrapperClass}>
                         {content}
                       </Link>
+                    </li>
+                  );
+                } else if ("url" in item) {
+                  return (
+                    <li key={label}>
+                      <a
+                        href={item.url}
+                        className={wrapperClass}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        {content}
+                      </a>
                     </li>
                   );
                 } else {

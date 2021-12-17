@@ -5,6 +5,7 @@ import { InlineLoader } from "~/components/InlineLoader";
 import { Order, sortBy } from "shared/lib/arrays";
 import { round } from "shared/lib/math";
 import clsx from "clsx";
+import ExternalIcon from "~/images/icons/regular/external-link-square.svg";
 import React, { ReactElement, ReactNode } from "react";
 import type { Bulletin, Terminal } from "shared/contracts/terminals";
 
@@ -136,6 +137,17 @@ export const Alerts = ({ terminal, time }: Props): ReactElement => {
           shareButtonText: "Share Alerts",
           sharedText: `Alerts for ${terminal.name} Ferry Terminal`,
         }}
+        items={[
+          ...(terminal.terminalUrl
+            ? [
+                {
+                  Icon: ExternalIcon,
+                  label: "WSF Alerts Page",
+                  url: terminal.terminalUrl,
+                },
+              ]
+            : []),
+        ]}
       >
         <span className="text-center flex-1">{terminal.name} Alerts</span>
         <div className="h-6 w-6 ml-4" />

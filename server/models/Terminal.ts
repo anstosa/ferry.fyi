@@ -33,7 +33,8 @@ export class Terminal extends CacheableModel implements TerminalClass {
   popularity!: number;
   routes!: Record<string, Route>;
   slug!: string;
-  vesselwatch!: string;
+  vesselWatchUrl!: string;
+  terminalUrl!: string;
   waitTimes!: WaitTime[];
 
   save(): void {
@@ -64,7 +65,8 @@ export class Terminal extends CacheableModel implements TerminalClass {
         ...(withoutMates ? {} : { mates: this.mates }),
         popularity: this.popularity,
         routes: this.routes,
-        vesselwatch: this.vesselwatch,
+        vesselWatchUrl: this.vesselWatchUrl,
+        terminalUrl: this.terminalUrl,
       },
       { withoutMates: true }
     );

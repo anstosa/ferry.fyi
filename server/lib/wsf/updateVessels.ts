@@ -54,7 +54,7 @@ export const updateVessels = async (): Promise<void> => {
       passengerCapacity: VesselData.MaxPassengerCount,
       speed: VesselData.SpeedInKnots,
       tallVehicleCapacity: VesselData.TallDeckSpace,
-      vesselwatch: `${VESSELWATCH_BASE}${VesselData.VesselName}`,
+      vesselWatchUrl: `${VESSELWATCH_BASE}${VesselData.VesselName}`,
       vehicleCapacity:
         (VesselData.RegDeckSpace ?? 0) + (VesselData.TallDeckSpace ?? 0),
       weight: VesselData.Tonnage,

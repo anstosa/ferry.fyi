@@ -34,7 +34,7 @@ export interface Vessel {
   passengerCapacity: number;
   speed: number;
   tallVehicleCapacity: number;
-  vesselwatch: string;
+  vesselWatchUrl: string;
   vehicleCapacity: number;
   weight: number;
   yearBuilt: number;

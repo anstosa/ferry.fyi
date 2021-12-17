@@ -13,6 +13,7 @@ import { render } from "react-dom";
 import { renderToString } from "react-dom/server";
 import { Vessel } from "shared/contracts/vessels";
 import CurrentTerminalIcon from "~/images/icons/solid/location.svg";
+import ExternalIcon from "~/images/icons/regular/external-link-square.svg";
 import MateTerminalIcon from "~/images/icons/solid/map-marker.svg";
 import OtherTerminalIcon from "~/images/icons/regular/map-marker-alt.svg";
 import React, { ReactElement, useEffect, useRef, useState } from "react";
@@ -185,6 +186,17 @@ export const Map = ({ terminal, mate, vessels }: Props): ReactElement => {
             }) ??
           undefined
         }
+        items={[
+          ...(terminal?.vesselWatchUrl
+            ? [
+                {
+                  Icon: ExternalIcon,
+                  label: "WSF Map Page",
+                  url: terminal.vesselWatchUrl,
+                },
+              ]
+            : []),
+        ]}
       >
         <span className="text-center flex-1">
           {terminal && mate && `${terminal.name} to ${mate.name}`} Map

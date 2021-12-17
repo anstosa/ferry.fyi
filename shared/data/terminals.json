@@ -2,7 +2,7 @@
   "1": {
     "slug": "anacortes",
     "aliases": ["ana"],
-    "vesselwatch": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=anasjsid",
+    "vesselWatchUrl": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=anasjsid",
     "popularity": 0.085
   },
   "3": {
@@ -10,21 +10,21 @@
     "abbreviation": "BBG",
     "aliases": ["bbi", "bainbridgeisland", "bi"],
     "name": "Bainbridge",
-    "vesselwatch": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=seabi",
+    "vesselWatchUrl": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=seabi",
     "popularity": 0.26
   },
   "4": {
     "slug": "bremerton",
     "abbreviation": "BMT",
     "aliases": [],
-    "vesselwatch": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=seabi",
+    "vesselWatchUrl": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=seabi",
     "popularity": 0.103
   },
   "5": {
     "slug": "clinton",
     "abbreviation": "CLI",
     "aliases": ["cli", "whidbey", "whidbeyisland", "wbi", "wby", "wi"],
-    "vesselwatch": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=mukcl",
+    "vesselWatchUrl": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=mukcl",
     "name": "Clinton",
     "location": {
       "latitude": 47.97497,
@@ -37,20 +37,20 @@
     "slug": "seattle",
     "abbreviation": "SEA",
     "aliases": ["sea", "downtown", "pioneersquare", "psq"],
-    "vesselwatch": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=seabi",
+    "vesselWatchUrl": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=seabi",
     "popularity": 0.363
   },
   "8": {
     "slug": "edmonds",
     "aliases": ["edm"],
-    "vesselwatch": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=edking",
+    "vesselWatchUrl": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=edking",
     "popularity": 0.173
   },
   "9": {
     "slug": "fauntleroy",
     "abbreviation": "FNT",
     "aliases": ["fau"],
-    "vesselwatch": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=fvs",
+    "vesselWatchUrl": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=fvs",
     "popularity": 0.12
   },
   "10": {
@@ -66,21 +66,21 @@
       "sji"
     ],
     "name": "San Juan",
-    "vesselwatch": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=anasjsid",
+    "vesselWatchUrl": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=anasjsid",
     "popularity": 0.039
   },
   "11": {
     "slug": "coupeville",
     "abbreviation": "CPV",
     "aliases": ["cou", "cpv", "key", "keystone", "casey", "fortcasey"],
-    "vesselwatch": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=ptkey",
+    "vesselWatchUrl": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=ptkey",
     "popularity": 0.035
   },
   "12": {
     "slug": "kingston",
     "abbreviation": "KNG",
     "aliases": ["kin", "kng"],
-    "vesselwatch": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=edking",
+    "vesselWatchUrl": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=edking",
     "popularity": 0.173
   },
   "13": {
@@ -88,7 +88,7 @@
     "abbreviation": "LPZ",
     "aliases": ["lop", "lopezisland", "lpz", "li"],
     "name": "Lopez",
-    "vesselwatch": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=anasjsid",
+    "vesselWatchUrl": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=anasjsid",
     "location": {
       "latitude": 48.57055,
       "longitude": -122.883519,
@@ -99,14 +99,14 @@
   "14": {
     "slug": "mukilteo",
     "aliases": ["muk"],
-    "vesselwatch": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=mukcl",
+    "vesselWatchUrl": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=mukcl",
     "popularity": 0.173
   },
   "15": {
     "slug": "orcas",
     "abbreviation": "ORC",
     "aliases": ["orcasisland", "orc", "ori", "oi"],
-    "vesselwatch": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=anasjsid",
+    "vesselWatchUrl": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=anasjsid",
     "name": "Orcas",
     "location": {
       "latitude": 48.597987,
@@ -119,14 +119,14 @@
     "slug": "defiance",
     "abbreviation": "PD",
     "aliases": ["poi", "ptd", "def", "pd"],
-    "vesselwatch": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=ptdtal",
+    "vesselWatchUrl": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=ptdtal",
     "popularity": 0.037
   },
   "17": {
     "slug": "townsend",
     "abbreviation": "PT",
     "aliases": ["pt", "porttownsend", "por", "pot"],
-    "vesselwatch": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=ptkey",
+    "vesselWatchUrl": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=ptkey",
     "location": {
       "latitude": 48.112071,
       "longitude": -122.760311,
@@ -139,7 +139,7 @@
     "abbreviation": "SHW",
     "aliases": ["shawisland", "shi", "si", "sha"],
     "name": "Shaw",
-    "vesselwatch": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=anasjsid",
+    "vesselWatchUrl": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=anasjsid",
     "location": {
       "latitude": 48.584274,
       "longitude": -122.929842,
@@ -152,21 +152,21 @@
     "abbreviation": "CA",
     "aliases": ["sid", "sdy", "sidneybc", "bc", "ca", "canada"],
     "name": "Canada",
-    "vesselwatch": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=anasjsid",
+    "vesselWatchUrl": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=anasjsid",
     "popularity": 0.012
   },
   "20": {
     "slug": "southworth",
     "abbreviation": "SW",
     "aliases": ["south", "sou", "sth", "swt", "sw"],
-    "vesselwatch": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=fvs",
+    "vesselWatchUrl": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=fvs",
     "popularity": 0.05
   },
   "21": {
     "slug": "tahlequah",
     "abbreviation": "TQ",
     "aliases": ["tah", "tlq"],
-    "vesselwatch": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=ptdtal",
+    "vesselWatchUrl": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=ptdtal",
     "popularity": 0.037
   },
   "22": {
@@ -174,7 +174,7 @@
     "abbreviation": "VSH",
     "name": "Vashon",
     "aliases": ["vai", "vas", "vsh", "vi", "vashonisland"],
-    "vesselwatch": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=fvs",
+    "vesselWatchUrl": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=fvs",
     "popularity": 0.088
   }
 }

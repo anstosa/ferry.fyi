@@ -7,6 +7,8 @@ import { wsfDateToTimestamp } from "./date";
 import { wsfRequest } from "./api";
 import logger from "heroku-logger";
 
+const VESSELWATCH_BASE =
+  "https://wsdot.com/ferries/vesselwatch/terminaldetail.aspx?terminalid=";
 export const API_TERMINALS =
   "https://www.wsdot.wa.gov/ferries/api/terminals/rest";
 const API_CACHE = `${API_TERMINALS}/cacheflushdate`;
@@ -90,6 +92,7 @@ export const updateTerminals = async (): Promise<void> => {
             time: wsfDateToTimestamp(WaitTimeLastUpdated),
           })
         ),
+        terminalUrl: `${VESSELWATCH_BASE}${String(TerminalData.TerminalID)}`,
       };
 
       const [terminal, wasCreated] = Terminal.getOrCreate(

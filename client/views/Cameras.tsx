@@ -8,6 +8,7 @@ import { ReloadButton } from "../components/ReloadButton";
 import { useScrollPosition } from "~/lib/scroll";
 import CarIcon from "~/images/icons/solid/car.svg";
 import clsx from "clsx";
+import ExternalIcon from "~/images/icons/regular/external-link-square.svg";
 import MapIcon from "~/images/icons/solid/map-marker.svg";
 import ParkingIcon from "~/images/icons/solid/parking.svg";
 import React, {
@@ -159,6 +160,17 @@ export const Cameras = ({ terminal }: Props): ReactElement => {
           shareButtonText: "Share Cameras",
           sharedText: `Cameras for ${terminal.name} Ferry Terminal`,
         }}
+        items={[
+          ...(terminal.terminalUrl
+            ? [
+                {
+                  Icon: ExternalIcon,
+                  label: "WSF Cameras Page",
+                  url: terminal.terminalUrl,
+                },
+              ]
+            : []),
+        ]}
       >
         <span className="text-center flex-1">{terminal.name} Cameras</span>
         <ReloadButton

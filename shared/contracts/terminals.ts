@@ -58,5 +58,6 @@ export interface Terminal {
   mates?: Terminal[];
   popularity: number;
   routes?: Record<string, Route>;
-  vesselwatch?: string;
+  vesselWatchUrl?: string;
+  terminalUrl?: string;
 }

@@ -1,4 +1,4 @@
-import { Menu, ShareOptions } from "~/views/Menu";
+import { Menu, MenuItem, ShareOptions } from "~/views/Menu";
 import { ReloadButton } from "~/components/ReloadButton";
 import clsx from "clsx";
 import MenuIcon from "~/images/icons/solid/bars.svg";
@@ -25,10 +25,11 @@ interface Props {
   reload?: () => void;
   isReloading?: boolean;
   share?: ShareOptions;
+  items?: MenuItem[];
 }
 
 export const Header: FunctionComponent<Props> = (props) => {
-  const { isReloading, reload, children, share } = props;
+  const { isReloading, reload, children, share, items } = props;
   const [isMenuOpen, setMenuOpen] = useState<boolean>(false);
 
   const openNav = () => {
@@ -88,6 +89,7 @@ export const Header: FunctionComponent<Props> = (props) => {
         }}
         onOpen={openNav}
         share={share}
+        items={items}
       />
       <WrapHeader>
         {renderMenuToggle()}

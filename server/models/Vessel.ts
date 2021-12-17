@@ -40,7 +40,7 @@ export class Vessel extends CacheableModel implements VesselClass {
   passengerCapacity!: number;
   speed!: number;
   tallVehicleCapacity!: number;
-  vesselwatch!: string;
+  vesselWatchUrl!: string;
   vehicleCapacity!: number;
   weight!: number;
   yearBuilt!: number;
@@ -79,7 +79,7 @@ export class Vessel extends CacheableModel implements VesselClass {
       passengerCapacity: this.passengerCapacity,
       speed: this.speed,
       tallVehicleCapacity: this.tallVehicleCapacity,
-      vesselwatch: this.vesselwatch,
+      vesselWatchUrl: this.vesselWatchUrl,
       vehicleCapacity: this.vehicleCapacity,
       weight: this.weight,
       yearBuilt: this.yearBuilt,
