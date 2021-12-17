@@ -156,6 +156,7 @@
     "draft-js": "^0.11.7",
     "framer-motion": "^4.1.17",
     "heroku-logger": "^0.3.3",
+    "jotai": "^1.4.8",
     "koa": "^2.13.1",
     "koa-bodyparser": "^4.3.0",
     "koa-compress": "^5.1.0",

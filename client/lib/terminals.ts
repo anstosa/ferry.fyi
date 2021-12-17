@@ -1,3 +1,4 @@
+import { atom, useAtom } from "jotai";
 import { entries, findKey, keys, values } from "shared/lib/objects";
 import { get } from "~/lib/api";
 import { getDistance, useGeo } from "./geo";
@@ -70,9 +71,11 @@ export const getTerminalSorter =
     }
   };
 
+const terminalsAtom = atom<Terminal[] | null>(null);
+
 export const useTerminals = (): TerminalState => {
   const location = useGeo();
-  const [terminals, setTerminals] = useState<Terminal[]>([]);
+  const [terminals, setTerminals] = useAtom(terminalsAtom);
   const [closestTerminal, setClosestTerminal] =
     useState<TerminalState["closestTerminal"]>(null);
 
@@ -81,11 +84,13 @@ export const useTerminals = (): TerminalState => {
   };
 
   useEffect(() => {
-    fetchTerminals();
+    if (!terminals) {
+      fetchTerminals();
+    }
   }, []);
 
   useEffect(() => {
-    if (!location || isEmpty(terminals)) {
+    if (!location || !terminals || isEmpty(terminals)) {
       return;
     }
     let closestTerminal: Terminal | undefined;
@@ -107,8 +112,10 @@ export const useTerminals = (): TerminalState => {
   }, [location, terminals]);
 
   useEffect(() => {
-    setTerminals([...terminals.sort(getTerminalSorter(closestTerminal))]);
+    setTerminals([
+      ...(terminals ?? []).sort(getTerminalSorter(closestTerminal)),
+    ]);
   }, [closestTerminal]);
 
-  return { terminals, closestTerminal };
+  return { terminals: terminals ?? [], closestTerminal };
 };
