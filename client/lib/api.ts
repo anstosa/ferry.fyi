@@ -13,15 +13,25 @@ export const useWSF = (): WSFStatus => {
   return status;
 };
 
-export const get = async <T = Record<string, unknown>>(
-  path: string
-): Promise<T> => {
-  const response = await fetch(`${API_BASE_URL}${path}`);
+const inProgress: Record<string, Promise<any>> = {};
+
+const processResponse = async (response: Response): Promise<any> => {
   const responseData = await response.json();
   if (!isEqual(responseData.wsfStatus, wsfStatus)) {
     ({ wsfStatus } = responseData);
   }
   return responseData.body;
+};
+
+export const get = async <T = Record<string, unknown>>(
+  path: string
+): Promise<T> => {
+  if (path in inProgress) {
+    return await inProgress[path];
+  }
+  const promise = fetch(`${API_BASE_URL}${path}`).then(processResponse);
+  inProgress[path] = promise;
+  return await promise;
 };
 
 export const post = async <T = Record<string, unknown>>(
@@ -35,11 +45,7 @@ export const post = async <T = Record<string, unknown>>(
     },
     body: JSON.stringify(data),
   });
-  const responseData = await response.json();
-  if (!isEqual(data.wsfStatus, wsfStatus)) {
-    ({ wsfStatus } = responseData);
-  }
-  return responseData.body;
+  return await processResponse(response);
 };
 
 export const useOnline = (): boolean => {
