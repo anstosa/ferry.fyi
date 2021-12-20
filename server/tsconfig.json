@@ -2,6 +2,7 @@
   "extends": "../tsconfig",
   "compilerOptions": {
     "baseUrl": ".",
+    "lib": ["DOM"],
     "outDir": "../dist/server",
     "paths": {
       "~/*": ["./*"],

@@ -7,7 +7,7 @@ import {
 } from "shared/contracts/terminals";
 import { CacheableModel } from "./CacheableModel";
 import { Camera } from "~/models/Camera";
-import { isKeyof } from "shared/lib/objects";
+import { isKeyOf } from "shared/lib/objects";
 import { isNull } from "shared/lib/identity";
 import { Route } from "~/models/Route";
 import TERMINAL_DATA_OVERRIDES from "shared/data/terminals.json";
@@ -40,7 +40,7 @@ export class Terminal extends CacheableModel implements TerminalClass {
   save(): void {
     // merge in any data overrides
     const index = this.getIndex();
-    if (!isNull(index) && isKeyof(TERMINAL_DATA_OVERRIDES, index)) {
+    if (!isNull(index) && isKeyOf(TERMINAL_DATA_OVERRIDES, index)) {
       Object.assign(this, TERMINAL_DATA_OVERRIDES[index]);
     }
     super.save();

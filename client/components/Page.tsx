@@ -2,7 +2,14 @@ import { Header } from "../views/Header";
 import clsx from "clsx";
 import React, { FunctionComponent, ReactElement } from "react";
 
-export const Page: FunctionComponent = ({ children }): ReactElement => (
+interface Props {
+  title?: string;
+}
+
+export const Page: FunctionComponent<Props> = ({
+  title,
+  children,
+}): ReactElement => (
   <div
     className={clsx(
       "px-4 pb-10",
@@ -11,7 +18,7 @@ export const Page: FunctionComponent = ({ children }): ReactElement => (
     )}
   >
     <Header>
-      <h1 className="font-bold text-2xl">Ferry FYI</h1>
+      <h1 className="font-bold text-2xl">{title ?? "Ferry FYI"}</h1>
     </Header>
     {children}
   </div>

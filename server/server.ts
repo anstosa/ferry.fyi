@@ -1,6 +1,7 @@
 import { DateTime } from "luxon";
 import { dbInit } from "~/lib/db";
 import { entries } from "shared/lib/objects";
+import { fetchTicket } from "./lib/wsf/ticket";
 import { getSitemap, getTitle } from "./getSitemap";
 import { Route } from "./models/Route";
 import { Schedule } from "~/models/Schedule";
@@ -103,6 +104,18 @@ router.get("/schedule/:departingId/:arrivingId/:date*", async (context) => {
       schedule: schedule.serialize(),
       timestamp: DateTime.local().toSeconds(),
     });
+  } else {
+    sendNotFound(context);
+  }
+});
+
+// tickets
+
+router.get("/tickets/:ticketId", async (context) => {
+  const { ticketId } = context.params;
+  const ticket = await fetchTicket(ticketId);
+  if (ticket) {
+    sendResponse(context, ticket);
   } else {
     sendNotFound(context);
   }

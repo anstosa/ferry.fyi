@@ -17,6 +17,7 @@ import React, {
 import ReloadIcon from "~/images/icons/solid/redo.svg";
 import ScheduleIcon from "~/images/icons/solid/calendar-alt.svg";
 import ShareIcon from "~/images/icons/solid/share-square.svg";
+import TicketIcon from "~/images/icons/solid/barcode-alt.svg";
 
 export interface ShareOptions {
   sharedText: string;
@@ -73,6 +74,11 @@ export const Menu = ({
       Icon: ScheduleIcon,
       label: "Schedule",
       path: "/",
+    },
+    {
+      Icon: TicketIcon,
+      label: "Tickets",
+      path: "/tickets",
     },
     {
       Icon: AboutIcon,

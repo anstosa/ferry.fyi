@@ -4,7 +4,7 @@ import {
   CameraImage,
   MapPoint,
 } from "shared/contracts/cameras";
-import { isKeyof, values } from "shared/lib/objects";
+import { isKeyOf, values } from "shared/lib/objects";
 import { isNull } from "shared/lib/identity";
 import CAMERA_DATA_OVERRIDES from "shared/data/cameras.json";
 
@@ -32,7 +32,7 @@ export class Camera extends CacheableModel implements CameraClass {
   save(): void {
     // merge in any data overrides
     const index = this.getIndex();
-    if (!isNull(index) && isKeyof(CAMERA_DATA_OVERRIDES, index)) {
+    if (!isNull(index) && isKeyOf(CAMERA_DATA_OVERRIDES, index)) {
       Object.assign(this, CAMERA_DATA_OVERRIDES[index]);
     }
     super.save();

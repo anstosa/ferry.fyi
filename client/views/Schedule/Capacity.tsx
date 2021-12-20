@@ -1,4 +1,5 @@
 import { isNil, isNull } from "shared/lib/identity";
+import { pluralize } from "../../../shared/lib/strings";
 import { round } from "shared/lib/math";
 import CarIcon from "~/images/icons/solid/car.svg";
 import clsx from "clsx";
@@ -175,7 +176,7 @@ export const Capacity = ({ slot }: Props): ReactElement | null => {
       spaceText = (
         <>
           <CarIcon className="inline-block mr-1" />
-          {spaceLeft} {spaceLeft === 1 ? "space" : "spaces"} left
+          {pluralize(spaceLeft ?? 0, "space")} left
         </>
       );
       if (isFull()) {

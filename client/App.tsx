@@ -7,6 +7,7 @@ import { Notification } from "./components/Notification";
 import { Route } from "./views/Route";
 import { Settings } from "luxon";
 import { Splash } from "./components/Splash";
+import { Tickets } from "./views/Tickets";
 import { useOnline, useWSF } from "./lib/api";
 import { useRecordPageViews } from "~/lib/analytics";
 import { useRoutes } from "react-router-dom";
@@ -29,6 +30,7 @@ export const App = (): ReactElement => {
 
   const element = useRoutes([
     { path: "", element: <Home /> },
+    { path: "tickets", element: <Tickets /> },
     { path: "about", element: <About /> },
     { path: "feedback", element: <Feedback /> },
     {

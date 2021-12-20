@@ -1,5 +1,6 @@
 import { DateTime, Duration } from "luxon";
 import { isNull } from "shared/lib/identity";
+import { pluralize } from "~/../shared/lib/strings";
 import { round } from "shared/lib/math";
 import clsx from "clsx";
 import React, { ReactElement } from "react";
@@ -35,10 +36,9 @@ export const Status = ({ className, slot, time }: Props): ReactElement => {
       statusText = "Cancelled";
       statusClass = clsx(statusClass, "font-bold uppercase", textRed);
     } else if (Math.abs(deltaMins) >= 4) {
-      const units = deltaMins === 1 ? "min" : "mins";
       const direction = deltaMins < 0 ? "ahead" : "behind";
       const color = deltaMins < 10 ? textYellow : textRed;
-      statusText = `${deltaMins} ${units} ${direction}`;
+      statusText = `${pluralize(deltaMins, "min")} ${direction}`;
       statusClass = clsx(statusClass, !hasPassed && color, "font-bold");
       scheduled = `Scheduled ${formattedScheduledTime}`;
     } else {

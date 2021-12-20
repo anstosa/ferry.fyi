@@ -15,7 +15,7 @@ export const findKey = (
 };
 
 // eslint-disable-next-line @typescript-eslint/ban-types
-export const isKeyof = <T extends object>(
+export const isKeyOf = <T extends object>(
   object: T,
   possibleKey: keyof any
 ): possibleKey is keyof T => possibleKey in object;
