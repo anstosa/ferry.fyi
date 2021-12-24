@@ -2,6 +2,7 @@ import { AnimatePresence } from "framer-motion";
 import { DateTime } from "luxon";
 import { findWhere, isEmpty } from "shared/lib/arrays";
 import { InlineLoader } from "~/components/InlineLoader";
+import { isWSFToday } from "../../lib/date";
 import { Notification } from "~/components/Notification";
 import { SlotInfo } from "./SlotInfo";
 import { useTerminals } from "../../lib/terminals";
@@ -102,15 +103,17 @@ export const Schedule = ({ schedule, time }: Props): ReactElement => {
       <>
         <ul>{sailings}</ul>
         <AnimatePresence>
-          {!hasCapacityInfo && !capacityWarningDismissed && (
-            <Notification
-              warning
-              onClose={() => setCapacityWarningDismissed(true)}
-            >
-              WSF capacity info currently unavailable. Pay attention to cameras
-              and forecasts to estimate load!
-            </Notification>
-          )}
+          {!hasCapacityInfo &&
+            isWSFToday(DateTime.fromISO(schedule.date)) &&
+            !capacityWarningDismissed && (
+              <Notification
+                warning
+                onClose={() => setCapacityWarningDismissed(true)}
+              >
+                WSF capacity info currently unavailable. Pay attention to
+                cameras and forecasts to estimate load!
+              </Notification>
+            )}
         </AnimatePresence>
       </>
     );

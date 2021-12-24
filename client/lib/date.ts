@@ -16,3 +16,16 @@ export const toShortDateString = (date: DateTime): string => {
 
   return formattedDate.join(" ");
 };
+
+export const isWSFToday = (date: DateTime): boolean => {
+  const today_start = DateTime.local()
+    .set({
+      hour: 3,
+      minute: 0,
+      second: 0,
+      millisecond: 0,
+    })
+    .plus({ day: 1 });
+  const today_end = today_start.plus({ day: 1 });
+  return today_start <= date && date < today_end;
+};
