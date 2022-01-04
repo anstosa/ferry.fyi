@@ -1,9 +1,6 @@
 # node
 node_modules/
 
-# direnv
-.env.local
-
 # build
 dist/
 

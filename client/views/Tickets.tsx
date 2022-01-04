@@ -16,6 +16,7 @@ import { toShortDateString } from "~/lib/date";
 import { useAtom } from "jotai";
 import { useQuery } from "~/lib/browser";
 import clsx from "clsx";
+import ErrorIcon from "~/images/icons/solid/exclamation-triangle.svg";
 import JsBarcode from "jsbarcode";
 import React, {
   ReactElement,
@@ -58,7 +59,10 @@ export const Tickets = (): ReactElement => {
   const previewRef = useRef<HTMLVideoElement | null>(null);
   const [reader] = useState(new BrowserMultiFormatOneDReader(hints));
   const [tickets, setTickets] = useAtom(ticketsAtom);
+  const [ticketNumber, setTicketNumber] = useState<string>("");
   const [isDeleting, setDeleting] = useState<string | null>(null);
+  const [isScanning, setScanning] = useState<boolean>(false);
+  const [isAdding, setAdding] = useState<boolean>(false);
   const [expanded, setExpanded] = useState<
     TicketStorage | ReservationAccount | null
   >(null);
@@ -126,14 +130,18 @@ export const Tickets = (): ReactElement => {
         },
       ]);
     } else {
-      const ticket = await get<Ticket>(`/tickets/${code}`);
-      setTickets((tickets) => [
-        ...tickets,
-        {
-          type: "ticket",
-          ...ticket,
-        },
-      ]);
+      setAdding(true);
+      try {
+        const ticket = await get<Ticket>(`/tickets/${code}`);
+        setTickets((tickets) => [
+          ...tickets,
+          {
+            type: "ticket",
+            ...ticket,
+          },
+        ]);
+      } catch (error) {}
+      setAdding(false);
     }
   };
 
@@ -142,9 +150,12 @@ export const Tickets = (): ReactElement => {
       inputControls.stop();
       setControls(null);
     }
+    setTicketNumber("");
+    setScanning(false);
   };
 
   const scan = async () => {
+    setScanning(true);
     if (!selectedCameraId) {
       console.error("No camera selected!");
       return;
@@ -207,6 +218,18 @@ export const Tickets = (): ReactElement => {
       </div>
 
       <ul className="mt-4">
+        {isAdding && (
+          <li
+            className={clsx(
+              "flex items-center my-4",
+              "p-4 rounded-md cursor-pointer",
+              "bg-darken-high dark:bg-lighten-high",
+              "text-white dark:text-gray-900"
+            )}
+          >
+            Adding ticket...
+          </li>
+        )}
         {sortBy(tickets, "id").map((ticket) => {
           let name: string;
           let status: ReactNode;
@@ -362,13 +385,48 @@ export const Tickets = (): ReactElement => {
         style={{ display: controls ? "block" : "none" }}
       />
 
-      {controls && (
-        <button
-          className="fixed z-20 top-5 right-5 text-2xl"
-          onClick={() => stopScanning()}
-        >
-          <StopIcon />
-        </button>
+      {isScanning && (
+        <>
+          {!controls && (
+            <div
+              className={clsx(
+                "z-20 fixed inset-0",
+                "w-full h-full bg-cover bg-darken-medium text-2xl text-white",
+                "flex items-center justify-center"
+              )}
+            >
+              <ErrorIcon className="mr-2" />
+              Camera Error
+            </div>
+          )}
+          <button
+            className="fixed z-20 top-5 right-5 text-2xl"
+            onClick={() => stopScanning()}
+          >
+            <StopIcon />
+          </button>
+          <form
+            className="fixed z-20 bottom-10 right-10 left-10 flex items-center"
+            onSubmit={(event) => {
+              event.preventDefault();
+              addCode(ticketNumber);
+              stopScanning();
+            }}
+          >
+            <input
+              className="field"
+              type="text"
+              value={ticketNumber}
+              onChange={(event) => setTicketNumber(event.target.value)}
+              placeholder="or manually enter ticket number"
+            />
+            <input
+              className="button button-primary ml-4"
+              type="submit"
+              value="Add Ticket"
+            />
+          </form>
+        </>
       )}
     </Page>
   );
