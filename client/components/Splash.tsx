@@ -1,6 +1,6 @@
-import CircleIcon from "~/images/icons/solid/circle.svg";
+import CircleIcon from "~/static/images/icons/solid/circle.svg";
 import clsx from "clsx";
-import logo from "~/images/icon_monochrome.png";
+import logo from "~/static/images/icon_monochrome.png";
 import React, { FC, ReactNode, useEffect, useState } from "react";
 
 export const Splash: FC = ({ children }) => {

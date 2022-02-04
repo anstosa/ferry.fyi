@@ -3,21 +3,21 @@ import { colors } from "~/lib/theme";
 import { InstallInstructions } from "./InstallInstructions";
 import { isNull } from "shared/lib/identity";
 import { Link } from "react-router-dom";
-import AboutIcon from "~/images/icons/solid/address-card.svg";
-import ChevronLeftIcon from "~/images/icons/solid/chevron-left.svg";
+import AboutIcon from "~/static/images/icons/solid/address-card.svg";
+import ChevronLeftIcon from "~/static/images/icons/solid/chevron-left.svg";
 import clsx from "clsx";
-import FeedbackIcon from "~/images/icons/solid/question-circle.svg";
-import logo from "~/images/icon_monochrome.png";
+import FeedbackIcon from "~/static/images/icons/solid/question-circle.svg";
+import logo from "~/static/images/icon_monochrome.png";
 import React, {
   FunctionComponent,
   ReactElement,
   SVGAttributes,
   useState,
 } from "react";
-import ReloadIcon from "~/images/icons/solid/redo.svg";
-import ScheduleIcon from "~/images/icons/solid/calendar-alt.svg";
-import ShareIcon from "~/images/icons/solid/share-square.svg";
-import TicketIcon from "~/images/icons/solid/barcode-alt.svg";
+import ReloadIcon from "~/static/images/icons/solid/redo.svg";
+import ScheduleIcon from "~/static/images/icons/solid/calendar-alt.svg";
+import ShareIcon from "~/static/images/icons/solid/share-square.svg";
+import TicketIcon from "~/static/images/icons/solid/barcode-alt.svg";
 
 export interface ShareOptions {
   sharedText: string;

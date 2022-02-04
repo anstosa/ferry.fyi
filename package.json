@@ -9,7 +9,6 @@
     "build": "yarn build:client && yarn build:server",
     "build:client": "NODE_ENV=production webpack --config client/webpack.config.ts",
     "build:server": "NODE_ENV=production webpack --config server/webpack.config.ts",
-    "build:android": "bubblewrap build",
     "clean": "rm -rf dist/*",
     "client": "webpack serve --config client/webpack.config.ts --progress",
     "db:migrate": "sequelize db:migrate",
@@ -44,6 +43,7 @@
   },
   "homepage": "https://ferry.fyi",
   "devDependencies": {
+    "@capacitor/cli": "^3.4.0",
     "@svgr/webpack": "^5.5.0",
     "@types/autoprefixer": "^10.2.0",
     "@types/color-convert": "^2.0.0",
@@ -148,6 +148,8 @@
     "workbox-window": "^6.1.1"
   },
   "dependencies": {
+    "@capacitor/android": "^3.4.0",
+    "@capacitor/core": "^3.4.0",
     "@types/gtag.js": "^0.0.8",
     "@types/koa-compress": "^4.0.3",
     "@types/mapbox-gl": "^2.4.2",

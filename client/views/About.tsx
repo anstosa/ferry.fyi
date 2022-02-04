@@ -1,7 +1,7 @@
 import { Content as FeedbackContent } from "./Feedback";
 import { Helmet } from "react-helmet";
 import { Page } from "../components/Page";
-import DonateIcon from "~/images/icons/solid/heart.svg";
+import DonateIcon from "~/static/images/icons/solid/heart.svg";
 import React, { ReactElement } from "react";
 
 export const About = (): ReactElement => (

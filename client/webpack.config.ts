@@ -92,7 +92,7 @@ module.exports = {
       analyzerMode: isDevelopment ? "server" : "static",
     }),
     new FaviconsPlugin({
-      logo: "images/icon.png",
+      logo: "static/images/icon.png",
       mode: "webapp",
       favicons: {
         appName: NAME,
@@ -108,7 +108,7 @@ module.exports = {
     new HtmlPlugin({
       GTM_CONTAINER_ID: process.env.GTM_CONTAINER_ID,
       description: DESCRIPTION,
-      template: "index.html",
+      template: "static/index.html",
       title: TITLE,
       url: process.env.BASE_URL,
       color: COLOR,
@@ -131,11 +131,11 @@ module.exports = {
     new CopyPlugin({
       patterns: [
         {
-          from: "images/icon_maskable.png",
+          from: "static/images/icon_maskable.png",
           to: path.resolve(__dirname, "../dist/client/assets/"),
         },
         {
-          from: "images/icon_monochrome.png",
+          from: "static/images/icon_monochrome.png",
           to: path.resolve(__dirname, "../dist/client/assets/"),
         },
         {

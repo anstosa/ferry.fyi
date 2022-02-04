@@ -8,7 +8,7 @@ import { SlotInfo } from "./SlotInfo";
 import { useTerminals } from "../../lib/terminals";
 import { values } from "shared/lib/objects";
 import clsx from "clsx";
-import IslandIcon from "~/images/icons/solid/island-tropical.svg";
+import IslandIcon from "~/static/images/icons/solid/island-tropical.svg";
 import React, { ReactElement, useEffect, useState } from "react";
 import scrollIntoView from "scroll-into-view";
 import type {

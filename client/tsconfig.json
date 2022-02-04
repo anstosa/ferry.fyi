@@ -11,5 +11,5 @@
       "shared/*": ["../shared/*"]
     }
   },
-  "include": ["./**/*.ts", "./**/*.tsx"]
+  "include": ["./**/*.ts", "./**/*.tsx", "../capacitor.config.ts"]
 }

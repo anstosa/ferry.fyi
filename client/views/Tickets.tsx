@@ -16,7 +16,7 @@ import { toShortDateString } from "~/lib/date";
 import { useAtom } from "jotai";
 import { useQuery } from "~/lib/browser";
 import clsx from "clsx";
-import ErrorIcon from "~/images/icons/solid/exclamation-triangle.svg";
+import ErrorIcon from "~/static/images/icons/solid/exclamation-triangle.svg";
 import JsBarcode from "jsbarcode";
 import React, {
   ReactElement,
@@ -25,12 +25,12 @@ import React, {
   useRef,
   useState,
 } from "react";
-import RemoveConfirmIcon from "~/images/icons/solid/exclamation-square.svg";
-import RemoveIcon from "~/images/icons/solid/trash.svg";
-import ScanIcon from "~/images/icons/solid/barcode-scan.svg";
-import ShareIcon from "~/images/icons/solid/share-square.svg";
-import StopIcon from "~/images/icons/solid/times.svg";
-import UploadIcon from "~/images/icons/solid/image.svg";
+import RemoveConfirmIcon from "~/static/images/icons/solid/exclamation-square.svg";
+import RemoveIcon from "~/static/images/icons/solid/trash.svg";
+import ScanIcon from "~/static/images/icons/solid/barcode-scan.svg";
+import ShareIcon from "~/static/images/icons/solid/share-square.svg";
+import StopIcon from "~/static/images/icons/solid/times.svg";
+import UploadIcon from "~/static/images/icons/solid/image.svg";
 
 interface TicketStorage extends Ticket {
   type: "ticket";

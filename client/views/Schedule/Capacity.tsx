@@ -1,10 +1,10 @@
 import { isNil, isNull } from "shared/lib/identity";
 import { pluralize } from "../../../shared/lib/strings";
 import { round } from "shared/lib/math";
-import CarIcon from "~/images/icons/solid/car.svg";
+import CarIcon from "~/static/images/icons/solid/car.svg";
 import clsx from "clsx";
-import DoNotEnterIcon from "~/images/icons/solid/do-not-enter.svg";
-import ExternalLinkIcon from "~/images/icons/solid/external-link-square.svg";
+import DoNotEnterIcon from "~/static/images/icons/solid/do-not-enter.svg";
+import ExternalLinkIcon from "~/static/images/icons/solid/external-link-square.svg";
 import React, { ReactElement, useEffect, useState } from "react";
 import type { Slot } from "shared/contracts/schedules";
 

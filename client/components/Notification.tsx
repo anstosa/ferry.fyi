@@ -1,7 +1,7 @@
 import { atom, useAtom } from "jotai";
 import { motion } from "framer-motion";
 import { without } from "shared/lib/arrays";
-import CloseIcon from "~/images/icons/solid/times.svg";
+import CloseIcon from "~/static/images/icons/solid/times.svg";
 import clsx from "clsx";
 import React, {
   FunctionComponent,

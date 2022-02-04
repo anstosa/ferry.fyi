@@ -12,12 +12,12 @@ import {
 import { render } from "react-dom";
 import { renderToString } from "react-dom/server";
 import { Vessel } from "shared/contracts/vessels";
-import CurrentTerminalIcon from "~/images/icons/solid/location.svg";
-import ExternalIcon from "~/images/icons/regular/external-link-square.svg";
-import MateTerminalIcon from "~/images/icons/solid/map-marker.svg";
-import OtherTerminalIcon from "~/images/icons/regular/map-marker-alt.svg";
+import CurrentTerminalIcon from "~/static/images/icons/solid/location.svg";
+import ExternalIcon from "~/static/images/icons/regular/external-link-square.svg";
+import MateTerminalIcon from "~/static/images/icons/solid/map-marker.svg";
+import OtherTerminalIcon from "~/static/images/icons/regular/map-marker-alt.svg";
 import React, { ReactElement, useEffect, useRef, useState } from "react";
-import VesselIcon from "~/images/icons/solid/location-arrow.svg";
+import VesselIcon from "~/static/images/icons/solid/location-arrow.svg";
 import type { Terminal } from "shared/contracts/terminals";
 
 const DEFAULT_TOP = 47;

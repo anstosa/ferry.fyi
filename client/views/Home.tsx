@@ -2,8 +2,8 @@ import { getSlug, useTerminals } from "~/lib/terminals";
 import { Link } from "react-router-dom";
 import { Terminal as TerminalClass } from "shared/contracts/terminals";
 import clsx from "clsx";
-import LocationIcon from "~/images/icons/solid/location.svg";
-import logo from "~/images/icon_monochrome.png";
+import LocationIcon from "~/static/images/icons/solid/location.svg";
+import logo from "~/static/images/icon_monochrome.png";
 import React, { ReactElement } from "react";
 
 interface TerminalProps {

@@ -1,0 +1,6 @@
+{
+	"appId": "fyi.ferry",
+	"appName": "Ferry FYI",
+	"webDir": "client/static",
+	"bundledWebRuntime": false
+}

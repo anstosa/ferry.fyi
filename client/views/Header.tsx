@@ -1,7 +1,7 @@
 import { Menu, MenuItem, ShareOptions } from "~/views/Menu";
 import { ReloadButton } from "~/components/ReloadButton";
 import clsx from "clsx";
-import MenuIcon from "~/images/icons/solid/bars.svg";
+import MenuIcon from "~/static/images/icons/solid/bars.svg";
 import React, { FunctionComponent, ReactNode, useState } from "react";
 import ReactGA from "react-ga4";
 

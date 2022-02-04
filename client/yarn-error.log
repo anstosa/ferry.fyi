@@ -1,0 +1,36 @@
+Arguments: 
+  /home/ansto/.n/bin/node /usr/local/bin/yarn init @capacitor/core
+
+PATH: 
+  /usr/local/go/bin:/home/ansto/.n/bin:/var/lib/snapd/snap/bin:/snap/bin:/home/ansto/.fzf/bin:/home/ansto/.vscode-server/bin/899d46d82c4c95423fb7e10e68eba52050e30ba3/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/usr/lib/wsl/lib:/mnt/c/windows/system32:/mnt/c/windows:/mnt/c/windows/system32/wbem:/mnt/c/windows/system32/windowspowershell/v1.0/:/mnt/c/windows/system32/openssh/:/mnt/c/program files/nvidia corporation/nvidia nvdlisr:/mnt/c/program files/dotnet/:/mnt/c/program files/powershell/7/:/mnt/c/program files/docker/docker/resources/bin:/mnt/c/programdata/dockerdesktop/version-bin:/mnt/c/program files/docker/docker/resources/bin:/mnt/c/programdata/dockerdesktop/version-bin:/mnt/c/Program Files (x86)/NVIDIA Corporation/PhysX/Common:/mnt/c/Users/ansto/AppData/Local/Microsoft/WindowsApps:/mnt/c/Users/ansto/AppData/Local/Programs/Microsoft VS Code/bin
+
+Yarn version: 
+  1.22.17
+
+Node version: 
+  16.13.1
+
+Platform: 
+  linux x64
+
+Trace: 
+  Error: canceled
+      at Interface.<anonymous> (/usr/local/lib/node_modules/yarn/lib/cli.js:137143:13)
+      at Interface.emit (node:events:390:28)
+      at Interface._ttyWrite (node:readline:1081:16)
+      at ReadStream.onkeypress (node:readline:288:10)
+      at ReadStream.emit (node:events:390:28)
+      at emitKeys (node:internal/readline/utils:358:14)
+      at emitKeys.next (<anonymous>)
+      at ReadStream.onData (node:internal/readline/emitKeypressEvents:61:36)
+      at ReadStream.emit (node:events:390:28)
+      at addChunk (node:internal/streams/readable:315:12)
+
+npm manifest: 
+  No manifest
+
+yarn manifest: 
+  No manifest
+
+Lockfile: 
+  No lockfile

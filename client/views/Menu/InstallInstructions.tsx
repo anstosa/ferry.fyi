@@ -1,10 +1,10 @@
-import AppleIcon from "~/images/icons/brands/apple.svg";
+import AppleIcon from "~/static/images/icons/brands/apple.svg";
 import clsx from "clsx";
-import ExternalLinkIcon from "~/images/icons/solid/external-link-square.svg";
-import GooglePlayIcon from "~/images/icons/brands/google-play.svg";
-import PlusIcon from "~/images/icons/solid/plus-square.svg";
+import ExternalLinkIcon from "~/static/images/icons/solid/external-link-square.svg";
+import GooglePlayIcon from "~/static/images/icons/brands/google-play.svg";
+import PlusIcon from "~/static/images/icons/solid/plus-square.svg";
 import React, { FC, ReactElement, ReactNode, useState } from "react";
-import SafariIcon from "~/images/icons/brands/safari.svg";
+import SafariIcon from "~/static/images/icons/brands/safari.svg";
 
 enum Platform {
   ios = "ios",

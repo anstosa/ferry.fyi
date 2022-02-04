@@ -13,8 +13,8 @@
   "enableNotifications": true,
   "startUrl": "/?android=1",
   "iconUrl": "https://www.ferry.fyi/assets/android-chrome-512x512.png",
-  "maskableIconUrl": "https://www.ferry.fyi/assets/icon_maskable.png",
-  "monochromeIconUrl": "https://www.ferry.fyi/assets/icon_monochrome.png",
+  "maskableIconUrl": "https://www.ferry.fyi/images/icon_maskable.png",
+  "monochromeIconUrl": "https://www.ferry.fyi/images/icon_monochrome.png",
   "splashScreenFadeOutDuration": 300,
   "signingKey": {
     "path": "/home/ansto/ferry.fyi/android.keystore",
