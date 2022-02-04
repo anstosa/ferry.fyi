@@ -4,11 +4,11 @@ import { getBulletins, getLastAlertTime, getWaitTime } from "../views/Alerts";
 import { GetPath } from "~/views/Route";
 import { NavLink } from "react-router-dom";
 import clsx from "clsx";
-import MapIcon from "~/images/icons/solid/map-marked.svg";
+import MapIcon from "~/static/images/icons/solid/map-marked.svg";
 import React, { FunctionComponent, ReactElement, ReactNode } from "react";
-import ScheduleIcon from "~/images/icons/solid/calendar-week.svg";
-import VideoIcon from "~/images/icons/solid/cctv.svg";
-import WarningIcon from "~/images/icons/solid/exclamation-triangle.svg";
+import ScheduleIcon from "~/static/images/icons/solid/calendar-week.svg";
+import VideoIcon from "~/static/images/icons/solid/cctv.svg";
+import WarningIcon from "~/static/images/icons/solid/exclamation-triangle.svg";
 import type { Terminal } from "shared/contracts/terminals";
 
 const WrapFooter: FunctionComponent = ({ children }) => (

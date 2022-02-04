@@ -1,6 +1,6 @@
 import clsx from "clsx";
 import React, { ReactElement } from "react";
-import ShipIcon from "~/images/icons/solid/ship.svg";
+import ShipIcon from "~/static/images/icons/solid/ship.svg";
 import type { Vessel } from "shared/contracts/vessels";
 
 interface Props {

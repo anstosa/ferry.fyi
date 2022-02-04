@@ -5,7 +5,7 @@ import { InlineLoader } from "~/components/InlineLoader";
 import { Order, sortBy } from "shared/lib/arrays";
 import { round } from "shared/lib/math";
 import clsx from "clsx";
-import ExternalIcon from "~/images/icons/regular/external-link-square.svg";
+import ExternalIcon from "~/static/images/icons/regular/external-link-square.svg";
 import React, { ReactElement, ReactNode } from "react";
 import type { Bulletin, Terminal } from "shared/contracts/terminals";
 

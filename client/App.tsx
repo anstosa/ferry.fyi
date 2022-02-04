@@ -11,8 +11,8 @@ import { Tickets } from "./views/Tickets";
 import { useOnline, useWSF } from "./lib/api";
 import { useRecordPageViews } from "~/lib/analytics";
 import { useRoutes } from "react-router-dom";
-import DumpsterFireIcon from "~/images/icons/solid/dumpster-fire.svg";
-import OfflineIcon from "~/images/icons/solid/signal-alt-slash.svg";
+import DumpsterFireIcon from "~/static/images/icons/solid/dumpster-fire.svg";
+import OfflineIcon from "~/static/images/icons/solid/signal-alt-slash.svg";
 import React, { ReactElement, useEffect } from "react";
 import ReactGA from "react-ga4";
 

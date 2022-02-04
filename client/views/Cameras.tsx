@@ -6,11 +6,11 @@ import { isNil, isNull } from "shared/lib/identity";
 import { locationToUrl } from "~/lib/maps";
 import { ReloadButton } from "../components/ReloadButton";
 import { useScrollPosition } from "~/lib/scroll";
-import CarIcon from "~/images/icons/solid/car.svg";
+import CarIcon from "~/static/images/icons/solid/car.svg";
 import clsx from "clsx";
-import ExternalIcon from "~/images/icons/regular/external-link-square.svg";
-import MapIcon from "~/images/icons/solid/map-marker.svg";
-import ParkingIcon from "~/images/icons/solid/parking.svg";
+import ExternalIcon from "~/static/images/icons/regular/external-link-square.svg";
+import MapIcon from "~/static/images/icons/solid/map-marker.svg";
+import ParkingIcon from "~/static/images/icons/solid/parking.svg";
 import React, {
   ReactElement,
   ReactNode,

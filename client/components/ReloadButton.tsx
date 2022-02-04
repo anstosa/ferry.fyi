@@ -6,7 +6,7 @@ import React, {
   useEffect,
   useState,
 } from "react";
-import ReloadIcon from "~/images/icons/solid/redo.svg";
+import ReloadIcon from "~/static/images/icons/solid/redo.svg";
 
 interface SpinWrapperProps {
   className?: string;

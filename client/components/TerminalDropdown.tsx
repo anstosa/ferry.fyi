@@ -3,8 +3,8 @@ import { getSlug } from "~/lib/terminals";
 import { isEmpty } from "shared/lib/arrays";
 import { Link } from "react-router-dom";
 import { useWindowSize } from "~/lib/window";
-import CaretDownIcon from "~/images/icons/solid/caret-down.svg";
-import CaretUpIcon from "~/images/icons/solid/caret-up.svg";
+import CaretDownIcon from "~/static/images/icons/solid/caret-down.svg";
+import CaretUpIcon from "~/static/images/icons/solid/caret-up.svg";
 import clsx from "clsx";
 import React, {
   FunctionComponent,
