@@ -113,6 +113,7 @@ export const Tickets = (): ReactElement => {
     if (codeInput) {
       addCode(codeInput);
     }
+
     return () => {
       stopScanning(controls);
     };
@@ -178,9 +179,12 @@ export const Tickets = (): ReactElement => {
     }
     setTicketNumber("");
     setScanning(false);
-    document.body.classList.remove("hidden");
-    BarcodeScanner.showBackground();
-    BarcodeScanner.stopScan();
+
+    if (device.platform !== "web") {
+      document.body.classList.remove("hidden");
+      BarcodeScanner.showBackground();
+      BarcodeScanner.stopScan();
+    }
   };
 
   const scan = async () => {
