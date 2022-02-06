@@ -208,6 +208,11 @@ export const Tickets = (): ReactElement => {
         )
       );
     } else {
+      const status = await BarcodeScanner.checkPermission({ force: true });
+      if (!status.granted) {
+        console.error("Permission denied!");
+        return;
+      }
       document.body.classList.add("hidden");
       BarcodeScanner.hideBackground();
       const result = await BarcodeScanner.startScan({
