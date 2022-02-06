@@ -11,7 +11,7 @@ latest.dump
 android.keystore
 app-release-*
 .gradle/
-
+private_key.pepk
 
 # cordova-res
 resources/android/icon
