@@ -1,7 +1,9 @@
+import { Http, HttpResponse } from "@capacitor-community/http";
 import { isEqual } from "shared/lib/objects";
 import { useEffect, useState } from "react";
 import { WSFStatus } from "shared/contracts/api";
-const API_BASE_URL = "/api";
+
+const API_BASE_URL = `${process.env.BASE_URL}/api`;
 
 let wsfStatus: WSFStatus = { offline: false };
 
@@ -15,12 +17,12 @@ export const useWSF = (): WSFStatus => {
 
 const inProgress: Record<string, Promise<any>> = {};
 
-const processResponse = async (response: Response): Promise<any> => {
-  const responseData = await response.json();
-  if (!isEqual(responseData.wsfStatus, wsfStatus)) {
-    ({ wsfStatus } = responseData);
+const processResponse = ({ data }: HttpResponse): any => {
+  if (!isEqual(data.wsfStatus, wsfStatus)) {
+    ({ wsfStatus } = data);
   }
-  return responseData.body;
+  console.log(data);
+  return data.body;
 };
 
 export const get = async <T = Record<string, unknown>>(
@@ -29,7 +31,10 @@ export const get = async <T = Record<string, unknown>>(
   if (path in inProgress) {
     return await inProgress[path];
   }
-  const promise = fetch(`${API_BASE_URL}${path}`).then(processResponse);
+  const promise = Http.request({
+    method: "GET",
+    url: `${API_BASE_URL}${path}`,
+  }).then(processResponse);
   inProgress[path] = promise;
   return await promise;
 };
@@ -38,12 +43,13 @@ export const post = async <T = Record<string, unknown>>(
   path: string,
   data: Record<string, unknown>
 ): Promise<T> => {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const response = await Http.request({
     method: "POST",
+    url: `${API_BASE_URL}${path}`,
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(data),
+    data,
   });
   return await processResponse(response);
 };

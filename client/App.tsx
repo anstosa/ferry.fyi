@@ -1,12 +1,15 @@
 import "./app.scss";
+import "@capacitor/core";
 import { About } from "./views/About";
 import { AnimatePresence } from "framer-motion";
+import { colors } from "~/lib/theme";
 import { Feedback } from "./views/Feedback";
 import { Home } from "./views/Home";
 import { Notification } from "./components/Notification";
 import { Route } from "./views/Route";
 import { Settings } from "luxon";
 import { Splash } from "./components/Splash";
+import { StatusBar } from "@capacitor/status-bar";
 import { Tickets } from "./views/Tickets";
 import { useOnline, useWSF } from "./lib/api";
 import { useRecordPageViews } from "~/lib/analytics";
@@ -17,6 +20,7 @@ import React, { ReactElement, useEffect } from "react";
 import ReactGA from "react-ga4";
 
 Settings.defaultZoneName = "America/Los_Angeles";
+StatusBar.setBackgroundColor({ color: colors.green.dark });
 
 export const App = (): ReactElement => {
   useEffect(() => {

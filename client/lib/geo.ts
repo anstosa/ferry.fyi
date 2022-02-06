@@ -1,3 +1,4 @@
+import { Geolocation } from "@capacitor/geolocation";
 import { useEffect, useState } from "react";
 
 interface Point {
@@ -28,13 +29,11 @@ export const getDistance = (a: Point, b: Point): number => {
 export const useGeo = (): Point | null => {
   const [location, setLocation] = useState<Point | null>(null);
 
-  const updateLocation = () => {
-    navigator.geolocation.getCurrentPosition(
-      ({ coords: { latitude, longitude } }: GeolocationPosition) => {
-        setLocation({ latitude, longitude });
-      },
-      () => setLocation(null)
-    );
+  const updateLocation = async () => {
+    const {
+      coords: { latitude, longitude },
+    } = await Geolocation.getCurrentPosition();
+    setLocation({ latitude, longitude });
   };
 
   useEffect(() => {

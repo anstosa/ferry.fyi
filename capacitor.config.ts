@@ -3,7 +3,7 @@ import { CapacitorConfig } from "@capacitor/cli";
 const config: CapacitorConfig = {
   appId: "fyi.ferry",
   appName: "Ferry FYI",
-  webDir: "client/static",
+  webDir: "dist/client",
   bundledWebRuntime: false,
 };
 
