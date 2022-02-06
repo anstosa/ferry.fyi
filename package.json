@@ -191,7 +191,7 @@
     "luxon": "^2.0.1",
     "mapbox-gl": "^2.6.0",
     "moots-capacitor-dark-mode": "^1.0.1",
-    "node-fetch": "^2.6.1",
+    "node-fetch": "^2.6.7",
     "node-schedule": "^2.0.0",
     "pg": "^8.5.1",
     "pg-hstore": "^2.3.3",
