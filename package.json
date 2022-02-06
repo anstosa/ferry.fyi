@@ -14,7 +14,7 @@
     "db:reset": "./scripts/resetdb.sh",
     "db:sync": "curl `heroku pg:backups url --app ferry-fyi` > /tmp/ferryfyi.dump && ./scripts/loaddb.sh /tmp/ferryfyi.dump",
     "generate:icons": "yarn generate:icons:android && yarn generate:icons:ios",
-    "generate:icons:android": "npx cordova-res android --skip-config --icon-background-source '#016f52' --copy",
+    "generate:icons:android": "npx cordova-res android --icon-background-source '#016f52' --skip-config --copy",
     "generate:icons:ios": "npx cordova-res ios --skip-config --copy",
     "heroku": "cd dist/server && node server.js",
     "heroku-postbuild": "yarn build",
