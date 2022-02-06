@@ -1,1 +1,38 @@
-[]
+[
+	{
+		"pkg": "@capacitor-community/barcode-scanner",
+		"classpath": "com.dutchconcepts.capacitor.barcodescanner.BarcodeScanner"
+	},
+	{
+		"pkg": "@capacitor-community/http",
+		"classpath": "com.getcapacitor.plugin.http.Http"
+	},
+	{
+		"pkg": "@capacitor-community/keep-awake",
+		"classpath": "com.getcapacitor.community.keepawake.KeepAwakePlugin"
+	},
+	{
+		"pkg": "@capacitor-community/screen-brightness",
+		"classpath": "com.elylucas.capscreenbrightness.ScreenBrightnessPlugin"
+	},
+	{
+		"pkg": "@capacitor/device",
+		"classpath": "com.capacitorjs.plugins.device.DevicePlugin"
+	},
+	{
+		"pkg": "@capacitor/geolocation",
+		"classpath": "com.capacitorjs.plugins.geolocation.GeolocationPlugin"
+	},
+	{
+		"pkg": "@capacitor/share",
+		"classpath": "com.capacitorjs.plugins.share.SharePlugin"
+	},
+	{
+		"pkg": "@capacitor/status-bar",
+		"classpath": "com.capacitorjs.plugins.statusbar.StatusBarPlugin"
+	},
+	{
+		"pkg": "moots-capacitor-dark-mode",
+		"classpath": "com.au.capacitor.darkmode.DarkModePlugin"
+	}
+]

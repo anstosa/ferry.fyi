@@ -13,6 +13,14 @@
       "outFiles": ["${workspaceFolder}/**/*.js"]
     },
     {
+      "type": "android-webview",
+      "request": "attach",
+      "name": "Attach to Android WebView",
+      "application": "com.android.chrome",
+      "webRoot": "${workspaceFolder}",
+      "urlFilter": "http://example.com/*"
+    },
+    {
       "name": "Launch Microsoft Edge and open the Edge DevTools",
       "request": "launch",
       "type": "vscode-edge-devtools.debug",

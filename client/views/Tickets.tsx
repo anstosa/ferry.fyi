@@ -1,6 +1,10 @@
 import { atomWithStorage } from "jotai/utils";
 import { BarcodeFormat, DecodeHintType } from "@zxing/library";
 import {
+  BarcodeScanner,
+  SupportedFormat,
+} from "@capacitor-community/barcode-scanner";
+import {
   BrowserCodeReader,
   BrowserMultiFormatOneDReader,
   IScannerControls,
@@ -8,12 +12,16 @@ import {
 import { DateTime } from "luxon";
 import { get } from "~/lib/api";
 import { Helmet } from "react-helmet";
+import { KeepAwake } from "@capacitor-community/keep-awake";
 import { Page } from "../components/Page";
 import { pluralize } from "shared/lib/strings";
+import { ScreenBrightness } from "@capacitor-community/screen-brightness";
 import { sortBy, without } from "shared/lib/arrays";
+import { Splash } from "~/components/Splash";
 import { Ticket } from "shared/contracts/tickets";
 import { toShortDateString } from "~/lib/date";
 import { useAtom } from "jotai";
+import { useDevice } from "~/lib/device";
 import { useQuery } from "~/lib/browser";
 import clsx from "clsx";
 import ErrorIcon from "~/static/images/icons/solid/exclamation-triangle.svg";
@@ -66,8 +74,10 @@ export const Tickets = (): ReactElement => {
   const [expanded, setExpanded] = useState<
     TicketStorage | ReservationAccount | null
   >(null);
+  const [brightness, setBrightness] = useState<number>(0.5);
   const barcodeRef = useRef<SVGSVGElement | null>(null);
   const { add: codeInput } = useQuery();
+  const device = useDevice();
 
   const fetchCameras = async () => {
     const cameras = await BrowserCodeReader.listVideoInputDevices();
@@ -103,6 +113,9 @@ export const Tickets = (): ReactElement => {
     if (codeInput) {
       addCode(codeInput);
     }
+    return () => {
+      stopScanning(controls);
+    };
   }, []);
 
   useEffect(() => {
@@ -112,9 +125,22 @@ export const Tickets = (): ReactElement => {
     }
   }, [barcodeRef.current, expanded?.id]);
 
+  if (!device) {
+    return <Splash />;
+  }
+
+  const openOverlay = async (ticket: TicketStorage | ReservationAccount) => {
+    setExpanded(ticket);
+    setBrightness((await ScreenBrightness.getBrightness()).brightness);
+    ScreenBrightness.setBrightness({ brightness: 1 });
+    KeepAwake.keepAwake();
+  };
+
   const closeOverlay = () => {
     setExpanded(null);
     setDeleting(null);
+    ScreenBrightness.setBrightness({ brightness });
+    KeepAwake.allowSleep();
   };
 
   const addCode = async (code: string) => {
@@ -152,27 +178,43 @@ export const Tickets = (): ReactElement => {
     }
     setTicketNumber("");
     setScanning(false);
+    document.body.classList.remove("hidden");
+    BarcodeScanner.showBackground();
+    BarcodeScanner.stopScan();
   };
 
   const scan = async () => {
     setScanning(true);
-    if (!selectedCameraId) {
-      console.error("No camera selected!");
-      return;
-    }
-    reader.hints.set(DecodeHintType.TRY_HARDER, false);
-    setControls(
-      await reader.decodeFromVideoDevice(
-        selectedCameraId,
-        previewRef.current ?? undefined,
-        (result, error, controls) => {
-          if (result) {
-            stopScanning(controls);
-            addCode(result.getText());
+    if (device.platform === "web") {
+      if (!selectedCameraId) {
+        console.error("No camera selected!");
+        return;
+      }
+      reader.hints.set(DecodeHintType.TRY_HARDER, false);
+      setControls(
+        await reader.decodeFromVideoDevice(
+          selectedCameraId,
+          previewRef.current ?? undefined,
+          (result, error, controls) => {
+            if (result) {
+              stopScanning(controls);
+              addCode(result.getText());
+            }
           }
-        }
-      )
-    );
+        )
+      );
+    } else {
+      document.body.classList.remove("hidden");
+      BarcodeScanner.hideBackground();
+      const result = await BarcodeScanner.startScan({
+        targetedFormats: [SupportedFormat.CODE_128],
+      });
+
+      if (result.hasContent) {
+        addCode(result.content ?? "");
+      }
+      stopScanning(controls);
+    }
   };
 
   return (
@@ -301,7 +343,7 @@ export const Tickets = (): ReactElement => {
                 "text-white dark:text-gray-900"
               )}
               key={ticket.id}
-              onClick={() => setExpanded(ticket)}
+              onClick={() => openOverlay(ticket)}
             >
               <div className={clsx("flex flex-col flex-grow")}>
                 <span className="text-xl">{name}</span>
@@ -348,7 +390,7 @@ export const Tickets = (): ReactElement => {
                       expanded.type === "ticket"
                         ? expanded.description
                         : "Reservation Account",
-                    url: `${process.env.BASE_URL}/tickets?add=${expanded.id}`,
+                    url: `/tickets?add=${expanded.id}`,
                   });
                 } catch (error) {
                   console.error("Failed to share", error);

@@ -51,5 +51,8 @@
     },
     "editor.defaultFormatter": "stylelint.vscode-stylelint"
   },
-  "svg.preview.background": "custom"
+  "svg.preview.background": "custom",
+  "[xml]": {
+    "editor.defaultFormatter": "DotJoshJohnson.xml"
+  }
 }

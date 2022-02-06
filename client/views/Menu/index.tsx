@@ -3,6 +3,7 @@ import { colors } from "~/lib/theme";
 import { InstallInstructions } from "./InstallInstructions";
 import { isNull } from "shared/lib/identity";
 import { Link } from "react-router-dom";
+import { Share } from "@capacitor/share";
 import AboutIcon from "~/static/images/icons/solid/address-card.svg";
 import ChevronLeftIcon from "~/static/images/icons/solid/chevron-left.svg";
 import clsx from "clsx";
@@ -102,17 +103,18 @@ export const Menu = ({
           },
         ]
       : []),
-    ...(share && "canShare" in navigator
+    ...(share && Share.canShare()
       ? [
           {
             Icon: ShareIcon,
             label: shareMenuText,
             onClick: async (): Promise<void> => {
               try {
-                await navigator.share({
+                await Share.share({
                   title: "Ferry FYI",
                   text: share.sharedText,
                   url: window.location.href,
+                  dialogTitle: share.sharedText,
                 });
                 setShareMenuText("Shared!");
                 setTimeout(() => setShareMenuText(share.shareButtonText), 5000);

@@ -17,6 +17,7 @@ import { Vessel } from "~/models/Vessel";
 import { Vessel as VesselClass } from "shared/contracts/vessels";
 import bodyParser from "koa-bodyparser";
 import compress from "koa-compress";
+import cors from "@koa/cors";
 import fs from "fs";
 import Koa from "koa";
 import logger from "heroku-logger";
@@ -33,6 +34,7 @@ const app = new Koa();
 if (process.env.NODE_ENV === "production") {
   app.use(sslify({ resolver: xForwardedProtoResolver }));
 }
+app.use(cors());
 // log requests
 app.use(requestLogger());
 
