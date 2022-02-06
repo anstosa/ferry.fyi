@@ -5,6 +5,7 @@ import clsx from "clsx";
 import LocationIcon from "~/static/images/icons/solid/location.svg";
 import logo from "~/static/images/icon_monochrome.png";
 import React, { ReactElement } from "react";
+import TicketIcon from "~/static/images/icons/solid/barcode-alt.svg";
 
 interface TerminalProps {
   terminal: TerminalClass;
@@ -48,6 +49,22 @@ export const Home = (): ReactElement => {
       </div>
       <div className="w-full flex justify-center">
         <ul>
+          <li>
+            <Link
+              className={clsx(
+                "whitespace-nowrap",
+                "block cursor-pointer",
+                "px-4 py-2",
+                "hover:bg-lighten-high",
+                "flex items-center",
+                "text-lg"
+              )}
+              to={"/tickets"}
+            >
+              <TicketIcon className="mr-3" />
+              Tickets
+            </Link>
+          </li>
           {terminals.map((terminal) => (
             <Terminal terminal={terminal} key={terminal.id} />
           ))}
