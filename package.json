@@ -160,6 +160,7 @@
     "@capacitor-community/keep-awake": "^2.1.1",
     "@capacitor-community/screen-brightness": "^1.0.1",
     "@capacitor/android": "^3.4.0",
+    "@capacitor/app": "^1.1.0",
     "@capacitor/core": "^3.4.0",
     "@capacitor/device": "^1.1.2",
     "@capacitor/geolocation": "^1.3.1",

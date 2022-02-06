@@ -204,7 +204,7 @@ export const Tickets = (): ReactElement => {
         )
       );
     } else {
-      document.body.classList.remove("hidden");
+      document.body.classList.add("hidden");
       BarcodeScanner.hideBackground();
       const result = await BarcodeScanner.startScan({
         targetedFormats: [SupportedFormat.CODE_128],

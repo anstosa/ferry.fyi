@@ -5,15 +5,16 @@ import { AnimatePresence } from "framer-motion";
 import { colors } from "~/lib/theme";
 import { Feedback } from "./views/Feedback";
 import { Home } from "./views/Home";
+import { App as Native } from "@capacitor/app";
 import { Notification } from "./components/Notification";
 import { Route } from "./views/Route";
 import { Settings } from "luxon";
 import { Splash } from "./components/Splash";
 import { StatusBar } from "@capacitor/status-bar";
 import { Tickets } from "./views/Tickets";
+import { useNavigate, useRoutes } from "react-router-dom";
 import { useOnline, useWSF } from "./lib/api";
 import { useRecordPageViews } from "~/lib/analytics";
-import { useRoutes } from "react-router-dom";
 import DumpsterFireIcon from "~/static/images/icons/solid/dumpster-fire.svg";
 import OfflineIcon from "~/static/images/icons/solid/signal-alt-slash.svg";
 import React, { ReactElement, useEffect } from "react";
@@ -31,6 +32,11 @@ export const App = (): ReactElement => {
   const [offlineDismissed, setOfflineDismissed] = React.useState(false);
   const [wsfDismissed, setWsfDismissed] = React.useState(false);
   useRecordPageViews();
+  const navigate = useNavigate();
+
+  Native.addListener("backButton", () => {
+    navigate(-1);
+  });
 
   const element = useRoutes([
     { path: "", element: <Home /> },
