@@ -21,7 +21,6 @@ const processResponse = ({ data }: HttpResponse): any => {
   if (!isEqual(data.wsfStatus, wsfStatus)) {
     ({ wsfStatus } = data);
   }
-  console.log(data);
   return data.body;
 };
 
