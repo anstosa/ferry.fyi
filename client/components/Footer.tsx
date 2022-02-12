@@ -91,7 +91,7 @@ export const Footer = ({ terminal, getPath }: Props): ReactElement => {
         )}
         to={getPath({ view: "alerts" })}
       >
-        <span className="truncate">{summary}</span>
+        {summary && <span className="truncate mr-2">{summary}</span>}
         <WarningIcon className="text-2xl" />
       </NavLink>
     );
