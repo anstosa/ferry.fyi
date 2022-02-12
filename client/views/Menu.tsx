@@ -1,13 +1,15 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { colors } from "~/lib/theme";
-import { InstallInstructions } from "./InstallInstructions";
 import { isNull } from "shared/lib/identity";
 import { Link } from "react-router-dom";
 import { Share } from "@capacitor/share";
+import { useDevice } from "~/lib/device";
 import AboutIcon from "~/static/images/icons/solid/address-card.svg";
+// import AppleIcon from "~/static/images/icons/brands/apple.svg";
 import ChevronLeftIcon from "~/static/images/icons/solid/chevron-left.svg";
 import clsx from "clsx";
 import FeedbackIcon from "~/static/images/icons/solid/question-circle.svg";
+import GooglePlayIcon from "~/static/images/icons/brands/google-play.svg";
 import logo from "~/static/images/icon_monochrome.png";
 import React, {
   FunctionComponent,
@@ -69,6 +71,7 @@ export const Menu = ({
   );
   const [dragStart, setDragStart] = useState<number | null>(null);
   const [dragPosition, setDragPosition] = useState<number | null>(null);
+  const device = useDevice();
 
   const navigation: MenuItem[] = [
     {
@@ -285,7 +288,27 @@ export const Menu = ({
             </ul>
             <div className="flex-grow" />
             <div className="p-4">
-              <InstallInstructions />
+              {/* {device?.platform === "web" && device?.operatingSystem === "ios" && (
+                <a
+                  href="https://play.google.com/store/apps/details?id=fyi.ferry"
+                  className="button button-invert flex-grow"
+                >
+                  <AppleIcon className="inline-block button-icon text-2xl" />
+                  <span className="button-label">Install on the App Store</span>
+                </a>
+              )} */}
+              {device?.platform === "web" &&
+                device?.operatingSystem === "android" && (
+                  <a
+                    href="https://play.google.com/store/apps/details?id=fyi.ferry"
+                    className="button button-invert flex-grow"
+                  >
+                    <GooglePlayIcon className="inline-block button-icon text-2xl" />
+                    <span className="button-label">
+                      Install on the Play Store
+                    </span>
+                  </a>
+                )}
             </div>
           </div>
         </motion.nav>
