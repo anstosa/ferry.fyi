@@ -1,4 +1,5 @@
 import { getSlug, useTerminals } from "~/lib/terminals";
+import { isEmpty } from "~/../shared/lib/arrays";
 import { Link } from "react-router-dom";
 import { Terminal as TerminalClass } from "shared/contracts/terminals";
 import clsx from "clsx";
@@ -11,6 +12,15 @@ interface TerminalProps {
   terminal: TerminalClass;
 }
 
+const LI_CLASSES = clsx(
+  "whitespace-nowrap",
+  "block cursor-pointer",
+  "px-4 py-2",
+  "hover:bg-lighten-high",
+  "flex items-center justify-center",
+  "text-lg"
+);
+
 export const Terminal = ({ terminal }: TerminalProps): ReactElement => {
   const { name, id } = terminal;
   const { closestTerminal } = useTerminals();
@@ -18,14 +28,9 @@ export const Terminal = ({ terminal }: TerminalProps): ReactElement => {
   return (
     <li>
       <Link
-        className={clsx(
-          "whitespace-nowrap",
-          "block cursor-pointer",
-          "px-4 py-2",
-          "hover:bg-lighten-high",
-          "flex items-center",
-          "text-lg"
-        )}
+        className={clsx(LI_CLASSES, {
+          "font-bold": id === closestTerminal?.id,
+        })}
         to={`/${getSlug(id)}`}
       >
         {id === closestTerminal?.id ? (
@@ -52,12 +57,9 @@ export const Home = (): ReactElement => {
           <li>
             <Link
               className={clsx(
-                "whitespace-nowrap",
-                "block cursor-pointer",
-                "px-4 py-2",
-                "hover:bg-lighten-high",
-                "flex items-center",
-                "text-lg"
+                LI_CLASSES,
+                "font-bold",
+                "border-b border-b-1 border-white border-opacity-20"
               )}
               to={"/tickets"}
             >
@@ -65,6 +67,11 @@ export const Home = (): ReactElement => {
               Tickets
             </Link>
           </li>
+          {isEmpty(terminals) && (
+            <li className={clsx(LI_CLASSES, "opacity-50")}>
+              Loading terminals...
+            </li>
+          )}
           {terminals.map((terminal) => (
             <Terminal terminal={terminal} key={terminal.id} />
           ))}
