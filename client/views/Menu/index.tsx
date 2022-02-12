@@ -221,8 +221,10 @@ export const Menu = ({
           <div
             className={clsx("h-16 w-full p-4", "text-2xl", "flex items-center")}
           >
-            <img src={logo} className="inline-block mr-4 w-10" />
-            <h1 className="font-bold">Ferry FYI</h1>
+            <Link to="/" className="flex items-center">
+              <img src={logo} className="inline-block mr-4 w-10" />
+              <h1 className="font-bold">Ferry FYI</h1>
+            </Link>
             <div className="flex-grow" />
             <ChevronLeftIcon
               className="cursor-pointer text-md"
