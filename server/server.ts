@@ -16,7 +16,7 @@ import sslify from "express-sslify";
 const app = express();
 // use SSL in production
 if (process.env.NODE_ENV === "production") {
-  app.use(sslify.HTTPS());
+  app.use(sslify.HTTPS({ trustProtoHeader: true }));
 }
 app.use(bodyParser.json());
 app.use(cors());
