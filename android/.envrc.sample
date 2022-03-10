@@ -1,0 +1,21 @@
+export BASE_URL="https://ferry.fyi"
+
+# Firebase Cloud Messaging
+export FCM_PUBLIC_KEY="<get from firebase>"
+export GCM_SENDER_ID="<get from firebase>"
+
+# Analytics
+export GOOGLE_ANALYTICS="<get from google analytics"
+export GTM_CONTAINER_ID="<get from google tag manager>"
+
+# Heroku
+export LOG_LEVEL="INFO"
+export NODE_ENV="production"
+
+# Mapbox
+export MAPBOX_ACCESS_TOKEN="<get from mapbox>"
+
+# Auth0
+export AUTH0_DOMAIN="<get from auth0>"
+export AUTH0_CLIENT_ID="<get from auth0>"
+export AUTH0_CLIENT_AUDIENCE="<get from auth0>"

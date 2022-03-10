@@ -52,6 +52,29 @@ WSA
 2. Run `adb connect <WSA ip>`
 3. Run `npm run start:android` to load app into WSA
 
+## Android Release
+
+1. Run frontend build `yarn build:android`
+2. Update `versionCode` and `versionName` in `android/app/build.gradle`
+3. Launch Android Studio `studio`
+4. Install all the updates
+5. Click **Sync Project with Gradle Files**
+6. **Build > Rebuild Project**
+7. **Build > Generate Signed Bundle(s) / APK(s)**
+8. Select **Signed App Bundle**
+9. Enter key store passwords
+10. Select **Release**
+11. Open Google Play Console
+12. Upload to **Internal testing > Create new release**
+13. Enter Release Notes
+14. **Save**
+15. **Review Release**
+16. **Start rollout to Internal testing**
+17. TEST IT
+18. **Internal testing > {new version} > Promote > Production**
+19. **Review Release**
+20. **Start rollout to Production**
+
 ## Credits
 
 Thank you to [![BrowserStack](https://user-images.githubusercontent.com/568242/60857158-6ad96100-a1be-11e9-9cdf-aa5872f2f6c5.png)](http://browserstack.com/) for providing free cross-browser testing.

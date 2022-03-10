@@ -173,7 +173,7 @@
   "repository": "anstosa/ferry.fyi.git",
   "scripts": {
     "build": "yarn build:client && yarn build:server",
-    "build:android": "NODE_ENV=production BASE_URL=https://ferry.fyi webpack --config client/webpack.config.ts",
+    "build:android": ". android/.envrc; webpack --config client/webpack.config.ts && direnv allow",
     "build:client": "NODE_ENV=production webpack --config client/webpack.config.ts",
     "build:server": "NODE_ENV=production webpack --config server/webpack.config.ts",
     "clean": "rm -rf dist/*",
