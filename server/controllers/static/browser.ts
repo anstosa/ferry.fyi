@@ -8,8 +8,8 @@ import path from "path";
 
 export const clientDist = path.resolve(
   __dirname,
-  "../../../",
-  process.env.NODE_ENV === "development" ? "dist/" : "",
+  "../",
+  process.env.NODE_ENV === "development" ? "../../dist/" : "",
   "client/"
 );
 
