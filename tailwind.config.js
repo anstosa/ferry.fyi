@@ -18,11 +18,10 @@ const borderPlugin = ({ addUtilities }) => {
 
 module.exports = {
   corePlugins: {},
-  darkMode: "media",
   important: false,
   plugins: [borderPlugin],
   prefix: "",
-  purge: ["./client/**/*.tsx", "./client/**/*.html"],
+  content: ["./client/**/*.{ts,tsx}", "./client/**/*.html"],
   separator: ":",
   theme: {
     extend: {
@@ -106,11 +105,6 @@ module.exports = {
         bottom: "-1",
         auto: "auto",
       },
-    },
-  },
-  variants: {
-    extend: {
-      inset: ["responsive", "focus"],
     },
   },
 };

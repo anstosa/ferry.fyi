@@ -1,3 +1,4 @@
+import EslintPlugin from "eslint-webpack-plugin";
 import ForkTsCheckerWebpackPlugin from "fork-ts-checker-webpack-plugin";
 import nodeExternals from "webpack-node-externals";
 import path from "path";
@@ -17,7 +18,12 @@ module.exports = {
   watchOptions: {
     ignored: "../dist/.*",
   },
-  plugins: [new ForkTsCheckerWebpackPlugin()],
+  plugins: [
+    new ForkTsCheckerWebpackPlugin(),
+    new EslintPlugin({
+      files: ["**/*.(ts|tsx)", "../shared/**/*.(ts|tsx)"],
+    }),
+  ],
   resolve: {
     symlinks: false,
     extensions: [".js", ".ts", ".json"],
@@ -38,15 +44,6 @@ module.exports = {
           options: {
             transpileOnly: true,
           },
-        },
-      },
-      {
-        enforce: "pre",
-        test: /\.tsx?$/,
-        include: [__dirname, path.resolve(__dirname, "../shared")],
-        loader: "eslint-loader",
-        options: {
-          failOnError: true,
         },
       },
     ],

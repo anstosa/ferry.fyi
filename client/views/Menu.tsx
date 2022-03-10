@@ -1,11 +1,13 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { colors } from "~/lib/theme";
 import { isNull } from "shared/lib/identity";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Share } from "@capacitor/share";
 import { useDevice } from "~/lib/device";
 import AboutIcon from "~/static/images/icons/solid/address-card.svg";
+import UserIcon from "~/static/images/icons/solid/user.svg";
 // import AppleIcon from "~/static/images/icons/brands/apple.svg";
+import { useAuth0 } from "@auth0/auth0-react";
 import ChevronLeftIcon from "~/static/images/icons/solid/chevron-left.svg";
 import clsx from "clsx";
 import FeedbackIcon from "~/static/images/icons/solid/question-circle.svg";
@@ -15,6 +17,7 @@ import React, {
   FunctionComponent,
   ReactElement,
   SVGAttributes,
+  useEffect,
   useState,
 } from "react";
 import ReloadIcon from "~/static/images/icons/solid/redo.svg";
@@ -58,6 +61,17 @@ export type MenuItem =
   | ExternalLinkMenuItem
   | ButtonMenuItem;
 
+const Avatar = () => {
+  const { user } = useAuth0();
+  if (user?.picture) {
+    return (
+      <img src={user?.picture} className="rounded w-6 mr-6 overflow-hidden" />
+    );
+  } else {
+    return <UserIcon />;
+  }
+};
+
 export const Menu = ({
   isOpen,
   onClose,
@@ -72,8 +86,41 @@ export const Menu = ({
   const [dragStart, setDragStart] = useState<number | null>(null);
   const [dragPosition, setDragPosition] = useState<number | null>(null);
   const device = useDevice();
+  const { isAuthenticated, loginWithRedirect } = useAuth0();
+  const { pathname } = useLocation();
+  const [canShare, setShare] = useState<boolean>(false);
+
+  const initShare = async () => {
+    const { value: canShare } = await Share.canShare();
+    setShare(canShare);
+  };
+
+  useEffect(() => {
+    initShare();
+  }, []);
 
   const navigation: MenuItem[] = [
+    ...(isAuthenticated
+      ? [
+          {
+            Icon: Avatar,
+            label: "Account",
+            path: "/account",
+          },
+        ]
+      : [
+          {
+            Icon: UserIcon,
+            label: "Log In",
+            onClick: () =>
+              loginWithRedirect({
+                redirectUri:
+                  pathname === "/tickets"
+                    ? window.location.href
+                    : `${window.location.origin}/account`,
+              }),
+          },
+        ]),
     {
       Icon: ScheduleIcon,
       label: "Schedule",
@@ -106,7 +153,7 @@ export const Menu = ({
           },
         ]
       : []),
-    ...(share && Share.canShare()
+    ...(share && canShare
       ? [
           {
             Icon: ShareIcon,

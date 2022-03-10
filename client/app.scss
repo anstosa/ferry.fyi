@@ -1,9 +1,6 @@
 // Inject Tailwind CSSs base styles, including normalization.
 @tailwind base;
 
-// Inject component classes registered by tailwind plugins
-@tailwind components;
-
 // Imports
 
 @import "./node_modules/react-day-picker/lib/style";
@@ -33,6 +30,12 @@
 
   .DayPicker-Day {
     @apply rounded-sm;
+
+    &:nth-child(6),
+    &:nth-child(7) {
+      @apply rounded-none;
+      @apply bg-green-lightest;
+    }
     
     &.DayPicker-Day--selected:not(.DayPicker-Day--disabled):not(.DayPicker-Day--outside) {
       @apply bg-green-dark;
@@ -44,12 +47,6 @@
       @apply bg-green-light;
     }
 
-    &:nth-child(6),
-    &:nth-child(7) {
-      @apply rounded-none;
-      @apply bg-green-lightest;
-    }
-
     &--today {
       @apply text-green-dark;
     }
@@ -59,7 +56,8 @@
 
 html {
   @apply bg-green-dark; // iPhone X letterbox
-  font-family: "Roboto", sans-serif;
+
+  font-family: Roboto, sans-serif;
 }
 
 @keyframes loading {
@@ -67,7 +65,7 @@ html {
   to { background-position: 100%; }
 }
 
-@variants dark {
+@layer utilities {
   .bg-prediction-gradient {
     background: linear-gradient(
       to left,
@@ -147,13 +145,16 @@ html {
 }
 
 // Components
-@responsive {
+@layer components {
   @import "components/alert";
   @import "components/button";
   @import "components/field";
   @import "components/link";
   @import "components/list";
 }
+
+// Inject component classes registered by tailwind plugins
+@tailwind components;
 
 // Inject tailwind utility classes
 @tailwind utilities;

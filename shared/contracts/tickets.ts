@@ -8,3 +8,12 @@ export interface Ticket {
   status: string;
   usesRemaining: number;
 }
+export interface TicketStorage extends Ticket {
+  type: "ticket";
+  nickname?: string;
+}
+export interface ReservationAccount {
+  type: "reservation";
+  nickname?: string;
+  id: string;
+}

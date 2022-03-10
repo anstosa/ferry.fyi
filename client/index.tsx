@@ -1,10 +1,20 @@
-/* global gtag */
-
 import { App } from "./App";
+import { Auth0Provider } from "@auth0/auth0-react";
 import { BrowserRouter } from "react-router-dom";
+import { isUndefined } from "shared/lib/identity";
 import { Workbox } from "workbox-window";
 import React from "react";
 import ReactDOM from "react-dom";
+
+if (!process.env.AUTH0_DOMAIN) {
+  throw Error("AUTH0_DOMAIN environment variable is not set");
+}
+if (!process.env.AUTH0_CLIENT_ID) {
+  throw Error("AUTH0_CLIENT_ID environment variable is not set");
+}
+if (!process.env.AUTH0_CLIENT_AUDIENCE) {
+  throw Error("AUTH0_CLIENT_AUDIENCE environment variable is not set");
+}
 
 /**
  * @description Fires callback exactly once, after the document is loaded.
@@ -29,7 +39,15 @@ whenReady(() => {
   const renderAll = (): void => {
     ReactDOM.render(
       <BrowserRouter>
-        <App />
+        <Auth0Provider
+          domain={process.env.AUTH0_DOMAIN as string}
+          clientId={process.env.AUTH0_CLIENT_ID as string}
+          redirectUri={`${window.location.origin}/account`}
+          audience={process.env.AUTH0_CLIENT_AUDIENCE as string}
+          scope="read:current_user"
+        >
+          <App />
+        </Auth0Provider>
       </BrowserRouter>,
       root
     );
@@ -53,8 +71,20 @@ if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") {
   });
 }
 
-window.addEventListener("beforeinstallprompt", (e: any) => e.prompt());
-
-gtag("event", "conversion", {
-  send_to: `${process.env.AW_TAG_ID}/78vaCLmvr4QDEJvr0tUC`,
+// trigger install prompt on first click
+let defferedPrompt: () => void;
+const prompt = () => {
+  defferedPrompt();
+  window.removeEventListener("click", prompt);
+};
+window.addEventListener("beforeinstallprompt", (event: any) => {
+  defferedPrompt = event.prompt.bind(event);
 });
+window.addEventListener("click", prompt);
+
+// if there's a gtag, initialize it
+if (!isUndefined(window.gtag)) {
+  gtag("event", "conversion", {
+    send_to: `${process.env.AW_TAG_ID}/78vaCLmvr4QDEJvr0tUC`,
+  });
+}

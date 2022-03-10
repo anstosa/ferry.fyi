@@ -1,6 +1,7 @@
 import "./app.scss";
 import "@capacitor/core";
 import { About } from "./views/About";
+import { Account } from "./views/Account";
 import { AnimatePresence } from "framer-motion";
 import { colors } from "~/lib/theme";
 import { Feedback } from "./views/Feedback";
@@ -12,6 +13,7 @@ import { Settings } from "luxon";
 import { Splash } from "./components/Splash";
 import { StatusBar } from "@capacitor/status-bar";
 import { Tickets } from "./views/Tickets";
+import { useDevice } from "./lib/device";
 import { useNavigate, useRoutes } from "react-router-dom";
 import { useOnline, useWSF } from "./lib/api";
 import { useRecordPageViews } from "~/lib/analytics";
@@ -20,19 +22,31 @@ import OfflineIcon from "~/static/images/icons/solid/signal-alt-slash.svg";
 import React, { ReactElement, useEffect } from "react";
 import ReactGA from "react-ga4";
 
-Settings.defaultZoneName = "America/Los_Angeles";
-StatusBar.setBackgroundColor({ color: colors.green.dark });
+Settings.defaultZone = "America/Los_Angeles";
+
+if (!process.env.AUTH0_DOMAIN) {
+  throw Error("AUTH0_DOMAIN environment variable is not set");
+}
 
 export const App = (): ReactElement => {
   useEffect(() => {
-    ReactGA.initialize(process.env.GOOGLE_ANALYTICS as string);
+    if (process.env.GOOGLE_ANALYTICS) {
+      ReactGA.initialize(process.env.GOOGLE_ANALYTICS);
+    }
   }, []);
   const isOnline = useOnline();
   const isWsfOffline = useWSF().offline;
   const [offlineDismissed, setOfflineDismissed] = React.useState(false);
   const [wsfDismissed, setWsfDismissed] = React.useState(false);
+  const device = useDevice();
   useRecordPageViews();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (device?.platform === "android" || device?.platform === "ios") {
+      StatusBar.setBackgroundColor({ color: colors.green.dark });
+    }
+  }, [device?.platform]);
 
   Native.addListener("backButton", () => {
     navigate(-1);
@@ -40,6 +54,7 @@ export const App = (): ReactElement => {
 
   const element = useRoutes([
     { path: "", element: <Home /> },
+    { path: "account", element: <Account /> },
     { path: "tickets", element: <Tickets /> },
     { path: "about", element: <About /> },
     { path: "feedback", element: <Feedback /> },

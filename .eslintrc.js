@@ -119,7 +119,7 @@ module.exports = {
         ignorePattern: "^import\\s.+\\sfrom\\s.+;$",
       },
     ],
-    "new-cap": "error",
+    "new-cap": "off",
     "no-lonely-if": "error",
     "no-multi-assign": "error",
     "no-negated-condition": "error",

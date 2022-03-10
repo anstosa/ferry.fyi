@@ -24,29 +24,40 @@ const processResponse = ({ data }: HttpResponse): any => {
   return data.body;
 };
 
+const getAuthHeader = (accessToken?: string): { Authorization?: string } => {
+  return accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
+};
+
 export const get = async <T = Record<string, unknown>>(
-  path: string
+  path: string,
+  accessToken?: string
 ): Promise<T> => {
   if (path in inProgress) {
     return await inProgress[path];
   }
   const promise = Http.request({
+    headers: {
+      ...getAuthHeader(accessToken),
+    },
     method: "GET",
     url: `${API_BASE_URL}${path}`,
   }).then(processResponse);
+  // eslint-disable-next-line require-atomic-updates
   inProgress[path] = promise;
   return await promise;
 };
 
 export const post = async <T = Record<string, unknown>>(
   path: string,
-  data: Record<string, unknown>
+  data: Record<string, unknown>,
+  accessToken?: string
 ): Promise<T> => {
   const response = await Http.request({
     method: "POST",
     url: `${API_BASE_URL}${path}`,
     headers: {
       "Content-Type": "application/json",
+      ...getAuthHeader(accessToken),
     },
     data,
   });

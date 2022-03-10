@@ -5,7 +5,6 @@ import { isKeyOf } from "shared/lib/objects";
 import { JSDOM } from "jsdom";
 import { Ticket } from "shared/contracts/tickets";
 import fetch from "node-fetch";
-import logger from "heroku-logger";
 
 const WAVE2GO_LANDING =
   "https://wave2go.wsdot.com/webstore/landingPage?cg=21&c=76";
@@ -46,7 +45,6 @@ export const fetchTicket = async (ticketId: string): Promise<Ticket | null> => {
   const ticket: Record<string, string> = {};
   spans.forEach((span) => {
     const key = span.getAttribute("data-text");
-    logger.debug(key ?? "null");
     if (!key || !isKeyOf(PROPERTY_BY_DATA, key)) {
       return;
     }
@@ -54,8 +52,6 @@ export const fetchTicket = async (ticketId: string): Promise<Ticket | null> => {
     const property = PROPERTY_BY_DATA[key];
     ticket[property] = value;
   });
-
-  logger.debug(JSON.stringify(ticket));
 
   return {
     description: ticket.description,

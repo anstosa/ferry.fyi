@@ -1,16 +1,12 @@
-import { Context } from "koa";
 import { getWsfStatus } from "./wsf/api";
+import { Response } from "express";
 
 export const sendResponse = (
-  context: Context,
+  response: Response,
   body: Record<string, any> | null
 ): void => {
-  context.body = {
+  response.send({
     wsfStatus: getWsfStatus(),
     body,
-  };
-};
-
-export const sendNotFound = (context: Context): void => {
-  context.status = 404;
+  });
 };

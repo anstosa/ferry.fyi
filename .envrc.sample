@@ -1,9 +1,35 @@
 export BASE_URL="http://localhost:4040"
 export DATABASE_URL="postgres://<username>:<password>@localhost:5432/ferryfyi"
-export FCM_PUBLIC_KEY="<for future push notifications>"
-export GCM_SENDER_ID="<for future push notifications>"
-export GOOGLE_ANALYTICS=""
+
+# Firebase Cloud Messaging
+export FCM_PUBLIC_KEY="<get from firebase>"
+export GCM_SENDER_ID="<get from firebase>"
+
+# Analytics
+export GOOGLE_ANALYTICS="<get from google analytics"
+export GTM_CONTAINER_ID="<get from google tag manager>"
+
+# Heroku
 export LOG_LEVEL="DEBUG"
 export NODE_ENV="development"
+export PGSSLMODE="disable"
+
+# Server
 export PORT="4040"
-export WSDOT_API_KEY="<request at https://www.wsdot.wa.gov/traffic/api>"
+
+# WSDOT
+export WSDOT_API_KEY="<get from wsdot>"
+
+# Mapbox
+export MAPBOX_ACCESS_TOKEN="<get from mapbox>"
+
+# Android
+export ANDROID_SDK_ROOT="/home/ansto/Android/Sdk"
+
+# Auth0
+export AUTH0_DOMAIN="<get from auth0>"
+export AUTH0_SERVER_ID="<get from auth0>"
+export AUTH0_SERVER_SECRET="<get from auth0>"
+export AUTH0_SERVER_AUDIENCE="<get from auth0>"
+export AUTH0_CLIENT_ID="<get from auth0>"
+export AUTH0_CLIENT_AUDIENCE="<get from auth0>"

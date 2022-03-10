@@ -6,21 +6,19 @@ import React, { FC, ReactNode, useEffect, useState } from "react";
 export const Splash: FC = ({ children }) => {
   const [isHelpVisible, setHelpVisible] = useState<boolean>(false);
   const [mark, setMark] = useState<number>(0);
-  const [tickTimer, setTickTimer] = useState<NodeJS.Timeout | null>(null);
-  const [helpTimer, setHelpTimer] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    setTickTimer(
-      setInterval(() => setMark((mark) => (mark === 3 ? 0 : mark + 1)), 600)
-    );
-    setHelpTimer(setTimeout(() => setHelpVisible(true), 20 * 1000));
+    const tickTimer = setInterval(() => {
+      console.log("interval");
+      setMark((mark) => (mark === 3 ? 0 : mark + 1));
+    }, 600);
+    const helpTimer = setTimeout(() => {
+      console.log("timeout");
+      setHelpVisible(true);
+    }, 20 * 1000);
     return () => {
-      if (tickTimer) {
-        clearInterval(tickTimer);
-      }
-      if (helpTimer) {
-        clearTimeout(helpTimer);
-      }
+      clearInterval(tickTimer);
+      clearTimeout(helpTimer);
     };
   }, []);
 

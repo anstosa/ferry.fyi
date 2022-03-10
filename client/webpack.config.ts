@@ -1,8 +1,8 @@
 import { BundleAnalyzerPlugin } from "webpack-bundle-analyzer";
-import { createProxyMiddleware } from "http-proxy-middleware";
 import { TailwindConfig } from "tailwindcss/tailwind-config";
 import CopyPlugin from "copy-webpack-plugin";
 import CssMinimizerPlugin from "css-minimizer-webpack-plugin";
+import EslintPlugin from "eslint-webpack-plugin";
 import FaviconsPlugin from "favicons-webpack-plugin";
 import ForkTsCheckerWebpackPlugin from "fork-ts-checker-webpack-plugin";
 import HtmlPlugin from "html-webpack-plugin";
@@ -17,9 +17,9 @@ import TsConfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 import webpack from "webpack";
 import WorkboxPlugin from "workbox-webpack-plugin";
 
-const {
-  theme: { colors },
-} = resolveConfig(tailwindConfig as unknown as TailwindConfig);
+const { theme } = resolveConfig(tailwindConfig as unknown as TailwindConfig);
+
+const colors = theme.colors as any;
 
 // Sync with server.ts
 const NAME = "Ferry FYI";
@@ -62,20 +62,14 @@ module.exports = {
     devMiddleware: {
       publicPath: process.env.ROOT_URL,
     },
-    onBeforeSetupMiddleware({ app }: any): void {
-      app.use(
-        createProxyMiddleware(
-          [
-            // API
-            "/api",
-            // social auth endpoints
-            "/auth",
-          ],
-          {
-            target: `http://localhost:${process.env.PORT}/`,
-          }
-        )
-      );
+    proxy: {
+      context: [
+        // API
+        "/api",
+        // social auth endpoints
+        "/auth",
+      ],
+      target: `http://localhost:${process.env.PORT}/`,
     },
   },
   optimization: {
@@ -127,6 +121,9 @@ module.exports = {
       "GOOGLE_ANALYTICS",
       "LOG_LEVEL",
       "NODE_ENV",
+      "AUTH0_DOMAIN",
+      "AUTH0_CLIENT_ID",
+      "AUTH0_CLIENT_AUDIENCE",
     ]),
     new CopyPlugin({
       patterns: [
@@ -143,6 +140,9 @@ module.exports = {
           to: path.resolve(__dirname, "../dist/client/.well-known/"),
         },
       ],
+    }),
+    new EslintPlugin({
+      files: ["**/*.(ts|tsx)", "../shared/**/*.(ts|tsx)"],
     }),
     ...(isDevelopment
       ? [
@@ -168,7 +168,7 @@ module.exports = {
   module: {
     rules: [
       {
-        test: /\.(ttf|jpe?g|gif|png|otf|woff|woff2|eot)$/,
+        test: /\.(ttf|jpg|jpeg|gif|png|otf|woff|woff2|eot)$/,
         use: {
           loader: "file-loader",
           options: {
@@ -208,22 +208,13 @@ module.exports = {
       },
       {
         enforce: "pre",
-        test: /\.tsx?$/,
+        test: /\.(ts|tsx)$/,
         include: [__dirname, path.resolve(__dirname, "../shared")],
         use: {
           loader: "ts-loader",
           options: {
             transpileOnly: true,
           },
-        },
-      },
-      {
-        enforce: "pre",
-        test: /\.tsx?$/,
-        include: [__dirname, path.resolve(__dirname, "../shared")],
-        loader: "eslint-loader",
-        options: {
-          failOnError: true,
         },
       },
     ],
