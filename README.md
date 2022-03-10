@@ -49,8 +49,10 @@ Physical device
 WSA
 
 1. Install WSA
-2. Run `adb connect <WSA ip>`
-3. Run `npm run start:android` to load app into WSA
+2. Enable Developer Mode in WSA Settings
+3. Open any WSA app
+4. Run `adb connect <WSA ip from settings page>`
+5. Run `npm run start:android` to load app into WSA or run app from Android Studio
 
 ## Android Release
 

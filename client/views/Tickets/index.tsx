@@ -263,7 +263,7 @@ export const Tickets = (): ReactElement => {
       </div>
 
       <ul className="mt-4">
-        {tickets.length && <LoginPrompt />}
+        {tickets.length ? <LoginPrompt /> : null}
         {isAdding && (
           <li
             className={clsx(
