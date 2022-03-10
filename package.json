@@ -186,6 +186,8 @@
     "generate:icons:ios": "npx cordova-res ios --skip-config --copy",
     "heroku": "cd dist/server && node server.js",
     "heroku-postbuild": "yarn build",
+    "heroku:shell": "heroku ps:exec -a ferry-fyi",
+    "heroku:restart": "heroku restart -a ferry-fyi",
     "lint": "yarn lint:css && yarn lint:js",
     "lint:css": "stylelint \"**/*.scss\"",
     "lint:css:fix": "yarn lint:css --fix",
