@@ -3,6 +3,7 @@ import "@capacitor/core";
 import { About } from "./views/About";
 import { Account } from "./views/Account";
 import { AnimatePresence } from "framer-motion";
+import { Browser } from "@capacitor/browser";
 import { colors } from "~/lib/theme";
 import { Feedback } from "./views/Feedback";
 import { Home } from "./views/Home";
@@ -13,8 +14,9 @@ import { Settings } from "luxon";
 import { Splash } from "./components/Splash";
 import { StatusBar } from "@capacitor/status-bar";
 import { Tickets } from "./views/Tickets";
+import { useAuth0 } from "@auth0/auth0-react";
 import { useDevice } from "./lib/device";
-import { useNavigate, useRoutes } from "react-router-dom";
+import { useLocation, useNavigate, useRoutes } from "react-router-dom";
 import { useOnline, useWSF } from "./lib/api";
 import { useRecordPageViews } from "~/lib/analytics";
 import DumpsterFireIcon from "~/static/images/icons/solid/dumpster-fire.svg";
@@ -41,19 +43,63 @@ export const App = (): ReactElement => {
   const device = useDevice();
   useRecordPageViews();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { handleRedirectCallback } = useAuth0();
 
   useEffect(() => {
-    if (device?.platform === "android" || device?.platform === "ios") {
+    if (device?.isNativeMobile) {
       StatusBar.setBackgroundColor({ color: colors.green.dark });
     }
   }, [device?.platform]);
+
+  const handleCallback = async (url = window.location.href) => {
+    const match = url.match(
+      // eslint-disable-next-line no-useless-escape
+      /^.*:\/\/[^\/]*([^\?]*)($|\?.*)/
+    );
+    if (!match) {
+      return;
+    }
+    const [, pathname = "/", query = ""] = match;
+    if (pathname === "/callback") {
+      console.debug("triggered callback", url);
+      if (
+        query.includes("state") &&
+        (query.includes("code") || query.includes("error"))
+      ) {
+        console.debug("auth0 url detected");
+        const { appState } = await handleRedirectCallback(url);
+        if (appState.redirectPath) {
+          navigate(appState.redirectPath);
+          return;
+        }
+      }
+      navigate("/");
+      return;
+    }
+    navigate(`${pathname ?? "/"}${query ?? ""}`);
+  };
+
+  useEffect(() => {
+    if (device?.isNativeMobile) {
+      Native.addListener("appUrlOpen", async ({ url }) => {
+        await handleCallback(url);
+        Browser.close();
+      });
+    }
+  }, [handleRedirectCallback, device?.isNativeMobile]);
 
   Native.addListener("backButton", () => {
     navigate(-1);
   });
 
+  useEffect(() => {
+    handleCallback();
+  }, [location.pathname]);
+
   const element = useRoutes([
     { path: "", element: <Home /> },
+    { path: "callback", element: <Splash /> },
     { path: "account", element: <Account /> },
     { path: "tickets", element: <Tickets /> },
     { path: "about", element: <About /> },

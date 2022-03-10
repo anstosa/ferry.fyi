@@ -1,5 +1,9 @@
 [
 	{
+		"pkg": "@byteowls/capacitor-oauth2",
+		"classpath": "com.byteowls.capacitor.oauth2.OAuth2ClientPlugin"
+	},
+	{
 		"pkg": "@capacitor-community/barcode-scanner",
 		"classpath": "com.getcapacitor.community.barcodescanner.BarcodeScanner"
 	},
@@ -18,6 +22,10 @@
 	{
 		"pkg": "@capacitor/app",
 		"classpath": "com.capacitorjs.plugins.app.AppPlugin"
+	},
+	{
+		"pkg": "@capacitor/browser",
+		"classpath": "com.capacitorjs.plugins.browser.BrowserPlugin"
 	},
 	{
 		"pkg": "@capacitor/device",

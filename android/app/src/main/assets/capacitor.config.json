@@ -2,5 +2,6 @@
 	"appId": "fyi.ferry",
 	"appName": "Ferry FYI",
 	"webDir": "dist/client",
-	"bundledWebRuntime": false
+	"bundledWebRuntime": false,
+	"backgroundColor": "#016f52"
 }

@@ -9,11 +9,13 @@ android {
 
 apply from: "../capacitor-cordova-android-plugins/cordova.variables.gradle"
 dependencies {
+    implementation project(':byteowls-capacitor-oauth2')
     implementation project(':capacitor-community-barcode-scanner')
     implementation project(':capacitor-community-http')
     implementation project(':capacitor-community-keep-awake')
     implementation project(':capacitor-community-screen-brightness')
     implementation project(':capacitor-app')
+    implementation project(':capacitor-browser')
     implementation project(':capacitor-device')
     implementation project(':capacitor-geolocation')
     implementation project(':capacitor-share')

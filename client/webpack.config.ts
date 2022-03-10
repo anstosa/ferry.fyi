@@ -35,6 +35,17 @@ enum Mode {
   none = "none",
 }
 
+console.info("#### Environment Variables ####");
+console.dir({
+  BASE_URL: process.env.BASE_URL,
+  AUTH0_DOMAIN: process.env.AUTH0_DOMAIN,
+  AUTH0_CLIENT_ID: process.env.AUTH0_CLIENT_ID,
+  AUTH0_CLIENT_AUDIENCE: process.env.AUTH0_CLIENT_AUDIENCE,
+  AUTH0_CLIENT_REDIRECT: process.env.AUTH0_CLIENT_REDIRECT,
+});
+console.info("###############################");
+console.log();
+
 const isDevelopment = process.env.NODE_ENV === Mode.development;
 
 if (!process.env.BASE_URL) {
@@ -46,14 +57,14 @@ module.exports = {
   bail: !isDevelopment,
   mode: isDevelopment ? Mode.development : Mode.production,
   context: __dirname,
-  // cache: { type: "filesystem" },
+  cache: { type: "filesystem" },
   entry: "index.tsx",
   output: {
     path: path.resolve(__dirname, "../dist/client"),
     filename: "[name].[chunkhash].js",
     publicPath: `/`,
   },
-  devtool: isDevelopment ? "eval-source-map" : false,
+  devtool: isDevelopment ? "eval-cheap-module-source-map" : false,
   devServer: {
     historyApiFallback: true,
     hot: true,
@@ -114,17 +125,19 @@ module.exports = {
       filename: "[name].css",
       chunkFilename: "[id].css",
     }),
-    new webpack.EnvironmentPlugin([
-      "GTM_CONTAINER_ID",
-      "BASE_URL",
-      "MAPBOX_ACCESS_TOKEN",
-      "GOOGLE_ANALYTICS",
-      "LOG_LEVEL",
-      "NODE_ENV",
-      "AUTH0_DOMAIN",
-      "AUTH0_CLIENT_ID",
-      "AUTH0_CLIENT_AUDIENCE",
-    ]),
+    new webpack.EnvironmentPlugin({
+      GTM_CONTAINER_ID: null,
+      BASE_URL: undefined,
+      MAPBOX_ACCESS_TOKEN: undefined,
+      GOOGLE_ANALYTICS: null,
+      LOG_LEVEL: "INFO",
+      NODE_ENV: "development",
+      AUTH0_DOMAIN: undefined,
+      AUTH0_CLIENT_ID: undefined,
+      AUTH0_CLIENT_AUDIENCE: undefined,
+      AUTH0_CLIENT_REDIRECT: undefined,
+      SENTRY_DSN: null,
+    }),
     new CopyPlugin({
       patterns: [
         {
@@ -169,6 +182,7 @@ module.exports = {
     rules: [
       {
         test: /\.(ttf|jpg|jpeg|gif|png|otf|woff|woff2|eot)$/,
+        include: [path.resolve(__dirname)],
         use: {
           loader: "file-loader",
           options: {
@@ -178,6 +192,7 @@ module.exports = {
       },
       {
         test: /\.svg$/,
+        include: [path.resolve(__dirname)],
         use: [
           {
             loader: "@svgr/webpack",
@@ -190,6 +205,7 @@ module.exports = {
       },
       {
         test: /\.css$/,
+        include: [path.resolve(__dirname)],
         use: [
           { loader: "style-loader" },
           { loader: "css-loader", options: { modules: true } },
@@ -197,6 +213,7 @@ module.exports = {
       },
       {
         test: /\.(sa|sc)ss$/,
+        include: [path.resolve(__dirname)],
         use: [
           {
             loader: MiniCssExtractPlugin.loader,
@@ -209,7 +226,10 @@ module.exports = {
       {
         enforce: "pre",
         test: /\.(ts|tsx)$/,
-        include: [__dirname, path.resolve(__dirname, "../shared")],
+        include: [
+          path.resolve(__dirname),
+          path.resolve(__dirname, "../shared"),
+        ],
         use: {
           loader: "ts-loader",
           options: {

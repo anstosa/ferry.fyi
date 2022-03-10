@@ -1,6 +1,8 @@
+import * as Sentry from "@sentry/react";
 import { App } from "./App";
 import { Auth0Provider } from "@auth0/auth0-react";
 import { BrowserRouter } from "react-router-dom";
+import { BrowserTracing } from "@sentry/tracing";
 import { isUndefined } from "shared/lib/identity";
 import { Workbox } from "workbox-window";
 import React from "react";
@@ -14,6 +16,18 @@ if (!process.env.AUTH0_CLIENT_ID) {
 }
 if (!process.env.AUTH0_CLIENT_AUDIENCE) {
   throw Error("AUTH0_CLIENT_AUDIENCE environment variable is not set");
+}
+if (!process.env.AUTH0_CLIENT_REDIRECT) {
+  throw Error("AUTH0_CLIENT_AUDIENCE environment variable is not set");
+}
+
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    environment: process.env.NODE_ENV,
+    dsn: process.env.SENTRY_DSN,
+    integrations: [new BrowserTracing()],
+    tracesSampleRate: 1.0,
+  });
 }
 
 /**
@@ -42,9 +56,10 @@ whenReady(() => {
         <Auth0Provider
           domain={process.env.AUTH0_DOMAIN as string}
           clientId={process.env.AUTH0_CLIENT_ID as string}
-          redirectUri={`${window.location.origin}/account`}
+          redirectUri={process.env.AUTH0_CLIENT_REDIRECT as string}
           audience={process.env.AUTH0_CLIENT_AUDIENCE as string}
           scope="read:current_user"
+          cacheLocation="localstorage"
         >
           <App />
         </Auth0Provider>

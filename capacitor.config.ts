@@ -5,6 +5,7 @@ const config: CapacitorConfig = {
   appName: "Ferry FYI",
   webDir: "dist/client",
   bundledWebRuntime: false,
+  backgroundColor: "#016f52",
 };
 
 export default config;

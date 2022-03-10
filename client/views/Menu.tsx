@@ -7,6 +7,7 @@ import { useDevice } from "~/lib/device";
 import AboutIcon from "~/static/images/icons/solid/address-card.svg";
 import UserIcon from "~/static/images/icons/solid/user.svg";
 // import AppleIcon from "~/static/images/icons/brands/apple.svg";
+import { Browser } from "@capacitor/browser";
 import { useAuth0 } from "@auth0/auth0-react";
 import ChevronLeftIcon from "~/static/images/icons/solid/chevron-left.svg";
 import clsx from "clsx";
@@ -86,13 +87,28 @@ export const Menu = ({
   const [dragStart, setDragStart] = useState<number | null>(null);
   const [dragPosition, setDragPosition] = useState<number | null>(null);
   const device = useDevice();
-  const { isAuthenticated, loginWithRedirect } = useAuth0();
-  const { pathname } = useLocation();
+  const { isAuthenticated, loginWithRedirect, buildAuthorizeUrl } = useAuth0();
   const [canShare, setShare] = useState<boolean>(false);
+  const location = useLocation();
 
   const initShare = async () => {
     const { value: canShare } = await Share.canShare();
     setShare(canShare);
+  };
+
+  const login = async () => {
+    if (device?.isNativeMobile) {
+      const url = await buildAuthorizeUrl({
+        appState: { redirectPath: location.pathname },
+        redirect_uri: process.env.AUTH0_CLIENT_REDIRECT,
+      });
+      await Browser.open({ url });
+    } else {
+      loginWithRedirect({
+        appState: { redirectPath: location.pathname },
+        redirectUri: process.env.AUTH0_CLIENT_REDIRECT,
+      });
+    }
   };
 
   useEffect(() => {
@@ -112,13 +128,7 @@ export const Menu = ({
           {
             Icon: UserIcon,
             label: "Log In",
-            onClick: () =>
-              loginWithRedirect({
-                redirectUri:
-                  pathname === "/tickets"
-                    ? window.location.href
-                    : `${window.location.origin}/account`,
-              }),
+            onClick: login,
           },
         ]),
     {

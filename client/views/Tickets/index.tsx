@@ -114,7 +114,7 @@ export const Tickets = (): ReactElement => {
 
   const openOverlay = async (ticket: TicketStorage | ReservationAccount) => {
     setExpanded(ticket);
-    if (device?.platform === "android" || device?.platform === "ios") {
+    if (device?.isNativeMobile) {
       setBrightness((await ScreenBrightness.getBrightness()).brightness);
       ScreenBrightness.setBrightness({ brightness: 1 });
     }
@@ -123,7 +123,7 @@ export const Tickets = (): ReactElement => {
 
   const closeOverlay = () => {
     setExpanded(null);
-    if (device?.platform === "android" || device?.platform === "ios") {
+    if (device?.isNativeMobile) {
       ScreenBrightness.setBrightness({ brightness });
     }
     KeepAwake.allowSleep();

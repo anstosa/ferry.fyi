@@ -1,12 +1,26 @@
+import { Browser } from "@capacitor/browser";
 import { Helmet } from "react-helmet";
 import { Page } from "../components/Page";
 import { Splash } from "~/components/Splash";
 import { useAuth0, withAuthenticationRequired } from "@auth0/auth0-react";
+import { useDevice } from "~/lib/device";
 import React, { ReactElement } from "react";
 
 export const Account = withAuthenticationRequired(
   (): ReactElement => {
-    const { user, logout } = useAuth0();
+    const { user, logout, buildLogoutUrl } = useAuth0();
+    const device = useDevice();
+
+    const onLogout = async () => {
+      if (device?.isNativeMobile) {
+        await Browser.open({
+          url: buildLogoutUrl({ returnTo: process.env.AUTH0_CLIENT_REDIRECT }),
+        });
+        logout({ localOnly: true });
+      } else {
+        logout({ returnTo: process.env.AUTH0_CLIENT_REDIRECT });
+      }
+    };
 
     return (
       <Page>
@@ -20,7 +34,7 @@ export const Account = withAuthenticationRequired(
           <div className="flex-grow" />
           <button
             className="button button-invert mb-8"
-            onClick={() => logout({ returnTo: window.location.origin })}
+            onClick={() => onLogout()}
           >
             Log Out
           </button>

@@ -26,6 +26,20 @@ browserRouter.get("/sitemap.xml", async (request, response) => {
   return response.send(sitemap);
 });
 
+browserRouter.get(".well-known/assetlinks.json", async (request, response) => {
+  response.type("application/json");
+  return response.send([
+    {
+      relation: ["delegate_permission/common.handle_all_urls"],
+      target: {
+        namespace: "android_app",
+        package_name: "fyi.ferry",
+        sha256_cert_fingerprints: [process.env.ANDROID_CERT_FINGERPRINT],
+      },
+    },
+  ]);
+});
+
 browserRouter.get(/.*/, async (request, response) => {
   // sync from webpack.config.ts
   const DEFAULT_TITLE = /Ferry FYI - Seattle Area Ferry Schedule and Tracker/g;
