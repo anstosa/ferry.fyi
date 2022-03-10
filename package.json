@@ -4,6 +4,10 @@
   "version": "2.5.0",
   "author": "Ansel Santosa (ansel@santosa.family)",
   "bugs": "https://github.com/anstosa/ferry.fyi/issues",
+  "dependencies": {
+    "sequelize": "^6.17.0",
+    "sequelize-cli": "^6.4.1"
+  },
   "devDependencies": {
     "@auth0/auth0-react": "^1.9.0",
     "@capacitor-community/barcode-scanner": "^2.1.0",
@@ -138,8 +142,6 @@
     "sass": "^1.49.9",
     "sass-loader": "^12.6.0",
     "scroll-into-view": "^1.15.0",
-    "sequelize": "^6.17.0",
-    "sequelize-cli": "^6.4.1",
     "sitemap": "^7.1.1",
     "style-loader": "^3.3.1",
     "stylelint": "^14.5.3",
