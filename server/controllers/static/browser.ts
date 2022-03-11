@@ -30,7 +30,7 @@ browserRouter.get("/sitemap.xml", async (request, response) => {
   return response.send(sitemap);
 });
 
-browserRouter.get(".well-known/assetlinks.json", async (request, response) => {
+browserRouter.get(".well-known/assetlinks.json", (request, response) => {
   response.type("application/json");
   return response.send([
     {
@@ -39,6 +39,14 @@ browserRouter.get(".well-known/assetlinks.json", async (request, response) => {
         namespace: "android_app",
         package_name: "fyi.ferry",
         sha256_cert_fingerprints: [process.env.ANDROID_CERT_FINGERPRINT],
+      },
+    },
+    {
+      relation: ["delegate_permission/common.handle_all_urls"],
+      target: {
+        namespace: "android_app",
+        package_name: "ansel.test",
+        sha256_cert_fingerprints: [process.env.AUTH0_DOMAIN],
       },
     },
   ]);
