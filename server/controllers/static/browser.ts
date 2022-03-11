@@ -6,6 +6,10 @@ import { Router } from "express";
 import { Terminal } from "~/models/Terminal";
 import path from "path";
 
+if (!process.env.ANDROID_CERT_FINGERPRINT) {
+  throw Error("ANDROID_CERT_FINGERPRINT environment variable is not set");
+}
+
 export const clientDist = path.resolve(
   __dirname,
   "../",
