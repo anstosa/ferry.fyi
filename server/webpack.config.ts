@@ -40,9 +40,10 @@ module.exports = {
         test: /\.tsx?$/,
         include: [__dirname, path.resolve(__dirname, "../shared")],
         use: {
-          loader: "ts-loader",
+          loader: "esbuild-loader",
           options: {
-            transpileOnly: true,
+            loader: "ts",
+            target: "ES2020",
           },
         },
       },

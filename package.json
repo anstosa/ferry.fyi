@@ -189,6 +189,7 @@
     "db:reset": "./scripts/resetdb.sh",
     "db:start": "docker run -it --rm -d -p 5432:5432 -e POSTGRES_PASSWORD=testing -e POSTGRES_USER=test --name=ferrydb postgres",
     "db:sync": "curl `heroku pg:backups url --app ferry-fyi` > /tmp/ferryfyi.dump && ./scripts/loaddb.sh /tmp/ferryfyi.dump",
+    "db:stop": "docker stop ferrydb",
     "generate:icons": "yarn generate:icons:android && yarn generate:icons:ios",
     "generate:icons:android": "npx cordova-res android --icon-background-source '#016f52' --skip-config --copy",
     "generate:icons:ios": "npx cordova-res ios --skip-config --copy",

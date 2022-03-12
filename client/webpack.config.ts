@@ -52,7 +52,9 @@ console.log();
 const isDevelopment = process.env.NODE_ENV === Mode.development;
 const isProduction = process.env.NODE_ENV === Mode.production;
 
-const ENABLE_SIZE_DEBUG = Boolean(process.env.ENABLE_SIZE_DEBUG) ?? false;
+const ENABLE_SIZE_DEBUG =
+  Boolean(process.env.ENABLE_SIZE_DEBUG === "FALSE") ?? false;
+const ENABLE_MINIMIZE = Boolean(process.env.MINIMIZE === "TRUE") ?? true;
 process.traceDeprecation = true;
 
 if (!process.env.BASE_URL) {
@@ -94,7 +96,7 @@ const config: Configuration = {
   },
   optimization: {
     runtimeChunk: true,
-    minimize: isProduction,
+    minimize: ENABLE_MINIMIZE && isProduction,
     minimizer: [
       new ESBuildMinifyPlugin({ target: "ES2015" }),
       new CssMinimizerPlugin(),
