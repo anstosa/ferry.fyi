@@ -62,12 +62,10 @@ export const App = (): ReactElement => {
     }
     const [, pathname = "/", query = ""] = match;
     if (pathname === "/callback") {
-      console.debug("triggered callback", url);
       if (
         query.includes("state") &&
         (query.includes("code") || query.includes("error"))
       ) {
-        console.debug("auth0 url detected");
         const { appState } = await handleRedirectCallback(url);
         if (appState.redirectPath) {
           navigate(appState.redirectPath);

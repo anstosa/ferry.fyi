@@ -1,6 +1,6 @@
 {
   "name": "ferry.fyi",
-  "description": "A better tracker for the Washington State Ferry System",
+  "description": "A ferry schedule and tracker for the greater Seattle area.",
   "version": "2.5.0",
   "author": "Ansel Santosa (ansel@santosa.family)",
   "bugs": "https://github.com/anstosa/ferry.fyi/issues",
@@ -170,6 +170,7 @@
     "webpack-dev-server": "^4.7.4",
     "webpack-livereload-plugin": "^3.0.1",
     "webpack-node-externals": "^3.0.0",
+    "webpack-shell-plugin-next": "^2.2.2",
     "workbox-webpack-plugin": "^6.5.1",
     "workbox-window": "^6.5.1"
   },
@@ -181,8 +182,8 @@
   "repository": "anstosa/ferry.fyi.git",
   "scripts": {
     "build": "yarn build:client && yarn build:server",
-    "build:android": ". ./android/.envrc && webpack --config client/webpack.config.ts --progress && cap sync && direnv allow",
-    "build:client": "NODE_ENV=production webpack --config client/webpack.config.ts --progress",
+    "build:android": ". ./android/.envrc && NODE_ENV=production webpack --config client/webpack.config.ts --progress && cap sync && direnv allow",
+    "build:client": "BUILD_CACHE=production NODE_ENV=production webpack --config client/webpack.config.ts --progress",
     "build:server": "NODE_ENV=production webpack --config server/webpack.config.ts --progress",
     "clean": "rm -rf dist/*",
     "db:migrate": "sequelize db:migrate",
@@ -209,7 +210,8 @@
     "lint:js:server:fix": "yarn lint:js:server --fix",
     "postinstall": "rm -rf node_modules/.cache/webpack",
     "reinstall": "rm -rf node_modules client/node_modules server/node_modules shared/node_modules && yarn",
-    "start:android": ". ./android/.envrc && npx cap run android",
+    "android": ". ./android/.envrc && npx cap run android",
+    "start:android": ". ./android/.envrc && webpack watch --config client/webpack.config.ts --progress -- && cap sync",
     "start:client": "NODE_ENV=development webpack serve --config client/webpack.config.ts --progress",
     "start:server": "cd server && ts-node devServer.ts",
     "type-check": "yarn type-check:client && yarn type-check:server",

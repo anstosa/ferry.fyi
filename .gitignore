@@ -3,6 +3,7 @@ node_modules/
 
 # build
 dist/
+.cache/
 
 # testing
 latest.dump

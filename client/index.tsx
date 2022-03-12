@@ -94,8 +94,8 @@ const prompt = () => {
 };
 window.addEventListener("beforeinstallprompt", (event: any) => {
   defferedPrompt = event.prompt.bind(event);
+  window.addEventListener("click", prompt);
 });
-window.addEventListener("click", prompt);
 
 // if there's a gtag, initialize it
 if (!isUndefined(window.gtag)) {

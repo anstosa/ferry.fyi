@@ -173,7 +173,7 @@ export const Menu = ({
                 await Share.share({
                   title: "Ferry FYI",
                   text: share.sharedText,
-                  url: window.location.href,
+                  url: `${process.env.BASE_URL}${location.pathname}${location.search}`,
                   dialogTitle: share.sharedText,
                 });
                 setShareMenuText("Shared!");

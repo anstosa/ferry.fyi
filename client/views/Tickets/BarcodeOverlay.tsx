@@ -86,7 +86,7 @@ export const BarcodeOverlay = ({
                 await Share.share({
                   title: "Shared Ticket on Ferry FYI",
                   text: sharedText,
-                  url: `/tickets?add=${ticket.id}`,
+                  url: `${process.env.BASE_URL}/tickets?add=${ticket.id}`,
                   dialogTitle: sharedText,
                 });
               } catch (error) {

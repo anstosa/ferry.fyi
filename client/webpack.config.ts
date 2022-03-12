@@ -16,6 +16,7 @@ import StyleLintPlugin from "stylelint-webpack-plugin";
 import tailwindConfig from "../tailwind.config.js";
 import TsConfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 import webpack, { Configuration as BaseConfiguration } from "webpack";
+import WebpackShellPlugin from "webpack-shell-plugin-next";
 import WorkboxPlugin from "workbox-webpack-plugin";
 
 type Configuration = BaseConfiguration & DevServerConfiguration;
@@ -55,6 +56,9 @@ const isProduction = process.env.NODE_ENV === Mode.production;
 const ENABLE_SIZE_DEBUG =
   Boolean(process.env.ENABLE_SIZE_DEBUG === "FALSE") ?? false;
 const ENABLE_MINIMIZE = Boolean(process.env.MINIMIZE === "TRUE") ?? true;
+const ENABLE_SOURCE_MAPS =
+  Boolean(process.env.ENABLE_SOURCE_MAPS === "TRUE") ?? isDevelopment;
+
 process.traceDeprecation = true;
 
 if (!process.env.BASE_URL) {
@@ -65,7 +69,12 @@ const config: Configuration = {
   // don't allow any errors in production
   bail: isProduction,
   mode: isDevelopment ? Mode.development : Mode.production,
-  cache: { type: "filesystem" },
+  cache: {
+    type: "filesystem",
+    buildDependencies: { config: [__filename] },
+    cacheDirectory: path.resolve(__dirname, "../.cache"),
+    name: `${process.env.BUILD_CACHE}-${__filename}-${process.env.NODE_ENV}`,
+  },
   context: __dirname,
   entry: "index.tsx",
   experiments: {
@@ -76,7 +85,7 @@ const config: Configuration = {
     filename: "[name].[chunkhash].js",
     publicPath: `/`,
   },
-  devtool: isDevelopment ? "eval-cheap-module-source-map" : false,
+  devtool: ENABLE_SOURCE_MAPS ? "eval-cheap-module-source-map" : false,
   devServer: {
     historyApiFallback: true,
     hot: true,
@@ -108,6 +117,16 @@ const config: Configuration = {
     },
   },
   plugins: [
+    ...(process.env.CACHE_NAME === "android"
+      ? [
+          new WebpackShellPlugin({
+            onBuildEnd: {
+              scripts: ["npx cap sync"],
+              blocking: true,
+            },
+          }),
+        ]
+      : []),
     ...(ENABLE_SIZE_DEBUG
       ? [
           new BundleAnalyzerPlugin({
@@ -116,7 +135,7 @@ const config: Configuration = {
         ]
       : []),
     new FaviconsPlugin({
-      logo: "static/images/icon.png",
+      logo: path.resolve(__dirname, "static/images/icon.png"),
       cache: true,
       mode: "webapp",
       favicons: {
@@ -126,9 +145,33 @@ const config: Configuration = {
         developerURL: "https://santosa.dev",
         background: COLOR,
         theme_color: COLOR,
+        logging: true,
+        icons: {
+          yandex: false,
+        },
+        shortcuts: [
+          {
+            name: "Schedule",
+            description: "View the schedule",
+            url: "/",
+            icon: path.resolve(
+              __dirname,
+              "static/images/icons/solid/calendar-alt.svg"
+            ),
+          },
+          {
+            name: "Tickets",
+            description: "View saved tickets",
+            url: "/tickets",
+            icon: path.resolve(
+              __dirname,
+              "static/images/icons/solid/barcode-alt.svg"
+            ),
+          },
+        ],
       },
       manifest: path.resolve(__dirname, "manifest.json"),
-    }),
+    } as any),
     new ForkTsCheckerWebpackPlugin(),
     new HtmlPlugin({
       GTM_CONTAINER_ID: process.env.GTM_CONTAINER_ID,

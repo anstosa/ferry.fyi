@@ -1,11 +1,11 @@
 import { apiRouter } from "~/controllers/api";
 import { dbInit } from "~/lib/db";
+import { json } from "body-parser";
 import { Route } from "./models/Route";
 import { Schedule } from "~/models/Schedule";
 import { scheduleJob } from "node-schedule";
 import { staticRouter } from "~/controllers/static";
 import { updateLong, updateShort } from "~/lib/wsf";
-import bodyParser from "body-parser";
 import cors from "cors";
 import express from "express";
 import logger from "heroku-logger";
@@ -18,7 +18,7 @@ const app = express();
 if (process.env.NODE_ENV === "production") {
   app.use(sslify.HTTPS({ trustProtoHeader: true }));
 }
-app.use(bodyParser.json());
+app.use(json());
 app.use(cors());
 // log requests
 app.use(morgan("combined"));
@@ -30,7 +30,16 @@ app.use("/", staticRouter);
 (async () => {
   await dbInit;
   // start server before initializing WSF since that can take a couple minutes
-  app.listen(process.env.PORT, () => logger.info("Server started"));
+  const server = app.listen(process.env.PORT, () =>
+    logger.info("Server started")
+  );
+  process.once("SIGUSR2 ", () => {
+    logger.info("Gracefully shutting down server...");
+    server.close(() => {
+      logger.info("Done.");
+      process.kill(process.pid, "SIGUSR2");
+    });
+  });
   logger.info("Initializing WSF");
   // populate WSF cache immediately
   await updateLong();

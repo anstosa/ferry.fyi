@@ -3,5 +3,5 @@
     <string name="app_name">Ferry FYI</string>
     <string name="title_activity_main">Ferry FYI</string>
     <string name="package_name">fyi.ferry</string>
-    <string name="custom_url_scheme">https</string>
+    <string name="custom_url_scheme">fyi.ferry</string>
 </resources>
