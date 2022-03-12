@@ -15,7 +15,7 @@
     "skipLibCheck": true,
     "strict": true,
     "strictNullChecks": true,
-    "target": "ES5"
+    "target": "ES2015"
   },
   "exclude": ["node_modules/", "dist/"]
 }

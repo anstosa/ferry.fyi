@@ -1,4 +1,6 @@
 import { BundleAnalyzerPlugin } from "webpack-bundle-analyzer";
+import { Configuration as DevServerConfiguration } from "webpack-dev-server";
+import { ESBuildMinifyPlugin } from "esbuild-loader";
 import { TailwindConfig } from "tailwindcss/tailwind-config";
 import CopyPlugin from "copy-webpack-plugin";
 import CssMinimizerPlugin from "css-minimizer-webpack-plugin";
@@ -12,10 +14,11 @@ import path from "path";
 import resolveConfig from "tailwindcss/resolveConfig";
 import StyleLintPlugin from "stylelint-webpack-plugin";
 import tailwindConfig from "../tailwind.config.js";
-import TerserPlugin from "terser-webpack-plugin";
 import TsConfigPathsPlugin from "tsconfig-paths-webpack-plugin";
-import webpack from "webpack";
+import webpack, { Configuration as BaseConfiguration } from "webpack";
 import WorkboxPlugin from "workbox-webpack-plugin";
+
+type Configuration = BaseConfiguration & DevServerConfiguration;
 
 const { theme } = resolveConfig(tailwindConfig as unknown as TailwindConfig);
 
@@ -35,7 +38,7 @@ enum Mode {
   none = "none",
 }
 
-console.info("#### Environment Variables ####");
+console.info("#### ENVIRONMENT VARIABLES ####");
 console.dir({
   BASE_URL: process.env.BASE_URL,
   AUTH0_DOMAIN: process.env.AUTH0_DOMAIN,
@@ -47,18 +50,24 @@ console.info("###############################");
 console.log();
 
 const isDevelopment = process.env.NODE_ENV === Mode.development;
+const isProduction = process.env.NODE_ENV === Mode.production;
+
+const ENABLE_SIZE_DEBUG = Boolean(process.env.ENABLE_SIZE_DEBUG) ?? false;
+process.traceDeprecation = true;
 
 if (!process.env.BASE_URL) {
   throw new Error("Must set BASE_URL");
 }
 
-module.exports = {
+const config: Configuration = {
   // don't allow any errors in production
-  bail: !isDevelopment,
+  bail: isProduction,
   mode: isDevelopment ? Mode.development : Mode.production,
   context: __dirname,
-  cache: { type: "filesystem" },
   entry: "index.tsx",
+  experiments: {
+    backCompat: true,
+  },
   output: {
     path: path.resolve(__dirname, "../dist/client"),
     filename: "[name].[chunkhash].js",
@@ -85,17 +94,24 @@ module.exports = {
   },
   optimization: {
     runtimeChunk: true,
-    minimize: !isDevelopment,
-    minimizer: [new TerserPlugin(), new CssMinimizerPlugin()],
+    minimize: isProduction,
+    minimizer: [
+      new ESBuildMinifyPlugin({ target: "ES2015" }),
+      new CssMinimizerPlugin(),
+    ],
     splitChunks: {
       chunks: "all",
       name: false,
     },
   },
   plugins: [
-    new BundleAnalyzerPlugin({
-      analyzerMode: isDevelopment ? "server" : "static",
-    }),
+    ...(ENABLE_SIZE_DEBUG
+      ? [
+          new BundleAnalyzerPlugin({
+            analyzerMode: isDevelopment ? "server" : "static",
+          }),
+        ]
+      : []),
     new FaviconsPlugin({
       logo: "static/images/icon.png",
       mode: "webapp",
@@ -148,14 +164,11 @@ module.exports = {
           from: "static/images/icon_monochrome.png",
           to: path.resolve(__dirname, "../dist/client/assets/"),
         },
-        {
-          from: "assetlinks.json",
-          to: path.resolve(__dirname, "../dist/client/.well-known/"),
-        },
       ],
-    }),
+    }) as any,
     new EslintPlugin({
       files: ["**/*.(ts|tsx)", "../shared/**/*.(ts|tsx)"],
+      exclude: ["node_modules"],
     }),
     ...(isDevelopment
       ? [
@@ -163,12 +176,15 @@ module.exports = {
             appendScriptTag: true,
           }),
         ]
-      : [
+      : []),
+    ...(isProduction
+      ? [
           new WorkboxPlugin.InjectManifest({
             swSrc: "service-worker.ts",
           }),
-        ]),
-  ].filter(Boolean),
+        ]
+      : []),
+  ],
   resolve: {
     symlinks: false,
     extensions: [".css", ".scss", ".js", ".ts", ".tsx"],
@@ -183,6 +199,7 @@ module.exports = {
       {
         test: /\.(ttf|jpg|jpeg|gif|png|otf|woff|woff2|eot)$/,
         include: [path.resolve(__dirname)],
+        exclude: /node_modules/,
         use: {
           loader: "file-loader",
           options: {
@@ -193,6 +210,7 @@ module.exports = {
       {
         test: /\.svg$/,
         include: [path.resolve(__dirname)],
+        exclude: /node_modules/,
         use: [
           {
             loader: "@svgr/webpack",
@@ -206,6 +224,7 @@ module.exports = {
       {
         test: /\.css$/,
         include: [path.resolve(__dirname)],
+        exclude: /node_modules/,
         use: [
           { loader: "style-loader" },
           { loader: "css-loader", options: { modules: true } },
@@ -214,6 +233,7 @@ module.exports = {
       {
         test: /\.(sa|sc)ss$/,
         include: [path.resolve(__dirname)],
+        exclude: /node_modules/,
         use: [
           {
             loader: MiniCssExtractPlugin.loader,
@@ -230,13 +250,17 @@ module.exports = {
           path.resolve(__dirname),
           path.resolve(__dirname, "../shared"),
         ],
+        exclude: /node_modules/,
         use: {
-          loader: "ts-loader",
+          loader: "esbuild-loader",
           options: {
-            transpileOnly: true,
+            loader: "tsx",
+            target: "ES2015",
           },
         },
       },
     ],
   },
 };
+
+module.exports = config;
