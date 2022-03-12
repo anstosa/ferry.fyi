@@ -44,7 +44,9 @@ export const get = async <T = Record<string, unknown>>(
   }).then(processResponse);
   // eslint-disable-next-line require-atomic-updates
   inProgress[path] = promise;
-  return await promise;
+  const result = await promise;
+  delete inProgress[path];
+  return result;
 };
 
 export const post = async <T = Record<string, unknown>>(
