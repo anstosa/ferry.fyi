@@ -88,8 +88,12 @@ if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") {
 
 // trigger install prompt on first click
 let defferedPrompt: () => void;
+let hasTriggeredPrompt = false;
 const prompt = () => {
-  defferedPrompt();
+  if (!hasTriggeredPrompt) {
+    defferedPrompt();
+    hasTriggeredPrompt = true;
+  }
   window.removeEventListener("click", prompt);
 };
 window.addEventListener("beforeinstallprompt", (event: any) => {
