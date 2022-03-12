@@ -30,7 +30,7 @@ browserRouter.get("/sitemap.xml", async (request, response) => {
   return response.send(sitemap);
 });
 
-browserRouter.get(".well-known/assetlinks.json", (request, response) => {
+browserRouter.get("/.well-known/assetlinks.json", (request, response) => {
   response.type("application/json");
   return response.send([
     {

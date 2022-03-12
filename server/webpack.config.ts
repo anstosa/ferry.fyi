@@ -5,6 +5,7 @@ import path from "path";
 import TsConfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 
 module.exports = {
+  bail: true,
   mode: "production",
   context: __dirname,
   cache: { type: "filesystem" },
@@ -37,7 +38,7 @@ module.exports = {
     rules: [
       {
         enforce: "pre",
-        test: /\.tsx?$/,
+        test: /\.ts$/,
         include: [__dirname, path.resolve(__dirname, "../shared")],
         use: {
           loader: "esbuild-loader",

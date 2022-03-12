@@ -65,6 +65,7 @@ const config: Configuration = {
   // don't allow any errors in production
   bail: isProduction,
   mode: isDevelopment ? Mode.development : Mode.production,
+  cache: { type: "filesystem" },
   context: __dirname,
   entry: "index.tsx",
   experiments: {
@@ -116,6 +117,7 @@ const config: Configuration = {
       : []),
     new FaviconsPlugin({
       logo: "static/images/icon.png",
+      cache: true,
       mode: "webapp",
       favicons: {
         appName: NAME,
