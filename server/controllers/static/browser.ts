@@ -41,14 +41,6 @@ browserRouter.get("/.well-known/assetlinks.json", (request, response) => {
         sha256_cert_fingerprints: [process.env.ANDROID_CERT_FINGERPRINT],
       },
     },
-    {
-      relation: ["delegate_permission/common.handle_all_urls"],
-      target: {
-        namespace: "android_app",
-        package_name: "ansel.test",
-        sha256_cert_fingerprints: [process.env.AUTH0_DOMAIN],
-      },
-    },
   ]);
 });
 
