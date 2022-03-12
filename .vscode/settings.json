@@ -54,5 +54,8 @@
   "svg.preview.background": "custom",
   "[xml]": {
     "editor.defaultFormatter": "DotJoshJohnson.xml"
+  },
+  "[svg]": {
+    "editor.defaultFormatter": "jock.svg"
   }
 }

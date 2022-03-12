@@ -16,8 +16,8 @@ import { toShortDateString } from "~/lib/date";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "~/lib/browser";
 import { Vessel } from "shared/contracts/vessels";
-import ExternalIcon from "~/static/images/icons/regular/external-link-square.svg";
 import React, { ReactElement, useEffect, useState } from "react";
+import WSDOTIcon from "~/static/images/icons/wsdot.svg";
 import type { Schedule as ScheduleClass } from "shared/contracts/schedules";
 import type { Terminal } from "shared/contracts/terminals";
 
@@ -219,9 +219,10 @@ export const Route = ({
               ...(terminal.terminalUrl
                 ? [
                     {
-                      Icon: ExternalIcon,
+                      Icon: WSDOTIcon,
                       label: "WSF Schedule Page",
                       url: terminal.terminalUrl,
+                      isBottom: true,
                     },
                   ]
                 : []),

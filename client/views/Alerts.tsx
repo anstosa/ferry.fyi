@@ -5,8 +5,8 @@ import { InlineLoader } from "~/components/InlineLoader";
 import { Order, sortBy } from "shared/lib/arrays";
 import { round } from "shared/lib/math";
 import clsx from "clsx";
-import ExternalIcon from "~/static/images/icons/regular/external-link-square.svg";
 import React, { ReactElement, ReactNode } from "react";
+import WSDOTIcon from "~/static/images/icons/wsdot.svg";
 import type { Bulletin, Terminal } from "shared/contracts/terminals";
 
 const ALERT_FILTER = new RegExp(
@@ -141,9 +141,10 @@ export const Alerts = ({ terminal, time }: Props): ReactElement => {
           ...(terminal.terminalUrl
             ? [
                 {
-                  Icon: ExternalIcon,
+                  Icon: WSDOTIcon,
                   label: "WSF Alerts Page",
                   url: terminal.terminalUrl,
+                  isBottom: true,
                 },
               ]
             : []),

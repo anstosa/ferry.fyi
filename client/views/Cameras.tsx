@@ -8,7 +8,6 @@ import { ReloadButton } from "../components/ReloadButton";
 import { useScrollPosition } from "~/lib/scroll";
 import CarIcon from "~/static/images/icons/solid/car.svg";
 import clsx from "clsx";
-import ExternalIcon from "~/static/images/icons/regular/external-link-square.svg";
 import MapIcon from "~/static/images/icons/solid/map-marker.svg";
 import ParkingIcon from "~/static/images/icons/solid/parking.svg";
 import React, {
@@ -18,6 +17,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import WSDOTIcon from "~/static/images/icons/wsdot.svg";
 import type { Camera } from "shared/contracts/cameras";
 import type { Terminal } from "shared/contracts/terminals";
 
@@ -164,9 +164,10 @@ export const Cameras = ({ terminal }: Props): ReactElement => {
           ...(terminal.terminalUrl
             ? [
                 {
-                  Icon: ExternalIcon,
+                  Icon: WSDOTIcon,
                   label: "WSF Cameras Page",
                   url: terminal.terminalUrl,
+                  isBottom: true,
                 },
               ]
             : []),

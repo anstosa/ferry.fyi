@@ -8,22 +8,16 @@ import AboutIcon from "~/static/images/icons/solid/address-card.svg";
 import UserIcon from "~/static/images/icons/solid/user.svg";
 // import AppleIcon from "~/static/images/icons/brands/apple.svg";
 import { Browser } from "@capacitor/browser";
+import { MenuItem } from "./MenuItem";
 import { useAuth0 } from "@auth0/auth0-react";
-import ChevronLeftIcon from "~/static/images/icons/solid/chevron-left.svg";
 import clsx from "clsx";
 import FeedbackIcon from "~/static/images/icons/solid/question-circle.svg";
 import GooglePlayIcon from "~/static/images/icons/brands/google-play.svg";
 import logo from "~/static/images/icon_monochrome.png";
-import React, {
-  FunctionComponent,
-  ReactElement,
-  SVGAttributes,
-  useEffect,
-  useState,
-} from "react";
+import React, { ReactElement, useEffect, useState } from "react";
 import ReloadIcon from "~/static/images/icons/solid/redo.svg";
 import ScheduleIcon from "~/static/images/icons/solid/calendar-alt.svg";
-import ShareIcon from "~/static/images/icons/solid/share-square.svg";
+import ShareIcon from "~/static/images/icons/solid/share-alt.svg";
 import TicketIcon from "~/static/images/icons/solid/barcode-alt.svg";
 
 export interface ShareOptions {
@@ -39,28 +33,6 @@ interface Props {
   share?: ShareOptions;
   items?: MenuItem[];
 }
-
-interface BaseMenuItem {
-  Icon: FunctionComponent<SVGAttributes<SVGElement>>;
-  label: string;
-}
-
-interface InternalLinkMenuItem extends BaseMenuItem {
-  path: string;
-}
-
-interface ExternalLinkMenuItem extends BaseMenuItem {
-  url: string;
-}
-
-interface ButtonMenuItem extends BaseMenuItem {
-  onClick: () => void;
-}
-
-export type MenuItem =
-  | InternalLinkMenuItem
-  | ExternalLinkMenuItem
-  | ButtonMenuItem;
 
 const Avatar = () => {
   const { user } = useAuth0();
@@ -115,6 +87,13 @@ export const Menu = ({
     initShare();
   }, []);
 
+  const topItems = items.filter(
+    (item) => !("isBottom" in item) || !item.isBottom
+  );
+  const bottomItems = items.filter(
+    (item) => "isBottom" in item && item.isBottom
+  );
+
   const navigation: MenuItem[] = [
     ...(isAuthenticated
       ? [
@@ -141,51 +120,21 @@ export const Menu = ({
       label: "Tickets",
       path: "/tickets",
     },
+    ...topItems,
+    { isSpacer: true },
+    ...bottomItems,
     {
       Icon: AboutIcon,
       label: "About",
       path: "/about",
+      isBottom: true,
     },
     {
       Icon: FeedbackIcon,
       label: "Feedback",
       path: "/feedback",
+      isBottom: true,
     },
-    ...(reload
-      ? [
-          {
-            Icon: ReloadIcon,
-            label: "Refresh Data",
-            onClick: () => {
-              reload();
-              onClose();
-            },
-          },
-        ]
-      : []),
-    ...(share && canShare
-      ? [
-          {
-            Icon: ShareIcon,
-            label: shareMenuText,
-            onClick: async (): Promise<void> => {
-              try {
-                await Share.share({
-                  title: "Ferry FYI",
-                  text: share.sharedText,
-                  url: `${process.env.BASE_URL}${location.pathname}${location.search}`,
-                  dialogTitle: share.sharedText,
-                });
-                setShareMenuText("Shared!");
-                setTimeout(() => setShareMenuText(share.shareButtonText), 5000);
-              } catch (error) {
-                console.error("Failed to share", error);
-              }
-            },
-          },
-        ]
-      : []),
-    ...items,
   ];
   return (
     <AnimatePresence>
@@ -286,11 +235,43 @@ export const Menu = ({
               <h1 className="font-bold">Ferry FYI</h1>
             </Link>
             <div className="flex-grow" />
-            <ChevronLeftIcon
-              className="cursor-pointer text-md"
-              onClick={onClose}
-              aria-label="Close Menu"
-            />
+            {share && canShare && (
+              <div
+                className="w-10 h-10 cursor-pointer text-md flex justify-center items-center"
+                onClick={async (): Promise<void> => {
+                  try {
+                    await Share.share({
+                      title: "Ferry FYI",
+                      text: share.sharedText,
+                      url: `${process.env.BASE_URL}${location.pathname}${location.search}`,
+                      dialogTitle: share.sharedText,
+                    });
+                    setShareMenuText("Shared!");
+                    setTimeout(
+                      () => setShareMenuText(share.shareButtonText),
+                      5000
+                    );
+                  } catch (error) {
+                    console.error("Failed to share", error);
+                  }
+                }}
+                aria-label={shareMenuText}
+              >
+                <ShareIcon />
+              </div>
+            )}
+            {reload && (
+              <div
+                className="w-10 h-10 cursor-pointer text-md flex justify-center items-center"
+                onClick={() => {
+                  reload();
+                  onClose();
+                }}
+                aria-label="Refresh"
+              >
+                <ReloadIcon />
+              </div>
+            )}
           </div>
           <div
             className={clsx(
@@ -298,52 +279,11 @@ export const Menu = ({
               "flex-grow flex flex-col"
             )}
           >
-            <ul>
-              {navigation.map((item) => {
-                const { Icon, label } = item;
-                const wrapperClass = clsx(
-                  "flex py-4 px-6 hover:bg-lighten-lower"
-                );
-                const content = (
-                  <>
-                    {" "}
-                    <Icon className="mr-6 text-2xl" />
-                    <span className="flex-grow text-xl">{label}</span>
-                  </>
-                );
-                if ("path" in item) {
-                  return (
-                    <li key={label}>
-                      <Link to={item.path} className={wrapperClass}>
-                        {content}
-                      </Link>
-                    </li>
-                  );
-                } else if ("url" in item) {
-                  return (
-                    <li key={label}>
-                      <a
-                        href={item.url}
-                        className={wrapperClass}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        {content}
-                      </a>
-                    </li>
-                  );
-                } else {
-                  return (
-                    <li key={label}>
-                      <div onClick={item.onClick} className={wrapperClass}>
-                        {content}
-                      </div>
-                    </li>
-                  );
-                }
-              })}
+            <ul className="flex flex-col items-start flex-grow">
+              {navigation.map((item, index) => (
+                <MenuItem item={item} key={index} />
+              ))}
             </ul>
-            <div className="flex-grow" />
             <div className="p-4">
               {/* {device?.platform === "web" && device?.operatingSystem === "ios" && (
                 <a

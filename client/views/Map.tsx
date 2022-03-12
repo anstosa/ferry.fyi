@@ -13,11 +13,11 @@ import { render } from "react-dom";
 import { renderToString } from "react-dom/server";
 import { Vessel } from "shared/contracts/vessels";
 import CurrentTerminalIcon from "~/static/images/icons/solid/location.svg";
-import ExternalIcon from "~/static/images/icons/regular/external-link-square.svg";
 import MateTerminalIcon from "~/static/images/icons/solid/map-marker.svg";
 import OtherTerminalIcon from "~/static/images/icons/regular/map-marker-alt.svg";
 import React, { ReactElement, useEffect, useRef, useState } from "react";
 import VesselIcon from "~/static/images/icons/solid/location-arrow.svg";
+import WSDOTIcon from "~/static/images/icons/wsdot.svg";
 import type { Terminal } from "shared/contracts/terminals";
 
 const DEFAULT_TOP = 47;
@@ -190,9 +190,10 @@ export const Map = ({ terminal, mate, vessels }: Props): ReactElement => {
           ...(terminal?.vesselWatchUrl
             ? [
                 {
-                  Icon: ExternalIcon,
-                  label: "WSF Map Page",
+                  Icon: WSDOTIcon,
+                  label: "WSF VesselWatch",
                   url: terminal.vesselWatchUrl,
+                  isBottom: true,
                 },
               ]
             : []),

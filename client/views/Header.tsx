@@ -1,4 +1,5 @@
-import { Menu, MenuItem, ShareOptions } from "~/views/Menu";
+import { Menu, ShareOptions } from "~/views/Menu";
+import { MenuItem } from "./Menu/MenuItem";
 import { ReloadButton } from "~/components/ReloadButton";
 import clsx from "clsx";
 import MenuIcon from "~/static/images/icons/solid/bars.svg";
@@ -31,6 +32,7 @@ interface Props {
 export const Header: FunctionComponent<Props> = (props) => {
   const { isReloading, reload, children, share, items } = props;
   const [isMenuOpen, setMenuOpen] = useState<boolean>(false);
+  const [isFakeReloading, setFakeReloading] = useState<boolean>(false);
 
   const openNav = () => {
     setMenuOpen(true);
@@ -41,10 +43,10 @@ export const Header: FunctionComponent<Props> = (props) => {
   };
 
   const renderMenuToggle = (): ReactNode => {
-    if (isReloading) {
+    if (isReloading || isFakeReloading) {
       return (
         <ReloadButton
-          isReloading
+          isReloading={isReloading || isFakeReloading}
           ariaLabel="Open Menu"
           className="mr-4"
           onClick={() => {
@@ -79,7 +81,17 @@ export const Header: FunctionComponent<Props> = (props) => {
       />
       <Menu
         isOpen={isMenuOpen}
-        reload={reload}
+        reload={
+          reload
+            ? () => {
+                setFakeReloading(true);
+                reload();
+                setTimeout(() => {
+                  setFakeReloading(false);
+                }, 1000);
+              }
+            : undefined
+        }
         onClose={() => {
           setMenuOpen(false);
           ReactGA.event({
