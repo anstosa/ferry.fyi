@@ -13,6 +13,7 @@ import React, { ReactElement, ReactNode, useEffect, useRef } from "react";
 import type { Slot } from "shared/contracts/schedules";
 
 interface Props {
+  className?: string;
   slot: Slot;
   isExpanded: boolean;
   onClick: () => void;
@@ -23,7 +24,15 @@ interface Props {
 }
 
 export const SlotInfo = (props: Props): ReactElement => {
-  const { slot, isExpanded, onClick, schedule, setElement, time } = props;
+  const {
+    className = "",
+    isExpanded,
+    onClick,
+    schedule,
+    setElement,
+    slot,
+    time,
+  } = props;
   const { hasPassed } = slot;
   const isNext =
     time.toISODate !== DateTime.local().toISODate &&
@@ -66,7 +75,12 @@ export const SlotInfo = (props: Props): ReactElement => {
     }
     return (
       <div
-        className={clsx("p-4 flex", "text-sm", "shadow-inset bg-darken-lowest")}
+        className={clsx(
+          "p-4 flex",
+          "text-sm",
+          "shadow-inset bg-darken-lowest",
+          className
+        )}
       >
         <div className={clsx("flex-grow pr-4")}>
           <div className="flex items-center mb-2">
