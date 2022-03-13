@@ -31,15 +31,15 @@ export const Schedule = ({ schedule, time }: Props): ReactElement => {
   const [expanded, setExpanded] = useState<Slot | null>(null);
 
   // update schedule on parameter change
-  useEffect(() => {
-    setCurrentElement(null);
-  }, [schedule]);
+  // useEffect(() => {
+  //   setCurrentElement(null);
+  // }, [schedule]);
 
   useEffect(() => {
     if (currentElement) {
       scrollIntoView(currentElement, { align: { top: 0.3 } });
     }
-  }, [currentElement]);
+  }, [currentElement, schedule]);
 
   const toggleExpand = (slot: Slot): void => {
     if (slot === expanded) {
