@@ -147,6 +147,7 @@ const config: Configuration = {
         theme_color: COLOR,
         logging: true,
         icons: {
+          appleStartup: false,
           yandex: false,
         },
         shortcuts: [
