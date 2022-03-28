@@ -2,6 +2,7 @@ import { getSlug, useTerminals } from "~/lib/terminals";
 import { isEmpty } from "~/../shared/lib/arrays";
 import { Link } from "react-router-dom";
 import { Terminal as TerminalClass } from "shared/contracts/terminals";
+import { Today } from "./Today";
 import clsx from "clsx";
 import LocationIcon from "~/static/images/icons/solid/location.svg";
 import logo from "~/static/images/icon_monochrome.png";
@@ -46,6 +47,9 @@ export const Terminal = ({ terminal }: TerminalProps): ReactElement => {
 
 export const Home = (): ReactElement => {
   const { terminals } = useTerminals();
+  if (location.host === "howmanyboats.today") {
+    return <Today />;
+  }
   return (
     <div className="bg-green-dark text-white overflow-y-scroll scrolling-touch">
       <div className="flex flex-col items-center justify-center w-full h-60">

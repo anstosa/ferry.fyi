@@ -14,6 +14,7 @@ import { Settings } from "luxon";
 import { Splash } from "./components/Splash";
 import { StatusBar } from "@capacitor/status-bar";
 import { Tickets } from "./views/Tickets";
+import { Today } from "~/views/Today";
 import { useAuth0 } from "@auth0/auth0-react";
 import { useDevice } from "./lib/device";
 import { useLocation, useNavigate, useRoutes } from "react-router-dom";
@@ -97,6 +98,7 @@ export const App = (): ReactElement => {
 
   const element = useRoutes([
     { path: "", element: <Home /> },
+    { path: "today", element: <Today /> },
     { path: "callback", element: <Splash /> },
     { path: "account", element: <Account /> },
     { path: "tickets", element: <Tickets /> },
