@@ -1,3 +1,4 @@
+import { debugRouter } from "./debug";
 import { getWsfStatus } from "~/lib/wsf/api";
 import { Router } from "express";
 import { scheduleRouter } from "./schedule";
@@ -27,6 +28,9 @@ apiRouter.use("/vessels", vesselRouter);
 apiRouter.use("/terminals", terminalRouter);
 apiRouter.use("/schedule", scheduleRouter);
 apiRouter.use("/tickets", ticketRouter);
+if (process.env.NODE_ENV === "development") {
+  apiRouter.use("/debug", debugRouter);
+}
 
 const requireAuth = jwt({
   secret: jwksRsa.expressJwtSecret({

@@ -1,10 +1,10 @@
+import "lib/worker";
 import * as Sentry from "@sentry/react";
 import { App } from "./App";
 import { Auth0Provider } from "@auth0/auth0-react";
 import { BrowserRouter } from "react-router-dom";
 import { BrowserTracing } from "@sentry/tracing";
 import { isUndefined } from "shared/lib/identity";
-import { Workbox } from "workbox-window";
 import React from "react";
 import ReactDOM from "react-dom";
 
@@ -27,6 +27,7 @@ if (process.env.SENTRY_DSN) {
     dsn: process.env.SENTRY_DSN,
     integrations: [new BrowserTracing()],
     tracesSampleRate: 1.0,
+    release: `ferry-fyi@${process.env.COMMITHASH}`,
   });
 }
 
@@ -71,20 +72,6 @@ whenReady(() => {
   window.addEventListener("offline", renderAll);
   renderAll();
 });
-
-if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") {
-  window.addEventListener("load", () => {
-    const workbox = new Workbox("/service-worker.js");
-
-    workbox.addEventListener("installed", (event) => {
-      if (event.isUpdate) {
-        window.location.reload();
-      }
-    });
-
-    workbox.register();
-  });
-}
 
 // trigger install prompt on first click
 let defferedPrompt: () => void;

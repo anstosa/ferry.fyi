@@ -1,6 +1,7 @@
 import { BundleAnalyzerPlugin } from "webpack-bundle-analyzer";
 import { Configuration as DevServerConfiguration } from "webpack-dev-server";
 import { ESBuildMinifyPlugin } from "esbuild-loader";
+import { GitRevisionPlugin } from "git-revision-webpack-plugin";
 import { TailwindConfig } from "tailwindcss/tailwind-config";
 import CopyPlugin from "copy-webpack-plugin";
 import CssMinimizerPlugin from "css-minimizer-webpack-plugin";
@@ -12,10 +13,14 @@ import LiveReloadPlugin from "webpack-livereload-plugin";
 import MiniCssExtractPlugin from "mini-css-extract-plugin";
 import path from "path";
 import resolveConfig from "tailwindcss/resolveConfig";
+import SentryPlugin from "@sentry/webpack-plugin";
 import StyleLintPlugin from "stylelint-webpack-plugin";
 import tailwindConfig from "../tailwind.config.js";
 import TsConfigPathsPlugin from "tsconfig-paths-webpack-plugin";
-import webpack, { Configuration as BaseConfiguration } from "webpack";
+import webpack, {
+  Configuration as BaseConfiguration,
+  DefinePlugin,
+} from "webpack";
 import WebpackShellPlugin from "webpack-shell-plugin-next";
 import WorkboxPlugin from "workbox-webpack-plugin";
 
@@ -64,6 +69,25 @@ process.traceDeprecation = true;
 if (!process.env.BASE_URL) {
   throw new Error("Must set BASE_URL");
 }
+const gitRevisionPlugin = new GitRevisionPlugin();
+const environmentPlugin = new webpack.EnvironmentPlugin({
+  AUTH0_CLIENT_AUDIENCE: undefined,
+  AUTH0_CLIENT_ID: undefined,
+  AUTH0_CLIENT_REDIRECT: undefined,
+  AUTH0_DOMAIN: undefined,
+  BASE_URL: undefined,
+  FIREBASE_API_KEY: undefined,
+  FIREBASE_APP_ID: undefined,
+  FIREBASE_PROJECT_ID: undefined,
+  FIREBASE_SENDER_ID: undefined,
+  FIREBASE_VAPID_KEY: undefined,
+  GOOGLE_ANALYTICS: null,
+  GTM_CONTAINER_ID: null,
+  LOG_LEVEL: "INFO",
+  MAPBOX_ACCESS_TOKEN: undefined,
+  NODE_ENV: "development",
+  SENTRY_DSN: null,
+});
 
 const config: Configuration = {
   // don't allow any errors in production
@@ -85,12 +109,16 @@ const config: Configuration = {
     filename: "[name].[chunkhash].js",
     publicPath: `/`,
   },
-  devtool: ENABLE_SOURCE_MAPS ? "eval-cheap-module-source-map" : false,
+  devtool: ENABLE_SOURCE_MAPS ? "eval-cheap-module-source-map" : "source-map",
   devServer: {
     historyApiFallback: true,
     hot: true,
     host: "0.0.0.0",
+    client: {
+      overlay: false,
+    },
     port: 3000,
+    static: path.resolve(__dirname),
     devMiddleware: {
       publicPath: process.env.ROOT_URL,
     },
@@ -117,6 +145,20 @@ const config: Configuration = {
     },
   },
   plugins: [
+    ...(isProduction
+      ? [
+          new SentryPlugin({
+            include: path.resolve(__dirname, "../dist/client"),
+            ignoreFile: ".sentrycliignore",
+            ignore: ["node_modules", "webpack.config.ts"],
+            project: "ferry-fyi",
+            org: "ferry-fyi",
+            release: `ferry-fyi@${JSON.stringify(
+              gitRevisionPlugin.commithash()
+            )}`,
+          }),
+        ]
+      : []),
     ...(process.env.CACHE_NAME === "android"
       ? [
           new WebpackShellPlugin({
@@ -147,8 +189,12 @@ const config: Configuration = {
         theme_color: COLOR,
         logging: true,
         icons: {
-          appleStartup: false,
-          yandex: false,
+          android: isProduction,
+          appleIcon: isProduction,
+          appleStartup: isProduction,
+          favicons: true,
+          windows: isProduction,
+          yandex: isProduction,
         },
         shortcuts: [
           {
@@ -189,19 +235,12 @@ const config: Configuration = {
       filename: "[name].css",
       chunkFilename: "[id].css",
     }),
-    new webpack.EnvironmentPlugin({
-      GTM_CONTAINER_ID: null,
-      BASE_URL: undefined,
-      MAPBOX_ACCESS_TOKEN: undefined,
-      GOOGLE_ANALYTICS: null,
-      LOG_LEVEL: "INFO",
-      NODE_ENV: "development",
-      AUTH0_DOMAIN: undefined,
-      AUTH0_CLIENT_ID: undefined,
-      AUTH0_CLIENT_AUDIENCE: undefined,
-      AUTH0_CLIENT_REDIRECT: undefined,
-      SENTRY_DSN: null,
+    new DefinePlugin({
+      "process.env.VERSION": JSON.stringify(gitRevisionPlugin.version()),
+      "process.env.COMMITHASH": JSON.stringify(gitRevisionPlugin.commithash()),
+      "process.env.BRANCH": JSON.stringify(gitRevisionPlugin.branch()),
     }),
+    environmentPlugin,
     new CopyPlugin({
       patterns: [
         {
@@ -218,17 +257,15 @@ const config: Configuration = {
       files: ["**/*.(ts|tsx)", "../shared/**/*.(ts|tsx)"],
       exclude: ["node_modules"],
     }),
+    new WorkboxPlugin.InjectManifest({
+      swSrc: "service-worker.ts",
+      swDest: "service-worker.js",
+      webpackCompilationPlugins: [environmentPlugin],
+    }),
     ...(isDevelopment
       ? [
           new LiveReloadPlugin({
             appendScriptTag: true,
-          }),
-        ]
-      : []),
-    ...(isProduction
-      ? [
-          new WorkboxPlugin.InjectManifest({
-            swSrc: "service-worker.ts",
           }),
         ]
       : []),

@@ -1,3 +1,4 @@
+import { Bulletin } from "./bulletins";
 import { Camera } from "./cameras";
 import { Route } from "./routes";
 
@@ -7,12 +8,6 @@ export interface Address {
   city?: string;
   state?: string;
   zip?: string;
-}
-
-export interface Bulletin {
-  title: string;
-  description: string;
-  date: number;
 }
 
 export interface WaitTime {

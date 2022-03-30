@@ -9,11 +9,9 @@ export const Splash: FC = ({ children }) => {
 
   useEffect(() => {
     const tickTimer = setInterval(() => {
-      console.log("interval");
       setMark((mark) => (mark === 3 ? 0 : mark + 1));
     }, 600);
     const helpTimer = setTimeout(() => {
-      console.log("timeout");
       setHelpVisible(true);
     }, 20 * 1000);
     return () => {
