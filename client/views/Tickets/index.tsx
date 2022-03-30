@@ -96,6 +96,21 @@ export const Tickets = (): ReactElement => {
     );
   };
 
+  const stopScanning = (inputControls = controls) => {
+    if (inputControls) {
+      inputControls.stop();
+      setControls(null);
+    }
+    setTicketNumber("");
+    setScanning(false);
+
+    if (device?.platform !== "web") {
+      document.body.classList.remove("hidden");
+      BarcodeScanner.showBackground();
+      BarcodeScanner.stopScan();
+    }
+  };
+
   useEffect(() => {
     fetchCameras();
     updateTickets();
@@ -158,26 +173,10 @@ export const Tickets = (): ReactElement => {
       setAdding(false);
     }
     // if this code isn't on the user, set it
-    console.log(savedTickets, code);
     if (!savedTickets || !savedTickets.includes(code)) {
       await updateUser({
         app_metadata: { tickets: [...(savedTickets ?? []), code] },
       });
-    }
-  };
-
-  const stopScanning = (inputControls = controls) => {
-    if (inputControls) {
-      inputControls.stop();
-      setControls(null);
-    }
-    setTicketNumber("");
-    setScanning(false);
-
-    if (device.platform !== "web") {
-      document.body.classList.remove("hidden");
-      BarcodeScanner.showBackground();
-      BarcodeScanner.stopScan();
     }
   };
 

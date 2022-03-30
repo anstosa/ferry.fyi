@@ -22,7 +22,7 @@ export const wsfRequest = async <T>(path: string): Promise<T | undefined> => {
     });
     if (response.ok) {
       wsfStatus.offline = false;
-      const json = await response.json();
+      const json = (await response.json()) as T;
       return json;
     } else {
       wsfStatus.offline = true;

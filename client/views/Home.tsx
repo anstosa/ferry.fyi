@@ -1,5 +1,5 @@
 import { getSlug, useTerminals } from "~/lib/terminals";
-import { isEmpty } from "~/../shared/lib/arrays";
+import { isEmpty } from "shared/lib/arrays";
 import { Link } from "react-router-dom";
 import { Terminal as TerminalClass } from "shared/contracts/terminals";
 import { Today } from "./Today";

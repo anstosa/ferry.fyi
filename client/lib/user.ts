@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 
 interface AppMetadata {
   tickets?: string[];
+  subscribedTerminals?: string[];
+  fcmToken?: string;
 }
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 interface UserMetadata {}
@@ -16,9 +18,12 @@ interface State extends AppMetadata, UserMetadata {
 }
 interface Actions {
   updateUser: (data: Partial<User>) => Promise<void>;
+  refreshUser: () => Promise<void>;
 }
 
 type Response = [State, Actions];
+
+let userPromise: Promise<Record<string, unknown>>;
 
 export const useUser = (): Response => {
   const [user, setUser] = useState<User | null>(null);
@@ -29,16 +34,28 @@ export const useUser = (): Response => {
   } = useAuth0();
   const [accessToken, setAccessToken] = useState<string>("");
 
-  const getUserMetadata = async () => {
+  const refreshUser = async (inputToken?: string) => {
+    if (userPromise) {
+      setUser(await userPromise);
+      return;
+    }
+    try {
+      // eslint-disable-next-line require-atomic-updates
+      userPromise = get("/user", inputToken ?? accessToken);
+      setUser(await userPromise);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const getAccessToken = async () => {
     if (!auth0User?.sub) {
       return;
     }
     try {
       const accessToken = await getAccessTokenSilently();
       setAccessToken(accessToken);
-
-      const user = await get("/user", accessToken);
-      setUser(user);
+      await refreshUser(accessToken);
     } catch (error) {
       console.error(error);
     }
@@ -46,7 +63,7 @@ export const useUser = (): Response => {
 
   // fetch metadata
   useEffect(() => {
-    getUserMetadata();
+    getAccessToken();
   }, [getAccessTokenSilently, auth0User?.sub]);
 
   const state: State = {
@@ -58,8 +75,9 @@ export const useUser = (): Response => {
 
   const actions: Actions = {
     updateUser: async (data) => {
-      return await post("/user", data, accessToken);
+      setUser(await post("/user", data, accessToken));
     },
+    refreshUser,
   };
 
   return [state, actions];

@@ -1,4 +1,6 @@
-/* global self */
+/// <reference lib="webworker" />
+export default null;
+declare let self: ServiceWorkerGlobalScope;
 
 import * as googleAnalytics from "workbox-google-analytics";
 import {
@@ -7,11 +9,76 @@ import {
   StaleWhileRevalidate,
 } from "workbox-strategies";
 import { cleanupOutdatedCaches, precacheAndRoute } from "workbox-precaching";
-import { clientsClaim, skipWaiting } from "workbox-core";
+import { clientsClaim } from "workbox-core";
 import { ExpirationPlugin } from "workbox-expiration";
+import {
+  getMessaging,
+  MessagePayload,
+  onBackgroundMessage,
+} from "firebase/messaging/sw";
+import { initializeApp } from "firebase/app";
 import { registerRoute } from "workbox-routing";
 
-skipWaiting();
+const app = initializeApp({
+  apiKey: process.env.FIREBASE_API_KEY,
+  projectId: process.env.FIREBASE_PROJECT_ID,
+  messagingSenderId: process.env.FIREBASE_SENDER_ID,
+  appId: process.env.FIREBASE_APP_ID,
+});
+
+const messaging = getMessaging(app); // the getMessaging return type is wrong...
+// messaging.useServiceWorker(self.registration);
+
+interface Notification extends MessagePayload {
+  data: {
+    title: string;
+    body: string;
+    url: string;
+  };
+}
+
+const isNotification = (payload: MessagePayload): payload is Notification =>
+  Boolean(
+    payload.data &&
+      "title" in payload.data &&
+      "body" in payload.data &&
+      "url" in payload.data
+  );
+
+onBackgroundMessage(messaging, (payload) => {
+  if (isNotification(payload)) {
+    console.log("Background notification: ", payload.data);
+    return self.registration.showNotification(payload.data.title, {
+      body: payload.data.body,
+      icon: "/static/images/icon.png",
+      data: {
+        url: payload.data.url,
+      },
+    });
+  } else {
+    console.warn("Unhandled background message: ", payload);
+  }
+});
+
+self.addEventListener("notificationclick", (event: NotificationEvent) => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients
+      .matchAll({
+        type: "window",
+      })
+      .then((clientList) => {
+        for (let index = 0; index < clientList.length; index++) {
+          const client = clientList[index];
+          client.navigate(event.notification.data.url);
+          return client.focus();
+        }
+        return self.clients.openWindow("/");
+      })
+  );
+});
+
+self.skipWaiting();
 clientsClaim();
 
 precacheAndRoute((self as any).__WB_MANIFEST);

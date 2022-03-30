@@ -1,6 +1,6 @@
 import { colors } from "~/lib/theme";
 import { DateTime } from "luxon";
-import { getBulletins, getLastAlertTime, getWaitTime } from "../views/Alerts";
+import { getLastAlertTime, getWaitTime } from "../views/Alerts";
 import { GetPath } from "~/views/Route";
 import { NavLink } from "react-router-dom";
 import clsx from "clsx";
@@ -58,7 +58,7 @@ interface Props {
 
 export const Footer = ({ terminal, getPath }: Props): ReactElement => {
   const renderAlerts = (): ReactElement | null => {
-    const bulletins = getBulletins(terminal);
+    const { bulletins } = terminal;
 
     if (!bulletins.length) {
       return null;

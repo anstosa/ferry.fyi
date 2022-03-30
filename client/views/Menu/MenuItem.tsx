@@ -45,9 +45,13 @@ export const MenuItem = ({ item }: Props): ReactElement | null => {
   }
 
   const { Icon, label } = item;
-  const wrapperClass = clsx("flex py-4 px-6 hover:bg-lighten-lower", {
-    "text-lighten-highest": "isBottom" in item,
-  });
+  const itemClass = "w-full";
+  const wrapperClass = clsx(
+    "flex py-4 px-6 hover:bg-lighten-lower cursor-pointer",
+    {
+      "text-lighten-highest": "isBottom" in item,
+    }
+  );
   const content = (
     <>
       {" "}
@@ -58,7 +62,7 @@ export const MenuItem = ({ item }: Props): ReactElement | null => {
 
   if ("path" in item) {
     return (
-      <li key={label}>
+      <li key={label} className={itemClass}>
         <Link to={item.path} className={wrapperClass}>
           {content}
         </Link>
@@ -66,7 +70,7 @@ export const MenuItem = ({ item }: Props): ReactElement | null => {
     );
   } else if ("url" in item) {
     return (
-      <li key={label}>
+      <li key={label} className={itemClass}>
         <a
           href={item.url}
           className={wrapperClass}
@@ -79,7 +83,7 @@ export const MenuItem = ({ item }: Props): ReactElement | null => {
     );
   } else {
     return (
-      <li key={label}>
+      <li key={label} className={itemClass}>
         <div onClick={item.onClick} className={wrapperClass}>
           {content}
         </div>

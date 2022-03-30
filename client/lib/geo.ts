@@ -1,5 +1,5 @@
 import { Geolocation } from "@capacitor/geolocation";
-import { isUndefined } from "~/../shared/lib/identity";
+import { isUndefined } from "shared/lib/identity";
 import { useEffect, useState } from "react";
 import { useLocalStorage } from "./browser";
 

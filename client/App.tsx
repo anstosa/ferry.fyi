@@ -1,25 +1,27 @@
 import "./app.scss";
 import "@capacitor/core";
-import { About } from "./views/About";
-import { Account } from "./views/Account";
+import { About } from "~/views/About";
+import { Account } from "~/views/Account";
 import { AnimatePresence } from "framer-motion";
 import { Browser } from "@capacitor/browser";
 import { colors } from "~/lib/theme";
-import { Feedback } from "./views/Feedback";
-import { Home } from "./views/Home";
+import { Feedback } from "~/views/Feedback";
+import { Home } from "~/views/Home";
 import { App as Native } from "@capacitor/app";
-import { Route } from "./views/Route";
+import { Route } from "~/views/Route";
 import { Settings } from "luxon";
-import { Splash } from "./components/Splash";
+import { Splash } from "~/components/Splash";
 import { StatusBar } from "@capacitor/status-bar";
-import { Tickets } from "./views/Tickets";
+import { Tickets } from "~/views/Tickets";
 import { Toast } from "./components/Toast";
 import { Today } from "~/views/Today";
 import { useAuth0 } from "@auth0/auth0-react";
-import { useDevice } from "./lib/device";
+import { useDevice } from "~/lib/device";
 import { useLocation, useNavigate, useRoutes } from "react-router-dom";
-import { useOnline, useWSF } from "./lib/api";
+import { useOnline, useWSF } from "~/lib/api";
+import { usePush } from "~/lib/push";
 import { useRecordPageViews } from "~/lib/analytics";
+import { useUser } from "~/lib/user";
 import DumpsterFireIcon from "~/static/images/icons/solid/dumpster-fire.svg";
 import OfflineIcon from "~/static/images/icons/solid/signal-alt-slash.svg";
 import React, { ReactElement, useEffect } from "react";
@@ -46,6 +48,14 @@ export const App = (): ReactElement => {
   const navigate = useNavigate();
   const location = useLocation();
   const { handleRedirectCallback } = useAuth0();
+  const [{ subscribedTerminals }] = useUser();
+  const initializePush = usePush(false);
+
+  useEffect(() => {
+    if (subscribedTerminals && subscribedTerminals.length > 0) {
+      initializePush();
+    }
+  }, [subscribedTerminals]);
 
   useEffect(() => {
     if (device?.isNativeMobile) {

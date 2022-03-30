@@ -1,10 +1,9 @@
 import { DateTime } from "luxon";
 import { isNull } from "shared/lib/identity";
 import { Schedule } from "~/models/Schedule";
-import { Slot } from "shared/contracts/schedules";
+import { Slot, ValidRange } from "shared/contracts/schedules";
 import { Terminal } from "~/models/Terminal";
 import { toWsfDate, wsfDateToTimestamp } from "./date";
-import { ValidRange } from "../../../shared/contracts/schedules";
 import { values } from "shared/lib/objects";
 import { Vessel } from "~/models/Vessel";
 import { WSF } from "~/typings/wsf";

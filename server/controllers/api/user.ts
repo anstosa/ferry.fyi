@@ -13,13 +13,11 @@ userRouter.get("/", async (request, response) => {
 });
 
 userRouter.post("/", async (request, response) => {
-  if (request.body.app_metadata) {
-    await auth0.updateAppMetadata(
-      { id: response.locals.user.sub },
-      request.body.app_metadata
-    );
-  }
-  return response.send();
+  const user = await auth0.updateUser(
+    { id: response.locals.user.sub },
+    request.body
+  );
+  return response.send(user);
 });
 
 export { userRouter };

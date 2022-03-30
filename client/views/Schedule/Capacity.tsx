@@ -1,5 +1,5 @@
 import { isNil, isNull } from "shared/lib/identity";
-import { pluralize } from "../../../shared/lib/strings";
+import { pluralize } from "shared/lib/strings";
 import { round } from "shared/lib/math";
 import CarIcon from "~/static/images/icons/solid/car.svg";
 import clsx from "clsx";

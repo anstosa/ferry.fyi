@@ -1,15 +1,15 @@
-import {
-  Bulletin,
-  Terminal as TerminalClass,
-  TerminalInfo,
-  TerminalLocation,
-  WaitTime,
-} from "shared/contracts/terminals";
+import { Bulletin } from "./Bulletin";
 import { CacheableModel } from "./CacheableModel";
 import { Camera } from "~/models/Camera";
 import { isKeyOf } from "shared/lib/objects";
 import { isNull } from "shared/lib/identity";
 import { Route } from "~/models/Route";
+import {
+  Terminal as TerminalClass,
+  TerminalInfo,
+  TerminalLocation,
+  WaitTime,
+} from "shared/contracts/terminals";
 import TERMINAL_DATA_OVERRIDES from "shared/data/terminals.json";
 
 export class Terminal extends CacheableModel implements TerminalClass {
