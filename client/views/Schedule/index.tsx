@@ -2,10 +2,10 @@ import { AnimatePresence } from "framer-motion";
 import { DateTime } from "luxon";
 import { findWhere, isEmpty } from "shared/lib/arrays";
 import { InlineLoader } from "~/components/InlineLoader";
-import { isWSFToday } from "../../lib/date";
+import { isWSFToday } from "~/lib/date";
 import { SlotInfo } from "./SlotInfo";
 import { Toast } from "~/components/Toast";
-import { useTerminals } from "../../lib/terminals";
+import { useTerminals } from "~/lib/terminals";
 import { values } from "shared/lib/objects";
 import clsx from "clsx";
 import IslandIcon from "~/static/images/icons/solid/island-tropical.svg";
@@ -22,7 +22,7 @@ interface Props {
 }
 
 export const Schedule = ({ schedule, time }: Props): ReactElement => {
-  const { terminals } = useTerminals(true);
+  const { terminals } = useTerminals();
   const [currentElement, setCurrentElement] = useState<HTMLDivElement | null>(
     null
   );

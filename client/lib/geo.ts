@@ -1,5 +1,7 @@
 import { Geolocation } from "@capacitor/geolocation";
+import { isUndefined } from "~/../shared/lib/identity";
 import { useEffect, useState } from "react";
+import { useLocalStorage } from "./browser";
 
 export interface Point {
   latitude: number;
@@ -26,27 +28,35 @@ export const getDistance = (a: Point, b: Point): number => {
 };
 
 // Hook to get user's current geolocation
-export const useGeo = (): Point | null => {
+export const useGeo = (): [Point | null, (noLocation?: boolean) => void] => {
   const [location, setLocation] = useState<Point | null>(null);
+  const [savedNoLocation] = useLocalStorage<boolean | undefined>(
+    "noLocation",
+    undefined
+  );
 
-  const updateLocation = async () => {
-    const {
-      coords: { latitude, longitude },
-    } = await Geolocation.getCurrentPosition();
-    setLocation({ latitude, longitude });
+  const updateLocation = async (noLocation = savedNoLocation) => {
+    if ((isUndefined(noLocation) ? savedNoLocation : noLocation) === false) {
+      try {
+        const {
+          coords: { latitude, longitude },
+        } = await Geolocation.getCurrentPosition();
+        setLocation({ latitude, longitude });
+      } catch (error) {}
+    }
   };
 
   useEffect(() => {
     // get location
     updateLocation();
-    // update location every 10 seconds
-    const interval = setInterval(updateLocation, 10000);
+    // update location every 30 seconds
+    const interval = setInterval(updateLocation, 30 * 1000);
 
     // clear interval on unmount
     return clearInterval(interval);
   }, []);
 
-  return location;
+  return [location, updateLocation];
 };
 
 export const hasGeoPermissions = async (): Promise<boolean | undefined> => {

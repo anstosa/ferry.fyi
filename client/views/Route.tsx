@@ -13,8 +13,8 @@ import { RouteSelector } from "~/components/RouteSelector";
 import { Schedule } from "./Schedule";
 import { Splash } from "~/components/Splash";
 import { toShortDateString } from "~/lib/date";
+import { useLocalStorage, useQuery } from "~/lib/browser";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { useQuery } from "~/lib/browser";
 import { Vessel } from "shared/contracts/vessels";
 import React, { ReactElement, useEffect, useState } from "react";
 import WSDOTIcon from "~/static/images/icons/wsdot.svg";
@@ -51,9 +51,15 @@ export const Route = ({
   ]);
   const [time, setTime] = useState<DateTime>(today);
   const [tickTimeout, setTickTimeout] = useState<number | null>(null);
-
+  const [, saveTerminal] = useLocalStorage<string | undefined>(
+    "termialSlug",
+    terminalSlug
+  );
+  const [, saveMate] = useLocalStorage<string | undefined>(
+    "mateSlug",
+    mateSlug
+  );
   const inputDate = dateInput ? DateTime.fromISO(dateInput) : null;
-
   const [date, setDate] = useState<DateTime>(
     inputDate && inputDate > today ? inputDate : today
   );
@@ -172,12 +178,12 @@ export const Route = ({
     setTerminals([terminal, mate]);
 
     terminalSlug = getSlug(terminal.id);
-    localStorage.terminalSlug = terminalSlug;
+    saveTerminal(terminalSlug);
     if (mate) {
       mateSlug = getSlug(mate.id);
-      localStorage.mateSlug = mateSlug;
+      saveMate(mateSlug);
     } else {
-      delete localStorage.mateSlug;
+      saveMate(undefined);
     }
 
     const path = getPath({ terminal, mate: mate ?? undefined });

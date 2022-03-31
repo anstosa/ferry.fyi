@@ -1,10 +1,12 @@
 import { AnimatePresence } from "framer-motion";
 import { getSlug, useTerminals } from "~/lib/terminals";
 import { getTerminalSorter } from "../lib/terminals";
-import { isNull } from "shared/lib/identity";
+import { isNull, isUndefined } from "shared/lib/identity";
 import { Link } from "react-router-dom";
 import { TerminalDropdown } from "./TerminalDropdown";
 import { Toast } from "~/components/Toast";
+import { useGeo } from "~/lib/geo";
+import { useLocalStorage } from "~/lib/browser";
 import { without } from "shared/lib/arrays";
 import ArrowRightIcon from "~/static/images/icons/solid/arrow-right.svg";
 import clsx from "clsx";
@@ -22,11 +24,16 @@ interface Props {
 
 export const RouteSelector = (props: Props): ReactElement => {
   const { mate, terminal, setRoute } = props;
+  const [, updateGeo] = useGeo();
   const [isTerminalOpen, setTerminalOpen] = useState<boolean>(false);
   const [isMateOpen, setMateOpen] = useState<boolean>(false);
   const [isSwapHovering, setSwapHovering] = useState<boolean>(false);
   const [closestDismissed, setClosestDismissed] = useState<boolean>(false);
-  const { terminals, closestTerminal } = useTerminals(true);
+  const { terminals, closestTerminal } = useTerminals();
+  const [noLocation, saveNoLocation] = useLocalStorage<boolean | undefined>(
+    "noLocation",
+    undefined
+  );
 
   useEffect(() => {
     if (closestTerminal?.id === terminal.id) {
@@ -136,6 +143,37 @@ export const RouteSelector = (props: Props): ReactElement => {
               </div>
             </Toast>
           )}
+        {isUndefined(noLocation) && (
+          <Toast info>
+            <span className="font-bold block">Enable location features?</span>
+            This will sort terminals by proximity and warn you when you're not
+            looking at the closest terminal
+            <div className="button-group mt-5">
+              <button
+                className={clsx(
+                  "button button-group-left",
+                  "truncate",
+                  "bg-blue-dark border-transparent text-white",
+                  "hover:bg-blue-darkest"
+                )}
+                onClick={() => {
+                  saveNoLocation(false);
+                  updateGeo(false);
+                }}
+              >
+                <LocationIcon className="button-icon" />
+                <span className="button-label">Sure!</span>
+              </button>
+
+              <button
+                className="button button-group-right truncate"
+                onClick={() => saveNoLocation(true)}
+              >
+                No thanks
+              </button>
+            </div>
+          </Toast>
+        )}
       </AnimatePresence>
     </>
   );

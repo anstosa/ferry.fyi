@@ -74,11 +74,8 @@ export const getTerminalSorter =
 
 const terminalsAtom = atom<Terminal[] | null>(null);
 
-export const useTerminals = (withGeo?: boolean): TerminalState => {
+export const useTerminals = (): TerminalState => {
   let location: Point | null = null;
-  if (withGeo) {
-    location = useGeo();
-  }
 
   const [terminals, setTerminals] = useAtom(terminalsAtom);
   const [closestTerminal, setClosestTerminal] =
@@ -121,6 +118,8 @@ export const useTerminals = (withGeo?: boolean): TerminalState => {
       ...(terminals ?? []).sort(getTerminalSorter(closestTerminal)),
     ]);
   }, [closestTerminal]);
+
+  [location] = useGeo();
 
   return { terminals: terminals ?? [], closestTerminal };
 };
