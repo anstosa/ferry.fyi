@@ -1,7 +1,7 @@
 import { Geolocation } from "@capacitor/geolocation";
 import { useEffect, useState } from "react";
 
-interface Point {
+export interface Point {
   latitude: number;
   longitude: number;
 }
@@ -47,4 +47,13 @@ export const useGeo = (): Point | null => {
   }, []);
 
   return location;
+};
+
+export const hasGeoPermissions = async (): Promise<boolean | undefined> => {
+  if (navigator.permissions) {
+    const { state } = await navigator.permissions.query({
+      name: "geolocation",
+    });
+    return state === "granted";
+  }
 };

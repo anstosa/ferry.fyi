@@ -3,8 +3,8 @@ import { getSlug, useTerminals } from "~/lib/terminals";
 import { getTerminalSorter } from "../lib/terminals";
 import { isNull } from "shared/lib/identity";
 import { Link } from "react-router-dom";
-import { Notification } from "~/components/Notification";
 import { TerminalDropdown } from "./TerminalDropdown";
+import { Toast } from "~/components/Toast";
 import { without } from "shared/lib/arrays";
 import ArrowRightIcon from "~/static/images/icons/solid/arrow-right.svg";
 import clsx from "clsx";
@@ -26,7 +26,7 @@ export const RouteSelector = (props: Props): ReactElement => {
   const [isMateOpen, setMateOpen] = useState<boolean>(false);
   const [isSwapHovering, setSwapHovering] = useState<boolean>(false);
   const [closestDismissed, setClosestDismissed] = useState<boolean>(false);
-  const { terminals, closestTerminal } = useTerminals();
+  const { terminals, closestTerminal } = useTerminals(true);
 
   useEffect(() => {
     if (closestTerminal?.id === terminal.id) {
@@ -109,7 +109,7 @@ export const RouteSelector = (props: Props): ReactElement => {
         {!isNull(closestTerminal) &&
           closestTerminal.id !== terminal.id &&
           !closestDismissed && (
-            <Notification info>
+            <Toast info>
               Looks like your closest terminal is {closestTerminal.name}.
               <div className="button-group mt-5">
                 <Link
@@ -134,7 +134,7 @@ export const RouteSelector = (props: Props): ReactElement => {
                   Stay on {terminal.name}
                 </button>
               </div>
-            </Notification>
+            </Toast>
           )}
       </AnimatePresence>
     </>

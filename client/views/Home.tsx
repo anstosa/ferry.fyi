@@ -24,7 +24,7 @@ const LI_CLASSES = clsx(
 
 export const Terminal = ({ terminal }: TerminalProps): ReactElement => {
   const { name, id } = terminal;
-  const { closestTerminal } = useTerminals();
+  const { closestTerminal } = useTerminals(true);
 
   return (
     <li>
@@ -46,7 +46,7 @@ export const Terminal = ({ terminal }: TerminalProps): ReactElement => {
 };
 
 export const Home = (): ReactElement => {
-  const { terminals } = useTerminals();
+  const { terminals } = useTerminals(true);
   if (location.host === "howmanyboats.today") {
     return <Today />;
   }

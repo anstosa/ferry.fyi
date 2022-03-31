@@ -8,12 +8,12 @@ import { colors } from "~/lib/theme";
 import { Feedback } from "./views/Feedback";
 import { Home } from "./views/Home";
 import { App as Native } from "@capacitor/app";
-import { Notification } from "./components/Notification";
 import { Route } from "./views/Route";
 import { Settings } from "luxon";
 import { Splash } from "./components/Splash";
 import { StatusBar } from "@capacitor/status-bar";
 import { Tickets } from "./views/Tickets";
+import { Toast } from "./components/Toast";
 import { Today } from "~/views/Today";
 import { useAuth0 } from "@auth0/auth0-react";
 import { useDevice } from "./lib/device";
@@ -130,24 +130,24 @@ export const App = (): ReactElement => {
         {element}
         <AnimatePresence>
           {!isOnline && !offlineDismissed && (
-            <Notification
+            <Toast
               warning
               onClose={() => setOfflineDismissed(true)}
               Icon={OfflineIcon}
             >
               Your device is offline! You can still view the schedule, but
               things may not be up to date.
-            </Notification>
+            </Toast>
           )}
           {isWsfOffline && !wsfDismissed && (
-            <Notification
+            <Toast
               warning
               onClose={() => setWsfDismissed(true)}
               Icon={DumpsterFireIcon}
             >
               WSF web services are offline! You can still use the app but things
               may not be up to date.
-            </Notification>
+            </Toast>
           )}
         </AnimatePresence>
       </>

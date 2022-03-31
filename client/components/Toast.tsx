@@ -22,14 +22,14 @@ const errorsAtom = atom<string[]>([]);
 const infosAtom = atom<string[]>([]);
 const warningsAtom = atom<string[]>([]);
 
-type notificationHook = [
+type toastHook = [
   { topId: string | null },
   {
-    addNotification: (level: "error" | "info" | "warning") => string;
-    removeNotification: (id: string) => void;
+    addToast: (level: "error" | "info" | "warning") => string;
+    removeToast: (id: string) => void;
   }
 ];
-const useNotifications = (): notificationHook => {
+const useToast = (): toastHook => {
   const [errors, setErrors] = useAtom(errorsAtom);
   const [infos, setInfos] = useAtom(infosAtom);
   const [warnings, setWarnings] = useAtom(warningsAtom);
@@ -38,7 +38,7 @@ const useNotifications = (): notificationHook => {
       topId: errors[0] ?? warnings[0] ?? infos[0] ?? null,
     },
     {
-      addNotification: (level: "error" | "info" | "warning"): string => {
+      addToast: (level: "error" | "info" | "warning"): string => {
         const id = Math.random().toString();
         if (level === "error") {
           setErrors((errors) => [...errors, id]);
@@ -49,7 +49,7 @@ const useNotifications = (): notificationHook => {
         }
         return id;
       },
-      removeNotification: (id: string): void => {
+      removeToast: (id: string): void => {
         setErrors((errors) => without(errors, id));
         setWarnings((warnings) => without(warnings, id));
         setInfos((infos) => without(infos, id));
@@ -58,7 +58,7 @@ const useNotifications = (): notificationHook => {
   ];
 };
 
-export const Notification: FunctionComponent<Props> = ({
+export const Toast: FunctionComponent<Props> = ({
   children,
   onClose,
   info,
@@ -68,15 +68,14 @@ export const Notification: FunctionComponent<Props> = ({
 }) => {
   // eslint-disable-next-line no-nested-ternary
   const level = info ? "info" : warning ? "warning" : "error";
-  const [{ topId }, { addNotification, removeNotification }] =
-    useNotifications();
+  const [{ topId }, { addToast, removeToast }] = useToast();
   const [id, setId] = useState<string | null>(null);
 
   useEffect(() => {
-    const id = addNotification(level);
+    const id = addToast(level);
     setId(id);
 
-    return () => removeNotification(id);
+    return () => removeToast(id);
   }, []);
 
   if (!id || topId !== id) {

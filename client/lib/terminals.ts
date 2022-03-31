@@ -1,8 +1,9 @@
 import { atom, useAtom } from "jotai";
 import { entries, findKey, keys, values } from "shared/lib/objects";
 import { get } from "~/lib/api";
-import { getDistance, useGeo } from "./geo";
+import { getDistance, Point, useGeo } from "./geo";
 import { isEmpty, sortBy } from "shared/lib/arrays";
+import { isNull } from "shared/lib/identity";
 import { useEffect, useState } from "react";
 import TERMINAL_DATA_OVERRIDES from "shared/data/terminals.json";
 import type { Terminal } from "shared/contracts/terminals";
@@ -73,8 +74,12 @@ export const getTerminalSorter =
 
 const terminalsAtom = atom<Terminal[] | null>(null);
 
-export const useTerminals = (): TerminalState => {
-  const location = useGeo();
+export const useTerminals = (withGeo?: boolean): TerminalState => {
+  let location: Point | null = null;
+  if (withGeo) {
+    location = useGeo();
+  }
+
   const [terminals, setTerminals] = useAtom(terminalsAtom);
   const [closestTerminal, setClosestTerminal] =
     useState<TerminalState["closestTerminal"]>(null);
@@ -90,7 +95,7 @@ export const useTerminals = (): TerminalState => {
   }, []);
 
   useEffect(() => {
-    if (!location || !terminals || isEmpty(terminals)) {
+    if (isNull(location) || !terminals || isEmpty(terminals)) {
       return;
     }
     let closestTerminal: Terminal | undefined;
@@ -100,7 +105,7 @@ export const useTerminals = (): TerminalState => {
       if (!latitude || !longitude) {
         return;
       }
-      const distance = getDistance(location, { latitude, longitude });
+      const distance = getDistance(location as Point, { latitude, longitude });
       if (distance < closestDistance) {
         closestDistance = distance;
         closestTerminal = terminal;

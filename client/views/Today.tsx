@@ -90,7 +90,6 @@ export const Today = (): ReactElement => {
   if (nextSchedule && now.hour >= 22) {
     nextCount = getBoatCount(nextSchedule);
   }
-  console.log(todayCount, nextCount);
 
   return (
     <>

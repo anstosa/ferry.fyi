@@ -3,8 +3,8 @@ import { DateTime } from "luxon";
 import { findWhere, isEmpty } from "shared/lib/arrays";
 import { InlineLoader } from "~/components/InlineLoader";
 import { isWSFToday } from "../../lib/date";
-import { Notification } from "~/components/Notification";
 import { SlotInfo } from "./SlotInfo";
+import { Toast } from "~/components/Toast";
 import { useTerminals } from "../../lib/terminals";
 import { values } from "shared/lib/objects";
 import clsx from "clsx";
@@ -22,7 +22,7 @@ interface Props {
 }
 
 export const Schedule = ({ schedule, time }: Props): ReactElement => {
-  const { terminals } = useTerminals();
+  const { terminals } = useTerminals(true);
   const [currentElement, setCurrentElement] = useState<HTMLDivElement | null>(
     null
   );
@@ -106,13 +106,10 @@ export const Schedule = ({ schedule, time }: Props): ReactElement => {
           {!hasCapacityInfo &&
             isWSFToday(DateTime.fromISO(schedule.date)) &&
             !capacityWarningDismissed && (
-              <Notification
-                warning
-                onClose={() => setCapacityWarningDismissed(true)}
-              >
+              <Toast warning onClose={() => setCapacityWarningDismissed(true)}>
                 WSF capacity info currently unavailable. Pay attention to
                 cameras and forecasts to estimate load!
-              </Notification>
+              </Toast>
             )}
         </AnimatePresence>
       </>
