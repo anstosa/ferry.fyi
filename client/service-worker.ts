@@ -68,12 +68,13 @@ self.addEventListener("notificationclick", (event: NotificationEvent) => {
         type: "window",
       })
       .then((clientList) => {
+        const { url } = event.notification.data;
         for (let index = 0; index < clientList.length; index++) {
           const client = clientList[index];
-          client.navigate(event.notification.data.url);
+          client.navigate(url);
           return client.focus();
         }
-        return self.clients.openWindow("/");
+        return self.clients.openWindow(url);
       })
   );
 });

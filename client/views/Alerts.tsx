@@ -180,8 +180,8 @@ export const Alerts = ({ terminal, mate, time }: Props): ReactElement => {
   }
 
   const renderAlert = (bulletin: Bulletin): ReactNode => {
-    const { title, descriptionHTML } = bulletin;
-    const filteredDescription = descriptionHTML
+    const { title, bodyHTML } = bulletin;
+    const filteredDescription = bodyHTML
       .replace(/<script>.*<\/script>/, "")
       .replace(/\s*style=".*"\s*/g, "")
       .replace(/<p>/g, '<p class="my-2">')

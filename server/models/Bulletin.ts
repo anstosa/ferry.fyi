@@ -7,15 +7,15 @@ import { sendPush } from "~/lib/push";
 
 const startupTime = DateTime.now().toUnixInteger();
 
-type BulletinInput = Omit<BulletinClass, "descriptionText">;
+type BulletinInput = Omit<BulletinClass, "bodyText"> & { bodyText?: string };
 
 export class Bulletin extends CacheableModel implements BulletinClass {
   static cacheKey = "bulletins";
   static index = "id";
 
   date!: number;
-  descriptionHTML!: string;
-  descriptionText!: string;
+  bodyHTML!: string;
+  bodyText!: string;
   id!: string;
   terminalId!: string;
   title!: string;
@@ -23,8 +23,9 @@ export class Bulletin extends CacheableModel implements BulletinClass {
 
   constructor(data: BulletinInput) {
     const id = Bulletin.generateIndex(data);
-    const descriptionText = convert(data.descriptionHTML, { wordwrap: false });
-    super({ ...data, id, descriptionText });
+    const bodyText =
+      data.bodyText || convert(data.bodyHTML, { wordwrap: false });
+    super({ ...data, id, bodyText });
     this.sendPushes();
   }
 
@@ -51,7 +52,7 @@ export class Bulletin extends CacheableModel implements BulletinClass {
         token,
         data: {
           title: this.title,
-          body: this.descriptionText,
+          body: this.bodyText,
           date: String(this.date),
           ...(this.url ? { url: this.url } : {}),
           terminalId: this.terminalId,
@@ -66,8 +67,8 @@ export class Bulletin extends CacheableModel implements BulletinClass {
   serialize(): BulletinClass {
     return CacheableModel.serialize({
       date: this.date,
-      descriptionHTML: this.descriptionHTML,
-      descriptionText: this.descriptionText,
+      bodyHTML: this.bodyHTML,
+      bodyText: this.bodyText,
       terminalId: this.terminalId,
       title: this.title,
       ...(this.url && { url: this.url }),

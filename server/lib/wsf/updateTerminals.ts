@@ -68,7 +68,7 @@ export const updateTerminals = async (): Promise<void> => {
             const data = {
               title: BulletinTitle,
               terminalId: String(TerminalData.TerminalID),
-              descriptionHTML: BulletinText,
+              bodyHTML: BulletinText,
               date: wsfDateToTimestamp(BulletinLastUpdated),
               url: `${process.env.BASE_URL}/${String(
                 TerminalData.TerminalID

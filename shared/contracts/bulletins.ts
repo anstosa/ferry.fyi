@@ -1,7 +1,7 @@
 export interface Bulletin {
   date: number;
-  descriptionHTML: string;
-  descriptionText: string;
+  bodyHTML: string;
+  bodyText: string;
   terminalId: string;
   title: string;
   url?: string;

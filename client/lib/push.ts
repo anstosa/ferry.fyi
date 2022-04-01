@@ -72,7 +72,9 @@ export const usePush = (requestPermission: boolean): InitializePush => {
               icon: "/static/images/icon.png",
             });
             notification.addEventListener("click", () => {
-              navigate(payload.data.url);
+              navigate(
+                payload.data.url.replace(process.env.BASE_URL as string, "")
+              );
             });
           } else {
             console.warn("Unhandled foreground message: ", payload);
