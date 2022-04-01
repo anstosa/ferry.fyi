@@ -5,6 +5,7 @@ import { Auth0Provider } from "@auth0/auth0-react";
 import { BrowserRouter } from "react-router-dom";
 import { BrowserTracing } from "@sentry/tracing";
 import { isUndefined } from "shared/lib/identity";
+import { UserProvider } from "~/lib/user";
 import React from "react";
 import ReactDOM from "react-dom";
 
@@ -62,7 +63,9 @@ whenReady(() => {
           scope="read:current_user"
           cacheLocation="localstorage"
         >
-          <App />
+          <UserProvider>
+            <App />
+          </UserProvider>
         </Auth0Provider>
       </BrowserRouter>,
       root

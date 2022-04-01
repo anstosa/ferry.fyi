@@ -16,6 +16,7 @@ interface Props {
   warning?: boolean;
   error?: boolean;
   Icon?: FunctionComponent<SVGAttributes<SVGElement>>;
+  top?: boolean;
 }
 
 const errorsAtom = atom<string[]>([]);
@@ -65,6 +66,7 @@ export const Toast: FunctionComponent<Props> = ({
   Icon,
   warning,
   error,
+  top,
 }) => {
   // eslint-disable-next-line no-nested-ternary
   const level = info ? "info" : warning ? "warning" : "error";
@@ -86,8 +88,9 @@ export const Toast: FunctionComponent<Props> = ({
     <motion.div
       className={clsx(
         "alert",
-        "fixed bottom-0 inset-x-0 z-20",
-        "sm:left-auto sm:right-10 sm:mb-24 sm:rounded sm:px-10 sm:w-auto sm:max-w-lg",
+        "fixed inset-x-0 z-20",
+        top ? "top-0 sm:mt-24" : "bottom-0 mb-24",
+        "sm:left-auto sm:right-10 sm:rounded sm:px-10 sm:w-auto sm:max-w-lg",
         {
           "alert--info": info,
           "alert--warning": warning,
@@ -95,9 +98,9 @@ export const Toast: FunctionComponent<Props> = ({
           "flex items-center": Boolean(Icon),
         }
       )}
-      initial={{ bottom: "-100%", opacity: 0 }}
-      animate={{ bottom: 0, opacity: 1 }}
-      exit={{ bottom: "-100%", opacity: 0 }}
+      initial={{ [top ? "top" : "bottom"]: "-100%", opacity: 0 }}
+      animate={{ [top ? "top" : "bottom"]: 0, opacity: 1 }}
+      exit={{ [top ? "top" : "bottom"]: "-100%", opacity: 0 }}
       transition={{ type: "easeInOut" }}
     >
       {onClose && (

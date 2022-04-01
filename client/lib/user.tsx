@@ -1,7 +1,13 @@
 import { User as Auth0User } from "auth0";
 import { get, post } from "~/lib/api";
 import { useAuth0 } from "@auth0/auth0-react";
-import { useEffect, useState } from "react";
+import React, {
+  createContext,
+  FunctionComponent,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 
 interface AppMetadata {
   tickets?: string[];
@@ -25,7 +31,7 @@ type Response = [State, Actions];
 
 let userPromise: Promise<Record<string, unknown>>;
 
-export const useUser = (): Response => {
+const _useUser = (): Response => {
   const [user, setUser] = useState<User | null>(null);
   const {
     user: auth0User,
@@ -75,10 +81,23 @@ export const useUser = (): Response => {
 
   const actions: Actions = {
     updateUser: async (data) => {
-      setUser(await post("/user", data, accessToken));
+      setUser({ ...(await post("/user", data, accessToken)) });
     },
     refreshUser,
   };
 
   return [state, actions];
 };
+
+export const UserContext = createContext<Response>([
+  { isAuthenticated: false, user: null },
+  {
+    updateUser: async () => await Promise.resolve(),
+    refreshUser: async () => await Promise.resolve(),
+  },
+]);
+export const UserProvider: FunctionComponent = ({ children }) => {
+  const user = _useUser();
+  return <UserContext.Provider value={user}>{children}</UserContext.Provider>;
+};
+export const useUser = () => useContext(UserContext);

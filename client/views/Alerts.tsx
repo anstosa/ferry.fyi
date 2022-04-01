@@ -1,9 +1,12 @@
+import { AnimatePresence } from "framer-motion";
 import { Bulletin } from "shared/contracts/bulletins";
 import { capitalize } from "shared/lib/strings";
 import { DateTime } from "luxon";
 import { Header } from "./Header";
 import { InlineLoader } from "~/components/InlineLoader";
+import { isNull, isUndefined } from "shared/lib/identity";
 import { round } from "shared/lib/math";
+import { Toast } from "~/components/Toast";
 import { useAuth0 } from "@auth0/auth0-react";
 import { useLocation } from "react-router-dom";
 import { useUser } from "~/lib/user";
@@ -56,6 +59,88 @@ export const getWaitTime = ({ title }: Bulletin): string | null => {
   return null;
 };
 
+interface ButtonProps {
+  terminalId: string;
+  mateId?: string;
+  dark?: boolean;
+  showForMate?: (isSubscribed: boolean) => void;
+  onChange?: () => void;
+}
+
+const SubscribeButton = ({
+  terminalId,
+  mateId,
+  dark,
+  showForMate,
+  onChange,
+}: ButtonProps): ReactElement => {
+  const [isSubscribing, setSubscribing] = useState<boolean>(false);
+  const [{ subscribedTerminals, isAuthenticated }, { updateUser }] = useUser();
+  const { loginWithRedirect } = useAuth0();
+  const location = useLocation();
+  if (!subscribedTerminals) {
+    return (
+      <button className={clsx("button button-invert button-disabled")}>
+        Loading...
+      </button>
+    );
+  }
+  const isSubscribed = subscribedTerminals.includes(terminalId);
+  return (
+    <button
+      className={clsx("button", {
+        "button-invert": isSubscribed,
+        "button-outline": !isSubscribed,
+        "border-green-dark text-green-dark": dark && !isSubscribed,
+        "bg-green-dark text-white": dark && isSubscribed,
+      })}
+      onClick={async () => {
+        if (!isAuthenticated) {
+          loginWithRedirect({
+            appState: { redirectPath: location.pathname },
+            redirectUri: process.env.AUTH0_CLIENT_REDIRECT,
+          });
+          return;
+        } else if (isSubscribed) {
+          setSubscribing(true);
+          if (!isUndefined(mateId) && subscribedTerminals.includes(mateId)) {
+            showForMate?.(false);
+          }
+          await updateUser({
+            app_metadata: {
+              subscribedTerminals: without(subscribedTerminals, terminalId),
+            },
+          });
+        } else {
+          if (!isUndefined(mateId) && !subscribedTerminals.includes(mateId)) {
+            showForMate?.(true);
+          }
+          setSubscribing(true);
+          await updateUser({
+            app_metadata: {
+              subscribedTerminals: [...subscribedTerminals, terminalId],
+            },
+          });
+        }
+        setSubscribing(false);
+        onChange?.();
+      }}
+    >
+      <div className="button-icon">
+        {isSubscribed ? <SubscribedIcon /> : <UnsubscribedIcon />}
+      </div>
+      <span className="button-label">
+        {/* eslint-disable-next-line no-nested-ternary */}
+        {isSubscribing
+          ? "Loading..."
+          : isSubscribed
+          ? "Unsubscribe"
+          : "Subscribe"}
+      </span>
+    </button>
+  );
+};
+
 const getAlertTime = (
   bulletin: Bulletin,
   now: DateTime = DateTime.local()
@@ -81,21 +166,19 @@ export const getLastAlertTime = (terminal: Terminal): string => {
 
 interface Props {
   terminal: Terminal | null;
+  mate: Terminal | null;
   time: DateTime;
 }
 
-export const Alerts = ({ terminal, time }: Props): ReactElement => {
-  const [isSubscribing, setSubscribing] = useState<boolean>(false);
-  const [{ subscribedTerminals = [], isAuthenticated }, { updateUser }] =
-    useUser();
-  const { loginWithRedirect } = useAuth0();
-  const location = useLocation();
+export const Alerts = ({ terminal, mate, time }: Props): ReactElement => {
+  const [showMateSubscribePrompt, setMateSubscribePrompt] = useState<
+    boolean | null
+  >(null);
 
   if (!terminal) {
     return <InlineLoader>Loading cameras...</InlineLoader>;
   }
 
-  const isSubscribed = subscribedTerminals.includes(terminal.id);
   const renderAlert = (bulletin: Bulletin): ReactNode => {
     const { title, descriptionHTML } = bulletin;
     const filteredDescription = descriptionHTML
@@ -138,53 +221,35 @@ export const Alerts = ({ terminal, time }: Props): ReactElement => {
         ]}
       >
         <span className="text-center flex-1">{terminal.name} Alerts</span>
-        <button
-          className={clsx("button", {
-            "button-invert": isSubscribed,
-            "button-outline": !isSubscribed,
-          })}
-          onClick={async () => {
-            if (!isAuthenticated) {
-              loginWithRedirect({
-                appState: { redirectPath: location.pathname },
-                redirectUri: process.env.AUTH0_CLIENT_REDIRECT,
-              });
-              return;
-            } else if (isSubscribed) {
-              setSubscribing(true);
-              await updateUser({
-                app_metadata: {
-                  subscribedTerminals: without(
-                    subscribedTerminals,
-                    terminal.id
-                  ),
-                },
-              });
-            } else {
-              setSubscribing(true);
-              await updateUser({
-                app_metadata: {
-                  subscribedTerminals: [...subscribedTerminals, terminal.id],
-                },
-              });
-            }
-            setSubscribing(false);
-          }}
-        >
-          <div className="button-icon">
-            {isSubscribed ? <SubscribedIcon /> : <UnsubscribedIcon />}
-          </div>
-          <span className="button-label">
-            {/* eslint-disable-next-line no-nested-ternary */}
-            {isSubscribing
-              ? "Subscribing..."
-              : isSubscribed
-              ? "Unsubscribe"
-              : "Subscribe"}
-          </span>
-        </button>
+        <SubscribeButton
+          terminalId={terminal.id}
+          mateId={mate?.id}
+          showForMate={setMateSubscribePrompt}
+        />
       </Header>
       <main className="flex-grow overflow-y-scroll scrolling-touch text-white">
+        <AnimatePresence>
+          {!isNull(showMateSubscribePrompt) && mate && (
+            <Toast
+              info
+              top
+              onClose={() => {
+                setMateSubscribePrompt(null);
+              }}
+            >
+              <div className="flex flex-col gap-4 items-right">
+                Also{" "}
+                {showMateSubscribePrompt ? "subscribe to" : "unsubscribe from"}{" "}
+                {mate?.name}?
+                <SubscribeButton
+                  dark
+                  terminalId={mate.id}
+                  onChange={() => setMateSubscribePrompt(null)}
+                />
+              </div>
+            </Toast>
+          )}
+        </AnimatePresence>
         <ul className={clsx("px-8 py-4 relative")}>
           {terminal.bulletins.map(renderAlert)}
         </ul>

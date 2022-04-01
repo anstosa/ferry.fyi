@@ -258,7 +258,7 @@ export const Route = ({
   } else if (view === "cameras") {
     content = <Cameras terminal={terminal} />;
   } else if (view === "alerts") {
-    content = <Alerts terminal={terminal} time={time} />;
+    content = <Alerts terminal={terminal} mate={mate} time={time} />;
   } else if (view === "map") {
     content = <Map vessels={vessels} terminal={terminal} mate={mate} />;
   }
