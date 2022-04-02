@@ -133,15 +133,19 @@ export const Tickets = (): ReactElement => {
       setBrightness((await ScreenBrightness.getBrightness()).brightness);
       ScreenBrightness.setBrightness({ brightness: 1 });
     }
-    KeepAwake.keepAwake();
+    try {
+      await KeepAwake.keepAwake();
+    } catch (error) {}
   };
 
-  const closeOverlay = () => {
+  const closeOverlay = async () => {
     setExpanded(null);
     if (device?.isNativeMobile) {
       ScreenBrightness.setBrightness({ brightness });
     }
-    KeepAwake.allowSleep();
+    try {
+      await KeepAwake.allowSleep();
+    } catch (error) {}
   };
 
   const addCode = async (code: string) => {
