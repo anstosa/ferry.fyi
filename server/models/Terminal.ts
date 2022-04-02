@@ -1,7 +1,7 @@
 import { Bulletin } from "./Bulletin";
 import { CacheableModel } from "./CacheableModel";
 import { Camera } from "~/models/Camera";
-import { entries, isKeyOf, values } from "shared/lib/objects";
+import { isKeyOf, values } from "shared/lib/objects";
 import { isNull } from "shared/lib/identity";
 import { Route } from "~/models/Route";
 import {
