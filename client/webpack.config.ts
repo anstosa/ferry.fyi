@@ -16,10 +16,7 @@ import SentryPlugin from "@sentry/webpack-plugin";
 import StyleLintPlugin from "stylelint-webpack-plugin";
 import tailwindConfig from "../tailwind.config.js";
 import TsConfigPathsPlugin from "tsconfig-paths-webpack-plugin";
-import webpack, {
-  Configuration as BaseConfiguration,
-  DefinePlugin,
-} from "webpack";
+import webpack, { Configuration as BaseConfiguration } from "webpack";
 import WebpackShellPlugin from "webpack-shell-plugin-next";
 import WorkboxPlugin from "workbox-webpack-plugin";
 
@@ -81,6 +78,7 @@ const environmentPlugin = new webpack.EnvironmentPlugin({
   FIREBASE_VAPID_KEY: undefined,
   GOOGLE_ANALYTICS: null,
   GTM_CONTAINER_ID: null,
+  HEROKU_RELEASE_VERSION: "DEVELOPMENT",
   LOG_LEVEL: "INFO",
   MAPBOX_ACCESS_TOKEN: undefined,
   NODE_ENV: "development",
@@ -232,10 +230,6 @@ const config: Configuration = {
     new MiniCssExtractPlugin({
       filename: "[name].css",
       chunkFilename: "[id].css",
-    }),
-    new DefinePlugin({
-      "process.env.COMMITHASH":
-        process.env.HEROKU_RELEASE_VERSION || "DEVELOPMENT",
     }),
     environmentPlugin,
     new CopyPlugin({
