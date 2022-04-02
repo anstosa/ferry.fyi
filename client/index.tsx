@@ -28,7 +28,7 @@ if (process.env.SENTRY_DSN) {
     dsn: process.env.SENTRY_DSN,
     integrations: [new BrowserTracing()],
     tracesSampleRate: 1.0,
-    release: `ferry-fyi@${process.env.COMMITHASH}`,
+    release: `ferry-fyi@${process.env.HEROKU_RELEASE_VERSION}`,
   });
 }
 

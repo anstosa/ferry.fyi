@@ -32,7 +32,6 @@
     "express-sslify": "^1.2.0",
     "firebase": "^9.6.8",
     "firebase-admin": "^10.0.2",
-    "git-revision-webpack-plugin": "^5.0.0",
     "heroku-logger": "^0.3.3",
     "html-to-text": "^8.1.0",
     "jsdom": "^19.0.0",

@@ -1,7 +1,6 @@
 import { BundleAnalyzerPlugin } from "webpack-bundle-analyzer";
 import { Configuration as DevServerConfiguration } from "webpack-dev-server";
 import { ESBuildMinifyPlugin } from "esbuild-loader";
-import { GitRevisionPlugin } from "git-revision-webpack-plugin";
 import { TailwindConfig } from "tailwindcss/tailwind-config";
 import CopyPlugin from "copy-webpack-plugin";
 import CssMinimizerPlugin from "css-minimizer-webpack-plugin";
@@ -69,7 +68,6 @@ process.traceDeprecation = true;
 if (!process.env.BASE_URL) {
   throw new Error("Must set BASE_URL");
 }
-const gitRevisionPlugin = new GitRevisionPlugin();
 const environmentPlugin = new webpack.EnvironmentPlugin({
   AUTH0_CLIENT_AUDIENCE: undefined,
   AUTH0_CLIENT_ID: undefined,
@@ -154,7 +152,7 @@ const config: Configuration = {
             project: "ferry-fyi",
             org: "ferry-fyi",
             release: `ferry-fyi@${JSON.stringify(
-              gitRevisionPlugin.commithash()
+              process.env.HEROKU_RELEASE_VERSION || "DEVELOPMENT"
             )}`,
           }),
         ]
@@ -236,9 +234,9 @@ const config: Configuration = {
       chunkFilename: "[id].css",
     }),
     new DefinePlugin({
-      "process.env.VERSION": JSON.stringify(gitRevisionPlugin.version()),
-      "process.env.COMMITHASH": JSON.stringify(gitRevisionPlugin.commithash()),
-      "process.env.BRANCH": JSON.stringify(gitRevisionPlugin.branch()),
+      "process.env.COMMITHASH": JSON.stringify(
+        process.env.HEROKU_RELEASE_VERSION || "DEVELOPMENT"
+      ),
     }),
     environmentPlugin,
     new CopyPlugin({
