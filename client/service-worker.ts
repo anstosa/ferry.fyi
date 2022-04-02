@@ -50,7 +50,7 @@ onBackgroundMessage(messaging, (payload) => {
     console.log("Background notification: ", payload.data);
     return self.registration.showNotification(payload.data.title, {
       body: payload.data.body,
-      icon: "/static/images/icon.png",
+      icon: "https://ferry.fyi/assets/apple-touch-icon.png",
       data: {
         url: payload.data.url,
       },
