@@ -151,9 +151,9 @@ const config: Configuration = {
             ignore: ["node_modules", "webpack.config.ts"],
             project: "ferry-fyi",
             org: "ferry-fyi",
-            release: `ferry-fyi@${JSON.stringify(
+            release: `ferry-fyi@${
               process.env.HEROKU_RELEASE_VERSION || "DEVELOPMENT"
-            )}`,
+            }`,
           }),
         ]
       : []),
@@ -234,9 +234,8 @@ const config: Configuration = {
       chunkFilename: "[id].css",
     }),
     new DefinePlugin({
-      "process.env.COMMITHASH": JSON.stringify(
-        process.env.HEROKU_RELEASE_VERSION || "DEVELOPMENT"
-      ),
+      "process.env.COMMITHASH":
+        process.env.HEROKU_RELEASE_VERSION || "DEVELOPMENT",
     }),
     environmentPlugin,
     new CopyPlugin({
