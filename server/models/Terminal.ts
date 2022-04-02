@@ -1,7 +1,7 @@
 import { Bulletin } from "./Bulletin";
 import { CacheableModel } from "./CacheableModel";
 import { Camera } from "~/models/Camera";
-import { isKeyOf } from "shared/lib/objects";
+import { entries, isKeyOf, values } from "shared/lib/objects";
 import { isNull } from "shared/lib/identity";
 import { Route } from "~/models/Route";
 import {
@@ -46,11 +46,20 @@ export class Terminal extends CacheableModel implements TerminalClass {
     super.save();
   }
 
+  static getByAlias = (alias: string): Terminal | null => {
+    for (const terminal of values(this.getAll())) {
+      if (terminal.aliases.includes(alias.toLowerCase())) {
+        return terminal;
+      }
+    }
+    return null;
+  };
+
   serialize({ withoutMates }: Record<string, true> = {}): TerminalClass {
     return CacheableModel.serialize(
       {
         abbreviation: this.abbreviation,
-        bulletins: this.bulletins,
+        bulletins: this.bulletins.filter(({ ignoreAll }) => !ignoreAll),
         cameras: this.cameras,
         hasElevator: this.hasElevator,
         hasOverheadLoading: this.hasOverheadLoading,

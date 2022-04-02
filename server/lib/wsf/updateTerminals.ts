@@ -17,26 +17,6 @@ const API_VERBOSE = `${API_TERMINALS}/terminalverbose`;
 
 let lastFlushDate: number | null = null;
 
-const ALERT_FILTER = new RegExp(
-  `(${[
-    "boat",
-    "alternate",
-    "advised",
-    "cancelled",
-    "emergency",
-    "medical",
-    "police",
-    "tide",
-    "traffic",
-    "hour wait",
-    "hr wait",
-    "minute wait",
-    "min wait",
-    "without traffic",
-  ].join("|")})`,
-  "i"
-);
-
 export const updateTerminals = async (): Promise<void> => {
   const cacheFlushDate = wsfDateToTimestamp(
     await wsfRequest<string>(API_CACHE)
@@ -59,28 +39,26 @@ export const updateTerminals = async (): Promise<void> => {
     .map((TerminalData) => {
       const data = {
         abbreviation: TerminalData.TerminalAbbrev,
-        bulletins: TerminalData.Bulletins.map(
-          ({ BulletinTitle, BulletinText, BulletinLastUpdated }) => {
-            // don't process stupid bulletins
-            if (!ALERT_FILTER.test(BulletinTitle)) {
-              return;
+        bulletins: Bulletin.sort(
+          TerminalData.Bulletins.map(
+            ({ BulletinTitle, BulletinText, BulletinLastUpdated }) => {
+              const data = {
+                title: BulletinTitle,
+                terminalId: String(TerminalData.TerminalID),
+                bodyHTML: BulletinText,
+                date: wsfDateToTimestamp(BulletinLastUpdated),
+                url: `${process.env.BASE_URL}/${String(
+                  TerminalData.TerminalID
+                )}/alerts`,
+              };
+              const [bulletin] = Bulletin.getOrCreate(
+                Bulletin.generateIndex(data),
+                data
+              );
+              return bulletin;
             }
-            const data = {
-              title: BulletinTitle,
-              terminalId: String(TerminalData.TerminalID),
-              bodyHTML: BulletinText,
-              date: wsfDateToTimestamp(BulletinLastUpdated),
-              url: `${process.env.BASE_URL}/${String(
-                TerminalData.TerminalID
-              )}/alerts`,
-            };
-            const [bulletin] = Bulletin.getOrCreate(
-              Bulletin.generateIndex(data),
-              data
-            );
-            return bulletin;
-          }
-        ).filter(Boolean),
+          ).filter(Boolean)
+        ),
         cameras: sortBy(
           Camera.getByTerminalId(String(TerminalData.TerminalID)),
           "orderFromTerminal"

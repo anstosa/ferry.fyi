@@ -35,7 +35,6 @@ const trySend = async (): Promise<void> => {
         );
       }
       retryTime = Math.min(retryTime * 2, MAX_RERTY_TIME);
-      console.warn("Failed to send push: ", message, error);
     }
   }
 };

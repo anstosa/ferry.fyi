@@ -1,5 +1,5 @@
 import { AnimatePresence } from "framer-motion";
-import { Bulletin } from "shared/contracts/bulletins";
+import { Bulletin, Level } from "shared/contracts/bulletins";
 import { capitalize } from "shared/lib/strings";
 import { DateTime } from "luxon";
 import { Header } from "./Header";
@@ -180,7 +180,10 @@ export const Alerts = ({ terminal, mate, time }: Props): ReactElement => {
   }
 
   const renderAlert = (bulletin: Bulletin): ReactNode => {
-    const { title, bodyHTML } = bulletin;
+    const { bodyHTML, level, routePrefix, title } = bulletin;
+    if (level === Level.LOW) {
+      return null;
+    }
     const filteredDescription = bodyHTML
       .replace(/<script>.*<\/script>/, "")
       .replace(/\s*style=".*"\s*/g, "")
@@ -190,6 +193,7 @@ export const Alerts = ({ terminal, mate, time }: Props): ReactElement => {
       <li className="flex flex-col pb-8 relative" key={title}>
         <span className="text text-lighten-high text-bold mb-1">
           {getAlertTime(bulletin, time)}
+          {routePrefix === "All" ? "" : ` for ${routePrefix}`}
         </span>
         <span className="font-medium text-lg mb-2">{title}</span>
         <div
