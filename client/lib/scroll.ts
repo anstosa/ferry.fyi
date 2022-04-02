@@ -12,6 +12,9 @@ export const useScrollPosition = (
   const [position, setPosition] = useState<ScrollPosition>({ x: 0, y: 0 });
 
   useEffect(() => {
+    if (!element.current) {
+      return;
+    }
     const updatePosition = debounce(
       () => {
         setPosition({
@@ -26,7 +29,7 @@ export const useScrollPosition = (
     return () => {
       element.current.removeEventListener("scroll", updatePosition);
     };
-  }, [element]);
+  }, [element.current]);
 
   return position;
 };
