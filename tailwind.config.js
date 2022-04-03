@@ -87,6 +87,9 @@ module.exports = {
       fontSize: {
         "2xs": "0.65rem",
       },
+      screen: {
+        pwa: { raw: "(display-mode: standalone)" },
+      },
       spacing: {
         "2px": "2px",
         "1/3": "calc(100% / 3)",

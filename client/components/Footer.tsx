@@ -19,14 +19,16 @@ const WrapFooter: FunctionComponent = ({ children }) => (
       "w-full shadow-up-lg h-16",
       "flex justify-center",
       "animate",
-      "pr-safe-right pl-safe-left mb-safe-bottom"
+      "pr-safe-right pl-safe-left mb-safe-bottom",
+      "pwa:mb-0"
     )}
   >
     <div
       className={clsx(
         "w-full max-w-6xl",
         "flex justify-between",
-        "pt-safe-top pb-safe-bottom"
+        "pt-safe-top pb-safe-bottom",
+        "pwa:pt-0 pwa:pb-0"
       )}
     >
       {children}
