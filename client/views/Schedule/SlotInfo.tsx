@@ -1,6 +1,6 @@
 import { Capacity } from "./Capacity";
 import { DateTime } from "luxon";
-import { ErrorBoundary } from "~/components/ErrorBoundary";
+import { ErrorBoundary } from "@sentry/react";
 import { findWhere } from "shared/lib/arrays";
 import { isNull } from "shared/lib/identity";
 import { Route } from "shared/contracts/routes";

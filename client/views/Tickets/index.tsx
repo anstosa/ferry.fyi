@@ -10,6 +10,7 @@ import {
   BrowserMultiFormatOneDReader,
   IScannerControls,
 } from "@zxing/browser";
+import { ErrorBoundary } from "@sentry/react";
 import { get } from "~/lib/api";
 import { Helmet } from "react-helmet";
 import { KeepAwake } from "@capacitor-community/keep-awake";
@@ -283,11 +284,9 @@ export const Tickets = (): ReactElement => {
           </li>
         )}
         {sortBy(tickets, "id").map((ticket) => (
-          <Ticket
-            ticket={ticket}
-            onClick={() => openOverlay(ticket)}
-            key={ticket.id}
-          />
+          <ErrorBoundary key={ticket.id}>
+            <Ticket ticket={ticket} onClick={() => openOverlay(ticket)} />
+          </ErrorBoundary>
         ))}
       </ul>
 

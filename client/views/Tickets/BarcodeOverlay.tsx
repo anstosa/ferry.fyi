@@ -77,67 +77,66 @@ export const BarcodeOverlay = ({
         Ferry FYI
       </div>
       <div
-        className={clsx(
-          "gradient-green-to-bottom",
-          // "bg-gradient-to-b from-green-dark to-white",
-          "w-full max-w-lg h-10"
-        )}
+        className={clsx("gradient-green-to-bottom", "w-full max-w-lg h-10")}
       />
       <div
         className={clsx(
           "rounded-b px-10 py-4 bg-white text-black",
-          "w-full max-w-lg",
+          "w-full max-w-lg relative",
           "flex flex-col items-center"
         )}
       >
         {"description" in ticket && (
           <span className="font-mono font-bold">{ticket.description}</span>
         )}
-        <svg ref={barcodeRef} />
-      </div>
-      <div
-        className={clsx(
-          "flex items-center justify-center gap-10",
-          "p-10 mt-10",
-          "text-2xl text-white"
+        {ticket.type === "reservation" && (
+          <span className="font-mono font-bold">Reservation Account</span>
         )}
-      >
-        {canShare && (
+        <svg ref={barcodeRef} />
+        <div
+          className={clsx(
+            "flex items-center justify-center gap-10",
+            "absolute bottom-0 p-10 -mb-28",
+            "text-2xl text-white"
+          )}
+        >
+          {canShare && (
+            <button
+              onClick={async (event) => {
+                event.stopPropagation();
+                const sharedText =
+                  ticket.type === "ticket"
+                    ? ticket.description
+                    : "Reservation Account";
+                try {
+                  await Share.share({
+                    title: "Shared Ticket on Ferry FYI",
+                    text: sharedText,
+                    url: `${process.env.BASE_URL}/tickets?add=${ticket.id}`,
+                    dialogTitle: sharedText,
+                  });
+                } catch (error) {
+                  console.error("Failed to share", error);
+                }
+              }}
+            >
+              <ShareIcon />
+            </button>
+          )}
           <button
             onClick={async (event) => {
               event.stopPropagation();
-              const sharedText =
-                ticket.type === "ticket"
-                  ? ticket.description
-                  : "Reservation Account";
-              try {
-                await Share.share({
-                  title: "Shared Ticket on Ferry FYI",
-                  text: sharedText,
-                  url: `${process.env.BASE_URL}/tickets?add=${ticket.id}`,
-                  dialogTitle: sharedText,
-                });
-              } catch (error) {
-                console.error("Failed to share", error);
+              if (isDeleting === ticket.id) {
+                setDeleting(null);
+                await onDelete(ticket);
+              } else {
+                setDeleting(ticket.id);
               }
             }}
           >
-            <ShareIcon />
+            {isDeleting === ticket.id ? <RemoveConfirmIcon /> : <RemoveIcon />}
           </button>
-        )}
-        <button
-          onClick={async (event) => {
-            event.stopPropagation();
-            if (isDeleting === ticket.id) {
-              setDeleting(null);
-              await onDelete(ticket);
-            } else {
-              setDeleting(ticket.id);
-            }
-          }}
-        >
-          {isDeleting === ticket.id ? <RemoveConfirmIcon /> : <RemoveIcon />}
-        </button>
+        </div>
       </div>
     </div>
   );
