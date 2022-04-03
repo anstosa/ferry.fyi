@@ -34,11 +34,7 @@ export const Terminal = ({ terminal }: TerminalProps): ReactElement => {
         })}
         to={`/${getSlug(id)}`}
       >
-        {id === closestTerminal?.id ? (
-          <LocationIcon className="mr-3" />
-        ) : (
-          <div className="w-4 mr-3" />
-        )}
+        {id === closestTerminal?.id && <LocationIcon className="mr-3" />}
         {name}
       </Link>
     </li>
