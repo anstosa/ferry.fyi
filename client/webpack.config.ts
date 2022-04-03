@@ -147,9 +147,9 @@ const config: Configuration = {
             include: path.resolve(__dirname, "../dist/client"),
             ignoreFile: ".sentrycliignore",
             ignore: ["node_modules", "webpack.config.ts"],
-            project: "ferry-fyi",
+            project: "web",
             org: "ferry-fyi",
-            release: `ferry-fyi@${
+            release: `web@${
               process.env.HEROKU_RELEASE_VERSION || "DEVELOPMENT"
             }`,
           }),

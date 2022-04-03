@@ -70,11 +70,13 @@ export class Bulletin extends CacheableModel implements BulletinClass {
       }
       sendPush({
         token,
-        data: {
+        notification: {
           title: `${
             this.routePrefix === "All" ? "" : `[${this.routePrefix}] `
           }${this.title}`,
           body: this.bodyText,
+        },
+        data: {
           date: String(this.date),
           ...(this.url ? { url: this.url } : {}),
           terminalId: this.terminalId,

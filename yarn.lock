@@ -1896,6 +1896,11 @@
   resolved "https://registry.yarnpkg.com/@capacitor/ios/-/ios-3.4.0.tgz#ce51ac6bf98e10b1b8c030d8e48dfe81886b21f5"
   integrity sha512-S500W45rxLrcrrt+Vx4fJDhmt+07P6yaiE+l32ANV3SHcUvQMWOLXQ7JlKqwkec5er1xonmtor7PQhIt/5UKAA==
 
+"@capacitor/push-notifications@^1.0.9":
+  version "1.0.9"
+  resolved "https://registry.yarnpkg.com/@capacitor/push-notifications/-/push-notifications-1.0.9.tgz#8a8398cdbd17a06f1b3d003f60897bd6db7bd1fe"
+  integrity sha512-NaH+drTYjOGgFMHl/2Jn1/+2rlgomtwP2NfK20E0i7+QoRze1ArcSThJ4vSF0m7VkYBsH3MgbXkWfNSSPaYrtw==
+
 "@capacitor/share@^1.1.2":
   version "1.1.2"
   resolved "https://registry.yarnpkg.com/@capacitor/share/-/share-1.1.2.tgz#7e35c2c3bccc9955e852d3dd401afe7bd5a69b7e"

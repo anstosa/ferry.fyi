@@ -45,4 +45,12 @@
     <!-- Barcodes -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-sdk tools:overrideLibrary="com.google.zxing.client.android" />
+
+    <!-- Notifications -->
+    <meta-data android:name="com.google.firebase.messaging.default_notification_icon" android:resource="@drawable/ic_stat_ic_notification" />
+    <meta-data android:name="com.google.firebase.messaging.default_notification_color" android:resource="@color/green_dark" />
+
+    <!-- Sentry -->
+    <meta-data android:name="io.sentry.dsn" android:value="https://7d512f7034184baaa854e0e5a257ff06@o1164381.ingest.sentry.io/6307563" />
+    <meta-data android:name="io.sentry.traces.sample-rate" android:value="0.25" />
 </manifest>

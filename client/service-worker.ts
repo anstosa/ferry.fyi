@@ -17,6 +17,7 @@ import {
   onBackgroundMessage,
 } from "firebase/messaging/sw";
 import { initializeApp } from "firebase/app";
+import { isNotification, Notification } from "~/lib/push";
 import { registerRoute } from "workbox-routing";
 
 const app = initializeApp({
@@ -29,27 +30,11 @@ const app = initializeApp({
 const messaging = getMessaging(app); // the getMessaging return type is wrong...
 // messaging.useServiceWorker(self.registration);
 
-interface Notification extends MessagePayload {
-  data: {
-    title: string;
-    body: string;
-    url: string;
-  };
-}
-
-const isNotification = (payload: MessagePayload): payload is Notification =>
-  Boolean(
-    payload.data &&
-      "title" in payload.data &&
-      "body" in payload.data &&
-      "url" in payload.data
-  );
-
 onBackgroundMessage(messaging, (payload) => {
   if (isNotification(payload)) {
     console.log("Background notification: ", payload.data);
-    return self.registration.showNotification(payload.data.title, {
-      body: payload.data.body,
+    return self.registration.showNotification(payload.notification.title, {
+      body: payload.notification.body,
       icon: "https://ferry.fyi/assets/apple-touch-icon.png",
       data: {
         url: payload.data.url,
