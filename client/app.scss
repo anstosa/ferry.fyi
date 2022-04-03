@@ -1,3 +1,8 @@
+@use "sass:color";
+@use "sass:list";
+@use "sass:math";
+@use "sass:string";
+
 // Inject Tailwind CSSs base styles, including normalization.
 @tailwind base;
 
@@ -144,8 +149,43 @@ html {
   }
 }
 
+@mixin scrim-gradient($startColor: $color-black, $direction: "to bottom") {
+  $scrim-coordinates: (
+    0: 1,
+    19: 0.738,
+    34: 0.541,
+    47: 0.382,
+    56.5: 0.278,
+    65: 0.194,
+    73: 0.126,
+    80.2: 0.075,
+    86.1: 0.042,
+    91: 0.021,
+    95.2: 0.008,
+    98.2: 0.002,
+    100: 0
+  );
+  $hue: color.hue($startColor);
+  $saturation: color.saturation($startColor);
+  $lightness: color.lightness($startColor);
+  $stops: ();
+
+  @each $colorStop, $alphaValue in $scrim-coordinates {
+    $stop: hsla($hue, $saturation, $lightness, $alphaValue) math.percentage($colorStop / 100);
+    $stops: list.append($stops, $stop, comma);
+  }
+
+  background: linear-gradient(string.unquote($direction), $stops);
+}
+
 // Components
 @layer components {
+  .gradient-green-to-bottom {
+    // TODO: fix this hardcode
+    @include scrim-gradient(#016f52, "to bottom");
+    @apply bg-white;
+  }
+
   @import "components/alert";
   @import "components/button";
   @import "components/field";

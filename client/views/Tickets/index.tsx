@@ -104,7 +104,7 @@ export const Tickets = (): ReactElement => {
     setTicketNumber("");
     setScanning(false);
 
-    if (device?.platform !== "web") {
+    if (device && device?.platform !== "web") {
       document.body.classList.remove("hidden");
       BarcodeScanner.showBackground();
       BarcodeScanner.stopScan();
@@ -185,6 +185,9 @@ export const Tickets = (): ReactElement => {
   };
 
   const scan = async () => {
+    if (!device) {
+      return;
+    }
     setScanning(true);
     if (device.platform === "web") {
       if (!selectedCameraId) {

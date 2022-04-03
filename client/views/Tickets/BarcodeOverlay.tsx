@@ -2,6 +2,7 @@ import { ReservationAccount, TicketStorage } from "shared/contracts/tickets";
 import { Share } from "@capacitor/share";
 import clsx from "clsx";
 import JsBarcode from "jsbarcode";
+import logo from "~/static/images/icon_monochrome.png";
 import React, { ReactElement, useEffect, useRef, useState } from "react";
 import RemoveConfirmIcon from "~/static/images/icons/solid/exclamation-square.svg";
 import RemoveIcon from "~/static/images/icons/solid/trash.svg";
@@ -64,7 +65,34 @@ export const BarcodeOverlay = ({
       >
         <StopIcon className="text-xl" />
       </button>
-      <div className="p-10 bg-white text-black">
+      <div
+        className={clsx(
+          "bg-green-dark text-white",
+          "text-2xl px-10 py-4 font-bold",
+          "w-full max-w-lg rounded-t",
+          "flex items-center"
+        )}
+      >
+        <img src={logo} className="inline-block mr-4 w-10" />
+        Ferry FYI
+      </div>
+      <div
+        className={clsx(
+          "gradient-green-to-bottom",
+          // "bg-gradient-to-b from-green-dark to-white",
+          "w-full max-w-lg h-10"
+        )}
+      />
+      <div
+        className={clsx(
+          "rounded-b px-10 py-4 bg-white text-black",
+          "w-full max-w-lg",
+          "flex flex-col items-center"
+        )}
+      >
+        {"description" in ticket && (
+          <span className="font-mono font-bold">{ticket.description}</span>
+        )}
         <svg ref={barcodeRef} />
       </div>
       <div
