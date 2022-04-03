@@ -78,14 +78,16 @@ const SubscribeButton = ({
   const [{ subscribedTerminals, isAuthenticated }, { updateUser }] = useUser();
   const { loginWithRedirect } = useAuth0();
   const location = useLocation();
-  if (!subscribedTerminals) {
+  if (isAuthenticated && !subscribedTerminals) {
     return (
       <button className={clsx("button button-invert button-disabled")}>
         Loading...
       </button>
     );
   }
-  const isSubscribed = subscribedTerminals.includes(terminalId);
+  const isSubscribed = subscribedTerminals
+    ? subscribedTerminals.includes(terminalId)
+    : false;
   return (
     <button
       className={clsx("button", {
@@ -95,7 +97,7 @@ const SubscribeButton = ({
         "bg-green-dark text-white": dark && isSubscribed,
       })}
       onClick={async () => {
-        if (!isAuthenticated) {
+        if (!isAuthenticated || !subscribedTerminals) {
           loginWithRedirect({
             appState: { redirectPath: location.pathname },
             redirectUri: process.env.AUTH0_CLIENT_REDIRECT,
