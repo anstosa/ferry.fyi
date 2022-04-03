@@ -31,6 +31,7 @@ import { useQuery } from "~/lib/browser";
 import { useUser } from "~/lib/user";
 import clsx from "clsx";
 import ErrorIcon from "~/static/images/icons/solid/exclamation-triangle.svg";
+import ManualIcon from "~/static/images/icons/solid/keyboard.svg";
 import React, { ReactElement, useEffect, useRef, useState } from "react";
 import ScanIcon from "~/static/images/icons/solid/barcode-scan.svg";
 import StopIcon from "~/static/images/icons/solid/times.svg";
@@ -42,6 +43,12 @@ hints.set(DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.CODE_128]);
 const ticketsAtom = atomWithStorage<Array<TicketStorage | ReservationAccount>>(
   "tickets",
   []
+);
+
+const BUTTON_CLASSES = clsx(
+  "button button-invert",
+  "flex-grow flex-wrap",
+  "px-0"
 );
 
 export const Tickets = (): ReactElement => {
@@ -56,6 +63,7 @@ export const Tickets = (): ReactElement => {
   const [ticketNumber, setTicketNumber] = useState<string>("");
   const [isScanning, setScanning] = useState<boolean>(false);
   const [isAdding, setAdding] = useState<boolean>(false);
+  const [isManualEntry, setManualEntry] = useState<boolean>(false);
   const [expanded, setExpanded] = useState<
     TicketStorage | ReservationAccount | null
   >(null);
@@ -84,14 +92,18 @@ export const Tickets = (): ReactElement => {
     await Promise.all(
       tickets.map(async (ticket) => {
         if (ticket.type === "ticket") {
-          const data = await get<TicketType>(`/tickets/${ticket.id}`);
-          setTickets((tickets) => [
-            ...without(tickets, ticket),
-            {
-              type: "ticket",
-              ...data,
-            },
-          ]);
+          try {
+            const data = await get<TicketType>(`/tickets/${ticket.id}`);
+            setTickets((tickets) => [
+              ...without(tickets, ticket),
+              {
+                type: "ticket",
+                ...data,
+              },
+            ]);
+          } catch (error) {
+            setTickets((tickets) => without(tickets, ticket));
+          }
         }
       })
     );
@@ -233,40 +245,74 @@ export const Tickets = (): ReactElement => {
         <link rel="canonical" href={`${process.env.BASE_URL}/tickets`} />
       </Helmet>
 
-      <div className="flex flex-nowrap">
-        <button
-          onClick={() => {
-            scan();
-          }}
-          className="button button-invert flex-grow mt-4 w-1/2 mr-2 px-0"
-        >
-          <ScanIcon className="inline-block button-icon text-2xl" />
-          <span className="button-label">Scan Ticket</span>
-        </button>
-        <label className="button button-invert flex-grow mt-4 w-1/2 ml-2 px-0">
-          <UploadIcon className="inline-block button-icon text-2xl" />
-          <span className="button-label">Upload Ticket</span>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={async (event) => {
-              const file = event.target.files?.[0];
-              if (!file) {
-                return;
-              }
-              reader.hints.set(DecodeHintType.TRY_HARDER, true);
-              const result = await reader.decodeFromImageUrl(
-                URL.createObjectURL(file)
-              );
-              if (result) {
-                addCode(result.getText());
-              } else {
-                console.error("Unable to find barcode");
-              }
+      <div className="flex flex-col sm:flex-row gap-2 pt-4">
+        {isManualEntry ? (
+          <form
+            className="flex items-end w-full gap-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              addCode(ticketNumber);
+              stopScanning();
             }}
-            className="hidden"
-          />
-        </label>
+          >
+            <input
+              className="field flex-grow my-0"
+              type="text"
+              value={ticketNumber}
+              onChange={(event) => setTicketNumber(event.target.value)}
+              placeholder="Ticket number"
+            />
+            <input
+              className="button button-invert"
+              type="submit"
+              value="Add Ticket"
+            />
+            <button
+              className="button border-white text-white hover:text-green-dark hover:bg-white"
+              onClick={() => setManualEntry(false)}
+            >
+              Cancel
+            </button>
+          </form>
+        ) : (
+          <>
+            <button onClick={() => scan()} className={BUTTON_CLASSES}>
+              <ScanIcon className="inline-block button-icon text-2xl" />
+              <span className="button-label">Scan Ticket</span>
+            </button>
+            <label className={BUTTON_CLASSES}>
+              <UploadIcon className="inline-block button-icon text-2xl" />
+              <span className="button-label">Upload Ticket</span>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={async (event) => {
+                  const file = event.target.files?.[0];
+                  if (!file) {
+                    return;
+                  }
+                  reader.hints.set(DecodeHintType.TRY_HARDER, true);
+                  const result = await reader.decodeFromImageUrl(
+                    URL.createObjectURL(file)
+                  );
+                  if (result) {
+                    addCode(result.getText());
+                  } else {
+                    console.error("Unable to find barcode");
+                  }
+                }}
+                className="hidden"
+              />
+            </label>
+            <button
+              onClick={() => setManualEntry(true)}
+              className={BUTTON_CLASSES}
+            >
+              <ManualIcon className="inline-block button-icon text-2xl" />
+              <span className="button-label">Manual Entry</span>
+            </button>
+          </>
+        )}
       </div>
 
       <ul className="mt-4">
@@ -329,27 +375,6 @@ export const Tickets = (): ReactElement => {
           >
             <StopIcon />
           </button>
-          <form
-            className="fixed z-20 bottom-10 right-10 left-10 flex items-center"
-            onSubmit={(event) => {
-              event.preventDefault();
-              addCode(ticketNumber);
-              stopScanning();
-            }}
-          >
-            <input
-              className="field"
-              type="text"
-              value={ticketNumber}
-              onChange={(event) => setTicketNumber(event.target.value)}
-              placeholder="or manually enter ticket number"
-            />
-            <input
-              className="button button-primary ml-4"
-              type="submit"
-              value="Add Ticket"
-            />
-          </form>
         </>
       )}
     </Page>
