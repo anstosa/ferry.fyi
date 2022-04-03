@@ -18,7 +18,7 @@ export const useWSF = (): WSFStatus => {
 const inProgress: Record<string, Promise<any>> = {};
 
 const processResponse = ({ data }: HttpResponse): any => {
-  if (!isEqual(data.wsfStatus, wsfStatus)) {
+  if (data.wsfStatus && !isEqual(data.wsfStatus, wsfStatus)) {
     ({ wsfStatus } = data);
   }
   return data.body;
