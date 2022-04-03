@@ -141,7 +141,7 @@ const SubscribeButton = ({
   );
 };
 
-const getAlertTime = (
+const getBulletinTime = (
   bulletin: Bulletin,
   now: DateTime = DateTime.local()
 ): string => {
@@ -159,9 +159,9 @@ const getAlertTime = (
   return result;
 };
 
-export const getLastAlertTime = (terminal: Terminal): string => {
+export const getLastBulletinTime = (terminal: Terminal): string => {
   const bulletin = terminal.bulletins[0];
-  return getAlertTime(bulletin);
+  return getBulletinTime(bulletin);
 };
 
 interface Props {
@@ -170,7 +170,7 @@ interface Props {
   time: DateTime;
 }
 
-export const Alerts = ({ terminal, mate, time }: Props): ReactElement => {
+export const Bulletins = ({ terminal, mate, time }: Props): ReactElement => {
   const [showMateSubscribePrompt, setMateSubscribePrompt] = useState<
     boolean | null
   >(null);
@@ -179,7 +179,7 @@ export const Alerts = ({ terminal, mate, time }: Props): ReactElement => {
     return <InlineLoader>Loading cameras...</InlineLoader>;
   }
 
-  const renderAlert = (bulletin: Bulletin): ReactNode => {
+  const renderBulletin = (bulletin: Bulletin): ReactNode => {
     const { bodyHTML, level, routePrefix, title } = bulletin;
     if (level === Level.LOW) {
       return null;
@@ -192,7 +192,7 @@ export const Alerts = ({ terminal, mate, time }: Props): ReactElement => {
     return (
       <li className="flex flex-col pb-8 relative" key={title}>
         <span className="text text-lighten-high text-bold mb-1">
-          {getAlertTime(bulletin, time)}
+          {getBulletinTime(bulletin, time)}
           {routePrefix === "All" ? "" : ` for ${routePrefix}`}
         </span>
         <span className="font-medium text-lg mb-2">{title}</span>
@@ -255,7 +255,7 @@ export const Alerts = ({ terminal, mate, time }: Props): ReactElement => {
           )}
         </AnimatePresence>
         <ul className={clsx("px-8 py-4 relative")}>
-          {terminal.bulletins.map(renderAlert)}
+          {terminal.bulletins.map(renderBulletin)}
         </ul>
       </main>
     </>

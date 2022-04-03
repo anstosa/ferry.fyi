@@ -1,4 +1,4 @@
-import { Alerts } from "./Alerts";
+import { Bulletins } from "./Bulletins";
 import { Cameras } from "./Cameras";
 import { DateButton } from "~/components/DateButton";
 import { DateTime } from "luxon";
@@ -258,7 +258,7 @@ export const Route = ({
   } else if (view === "cameras") {
     content = <Cameras terminal={terminal} />;
   } else if (view === "alerts") {
-    content = <Alerts terminal={terminal} mate={mate} time={time} />;
+    content = <Bulletins terminal={terminal} mate={mate} time={time} />;
   } else if (view === "map") {
     content = <Map vessels={vessels} terminal={terminal} mate={mate} />;
   }

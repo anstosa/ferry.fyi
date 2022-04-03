@@ -1,6 +1,6 @@
 import { colors } from "~/lib/theme";
 import { DateTime } from "luxon";
-import { getLastAlertTime, getWaitTime } from "../views/Alerts";
+import { getLastBulletinTime, getWaitTime } from "../views/Bulletins";
 import { GetPath } from "~/views/Route";
 import { NavLink } from "react-router-dom";
 import clsx from "clsx";
@@ -57,7 +57,7 @@ interface Props {
 }
 
 export const Footer = ({ terminal, getPath }: Props): ReactElement => {
-  const renderAlerts = (): ReactElement | null => {
+  const renderBulletins = (): ReactElement | null => {
     const { bulletins } = terminal;
 
     if (!bulletins.length) {
@@ -72,7 +72,7 @@ export const Footer = ({ terminal, getPath }: Props): ReactElement => {
       DateTime.fromSeconds(latest.date).diffNow().as("hours")
     );
     if (hours < 6) {
-      summary = getWaitTime(latest) || getLastAlertTime(terminal);
+      summary = getWaitTime(latest) || getLastBulletinTime(terminal);
       backgroundColor = "bg-red-dark";
     } else {
       summary = null;
@@ -112,7 +112,7 @@ export const Footer = ({ terminal, getPath }: Props): ReactElement => {
         <FooterLink path={getPath({ view: "map" })}>
           <MapIcon className="text-2xl" />
         </FooterLink>
-        {renderAlerts()}
+        {renderBulletins()}
       </WrapFooter>
       <div className="h-safe-bottom w-full bg-green-dark" />
     </>
