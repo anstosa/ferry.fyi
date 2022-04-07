@@ -169,15 +169,6 @@ export const Route = ({
     }
     setTerminals([terminal, mate]);
 
-    terminalSlug = getSlug(terminal.id);
-    saveTerminal(terminalSlug);
-    if (mate) {
-      mateSlug = getSlug(mate.id);
-      saveMate(mateSlug);
-    } else {
-      saveMate(undefined);
-    }
-
     const path = getPath({ terminal, mate: mate ?? undefined });
     setSchedule(null);
     if (pathname !== path) {
