@@ -65,13 +65,15 @@ browserRouter.get(/.*/, async (request, response) => {
           ({ slug, aliases }) => slug === mateSlug || aliases.includes(mateSlug)
         ) || terminal.mates[0];
 
-      const { date: dateInput } = request.query;
+      if (mate) {
+        const { date: dateInput } = request.query;
 
-      if (dateInput) {
-        const date = DateTime.fromISO(dateInput as string);
-        title = getTitle(terminal, mate, date);
-      } else {
-        title = getTitle(terminal, mate);
+        if (dateInput) {
+          const date = DateTime.fromISO(dateInput as string);
+          title = getTitle(terminal, mate, date);
+        } else {
+          title = getTitle(terminal, mate);
+        }
       }
     }
   }
