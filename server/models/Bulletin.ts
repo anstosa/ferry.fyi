@@ -78,6 +78,7 @@ export class Bulletin extends CacheableModel implements BulletinClass {
           date: String(this.date),
           ...(this.url ? { url: this.url } : {}),
           terminalId: this.terminalId,
+          userId: user.user_id ?? "",
         },
       });
     });

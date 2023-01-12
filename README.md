@@ -20,6 +20,11 @@ An alternative to the WSDOT mobile app. With Ferry FYI, you get:
 
 🎫 Link to reserve sailings
 
+## Prerequisites
+
+- [Docker](https://docs.docker.com/get-docker/)
+- [Heroku CLI](https://devcenter.heroku.com/articles/heroku-cli#install-the-heroku-cli)
+
 ## Setting up dev environment
 
 1. Install [postgres](https://www.postgresql.org/)

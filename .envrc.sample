@@ -1,12 +1,12 @@
 export BASE_URL="http://localhost:4040"
-export DATABASE_URL="postgres://<username>:<password>@localhost:5432/ferryfyi"
+export DATABASE_URL="postgres://test:testing@localhost:5432/ferryfyi"
 
 # Firebase Cloud Messaging
 export FCM_PUBLIC_KEY="<get from firebase>"
 export GCM_SENDER_ID="<get from firebase>"
 
 # Analytics
-export GOOGLE_ANALYTICS="<get from google analytics"
+export GOOGLE_ANALYTICS="<get from google analytics>"
 export GTM_CONTAINER_ID="<get from google tag manager>"
 
 # Heroku
