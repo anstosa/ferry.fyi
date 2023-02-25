@@ -42,7 +42,7 @@
     "node-schedule": "^2.1.0",
     "pg": "^8.7.3",
     "pg-hstore": "^2.3.3",
-    "sequelize": "^6.17.0",
+    "sequelize": "^6.29.0",
     "sequelize-cli": "^6.4.1",
     "sitemap": "^7.1.1"
   },
