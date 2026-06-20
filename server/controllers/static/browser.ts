@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { promises as fs } from "fs";
+import { existsSync, promises as fs } from "fs";
 import { DateTime } from "luxon";
 import path from "path";
 import { entries } from "shared/lib/objects";
@@ -11,12 +11,12 @@ if (!process.env.ANDROID_CERT_FINGERPRINT) {
   throw Error("ANDROID_CERT_FINGERPRINT environment variable is not set");
 }
 
-export const clientDist = path.resolve(
-  __dirname,
-  "../",
-  process.env.NODE_ENV === "development" ? "../../dist/" : "",
-  "client/"
-);
+const bundledClientDist = path.resolve(__dirname, "../client");
+const sourceClientDist = path.resolve(__dirname, "../../../dist/client");
+
+export const clientDist = existsSync(bundledClientDist)
+  ? bundledClientDist
+  : sourceClientDist;
 
 const browserRouter = Router();
 
@@ -46,7 +46,7 @@ browserRouter.get("/.well-known/assetlinks.json", (request, response) => {
 });
 
 browserRouter.get(/.*/, async (request, response) => {
-  // sync from webpack.config.ts
+  // sync from vite config
   const DEFAULT_TITLE = /Ferry FYI - Seattle Area Ferry Schedule and Tracker/g;
 
   let title: string | undefined;

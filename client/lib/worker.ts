@@ -4,7 +4,8 @@ let registration: ServiceWorkerRegistration | undefined;
 
 export const getRegistration = () => registration;
 
-if ("serviceWorker" in navigator) {
+// production worker guard
+if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") {
   window.addEventListener("load", async () => {
     const workbox = new Workbox("/service-worker.js");
 

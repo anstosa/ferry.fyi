@@ -2,15 +2,30 @@
   "extends": "../tsconfig",
   "compilerOptions": {
     "baseUrl": ".",
-    "lib": ["DOM"],
+    "lib": [
+      "DOM"
+    ],
     "outDir": "../dist/server",
     "rootDir": "..",
     "paths": {
-      "~/*": ["./*"],
-      "shared/*": ["../shared/*"]
+      "~/*": [
+        "./*"
+      ],
+      "shared/*": [
+        "../shared/*"
+      ]
     },
-    "target": "ES6"
+    "target": "ES6",
+    "types": [
+      "node"
+    ]
   },
-  "include": ["./**/*.ts", "./**/*.tsx"],
-  "exclude": ["./devServer.ts"]
+  "include": [
+    "./**/*.ts",
+    "./**/*.tsx"
+  ],
+  "exclude": [
+    "./devServer.ts",
+    "vite.config.ts"
+  ]
 }

@@ -1,6 +1,7 @@
 @use "sass:color";
 @use "sass:list";
 @use "sass:math";
+@use "sass:meta";
 @use "sass:string";
 
 // Inject Tailwind CSSs base styles, including normalization.
@@ -195,11 +196,11 @@ html {
     @apply bg-white;
   }
 
-  @import "components/alert";
-  @import "components/button";
-  @import "components/field";
-  @import "components/link";
-  @import "components/list";
+  @include meta.load-css("components/alert");
+  @include meta.load-css("components/button");
+  @include meta.load-css("components/field");
+  @include meta.load-css("components/link");
+  @include meta.load-css("components/list");
 }
 
 // Inject component classes registered by tailwind plugins

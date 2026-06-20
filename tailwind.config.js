@@ -58,7 +58,7 @@ module.exports = {
         green: {
           lightest: "#d7eae5",
           light: "#9ccfc2",
-          dark: "#016f52", // sync with client/webpack.config.ts COLOR
+          dark: "#016f52", // sync with client/lib/theme.ts
         },
 
         red: {

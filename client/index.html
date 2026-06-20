@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html class="h-full" lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, width=device-width"
+    />
+
+    <title>%APP_TITLE%</title>
+    <meta name="description" content="%APP_DESCRIPTION%" />
+    <link vite-ignore rel="canonical" href="%BASE_URL%" />
+    <link rel="icon" href="/static/images/icon.png" type="image/png" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@FerryFYI" />
+    <meta name="twitter:title" content="%APP_TITLE%" />
+    <meta name="twitter:description" content="%APP_DESCRIPTION%" />
+    <meta vite-ignore name="twitter:image" content="%SOCIAL_IMAGE%" />
+
+    <meta property="og:url" content="%BASE_URL%" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="%APP_TITLE%" />
+    <meta property="og:description" content="%APP_DESCRIPTION%" />
+    <meta vite-ignore property="og:image" content="%SOCIAL_IMAGE%" />
+
+    <meta itemprop="name" content="%APP_TITLE%" />
+    <meta itemprop="description" content="%APP_DESCRIPTION%" />
+    <meta vite-ignore itemprop="image" content="%SOCIAL_IMAGE%" />
+    <meta name="theme-color" content="%THEME_COLOR%" />
+
+    <link vite-ignore href="https://api.mapbox.com/mapbox-gl-js/v3.25.0/mapbox-gl.css" rel="stylesheet" />
+
+    <!-- GTM:START -->
+    <script>
+      (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+      new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+      j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+      'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+      })(window,document,'script','dataLayer','%GTM_CONTAINER_ID%');
+    </script>
+    <!-- GTM:END -->
+  </head>
+  <body class="h-full overflow-hidden">
+    <!-- GTM_NOSCRIPT:START -->
+    <noscript>
+      <iframe
+        src="https://www.googletagmanager.com/ns.html?id=%GTM_CONTAINER_ID%"
+        height="0"
+        width="0"
+        style="display:none;visibility:hidden"
+      ></iframe>
+    </noscript>
+    <!-- GTM_NOSCRIPT:END -->
+
+    <a
+      class="absolute -top-10 left-0 z-50 p-2 bg-black text-white focus:top-0"
+      href="#main"
+      tabindex="1"
+    >Skip to main</a>
+    <div class="h-full flex flex-col" id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>

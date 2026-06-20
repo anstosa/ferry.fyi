@@ -3,14 +3,32 @@
   "compilerOptions": {
     "baseUrl": ".",
     "jsx": "react",
-    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "lib": [
+      "DOM",
+      "DOM.Iterable",
+      "ESNext"
+    ],
     "outDir": "../dist/client",
     "rootDir": "..",
     "sourceMap": true,
     "paths": {
-      "~/*": ["./*"],
-      "shared/*": ["../shared/*"]
-    }
+      "~/*": [
+        "./*"
+      ],
+      "shared/*": [
+        "../shared/*"
+      ]
+    },
+    "types": [
+      "node",
+      "vite/client"
+    ]
   },
-  "include": ["./**/*.ts", "./**/*.tsx"]
+  "include": [
+    "./**/*.ts",
+    "./**/*.tsx"
+  ],
+  "exclude": [
+    "vite.config.ts"
+  ]
 }
