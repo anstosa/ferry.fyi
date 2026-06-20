@@ -1,7 +1,8 @@
-import { entries } from "shared/lib/objects";
 import { Router } from "express";
-import { Terminal } from "~/models/Terminal";
 import { Terminal as TerminalClass } from "shared/contracts/terminals";
+import { entries } from "shared/lib/objects";
+
+import { Terminal } from "~/models/Terminal";
 
 const terminalRouter = Router();
 

@@ -1,12 +1,13 @@
+import { cert, initializeApp } from "firebase-admin/app";
+import { getMessaging } from "firebase-admin/messaging";
 import { isKeyOf, isObject } from "shared/lib/objects";
-import admin from "firebase-admin";
 
 if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
   throw new Error("FIREBASE_SERVICE_ACCOUNT is not set");
 }
 
-export const firebase = admin.initializeApp({
-  credential: admin.credential.cert(
+export const firebase = initializeApp({
+  credential: cert(
     JSON.parse(
       Buffer.from(
         process.env.FIREBASE_SERVICE_ACCOUNT as string,
@@ -15,6 +16,8 @@ export const firebase = admin.initializeApp({
     )
   ),
 });
+
+export const firebaseMessaging = getMessaging(firebase);
 
 export const hasFirebaseCode = (error: unknown, code: string): boolean => {
   if (!isObject(error)) {

@@ -1,22 +1,24 @@
+import { useAuth0 } from "@auth0/auth0-react";
+import clsx from "clsx";
 import { AnimatePresence } from "framer-motion";
-import { Bulletin, Level } from "shared/contracts/bulletins";
-import { capitalize } from "shared/lib/strings";
 import { DateTime } from "luxon";
-import { Header } from "./Header";
-import { InlineLoader } from "~/components/InlineLoader";
+import React, { ReactElement, ReactNode, useState } from "react";
+import { useLocation } from "react-router-dom";
+import { Bulletin, Level } from "shared/contracts/bulletins";
+import type { Terminal } from "shared/contracts/terminals";
+import { without } from "shared/lib/arrays";
 import { isNull, isUndefined } from "shared/lib/identity";
 import { round } from "shared/lib/math";
+import { capitalize } from "shared/lib/strings";
+
+import { InlineLoader } from "~/components/InlineLoader";
 import { Toast } from "~/components/Toast";
-import { useAuth0 } from "@auth0/auth0-react";
-import { useLocation } from "react-router-dom";
 import { useUser } from "~/lib/user";
-import { without } from "shared/lib/arrays";
-import clsx from "clsx";
-import React, { ReactElement, ReactNode, useState } from "react";
-import SubscribedIcon from "~/static/images/icons/solid/bell.svg";
 import UnsubscribedIcon from "~/static/images/icons/regular/bell.svg";
+import SubscribedIcon from "~/static/images/icons/solid/bell.svg";
 import WSDOTIcon from "~/static/images/icons/wsdot.svg";
-import type { Terminal } from "shared/contracts/terminals";
+
+import { Header } from "./Header";
 
 const WAIT_NUMBER_HOURS_MATCH = /^[^\d]*(\d+) (Hour|Hr) Wait.*$/i;
 const WAIT_SPELL_HOURS_MATCH =
@@ -100,7 +102,9 @@ const SubscribeButton = ({
         if (!isAuthenticated || !subscribedTerminals) {
           loginWithRedirect({
             appState: { redirectPath: location.pathname },
-            redirectUri: process.env.AUTH0_CLIENT_REDIRECT,
+            authorizationParams: {
+              redirect_uri: process.env.AUTH0_CLIENT_REDIRECT,
+            },
           });
           return;
         } else if (isSubscribed) {
@@ -136,8 +140,8 @@ const SubscribeButton = ({
         {isSubscribing
           ? "Loading..."
           : isSubscribed
-          ? "Unsubscribe"
-          : "Subscribe"}
+            ? "Unsubscribe"
+            : "Subscribe"}
       </span>
     </button>
   );

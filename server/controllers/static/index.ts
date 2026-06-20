@@ -1,6 +1,7 @@
-import { browserRouter, clientDist } from "./browser";
 import compression from "compression";
 import express, { Router } from "express";
+
+import { browserRouter, clientDist } from "./browser";
 
 const staticRouter = Router();
 

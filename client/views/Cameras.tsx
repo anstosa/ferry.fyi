@@ -1,15 +1,6 @@
+import clsx from "clsx";
 import { AnimatePresence, motion } from "framer-motion";
 import { DateTime } from "luxon";
-import { Header } from "./Header";
-import { InlineLoader } from "~/components/InlineLoader";
-import { isNil, isNull } from "shared/lib/identity";
-import { locationToUrl } from "~/lib/maps";
-import { ReloadButton } from "../components/ReloadButton";
-import { useScrollPosition } from "~/lib/scroll";
-import CarIcon from "~/static/images/icons/solid/car.svg";
-import clsx from "clsx";
-import MapIcon from "~/static/images/icons/solid/map-marker.svg";
-import ParkingIcon from "~/static/images/icons/solid/parking.svg";
 import React, {
   ReactElement,
   ReactNode,
@@ -17,9 +8,20 @@ import React, {
   useRef,
   useState,
 } from "react";
-import WSDOTIcon from "~/static/images/icons/wsdot.svg";
 import type { Camera } from "shared/contracts/cameras";
 import type { Terminal } from "shared/contracts/terminals";
+import { isNil, isNull } from "shared/lib/identity";
+
+import { InlineLoader } from "~/components/InlineLoader";
+import { locationToUrl } from "~/lib/maps";
+import { useScrollPosition } from "~/lib/scroll";
+import CarIcon from "~/static/images/icons/solid/car.svg";
+import MapIcon from "~/static/images/icons/solid/map-marker.svg";
+import ParkingIcon from "~/static/images/icons/solid/parking.svg";
+import WSDOTIcon from "~/static/images/icons/wsdot.svg";
+
+import { ReloadButton } from "../components/ReloadButton";
+import { Header } from "./Header";
 
 interface Props {
   terminal: Terminal | null;

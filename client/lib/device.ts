@@ -1,4 +1,4 @@
-import { DeviceInfo as CapacitorDevice, Device } from "@capacitor/device";
+import { Device, DeviceInfo as CapacitorDevice } from "@capacitor/device";
 import { useEffect, useState } from "react";
 
 interface DeviceInfo extends CapacitorDevice {

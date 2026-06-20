@@ -1,7 +1,8 @@
-import { entries } from "shared/lib/objects";
 import { Router } from "express";
-import { Vessel } from "~/models/Vessel";
 import { Vessel as VesselClass } from "shared/contracts/vessels";
+import { entries } from "shared/lib/objects";
+
+import { Vessel } from "~/models/Vessel";
 
 const vesselRouter = Router();
 

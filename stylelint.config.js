@@ -1,5 +1,5 @@
 module.exports = {
-  extends: ["stylelint-config-standard-scss", "stylelint-config-prettier-scss"],
+  extends: ["stylelint-config-standard-scss"],
   plugins: ["stylelint-order", "stylelint-scss"],
   ignoreFiles: ["**/*.js", "**/*.cjs", "**/*.ts", "**/*.tsx"],
   rules: {
@@ -7,7 +7,7 @@ module.exports = {
     "order/properties-alphabetical-order": true,
     "selector-class-pattern": null,
     "no-invalid-position-at-import-rule": null,
-    indentation: 2,
+    "selector-not-notation": null,
     "scss/at-rule-no-unknown": [
       true,
       {
@@ -26,6 +26,5 @@ module.exports = {
         ],
       },
     ],
-    "string-quotes": "double",
   },
 };

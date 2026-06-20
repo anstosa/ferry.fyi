@@ -4,6 +4,7 @@
     "baseUrl": ".",
     "lib": ["DOM"],
     "outDir": "../dist/server",
+    "rootDir": "..",
     "paths": {
       "~/*": ["./*"],
       "shared/*": ["../shared/*"]

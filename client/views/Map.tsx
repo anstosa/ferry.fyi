@@ -1,7 +1,3 @@
-import { Header } from "./Header";
-import { isDark } from "~/lib/theme";
-import { isEmpty } from "shared/lib/arrays";
-import { isNull } from "shared/lib/identity";
 import {
   LngLatBounds,
   Map as Mapbox,
@@ -9,16 +5,22 @@ import {
   NavigationControl,
   Popup,
 } from "mapbox-gl";
-import { render } from "react-dom";
-import { renderToString } from "react-dom/server";
-import { Vessel } from "shared/contracts/vessels";
-import CurrentTerminalIcon from "~/static/images/icons/solid/location.svg";
-import MateTerminalIcon from "~/static/images/icons/solid/map-marker.svg";
-import OtherTerminalIcon from "~/static/images/icons/regular/map-marker-alt.svg";
 import React, { ReactElement, useEffect, useRef, useState } from "react";
-import VesselIcon from "~/static/images/icons/solid/location-arrow.svg";
-import WSDOTIcon from "~/static/images/icons/wsdot.svg";
+import { createRoot } from "react-dom/client";
+import { renderToString } from "react-dom/server";
 import type { Terminal } from "shared/contracts/terminals";
+import { Vessel } from "shared/contracts/vessels";
+import { isEmpty } from "shared/lib/arrays";
+import { isNull } from "shared/lib/identity";
+
+import { isDark } from "~/lib/theme";
+import OtherTerminalIcon from "~/static/images/icons/regular/map-marker-alt.svg";
+import CurrentTerminalIcon from "~/static/images/icons/solid/location.svg";
+import VesselIcon from "~/static/images/icons/solid/location-arrow.svg";
+import MateTerminalIcon from "~/static/images/icons/solid/map-marker.svg";
+import WSDOTIcon from "~/static/images/icons/wsdot.svg";
+
+import { Header } from "./Header";
 
 const DEFAULT_TOP = 47;
 const DEFAULT_LEFT = -121;
@@ -30,6 +32,11 @@ interface Props {
   mate: Terminal | null;
   vessels: Vessel[];
 }
+
+// marker icon render
+const renderMarkerIcon = (icon: ReactElement, marker: HTMLElement): void => {
+  createRoot(marker).render(icon);
+};
 
 export const Map = ({ terminal, mate, vessels }: Props): ReactElement => {
   const mapRef = useRef<HTMLDivElement>(null);
@@ -85,7 +92,7 @@ export const Map = ({ terminal, mate, vessels }: Props): ReactElement => {
         } else if (t === mate) {
           icon = <MateTerminalIcon />;
         }
-        render(icon, marker);
+        renderMarkerIcon(icon, marker);
         const lngLat = {
           lon: t.location.longitude,
           lat: t.location.latitude,
@@ -116,7 +123,7 @@ export const Map = ({ terminal, mate, vessels }: Props): ReactElement => {
         .map((vessel: Vessel) => {
           const marker = document.createElement("div");
           marker.className = "text-3xl text-green-dark";
-          render(<VesselIcon />, marker);
+          renderMarkerIcon(<VesselIcon />, marker);
           const lngLat = {
             // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
             lon: vessel.location!.longitude,

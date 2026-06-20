@@ -1,9 +1,11 @@
-import { Camera } from "~/models/Camera";
-import { values } from "shared/lib/objects";
-import { WSF } from "~/typings/wsf";
-import { wsfRequest } from "./api";
-import cameras from "shared/data/cameras.json";
 import logger from "heroku-logger";
+import cameras from "shared/data/cameras.json";
+import { values } from "shared/lib/objects";
+
+import { Camera } from "~/models/Camera";
+import { WSF } from "~/typings/wsf";
+
+import { wsfRequest } from "./api";
 
 const API_CAMERAS = "https://www.wsdot.com/ferries/vesselwatch/Cameras.ashx";
 

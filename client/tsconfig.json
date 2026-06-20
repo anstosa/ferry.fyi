@@ -5,11 +5,12 @@
     "jsx": "react",
     "lib": ["DOM", "DOM.Iterable", "ESNext"],
     "outDir": "../dist/client",
+    "rootDir": "..",
     "sourceMap": true,
     "paths": {
       "~/*": ["./*"],
       "shared/*": ["../shared/*"]
     }
   },
-  "include": ["./**/*.ts", "./**/*.tsx", "../capacitor.config.ts"]
+  "include": ["./**/*.ts", "./**/*.tsx"]
 }

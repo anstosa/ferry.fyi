@@ -1,9 +1,10 @@
-import { DateTime } from "luxon";
-import { pluralize } from "shared/lib/strings";
-import { ReservationAccount, TicketStorage } from "shared/contracts/tickets";
-import { toShortDateString } from "~/lib/date";
 import clsx from "clsx";
+import { DateTime } from "luxon";
 import React, { ReactElement, ReactNode } from "react";
+import { ReservationAccount, TicketStorage } from "shared/contracts/tickets";
+import { pluralize } from "shared/lib/strings";
+
+import { toShortDateString } from "~/lib/date";
 
 interface Props {
   ticket: TicketStorage | ReservationAccount;

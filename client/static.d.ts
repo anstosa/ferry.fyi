@@ -7,3 +7,11 @@ declare module "*.svg" {
 declare module "*.png" {
   export default string;
 }
+
+declare module "*.scss";
+
+declare const gtag: Gtag.Gtag;
+
+interface Window {
+  gtag?: Gtag.Gtag;
+}

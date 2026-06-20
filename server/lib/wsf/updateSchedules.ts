@@ -1,15 +1,17 @@
+import logger from "heroku-logger";
 import { DateTime } from "luxon";
-import { isNull } from "shared/lib/identity";
-import { Schedule } from "~/models/Schedule";
 import { Slot, ValidRange } from "shared/contracts/schedules";
-import { Terminal } from "~/models/Terminal";
-import { toWsfDate, wsfDateToTimestamp } from "./date";
+import { isNull } from "shared/lib/identity";
 import { values } from "shared/lib/objects";
+
+import Crossing from "~/models/Crossing";
+import { Schedule } from "~/models/Schedule";
+import { Terminal } from "~/models/Terminal";
 import { Vessel } from "~/models/Vessel";
 import { WSF } from "~/typings/wsf";
+
 import { wsfRequest } from "./api";
-import Crossing from "~/models/Crossing";
-import logger from "heroku-logger";
+import { toWsfDate, wsfDateToTimestamp } from "./date";
 
 // API paths
 

@@ -1,6 +1,7 @@
-import { CacheableModel } from "./CacheableModel";
 import { MapPoint } from "shared/contracts/cameras";
 import { Vessel as VesselClass } from "shared/contracts/vessels";
+
+import { CacheableModel } from "./CacheableModel";
 
 export class Vessel extends CacheableModel implements VesselClass {
   static cacheKey = "vessels";

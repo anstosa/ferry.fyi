@@ -1,20 +1,22 @@
+import clsx from "clsx";
 import { AnimatePresence } from "framer-motion";
 import { DateTime } from "luxon";
-import { findWhere, isEmpty } from "shared/lib/arrays";
-import { InlineLoader } from "~/components/InlineLoader";
-import { isWSFToday } from "~/lib/date";
-import { SlotInfo } from "./SlotInfo";
-import { Toast } from "~/components/Toast";
-import { useTerminals } from "~/lib/terminals";
-import { values } from "shared/lib/objects";
-import clsx from "clsx";
-import IslandIcon from "~/static/images/icons/solid/island-tropical.svg";
 import React, { ReactElement, useEffect, useState } from "react";
 import scrollIntoView from "scroll-into-view";
 import type {
   Schedule as ScheduleClass,
   Slot,
 } from "shared/contracts/schedules";
+import { findWhere, isEmpty } from "shared/lib/arrays";
+import { values } from "shared/lib/objects";
+
+import { InlineLoader } from "~/components/InlineLoader";
+import { Toast } from "~/components/Toast";
+import { isWSFToday } from "~/lib/date";
+import { useTerminals } from "~/lib/terminals";
+import IslandIcon from "~/static/images/icons/solid/island-tropical.svg";
+
+import { SlotInfo } from "./SlotInfo";
 
 interface Props {
   schedule: ScheduleClass | null;

@@ -1,20 +1,22 @@
-import { AnimatePresence } from "framer-motion";
-import { getSlug, useTerminals } from "~/lib/terminals";
-import { getTerminalSorter } from "../lib/terminals";
-import { isNull, isUndefined } from "shared/lib/identity";
-import { Link } from "react-router-dom";
-import { TerminalDropdown } from "./TerminalDropdown";
-import { Toast } from "~/components/Toast";
-import { useGeo } from "~/lib/geo";
-import { useLocalStorage } from "~/lib/browser";
-import { without } from "shared/lib/arrays";
-import ArrowRightIcon from "~/static/images/icons/solid/arrow-right.svg";
 import clsx from "clsx";
-import ExchangeIcon from "~/static/images/icons/solid/exchange.svg";
-import LocationIcon from "~/static/images/icons/solid/location.svg";
+import { AnimatePresence } from "framer-motion";
 import React, { ReactElement, ReactNode, useEffect, useState } from "react";
 import ReactGA from "react-ga4";
+import { Link } from "react-router-dom";
 import type { Terminal } from "shared/contracts/terminals";
+import { without } from "shared/lib/arrays";
+import { isNull, isUndefined } from "shared/lib/identity";
+
+import { Toast } from "~/components/Toast";
+import { useLocalStorage } from "~/lib/browser";
+import { useGeo } from "~/lib/geo";
+import { getSlug, useTerminals } from "~/lib/terminals";
+import ArrowRightIcon from "~/static/images/icons/solid/arrow-right.svg";
+import ExchangeIcon from "~/static/images/icons/solid/exchange.svg";
+import LocationIcon from "~/static/images/icons/solid/location.svg";
+
+import { getTerminalSorter } from "../lib/terminals";
+import { TerminalDropdown } from "./TerminalDropdown";
 
 interface Props {
   mate: Terminal;

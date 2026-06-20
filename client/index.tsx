@@ -1,13 +1,16 @@
 import "lib/worker";
-import * as Sentry from "@sentry/react";
-import { App } from "./App";
+
 import { Auth0Provider } from "@auth0/auth0-react";
-import { BrowserRouter } from "react-router-dom";
-import { BrowserTracing } from "@sentry/tracing";
-import { isUndefined } from "shared/lib/identity";
-import { UserProvider } from "~/lib/user";
+import * as Sentry from "@sentry/react";
 import React from "react";
-import ReactDOM from "react-dom";
+import { createRoot } from "react-dom/client";
+import { HelmetProvider } from "react-helmet-async";
+import { BrowserRouter } from "react-router-dom";
+import { isUndefined } from "shared/lib/identity";
+
+import { UserProvider } from "~/lib/user";
+
+import { App } from "./App";
 
 if (!process.env.AUTH0_DOMAIN) {
   throw Error("AUTH0_DOMAIN environment variable is not set");
@@ -73,7 +76,7 @@ if (process.env.SENTRY_DSN) {
       /metrics\.itunes\.apple\.com\.edgesuite\.net\//i,
     ],
     dsn: process.env.SENTRY_DSN,
-    integrations: [new BrowserTracing()],
+    integrations: [Sentry.browserTracingIntegration()],
     tracesSampleRate: 0.25,
     release: `web@${process.env.HEROKU_RELEASE_VERSION}`,
   });
@@ -99,23 +102,33 @@ const whenReady = (callback: () => void): void => {
 
 whenReady(() => {
   const root = document.querySelector("#root");
+  // root mount guard
+  if (!root) {
+    throw Error("Root element is not available");
+  }
+  const reactRoot = createRoot(root);
+
+  // render app tree
   const renderAll = (): void => {
-    ReactDOM.render(
+    reactRoot.render(
       <BrowserRouter>
-        <Auth0Provider
-          domain={process.env.AUTH0_DOMAIN as string}
-          clientId={process.env.AUTH0_CLIENT_ID as string}
-          redirectUri={process.env.AUTH0_CLIENT_REDIRECT as string}
-          audience={process.env.AUTH0_CLIENT_AUDIENCE as string}
-          scope="read:current_user"
-          cacheLocation="localstorage"
-        >
-          <UserProvider>
-            <App />
-          </UserProvider>
-        </Auth0Provider>
-      </BrowserRouter>,
-      root
+        <HelmetProvider>
+          <Auth0Provider
+            domain={process.env.AUTH0_DOMAIN as string}
+            clientId={process.env.AUTH0_CLIENT_ID as string}
+            authorizationParams={{
+              audience: process.env.AUTH0_CLIENT_AUDIENCE as string,
+              redirect_uri: process.env.AUTH0_CLIENT_REDIRECT as string,
+              scope: "read:current_user",
+            }}
+            cacheLocation="localstorage"
+          >
+            <UserProvider>
+              <App />
+            </UserProvider>
+          </Auth0Provider>
+        </HelmetProvider>
+      </BrowserRouter>
     );
   };
   window.addEventListener("online", renderAll);

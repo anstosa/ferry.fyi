@@ -5,6 +5,7 @@
     "declaration": false,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
+    "ignoreDeprecations": "6.0",
     "isolatedModules": true,
     "lib": ["ESNext"],
     "module": "CommonJS",

@@ -1,13 +1,15 @@
-import { auth0 } from "~/lib/auth0";
+import { convert } from "html-to-text";
+import { DateTime } from "luxon";
 import {
   Bulletin as BulletinClass,
   Level,
   SortedLevels,
 } from "shared/contracts/bulletins";
-import { CacheableModel } from "./CacheableModel";
-import { convert } from "html-to-text";
-import { DateTime } from "luxon";
+
+import { auth0 } from "~/lib/auth0";
 import { sendPush } from "~/lib/push";
+
+import { CacheableModel } from "./CacheableModel";
 import { Terminal } from "./Terminal";
 
 const startupTime = DateTime.now().toUnixInteger();
@@ -55,18 +57,23 @@ export class Bulletin extends CacheableModel implements BulletinClass {
       // don't send pushes for less important bulletins
       return;
     }
-    const users = await auth0.getUsers();
-    users.forEach((user) => {
-      const subscribedTerminals = user.app_metadata?.subscribedTerminals || [];
+    const users = await auth0.users.list({ search_engine: "v3" });
+    // auth0 user page
+    for await (const user of users) {
+      const subscribedTerminals = user.app_metadata?.subscribedTerminals;
       const token = user.app_metadata?.fcmToken;
+      // subscription metadata guard
+      if (!Array.isArray(subscribedTerminals)) {
+        continue;
+      }
       if (!subscribedTerminals.includes(this.terminalId)) {
         // user not subscribed to this terminal
-        return;
+        continue;
       }
-      if (!token) {
+      if (typeof token !== "string") {
         // user does not have an FCM Token saved
         console.warn("Subscribed user without FCM Token", user.user_id);
-        return;
+        continue;
       }
       sendPush({
         token,
@@ -81,7 +88,7 @@ export class Bulletin extends CacheableModel implements BulletinClass {
           userId: user.user_id ?? "",
         },
       });
-    });
+    }
   }
 
   static getLevel({ title }: BulletinInput): Level {

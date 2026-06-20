@@ -1,7 +1,7 @@
 import { Http, HttpResponse } from "@capacitor-community/http";
-import { isEqual } from "shared/lib/objects";
 import { useEffect, useState } from "react";
 import { WSFStatus } from "shared/contracts/api";
+import { isEqual } from "shared/lib/objects";
 
 const API_BASE_URL = `${process.env.BASE_URL}/api`;
 

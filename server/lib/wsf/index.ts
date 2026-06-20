@@ -1,6 +1,6 @@
+import { updateEstimates } from "../forecast";
 import { updateCameras } from "./updateCameras";
 import { updateCapacity } from "./updateCapacity";
-import { updateEstimates } from "../forecast";
 import { updateRoutes } from "./updateRoutes";
 import { updateSchedules } from "./updateSchedules";
 import { updateTerminals } from "./updateTerminals";

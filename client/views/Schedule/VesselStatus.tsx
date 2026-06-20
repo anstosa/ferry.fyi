@@ -1,11 +1,12 @@
-import { DateTime } from "luxon";
-import { degreesToHeading } from "~/lib/compass";
-import { knotsToMph } from "~/lib/speed";
-import { locationToUrl } from "~/lib/maps";
-import { pluralize } from "shared/lib/strings";
 import clsx from "clsx";
+import { DateTime } from "luxon";
 import React, { ReactElement } from "react";
 import type { Vessel } from "shared/contracts/vessels";
+import { pluralize } from "shared/lib/strings";
+
+import { degreesToHeading } from "~/lib/compass";
+import { locationToUrl } from "~/lib/maps";
+import { knotsToMph } from "~/lib/speed";
 
 interface Props {
   className?: string;

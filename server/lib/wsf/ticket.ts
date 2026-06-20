@@ -1,10 +1,9 @@
 // based on code donated by @jordansoltman, the developer for Ferry Friend on iOS
 
-import { DateTime } from "luxon";
-import { isKeyOf } from "shared/lib/objects";
 import { JSDOM } from "jsdom";
+import { DateTime } from "luxon";
 import { Ticket } from "shared/contracts/tickets";
-import fetch from "node-fetch";
+import { isKeyOf } from "shared/lib/objects";
 
 const WAVE2GO_LANDING =
   "https://wave2go.wsdot.com/webstore/landingPage?cg=21&c=76";

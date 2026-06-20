@@ -1,31 +1,34 @@
 import "./app.scss";
 import "@capacitor/core";
-import { About } from "~/views/About";
-import { Account } from "~/views/Account";
-import { AnimatePresence } from "framer-motion";
-import { Browser } from "@capacitor/browser";
-import { colors } from "~/lib/theme";
-import { Feedback } from "~/views/Feedback";
-import { Home } from "~/views/Home";
-import { App as Native } from "@capacitor/app";
-import { Route } from "~/views/Route";
-import { Settings } from "luxon";
-import { Splash } from "~/components/Splash";
-import { StatusBar } from "@capacitor/status-bar";
-import { Tickets } from "~/views/Tickets";
-import { Toast } from "./components/Toast";
-import { Today } from "~/views/Today";
+
 import { useAuth0 } from "@auth0/auth0-react";
-import { useDevice } from "~/lib/device";
+import { App as Native } from "@capacitor/app";
+import { Browser } from "@capacitor/browser";
+import { StatusBar } from "@capacitor/status-bar";
+import { AnimatePresence } from "framer-motion";
+import { Settings } from "luxon";
+import React, { ReactElement, useEffect } from "react";
+import ReactGA from "react-ga4";
 import { useLocation, useNavigate, useRoutes } from "react-router-dom";
-import { useOnline, useWSF } from "~/lib/api";
-import { usePush } from "~/lib/push";
+
+import { Splash } from "~/components/Splash";
 import { useRecordPageViews } from "~/lib/analytics";
+import { useOnline, useWSF } from "~/lib/api";
+import { useDevice } from "~/lib/device";
+import { usePush } from "~/lib/push";
+import { colors } from "~/lib/theme";
 import { useUser } from "~/lib/user";
 import DumpsterFireIcon from "~/static/images/icons/solid/dumpster-fire.svg";
 import OfflineIcon from "~/static/images/icons/solid/signal-alt-slash.svg";
-import React, { ReactElement, useEffect } from "react";
-import ReactGA from "react-ga4";
+import { About } from "~/views/About";
+import { Account } from "~/views/Account";
+import { Feedback } from "~/views/Feedback";
+import { Home } from "~/views/Home";
+import { Route } from "~/views/Route";
+import { Tickets } from "~/views/Tickets";
+import { Today } from "~/views/Today";
+
+import { Toast } from "./components/Toast";
 
 Settings.defaultZone = "America/Los_Angeles";
 

@@ -1,12 +1,13 @@
-import { isNil, isNull } from "shared/lib/identity";
-import { pluralize } from "shared/lib/strings";
-import { round } from "shared/lib/math";
-import CarIcon from "~/static/images/icons/solid/car.svg";
 import clsx from "clsx";
-import DoNotEnterIcon from "~/static/images/icons/solid/do-not-enter.svg";
-import ExternalLinkIcon from "~/static/images/icons/solid/external-link-square.svg";
 import React, { ReactElement, useEffect, useState } from "react";
 import type { Slot } from "shared/contracts/schedules";
+import { isNil, isNull } from "shared/lib/identity";
+import { round } from "shared/lib/math";
+import { pluralize } from "shared/lib/strings";
+
+import CarIcon from "~/static/images/icons/solid/car.svg";
+import DoNotEnterIcon from "~/static/images/icons/solid/do-not-enter.svg";
+import ExternalLinkIcon from "~/static/images/icons/solid/external-link-square.svg";
 
 const RESERVATIONS_BASE_URL =
   "https://secureapps.wsdot.wa.gov/Ferries/Reservations/Vehicle/SailingSchedule.aspx?VRSTermId=";
@@ -92,7 +93,7 @@ export const Capacity = ({ slot }: Props): ReactElement | null => {
 
   const isLeftEdge = (): boolean => {
     const fullness =
-      crossing && percentFull ? percentFull ?? 0 : estimateFull ?? 0;
+      crossing && percentFull ? (percentFull ?? 0) : (estimateFull ?? 0);
     const percent = fullness / 100;
     const totalWidth = window.innerWidth;
     const width = percent * totalWidth;
@@ -101,7 +102,7 @@ export const Capacity = ({ slot }: Props): ReactElement | null => {
 
   const willFitRight = (): boolean => {
     const fullness =
-      crossing && percentFull ? percentFull ?? 0 : estimateFull ?? 0;
+      crossing && percentFull ? (percentFull ?? 0) : (estimateFull ?? 0);
     const percent = fullness / 100;
     const totalWidth = window.innerWidth;
     const width = percent * totalWidth;
@@ -111,7 +112,7 @@ export const Capacity = ({ slot }: Props): ReactElement | null => {
 
   const isRightEdge = (): boolean => {
     const fullness =
-      crossing && percentFull ? percentFull ?? 0 : estimateFull ?? 0;
+      crossing && percentFull ? (percentFull ?? 0) : (estimateFull ?? 0);
     const percent = fullness / 100;
     const totalWidth = window.innerWidth;
     const width = percent * totalWidth;

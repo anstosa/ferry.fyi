@@ -4,7 +4,7 @@ interface Props {
   children: ReactNode;
 }
 
-export class ErrorBoundary extends Component {
+export class ErrorBoundary extends Component<Props> {
   state: {
     hasError: boolean;
   };

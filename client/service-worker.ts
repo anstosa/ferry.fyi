@@ -2,22 +2,22 @@
 export default null;
 declare let self: ServiceWorkerGlobalScope;
 
-import * as googleAnalytics from "workbox-google-analytics";
-import {
-  CacheFirst,
-  NetworkFirst,
-  StaleWhileRevalidate,
-} from "workbox-strategies";
-import { cleanupOutdatedCaches, precacheAndRoute } from "workbox-precaching";
-import { clientsClaim } from "workbox-core";
-import { ExpirationPlugin } from "workbox-expiration";
+import { initializeApp } from "firebase/app";
 import {
   getMessaging,
   MessagePayload,
   onBackgroundMessage,
 } from "firebase/messaging/sw";
-import { initializeApp } from "firebase/app";
+import { clientsClaim } from "workbox-core";
+import { ExpirationPlugin } from "workbox-expiration";
+import * as googleAnalytics from "workbox-google-analytics";
+import { cleanupOutdatedCaches, precacheAndRoute } from "workbox-precaching";
 import { registerRoute } from "workbox-routing";
+import {
+  CacheFirst,
+  NetworkFirst,
+  StaleWhileRevalidate,
+} from "workbox-strategies";
 
 const app = initializeApp({
   apiKey: process.env.FIREBASE_API_KEY,
@@ -40,9 +40,9 @@ interface Notification extends MessagePayload {
 const isNotification = (payload: MessagePayload): payload is Notification =>
   Boolean(
     payload.data &&
-      "title" in payload.data &&
-      "body" in payload.data &&
-      "url" in payload.data
+    "title" in payload.data &&
+    "body" in payload.data &&
+    "url" in payload.data
   );
 
 onBackgroundMessage(messaging, (payload) => {

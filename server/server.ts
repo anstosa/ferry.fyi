@@ -1,24 +1,41 @@
-import { apiRouter } from "~/controllers/api";
-import { dbInit } from "~/lib/db";
-import { json } from "body-parser";
-import { Route } from "./models/Route";
-import { Schedule } from "~/models/Schedule";
-import { scheduleJob } from "node-schedule";
-import { staticRouter } from "~/controllers/static";
-import { updateLong, updateShort } from "~/lib/wsf";
 import cors from "cors";
-import express from "express";
+import express, { NextFunction, Request, Response } from "express";
 import logger from "heroku-logger";
 import morgan from "morgan";
-import sslify from "express-sslify";
+import { scheduleJob } from "node-schedule";
+
+import { apiRouter } from "~/controllers/api";
+import { staticRouter } from "~/controllers/static";
+import { dbInit } from "~/lib/db";
+import { updateLong, updateShort } from "~/lib/wsf";
+import { Schedule } from "~/models/Schedule";
+
+import { Route } from "./models/Route";
+
+const forceHttps = (
+  request: Request,
+  response: Response,
+  next: NextFunction
+): void => {
+  const protocol = request.get("x-forwarded-proto") || request.protocol;
+  // https redirect guard
+  if (protocol !== "https") {
+    response.redirect(
+      301,
+      `https://${request.get("host")}${request.originalUrl}`
+    );
+    return;
+  }
+  next();
+};
 
 // start main app
 const app = express();
 // use SSL in production
 if (process.env.NODE_ENV === "production") {
-  app.use(sslify.HTTPS({ trustProtoHeader: true }));
+  app.use(forceHttps);
 }
-app.use(json());
+app.use(express.json());
 app.use(cors());
 // log requests
 app.use(morgan("combined"));

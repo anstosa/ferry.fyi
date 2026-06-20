@@ -1,11 +1,13 @@
-import { motion } from "framer-motion";
 import clsx from "clsx";
+import { motion } from "framer-motion";
 import React, {
   FunctionComponent,
+  PropsWithChildren,
   ReactElement,
   useEffect,
   useState,
 } from "react";
+
 import ReloadIcon from "~/static/images/icons/solid/redo.svg";
 
 interface SpinWrapperProps {
@@ -17,7 +19,7 @@ interface SpinWrapperProps {
  * Wrap the button in a component that animates it
  * 360 degree spin and makes sure that it completes the current rotation before stopping
  **/
-const SpinWrapper: FunctionComponent<SpinWrapperProps> = ({
+const SpinWrapper: FunctionComponent<PropsWithChildren<SpinWrapperProps>> = ({
   children,
   className,
   isLoading,

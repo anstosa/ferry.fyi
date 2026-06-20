@@ -1,8 +1,8 @@
 import EslintPlugin from "eslint-webpack-plugin";
 import ForkTsCheckerWebpackPlugin from "fork-ts-checker-webpack-plugin";
-import nodeExternals from "webpack-node-externals";
 import path from "path";
 import TsConfigPathsPlugin from "tsconfig-paths-webpack-plugin";
+import nodeExternals from "webpack-node-externals";
 
 module.exports = {
   bail: true,

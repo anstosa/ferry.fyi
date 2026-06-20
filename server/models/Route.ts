@@ -1,8 +1,9 @@
-import { CacheableModel } from "./CacheableModel";
 import { Route as RouteClass } from "shared/contracts/routes";
-import { Terminal } from "./Terminal";
-import { values } from "shared/lib/objects";
 import { without } from "shared/lib/arrays";
+import { values } from "shared/lib/objects";
+
+import { CacheableModel } from "./CacheableModel";
+import { Terminal } from "./Terminal";
 
 export class Route extends CacheableModel implements RouteClass {
   static cacheKey = "routes";

@@ -1,25 +1,27 @@
-import { Bulletins } from "./Bulletins";
-import { Cameras } from "./Cameras";
-import { DateButton } from "~/components/DateButton";
 import { DateTime } from "luxon";
-import { findWhere } from "shared/lib/arrays";
-import { Footer } from "~/components/Footer";
-import { getSchedule } from "~/lib/schedule";
-import { getSlug, getTerminal } from "~/lib/terminals";
-import { Header } from "~/views/Header";
-import { Helmet } from "react-helmet";
-import { Map } from "./Map";
-import { RouteSelector } from "~/components/RouteSelector";
-import { Schedule } from "./Schedule";
-import { Splash } from "~/components/Splash";
-import { toShortDateString } from "~/lib/date";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { useQuery } from "~/lib/browser";
-import { Vessel } from "shared/contracts/vessels";
 import React, { ReactElement, useEffect, useState } from "react";
-import WSDOTIcon from "~/static/images/icons/wsdot.svg";
+import { Helmet } from "react-helmet-async";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import type { Schedule as ScheduleClass } from "shared/contracts/schedules";
 import type { Terminal } from "shared/contracts/terminals";
+import { Vessel } from "shared/contracts/vessels";
+import { findWhere } from "shared/lib/arrays";
+
+import { DateButton } from "~/components/DateButton";
+import { Footer } from "~/components/Footer";
+import { RouteSelector } from "~/components/RouteSelector";
+import { Splash } from "~/components/Splash";
+import { useQuery } from "~/lib/browser";
+import { toShortDateString } from "~/lib/date";
+import { getSchedule } from "~/lib/schedule";
+import { getSlug, getTerminal } from "~/lib/terminals";
+import WSDOTIcon from "~/static/images/icons/wsdot.svg";
+import { Header } from "~/views/Header";
+
+import { Bulletins } from "./Bulletins";
+import { Cameras } from "./Cameras";
+import { Map } from "./Map";
+import { Schedule } from "./Schedule";
 
 export type View = "schedule" | "cameras" | "map" | "alerts";
 

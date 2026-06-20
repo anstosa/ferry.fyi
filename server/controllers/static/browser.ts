@@ -1,10 +1,11 @@
-import { DateTime } from "luxon";
-import { entries } from "shared/lib/objects";
-import { promises as fs } from "fs";
-import { getSitemap, getTitle } from "~/getSitemap";
 import { Router } from "express";
-import { Terminal } from "~/models/Terminal";
+import { promises as fs } from "fs";
+import { DateTime } from "luxon";
 import path from "path";
+import { entries } from "shared/lib/objects";
+
+import { getSitemap, getTitle } from "~/getSitemap";
+import { Terminal } from "~/models/Terminal";
 
 if (!process.env.ANDROID_CERT_FINGERPRINT) {
   throw Error("ANDROID_CERT_FINGERPRINT environment variable is not set");

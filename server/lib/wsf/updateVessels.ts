@@ -1,9 +1,11 @@
+import logger from "heroku-logger";
 import { DateTime } from "luxon";
+
 import { Vessel } from "~/models/Vessel";
 import { WSF } from "~/typings/wsf";
-import { wsfDateToTimestamp } from "./date";
+
 import { wsfRequest } from "./api";
-import logger from "heroku-logger";
+import { wsfDateToTimestamp } from "./date";
 
 const VESSELWATCH_BASE =
   "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=";
@@ -76,9 +78,8 @@ export const updateVessels = async (): Promise<void> => {
 
 export const updateVesselStatus = async (): Promise<any> => {
   logger.info("Started Vessel Status Update");
-  const vessels = await wsfRequest<WSF.VesselsLocationResponse[]>(
-    API_LOCATIONS
-  );
+  const vessels =
+    await wsfRequest<WSF.VesselsLocationResponse[]>(API_LOCATIONS);
   if (!vessels) {
     return;
   }

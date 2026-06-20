@@ -1,6 +1,5 @@
-import { WSFStatus } from "shared/contracts/api";
-import fetch from "node-fetch";
 import logger from "heroku-logger";
+import { WSFStatus } from "shared/contracts/api";
 
 const API_ACCESS = `?apiaccesscode=${process.env.WSDOT_API_KEY}`;
 
@@ -32,7 +31,6 @@ export const wsfRequest = async <T>(path: string): Promise<T | undefined> => {
         } <${url}>: ${await response.text()}`,
         response
       );
-      return;
     }
   } catch (error: any) {
     logger.error(`WSF request error <${url}>: ${error.message}`, error);

@@ -1,10 +1,10 @@
-import { DateTime, Duration } from "luxon";
-import { isNull } from "shared/lib/identity";
-import { pluralize } from "shared/lib/strings";
-import { round } from "shared/lib/math";
 import clsx from "clsx";
+import { DateTime, Duration } from "luxon";
 import React, { ReactElement } from "react";
 import type { Slot } from "shared/contracts/schedules";
+import { isNull } from "shared/lib/identity";
+import { round } from "shared/lib/math";
+import { pluralize } from "shared/lib/strings";
 
 interface Props {
   className?: string;

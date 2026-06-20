@@ -1,15 +1,16 @@
+import clsx from "clsx";
 import { DateTime } from "luxon";
+import React, { ReactElement, useEffect, useState } from "react";
+import { Helmet } from "react-helmet-async";
+import { Link } from "react-router-dom";
+import type { Schedule } from "shared/contracts/schedules";
+import { Terminal } from "shared/contracts/terminals";
 import { findWhere } from "shared/lib/arrays";
+import { isNull } from "shared/lib/identity";
+
+import { Splash } from "~/components/Splash";
 import { getSchedule } from "~/lib/schedule";
 import { getTerminal } from "~/lib/terminals";
-import { Helmet } from "react-helmet";
-import { isNull } from "shared/lib/identity";
-import { Link } from "react-router-dom";
-import { Splash } from "~/components/Splash";
-import { Terminal } from "shared/contracts/terminals";
-import clsx from "clsx";
-import React, { ReactElement, useEffect, useState } from "react";
-import type { Schedule } from "shared/contracts/schedules";
 
 export const Today = (): ReactElement => {
   const [schedule, setSchedule] = useState<Schedule | null>(null);

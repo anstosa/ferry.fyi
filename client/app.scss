@@ -8,23 +8,31 @@
 
 // Imports
 
-@import "./node_modules/react-day-picker/lib/style";
+@import "react-day-picker/style.css";
 
-.DayPicker {
+.date-button-picker {
   @apply bg-white;
   @apply text-gray-900;
   @apply rounded;
   @apply rounded-tr-none;
 
-  .DayPicker-Caption {
+  --rdp-accent-color: theme("colors.green.dark");
+  --rdp-accent-background-color: theme("colors.green.light");
+  /* stylelint-disable-next-line custom-property-pattern -- third-party variable */
+  --rdp-day_button-border-radius: theme("borderRadius.sm");
+
+  .rdp-caption_label,
+  .rdp-button_previous,
+  .rdp-button_next,
+  .rdp-chevron {
     @apply text-green-dark;
   }
 
-  .DayPicker-NavButton {
-    @apply text-green-dark;
+  .rdp-chevron {
+    fill: currentcolor;
   }
 
-  .DayPicker-Weekday {
+  .rdp-weekday {
     &:nth-child(6),
     &:nth-child(7) {
       @apply font-bold;
@@ -33,7 +41,7 @@
     }
   }
 
-  .DayPicker-Day {
+  .rdp-day {
     @apply rounded-sm;
 
     &:nth-child(6),
@@ -41,23 +49,22 @@
       @apply rounded-none;
       @apply bg-green-lightest;
     }
-    
-    &.DayPicker-Day--selected:not(.DayPicker-Day--disabled):not(.DayPicker-Day--outside) {
+
+    &.rdp-selected:not(.rdp-disabled):not(.rdp-outside) .rdp-day_button {
       @apply bg-green-dark;
       @apply text-white;
       @apply font-bold;
     }
 
-    &:hover:not(.DayPicker--interactionDisabled):not(.DayPicker-Day--disabled):not(.DayPicker-Day--selected):not(.DayPicker-Day--outside) {
+    &:hover:not(.rdp-disabled):not(.rdp-selected):not(.rdp-outside) .rdp-day_button {
       @apply bg-green-light;
     }
 
-    &--today {
+    &.rdp-today .rdp-day_button {
       @apply text-green-dark;
     }
   }
 }
-
 
 html {
   @apply bg-green-dark; // iPhone X letterbox
@@ -165,13 +172,15 @@ html {
     98.2: 0.002,
     100: 0
   );
-  $hue: color.hue($startColor);
-  $saturation: color.saturation($startColor);
-  $lightness: color.lightness($startColor);
+  $hue: color.channel($startColor, "hue", $space: hsl);
+  $saturation: color.channel($startColor, "saturation", $space: hsl);
+  $lightness: color.channel($startColor, "lightness", $space: hsl);
   $stops: ();
 
+  // build gradient stops
   @each $colorStop, $alphaValue in $scrim-coordinates {
-    $stop: hsla($hue, $saturation, $lightness, $alphaValue) math.percentage($colorStop / 100);
+    $stop: hsla($hue, $saturation, $lightness, $alphaValue)
+      math.percentage(math.div($colorStop, 100));
     $stops: list.append($stops, $stop, comma);
   }
 

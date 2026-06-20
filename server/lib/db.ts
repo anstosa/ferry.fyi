@@ -1,5 +1,5 @@
-import { isString } from "shared/lib/strings";
 import { Sequelize } from "sequelize";
+import { isString } from "shared/lib/strings";
 
 const DIALECT_POSTGRES = "postgres";
 

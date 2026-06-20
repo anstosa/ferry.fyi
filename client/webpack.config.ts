@@ -1,28 +1,28 @@
-import { BundleAnalyzerPlugin } from "webpack-bundle-analyzer";
-import { Configuration as DevServerConfiguration } from "webpack-dev-server";
-import { ESBuildMinifyPlugin } from "esbuild-loader";
-import { TailwindConfig } from "tailwindcss/tailwind-config";
+import { sentryWebpackPlugin } from "@sentry/webpack-plugin";
 import CopyPlugin from "copy-webpack-plugin";
 import CssMinimizerPlugin from "css-minimizer-webpack-plugin";
+import { EsbuildPlugin } from "esbuild-loader";
 import EslintPlugin from "eslint-webpack-plugin";
 import FaviconsPlugin from "favicons-webpack-plugin";
 import ForkTsCheckerWebpackPlugin from "fork-ts-checker-webpack-plugin";
 import HtmlPlugin from "html-webpack-plugin";
-import LiveReloadPlugin from "webpack-livereload-plugin";
 import MiniCssExtractPlugin from "mini-css-extract-plugin";
 import path from "path";
-import resolveConfig from "tailwindcss/resolveConfig";
-import SentryPlugin from "@sentry/webpack-plugin";
 import StyleLintPlugin from "stylelint-webpack-plugin";
-import tailwindConfig from "../tailwind.config.js";
+import resolveConfig from "tailwindcss/resolveConfig";
 import TsConfigPathsPlugin from "tsconfig-paths-webpack-plugin";
 import webpack, { Configuration as BaseConfiguration } from "webpack";
+import { BundleAnalyzerPlugin } from "webpack-bundle-analyzer";
+import { Configuration as DevServerConfiguration } from "webpack-dev-server";
+import LiveReloadPlugin from "webpack-livereload-plugin";
 import WebpackShellPlugin from "webpack-shell-plugin-next";
 import WorkboxPlugin from "workbox-webpack-plugin";
 
+import tailwindConfig from "../tailwind.config.js";
+
 type Configuration = BaseConfiguration & DevServerConfiguration;
 
-const { theme } = resolveConfig(tailwindConfig as unknown as TailwindConfig);
+const { theme } = resolveConfig(tailwindConfig as any);
 
 const colors = theme.colors as any;
 
@@ -53,6 +53,9 @@ console.log();
 
 const isDevelopment = process.env.NODE_ENV === Mode.development;
 const isProduction = process.env.NODE_ENV === Mode.production;
+// sentry upload gate
+const shouldUploadSentryRelease =
+  isProduction && Boolean(process.env.SENTRY_AUTH_TOKEN);
 
 const ENABLE_SIZE_DEBUG =
   Boolean(process.env.ENABLE_SIZE_DEBUG === "FALSE") ?? false;
@@ -118,21 +121,23 @@ const config: Configuration = {
     devMiddleware: {
       publicPath: process.env.ROOT_URL,
     },
-    proxy: {
-      context: [
-        // API
-        "/api",
-        // social auth endpoints
-        "/auth",
-      ],
-      target: `http://localhost:${process.env.PORT}/`,
-    },
+    proxy: [
+      {
+        context: [
+          // API
+          "/api",
+          // social auth endpoints
+          "/auth",
+        ],
+        target: `http://localhost:${process.env.PORT}/`,
+      },
+    ],
   },
   optimization: {
     runtimeChunk: true,
     minimize: ENABLE_MINIMIZE && isProduction,
     minimizer: [
-      new ESBuildMinifyPlugin({ target: "ES2015" }),
+      new EsbuildPlugin({ target: "ES2015" }),
       new CssMinimizerPlugin(),
     ],
     splitChunks: {
@@ -141,17 +146,22 @@ const config: Configuration = {
     },
   },
   plugins: [
-    ...(isProduction
+    ...(shouldUploadSentryRelease
       ? [
-          new SentryPlugin({
-            include: path.resolve(__dirname, "../dist/client"),
-            ignoreFile: ".sentrycliignore",
-            ignore: ["node_modules", "webpack.config.ts"],
+          sentryWebpackPlugin({
             project: "web",
             org: "ferry-fyi",
-            release: `web@${
-              process.env.HEROKU_RELEASE_VERSION || "DEVELOPMENT"
-            }`,
+            authToken: process.env.SENTRY_AUTH_TOKEN,
+            release: {
+              name: `web@${
+                process.env.HEROKU_RELEASE_VERSION || "DEVELOPMENT"
+              }`,
+              uploadLegacySourcemaps: {
+                paths: [path.resolve(__dirname, "../dist/client")],
+                ignore: ["node_modules", "webpack.config.ts"],
+                ignoreFile: ".sentrycliignore",
+              },
+            },
           }),
         ]
       : []),
@@ -321,7 +331,7 @@ const config: Configuration = {
       },
       {
         enforce: "pre",
-        test: /\.(ts|tsx)$/,
+        test: /\.ts$/,
         include: [
           path.resolve(__dirname),
           path.resolve(__dirname, "../shared"),
@@ -330,6 +340,24 @@ const config: Configuration = {
         use: {
           loader: "esbuild-loader",
           options: {
+            // parse non-jsx typescript
+            loader: "ts",
+            target: "ES2015",
+          },
+        },
+      },
+      {
+        enforce: "pre",
+        test: /\.tsx$/,
+        include: [
+          path.resolve(__dirname),
+          path.resolve(__dirname, "../shared"),
+        ],
+        exclude: /node_modules/,
+        use: {
+          loader: "esbuild-loader",
+          options: {
+            // parse react components
             loader: "tsx",
             target: "ES2015",
           },

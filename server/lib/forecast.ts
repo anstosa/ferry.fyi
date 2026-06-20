@@ -1,13 +1,14 @@
-import { constrain, mean, round } from "shared/lib/math";
-import { CrossingEstimate } from "shared/contracts/schedules";
+import logger from "heroku-logger";
 import { DateTime } from "luxon";
+import { Op } from "sequelize";
+import { CrossingEstimate } from "shared/contracts/schedules";
 import { findWhere, isEmpty } from "shared/lib/arrays";
 import { isNull } from "shared/lib/identity";
-import { Op } from "sequelize";
-import { Schedule } from "~/models/Schedule";
+import { constrain, mean, round } from "shared/lib/math";
 import { values } from "shared/lib/objects";
+
 import Crossing from "~/models/Crossing";
-import logger from "heroku-logger";
+import { Schedule } from "~/models/Schedule";
 
 const ESTIMATE_COMPOSITE_WEEKS = 6;
 

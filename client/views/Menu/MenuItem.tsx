@@ -1,6 +1,6 @@
-import { Link } from "react-router-dom";
 import clsx from "clsx";
 import React, { FunctionComponent, ReactElement, SVGAttributes } from "react";
+import { Link } from "react-router-dom";
 
 export interface ShareOptions {
   sharedText: string;

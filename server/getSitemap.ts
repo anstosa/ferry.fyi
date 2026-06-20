@@ -1,9 +1,10 @@
-import { DateTime } from "luxon";
-import { entries } from "shared/lib/objects";
-import { isEmpty } from "shared/lib/arrays";
-import { SitemapStream, streamToPromise } from "sitemap";
-import { Terminal } from "~/models/Terminal";
 import logger from "heroku-logger";
+import { DateTime } from "luxon";
+import { isEmpty } from "shared/lib/arrays";
+import { entries } from "shared/lib/objects";
+import { SitemapStream, streamToPromise } from "sitemap";
+
+import { Terminal } from "~/models/Terminal";
 
 let sitemap: Buffer;
 

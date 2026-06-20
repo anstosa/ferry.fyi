@@ -1,12 +1,19 @@
-import { Menu, ShareOptions } from "~/views/Menu";
-import { MenuItem } from "./Menu/MenuItem";
-import { ReloadButton } from "~/components/ReloadButton";
 import clsx from "clsx";
-import MenuIcon from "~/static/images/icons/solid/bars.svg";
-import React, { FunctionComponent, ReactNode, useState } from "react";
+import React, {
+  FunctionComponent,
+  PropsWithChildren,
+  ReactNode,
+  useState,
+} from "react";
 import ReactGA from "react-ga4";
 
-const WrapHeader: FunctionComponent = ({ children }) => (
+import { ReloadButton } from "~/components/ReloadButton";
+import MenuIcon from "~/static/images/icons/solid/bars.svg";
+import { Menu, ShareOptions } from "~/views/Menu";
+
+import { MenuItem } from "./Menu/MenuItem";
+
+const WrapHeader: FunctionComponent<PropsWithChildren> = ({ children }) => (
   <header
     className={clsx(
       "fixed top-0 inset-x-0 z-20",
@@ -29,7 +36,7 @@ interface Props {
   items?: MenuItem[];
 }
 
-export const Header: FunctionComponent<Props> = (props) => {
+export const Header: FunctionComponent<PropsWithChildren<Props>> = (props) => {
   const { isReloading, reload, children, share, items } = props;
   const [isMenuOpen, setMenuOpen] = useState<boolean>(false);
   const [isFakeReloading, setFakeReloading] = useState<boolean>(false);

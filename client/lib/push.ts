@@ -1,14 +1,15 @@
-import { firebaseApp } from "./firebase";
 import {
   getMessaging,
   getToken,
   MessagePayload,
   onMessage,
 } from "firebase/messaging";
-import { getRegistration } from "./worker";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+
+import { firebaseApp } from "./firebase";
 import { useUser } from "./user";
+import { getRegistration } from "./worker";
 
 const messaging = getMessaging(firebaseApp);
 interface Notification extends MessagePayload {
@@ -22,9 +23,9 @@ interface Notification extends MessagePayload {
 const isNotification = (payload: MessagePayload): payload is Notification =>
   Boolean(
     payload.data &&
-      "title" in payload.data &&
-      "body" in payload.data &&
-      "url" in payload.data
+    "title" in payload.data &&
+    "body" in payload.data &&
+    "url" in payload.data
   );
 
 type InitializePush = () => void;

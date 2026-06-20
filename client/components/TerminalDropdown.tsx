@@ -1,18 +1,19 @@
-import { AnimatePresence, motion } from "framer-motion";
-import { getSlug } from "~/lib/terminals";
-import { isEmpty } from "shared/lib/arrays";
-import { Link } from "react-router-dom";
-import { useWindowSize } from "~/lib/window";
-import CaretDownIcon from "~/static/images/icons/solid/caret-down.svg";
-import CaretUpIcon from "~/static/images/icons/solid/caret-up.svg";
 import clsx from "clsx";
+import { AnimatePresence, motion } from "framer-motion";
 import React, {
   FunctionComponent,
   MouseEvent,
   ReactElement,
   SVGAttributes,
 } from "react";
+import { Link } from "react-router-dom";
 import type { Terminal } from "shared/contracts/terminals";
+import { isEmpty } from "shared/lib/arrays";
+
+import { getSlug } from "~/lib/terminals";
+import { useWindowSize } from "~/lib/window";
+import CaretDownIcon from "~/static/images/icons/solid/caret-down.svg";
+import CaretUpIcon from "~/static/images/icons/solid/caret-up.svg";
 
 const ABBREVIATION_BREAKPOINT = 350;
 
@@ -93,7 +94,7 @@ export const TerminalDropdown = (props: Props): ReactElement => {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ type: "easeInOut" }}
+            transition={{ ease: "easeInOut", type: "tween" }}
           >
             <ul className={clsx("overflow-y-scroll scrolling-touch", "pb-5")}>
               {terminals.map(({ Icon, terminal }) => {

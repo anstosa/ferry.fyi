@@ -1,23 +1,35 @@
-import { Browser } from "@capacitor/browser";
 import { useAuth0 } from "@auth0/auth0-react";
-import { useDevice } from "~/lib/device";
-import { useLocation } from "react-router-dom";
+import { Browser } from "@capacitor/browser";
 import clsx from "clsx";
 import React, { ReactElement } from "react";
+import { useLocation } from "react-router-dom";
+
+import { useDevice } from "~/lib/device";
 
 export const LoginPrompt = (): ReactElement | null => {
-  const { isAuthenticated, loginWithRedirect, buildAuthorizeUrl } = useAuth0();
+  const { isAuthenticated, loginWithRedirect } = useAuth0();
   const device = useDevice();
   const location = useLocation();
 
+  // login route
   const login = async () => {
+    // native browser login
     if (device?.isNativeMobile) {
-      const url = await buildAuthorizeUrl();
-      await Browser.open({ url });
+      await loginWithRedirect({
+        appState: { redirectPath: location.pathname },
+        authorizationParams: {
+          redirect_uri: process.env.AUTH0_CLIENT_REDIRECT,
+        },
+        openUrl: async (url) => {
+          await Browser.open({ url });
+        },
+      });
     } else {
       loginWithRedirect({
         appState: { redirectPath: location.pathname },
-        redirectUri: process.env.AUTH0_CLIENT_REDIRECT,
+        authorizationParams: {
+          redirect_uri: process.env.AUTH0_CLIENT_REDIRECT,
+        },
       });
     }
   };

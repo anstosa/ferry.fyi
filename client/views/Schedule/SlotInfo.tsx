@@ -1,16 +1,18 @@
-import { Capacity } from "./Capacity";
-import { DateTime } from "luxon";
 import { ErrorBoundary } from "@sentry/react";
+import clsx from "clsx";
+import { DateTime } from "luxon";
+import React, { ReactElement, ReactNode, useEffect, useRef } from "react";
+import { Route } from "shared/contracts/routes";
+import type { Slot } from "shared/contracts/schedules";
 import { findWhere } from "shared/lib/arrays";
 import { isNull } from "shared/lib/identity";
-import { Route } from "shared/contracts/routes";
+
+import { VesselTag } from "~/components/VesselTag";
+
+import { Capacity } from "./Capacity";
 import { Status } from "./Status";
 import { Time } from "./Time";
 import { VesselStatus } from "./VesselStatus";
-import { VesselTag } from "~/components/VesselTag";
-import clsx from "clsx";
-import React, { ReactElement, ReactNode, useEffect, useRef } from "react";
-import type { Slot } from "shared/contracts/schedules";
 
 interface Props {
   className?: string;

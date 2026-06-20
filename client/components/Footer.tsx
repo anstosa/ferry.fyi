@@ -1,17 +1,24 @@
-import { colors } from "~/lib/theme";
-import { DateTime } from "luxon";
-import { getLastBulletinTime, getWaitTime } from "../views/Bulletins";
-import { GetPath } from "~/views/Route";
-import { NavLink } from "react-router-dom";
 import clsx from "clsx";
-import MapIcon from "~/static/images/icons/solid/map-marked.svg";
-import React, { FunctionComponent, ReactElement, ReactNode } from "react";
+import { DateTime } from "luxon";
+import React, {
+  FunctionComponent,
+  PropsWithChildren,
+  ReactElement,
+  ReactNode,
+} from "react";
+import { NavLink } from "react-router-dom";
+import type { Terminal } from "shared/contracts/terminals";
+
+import { colors } from "~/lib/theme";
 import ScheduleIcon from "~/static/images/icons/solid/calendar-week.svg";
 import VideoIcon from "~/static/images/icons/solid/cctv.svg";
 import WarningIcon from "~/static/images/icons/solid/exclamation-triangle.svg";
-import type { Terminal } from "shared/contracts/terminals";
+import MapIcon from "~/static/images/icons/solid/map-marked.svg";
+import { GetPath } from "~/views/Route";
 
-const WrapFooter: FunctionComponent = ({ children }) => (
+import { getLastBulletinTime, getWaitTime } from "../views/Bulletins";
+
+const WrapFooter: FunctionComponent<PropsWithChildren> = ({ children }) => (
   <footer
     className={clsx(
       "fixed bottom-0 inset-x z-10",
@@ -36,7 +43,7 @@ const WrapFooter: FunctionComponent = ({ children }) => (
   </footer>
 );
 
-const FooterLink: FunctionComponent<{ path: string }> = ({
+const FooterLink: FunctionComponent<PropsWithChildren<{ path: string }>> = ({
   path,
   children,
 }) => (
