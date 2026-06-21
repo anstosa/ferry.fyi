@@ -1,7 +1,10 @@
 import clsx from "clsx";
 import { DateTime } from "luxon";
 import React, { ReactElement, ReactNode } from "react";
-import { ReservationAccount, TicketStorage } from "shared/contracts/tickets";
+import type {
+  ReservationAccount,
+  TicketStorage,
+} from "shared/contracts/tickets";
 import { pluralize } from "shared/lib/strings";
 
 import { toShortDateString } from "~/lib/date";

@@ -13,7 +13,7 @@ import React, {
 } from "react";
 import { createRoot } from "react-dom/client";
 import type { Terminal } from "shared/contracts/terminals";
-import { Vessel } from "shared/contracts/vessels";
+import type { Vessel } from "shared/contracts/vessels";
 import { isEmpty } from "shared/lib/arrays";
 import { isNull } from "shared/lib/identity";
 
@@ -52,6 +52,13 @@ interface MarkerLabelProps {
   labelPlacement: string;
 }
 
+interface RenderedMarker {
+  marker: Marker;
+  root: ReturnType<typeof createRoot>;
+}
+
+type LocatedVessel = Vessel & { location: NonNullable<Vessel["location"]> };
+
 // stagger labels
 const getLabelPlacement = (index: number): string =>
   LABEL_PLACEMENTS[index % LABEL_PLACEMENTS.length];
@@ -84,9 +91,27 @@ const renderMarkerLabel = ({
 };
 
 // marker icon render
-const renderMarkerIcon = (icon: ReactElement, marker: HTMLElement): void => {
-  createRoot(marker).render(icon);
+const renderMarkerIcon = (
+  icon: ReactElement,
+  marker: HTMLElement
+): ReturnType<typeof createRoot> => {
+  const root = createRoot(marker);
+  root.render(icon);
+  return root;
 };
+
+// remove rendered markers
+const removeRenderedMarkers = (renderedMarkers: RenderedMarker[]): void => {
+  // marker cleanup loop
+  renderedMarkers.forEach(({ marker, root }) => {
+    root.unmount();
+    marker.remove();
+  });
+};
+
+// located vessel check
+const hasVesselLocation = (vessel: Vessel): vessel is LocatedVessel =>
+  Boolean(vessel.location);
 
 // vessel label text
 const getVesselLabel = (vessel: Vessel): string => {
@@ -104,7 +129,7 @@ const getVesselLabel = (vessel: Vessel): string => {
 
 export const Map = ({ terminal, mate, vessels }: Props): ReactElement => {
   const mapRef = useRef<HTMLDivElement>(null);
-  const markersRef = useRef<Marker[]>([]);
+  const markersRef = useRef<RenderedMarker[]>([]);
   const [map, setMap] = useState<Mapbox | null>(null);
   const [userLocation] = useGeo();
 
@@ -140,17 +165,17 @@ export const Map = ({ terminal, mate, vessels }: Props): ReactElement => {
       }
     };
 
-    const newMarkers: Marker[] = [];
+    const newMarkers: RenderedMarker[] = [];
+
+    // remove existing markers
+    if (!isEmpty(markersRef.current)) {
+      removeRenderedMarkers(markersRef.current);
+      markersRef.current = [];
+    }
 
     // map readiness guard
     if (!map || !terminal || !mate) {
       return;
-    }
-
-    // remove existing markers
-    if (!isEmpty(markersRef.current)) {
-      // marker cleanup
-      markersRef.current.forEach((marker) => marker.remove());
     }
 
     // add terminal markers
@@ -162,7 +187,7 @@ export const Map = ({ terminal, mate, vessels }: Props): ReactElement => {
           lat: targetTerminal.location.latitude,
         };
         maybeUpdateBounds(lngLat);
-        renderMarkerIcon(
+        const root = renderMarkerIcon(
           renderMarkerLabel({
             icon: <MapPinIcon />,
             iconClassName: "text-3xl text-white drop-shadow",
@@ -171,40 +196,42 @@ export const Map = ({ terminal, mate, vessels }: Props): ReactElement => {
           }),
           marker
         );
-        return new Marker({ anchor: "bottom", element: marker })
-          .setLngLat(lngLat)
-          .addTo(map);
+        return {
+          marker: new Marker({ anchor: "bottom", element: marker })
+            .setLngLat(lngLat)
+            .addTo(map),
+          root,
+        };
       })
     );
 
     // add vessel markers
     newMarkers.push(
-      ...vessels
-        .filter(({ location }) => Boolean(location))
-        .map((vessel, index) => {
-          const marker = document.createElement("div");
-          const heading = (vessel.heading ?? 0) - 45;
-          const lngLat = {
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            lon: vessel.location!.longitude,
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            lat: vessel.location!.latitude,
-          };
-          maybeUpdateBounds(lngLat);
-          renderMarkerIcon(
-            renderMarkerLabel({
-              icon: <VesselIcon />,
-              iconClassName: "text-3xl text-green-dark drop-shadow",
-              iconStyle: { transform: `rotate(${heading}deg)` },
-              label: getVesselLabel(vessel),
-              labelPlacement: getLabelPlacement(index + 1),
-            }),
-            marker
-          );
-          return new Marker({ anchor: "center", element: marker })
+      ...vessels.filter(hasVesselLocation).map((vessel, index) => {
+        const marker = document.createElement("div");
+        const heading = (vessel.heading ?? 0) - 45;
+        const lngLat = {
+          lon: vessel.location.longitude,
+          lat: vessel.location.latitude,
+        };
+        maybeUpdateBounds(lngLat);
+        const root = renderMarkerIcon(
+          renderMarkerLabel({
+            icon: <VesselIcon />,
+            iconClassName: "text-3xl text-green-dark drop-shadow",
+            iconStyle: { transform: `rotate(${heading}deg)` },
+            label: getVesselLabel(vessel),
+            labelPlacement: getLabelPlacement(index + 1),
+          }),
+          marker
+        );
+        return {
+          marker: new Marker({ anchor: "center", element: marker })
             .setLngLat(lngLat)
-            .addTo(map);
-        })
+            .addTo(map),
+          root,
+        };
+      })
     );
 
     // user location marker
@@ -214,7 +241,7 @@ export const Map = ({ terminal, mate, vessels }: Props): ReactElement => {
         lon: userLocation.longitude,
         lat: userLocation.latitude,
       };
-      renderMarkerIcon(
+      const root = renderMarkerIcon(
         renderMarkerLabel({
           icon: <UserLocationIcon />,
           iconClassName: "text-2xl text-blue-medium drop-shadow",
@@ -223,11 +250,12 @@ export const Map = ({ terminal, mate, vessels }: Props): ReactElement => {
         }),
         marker
       );
-      newMarkers.push(
-        new Marker({ anchor: "center", element: marker })
+      newMarkers.push({
+        marker: new Marker({ anchor: "center", element: marker })
           .setLngLat(lngLat)
-          .addTo(map)
-      );
+          .addTo(map),
+        root,
+      });
     }
 
     markersRef.current = newMarkers;
@@ -262,6 +290,13 @@ export const Map = ({ terminal, mate, vessels }: Props): ReactElement => {
     setMap(map);
     map.addControl(new NavigationControl({ showCompass: false }));
     map.on("load", updateMarkers);
+    return () => {
+      // cleanup map instance
+      map.off("load", updateMarkers);
+      removeRenderedMarkers(markersRef.current);
+      markersRef.current = [];
+      map.remove();
+    };
   }, [mapRef]);
 
   return (

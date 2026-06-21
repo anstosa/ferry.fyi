@@ -4,7 +4,7 @@ import { Helmet } from "react-helmet-async";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import type { Schedule as ScheduleClass } from "shared/contracts/schedules";
 import type { Terminal } from "shared/contracts/terminals";
-import { Vessel } from "shared/contracts/vessels";
+import type { Vessel } from "shared/contracts/vessels";
 import { findWhere } from "shared/lib/arrays";
 
 import { DateButton } from "~/components/DateButton";

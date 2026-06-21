@@ -15,7 +15,7 @@ import { useAtom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
 import React, { ReactElement, useEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet-async";
-import {
+import type {
   ReservationAccount,
   Ticket as TicketType,
   TicketStorage,

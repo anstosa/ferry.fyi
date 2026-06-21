@@ -2,7 +2,7 @@ import clsx from "clsx";
 import { DateTime } from "luxon";
 import React, { ReactElement, useEffect, useState } from "react";
 import { DayPicker } from "react-day-picker";
-import { ValidRange } from "shared/contracts/schedules";
+import type { ValidRange } from "shared/contracts/schedules";
 
 interface Props {
   onDateChange?: (date: DateTime) => void;

@@ -1,7 +1,7 @@
 import clsx from "clsx";
 import { DateTime } from "luxon";
 import React, { ReactElement, ReactNode, useEffect, useRef } from "react";
-import { Route } from "shared/contracts/routes";
+import type { Route } from "shared/contracts/routes";
 import type { Slot } from "shared/contracts/schedules";
 import type { TerminalLocation } from "shared/contracts/terminals";
 import { findWhere } from "shared/lib/arrays";

@@ -4,7 +4,7 @@ import { AnimatePresence } from "framer-motion";
 import { DateTime } from "luxon";
 import React, { ReactElement, ReactNode, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { Bulletin, Level } from "shared/contracts/bulletins";
+import { type Bulletin, Level } from "shared/contracts/bulletins";
 import type { Terminal } from "shared/contracts/terminals";
 import { without } from "shared/lib/arrays";
 import { isNull, isUndefined } from "shared/lib/identity";
