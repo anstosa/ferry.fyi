@@ -1,6 +1,6 @@
 import express from "express";
 import request from "supertest";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { scheduleRouter } from "../../server/controllers/api/schedule";
 
@@ -46,6 +46,7 @@ const createApp = (): express.Express => {
 describe("schedule API", () => {
   // reset mocks
   beforeEach(() => {
+    vi.useRealTimers();
     scheduleModel.generateKey.mockReturnValue("1-2-2020-01-01");
     scheduleModel.getByIndex.mockReset();
     scheduleModel.hasFetchedDate.mockReset();
@@ -53,6 +54,11 @@ describe("schedule API", () => {
     updateEstimates.mockReset();
     crossingModel.findAll.mockReset();
     crossingModel.findAll.mockResolvedValue([]);
+  });
+
+  // restore clock
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   // historical schedule case
@@ -87,6 +93,36 @@ describe("schedule API", () => {
       schedule: historicalSchedule,
       timestamp: expect.any(Number),
     });
+  });
+
+  // current service day case
+  it("fetches live schedules for the current WSF service day after 3am", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-21T18:30:00.000Z"));
+    const liveSchedule = {
+      date: "2026-06-21",
+      key: "1-2-2026-06-21",
+      mateId: "2",
+      slots: [],
+      terminalId: "1",
+      validRange: null,
+    };
+    scheduleModel.generateKey.mockReturnValue("1-2-2026-06-21");
+    scheduleModel.hasFetchedDate.mockReturnValue(false);
+    scheduleModel.getByIndex.mockReturnValue({
+      // serialize fixture
+      serialize: () => liveSchedule,
+    });
+    const app = createApp();
+
+    const response = await request(app)
+      .get("/api/schedule/1/2/2026-06-21")
+      .expect(200);
+
+    expect(crossingModel.findAll).not.toHaveBeenCalled();
+    expect(updateSchedules).toHaveBeenCalledWith("2026-06-21", "1", "2");
+    expect(updateEstimates).toHaveBeenCalledOnce();
+    expect(response.body.schedule).toEqual(liveSchedule);
   });
 
   // crossing fallback case

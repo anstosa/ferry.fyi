@@ -45,10 +45,13 @@ const getHistoricalVessel = (totalCapacity: number): Vessel =>
 
 // historical date check
 const isHistoricalDate = (date: string): boolean => {
-  const serviceDay = DateTime.local()
-    .setZone("America/Los_Angeles")
+  const now = DateTime.local().setZone("America/Los_Angeles");
+  const requestedServiceDayEnd = DateTime.fromISO(date, {
+    zone: "America/Los_Angeles",
+  })
+    .plus({ days: 1 })
     .set({ hour: 3, minute: 0, second: 0, millisecond: 0 });
-  return DateTime.fromISO(date, { zone: "America/Los_Angeles" }) < serviceDay;
+  return requestedServiceDayEnd <= now;
 };
 
 // crossing fallback
