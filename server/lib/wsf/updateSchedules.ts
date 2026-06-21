@@ -73,15 +73,16 @@ export const getPreviousCrossing = (
   if (!schedule) {
     return null;
   }
-  const departureTimes = schedule.slots.map(({ time }) => time).sort();
+  const departureTimes = schedule.slots
+    .map(({ time }) => time)
+    .sort((left, right) => left - right);
   const departureIndex = departureTimes.indexOf(departureTime);
-  if (departureIndex === 0) {
+  // missing previous slot guard
+  if (departureIndex <= 0) {
     return null;
-  } else {
-    const previousDepartureTime = departureTimes[departureIndex - 1];
-    const previousCapacity = schedule?.[previousDepartureTime]?.crossing;
-    return previousCapacity ?? null;
   }
+  const previousDepartureTime = departureTimes[departureIndex - 1];
+  return schedule.getSlot(previousDepartureTime)?.crossing ?? null;
 };
 
 // get route pairs

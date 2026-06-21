@@ -29,15 +29,26 @@ interface Props {
   terminal: Terminal | null;
 }
 
+interface CameraListProps {
+  terminal: Terminal;
+}
+
+const CAMERA_REFRESH_MS = 10 * 1000;
+
 export const Cameras = ({ terminal }: Props): ReactElement => {
+  // loading guard
   if (!terminal) {
     return <InlineLoader>Loading cameras...</InlineLoader>;
   }
+  return <CameraList terminal={terminal} />;
+};
+
+// render loaded terminal
+const CameraList = ({ terminal }: CameraListProps): ReactElement => {
   const { cameras } = terminal;
   const [cameraTime, setCameraTime] = useState<number>(
     DateTime.local().toSeconds()
   );
-  const [cameraInterval, setCameraInterval] = useState<number | null>(null);
   const [timelineStart, setTimelineStart] = useState<number | null>(null);
   const [loadedImages, setLoadedImages] = useState<Record<string, boolean>>({});
   const firstMarker = useRef<HTMLDivElement | null>(null);
@@ -58,17 +69,14 @@ export const Cameras = ({ terminal }: Props): ReactElement => {
     setTimelineStart(markerBox.top - containerBox.top);
   }, []);
 
-  // Update images ever 10 seconds
+  // refresh camera images
   useEffect(() => {
-    setCameraInterval(
-      window.setInterval(() => {
-        setCameraTime(DateTime.local().toSeconds());
-      }, 10 * 1000)
-    );
+    const interval = window.setInterval(() => {
+      setCameraTime(DateTime.local().toSeconds());
+    }, CAMERA_REFRESH_MS);
     return () => {
-      if (cameraInterval) {
-        clearInterval(cameraInterval);
-      }
+      // remove refresh interval
+      window.clearInterval(interval);
     };
   }, []);
 
