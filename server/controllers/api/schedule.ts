@@ -1,42 +1,126 @@
-import { DateTime } from "luxon";
 import { Router } from "express";
-import { Schedule } from "~/models/Schedule";
-import { toWsfDate } from "~/lib/wsf/date";
+import { DateTime } from "luxon";
+import { Op } from "sequelize";
+import type {
+  Schedule as ScheduleContract,
+  Slot,
+} from "shared/contracts/schedules";
+import type { Vessel } from "shared/contracts/vessels";
+
 import { updateEstimates } from "~/lib/forecast";
+import { getWsfStatus } from "~/lib/wsf/api";
+import { toWsfDate } from "~/lib/wsf/date";
 import { updateSchedules } from "~/lib/wsf/updateSchedules";
+import Crossing from "~/models/Crossing";
+import { Schedule } from "~/models/Schedule";
 
 const scheduleRouter = Router();
+const schedulePaths = [
+  "/:departingId/:arrivingId",
+  "/:departingId/:arrivingId/:date",
+];
 
-scheduleRouter.get(
-  "/:departingId/:arrivingId/:date?",
-  async (request, response) => {
-    const { departingId, arrivingId, date: dateInput } = request.params;
-    const date = dateInput || toWsfDate();
-    const today = DateTime.local().set({
-      hour: 3,
-      minute: 0,
-      second: 0,
-      millisecond: 0,
-    });
-    if (DateTime.fromISO(date).set({ hour: 12 }) < today) {
-      return response.status(404).send();
-    }
-    if (!Schedule.hasFetchedDate(date)) {
-      await updateSchedules(date);
-      await updateEstimates();
-    }
-    const schedule = await Schedule.getByIndex(
-      Schedule.generateKey(departingId, arrivingId, date)
-    );
-    if (schedule) {
-      return response.send({
-        schedule: schedule.serialize(),
-        timestamp: DateTime.local().toSeconds(),
-      });
-    } else {
-      return response.status(404).send();
-    }
+// service day bounds
+const getHistoricalDayBounds = (date: string): { from: number; to: number } => {
+  const serviceDay = DateTime.fromISO(date, {
+    zone: "America/Los_Angeles",
+  }).set({ hour: 3, minute: 0, second: 0, millisecond: 0 });
+  return {
+    from: serviceDay.toSeconds(),
+    to: serviceDay.plus({ day: 1 }).toSeconds(),
+  };
+};
+
+// placeholder vessel
+const getHistoricalVessel = (totalCapacity: number): Vessel =>
+  ({
+    abbreviation: "Hist",
+    id: "historical",
+    name: "Historical sailing",
+    speed: 0,
+    tallVehicleCapacity: 0,
+    vehicleCapacity: totalCapacity,
+    vesselWatchUrl: "",
+  }) as Vessel;
+
+// historical date check
+const isHistoricalDate = (date: string): boolean => {
+  const serviceDay = DateTime.local()
+    .setZone("America/Los_Angeles")
+    .set({ hour: 3, minute: 0, second: 0, millisecond: 0 });
+  return DateTime.fromISO(date, { zone: "America/Los_Angeles" }) < serviceDay;
+};
+
+// crossing fallback
+const getHistoricalSchedule = async (
+  departingId: string,
+  arrivingId: string,
+  date: string
+): Promise<ScheduleContract | null> => {
+  const { from, to } = getHistoricalDayBounds(date);
+  const crossings = await Crossing.findAll({
+    order: [["departureTime", "ASC"]],
+    where: {
+      arrivalId: arrivingId,
+      departureId: departingId,
+      departureTime: {
+        [Op.gte]: from,
+        [Op.lt]: to,
+      },
+    },
+  });
+  // historical data guard
+  if (!crossings.length) {
+    return null;
   }
-);
+  // historical slots
+  const slots: Slot[] = crossings.map((crossing) => ({
+    allowsPassengers: true,
+    allowsVehicles: true,
+    crossing: crossing.toJSON(),
+    hasPassed: true,
+    mateId: arrivingId,
+    time: crossing.departureTime,
+    vessel: getHistoricalVessel(crossing.totalCapacity),
+    wuid: DateTime.fromSeconds(crossing.departureTime).toFormat("CCC-HH-mm"),
+  }));
+  return {
+    date,
+    key: Schedule.generateKey(departingId, arrivingId, date),
+    mateId: arrivingId,
+    slots,
+    terminalId: departingId,
+    validRange: null,
+  };
+};
+
+scheduleRouter.get(schedulePaths, async (request, response) => {
+  const { departingId, arrivingId, date: dateInput } = request.params;
+  const date = dateInput || toWsfDate();
+  const historicalSchedule = isHistoricalDate(date)
+    ? await getHistoricalSchedule(departingId, arrivingId, date)
+    : null;
+  // cache fill guard
+  if (!historicalSchedule && !Schedule.hasFetchedDate(date)) {
+    await updateSchedules(date, departingId, arrivingId);
+    await updateEstimates();
+  }
+  const cachedSchedule = await Schedule.getByIndex(
+    Schedule.generateKey(departingId, arrivingId, date)
+  );
+  const schedule = cachedSchedule?.serialize() ?? historicalSchedule;
+  // schedule found guard
+  if (schedule) {
+    return response.send({
+      schedule,
+      timestamp: DateTime.local().toSeconds(),
+    });
+  }
+  // warming guard
+  if (!getWsfStatus().coreReady) {
+    return response.status(503).send({ status: "warming" });
+  }
+  return response.status(404).send();
+});
 
 export { scheduleRouter };

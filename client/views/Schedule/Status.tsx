@@ -1,10 +1,10 @@
-import { DateTime, Duration } from "luxon";
-import { isNull } from "shared/lib/identity";
-import { pluralize } from "shared/lib/strings";
-import { round } from "shared/lib/math";
 import clsx from "clsx";
+import { DateTime, Duration } from "luxon";
 import React, { ReactElement } from "react";
 import type { Slot } from "shared/contracts/schedules";
+import { isNull } from "shared/lib/identity";
+import { round } from "shared/lib/math";
+import { pluralize } from "shared/lib/strings";
 
 interface Props {
   className?: string;
@@ -14,7 +14,7 @@ interface Props {
 
 const textGreen = "text-green-dark dark:text-green-light";
 const textRed = "text-red-dark dark:text-red-light";
-const textYellow = "text-yellow-dark dark:text-yellow-light";
+const textYellow = "text-yellow-dark dark:text-yellow-medium";
 
 export const Status = ({ className, slot, time }: Props): ReactElement => {
   const { crossing, hasPassed } = slot;

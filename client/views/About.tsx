@@ -1,8 +1,10 @@
-import { Content as FeedbackContent } from "./Feedback";
-import { Helmet } from "react-helmet";
-import { Page } from "../components/Page";
-import DonateIcon from "~/static/images/icons/solid/heart.svg";
 import React, { ReactElement } from "react";
+import { Helmet } from "react-helmet-async";
+
+import DonateIcon from "~/static/images/icons/solid/heart.svg";
+
+import { Page } from "../components/Page";
+import { Content as FeedbackContent } from "./Feedback";
 
 export const About = (): ReactElement => (
   <Page>

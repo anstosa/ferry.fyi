@@ -1,6 +1,7 @@
 @use "sass:color";
 @use "sass:list";
 @use "sass:math";
+@use "sass:meta";
 @use "sass:string";
 
 // Inject Tailwind CSSs base styles, including normalization.
@@ -8,23 +9,35 @@
 
 // Imports
 
-@import "./node_modules/react-day-picker/lib/style";
+@import "react-day-picker/style.css";
 
-.DayPicker {
+.date-button-picker {
   @apply bg-white;
   @apply text-gray-900;
   @apply rounded;
   @apply rounded-tr-none;
 
-  .DayPicker-Caption {
+  --rdp-accent-color: theme("colors.green.dark");
+  --rdp-accent-background-color: theme("colors.green.light");
+  /* stylelint-disable-next-line custom-property-pattern -- third-party variable */
+  --rdp-day_button-border-radius: theme("borderRadius.sm");
+
+  .rdp-caption_label,
+  .rdp-button_previous,
+  .rdp-button_next,
+  .rdp-chevron {
     @apply text-green-dark;
   }
 
-  .DayPicker-NavButton {
-    @apply text-green-dark;
+  .rdp-caption_label {
+    @apply pl-3;
   }
 
-  .DayPicker-Weekday {
+  .rdp-chevron {
+    fill: currentcolor;
+  }
+
+  .rdp-weekday {
     &:nth-child(6),
     &:nth-child(7) {
       @apply font-bold;
@@ -33,7 +46,7 @@
     }
   }
 
-  .DayPicker-Day {
+  .rdp-day {
     @apply rounded-sm;
 
     &:nth-child(6),
@@ -41,28 +54,31 @@
       @apply rounded-none;
       @apply bg-green-lightest;
     }
-    
-    &.DayPicker-Day--selected:not(.DayPicker-Day--disabled):not(.DayPicker-Day--outside) {
+
+    &.rdp-past:not(.rdp-selected):not(.rdp-disabled):not(.rdp-outside) .rdp-day_button {
+      @apply text-gray-medium;
+    }
+
+    &.rdp-selected:not(.rdp-disabled):not(.rdp-outside) .rdp-day_button {
       @apply bg-green-dark;
       @apply text-white;
       @apply font-bold;
     }
 
-    &:hover:not(.DayPicker--interactionDisabled):not(.DayPicker-Day--disabled):not(.DayPicker-Day--selected):not(.DayPicker-Day--outside) {
+    &:hover:not(.rdp-disabled):not(.rdp-selected):not(.rdp-outside) .rdp-day_button {
       @apply bg-green-light;
     }
 
-    &--today {
+    &.rdp-today .rdp-day_button {
       @apply text-green-dark;
     }
   }
 }
 
-
 html {
   @apply bg-green-dark; // iPhone X letterbox
 
-  font-family: Roboto, sans-serif;
+  font-family: "Google Sans Flex", sans-serif;
 }
 
 @keyframes loading {
@@ -74,7 +90,7 @@ html {
   .bg-prediction-gradient {
     background: linear-gradient(
       to left,
-      theme("colors.darken.lowest"),
+      theme("colors.darken.lower"),
       transparent theme("spacing.20")
     );
   }
@@ -133,7 +149,7 @@ html {
       to right,
       theme("colors.blue.light"),
       theme("colors.blue.light") 100px,
-      theme("colors.blue.300") 120px,
+      theme("colors.blue.lightest") 120px,
       theme("colors.blue.light") 140px,
     );
 
@@ -165,13 +181,15 @@ html {
     98.2: 0.002,
     100: 0
   );
-  $hue: color.hue($startColor);
-  $saturation: color.saturation($startColor);
-  $lightness: color.lightness($startColor);
+  $hue: color.channel($startColor, "hue", $space: hsl);
+  $saturation: color.channel($startColor, "saturation", $space: hsl);
+  $lightness: color.channel($startColor, "lightness", $space: hsl);
   $stops: ();
 
+  // build gradient stops
   @each $colorStop, $alphaValue in $scrim-coordinates {
-    $stop: hsla($hue, $saturation, $lightness, $alphaValue) math.percentage($colorStop / 100);
+    $stop: hsla($hue, $saturation, $lightness, $alphaValue)
+      math.percentage(math.div($colorStop, 100));
     $stops: list.append($stops, $stop, comma);
   }
 
@@ -186,11 +204,11 @@ html {
     @apply bg-white;
   }
 
-  @import "components/alert";
-  @import "components/button";
-  @import "components/field";
-  @import "components/link";
-  @import "components/list";
+  @include meta.load-css("components/alert");
+  @include meta.load-css("components/button");
+  @include meta.load-css("components/field");
+  @include meta.load-css("components/link");
+  @include meta.load-css("components/list");
 }
 
 // Inject component classes registered by tailwind plugins

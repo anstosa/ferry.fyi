@@ -1,41 +1,43 @@
-import { atomWithStorage } from "jotai/utils";
-import { BarcodeFormat, DecodeHintType } from "@zxing/library";
-import { BarcodeOverlay } from "./BarcodeOverlay";
 import {
   BarcodeScanner,
   SupportedFormat,
 } from "@capacitor-community/barcode-scanner";
+import { KeepAwake } from "@capacitor-community/keep-awake";
+import { ScreenBrightness } from "@capacitor-community/screen-brightness";
 import {
   BrowserCodeReader,
   BrowserMultiFormatOneDReader,
   IScannerControls,
 } from "@zxing/browser";
-import { ErrorBoundary } from "@sentry/react";
-import { get } from "~/lib/api";
-import { Helmet } from "react-helmet";
-import { KeepAwake } from "@capacitor-community/keep-awake";
-import { LoginPrompt } from "./LoginPrompt";
-import { Page } from "~/components/Page";
-import {
-  ReservationAccount,
-  TicketStorage,
-  Ticket as TicketType,
-} from "shared/contracts/tickets";
-import { ScreenBrightness } from "@capacitor-community/screen-brightness";
-import { sortBy, without } from "shared/lib/arrays";
-import { Splash } from "~/components/Splash";
-import { Ticket } from "./Ticket";
-import { useAtom } from "jotai";
-import { useDevice } from "~/lib/device";
-import { useQuery } from "~/lib/browser";
-import { useUser } from "~/lib/user";
+import { BarcodeFormat, DecodeHintType } from "@zxing/library";
 import clsx from "clsx";
-import ErrorIcon from "~/static/images/icons/solid/exclamation-triangle.svg";
-import ManualIcon from "~/static/images/icons/solid/keyboard.svg";
+import { useAtom } from "jotai";
+import { atomWithStorage } from "jotai/utils";
 import React, { ReactElement, useEffect, useRef, useState } from "react";
+import { Helmet } from "react-helmet-async";
+import type {
+  ReservationAccount,
+  Ticket as TicketType,
+  TicketStorage,
+} from "shared/contracts/tickets";
+import { sortBy, without } from "shared/lib/arrays";
+
+import { ErrorBoundary } from "~/components/ErrorBoundary";
+import { Page } from "~/components/Page";
+import { Splash } from "~/components/Splash";
+import { get } from "~/lib/api";
+import { useQuery } from "~/lib/browser";
+import { useDevice } from "~/lib/device";
+import { useUser } from "~/lib/user";
 import ScanIcon from "~/static/images/icons/solid/barcode-scan.svg";
-import StopIcon from "~/static/images/icons/solid/times.svg";
+import ErrorIcon from "~/static/images/icons/solid/exclamation-triangle.svg";
 import UploadIcon from "~/static/images/icons/solid/image.svg";
+import ManualIcon from "~/static/images/icons/solid/keyboard.svg";
+import StopIcon from "~/static/images/icons/solid/times.svg";
+
+import { BarcodeOverlay } from "./BarcodeOverlay";
+import { LoginPrompt } from "./LoginPrompt";
+import { Ticket } from "./Ticket";
 
 const hints = new Map();
 hints.set(DecodeHintType.POSSIBLE_FORMATS, [BarcodeFormat.CODE_128]);
@@ -101,7 +103,7 @@ export const Tickets = (): ReactElement => {
                 ...data,
               },
             ]);
-          } catch (error) {
+          } catch {
             setTickets((tickets) => without(tickets, ticket));
           }
         }
@@ -148,7 +150,7 @@ export const Tickets = (): ReactElement => {
     }
     try {
       await KeepAwake.keepAwake();
-    } catch (error) {}
+    } catch {}
   };
 
   const closeOverlay = async () => {
@@ -158,7 +160,7 @@ export const Tickets = (): ReactElement => {
     }
     try {
       await KeepAwake.allowSleep();
-    } catch (error) {}
+    } catch {}
   };
 
   const addCode = async (code: string) => {
@@ -186,7 +188,7 @@ export const Tickets = (): ReactElement => {
             ...ticket,
           },
         ]);
-      } catch (error) {}
+      } catch {}
       setAdding(false);
     }
     // if this code isn't on the user, set it
@@ -330,7 +332,13 @@ export const Tickets = (): ReactElement => {
           </li>
         )}
         {sortBy(tickets, "id").map((ticket) => (
-          <ErrorBoundary key={ticket.id}>
+          <ErrorBoundary
+            className="my-4"
+            fallbackTitle="Ticket crashed"
+            fallbackMessage="This ticket could not be shown. Your other tickets are still available."
+            key={ticket.id}
+            resetKey={ticket.id}
+          >
             <Ticket ticket={ticket} onClick={() => openOverlay(ticket)} />
           </ErrorBoundary>
         ))}

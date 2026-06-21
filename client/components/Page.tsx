@@ -1,12 +1,17 @@
-import { Header } from "../views/Header";
 import clsx from "clsx";
-import React, { FunctionComponent, ReactElement } from "react";
+import React, {
+  FunctionComponent,
+  PropsWithChildren,
+  ReactElement,
+} from "react";
+
+import { Header } from "../views/Header";
 
 interface Props {
   title?: string;
 }
 
-export const Page: FunctionComponent<Props> = ({
+export const Page: FunctionComponent<PropsWithChildren<Props>> = ({
   title,
   children,
 }): ReactElement => (

@@ -1,14 +1,16 @@
-import { atom, useAtom } from "jotai";
-import { motion } from "framer-motion";
-import { without } from "shared/lib/arrays";
-import CloseIcon from "~/static/images/icons/solid/times.svg";
 import clsx from "clsx";
+import { motion } from "framer-motion";
+import { atom, useAtom } from "jotai";
 import React, {
   FunctionComponent,
+  PropsWithChildren,
   SVGAttributes,
   useEffect,
   useState,
 } from "react";
+import { without } from "shared/lib/arrays";
+
+import CloseIcon from "~/static/images/icons/solid/times.svg";
 
 interface Props {
   onClose?: () => void;
@@ -28,7 +30,7 @@ type toastHook = [
   {
     addToast: (level: "error" | "info" | "warning") => string;
     removeToast: (id: string) => void;
-  }
+  },
 ];
 const useToast = (): toastHook => {
   const [errors, setErrors] = useAtom(errorsAtom);
@@ -59,7 +61,7 @@ const useToast = (): toastHook => {
   ];
 };
 
-export const Toast: FunctionComponent<Props> = ({
+export const Toast: FunctionComponent<PropsWithChildren<Props>> = ({
   children,
   onClose,
   info,
@@ -101,7 +103,7 @@ export const Toast: FunctionComponent<Props> = ({
       initial={{ [top ? "top" : "bottom"]: "-100%", opacity: 0 }}
       animate={{ [top ? "top" : "bottom"]: 0, opacity: 1 }}
       exit={{ [top ? "top" : "bottom"]: "-100%", opacity: 0 }}
-      transition={{ type: "easeInOut" }}
+      transition={{ ease: "easeInOut", type: "tween" }}
     >
       {onClose && (
         <CloseIcon

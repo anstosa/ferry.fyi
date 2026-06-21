@@ -1,7 +1,8 @@
 import { DateTime } from "luxon";
-import { get } from "~/lib/api";
 import { GetScheduleResponse } from "shared/api/schedules";
 import type { Terminal } from "shared/contracts/terminals";
+
+import { get } from "~/lib/api";
 
 const getApiSchedule = (
   departingId: string,

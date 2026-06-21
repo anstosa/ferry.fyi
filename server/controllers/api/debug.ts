@@ -1,5 +1,6 @@
-import { Bulletin } from "~/models/Bulletin";
 import { Router } from "express";
+
+import { Bulletin } from "~/models/Bulletin";
 
 const debugRouter = Router();
 

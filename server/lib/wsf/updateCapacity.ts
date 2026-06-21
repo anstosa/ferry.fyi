@@ -1,12 +1,14 @@
-import { API_TERMINALS } from "./updateTerminals";
-import { getPreviousCrossing } from "./updateSchedules";
+import logger from "heroku-logger";
+
+import Crossing from "~/models/Crossing";
 import { Schedule } from "~/models/Schedule";
-import { toWsfDate, wsfDateToTimestamp } from "./date";
 import { Vessel } from "~/models/Vessel";
 import { WSF } from "~/typings/wsf";
+
 import { wsfRequest } from "./api";
-import Crossing from "~/models/Crossing";
-import logger from "heroku-logger";
+import { toWsfDate, wsfDateToTimestamp } from "./date";
+import { getPreviousCrossing } from "./updateSchedules";
+import { API_TERMINALS } from "./updateTerminals";
 
 const API_SPACE = `${API_TERMINALS}/terminalsailingspace`;
 

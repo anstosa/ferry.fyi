@@ -1,38 +1,36 @@
-import { User as Auth0User } from "auth0";
-import { get, post } from "~/lib/api";
 import { useAuth0 } from "@auth0/auth0-react";
 import React, {
   createContext,
   FunctionComponent,
+  PropsWithChildren,
   useContext,
   useEffect,
   useState,
 } from "react";
+import {
+  AppMetadata,
+  CurrentUser,
+  UserMetadata,
+  UserUpdatePayload,
+} from "shared/contracts/user";
 
-interface AppMetadata {
-  tickets?: string[];
-  subscribedTerminals?: string[];
-  fcmToken?: string;
-}
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-interface UserMetadata {}
-type User = Auth0User<AppMetadata, UserMetadata>;
+import { get, post } from "~/lib/api";
 
 interface State extends AppMetadata, UserMetadata {
   isAuthenticated: boolean;
-  user: null | User;
+  user: null | CurrentUser;
 }
 interface Actions {
-  updateUser: (data: Partial<User>) => Promise<void>;
+  updateUser: (data: UserUpdatePayload) => Promise<void>;
   refreshUser: () => Promise<void>;
 }
 
 type Response = [State, Actions];
 
-let userPromise: Promise<Record<string, unknown>>;
+let userPromise: Promise<CurrentUser>;
 
 const _useUser = (): Response => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<CurrentUser | null>(null);
   const {
     user: auth0User,
     getAccessTokenSilently,
@@ -41,13 +39,17 @@ const _useUser = (): Response => {
   const [accessToken, setAccessToken] = useState<string>("");
 
   const refreshUser = async (inputToken?: string) => {
+    // cached user guard
     if (userPromise) {
       setUser(await userPromise);
       return;
     }
     try {
       // eslint-disable-next-line require-atomic-updates
-      userPromise = get("/user", inputToken ?? accessToken);
+      userPromise = get(
+        "/user",
+        inputToken ?? accessToken
+      ) as Promise<CurrentUser>;
       setUser(await userPromise);
     } catch (error) {
       console.error(error);
@@ -55,6 +57,7 @@ const _useUser = (): Response => {
   };
 
   const getAccessToken = async () => {
+    // auth0 subject guard
     if (!auth0User?.sub) {
       return;
     }
@@ -73,15 +76,15 @@ const _useUser = (): Response => {
   }, [getAccessTokenSilently, auth0User?.sub]);
 
   const state: State = {
-    isAuthenticated,
-    user,
     ...user?.app_metadata,
     ...user?.user_metadata,
+    isAuthenticated,
+    user,
   };
 
   const actions: Actions = {
     updateUser: async (data) => {
-      setUser({ ...(await post("/user", data, accessToken)) });
+      setUser({ ...((await post("/user", data, accessToken)) as CurrentUser) });
     },
     refreshUser,
   };
@@ -96,7 +99,9 @@ export const UserContext = createContext<Response>([
     refreshUser: async () => await Promise.resolve(),
   },
 ]);
-export const UserProvider: FunctionComponent = ({ children }) => {
+export const UserProvider: FunctionComponent<PropsWithChildren> = ({
+  children,
+}) => {
   const user = _useUser();
   return <UserContext.Provider value={user}>{children}</UserContext.Provider>;
 };

@@ -1,69 +1,121 @@
+import clsx from "clsx";
 import { AnimatePresence, motion } from "framer-motion";
 import { DateTime } from "luxon";
-import { Header } from "./Header";
-import { InlineLoader } from "~/components/InlineLoader";
-import { isNil, isNull } from "shared/lib/identity";
-import { locationToUrl } from "~/lib/maps";
-import { ReloadButton } from "../components/ReloadButton";
-import { useScrollPosition } from "~/lib/scroll";
-import CarIcon from "~/static/images/icons/solid/car.svg";
-import clsx from "clsx";
-import MapIcon from "~/static/images/icons/solid/map-marker.svg";
-import ParkingIcon from "~/static/images/icons/solid/parking.svg";
 import React, {
+  CSSProperties,
   ReactElement,
   ReactNode,
+  useCallback,
   useEffect,
   useRef,
   useState,
 } from "react";
-import WSDOTIcon from "~/static/images/icons/wsdot.svg";
 import type { Camera } from "shared/contracts/cameras";
 import type { Terminal } from "shared/contracts/terminals";
+import { isNil, isNull } from "shared/lib/identity";
+
+import { InlineLoader } from "~/components/InlineLoader";
+import { locationToUrl } from "~/lib/maps";
+import { useScrollPosition } from "~/lib/scroll";
+import CarIcon from "~/static/images/icons/solid/car.svg";
+import MapIcon from "~/static/images/icons/solid/map-marker.svg";
+import ParkingIcon from "~/static/images/icons/solid/parking.svg";
+import WSDOTIcon from "~/static/images/icons/wsdot.svg";
+
+import { ReloadButton } from "../components/ReloadButton";
+import { Header } from "./Header";
 
 interface Props {
   terminal: Terminal | null;
 }
 
+interface CameraListProps {
+  terminal: Terminal;
+}
+
+const CAMERA_REFRESH_MS = 10 * 1000;
+
 export const Cameras = ({ terminal }: Props): ReactElement => {
+  // loading guard
   if (!terminal) {
     return <InlineLoader>Loading cameras...</InlineLoader>;
   }
+  return <CameraList terminal={terminal} />;
+};
+
+// render loaded terminal
+const CameraList = ({ terminal }: CameraListProps): ReactElement => {
   const { cameras } = terminal;
   const [cameraTime, setCameraTime] = useState<number>(
     DateTime.local().toSeconds()
   );
-  const [cameraInterval, setCameraInterval] = useState<number | null>(null);
+  const [timelineStart, setTimelineStart] = useState<number | null>(null);
+  const [loadedImages, setLoadedImages] = useState<Record<string, boolean>>({});
+  const firstMarker = useRef<HTMLDivElement | null>(null);
+  const timeline = useRef<HTMLDivElement | null>(null);
   const wrapper = useRef<HTMLDivElement | null>(null);
   const { y } = useScrollPosition(wrapper);
 
-  // Update images ever 10 seconds
+  // align timeline rail
+  const updateTimelineStart = useCallback((): void => {
+    const marker = firstMarker.current;
+    const container = timeline.current;
+    // missing refs guard
+    if (!marker || !container) {
+      return;
+    }
+    const markerBox = marker.getBoundingClientRect();
+    const containerBox = container.getBoundingClientRect();
+    setTimelineStart(markerBox.top - containerBox.top);
+  }, []);
+
+  // refresh camera images
   useEffect(() => {
-    setCameraInterval(
-      window.setInterval(() => {
-        setCameraTime(DateTime.local().toSeconds());
-      }, 10 * 1000)
-    );
+    const interval = window.setInterval(() => {
+      setCameraTime(DateTime.local().toSeconds());
+    }, CAMERA_REFRESH_MS);
     return () => {
-      if (cameraInterval) {
-        clearInterval(cameraInterval);
-      }
+      // remove refresh interval
+      window.clearInterval(interval);
     };
   }, []);
 
+  // recalculate rail start
+  useEffect(() => {
+    updateTimelineStart();
+  }, [terminal.id, updateTimelineStart]);
+
+  // recalculate on resize
+  useEffect(() => {
+    window.addEventListener("resize", updateTimelineStart);
+    return () => {
+      // remove resize listener
+      window.removeEventListener("resize", updateTimelineStart);
+    };
+  }, [updateTimelineStart]);
+
   const reload = () => setCameraTime(DateTime.local().toSeconds());
 
+  // track image load
+  const markImageLoaded = (imageKey: string): void => {
+    setLoadedImages((current) => ({ ...current, [imageKey]: true }));
+  };
+
   const renderCamera = (camera: Camera, index: number): ReactNode => {
-    const { id, title, image, spacesToNext, location, owner } = camera;
-    const isFirst = index === 0;
+    const { id, title, image, location, owner } = camera;
     let totalToBooth: number | null;
     const mapsUrl = locationToUrl(location);
+    const imageKey = `${id}-${cameraTime}`;
+    const imageLoaded = loadedImages[imageKey] ?? false;
+    const isFirst = index === 0;
+    const markerRef = isFirst ? firstMarker : undefined;
     if (isNil(cameras[0]?.spacesToNext)) {
       totalToBooth = null;
     } else {
       totalToBooth = 0;
       cameras.find((candidate) => {
         const { spacesToNext } = candidate;
+        // terminal marker guard
         if (isNull(spacesToNext)) {
           return true;
         }
@@ -73,26 +125,41 @@ export const Cameras = ({ terminal }: Props): ReactElement => {
     }
 
     return (
-      <li
-        className={clsx("flex flex-col", "relative", !isFirst && "pt-8")}
-        key={id}
-      >
+      <li className={clsx("flex flex-col", "relative")} key={id}>
         <div
-          className="bg-lighten-lower w-full relative"
-          style={{
-            paddingTop: `${(image.height / image.width) * 100}%`,
-          }}
+          className={clsx(
+            "w-full max-w-[480px] rounded",
+            "bg-gray-light dark:bg-gray-dark"
+          )}
         >
           <img
             src={`${image.url}?${cameraTime}`}
             className={clsx(
-              "absolute inset-0 w-full",
+              "block w-full max-w-[480px]",
+              imageLoaded ? "h-auto" : "h-[300px] opacity-0",
               owner?.name && "border border-black"
             )}
             alt={`Traffic Camera: ${title}`}
+            onLoad={() => {
+              markImageLoaded(imageKey);
+              // first image alignment
+              if (isFirst) {
+                updateTimelineStart();
+              }
+            }}
           />
         </div>
-        <span className="font-bold text-lg mt-2">
+        <span className="relative mt-3 mb-2 flex flex-col gap-1 px-1 text-lg font-bold">
+          <div
+            ref={markerRef}
+            className={clsx(
+              "absolute top-0 left-0 -ml-[3.375rem] z-10",
+              "flex h-9 w-12 items-center justify-center",
+              "bg-white text-black dark:bg-black dark:text-white"
+            )}
+          >
+            <MapIcon className="text-2xl" />
+          </div>
           <a
             href={mapsUrl}
             target="_blank"
@@ -102,52 +169,18 @@ export const Cameras = ({ terminal }: Props): ReactElement => {
             {title}
           </a>
           {Boolean(totalToBooth) && (
-            <span className={clsx("ml-4 font-normal text-sm")}>
+            <span className={clsx("font-normal text-sm")}>
               <CarIcon className="inline-block mr-2" />
               {totalToBooth} to tollbooth
             </span>
           )}
           {totalToBooth === 0 && (
-            <span className={clsx("ml-4 font-normal text-sm")}>
+            <span className={clsx("font-normal text-sm")}>
               <ParkingIcon className="inline-block mr-2" />
               Past tollbooth
             </span>
           )}
         </span>
-        {isFirst && (
-          <div
-            className={clsx(
-              "bg-green-dark",
-              "w-12 h-full",
-              "absolute bottom-0 left-0 -ml-12 z-10"
-            )}
-          />
-        )}
-        <div
-          className={clsx(
-            "bg-green-dark text-lighten-medium",
-            "w-12 py-2",
-            "absolute bottom-0 left-0 -ml-12 -mb-2 z-10",
-            "text-center"
-          )}
-        >
-          <MapIcon className="text-2xl inline-block ml-1" />
-        </div>
-        {Boolean(spacesToNext) && (
-          <div
-            className={clsx(
-              "bg-green-dark",
-              "w-12 py-1",
-              "absolute top-0 left-0 -ml-12 mt-1/3 z-10",
-              "text-center"
-            )}
-          >
-            <div className="flex flex-col ml-1 items-center">
-              <CarIcon className="inline-block" />
-              <span className="text-sm">{spacesToNext}</span>
-            </div>
-          </div>
-        )}
       </li>
     );
   };
@@ -181,17 +214,25 @@ export const Cameras = ({ terminal }: Props): ReactElement => {
         />
       </Header>
       <main
-        className="flex-grow overflow-y-scroll scrolling-touch text-white"
+        className="flex-grow overflow-y-scroll scrolling-touch bg-white text-black dark:bg-black dark:text-white"
         ref={wrapper}
       >
-        <div className={clsx("my-4 pl-12 relative max-w-lg")}>
+        <div
+          className={clsx("my-6 mx-auto pl-16 pr-4 relative max-w-lg")}
+          ref={timeline}
+        >
           <div
             className={clsx(
-              "bg-green-dark",
-              "border-l-4 border-dotted border-lighten-medium",
-              "w-1 h-full",
-              "absolute inset-y-0 left-0 ml-6"
+              "border-l-4 border-dotted border-black dark:border-white",
+              "w-1",
+              "absolute bottom-0 left-0 ml-8",
+              isNull(timelineStart) && "hidden"
             )}
+            style={
+              {
+                top: timelineStart ?? 0,
+              } as CSSProperties
+            }
           />
           {/* Top shadow on scroll */}
           <AnimatePresence>
@@ -210,7 +251,7 @@ export const Cameras = ({ terminal }: Props): ReactElement => {
             )}
           </AnimatePresence>
 
-          <ul>{cameras.map(renderCamera)}</ul>
+          <ul className="flex flex-col gap-8">{cameras.map(renderCamera)}</ul>
         </div>
       </main>
     </>

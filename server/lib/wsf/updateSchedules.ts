@@ -1,15 +1,17 @@
+import logger from "heroku-logger";
 import { DateTime } from "luxon";
-import { isNull } from "shared/lib/identity";
-import { Schedule } from "~/models/Schedule";
 import { Slot, ValidRange } from "shared/contracts/schedules";
-import { Terminal } from "~/models/Terminal";
-import { toWsfDate, wsfDateToTimestamp } from "./date";
+import { isNull } from "shared/lib/identity";
 import { values } from "shared/lib/objects";
+
+import Crossing from "~/models/Crossing";
+import { Schedule } from "~/models/Schedule";
+import { Terminal } from "~/models/Terminal";
 import { Vessel } from "~/models/Vessel";
 import { WSF } from "~/typings/wsf";
+
 import { wsfRequest } from "./api";
-import Crossing from "~/models/Crossing";
-import logger from "heroku-logger";
+import { toWsfDate, wsfDateToTimestamp } from "./date";
 
 // API paths
 
@@ -25,6 +27,7 @@ const getScheduleApi = (
 // local state
 
 let lastFlushDate: number | null = null;
+const inProgressSchedules = new Map<string, Promise<void>>();
 
 const updateTiming = (): void => {
   const now = DateTime.local();
@@ -70,31 +73,28 @@ export const getPreviousCrossing = (
   if (!schedule) {
     return null;
   }
-  const departureTimes = schedule.slots.map(({ time }) => time).sort();
+  const departureTimes = schedule.slots
+    .map(({ time }) => time)
+    .sort((left, right) => left - right);
   const departureIndex = departureTimes.indexOf(departureTime);
-  if (departureIndex === 0) {
+  // missing previous slot guard
+  if (departureIndex <= 0) {
     return null;
-  } else {
-    const previousDepartureTime = departureTimes[departureIndex - 1];
-    const previousCapacity = schedule?.[previousDepartureTime]?.crossing;
-    return previousCapacity ?? null;
   }
+  const previousDepartureTime = departureTimes[departureIndex - 1];
+  return schedule.getSlot(previousDepartureTime)?.crossing ?? null;
 };
 
-export const updateSchedules = async (
-  date: string = toWsfDate()
-): Promise<void> => {
-  const cacheFlushDate = wsfDateToTimestamp(
-    await wsfRequest<string>(API_CACHE)
-  );
-  if (cacheFlushDate === lastFlushDate && Schedule.hasFetchedDate(date)) {
-    logger.info(`Skipped Schedule Update for ${date}`);
-    return;
+// get route pairs
+const getSchedulePairs = (
+  terminalId?: string,
+  mateId?: string
+): Array<[string, string]> => {
+  // explicit pair guard
+  if (terminalId && mateId) {
+    return [[terminalId, mateId]];
   }
-  lastFlushDate = cacheFlushDate;
-  logger.info(`Started Schedule Update for ${date}`);
-  // get all combinations of [departureId, arrivalId]
-  const schedulesToUpdate = values(Terminal.getAll()).reduce(
+  return values(Terminal.getAll()).reduce(
     (result, terminal) => {
       return result.concat(
         terminal.mates.map((mate) => [terminal.id, mate.id])
@@ -102,87 +102,152 @@ export const updateSchedules = async (
     },
     [] as Array<[string, string]>
   );
+};
+
+// get valid range
+const getValidRange = async (): Promise<ValidRange | null> => {
   const rangeResponse = await wsfRequest<WSF.ValidRangeResponse>(API_RANGE);
-  const validRange: ValidRange | null = rangeResponse
-    ? {
-        to: wsfDateToTimestamp(rangeResponse.DateThru),
-        from: wsfDateToTimestamp(rangeResponse.DateFrom),
+  // missing range guard
+  if (!rangeResponse) {
+    return null;
+  }
+  return {
+    to: wsfDateToTimestamp(rangeResponse.DateThru),
+    from: wsfDateToTimestamp(rangeResponse.DateFrom),
+  };
+};
+
+// update one schedule
+const updateSchedulePair = async (
+  terminalId: string,
+  mateId: string,
+  date: string,
+  validRange: ValidRange | null
+): Promise<void> => {
+  const response = await wsfRequest<WSF.ScheduleResponse>(
+    getScheduleApi(terminalId, mateId, date)
+  );
+  // missing response guard
+  if (!response) {
+    return;
+  }
+  const {
+    TerminalCombos: [{ Times }],
+  } = response;
+  const seenVessels: Vessel[] = [];
+
+  const slots = await Promise.all(
+    Times.map(async ({ DepartingTime, VesselID, LoadingRule }) => {
+      const time = wsfDateToTimestamp(DepartingTime);
+      // invalid time guard
+      if (isNull(time)) {
+        return null;
       }
-    : null;
-  await Promise.all(
-    schedulesToUpdate.map(async ([terminalId, mateId]) => {
-      const response = await wsfRequest<WSF.ScheduleResponse>(
-        getScheduleApi(terminalId, mateId, date)
-      );
-      if (!response) {
-        return;
+      const departureTime = DateTime.fromSeconds(time);
+      const vessel = Vessel.getByIndex(String(VesselID));
+      // missing vessel guard
+      if (!vessel) {
+        return null;
       }
-      const {
-        TerminalCombos: [{ Times }],
-      } = response;
-      const seenVessels: Vessel[] = [];
-
-      const slots = await Promise.all(
-        Times.map(async ({ DepartingTime, VesselID, LoadingRule }) => {
-          const time = wsfDateToTimestamp(DepartingTime);
-          if (isNull(time)) {
-            return null;
-          }
-          const departureTime = DateTime.fromSeconds(time);
-          const vessel = Vessel.getByIndex(String(VesselID));
-          if (!vessel) {
-            return null;
-          }
-          if (!seenVessels.includes(vessel)) {
-            vessel.update({ departureDelta: 0 });
-            vessel.save();
-            seenVessels.push(vessel);
-          }
-          const crossing = await Crossing.findOne({
-            where: {
-              departureId: terminalId,
-              arrivalId: mateId,
-              departureTime: time,
-            },
-          });
-          return {
-            allowsPassengers: [
-              WSF.LoadingRules.PASSENGER,
-              WSF.LoadingRules.BOTH,
-            ].includes(LoadingRule),
-            allowsVehicles: [
-              WSF.LoadingRules.VEHICLE,
-              WSF.LoadingRules.BOTH,
-            ].includes(LoadingRule),
-            crossing,
-            hasPassed: departureTime < DateTime.local(),
-            mateId,
-            time,
-            vessel,
-            wuid: getWuid(time),
-          };
-        })
-      );
-
-      const key = Schedule.generateKey(terminalId, mateId, date);
-
-      const data = {
-        date,
-        key,
+      // first vessel reset
+      if (!seenVessels.includes(vessel)) {
+        vessel.update({ departureDelta: 0 });
+        vessel.save();
+        seenVessels.push(vessel);
+      }
+      const crossing = await Crossing.findOne({
+        where: {
+          departureId: terminalId,
+          arrivalId: mateId,
+          departureTime: time,
+        },
+      });
+      return {
+        allowsPassengers: [
+          WSF.LoadingRules.PASSENGER,
+          WSF.LoadingRules.BOTH,
+        ].includes(LoadingRule),
+        allowsVehicles: [
+          WSF.LoadingRules.VEHICLE,
+          WSF.LoadingRules.BOTH,
+        ].includes(LoadingRule),
+        crossing,
+        hasPassed: departureTime < DateTime.local(),
         mateId,
-        slots: slots.filter(Boolean) as Slot[],
-        terminalId,
-        validRange,
+        time,
+        vessel,
+        wuid: getWuid(time),
       };
-
-      const [schedule, wasCreated] = Schedule.getOrCreate(key, data);
-      if (!wasCreated) {
-        schedule.update(data);
-      }
-      schedule.save();
-      return schedule;
     })
   );
-  logger.info(`Updated ${Object.keys(Schedule.getAll()).length} Schedules`);
-  updateTiming();
+
+  const key = Schedule.generateKey(terminalId, mateId, date);
+  const data = {
+    date,
+    key,
+    mateId,
+    slots: slots.filter(Boolean) as Slot[],
+    terminalId,
+    validRange,
+  };
+
+  const [schedule, wasCreated] = Schedule.getOrCreate(key, data);
+  // existing schedule guard
+  if (!wasCreated) {
+    schedule.update(data);
+  }
+  schedule.save();
+};
+
+export const updateSchedules = async (
+  date: string = toWsfDate(),
+  terminalId?: string,
+  mateId?: string
+): Promise<void> => {
+  const targetKey = `${date}:${terminalId ?? "*"}:${mateId ?? "*"}`;
+  const inProgress = inProgressSchedules.get(targetKey);
+  // in-flight guard
+  if (inProgress) {
+    return inProgress;
+  }
+
+  const updatePromise = (async (): Promise<void> => {
+    const cacheFlushDate = wsfDateToTimestamp(
+      await wsfRequest<string>(API_CACHE)
+    );
+    const targetScheduleKey = terminalId
+      ? Schedule.generateKey(terminalId, mateId ?? "", date)
+      : null;
+    const hasTargetSchedule = targetScheduleKey
+      ? Boolean(Schedule.getByIndex(targetScheduleKey))
+      : Schedule.hasFetchedDate(date);
+    // fresh cache guard
+    if (cacheFlushDate === lastFlushDate && hasTargetSchedule) {
+      logger.info(`Skipped Schedule Update for ${targetKey}`);
+      return;
+    }
+    lastFlushDate = cacheFlushDate;
+    logger.info(`Started Schedule Update for ${targetKey}`);
+    const validRange = await getValidRange();
+    const schedulesToUpdate = getSchedulePairs(terminalId, mateId);
+    await Promise.all(
+      schedulesToUpdate.map(async ([targetTerminalId, targetMateId]) => {
+        await updateSchedulePair(
+          targetTerminalId,
+          targetMateId,
+          date,
+          validRange
+        );
+      })
+    );
+    logger.info(`Updated ${schedulesToUpdate.length} Schedules for ${date}`);
+    updateTiming();
+  })();
+
+  inProgressSchedules.set(targetKey, updatePromise);
+  try {
+    await updatePromise;
+  } finally {
+    inProgressSchedules.delete(targetKey);
+  }
 };

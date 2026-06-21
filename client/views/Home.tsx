@@ -1,13 +1,15 @@
-import { getSlug, useTerminals } from "~/lib/terminals";
-import { isEmpty } from "shared/lib/arrays";
+import clsx from "clsx";
+import React, { ReactElement } from "react";
 import { Link } from "react-router-dom";
 import { Terminal as TerminalClass } from "shared/contracts/terminals";
-import { Today } from "./Today";
-import clsx from "clsx";
-import LocationIcon from "~/static/images/icons/solid/location.svg";
+import { isEmpty } from "shared/lib/arrays";
+
+import { getSlug, useTerminals } from "~/lib/terminals";
 import logo from "~/static/images/icon_monochrome.png";
-import React, { ReactElement } from "react";
 import TicketIcon from "~/static/images/icons/solid/barcode-alt.svg";
+import LocationIcon from "~/static/images/icons/solid/location.svg";
+
+import { Today } from "./Today";
 
 interface TerminalProps {
   terminal: TerminalClass;

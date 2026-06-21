@@ -1,5 +1,6 @@
-import { getWsfStatus } from "./wsf/api";
 import { Response } from "express";
+
+import { getWsfStatus } from "./wsf/api";
 
 export const sendResponse = (
   response: Response,

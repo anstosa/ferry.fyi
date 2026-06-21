@@ -1,12 +1,12 @@
-import { isNil, isNull } from "shared/lib/identity";
-import { pluralize } from "shared/lib/strings";
-import { round } from "shared/lib/math";
-import CarIcon from "~/static/images/icons/solid/car.svg";
 import clsx from "clsx";
-import DoNotEnterIcon from "~/static/images/icons/solid/do-not-enter.svg";
-import ExternalLinkIcon from "~/static/images/icons/solid/external-link-square.svg";
 import React, { ReactElement, useEffect, useState } from "react";
 import type { Slot } from "shared/contracts/schedules";
+import { isNil, isNull } from "shared/lib/identity";
+import { pluralize } from "shared/lib/strings";
+
+import CarIcon from "~/static/images/icons/solid/car.svg";
+import DoNotEnterIcon from "~/static/images/icons/solid/do-not-enter.svg";
+import ExternalLinkIcon from "~/static/images/icons/solid/external-link-square.svg";
 
 const RESERVATIONS_BASE_URL =
   "https://secureapps.wsdot.wa.gov/Ferries/Reservations/Vehicle/SailingSchedule.aspx?VRSTermId=";
@@ -92,7 +92,7 @@ export const Capacity = ({ slot }: Props): ReactElement | null => {
 
   const isLeftEdge = (): boolean => {
     const fullness =
-      crossing && percentFull ? percentFull ?? 0 : estimateFull ?? 0;
+      crossing && percentFull ? (percentFull ?? 0) : (estimateFull ?? 0);
     const percent = fullness / 100;
     const totalWidth = window.innerWidth;
     const width = percent * totalWidth;
@@ -101,7 +101,7 @@ export const Capacity = ({ slot }: Props): ReactElement | null => {
 
   const willFitRight = (): boolean => {
     const fullness =
-      crossing && percentFull ? percentFull ?? 0 : estimateFull ?? 0;
+      crossing && percentFull ? (percentFull ?? 0) : (estimateFull ?? 0);
     const percent = fullness / 100;
     const totalWidth = window.innerWidth;
     const width = percent * totalWidth;
@@ -111,7 +111,7 @@ export const Capacity = ({ slot }: Props): ReactElement | null => {
 
   const isRightEdge = (): boolean => {
     const fullness =
-      crossing && percentFull ? percentFull ?? 0 : estimateFull ?? 0;
+      crossing && percentFull ? (percentFull ?? 0) : (estimateFull ?? 0);
     const percent = fullness / 100;
     const totalWidth = window.innerWidth;
     const width = percent * totalWidth;
@@ -155,14 +155,20 @@ export const Capacity = ({ slot }: Props): ReactElement | null => {
         );
       }
     } else if (estimate) {
+      // low confidence only
+      const shouldShowLowConfidence = estimate.confidence === "low";
       reservationsText = (
         <span
           className={clsx(
-            "text-xs italic",
-            "text-blue-light dark:text-blue-medium"
+            "text-xs italic whitespace-nowrap",
+            shouldShowLowConfidence
+              ? "text-yellow-dark dark:text-yellow-medium"
+              : "text-blue-medium dark:text-blue-light"
           )}
         >
           Forecast
+          {/* low confidence only */}
+          {shouldShowLowConfidence && " · low confidence"}
         </span>
       );
     }
@@ -198,13 +204,19 @@ export const Capacity = ({ slot }: Props): ReactElement | null => {
           spaceClass = clsx(
             spaceClass,
             "font-medium",
-            "text-yellow-dark dark:text-yellow-light"
+            "text-yellow-dark dark:text-yellow-medium"
           );
         }
       }
-    } else if (estimate && !isNil(estimateFull)) {
-      spaceClass = clsx(spaceClass, "text-gray-medium");
-      spaceText = `${round(estimateFull)}% full`;
+    } else if (estimate && !isNil(estimateLeft)) {
+      // forecast spaces
+      spaceClass = clsx(spaceClass, "text-gray-dark dark:text-gray-medium");
+      spaceText = (
+        <>
+          <CarIcon className="inline-block mr-1" />
+          {pluralize(estimateLeft, "space")} left
+        </>
+      );
     } else {
       return null;
     }

@@ -1,12 +1,14 @@
 import { atom, useAtom } from "jotai";
-import { entries, findKey, keys, values } from "shared/lib/objects";
-import { get } from "~/lib/api";
-import { getDistance, Point, useGeo } from "./geo";
+import { useEffect, useState } from "react";
+import type { Terminal } from "shared/contracts/terminals";
+import TERMINAL_DATA_OVERRIDES from "shared/data/terminals.json";
 import { isEmpty, sortBy } from "shared/lib/arrays";
 import { isNull } from "shared/lib/identity";
-import { useEffect, useState } from "react";
-import TERMINAL_DATA_OVERRIDES from "shared/data/terminals.json";
-import type { Terminal } from "shared/contracts/terminals";
+import { entries, findKey, keys, values } from "shared/lib/objects";
+
+import { get } from "~/lib/api";
+
+import { getDistance, Point, useGeo } from "./geo";
 
 // create mapping of terminal ids to slugs
 const terminalIdByCanonicalSlug: Record<string, string> = {};

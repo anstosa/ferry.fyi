@@ -1,5 +1,4 @@
 import { isArray, isEmpty } from "./arrays";
-// eslint-disable-next-line @typescript-eslint/ban-types
 export const isObject = (input: unknown): input is Record<string, any> =>
   typeof input === "object" && input !== null;
 
@@ -14,13 +13,11 @@ export const findKey = (
   }
 };
 
-// eslint-disable-next-line @typescript-eslint/ban-types
 export const isKeyOf = <T extends object>(
   object: T,
   possibleKey: keyof any
 ): possibleKey is keyof T => possibleKey in object;
 
-// eslint-disable-next-line @typescript-eslint/ban-types
 export const omit = <T extends object, K extends keyof T>(
   object: T,
   key: K
@@ -86,7 +83,6 @@ export const isEqual = (a: unknown, b: unknown): boolean => {
     return true;
   };
 
-  // eslint-disable-next-line @typescript-eslint/ban-types
   const areObjectsEqual = (
     a: Record<string, any>,
     b: Record<string, any>
@@ -107,7 +103,6 @@ export const isEqual = (a: unknown, b: unknown): boolean => {
     return true;
   };
 
-  // eslint-disable-next-line @typescript-eslint/ban-types
   const areFunctionsEqual = (a: Function, b: Function): boolean => {
     return a.toString() === b.toString();
   };

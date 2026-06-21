@@ -1,8 +1,8 @@
-import { DateTime, Duration } from "luxon";
-import { round } from "shared/lib/math";
 import clsx from "clsx";
+import { DateTime, Duration } from "luxon";
 import React, { ReactElement } from "react";
 import type { Slot } from "shared/contracts/schedules";
+import { round } from "shared/lib/math";
 
 interface Props {
   slot: Slot;
@@ -45,7 +45,7 @@ export const Time = ({ slot, isNext, time }: Props): ReactElement => {
   } else if (deltaMins >= 10) {
     color = "text-red-dark dark:text-red-light";
   } else if (deltaMins >= 4) {
-    color = "text-yellow-dark dark:text-yellow-light";
+    color = "text-yellow-dark dark:text-yellow-medium";
   }
 
   let weight;

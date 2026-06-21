@@ -1,12 +1,13 @@
-import { CacheableModel } from "./CacheableModel";
 import {
   Camera as CameraClass,
   CameraImage,
   MapPoint,
 } from "shared/contracts/cameras";
-import { isKeyOf, values } from "shared/lib/objects";
-import { isNull } from "shared/lib/identity";
 import CAMERA_DATA_OVERRIDES from "shared/data/cameras.json";
+import { isNull } from "shared/lib/identity";
+import { isKeyOf, values } from "shared/lib/objects";
+
+import { CacheableModel } from "./CacheableModel";
 
 export class Camera extends CacheableModel implements CameraClass {
   static cacheKey = "cameras";

@@ -1,9 +1,16 @@
-import CircleIcon from "~/static/images/icons/solid/circle.svg";
 import clsx from "clsx";
-import logo from "~/static/images/icon_monochrome.png";
-import React, { FC, ReactNode, useEffect, useState } from "react";
+import React, {
+  FC,
+  PropsWithChildren,
+  ReactNode,
+  useEffect,
+  useState,
+} from "react";
 
-export const Splash: FC = ({ children }) => {
+import logo from "~/static/images/icon_monochrome.png";
+import CircleIcon from "~/static/images/icons/solid/circle.svg";
+
+export const Splash: FC<PropsWithChildren> = ({ children }) => {
   const [isHelpVisible, setHelpVisible] = useState<boolean>(false);
   const [mark, setMark] = useState<number>(0);
 

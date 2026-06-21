@@ -1,24 +1,26 @@
-import { AnimatePresence, motion } from "framer-motion";
-import { colors } from "~/lib/theme";
-import { isNull } from "shared/lib/identity";
-import { Link, useLocation } from "react-router-dom";
-import { Share } from "@capacitor/share";
-import { useDevice } from "~/lib/device";
-import AboutIcon from "~/static/images/icons/solid/address-card.svg";
-import UserIcon from "~/static/images/icons/solid/user.svg";
+import { useAuth0 } from "@auth0/auth0-react";
 // import AppleIcon from "~/static/images/icons/brands/apple.svg";
 import { Browser } from "@capacitor/browser";
-import { MenuItem } from "./MenuItem";
-import { useAuth0 } from "@auth0/auth0-react";
+import { Share } from "@capacitor/share";
 import clsx from "clsx";
-import FeedbackIcon from "~/static/images/icons/solid/question-circle.svg";
-import GooglePlayIcon from "~/static/images/icons/brands/google-play.svg";
-import logo from "~/static/images/icon_monochrome.png";
+import { AnimatePresence, motion } from "framer-motion";
 import React, { ReactElement, useEffect, useState } from "react";
-import ReloadIcon from "~/static/images/icons/solid/redo.svg";
-import ScheduleIcon from "~/static/images/icons/solid/calendar-alt.svg";
-import ShareIcon from "~/static/images/icons/solid/share-alt.svg";
+import { Link, useLocation } from "react-router-dom";
+import { isNull } from "shared/lib/identity";
+
+import { useDevice } from "~/lib/device";
+import { colors } from "~/lib/theme";
+import logo from "~/static/images/icon_monochrome.png";
+import GooglePlayIcon from "~/static/images/icons/brands/google-play.svg";
+import AboutIcon from "~/static/images/icons/solid/address-card.svg";
 import TicketIcon from "~/static/images/icons/solid/barcode-alt.svg";
+import ScheduleIcon from "~/static/images/icons/solid/calendar-alt.svg";
+import FeedbackIcon from "~/static/images/icons/solid/question-circle.svg";
+import ReloadIcon from "~/static/images/icons/solid/redo.svg";
+import ShareIcon from "~/static/images/icons/solid/share-alt.svg";
+import UserIcon from "~/static/images/icons/solid/user.svg";
+
+import { MenuItem } from "./MenuItem";
 
 export interface ShareOptions {
   sharedText: string;
@@ -59,7 +61,7 @@ export const Menu = ({
   const [dragStart, setDragStart] = useState<number | null>(null);
   const [dragPosition, setDragPosition] = useState<number | null>(null);
   const device = useDevice();
-  const { isAuthenticated, loginWithRedirect, buildAuthorizeUrl } = useAuth0();
+  const { isAuthenticated, loginWithRedirect } = useAuth0();
   const [canShare, setShare] = useState<boolean>(false);
   const location = useLocation();
 
@@ -68,17 +70,25 @@ export const Menu = ({
     setShare(canShare);
   };
 
+  // login route
   const login = async () => {
+    // native browser login
     if (device?.isNativeMobile) {
-      const url = await buildAuthorizeUrl({
+      await loginWithRedirect({
         appState: { redirectPath: location.pathname },
-        redirect_uri: process.env.AUTH0_CLIENT_REDIRECT,
+        authorizationParams: {
+          redirect_uri: process.env.AUTH0_CLIENT_REDIRECT,
+        },
+        openUrl: async (url) => {
+          await Browser.open({ url });
+        },
       });
-      await Browser.open({ url });
     } else {
       loginWithRedirect({
         appState: { redirectPath: location.pathname },
-        redirectUri: process.env.AUTH0_CLIENT_REDIRECT,
+        authorizationParams: {
+          redirect_uri: process.env.AUTH0_CLIENT_REDIRECT,
+        },
       });
     }
   };
@@ -145,12 +155,10 @@ export const Menu = ({
             dragElastic={0}
             dragMomentum={false}
             onDragStart={({ pageX }: MouseEvent) => {
-              console.log(pageX);
               setDragStart(pageX);
               setDragPosition(pageX);
             }}
             onDrag={({ pageX }: MouseEvent) => {
-              console.log(pageX);
               setDragPosition(pageX);
             }}
             onDragEnd={() => {
@@ -180,7 +188,7 @@ export const Menu = ({
               backgroundColor: colors.darken.low,
             }}
             exit={{ backdropFilter: "blur(0)", background: "transparent" }}
-            transition={{ type: "linear" }}
+            transition={{ ease: "linear", type: "tween" }}
             onClick={onClose}
           />
         )}
@@ -189,7 +197,6 @@ export const Menu = ({
           dragElastic={0}
           dragMomentum={false}
           onDragStart={({ pageX, currentTarget }: MouseEvent) => {
-            console.log(pageX, currentTarget);
             setDragStart(pageX);
             setDragPosition((currentTarget as HTMLElement)?.offsetLeft);
           }}
@@ -210,7 +217,7 @@ export const Menu = ({
             // eslint-disable-next-line no-nested-ternary
             isNull(dragStart) ? (isOpen ? { left: 0 } : { left: "-100%" }) : {}
           }
-          transition={{ type: "easeOut" }}
+          transition={{ ease: "easeOut", type: "tween" }}
           className={clsx(
             "animate",
             "flex flex-col",

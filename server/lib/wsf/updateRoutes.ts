@@ -1,8 +1,10 @@
-import { Route } from "~/models/Route";
-import { toWsfDate } from "./date";
-import { WSF } from "~/typings/wsf";
-import { wsfRequest } from "./api";
 import logger from "heroku-logger";
+
+import { Route } from "~/models/Route";
+import { WSF } from "~/typings/wsf";
+
+import { wsfRequest } from "./api";
+import { toWsfDate } from "./date";
 
 const API_SCHEDULE = "https://www.wsdot.wa.gov/ferries/api/schedule/rest";
 const getMatesApi = (date: string = toWsfDate()): string =>

@@ -1,7 +1,8 @@
+import { Message } from "firebase-admin/messaging";
+
 import { auth0 } from "./auth0";
+import { firebaseMessaging, hasFirebaseCode } from "./firebase";
 import { delay } from "./time";
-import { firebase, hasFirebaseCode } from "./firebase";
-import { Message } from "firebase-admin/lib/messaging/messaging-api";
 
 const MAX_RERTY_TIME = 10 * 1000;
 
@@ -15,7 +16,7 @@ const trySend = async (): Promise<void> => {
       continue;
     }
     try {
-      await firebase.messaging().send(message);
+      await firebaseMessaging.send(message);
       retryTime = 1;
     } catch (error: unknown) {
       if (
@@ -25,12 +26,11 @@ const trySend = async (): Promise<void> => {
           `Deleting expired push token for user ${message.data?.userId}`
         );
         if (message.data?.userId) {
-          auth0.updateAppMetadata(
-            { id: message.data?.userId },
-            {
+          auth0.users.update(message.data.userId, {
+            app_metadata: {
               fcmToken: null,
-            }
-          );
+            },
+          });
         }
       } else if (retryTime <= MAX_RERTY_TIME) {
         retryTime *= 2;

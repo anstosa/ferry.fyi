@@ -1,8 +1,8 @@
-import { DateTime } from "luxon";
-import { ValidRange } from "shared/contracts/schedules";
 import clsx from "clsx";
-import DayPicker from "react-day-picker";
+import { DateTime } from "luxon";
 import React, { ReactElement, useEffect, useState } from "react";
+import { DayPicker } from "react-day-picker";
+import type { ValidRange } from "shared/contracts/schedules";
 
 interface Props {
   onDateChange?: (date: DateTime) => void;
@@ -17,6 +17,16 @@ export const DateButton = ({
   const [isOpen, setOpen] = useState<boolean>(false);
   const [date, setDate] = useState<DateTime>(defaultDate || DateTime.local());
   const today = DateTime.local();
+  // past date marker
+  const pastDays = { before: today.startOf("day").toJSDate() };
+  // future bounds
+  const disabledDays = validRange
+    ? [
+        {
+          after: DateTime.fromSeconds(validRange.to).toJSDate(),
+        },
+      ]
+    : [];
 
   useEffect(() => onDateChange?.(date), [date]);
 
@@ -52,27 +62,17 @@ export const DateButton = ({
       <div onClick={(event) => event.stopPropagation()}>
         {isOpen && (
           <DayPicker
-            className="absolute right-0 top-full"
-            enableOutsideDaysClick
+            className="date-button-picker absolute right-0 top-full"
             showOutsideDays
-            disabledDays={[
-              {
-                before: validRange
-                  ? DateTime.fromSeconds(validRange.from).toJSDate()
-                  : new Date(),
-              },
-              ...(validRange
-                ? [
-                    {
-                      after: DateTime.fromSeconds(validRange.to).toJSDate(),
-                    },
-                  ]
-                : []),
-            ]}
-            selectedDays={[date.toJSDate()]}
-            firstDayOfWeek={1}
-            onDayClick={(day, { disabled }) => {
-              if (disabled) {
+            disabled={disabledDays}
+            modifiers={{ past: pastDays }}
+            modifiersClassNames={{ past: "rdp-past" }}
+            selected={date.toJSDate()}
+            mode="single"
+            weekStartsOn={1}
+            onSelect={(day) => {
+              // empty selection guard
+              if (!day) {
                 return;
               }
               setDate(DateTime.fromJSDate(day));

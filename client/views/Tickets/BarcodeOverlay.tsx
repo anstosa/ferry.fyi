@@ -1,13 +1,14 @@
-import { ReservationAccount, TicketStorage } from "shared/contracts/tickets";
 import { Share } from "@capacitor/share";
 import clsx from "clsx";
 import JsBarcode from "jsbarcode";
-import logo from "~/static/images/icon_monochrome.png";
 import React, { ReactElement, useEffect, useRef, useState } from "react";
+import { ReservationAccount, TicketStorage } from "shared/contracts/tickets";
+
+import logo from "~/static/images/icon_monochrome.png";
 import RemoveConfirmIcon from "~/static/images/icons/solid/exclamation-square.svg";
-import RemoveIcon from "~/static/images/icons/solid/trash.svg";
 import ShareIcon from "~/static/images/icons/solid/share-square.svg";
 import StopIcon from "~/static/images/icons/solid/times.svg";
+import RemoveIcon from "~/static/images/icons/solid/trash.svg";
 
 interface Props {
   ticket: TicketStorage | ReservationAccount;

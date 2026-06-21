@@ -1,6 +1,7 @@
 import { Geolocation } from "@capacitor/geolocation";
-import { isUndefined } from "shared/lib/identity";
 import { useEffect, useState } from "react";
+import { isUndefined } from "shared/lib/identity";
+
 import { useLocalStorage } from "./browser";
 
 export interface Point {
@@ -42,7 +43,7 @@ export const useGeo = (): [Point | null, (noLocation?: boolean) => void] => {
           coords: { latitude, longitude },
         } = await Geolocation.getCurrentPosition();
         setLocation({ latitude, longitude });
-      } catch (error) {}
+      } catch {}
     }
   };
 

@@ -1,5 +1,6 @@
-import { fetchTicket } from "~/lib/wsf/ticket";
 import { Router } from "express";
+
+import { fetchTicket } from "~/lib/wsf/ticket";
 
 const ticketRouter = Router();
 

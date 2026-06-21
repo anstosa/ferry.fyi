@@ -1,5 +1,5 @@
-import { useLocation } from "react-router-dom";
 import { useState } from "react";
+import { useLocation } from "react-router-dom";
 
 export const useQuery = (): Record<string, string> => {
   const query = useLocation().search.slice(1);

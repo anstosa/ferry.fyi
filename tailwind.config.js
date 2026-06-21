@@ -56,28 +56,28 @@ module.exports = {
         },
 
         green: {
-          lightest: "#d7eae5",
-          light: "#9ccfc2",
-          dark: "#016f52", // sync with client/webpack.config.ts COLOR
+          lightest: "#e6f4f0",
+          light: "#6fb8a6",
+          dark: "#016f52", // sync with client/lib/theme.ts
         },
 
         red: {
-          light: "#c9938f",
-          dark: "#8b1911",
+          light: "#fde7e7",
+          dark: "#b42318",
         },
 
         blue: {
-          lightest: "#e1eef6",
-          light: "#c2d4db",
-          medium: "#528693",
+          lightest: "#e7f2f6",
+          light: "#b8d5de",
+          medium: "#3f7d8c",
           dark: "#004d61",
-          darkest: "#0d353f",
+          darkest: "#002f3b",
         },
 
         yellow: {
-          light: "#dfd0a3",
-          medium: "#fabd10",
-          dark: "#b28914",
+          lightest: "#fff8db",
+          medium: "#f2b705",
+          dark: "#7a5400",
         },
       },
       inset: {

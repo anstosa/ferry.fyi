@@ -1,6 +1,7 @@
-import { Crossing as CrossingType } from "shared/contracts/schedules";
-import { DataTypes, Model } from "sequelize";
 import { DateTime } from "luxon";
+import { DataTypes, Model } from "sequelize";
+import { Crossing as CrossingType } from "shared/contracts/schedules";
+
 import { db } from "~/lib/db";
 
 class Crossing extends Model implements CrossingType {

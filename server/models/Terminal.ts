@@ -1,9 +1,3 @@
-import { Bulletin } from "./Bulletin";
-import { CacheableModel } from "./CacheableModel";
-import { Camera } from "~/models/Camera";
-import { isKeyOf, values } from "shared/lib/objects";
-import { isNull } from "shared/lib/identity";
-import { Route } from "~/models/Route";
 import {
   Terminal as TerminalClass,
   TerminalInfo,
@@ -11,6 +5,14 @@ import {
   WaitTime,
 } from "shared/contracts/terminals";
 import TERMINAL_DATA_OVERRIDES from "shared/data/terminals.json";
+import { isNull } from "shared/lib/identity";
+import { isKeyOf, values } from "shared/lib/objects";
+
+import { Camera } from "~/models/Camera";
+import { Route } from "~/models/Route";
+
+import { Bulletin } from "./Bulletin";
+import { CacheableModel } from "./CacheableModel";
 
 export class Terminal extends CacheableModel implements TerminalClass {
   static cacheKey = "terminals";

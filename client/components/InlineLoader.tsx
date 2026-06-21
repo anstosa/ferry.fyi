@@ -1,7 +1,9 @@
 import clsx from "clsx";
-import React, { FunctionComponent } from "react";
+import React, { FunctionComponent, PropsWithChildren } from "react";
 
-export const InlineLoader: FunctionComponent = ({ children }) => (
+export const InlineLoader: FunctionComponent<PropsWithChildren> = ({
+  children,
+}) => (
   <div
     className={clsx(
       "absolute inset-0",

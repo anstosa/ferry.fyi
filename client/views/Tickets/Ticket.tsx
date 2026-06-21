@@ -1,9 +1,13 @@
-import { DateTime } from "luxon";
-import { pluralize } from "shared/lib/strings";
-import { ReservationAccount, TicketStorage } from "shared/contracts/tickets";
-import { toShortDateString } from "~/lib/date";
 import clsx from "clsx";
+import { DateTime } from "luxon";
 import React, { ReactElement, ReactNode } from "react";
+import type {
+  ReservationAccount,
+  TicketStorage,
+} from "shared/contracts/tickets";
+import { pluralize } from "shared/lib/strings";
+
+import { toShortDateString } from "~/lib/date";
 
 interface Props {
   ticket: TicketStorage | ReservationAccount;
@@ -32,7 +36,7 @@ export const Ticket = ({ ticket, onClick }: Props): ReactElement => {
         {!isValid && (
           <span
             className={clsx("px-2 py-1 text-white font-bold mr-2 rounded", {
-              "bg-red-800": !isValid,
+              "bg-red-dark": !isValid,
             })}
           >
             Invalid
@@ -41,7 +45,7 @@ export const Ticket = ({ ticket, onClick }: Props): ReactElement => {
         {(isValid || isExpired) && (
           <span
             className={clsx("mr-2", {
-              "text-red-600 font-bold": isExpired,
+              "text-red-light dark:text-red-dark font-bold": isExpired,
             })}
           >
             {isExpired
@@ -52,7 +56,8 @@ export const Ticket = ({ ticket, onClick }: Props): ReactElement => {
         {(isValid || (!isExpired && ticket.usesRemaining === 0)) && (
           <span
             className={clsx({
-              "text-red-600 font-bold": ticket.usesRemaining === 0,
+              "text-red-light dark:text-red-dark font-bold":
+                ticket.usesRemaining === 0,
             })}
           >
             {pluralize(ticket.usesRemaining, "use")} left

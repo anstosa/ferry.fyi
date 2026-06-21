@@ -1,8 +1,10 @@
-import { Helmet } from "react-helmet";
-import { Page } from "../components/Page";
-import EmailIcon from "~/static/images/icons/solid/envelope.svg";
-import GitHubIcon from "~/static/images/icons/brands/github.svg";
 import React, { ReactElement } from "react";
+import { Helmet } from "react-helmet-async";
+
+import GitHubIcon from "~/static/images/icons/brands/github.svg";
+import EmailIcon from "~/static/images/icons/solid/envelope.svg";
+
+import { Page } from "../components/Page";
 
 export const Content = (): ReactElement => (
   <>

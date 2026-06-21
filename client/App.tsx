@@ -1,31 +1,35 @@
 import "./app.scss";
 import "@capacitor/core";
-import { About } from "~/views/About";
-import { Account } from "~/views/Account";
-import { AnimatePresence } from "framer-motion";
-import { Browser } from "@capacitor/browser";
-import { colors } from "~/lib/theme";
-import { Feedback } from "~/views/Feedback";
-import { Home } from "~/views/Home";
-import { App as Native } from "@capacitor/app";
-import { Route } from "~/views/Route";
-import { Settings } from "luxon";
-import { Splash } from "~/components/Splash";
-import { StatusBar } from "@capacitor/status-bar";
-import { Tickets } from "~/views/Tickets";
-import { Toast } from "./components/Toast";
-import { Today } from "~/views/Today";
+
 import { useAuth0 } from "@auth0/auth0-react";
-import { useDevice } from "~/lib/device";
+import { App as Native } from "@capacitor/app";
+import { Browser } from "@capacitor/browser";
+import { StatusBar } from "@capacitor/status-bar";
+import { AnimatePresence } from "framer-motion";
+import { Settings } from "luxon";
+import React, { ReactElement, useEffect } from "react";
+import ReactGA from "react-ga4";
 import { useLocation, useNavigate, useRoutes } from "react-router-dom";
-import { useOnline, useWSF } from "~/lib/api";
-import { usePush } from "~/lib/push";
+
+import { ErrorBoundary } from "~/components/ErrorBoundary";
+import { Splash } from "~/components/Splash";
 import { useRecordPageViews } from "~/lib/analytics";
+import { useOnline, useWSF } from "~/lib/api";
+import { useDevice } from "~/lib/device";
+import { usePush } from "~/lib/push";
+import { colors } from "~/lib/theme";
 import { useUser } from "~/lib/user";
 import DumpsterFireIcon from "~/static/images/icons/solid/dumpster-fire.svg";
 import OfflineIcon from "~/static/images/icons/solid/signal-alt-slash.svg";
-import React, { ReactElement, useEffect } from "react";
-import ReactGA from "react-ga4";
+import { About } from "~/views/About";
+import { Account } from "~/views/Account";
+import { Feedback } from "~/views/Feedback";
+import { Home } from "~/views/Home";
+import { Route } from "~/views/Route";
+import { Tickets } from "~/views/Tickets";
+import { Today } from "~/views/Today";
+
+import { Toast } from "./components/Toast";
 
 Settings.defaultZone = "America/Los_Angeles";
 
@@ -50,6 +54,21 @@ export const App = (): ReactElement => {
   const { handleRedirectCallback } = useAuth0();
   const [{ subscribedTerminals }] = useUser();
   const initializePush = usePush(false);
+  const routeResetKey = `${location.pathname}${location.search}`;
+
+  // wrap route element
+  const withRouteBoundary = (
+    label: string,
+    routeElement: ReactElement
+  ): ReactElement => (
+    <ErrorBoundary
+      resetKey={routeResetKey}
+      fallbackTitle={`${label} crashed`}
+      fallbackMessage="This page hit an unexpected error. Use the menu or footer to keep navigating."
+    >
+      {routeElement}
+    </ErrorBoundary>
+  );
 
   useEffect(() => {
     if (subscribedTerminals && subscribedTerminals.length > 0) {
@@ -107,27 +126,51 @@ export const App = (): ReactElement => {
   }, [location.pathname]);
 
   const element = useRoutes([
-    { path: "", element: <Home /> },
-    { path: "today", element: <Today /> },
-    { path: "callback", element: <Splash /> },
-    { path: "account", element: <Account /> },
-    { path: "tickets", element: <Tickets /> },
-    { path: "about", element: <About /> },
-    { path: "feedback", element: <Feedback /> },
+    { path: "", element: withRouteBoundary("Home", <Home />) },
+    { path: "today", element: withRouteBoundary("Today", <Today />) },
+    { path: "callback", element: withRouteBoundary("Callback", <Splash />) },
+    { path: "account", element: withRouteBoundary("Account", <Account />) },
+    { path: "tickets", element: withRouteBoundary("Tickets", <Tickets />) },
+    { path: "about", element: withRouteBoundary("About", <About />) },
+    { path: "feedback", element: withRouteBoundary("Feedback", <Feedback />) },
     {
       path: ":terminalSlug",
       children: [
-        { path: "", element: <Route view="schedule" /> },
-        { path: "cameras", element: <Route view="cameras" /> },
-        { path: "map", element: <Route view="map" /> },
-        { path: "alerts", element: <Route view="alerts" /> },
+        {
+          path: "",
+          element: withRouteBoundary("Schedule", <Route view="schedule" />),
+        },
+        {
+          path: "cameras",
+          element: withRouteBoundary("Cameras", <Route view="cameras" />),
+        },
+        {
+          path: "map",
+          element: withRouteBoundary("Map", <Route view="map" />),
+        },
+        {
+          path: "alerts",
+          element: withRouteBoundary("Alerts", <Route view="alerts" />),
+        },
         {
           path: ":mateSlug",
           children: [
-            { path: "", element: <Route view="schedule" /> },
-            { path: "cameras", element: <Route view="cameras" /> },
-            { path: "map", element: <Route view="map" /> },
-            { path: "alerts", element: <Route view="alerts" /> },
+            {
+              path: "",
+              element: withRouteBoundary("Schedule", <Route view="schedule" />),
+            },
+            {
+              path: "cameras",
+              element: withRouteBoundary("Cameras", <Route view="cameras" />),
+            },
+            {
+              path: "map",
+              element: withRouteBoundary("Map", <Route view="map" />),
+            },
+            {
+              path: "alerts",
+              element: withRouteBoundary("Alerts", <Route view="alerts" />),
+            },
           ],
         },
       ],

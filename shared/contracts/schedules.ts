@@ -14,9 +14,16 @@ export interface Crossing {
 }
 
 export interface CrossingEstimate {
+  confidence?: ForecastConfidence;
   driveUpCapacity: number;
   reservableCapacity: number | null;
+  sampleSize?: number;
+  source?: ForecastSource;
 }
+
+export type ForecastConfidence = "low" | "medium" | "high";
+
+export type ForecastSource = "blended" | "disruption" | "historical" | "live";
 
 export interface Slot {
   allowsPassengers: boolean;

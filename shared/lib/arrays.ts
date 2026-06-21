@@ -1,5 +1,5 @@
-import { entries } from "./objects";
 import { isNil } from "./identity";
+import { entries } from "./objects";
 
 export const without = <T>(array: T[] = [], element: T, key?: keyof T): T[] => {
   if (key) {
@@ -23,7 +23,6 @@ export const isEmpty = (input: unknown[] | null | undefined): boolean => {
   return input.length === 0;
 };
 
-// eslint-disable-next-line @typescript-eslint/ban-types
 export const keyBy = <T extends object>(
   array: T[],
   key: keyof T

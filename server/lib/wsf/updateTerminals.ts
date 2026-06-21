@@ -1,12 +1,14 @@
+import logger from "heroku-logger";
+import { sortBy } from "shared/lib/arrays";
+
 import { Bulletin } from "~/models/Bulletin";
 import { Camera } from "~/models/Camera";
 import { Route } from "~/models/Route";
-import { sortBy } from "shared/lib/arrays";
 import { Terminal } from "~/models/Terminal";
 import { WSF } from "~/typings/wsf";
-import { wsfDateToTimestamp } from "./date";
+
 import { wsfRequest } from "./api";
-import logger from "heroku-logger";
+import { wsfDateToTimestamp } from "./date";
 
 const VESSELWATCH_BASE =
   "https://wsdot.com/ferries/vesselwatch/terminaldetail.aspx?terminalid=";
@@ -29,9 +31,8 @@ export const updateTerminals = async (): Promise<void> => {
   }
   lastFlushDate = cacheFlushDate;
 
-  const terminals = await wsfRequest<WSF.TerminalVerboseResponse[]>(
-    API_VERBOSE
-  );
+  const terminals =
+    await wsfRequest<WSF.TerminalVerboseResponse[]>(API_VERBOSE);
   if (!terminals) {
     return;
   }
