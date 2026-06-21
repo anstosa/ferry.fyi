@@ -104,8 +104,11 @@ const renderMarkerIcon = (
 const removeRenderedMarkers = (renderedMarkers: RenderedMarker[]): void => {
   // marker cleanup loop
   renderedMarkers.forEach(({ marker, root }) => {
-    root.unmount();
     marker.remove();
+    window.setTimeout(() => {
+      // defer react cleanup
+      root.unmount();
+    }, 0);
   });
 };
 
