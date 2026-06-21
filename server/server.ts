@@ -7,7 +7,12 @@ import { scheduleJob } from "node-schedule";
 import { apiRouter } from "~/controllers/api";
 import { staticRouter } from "~/controllers/static";
 import { dbInit } from "~/lib/db";
-import { updateLong, updateShort } from "~/lib/wsf";
+import {
+  initializeWsfSeed,
+  refreshWsfInBackground,
+  updateLong,
+  updateShort,
+} from "~/lib/wsf";
 import { Schedule } from "~/models/Schedule";
 
 import { Route } from "./models/Route";
@@ -46,11 +51,12 @@ app.use("/", staticRouter);
 // start server
 (async () => {
   await dbInit;
+  initializeWsfSeed();
   // start server before initializing WSF since that can take a couple minutes
   const server = app.listen(process.env.PORT, () =>
     logger.info("Server started")
   );
-  process.once("SIGUSR2 ", () => {
+  process.once("SIGUSR2", () => {
     logger.info("Gracefully shutting down server...");
     server.close(() => {
       logger.info("Done.");
@@ -58,9 +64,8 @@ app.use("/", staticRouter);
     });
   });
   logger.info("Initializing WSF");
-  // populate WSF cache immediately
-  await updateLong();
-  await updateShort();
+  // refresh WSF cache asynchronously
+  refreshWsfInBackground();
   // run slow updates every minute
   scheduleJob({ second: 0 }, updateLong);
   // run fast updates every 30 seconds

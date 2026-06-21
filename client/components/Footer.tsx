@@ -95,8 +95,7 @@ export const Footer = ({ terminal, getPath }: Props): ReactElement => {
           "flex items-center justify-end",
           "flex-no-wrap min-w-0",
           "cursor-pointer",
-          backgroundColor,
-          { "flex-1": summary }
+          backgroundColor
         )}
         to={getPath({ view: "alerts" })}
       >
@@ -121,6 +120,8 @@ export const Footer = ({ terminal, getPath }: Props): ReactElement => {
         <FooterLink path={getPath({ view: "map" })}>
           <MapIcon className="text-2xl" />
         </FooterLink>
+        {/* flexible spacer */}
+        <div className="flex-1" />
         {renderBulletins()}
       </WrapFooter>
       <div className="h-safe-bottom w-full bg-green-dark" />

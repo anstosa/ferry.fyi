@@ -29,6 +29,10 @@
     @apply text-green-dark;
   }
 
+  .rdp-caption_label {
+    @apply pl-3;
+  }
+
   .rdp-chevron {
     fill: currentcolor;
   }
@@ -51,6 +55,10 @@
       @apply bg-green-lightest;
     }
 
+    &.rdp-past:not(.rdp-selected):not(.rdp-disabled):not(.rdp-outside) .rdp-day_button {
+      @apply text-gray-medium;
+    }
+
     &.rdp-selected:not(.rdp-disabled):not(.rdp-outside) .rdp-day_button {
       @apply bg-green-dark;
       @apply text-white;
@@ -70,7 +78,7 @@
 html {
   @apply bg-green-dark; // iPhone X letterbox
 
-  font-family: Roboto, sans-serif;
+  font-family: "Google Sans Flex", sans-serif;
 }
 
 @keyframes loading {
@@ -82,7 +90,7 @@ html {
   .bg-prediction-gradient {
     background: linear-gradient(
       to left,
-      theme("colors.darken.lowest"),
+      theme("colors.darken.lower"),
       transparent theme("spacing.20")
     );
   }
@@ -141,7 +149,7 @@ html {
       to right,
       theme("colors.blue.light"),
       theme("colors.blue.light") 100px,
-      theme("colors.blue.300") 120px,
+      theme("colors.blue.lightest") 120px,
       theme("colors.blue.light") 140px,
     );
 

@@ -2,37 +2,73 @@ import logger from "heroku-logger";
 import { WSFStatus } from "shared/contracts/api";
 
 const API_ACCESS = `?apiaccesscode=${process.env.WSDOT_API_KEY}`;
+const DEFAULT_TIMEOUT_MS =
+  process.env.NODE_ENV === "development" ? 5000 : 10000;
+const REQUEST_TIMEOUT_MS = Number(
+  process.env.WSF_TIMEOUT_MS ?? DEFAULT_TIMEOUT_MS
+);
 
 const wsfStatus: WSFStatus = {
+  coreReady: false,
   offline: false,
+  warming: true,
 };
 
 export const getWsfStatus = (): WSFStatus => wsfStatus;
+
+// set core readiness
+export const setWsfCoreReady = (isReady: boolean): void => {
+  wsfStatus.coreReady = isReady;
+};
+
+// set warmup status
+export const setWsfWarming = (isWarming: boolean): void => {
+  wsfStatus.warming = isWarming;
+};
+
+// fetch with timeout
+const fetchWithTimeout = async (url: string): Promise<Response> => {
+  const controller = new AbortController();
+  // timeout guard
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(url, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+      },
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+};
 
 export const wsfRequest = async <T>(path: string): Promise<T | undefined> => {
   const url = `${path}${path.includes("cacheflushdate") ? "" : API_ACCESS}`;
   // logger.debug(`WSF request <${url}>`);
   try {
-    const response = await fetch(url, {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-      },
-    });
+    const response = await fetchWithTimeout(url);
+    // successful response guard
     if (response.ok) {
       wsfStatus.offline = false;
       const json = (await response.json()) as T;
       return json;
-    } else {
-      wsfStatus.offline = true;
-      logger.error(
-        `WSF request error ${
-          response.status
-        } <${url}>: ${await response.text()}`,
-        response
-      );
     }
+    wsfStatus.offline = true;
+    logger.error(
+      `WSF request error ${response.status} <${url}>: ${await response.text()}`,
+      response
+    );
   } catch (error: any) {
+    wsfStatus.offline = true;
+    // timeout error guard
+    if (error.name === "AbortError") {
+      logger.error(
+        `WSF request timeout <${url}> after ${REQUEST_TIMEOUT_MS}ms`
+      );
+      return;
+    }
     logger.error(`WSF request error <${url}>: ${error.message}`, error);
   }
 };

@@ -10,6 +10,7 @@ import type {
 import { findWhere, isEmpty } from "shared/lib/arrays";
 import { values } from "shared/lib/objects";
 
+import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { InlineLoader } from "~/components/InlineLoader";
 import { Toast } from "~/components/Toast";
 import { isWSFToday } from "~/lib/date";
@@ -61,7 +62,7 @@ export const Schedule = ({ schedule, time }: Props): ReactElement => {
         <div
           className={clsx(
             "absolute inset-0",
-            "bg-blue-lightest dark:bg-gray-darkest text-gray-500",
+            "bg-white text-gray-500 dark:bg-black",
             "flex justify-center items-center"
           )}
         >
@@ -85,20 +86,29 @@ export const Schedule = ({ schedule, time }: Props): ReactElement => {
         terminalIds.includes(schedule.terminalId)
       );
       return (
-        <SlotInfo
-          slot={slot}
-          isExpanded={slotTime === expanded?.time}
-          onClick={() => toggleExpand(slot)}
+        <ErrorBoundary
+          className="m-2"
+          fallbackTitle="Sailing crashed"
+          fallbackMessage="This sailing could not be shown, but the rest of the schedule is still available."
           key={slotTime}
-          schedule={slots}
-          route={route}
-          setElement={(element: HTMLDivElement) => {
-            if (slot === currentSlot) {
-              setCurrentElement(element);
-            }
-          }}
-          time={time}
-        />
+          resetKey={slotTime}
+        >
+          <SlotInfo
+            slot={slot}
+            isExpanded={slotTime === expanded?.time}
+            location={terminal.location}
+            onClick={() => toggleExpand(slot)}
+            schedule={slots}
+            route={route}
+            setElement={(element: HTMLDivElement) => {
+              // current slot anchor
+              if (slot === currentSlot) {
+                setCurrentElement(element);
+              }
+            }}
+            time={time}
+          />
+        </ErrorBoundary>
       );
     });
     return (
@@ -138,7 +148,7 @@ export const Schedule = ({ schedule, time }: Props): ReactElement => {
       >
         <div
           className={clsx(
-            "w-full max-w-6xl bg-blue-lightest",
+            "w-full max-w-6xl bg-white dark:bg-black",
             "lg:border-l lg:border-r",
             "border-gray-medium dark:border-gray-dark"
           )}

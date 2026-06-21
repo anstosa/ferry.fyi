@@ -9,6 +9,8 @@ const commands = [
   ["server", "start:server"],
 ];
 const children = new Set();
+const childGroups = new Set();
+const shouldDetachChildren = process.platform !== "win32";
 const env = loadEnvrc();
 let isShuttingDown = false;
 
@@ -46,13 +48,50 @@ function getScript(scriptName) {
   return script;
 }
 
+// signal process group
+function signalProcessGroup(groupPid, signal) {
+  // unix group guard
+  if (!shouldDetachChildren) {
+    return false;
+  }
+  try {
+    process.kill(-groupPid, signal);
+    return true;
+  } catch (error) {
+    // missing-process guard
+    if (error.code !== "ESRCH") {
+      throw error;
+    }
+    return true;
+  }
+}
+
+// stop child process
+function stopChild(child) {
+  // already-stopped guard
+  if (child.killed) {
+    return;
+  }
+  // process-group cleanup
+  if (signalProcessGroup(child.pid, "SIGTERM")) {
+    return;
+  }
+  child.kill("SIGTERM");
+}
+
 // stop child processes
-function stopAll() {
-  // stop children
+function stopAll(signal = "SIGTERM") {
+  // stop child groups
+  for (const groupPid of childGroups) {
+    signalProcessGroup(groupPid, signal);
+  }
+  // stop direct children
   for (const child of children) {
-    // live child guard
-    if (!child.killed) {
-      child.kill("SIGTERM");
+    // signal fallback
+    if (signal === "SIGTERM") {
+      stopChild(child);
+    } else {
+      child.kill(signal);
     }
   }
 }
@@ -66,6 +105,11 @@ function shutdown(exitCode = 0) {
   isShuttingDown = true;
   process.exitCode = exitCode;
   stopAll();
+  // force cleanup
+  setTimeout(() => {
+    stopAll("SIGKILL");
+    process.exit(exitCode);
+  }, 2000).unref();
 }
 
 // start dev target
@@ -73,11 +117,13 @@ function startScript(name, scriptName) {
   const command = getScript(scriptName);
   console.log(`[dev] starting ${name}: ${command}`);
   const child = spawn(command, {
+    detached: shouldDetachChildren,
     env,
     shell: true,
     stdio: "inherit",
   });
   children.add(child);
+  childGroups.add(child.pid);
 
   // handle child exit
   child.on("exit", (code, signal) => {
@@ -104,4 +150,12 @@ process.on("SIGINT", () => {
 // handle termination
 process.on("SIGTERM", () => {
   shutdown();
+});
+// handle hangup
+process.on("SIGHUP", () => {
+  shutdown();
+});
+// handle direct exit
+process.on("exit", () => {
+  stopAll();
 });

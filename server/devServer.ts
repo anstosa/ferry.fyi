@@ -1,14 +1,30 @@
 import nodemon from "nodemon";
 
+let isShuttingDown = false;
+
 nodemon({
   watch: ["."],
   script: "server.ts",
-  exec: "ts-node -r tsconfig-paths/register server.ts",
+  exec: "node ../scripts/register-esbuild.js",
   ext: "ts",
 });
 
 const onExit = (): void => {
   console.debug("Stopping dev server...");
+};
+
+const shutdown = (): void => {
+  // duplicate signal guard
+  if (isShuttingDown) {
+    return;
+  }
+  isShuttingDown = true;
+  onExit();
+  nodemon.emit("quit");
+  // finish shutdown
+  setTimeout(() => {
+    process.exit(0);
+  }, 100).unref();
 };
 
 nodemon
@@ -18,7 +34,9 @@ nodemon
   .on("restart", (): void => {
     console.debug("\n\n\nServer source changed, restarting!");
   })
-  .on("crash", onExit)
+  .on("crash", shutdown)
   .on("quit", onExit);
 
-process.on("SIGTERM", onExit);
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
+process.on("SIGHUP", shutdown);

@@ -2,7 +2,6 @@ import clsx from "clsx";
 import React, { ReactElement, useEffect, useState } from "react";
 import type { Slot } from "shared/contracts/schedules";
 import { isNil, isNull } from "shared/lib/identity";
-import { round } from "shared/lib/math";
 import { pluralize } from "shared/lib/strings";
 
 import CarIcon from "~/static/images/icons/solid/car.svg";
@@ -156,14 +155,20 @@ export const Capacity = ({ slot }: Props): ReactElement | null => {
         );
       }
     } else if (estimate) {
+      // low confidence only
+      const shouldShowLowConfidence = estimate.confidence === "low";
       reservationsText = (
         <span
           className={clsx(
-            "text-xs italic",
-            "text-blue-light dark:text-blue-medium"
+            "text-xs italic whitespace-nowrap",
+            shouldShowLowConfidence
+              ? "text-yellow-dark dark:text-yellow-medium"
+              : "text-blue-medium dark:text-blue-light"
           )}
         >
           Forecast
+          {/* low confidence only */}
+          {shouldShowLowConfidence && " · low confidence"}
         </span>
       );
     }
@@ -199,13 +204,19 @@ export const Capacity = ({ slot }: Props): ReactElement | null => {
           spaceClass = clsx(
             spaceClass,
             "font-medium",
-            "text-yellow-dark dark:text-yellow-light"
+            "text-yellow-dark dark:text-yellow-medium"
           );
         }
       }
-    } else if (estimate && !isNil(estimateFull)) {
-      spaceClass = clsx(spaceClass, "text-gray-medium");
-      spaceText = `${round(estimateFull)}% full`;
+    } else if (estimate && !isNil(estimateLeft)) {
+      // forecast spaces
+      spaceClass = clsx(spaceClass, "text-gray-dark dark:text-gray-medium");
+      spaceText = (
+        <>
+          <CarIcon className="inline-block mr-1" />
+          {pluralize(estimateLeft, "space")} left
+        </>
+      );
     } else {
       return null;
     }

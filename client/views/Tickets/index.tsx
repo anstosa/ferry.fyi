@@ -4,7 +4,6 @@ import {
 } from "@capacitor-community/barcode-scanner";
 import { KeepAwake } from "@capacitor-community/keep-awake";
 import { ScreenBrightness } from "@capacitor-community/screen-brightness";
-import { ErrorBoundary } from "@sentry/react";
 import {
   BrowserCodeReader,
   BrowserMultiFormatOneDReader,
@@ -23,6 +22,7 @@ import {
 } from "shared/contracts/tickets";
 import { sortBy, without } from "shared/lib/arrays";
 
+import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { Page } from "~/components/Page";
 import { Splash } from "~/components/Splash";
 import { get } from "~/lib/api";
@@ -332,7 +332,13 @@ export const Tickets = (): ReactElement => {
           </li>
         )}
         {sortBy(tickets, "id").map((ticket) => (
-          <ErrorBoundary key={ticket.id}>
+          <ErrorBoundary
+            className="my-4"
+            fallbackTitle="Ticket crashed"
+            fallbackMessage="This ticket could not be shown. Your other tickets are still available."
+            key={ticket.id}
+            resetKey={ticket.id}
+          >
             <Ticket ticket={ticket} onClick={() => openOverlay(ticket)} />
           </ErrorBoundary>
         ))}

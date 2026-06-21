@@ -237,7 +237,7 @@ export const Bulletins = ({ terminal, mate, time }: Props): ReactElement => {
           showForMate={setMateSubscribePrompt}
         />
       </Header>
-      <main className="flex-grow overflow-y-scroll scrolling-touch text-white">
+      <main className="flex-grow overflow-y-scroll scrolling-touch bg-white text-black dark:bg-black dark:text-white">
         <AnimatePresence>
           {!isNull(showMateSubscribePrompt) && mate && (
             <Toast

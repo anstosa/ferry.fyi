@@ -17,21 +17,16 @@ export const DateButton = ({
   const [isOpen, setOpen] = useState<boolean>(false);
   const [date, setDate] = useState<DateTime>(defaultDate || DateTime.local());
   const today = DateTime.local();
-  // date bounds
-  const disabledDays = [
-    {
-      before: validRange
-        ? DateTime.fromSeconds(validRange.from).toJSDate()
-        : new Date(),
-    },
-    ...(validRange
-      ? [
-          {
-            after: DateTime.fromSeconds(validRange.to).toJSDate(),
-          },
-        ]
-      : []),
-  ];
+  // past date marker
+  const pastDays = { before: today.startOf("day").toJSDate() };
+  // future bounds
+  const disabledDays = validRange
+    ? [
+        {
+          after: DateTime.fromSeconds(validRange.to).toJSDate(),
+        },
+      ]
+    : [];
 
   useEffect(() => onDateChange?.(date), [date]);
 
@@ -70,6 +65,8 @@ export const DateButton = ({
             className="date-button-picker absolute right-0 top-full"
             showOutsideDays
             disabled={disabledDays}
+            modifiers={{ past: pastDays }}
+            modifiersClassNames={{ past: "rdp-past" }}
             selected={date.toJSDate()}
             mode="single"
             weekStartsOn={1}

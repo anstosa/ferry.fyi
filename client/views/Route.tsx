@@ -8,6 +8,7 @@ import { Vessel } from "shared/contracts/vessels";
 import { findWhere } from "shared/lib/arrays";
 
 import { DateButton } from "~/components/DateButton";
+import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { Footer } from "~/components/Footer";
 import { RouteSelector } from "~/components/RouteSelector";
 import { Splash } from "~/components/Splash";
@@ -24,6 +25,38 @@ import { Map } from "./Map";
 import { Schedule } from "./Schedule";
 
 export type View = "schedule" | "cameras" | "map" | "alerts";
+
+type TodayOnlyView = Exclude<View, "schedule">;
+
+const TODAY_ONLY_VIEW_LABELS: Record<TodayOnlyView, string> = {
+  alerts: "bulletins",
+  cameras: "cameras",
+  map: "map",
+};
+
+interface TodayOnlyContentProps {
+  view: TodayOnlyView;
+  goToToday: () => void;
+}
+
+// off-date tab fallback
+const TodayOnlyContent = ({
+  view,
+  goToToday,
+}: TodayOnlyContentProps): ReactElement => (
+  <main className="flex-grow flex items-center justify-center bg-white px-8 text-center text-black dark:bg-black dark:text-white">
+    <p className="text-lg">
+      <button
+        type="button"
+        className="link text-green-dark dark:text-green-light"
+        onClick={goToToday}
+      >
+        Go to today
+      </button>{" "}
+      to view {TODAY_ONLY_VIEW_LABELS[view]}
+    </p>
+  </main>
+);
 
 export type GetPath = (input?: {
   view?: View;
@@ -55,7 +88,7 @@ export const Route = ({
   const [tickTimeout, setTickTimeout] = useState<number | null>(null);
   const inputDate = dateInput ? DateTime.fromISO(dateInput) : null;
   const [date, setDate] = useState<DateTime>(
-    inputDate && inputDate > today ? inputDate : today
+    inputDate?.isValid ? inputDate : today
   );
 
   const vessels: Vessel[] = [];
@@ -99,17 +132,6 @@ export const Route = ({
   if (date.year !== today.year) {
     formattedDate.push(date.toFormat("y"));
   }
-
-  // remove date if outside of range
-  useEffect(() => {
-    if (
-      schedule?.validRange &&
-      date < DateTime.fromSeconds(schedule.validRange.from) &&
-      date > DateTime.fromSeconds(schedule.validRange.to)
-    ) {
-      setDate(today);
-    }
-  }, [schedule?.validRange, date]);
 
   // update route on parameter change
   useEffect(() => {
@@ -178,6 +200,11 @@ export const Route = ({
     }
   };
 
+  // reset selected date
+  const goToToday = (): void => {
+    setDate(DateTime.local());
+  };
+
   const updateSchedule = async (): Promise<void> => {
     if (isUpdating || !terminal || !mate) {
       return;
@@ -191,9 +218,15 @@ export const Route = ({
     setTime(time);
   };
 
+  const contentResetKey = `${view}:${terminal?.id ?? ""}:${mate?.id ?? ""}:${date.toISODate()}`;
+  const todayOnlyView: TodayOnlyView | null =
+    view === "schedule" || isToday ? null : view;
   let content: ReactElement | null = null;
 
-  if (view === "schedule") {
+  // off-date tab guard
+  if (todayOnlyView) {
+    content = <TodayOnlyContent view={todayOnlyView} goToToday={goToToday} />;
+  } else if (view === "schedule") {
     content = (
       <>
         {terminal && mate && (
@@ -266,7 +299,15 @@ export const Route = ({
         <meta itemProp="name" content={title} />
         <link rel="canonical" href={`${process.env.BASE_URL}${getPath()}`} />
       </Helmet>
-      {content}
+      {content && (
+        <ErrorBoundary
+          resetKey={contentResetKey}
+          fallbackTitle="Route view crashed"
+          fallbackMessage="This route section hit an unexpected error. Switch tabs or try again."
+        >
+          {content}
+        </ErrorBoundary>
+      )}
       <Footer terminal={terminal} getPath={getPath} />
     </>
   );

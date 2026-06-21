@@ -173,7 +173,7 @@
     "android": ". ./android/.envrc && npx cap run android",
     "start:android": ". ./android/.envrc && NODE_ENV=production CACHE_NAME=android vite build --config client/vite.config.ts --watch -- && cap sync",
     "start:client": "NODE_ENV=development vite --config client/vite.config.ts --host 0.0.0.0",
-    "start:server": "cd server && ts-node devServer.ts",
+    "start:server": "cd server && node ../scripts/register-esbuild.js devServer.ts",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",

@@ -14,7 +14,7 @@ interface Props {
 
 const textGreen = "text-green-dark dark:text-green-light";
 const textRed = "text-red-dark dark:text-red-light";
-const textYellow = "text-yellow-dark dark:text-yellow-light";
+const textYellow = "text-yellow-dark dark:text-yellow-medium";
 
 export const Status = ({ className, slot, time }: Props): ReactElement => {
   const { crossing, hasPassed } = slot;

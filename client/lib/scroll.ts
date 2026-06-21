@@ -11,23 +11,27 @@ export const useScrollPosition = (
 ): ScrollPosition => {
   const [position, setPosition] = useState<ScrollPosition>({ x: 0, y: 0 });
 
+  // bind scroll listener
   useEffect(() => {
-    if (!element.current) {
+    const target = element.current;
+    // missing target guard
+    if (!target) {
       return;
     }
     const updatePosition = debounce(
       () => {
         setPosition({
-          x: element.current.scrollLeft,
-          y: element.current.scrollTop,
+          x: target.scrollLeft,
+          y: target.scrollTop,
         });
       },
       { leading: true }
     );
-    element.current.addEventListener("scroll", updatePosition);
+    target.addEventListener("scroll", updatePosition);
 
     return () => {
-      element.current.removeEventListener("scroll", updatePosition);
+      // remove captured listener
+      target.removeEventListener("scroll", updatePosition);
     };
   }, [element.current]);
 

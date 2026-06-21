@@ -1,13 +1,15 @@
-import { ErrorBoundary } from "@sentry/react";
 import clsx from "clsx";
 import { DateTime } from "luxon";
 import React, { ReactElement, ReactNode, useEffect, useRef } from "react";
 import { Route } from "shared/contracts/routes";
 import type { Slot } from "shared/contracts/schedules";
+import type { TerminalLocation } from "shared/contracts/terminals";
 import { findWhere } from "shared/lib/arrays";
 import { isNull } from "shared/lib/identity";
 
+import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { VesselTag } from "~/components/VesselTag";
+import { isDuringDaylight } from "~/lib/daylight";
 
 import { Capacity } from "./Capacity";
 import { Status } from "./Status";
@@ -18,6 +20,7 @@ interface Props {
   className?: string;
   slot: Slot;
   isExpanded: boolean;
+  location: TerminalLocation;
   onClick: () => void;
   route?: Route;
   schedule: Slot[];
@@ -29,20 +32,22 @@ export const SlotInfo = (props: Props): ReactElement => {
   const {
     className = "",
     isExpanded,
+    location,
     onClick,
     schedule,
     setElement,
     slot,
     time,
   } = props;
-  const { hasPassed } = slot;
   const isNext =
     time.toISODate !== DateTime.local().toISODate &&
     slot === findWhere(schedule, { hasPassed: false });
 
   const wrapper = useRef<HTMLDivElement>(null);
 
+  // expose row element
   useEffect(() => {
+    // mounted ref guard
     if (!isNull(wrapper.current)) {
       setElement(wrapper.current);
     }
@@ -87,7 +92,11 @@ export const SlotInfo = (props: Props): ReactElement => {
         <div className={clsx("flex-grow pr-4")}>
           <div className="flex items-center mb-2">
             <VesselTag vessel={vessel} />
-            <ErrorBoundary>
+            <ErrorBoundary
+              className="m-0"
+              fallbackTitle="Vessel status crashed"
+              fallbackMessage="Live vessel status is unavailable for this sailing."
+            >
               <VesselStatus
                 className="flex-glow ml-2"
                 vessel={vessel}
@@ -101,14 +110,13 @@ export const SlotInfo = (props: Props): ReactElement => {
     );
   };
 
-  let background: string;
-  if (hasPassed) {
-    background = "bg-gray-light dark:bg-gray-darkest";
-  } else if (isNext) {
-    background = "bg-blue-lightest dark:bg-blue-darkest";
-  } else {
-    background = "bg-white dark:bg-black";
-  }
+  const isDaylight = isDuringDaylight(
+    DateTime.fromSeconds(slot.time),
+    location
+  );
+  const background = isDaylight
+    ? "bg-yellow-lightest text-black dark:bg-yellow-dark dark:text-white"
+    : "bg-blue-lightest text-black dark:bg-blue-darkest dark:text-white";
 
   return (
     <li

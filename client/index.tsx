@@ -8,6 +8,7 @@ import { HelmetProvider } from "react-helmet-async";
 import { BrowserRouter } from "react-router-dom";
 import { isUndefined } from "shared/lib/identity";
 
+import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { UserProvider } from "~/lib/user";
 
 import { App } from "./App";
@@ -111,24 +112,30 @@ whenReady(() => {
   // render app tree
   const renderAll = (): void => {
     reactRoot.render(
-      <BrowserRouter>
-        <HelmetProvider>
-          <Auth0Provider
-            domain={process.env.AUTH0_DOMAIN as string}
-            clientId={process.env.AUTH0_CLIENT_ID as string}
-            authorizationParams={{
-              audience: process.env.AUTH0_CLIENT_AUDIENCE as string,
-              redirect_uri: process.env.AUTH0_CLIENT_REDIRECT as string,
-              scope: "read:current_user",
-            }}
-            cacheLocation="localstorage"
-          >
-            <UserProvider>
-              <App />
-            </UserProvider>
-          </Auth0Provider>
-        </HelmetProvider>
-      </BrowserRouter>
+      <ErrorBoundary
+        className="m-4"
+        fallbackTitle="Ferry FYI crashed"
+        fallbackMessage="The app shell hit an unexpected error. Reload the page to start fresh."
+      >
+        <BrowserRouter>
+          <HelmetProvider>
+            <Auth0Provider
+              domain={process.env.AUTH0_DOMAIN as string}
+              clientId={process.env.AUTH0_CLIENT_ID as string}
+              authorizationParams={{
+                audience: process.env.AUTH0_CLIENT_AUDIENCE as string,
+                redirect_uri: process.env.AUTH0_CLIENT_REDIRECT as string,
+                scope: "read:current_user",
+              }}
+              cacheLocation="localstorage"
+            >
+              <UserProvider>
+                <App />
+              </UserProvider>
+            </Auth0Provider>
+          </HelmetProvider>
+        </BrowserRouter>
+      </ErrorBoundary>
     );
   };
   window.addEventListener("online", renderAll);
