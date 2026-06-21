@@ -130,7 +130,7 @@
     "fork-ts-checker-webpack-plugin": "^7.2.1",
     "framer-motion": "^6.2.8",
     "html-webpack-plugin": "^5.5.0",
-    "http-proxy-middleware": "^2.0.4",
+    "http-proxy-middleware": "^3.0.7",
     "jotai": "^1.6.1",
     "jsbarcode": "^3.11.5",
     "mapbox-gl": "^2.7.0",
