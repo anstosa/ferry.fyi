@@ -1,11 +1,12 @@
 import logger from "heroku-logger";
 import wsfCore from "shared/data/wsf-core.json";
-import { sortBy } from "shared/lib/arrays";
 import { values } from "shared/lib/objects";
 
 import { Camera } from "~/models/Camera";
 import { Route } from "~/models/Route";
 import { Terminal } from "~/models/Terminal";
+
+import { removedTerminalIds } from "./removedTerminals";
 
 let hasLoadedSeed = false;
 
@@ -47,10 +48,17 @@ export const hydrateWsfSeed = (): void => {
     terminal.save();
   });
 
+  // remove retired terminals
+  removedTerminalIds.forEach((terminalId) => {
+    Terminal.getByIndex(terminalId)?.purge();
+  });
+
   // connect terminal relations
   values(Terminal.getAll()).forEach((terminal) => {
     terminal.update({
-      cameras: sortBy(Camera.getByTerminalId(terminal.id), "orderFromTerminal"),
+      cameras: Camera.sortByTerminalDisplayOrder(
+        Camera.getByTerminalId(terminal.id)
+      ),
       mates: Route.getMatesByTerminalId(terminal.id),
       routes: Route.getByTerminalId(terminal.id),
     });

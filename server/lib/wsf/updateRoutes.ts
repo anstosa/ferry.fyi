@@ -5,6 +5,7 @@ import { WSF } from "~/typings/wsf";
 
 import { wsfRequest } from "./api";
 import { toWsfDate } from "./date";
+import { isRemovedTerminalId } from "./removedTerminals";
 
 const API_SCHEDULE = "https://www.wsdot.wa.gov/ferries/api/schedule/rest";
 const getMatesApi = (date: string = toWsfDate()): string =>
@@ -25,37 +26,50 @@ export const updateRoutes = async (
     return;
   }
   await Promise.all(
-    mates.map(async ({ DepartingTerminalID, ArrivingTerminalID }) => {
-      const departingId = String(DepartingTerminalID);
-      const arrivingId = String(ArrivingTerminalID);
-      const [routeData] =
-        (await wsfRequest<WSF.RoutesResponse>(
-          getRouteApi(departingId, arrivingId)
-        )) ?? [];
-      if (!routeData) {
-        return null;
-      }
-      const data = {
-        id: String(routeData.RouteID),
-        abbreviation: routeData.RouteAbbrev,
-        description: routeData.Description,
-        crossingTime: Number(routeData.CrossingTime),
-      };
-      const [route, wasCreated] = Route.getOrCreate(String(routeData.RouteID), {
-        ...data,
-        terminalIds: [departingId, arrivingId],
-      });
-      if (!wasCreated) {
-        route.update({
-          ...data,
-          terminalIds: Array.from(
-            new Set([...route.terminalIds, departingId, arrivingId])
-          ),
-        });
-      }
-      route.save();
-      return route;
-    })
+    mates
+      // skip retired terminals
+      .filter(
+        ({ DepartingTerminalID, ArrivingTerminalID }) =>
+          ![DepartingTerminalID, ArrivingTerminalID]
+            .map(String)
+            .some(isRemovedTerminalId)
+      )
+      .map(async ({ DepartingTerminalID, ArrivingTerminalID }) => {
+        const departingId = String(DepartingTerminalID);
+        const arrivingId = String(ArrivingTerminalID);
+        const [routeData] =
+          (await wsfRequest<WSF.RoutesResponse>(
+            getRouteApi(departingId, arrivingId)
+          )) ?? [];
+        // route missing guard
+        if (!routeData) {
+          return null;
+        }
+        const data = {
+          id: String(routeData.RouteID),
+          abbreviation: routeData.RouteAbbrev,
+          description: routeData.Description,
+          crossingTime: Number(routeData.CrossingTime),
+        };
+        const [route, wasCreated] = Route.getOrCreate(
+          String(routeData.RouteID),
+          {
+            ...data,
+            terminalIds: [departingId, arrivingId],
+          }
+        );
+        // existing route guard
+        if (!wasCreated) {
+          route.update({
+            ...data,
+            terminalIds: Array.from(
+              new Set([...route.terminalIds, departingId, arrivingId])
+            ),
+          });
+        }
+        route.save();
+        return route;
+      })
   );
   logger.info(`Updated ${Object.keys(Route.getAll()).length} Routes`);
 };

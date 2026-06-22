@@ -12,14 +12,13 @@ import React, {
 } from "react";
 import type { Camera } from "shared/contracts/cameras";
 import type { Terminal } from "shared/contracts/terminals";
-import { isNil, isNull } from "shared/lib/identity";
+import { isNull } from "shared/lib/identity";
 
 import { InlineLoader } from "~/components/InlineLoader";
 import { locationToUrl } from "~/lib/maps";
 import { useScrollPosition } from "~/lib/scroll";
 import CarIcon from "~/static/images/icons/solid/car.svg";
 import MapIcon from "~/static/images/icons/solid/map-marker.svg";
-import ParkingIcon from "~/static/images/icons/solid/parking.svg";
 import WSDOTIcon from "~/static/images/icons/wsdot.svg";
 
 import { ReloadButton } from "../components/ReloadButton";
@@ -34,6 +33,7 @@ interface CameraListProps {
 }
 
 const CAMERA_REFRESH_MS = 10 * 1000;
+const NO_CAMERAS_MESSAGE = "This terminal does not have cameras";
 
 export const Cameras = ({ terminal }: Props): ReactElement => {
   // loading guard
@@ -46,6 +46,7 @@ export const Cameras = ({ terminal }: Props): ReactElement => {
 // render loaded terminal
 const CameraList = ({ terminal }: CameraListProps): ReactElement => {
   const { cameras } = terminal;
+  const hasCameras = cameras.length > 0;
   const [cameraTime, setCameraTime] = useState<number>(
     DateTime.local().toSeconds()
   );
@@ -101,28 +102,14 @@ const CameraList = ({ terminal }: CameraListProps): ReactElement => {
     setLoadedImages((current) => ({ ...current, [imageKey]: true }));
   };
 
+  // render camera item
   const renderCamera = (camera: Camera, index: number): ReactNode => {
-    const { id, title, image, location, owner } = camera;
-    let totalToBooth: number | null;
+    const { carsToBoat, id, title, image, location, owner } = camera;
     const mapsUrl = locationToUrl(location);
     const imageKey = `${id}-${cameraTime}`;
     const imageLoaded = loadedImages[imageKey] ?? false;
     const isFirst = index === 0;
     const markerRef = isFirst ? firstMarker : undefined;
-    if (isNil(cameras[0]?.spacesToNext)) {
-      totalToBooth = null;
-    } else {
-      totalToBooth = 0;
-      cameras.find((candidate) => {
-        const { spacesToNext } = candidate;
-        // terminal marker guard
-        if (isNull(spacesToNext)) {
-          return true;
-        }
-        totalToBooth = Number(totalToBooth) + (candidate?.spacesToNext ?? 0);
-        return candidate === camera;
-      });
-    }
 
     return (
       <li className={clsx("flex flex-col", "relative")} key={id}>
@@ -168,16 +155,11 @@ const CameraList = ({ terminal }: CameraListProps): ReactElement => {
           >
             {title}
           </a>
-          {Boolean(totalToBooth) && (
+          {/* cars-to-boat guard */}
+          {!isNull(carsToBoat) && (
             <span className={clsx("font-normal text-sm")}>
               <CarIcon className="inline-block mr-2" />
-              {totalToBooth} to tollbooth
-            </span>
-          )}
-          {totalToBooth === 0 && (
-            <span className={clsx("font-normal text-sm")}>
-              <ParkingIcon className="inline-block mr-2" />
-              Past tollbooth
+              {carsToBoat} cars to boat
             </span>
           )}
         </span>
@@ -218,22 +200,30 @@ const CameraList = ({ terminal }: CameraListProps): ReactElement => {
         ref={wrapper}
       >
         <div
-          className={clsx("my-6 mx-auto pl-16 pr-4 relative max-w-lg")}
+          className={clsx(
+            "mx-auto relative max-w-lg",
+            hasCameras
+              ? "my-6 pl-16 pr-4"
+              : "flex min-h-full items-center justify-center p-4 text-center text-gray-dark dark:text-gray-light"
+          )}
           ref={timeline}
         >
-          <div
-            className={clsx(
-              "border-l-4 border-dotted border-black dark:border-white",
-              "w-1",
-              "absolute bottom-0 left-0 ml-8",
-              isNull(timelineStart) && "hidden"
-            )}
-            style={
-              {
-                top: timelineStart ?? 0,
-              } as CSSProperties
-            }
-          />
+          {/* camera timeline */}
+          {hasCameras && (
+            <div
+              className={clsx(
+                "border-l-4 border-dotted border-black dark:border-white",
+                "w-1",
+                "absolute bottom-0 left-0 ml-8",
+                isNull(timelineStart) && "hidden"
+              )}
+              style={
+                {
+                  top: timelineStart ?? 0,
+                } as CSSProperties
+              }
+            />
+          )}
           {/* Top shadow on scroll */}
           <AnimatePresence>
             {y > 0 && (
@@ -250,8 +240,12 @@ const CameraList = ({ terminal }: CameraListProps): ReactElement => {
               />
             )}
           </AnimatePresence>
-
-          <ul className="flex flex-col gap-8">{cameras.map(renderCamera)}</ul>
+          {/* camera empty state */}
+          {hasCameras ? (
+            <ul className="flex flex-col gap-8">{cameras.map(renderCamera)}</ul>
+          ) : (
+            <p>{NO_CAMERAS_MESSAGE}</p>
+          )}
         </div>
       </main>
     </>

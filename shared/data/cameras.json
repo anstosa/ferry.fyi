@@ -1,356 +1,307 @@
 {
   "1233": {
-    "title": "Holding",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
+    "title": "Main Holding",
+    "carsToBoat": 126,
+    "orderFromTerminal": 1
   },
   "9035": {
     "title": "Holding",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
+    "carsToBoat": 24,
+    "orderFromTerminal": 1
   },
   "9037": {
     "title": "Holding",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
+    "carsToBoat": 15,
+    "orderFromTerminal": 1
   },
   "9038": {
     "title": "Holding",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
+    "carsToBoat": 149,
+    "orderFromTerminal": 1
   },
   "9039": {
-    "title": "Holding",
-    "feetToNext": null,
-    "spacesToNext": null,
+    "title": "Dock (facing away)",
+    "carsToBoat": 24,
     "orderFromTerminal": 0
   },
   "9040": {
     "title": "Holding",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
+    "carsToBoat": 85,
+    "orderFromTerminal": 1
   },
   "9041": {
-    "title": "Hwy & Bunker (North)",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
+    "title": "Bunker Trail (facing towards)",
+    "carsToBoat": 62,
+    "orderFromTerminal": 2
   },
   "9042": {
-    "title": "Hwy & Bunker (South)",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
+    "title": "Bunker Trail (facing away)",
+    "carsToBoat": 65,
+    "orderFromTerminal": 3
   },
   "9043": {
-    "title": "Hwy & 112th (North)",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
+    "title": "112th Street (facing towards)",
+    "carsToBoat": 96,
+    "orderFromTerminal": 4
   },
   "9044": {
-    "title": "Hwy & 112th (South)",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
+    "title": "112th Street (facing away)",
+    "carsToBoat": 99,
+    "orderFromTerminal": 5
   },
   "9045": {
     "title": "Holding",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
+    "carsToBoat": 18,
+    "orderFromTerminal": 1
   },
   "9046": {
-    "title": "SW Tahlequah Rd",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
+    "title": "Tollbooth (facing away)",
+    "carsToBoat": 21,
+    "orderFromTerminal": 2
   },
   "9047": {
-    "title": "Terminal",
-    "feetToNext": null,
-    "spacesToNext": null,
+    "title": "Dock",
+    "carsToBoat": null,
     "orderFromTerminal": 0
   },
   "9048": {
     "title": "Holding",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
+    "carsToBoat": 75,
+    "orderFromTerminal": 1
   },
   "9049": {
-    "title": "Terminal Rd",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
+    "title": "Tollbooth (facing away)",
+    "carsToBoat": 99,
+    "orderFromTerminal": 2
   },
   "9151": {
-    "title": "Terminal",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
+    "title": "Holding",
+    "carsToBoat": null,
+    "orderFromTerminal": 1
   },
   "9152": {
-    "title": "Sign East",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
+    "title": "Ferry Sign East",
+    "carsToBoat": 451,
+    "orderFromTerminal": 6
   },
   "9153": {
-    "title": "Sign West",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
+    "title": "Fir Hollow Drive (facing away)",
+    "carsToBoat": 451,
+    "orderFromTerminal": 5
   },
   "9154": {
-    "title": "Barber",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
+    "title": "Barber Cut Off Road (facing towards)",
+    "carsToBoat": 355,
+    "orderFromTerminal": 4
   },
   "9155": {
-    "title": "W Dayton St",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
+    "title": "Dayton Street (facing away)",
+    "carsToBoat": 271,
+    "orderFromTerminal": 2
   },
   "9156": {
-    "title": "VMS Sign",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
+    "title": "100th Ave (facing towards)",
+    "carsToBoat": 478,
+    "orderFromTerminal": 5
   },
   "9157": {
     "title": "Holding",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
+    "carsToBoat": 280,
+    "orderFromTerminal": 1
   },
   "9159": {
-    "title": "Underpass",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
-  },
-  "9160": {
-    "title": "Pine",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
-  },
-  "9161": {
-    "title": "Clover Ln",
-    "feetToNext": 4080,
-    "spacesToNext": 185,
+    "title": "Pine Street (facing away)",
+    "carsToBoat": 208,
     "orderFromTerminal": 4
   },
-  "9162": {
-    "title": "76th - North",
-    "feetToNext": 2360,
-    "spacesToNext": 107,
+  "9160": {
+    "title": "Pine Street (facing towards)",
+    "carsToBoat": 205,
+    "orderFromTerminal": 3
+  },
+  "9161": {
+    "title": "Clover Lane (facing towards)",
+    "carsToBoat": 345,
     "orderFromTerminal": 5
   },
-  "9163": {
-    "title": "76th - South",
-    "feetToNext": 0,
-    "spacesToNext": 0,
+  "9162": {
+    "title": "School (facing towards)",
+    "carsToBoat": 455,
     "orderFromTerminal": 6
+  },
+  "9163": {
+    "title": "School (facing away)",
+    "carsToBoat": 457,
+    "orderFromTerminal": 7
   },
   "9164": {
     "title": "Holding",
-    "feetToNext": 0,
-    "spacesToNext": 0,
-    "orderFromTerminal": 0
-  },
-  "9165": {
-    "title": "Holding",
-    "feetToNext": 0,
-    "spacesToNext": 0,
-    "orderFromTerminal": 0
-  },
-  "9944": {
-    "title": "Tollbooth",
-    "feetToNext": 100,
-    "spacesToNext": 10,
+    "carsToBoat": 72,
     "orderFromTerminal": 1
   },
   "9166": {
-    "title": "Terminal",
-    "feetToNext": 0,
-    "spacesToNext": 0,
+    "title": "Holding",
+    "carsToBoat": null,
     "orderFromTerminal": 1
   },
   "9167": {
-    "title": "Terminal",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
+    "title": "Holding",
+    "carsToBoat": null,
+    "orderFromTerminal": 1
   },
   "9168": {
-    "title": "Street",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
+    "title": "Tollbooth (facing away)",
+    "carsToBoat": null,
+    "orderFromTerminal": 2
   },
   "9169": {
-    "title": "Terminal",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
+    "title": "Holding",
+    "carsToBoat": null,
+    "orderFromTerminal": 1
   },
   "9170": {
-    "title": "Street",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
+    "title": "Tollbooth (facing away)",
+    "carsToBoat": null,
+    "orderFromTerminal": 2
   },
   "9172": {
-    "title": "Uphill",
-    "feetToNext": 0,
-    "spacesToNext": 0,
+    "title": "Tollbooth (facing away)",
+    "carsToBoat": 31,
     "orderFromTerminal": 2
   },
   "9173": {
     "title": "Dock",
-    "feetToNext": 0,
-    "spacesToNext": 0,
+    "carsToBoat": null,
     "orderFromTerminal": 0
   },
   "9174": {
-    "title": "E SR 525",
-    "feetToNext": 2290,
-    "spacesToNext": 100,
+    "title": "Food Mart (facing towards)",
+    "carsToBoat": 122,
     "orderFromTerminal": 3
   },
   "9175": {
-    "title": "W SR 525",
-    "feetToNext": 0,
-    "spacesToNext": 0,
+    "title": "Post Office (facing away)",
+    "carsToBoat": 149,
     "orderFromTerminal": 4
   },
   "9377": {
-    "title": "Way and Cloverdale St.",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
+    "title": "Playground (facing away)",
+    "carsToBoat": 95,
+    "orderFromTerminal": 4
   },
   "9391": {
-    "title": "Terminal",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
+    "title": "Holding",
+    "carsToBoat": null,
+    "orderFromTerminal": 1
   },
   "9394": {
-    "title": "5th St - North",
-    "feetToNext": 1550,
-    "spacesToNext": 70,
-    "orderFromTerminal": 2
+    "title": "5th Street (facing towards)",
+    "carsToBoat": 153,
+    "orderFromTerminal": 3
   },
   "9402": {
-    "title": "Way looking North",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
+    "title": "Tollbooth (facing away)",
+    "carsToBoat": 152,
+    "orderFromTerminal": 2
   },
   "9403": {
-    "title": "St looking North",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
+    "title": "Trenton Street (facing away)",
+    "carsToBoat": 66,
+    "orderFromTerminal": 3
   },
   "9404": {
-    "title": "Park looking North",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
+    "title": "Lincoln Park (facing away)",
+    "carsToBoat": 157,
+    "orderFromTerminal": 5
   },
   "9476": {
-    "title": "Winslow Way South",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
+    "title": "Winslow Way (facing towards)",
+    "carsToBoat": 73,
+    "orderFromTerminal": 2
   },
   "9477": {
-    "title": "Winslow Way North",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
+    "title": "Winslow Way (facing away)",
+    "carsToBoat": 73,
+    "orderFromTerminal": 3
   },
   "9478": {
-    "title": "High School Rd North",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
+    "title": "High School (facing away)",
+    "carsToBoat": 257,
+    "orderFromTerminal": 5
   },
   "9479": {
-    "title": "High School Rd South",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
+    "title": "High School (facing towards)",
+    "carsToBoat": 257,
+    "orderFromTerminal": 4
+  },
+  "9502": {
+    "title": "Overflow Holding",
+    "carsToBoat": 55,
+    "orderFromTerminal": 2
   },
   "9688": {
     "title": "Holding",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
+    "carsToBoat": 52,
+    "orderFromTerminal": 1
   },
   "9689": {
-    "title": "Booth",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
+    "title": "Tollbooth (facing away)",
+    "carsToBoat": 52,
+    "orderFromTerminal": 2
   },
   "9692": {
-    "title": "Approach",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
+    "title": "Tollbooth (facing away)",
+    "carsToBoat": 41,
+    "orderFromTerminal": 4
   },
   "9693": {
-    "title": "Holding",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
+    "title": "Back Holding (facing away)",
+    "carsToBoat": 30,
+    "orderFromTerminal": 3
   },
   "9717": {
-    "title": "Holding (South)",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
+    "title": "Holding (facing away)",
+    "carsToBoat": 8,
+    "orderFromTerminal": 1
   },
   "9728": {
-    "title": "5th St - South",
-    "feetToNext": 0,
-    "spacesToNext": 0,
-    "orderFromTerminal": 3
+    "title": "5th Street (facing away)",
+    "carsToBoat": 155,
+    "orderFromTerminal": 4
   },
   "9741": {
     "title": "Holding",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
+    "carsToBoat": 132,
+    "orderFromTerminal": 1
   },
   "9742": {
-    "title": "Booth",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
-  },
-  "9794": {
-    "title": "Overflow Holding",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
+    "title": "Tollbooth (facing away)",
+    "carsToBoat": 127,
+    "orderFromTerminal": 2
   },
   "9813": {
-    "title": "Washington Blvd",
-    "feetToNext": null,
-    "spacesToNext": null,
-    "orderFromTerminal": 0
+    "title": "Tollbooth (facing away)",
+    "carsToBoat": 100,
+    "orderFromTerminal": 2
+  },
+  "9944": {
+    "title": "Tollbooth (facing towards)",
+    "carsToBoat": 153,
+    "orderFromTerminal": 2
+  },
+  "10112": {
+    "title": "Holding",
+    "carsToBoat": 30,
+    "orderFromTerminal": 2
+  },
+  "10113": {
+    "title": "Front Holding (facing towards)",
+    "carsToBoat": 30,
+    "orderFromTerminal": 1
+  },
+  "10266": {
+    "title": "Downtown (facing away)",
+    "carsToBoat": 173,
+    "orderFromTerminal": 3
   }
 }

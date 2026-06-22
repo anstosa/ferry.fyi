@@ -151,14 +151,6 @@
     },
     "popularity": 0.001
   },
-  "19": {
-    "slug": "sidney",
-    "abbreviation": "CA",
-    "aliases": ["sid", "sdy", "sidneybc", "bc", "ca", "canada"],
-    "name": "Canada",
-    "vesselWatchUrl": "https://www.wsdot.com/ferries/vesselwatch/default.aspx?view=anasjsid",
-    "popularity": 0.012
-  },
   "20": {
     "slug": "southworth",
     "abbreviation": "SW",

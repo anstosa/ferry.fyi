@@ -1,5 +1,4 @@
 import logger from "heroku-logger";
-import { sortBy } from "shared/lib/arrays";
 
 import { Bulletin } from "~/models/Bulletin";
 import { Camera } from "~/models/Camera";
@@ -9,6 +8,7 @@ import { WSF } from "~/typings/wsf";
 
 import { wsfRequest } from "./api";
 import { wsfDateToTimestamp } from "./date";
+import { isRemovedTerminalId, removedTerminalIds } from "./removedTerminals";
 
 const VESSELWATCH_BASE =
   "https://wsdot.com/ferries/vesselwatch/terminaldetail.aspx?terminalid=";
@@ -36,7 +36,13 @@ export const updateTerminals = async (): Promise<void> => {
   if (!terminals) {
     return;
   }
+  // remove retired terminals
+  removedTerminalIds.forEach((terminalId) => {
+    Terminal.getByIndex(terminalId)?.purge();
+  });
   terminals
+    // skip retired terminals
+    .filter(({ TerminalID }) => !isRemovedTerminalId(String(TerminalID)))
     .map((TerminalData) => {
       const data = {
         abbreviation: TerminalData.TerminalAbbrev,
@@ -60,9 +66,8 @@ export const updateTerminals = async (): Promise<void> => {
             }
           ).filter(Boolean)
         ),
-        cameras: sortBy(
-          Camera.getByTerminalId(String(TerminalData.TerminalID)),
-          "orderFromTerminal"
+        cameras: Camera.sortByTerminalDisplayOrder(
+          Camera.getByTerminalId(String(TerminalData.TerminalID))
         ),
         hasElevator: TerminalData.Elevator,
         hasOverheadLoading: TerminalData.OverheadPassengerLoading,

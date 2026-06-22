@@ -148,7 +148,7 @@ export const RouteSelector = (props: Props): ReactElement => {
         {isUndefined(noLocation) && (
           <Toast info>
             <span className="font-bold block">Enable location features?</span>
-            This will sort terminals by proximity and warn you when you're not
+            This will highlight nearby terminals and warn you when you're not
             looking at the closest terminal
             <div className="button-group mt-5">
               <button

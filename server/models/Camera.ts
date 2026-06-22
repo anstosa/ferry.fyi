@@ -13,14 +13,13 @@ export class Camera extends CacheableModel implements CameraClass {
   static cacheKey = "cameras";
   static index = "id";
 
-  feetToNext!: number | null;
+  carsToBoat!: number | null;
   id!: string;
   image!: CameraImage;
   isActive!: boolean;
   location!: MapPoint;
   orderFromTerminal!: number;
   owner!: { name: string; url: string } | null;
-  spacesToNext!: number | null;
   terminalId!: string;
   title!: string;
 
@@ -28,6 +27,32 @@ export class Camera extends CacheableModel implements CameraClass {
     return values(Camera.getAll()).filter(
       ({ terminalId }) => terminalId === targetTerminalId
     );
+  }
+
+  // sort cameras for display
+  static sortByTerminalDisplayOrder(cameras: Camera[]): Camera[] {
+    // compare display order
+    return cameras.sort((left, right) => {
+      const leftIsDock = Camera.isDockCamera(left);
+      const rightIsDock = Camera.isDockCamera(right);
+
+      // dock priority
+      if (leftIsDock !== rightIsDock) {
+        return leftIsDock ? -1 : 1;
+      }
+
+      // explicit order
+      if (left.orderFromTerminal !== right.orderFromTerminal) {
+        return left.orderFromTerminal - right.orderFromTerminal;
+      }
+
+      return left.title.localeCompare(right.title);
+    });
+  }
+
+  // detect dock views
+  private static isDockCamera({ title }: Pick<CameraClass, "title">): boolean {
+    return /\bdock\b/i.test(title);
   }
 
   save(): void {
@@ -41,14 +66,13 @@ export class Camera extends CacheableModel implements CameraClass {
 
   serialize(): CameraClass {
     return CacheableModel.serialize({
-      feetToNext: this.feetToNext,
+      carsToBoat: this.carsToBoat,
       id: this.id,
       image: this.image,
       isActive: this.isActive,
       location: this.location,
       orderFromTerminal: this.orderFromTerminal,
       owner: this.owner,
-      spacesToNext: this.spacesToNext,
       terminalId: this.terminalId,
       title: this.title,
     });

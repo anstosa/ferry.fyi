@@ -56,7 +56,8 @@ export const SlotInfo = (props: Props): ReactElement => {
   const renderHeader = (): ReactNode => (
     <section
       className={clsx(
-        "relative p-3 h-20",
+        // align full stripes
+        "relative p-3 h-[84.85px]",
         "flex justify-between",
         "cursor-pointer"
       )}

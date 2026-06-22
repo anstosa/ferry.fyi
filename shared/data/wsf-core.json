@@ -46,7 +46,7 @@
         "parking": "Peak rates effective May 1 - September 30:<br>\r\n<ul>\r\n<li>1 day rate  (car) - $13.00</li>\r\n<li>2 day rate (car) - $26.00</li>\r\n<li>3 day rate (car) - $36.00</li>\r\n<li>4 day rate (car) - $44.00</li>\r\n<li>7 day rate (car) - $60.00</li>\r\n<li>8 day rate (car) - $65.00</li>\r\n<li>9 day rate (car) - $76.00</li>\r\n<li>10 day rate (car) - $87.00</li>\r\n<li>14 day rate (car) - $103.00</li>\r\n<li>15 day rate (car) - $120.00</li>\r\n<li>16 day rate (car) - $125.00</li>\r\n<li>17 day rate (car) - $135.00</li>\r\n<li>21 day rate (car) - $147.00</li><p>\r\n\r\n\r\n<li>1 day rate (RV) - $26.00</li>\r\n<li>2 day rate (RV) - $52.00</li>\r\n<li>3 day rate (RV) - $72.00</li>\r\n<li>4 day rate (RV) - $92.00</li>\r\n<li>5 day rate (RV) - $120.00</li>\r\n<li>6 day rate (RV) - $141.00</li>\r\n<li>7 day rate (RV) - $163.00</li>\r\n<li>8 day rate (RV) - $185.00</li>\r\n<li>9 day rate (RV) - $207.00</li>\r\n<li>10 day rate (RV) - $228.00</li>\r\n<li>14 day rate (RV) - $315.00</li>p>\r\n\r\nThere are two ways to either initially pay for parking or to extend your current parking session remotely via your cell phone or mobile app:<p>\r\n\r\n<ul>Use the <a href=\"https://www.paybyphone.com/\" class=\"content_text\">PayByPhone mobile app</a> or call 1-888-680-7275.  The automated system will ask for the Station #1644, the Stall # you parked in and the number of day(s) needed.</ul><p>\r\n \r\n<b>Contact 509-295-6490 for additional parking information.</b></p>\r\n\r\nCustomers wishing to purchase a Monthly, Seasonal, or RV/Boat Storage permits, please call Diamond Parking Services at (206) 729-0590 or 1-800-828-4197 and press option 2. Customer Service Representatives are available Monday – Friday 7:30 am to 7:00 pm PST or by email at Monthly@DiamondParking.com<p>\r\n\r\nThere is no charge for disabled parking customers displaying a valid disabled parking placard or license plate in this parking lot only. It’s important to note that when all the sign posted ADA spaces are filled in this WSF lot, customers are allowed to park in any empty space in this lot, for free, with their ADA placard, except those spaces reserved for other uses (e.g., carpool and Ferry System employee vehicles).</p> ",
         "security": "WSF has implemented a U.S. Coast Guard approved security plan, for more information please visit our <a href=\"https://wsdot.wa.gov/ferries/rider-information/safety\" class=\"content_text\"><strong>Safety and Security</a></strong> page.</p>",
         "train": null,
-        "truck": "Expect heavy truck traffic on the first 3 sailings in the morning. Trucks going standby are advised to travel between the 7:40 am to 11:00 am time frame.<p>WSF requires trucks with a gross vehicle weight of over 80,000 lbs and/or over 8’6” wide to have “travel approval” before crossing any of our routes.  Vessels on this route have a limited height clearance and trucks may be loaded out of sequence.<p>\r\nTrucks that have a gross vehicle weight of over 80,000 lbs but are hauling less than 80,000 lbs will need to provide a weight slip.<p>\r\nPlease fill out our <A HREF=\"https://wsdot.wa.gov/ferries/rider-information/trucks\" class=\"content_text\">Oversized/Overweight Vehicle Travel</A> form and email it to wsfinfo@wsdot.wa.gov. Please allow three business days for completion and approval. You can contact us at anytime for status updates at (206)464-6400 (Seattle).<p>The Canada Border Service Agency does not provide Commercial Services at the Sidney Terminal, as this office is not a designated commercial office.</p>"
+        "truck": "Expect heavy truck traffic on the first 3 sailings in the morning. Trucks going standby are advised to travel between the 7:40 am to 11:00 am time frame.<p>WSF requires trucks with a gross vehicle weight of over 80,000 lbs and/or over 8’6” wide to have “travel approval” before crossing any of our routes.  Vessels on this route have a limited height clearance and trucks may be loaded out of sequence.<p>\r\nTrucks that have a gross vehicle weight of over 80,000 lbs but are hauling less than 80,000 lbs will need to provide a weight slip.<p>\r\nPlease fill out our <A HREF=\"https://wsdot.wa.gov/ferries/rider-information/trucks\" class=\"content_text\">Oversized/Overweight Vehicle Travel</A> form and email it to wsfinfo@wsdot.wa.gov. Please allow three business days for completion and approval. You can contact us at anytime for status updates at (206)464-6400 (Seattle)."
       },
       "location": {
         "link": "https://www.google.com/maps/place/Anacortes+Ferry+Terminal,+Anacortes,+WA+98221/@48.5060112,-122.6776819,15z/data=!4m2!3m1!1s0x5485790ea2748ed5:0x5c9a071494b5411f</p>",
@@ -565,7 +565,7 @@
         "construction": null,
         "food": "<!DOCTYPE html>\r\n<html lang=\"en\">\r\n<head>\r\n  <meta charset=\"UTF-8\">\r\n  <title>Anacortes Vessel Schedule</title>\r\n  <style>\r\n    body { font-family: Arial, sans-serif; }\r\n    h1 { margin-bottom: 0.5rem; }\r\n    h2 { margin-top: 1.5rem; }\r\n    table { border-collapse: collapse; margin-top: 0.5rem; }th, td { border: 1px solid #ccc; padding: 0.4rem 0.6rem; }\r\n    th { background: #f2f2f2; }\r\n  </style>\r\n</head>\r\n<body>\r\n  <h1>Anacortes</h1>\r\n\r\n  <h2>Vessel #1</h2>\r\n  <table>\r\n    <tr>\r\n      <th>Days</th>\r\n      <th>Time</th>\r\n    </tr>\r\n    <tr>\r\n      <td>Sat– Thurs</td>\r\n      <td>5:30 am – 7:15 pm</td>\r\n    </tr>\r\n    <tr>\r\n      <td>Fri – Friday</td>\r\n      <td>5:30 am – 11:30 pm</td>\r\n    </tr>\r\n  </table>\r\n\r\n  <h2>Vessel #2</h2>\r\n  <table>\r\n    <tr>\r\n      <th>Days</th>\r\n      <th>Time</th>\r\n    </tr>\r\n    <tr>\r\n      <td>Daily</td>\r\n      <td>7:30 am – 9:45 pm</td>\r\n    </tr>\r\n    </tr>\r\n  </table>\r\n\r\n  <h2>Vessel #3</h2>\r\n  <table>\r\n    <tr>\r\n      <th>Days</th>\r\n      <th>Time</th>\r\n    </tr>\r\n    <tr>\r\n      <td>Thurs-Mon.</td>\r\n      <td>5:45 am – 8:15 pm</td>\r\n    </tr>\r\n    <tr>\r\n      <td>Tues.--Wed</td>\r\n      <td>5:45 am – 5:45pm</td>\r\n  </tr>\r\n  </table>\r\n</body>\r\n</html>\r\n",
         "lost": "Lost and found items on this route are turned into the Anacortes Ferry Terminal. Due to storage limitations, items are held for 30 days from the date they were found. To check if we have your item, please call (206) 515-3439 or email \r\n<a href=\"mailto:WSFLost_Found@wsdot.wa.gov\">WSFLost_Found@wsdot.wa.gov</a> \r\nbetween 9 a.m. and 5 p.m., Monday through Friday. If you contact us outside these hours, we'll try to respond the next business day.</p>\r\n\r\n<p>Our Information Agents can also assist you with lost and found inquiries at (206) 464-6400. Phones are open daily from 7 a.m. to 5:30 p.m.</p>",
-        "motorcycle": "While motorcycles are not, by Washington Administrative Code (WAC 468-300-700), a preferential loading category of users, they are often loaded prior to automobiles for operational and staging purposes. Arrival at the dock after vehicle load has commenced requires motorcycles to wait until all cars have been loaded for the next motorcycle loading opportunity. Motorcycles should proceed, while on the dock, at no more than 10 mph. Use caution when car decks are wet. The following information details specific staging for this terminal:<p> \r\n\r\n<b>Motorcycle Fare Purchase/Redemption</b><br>\r\nTickets are required for International travel to Sidney, B.C. Canada.<p>\r\n\r\n<b>Motorcycle Entry/Staging</b><br>\r\nMotorcycles are staged on the yellow curb lane in front of Cannery Landing.<p>\r\n\r\n<b>Motorcycle Loading</b><br>\r\nLoading order: bicycles, motorcycles, vehicles, late arriving motorcycles as space permits.<p> \r\n\r\n<b>Motorcycle Special Communication</b><br>\r\nRecommended arrival time is 20 minutes prior to scheduled sailing time.<br>\r\nOn high traffic sailings, vessel overloads may occur for travel to Anacortes. To avoid missing a desired sailing, motorcyclists should arrive an hour prior to scheduled sailing.<p>\r\n\r\nInter-island tickets may be used between any two islands, they are not destination specific and fare payment is required traveling westbound only. Motorcyclists travel free eastbound. ",
+        "motorcycle": "While motorcycles are not, by Washington Administrative Code (WAC 468-300-700), a preferential loading category of users, they are often loaded prior to automobiles for operational and staging purposes. Arrival at the dock after vehicle load has commenced requires motorcycles to wait until all cars have been loaded for the next motorcycle loading opportunity. Motorcycles should proceed, while on the dock, at no more than 10 mph. Use caution when car decks are wet. The following information details specific staging for this terminal:<p> \r\n\r\n<b>Motorcycle Entry/Staging</b><br>\r\nMotorcycles are staged on the yellow curb lane in front of Cannery Landing.<p>\r\n\r\n<b>Motorcycle Loading</b><br>\r\nLoading order: bicycles, motorcycles, vehicles, late arriving motorcycles as space permits.<p> \r\n\r\n<b>Motorcycle Special Communication</b><br>\r\nRecommended arrival time is 20 minutes prior to scheduled sailing time.<br>\r\nOn high traffic sailings, vessel overloads may occur for travel to Anacortes. To avoid missing a desired sailing, motorcyclists should arrive an hour prior to scheduled sailing.<p>\r\n\r\nInter-island tickets may be used between any two islands, they are not destination specific and fare payment is required traveling westbound only. Motorcyclists travel free eastbound. ",
         "parking": "There is no parking at the Friday Harbor terminal. There is limited short term on street parking available.",
         "security": "WSF has implemented a U.S. Coast Guard approved security plan, for more information please visit our <a href=\"https://wsdot.wa.gov/ferries/rider-information/safety\" class=\"content_text\"><strong>Safety and Security</a></strong> page.</p>",
         "train": null,
@@ -1130,64 +1130,6 @@
       "routes": {},
       "vesselWatchUrl": "",
       "terminalUrl": "https://wsdot.com/ferries/vesselwatch/terminaldetail.aspx?terminalid=18"
-    },
-    "19": {
-      "abbreviation": "SID",
-      "aliases": [],
-      "bulletins": [
-        {
-          "title": "Summer sailing schedule started Sunday, June 14",
-          "terminalId": "19",
-          "bodyHTML": "<p><span data-contrast=\"auto\">Our summer </span><a href=\"https://wsdot.com/ferries/schedule/\"><span data-contrast=\"none\">sailing schedule</span></a><span data-contrast=\"auto\"> started Sunday, June 14, and runs through Sept. 19. </span><span data-ccp-props=\"{}\"> </span></p>\r\n<ul>\r\n<li><a href=\"https://wsdot.com/ferries/schedule/scheduledetailbyroute.aspx?route=ana-sj\"><span data-contrast=\"none\">Anacortes/San Juan Islands</span></a><span data-contrast=\"none\">: We’ve made schedule adjustments to improve on-time performance.  </span><span data-ccp-props=\"{}\"> </span></li>\r\n<li><a href=\"https://wsdot.com/ferries/schedule/\"><span data-contrast=\"none\">Fauntleroy/Vashon/Southworth</span></a><span data-contrast=\"auto\">: The #3 vessel will operate a full-day schedule on Saturdays and Sundays this summer. Last year, it operated half days on weekends due to limited crewing. </span><span data-ccp-props=\"{&quot;134233117&quot;:false,&quot;134233118&quot;:false,&quot;335559738&quot;:240,&quot;335559739&quot;:240}\"> </span></li>\r\n<li><a href=\"https://wsdot.com/ferries/schedule/scheduledetailbyroute.aspx?route=pt-key\"><span data-contrast=\"none\">Port Townsend/Coupeville</span></a><span data-contrast=\"auto\">: Starting Tuesday, June 16, the route will operate a two-boat schedule daily through Oct. 12.  </span><span data-ccp-props=\"{}\"> </span></li>\r\n</ul>\r\n<p><span data-contrast=\"auto\">All other routes will operate on their regular summer schedules, </span><a href=\"https://wsdot.com/ferries/schedule/\"><span data-contrast=\"none\">available online now</span></a><span data-contrast=\"auto\">.</span><span data-ccp-props=\"{}\"><br /></span></p>",
-          "date": 1781556998,
-          "url": "/19/alerts"
-        }
-      ],
-      "cameras": [],
-      "hasElevator": false,
-      "hasOverheadLoading": false,
-      "hasRestroom": true,
-      "hasWaitingRoom": true,
-      "hasFood": true,
-      "id": "19",
-      "info": {
-        "ada": null,
-        "airport": "",
-        "bicycle": "Bicyclists must go through Customs and Immigration. Bicyclists should arrive at least 45 minutes in advance of the sailing to ensure being processed in time for the sailing. Reservations are not needed. Please note: Bikes departing Sidney to Friday Harbor will be loaded last and offloaded first in Friday Harbor.</p>\n\n",
-        "construction": null,
-        "food": "Food Service and gifts at the Sidney terminal are provided by Sidney Vendi.</p>",
-        "lost": "Lost and found items on this route are turned in to the Anacortes ferry terminal. Due to storage limitations, found items are held for 10 days from the date they were found. Our Information Agents can assist you with lost and found inquiries from 7:00 am to 5:30 pm (daily) at (206) 464-6400 or 1-888-808-7977.</p>",
-        "motorcycle": "Motorcycles may not bypass traffic. They are treated as cars and are “first come, first served” through the tollbooth. Motorcycles will be instructed once you have cleared the tollbooth and Immigration for staging.</p>",
-        "parking": "Parking lot at the corner of Second Street and Bevan Avenue. Parking is $6.00 per day. Those wishing to park longer than 20 days should contact Robbins Parking at (250) 414-4455 to inquire about rates.</p>\n\n\n\n",
-        "security": "WSF has implemented a U.S. Coast Guard approved security plan, for more information please visit our <a href=\"https://wsdot.wa.gov/ferries/rider-information/safety\" class=\"content_text\"><strong>Safety and Security</a></strong> page.</p>",
-        "train": null,
-        "truck": "<b>No Commercial Vehicles are allowed travel to or from Sidney B.C. due to CBP restrictions.</b></p>\n\n"
-      },
-      "location": {
-        "link": "\nhttp://maps.google.com/maps?f=d&saddr=&daddr=48.643114,-123.396739&hl=en&geocode=&mra=ls&sll=37.0625,-95.677068&sspn=44.879582,71.279297&ie=UTF8&ll=48.643114,-123.396739&spn=0.073499,0.139217&z=13",
-        "latitude": 48.643114,
-        "longitude": -123.396739,
-        "address": {
-          "line1": "PO Box 2248 Mailing",
-          "line2": "2499 Ocean Avenue (Physical)",
-          "city": "Sidney",
-          "state": "BC",
-          "zip": "V8L1T3"
-        }
-      },
-      "name": "Sidney B.C.",
-      "waitTimes": [
-        {
-          "title": null,
-          "description": "The international route to and from Sidney B.C. is out of service until Further Notice because of COVID-19 concerns. To speak with an information agent, please call 1 888 808 7977.",
-          "time": 1597779070
-        }
-      ],
-      "mates": [],
-      "popularity": 0,
-      "routes": {},
-      "vesselWatchUrl": "",
-      "terminalUrl": "https://wsdot.com/ferries/vesselwatch/terminaldetail.aspx?terminalid=19"
     },
     "20": {
       "abbreviation": "SOU",

@@ -1,6 +1,8 @@
 import { Route as RouteClass } from "shared/contracts/routes";
 import { without } from "shared/lib/arrays";
+import { isNull } from "shared/lib/identity";
 import { values } from "shared/lib/objects";
+import { compareTerminalsByName } from "shared/lib/terminalSorting";
 
 import { CacheableModel } from "./CacheableModel";
 import { Terminal } from "./Terminal";
@@ -22,8 +24,12 @@ export class Route extends CacheableModel implements RouteClass {
       terminalIds.splice(0, 0, ...route.terminalIds);
     });
     return without([...new Set(terminalIds)], terminalId)
-      .sort()
-      .map((terminalId) => Terminal.getByIndex(terminalId)) as Terminal[];
+      .map((terminalId) => Terminal.getByIndex(terminalId))
+      .filter((terminal): terminal is Terminal => {
+        // missing terminal guard
+        return !isNull(terminal);
+      })
+      .sort(compareTerminalsByName);
   }
 
   static getByTerminalId(terminalId: string): Record<string, Route> {

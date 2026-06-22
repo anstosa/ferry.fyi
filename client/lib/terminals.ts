@@ -2,9 +2,13 @@ import { atom, useAtom } from "jotai";
 import { useEffect, useState } from "react";
 import type { Terminal } from "shared/contracts/terminals";
 import TERMINAL_DATA_OVERRIDES from "shared/data/terminals.json";
-import { isEmpty, sortBy } from "shared/lib/arrays";
+import { isEmpty } from "shared/lib/arrays";
 import { isNull } from "shared/lib/identity";
 import { entries, findKey, keys, values } from "shared/lib/objects";
+import {
+  compareTerminalsByName,
+  getTerminalSorter,
+} from "shared/lib/terminalSorting";
 
 import { get } from "~/lib/api";
 
@@ -54,7 +58,8 @@ export const getTerminals = async (): Promise<Terminal[]> => {
     // eslint-disable-next-line require-atomic-updates
     hasAll = true;
   }
-  return sortBy(values(terminalCache), "name");
+  // alphabetical display order
+  return values(terminalCache).sort(compareTerminalsByName);
 };
 
 interface TerminalState {
@@ -62,17 +67,7 @@ interface TerminalState {
   closestTerminal: Terminal | null;
 }
 
-export const getTerminalSorter =
-  (closestTerminal?: Terminal | null) =>
-  (a: Terminal, b: Terminal): number => {
-    if (a.id === closestTerminal?.id) {
-      return -1;
-    } else if (b.id === closestTerminal?.id) {
-      return 1;
-    } else {
-      return b.popularity - a.popularity;
-    }
-  };
+export { getTerminalSorter };
 
 const terminalsAtom = atom<Terminal[] | null>(null);
 
