@@ -20,6 +20,13 @@ describe("getTerminalSorter", () => {
     expect(sortedNames).toEqual(["Anacortes", "Mukilteo", "Vashon"]);
   });
 
+  // identical comparison
+  it("treats identical closest terminals as equal", () => {
+    const terminal = { id: "14", name: "Mukilteo" };
+
+    expect(getTerminalSorter({ id: "14" })(terminal, terminal)).toBe(0);
+  });
+
   // closest priority
   it("keeps the closest terminal first before alphabetical order", () => {
     const terminals = [

@@ -12,6 +12,11 @@ export const compareTerminalsByName = (
 export const getTerminalSorter =
   (closestTerminal?: Pick<Terminal, "id"> | null) =>
   (left: SortableTerminal, right: SortableTerminal): number => {
+    // identical terminal guard
+    if (left.id === right.id) {
+      return 0;
+    }
+
     // closest terminal first
     if (left.id === closestTerminal?.id) {
       return -1;
