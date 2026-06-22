@@ -6,6 +6,7 @@ import { Link } from "react-router-dom";
 import type { Terminal } from "shared/contracts/terminals";
 import { without } from "shared/lib/arrays";
 import { isNull, isUndefined } from "shared/lib/identity";
+import { getTerminalSorter } from "shared/lib/terminalSorting";
 
 import { Toast } from "~/components/Toast";
 import { useLocalStorage } from "~/lib/browser";
@@ -15,7 +16,6 @@ import ArrowRightIcon from "~/static/images/icons/solid/arrow-right.svg";
 import ExchangeIcon from "~/static/images/icons/solid/exchange.svg";
 import LocationIcon from "~/static/images/icons/solid/location.svg";
 
-import { getTerminalSorter } from "../lib/terminals";
 import { TerminalDropdown } from "./TerminalDropdown";
 
 interface Props {

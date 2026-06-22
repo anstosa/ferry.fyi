@@ -33,14 +33,6 @@ export class Camera extends CacheableModel implements CameraClass {
   static sortByTerminalDisplayOrder(cameras: Camera[]): Camera[] {
     // compare display order
     return cameras.sort((left, right) => {
-      const leftIsDock = Camera.isDockCamera(left);
-      const rightIsDock = Camera.isDockCamera(right);
-
-      // dock priority
-      if (leftIsDock !== rightIsDock) {
-        return leftIsDock ? -1 : 1;
-      }
-
       // explicit order
       if (left.orderFromTerminal !== right.orderFromTerminal) {
         return left.orderFromTerminal - right.orderFromTerminal;
@@ -48,11 +40,6 @@ export class Camera extends CacheableModel implements CameraClass {
 
       return left.title.localeCompare(right.title);
     });
-  }
-
-  // detect dock views
-  private static isDockCamera({ title }: Pick<CameraClass, "title">): boolean {
-    return /\bdock\b/i.test(title);
   }
 
   save(): void {

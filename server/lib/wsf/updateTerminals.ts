@@ -8,7 +8,10 @@ import { WSF } from "~/typings/wsf";
 
 import { wsfRequest } from "./api";
 import { wsfDateToTimestamp } from "./date";
-import { isRemovedTerminalId, removedTerminalIds } from "./removedTerminals";
+import {
+  isRemovedTerminalId,
+  purgeRemovedTerminalData,
+} from "./removedTerminals";
 
 const VESSELWATCH_BASE =
   "https://wsdot.com/ferries/vesselwatch/terminaldetail.aspx?terminalid=";
@@ -36,10 +39,7 @@ export const updateTerminals = async (): Promise<void> => {
   if (!terminals) {
     return;
   }
-  // remove retired terminals
-  removedTerminalIds.forEach((terminalId) => {
-    Terminal.getByIndex(terminalId)?.purge();
-  });
+  purgeRemovedTerminalData();
   terminals
     // skip retired terminals
     .filter(({ TerminalID }) => !isRemovedTerminalId(String(TerminalID)))

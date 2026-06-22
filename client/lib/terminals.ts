@@ -67,8 +67,6 @@ interface TerminalState {
   closestTerminal: Terminal | null;
 }
 
-export { getTerminalSorter };
-
 const terminalsAtom = atom<Terminal[] | null>(null);
 
 export const useTerminals = (): TerminalState => {

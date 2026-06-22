@@ -5,7 +5,10 @@ import { WSF } from "~/typings/wsf";
 
 import { wsfRequest } from "./api";
 import { toWsfDate } from "./date";
-import { isRemovedTerminalId } from "./removedTerminals";
+import {
+  isRemovedTerminalId,
+  purgeRemovedTerminalData,
+} from "./removedTerminals";
 
 const API_SCHEDULE = "https://www.wsdot.wa.gov/ferries/api/schedule/rest";
 const getMatesApi = (date: string = toWsfDate()): string =>
@@ -71,5 +74,6 @@ export const updateRoutes = async (
         return route;
       })
   );
+  purgeRemovedTerminalData();
   logger.info(`Updated ${Object.keys(Route.getAll()).length} Routes`);
 };

@@ -6,7 +6,7 @@ import { Camera } from "~/models/Camera";
 import { Route } from "~/models/Route";
 import { Terminal } from "~/models/Terminal";
 
-import { removedTerminalIds } from "./removedTerminals";
+import { purgeRemovedTerminalData } from "./removedTerminals";
 
 let hasLoadedSeed = false;
 
@@ -48,10 +48,7 @@ export const hydrateWsfSeed = (): void => {
     terminal.save();
   });
 
-  // remove retired terminals
-  removedTerminalIds.forEach((terminalId) => {
-    Terminal.getByIndex(terminalId)?.purge();
-  });
+  purgeRemovedTerminalData();
 
   // connect terminal relations
   values(Terminal.getAll()).forEach((terminal) => {

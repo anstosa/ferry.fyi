@@ -4,12 +4,12 @@ import { Camera } from "../../server/models/Camera";
 
 // camera display order
 describe("Camera.sortByTerminalDisplayOrder", () => {
-  // dock priority
-  it("places dock cameras before lower-numbered queue cameras", () => {
+  // explicit order priority
+  it("uses metadata order instead of dock title text", () => {
     const cameras = [
-      { id: "holding", orderFromTerminal: 0, title: "Holding" },
+      { id: "holding", orderFromTerminal: 1, title: "Holding" },
       { id: "dock", orderFromTerminal: 99, title: "Dock" },
-      { id: "uphill", orderFromTerminal: 1, title: "Uphill" },
+      { id: "uphill", orderFromTerminal: 2, title: "Uphill" },
     ] as unknown as Camera[];
 
     const sortedIds = Camera.sortByTerminalDisplayOrder(cameras).map(
@@ -19,6 +19,6 @@ describe("Camera.sortByTerminalDisplayOrder", () => {
       }
     );
 
-    expect(sortedIds).toEqual(["dock", "holding", "uphill"]);
+    expect(sortedIds).toEqual(["holding", "uphill", "dock"]);
   });
 });
