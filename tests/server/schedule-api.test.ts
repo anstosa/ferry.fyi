@@ -125,6 +125,37 @@ describe("schedule API", () => {
     expect(response.body.schedule).toEqual(liveSchedule);
   });
 
+  // missing pair cache case
+  it("fetches a requested live pair when another schedule already exists for the date", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-21T18:30:00.000Z"));
+    const liveSchedule = {
+      date: "2026-06-21",
+      key: "1-10-2026-06-21",
+      mateId: "10",
+      slots: [],
+      terminalId: "1",
+      validRange: null,
+    };
+    scheduleModel.generateKey.mockReturnValue("1-10-2026-06-21");
+    scheduleModel.hasFetchedDate.mockReturnValue(true);
+    scheduleModel.getByIndex
+      .mockReturnValueOnce(null)
+      .mockReturnValueOnce({
+        // serialize fixture
+        serialize: () => liveSchedule,
+      });
+    const app = createApp();
+
+    const response = await request(app)
+      .get("/api/schedule/1/10/2026-06-21")
+      .expect(200);
+
+    expect(updateSchedules).toHaveBeenCalledWith("2026-06-21", "1", "10");
+    expect(updateEstimates).toHaveBeenCalledOnce();
+    expect(response.body.schedule).toEqual(liveSchedule);
+  });
+
   // crossing fallback case
   it("returns historical crossings when WSF has no schedule", async () => {
     const crossing = {

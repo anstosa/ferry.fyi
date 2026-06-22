@@ -17,6 +17,8 @@ import { isWSFToday } from "~/lib/date";
 import { useTerminals } from "~/lib/terminals";
 import IslandIcon from "~/static/images/icons/solid/island-tropical.svg";
 
+import { NowDivider } from "./NowDivider";
+import { shouldRenderNowDivider } from "./nowDivider";
 import { SlotInfo } from "./SlotInfo";
 
 interface Props {
@@ -73,7 +75,8 @@ export const Schedule = ({ schedule, time }: Props): ReactElement => {
     }
     const currentSlot = findWhere(schedule.slots, { hasPassed: false });
     let hasCapacityInfo = false;
-    const sailings = slots.map((slot) => {
+    // build sailing rows
+    const sailings = slots.map((slot, index) => {
       const { time: slotTime, crossing } = slot;
       if (crossing) {
         hasCapacityInfo = true;
@@ -85,30 +88,39 @@ export const Schedule = ({ schedule, time }: Props): ReactElement => {
       const route = values(terminal.routes)?.find(({ terminalIds }) =>
         terminalIds.includes(schedule.terminalId)
       );
+      const previousSlot = slots[index - 1];
+      const showNowDivider = shouldRenderNowDivider({
+        currentSlot,
+        previousSlot,
+        slot,
+      });
       return (
-        <ErrorBoundary
-          className="m-2"
-          fallbackTitle="Sailing crashed"
-          fallbackMessage="This sailing could not be shown, but the rest of the schedule is still available."
-          key={slotTime}
-          resetKey={slotTime}
-        >
-          <SlotInfo
-            slot={slot}
-            isExpanded={slotTime === expanded?.time}
-            location={terminal.location}
-            onClick={() => toggleExpand(slot)}
-            schedule={slots}
-            route={route}
-            setElement={(element: HTMLDivElement) => {
-              // current slot anchor
-              if (slot === currentSlot) {
-                setCurrentElement(element);
-              }
-            }}
-            time={time}
-          />
-        </ErrorBoundary>
+        <React.Fragment key={slotTime}>
+          {/* current-time boundary */}
+          {showNowDivider && <NowDivider />}
+          <ErrorBoundary
+            className="m-2"
+            fallbackTitle="Sailing crashed"
+            fallbackMessage="This sailing could not be shown, but the rest of the schedule is still available."
+            resetKey={slotTime}
+          >
+            <SlotInfo
+              slot={slot}
+              isExpanded={slotTime === expanded?.time}
+              location={terminal.location}
+              onClick={() => toggleExpand(slot)}
+              schedule={slots}
+              route={route}
+              setElement={(element: HTMLDivElement) => {
+                // current slot anchor
+                if (slot === currentSlot) {
+                  setCurrentElement(element);
+                }
+              }}
+              time={time}
+            />
+          </ErrorBoundary>
+        </React.Fragment>
       );
     });
     return (

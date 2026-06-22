@@ -8,6 +8,12 @@ import CarIcon from "~/static/images/icons/solid/car.svg";
 import DoNotEnterIcon from "~/static/images/icons/solid/do-not-enter.svg";
 import ExternalLinkIcon from "~/static/images/icons/solid/external-link-square.svg";
 
+import { getCapacityDisplayPercent, isCapacityFull } from "./capacityFullness";
+import {
+  getCapacityFillClassName,
+  getCapacityOpacityClassName,
+} from "./capacityStyles";
+
 const RESERVATIONS_BASE_URL =
   "https://secureapps.wsdot.wa.gov/Ferries/Reservations/Vehicle/SailingSchedule.aspx?VRSTermId=";
 
@@ -16,10 +22,12 @@ const RIGHT_EDGE = 85;
 const CAPACITY_WIDTH = 125;
 
 interface Props {
+  isDaylight: boolean;
   slot: Slot;
 }
 
-export const Capacity = ({ slot }: Props): ReactElement | null => {
+// schedule capacity bar
+export const Capacity = ({ isDaylight, slot }: Props): ReactElement | null => {
   const [percentFull, setPercentFull] = useState<number | null>();
   const [spaceLeft, setSpaceLeft] = useState<number | null>();
   const [estimateFull, setEstimateFull] = useState<number | null>();
@@ -91,8 +99,7 @@ export const Capacity = ({ slot }: Props): ReactElement | null => {
   const allowsReservations = (): boolean => crossing?.hasReservations ?? false;
 
   const isLeftEdge = (): boolean => {
-    const fullness =
-      crossing && percentFull ? (percentFull ?? 0) : (estimateFull ?? 0);
+    const fullness = getActiveDisplayFullness();
     const percent = fullness / 100;
     const totalWidth = window.innerWidth;
     const width = percent * totalWidth;
@@ -100,8 +107,7 @@ export const Capacity = ({ slot }: Props): ReactElement | null => {
   };
 
   const willFitRight = (): boolean => {
-    const fullness =
-      crossing && percentFull ? (percentFull ?? 0) : (estimateFull ?? 0);
+    const fullness = getActiveDisplayFullness();
     const percent = fullness / 100;
     const totalWidth = window.innerWidth;
     const width = percent * totalWidth;
@@ -110,8 +116,7 @@ export const Capacity = ({ slot }: Props): ReactElement | null => {
   };
 
   const isRightEdge = (): boolean => {
-    const fullness =
-      crossing && percentFull ? (percentFull ?? 0) : (estimateFull ?? 0);
+    const fullness = getActiveDisplayFullness();
     const percent = fullness / 100;
     const totalWidth = window.innerWidth;
     const width = percent * totalWidth;
@@ -121,9 +126,52 @@ export const Capacity = ({ slot }: Props): ReactElement | null => {
 
   const isMiddleZone = (): boolean => !isLeftEdge() && !isRightEdge();
 
-  const isFull = (): boolean => {
-    const spaces = crossing && percentFull ? spaceLeft : estimateLeft;
-    return !isNil(spaces) && spaces <= 0;
+  const getActiveCapacityFullness = (): number | null => {
+    // confirmed capacity first
+    if (crossing && !isNil(percentFull)) {
+      return percentFull;
+    }
+
+    return estimateFull ?? null;
+  };
+
+  const getActiveCapacityLeft = (): number | null => {
+    // confirmed capacity first
+    if (crossing && !isNil(percentFull)) {
+      return spaceLeft ?? null;
+    }
+
+    return estimateLeft ?? null;
+  };
+
+  const isFull = (): boolean =>
+    isCapacityFull({
+      percentFull: getActiveCapacityFullness(),
+      spacesLeft: getActiveCapacityLeft(),
+    });
+
+  const isEstimateFull = (): boolean =>
+    isCapacityFull({ percentFull: estimateFull, spacesLeft: estimateLeft });
+
+  const getCapacityDisplayFullness = (): number =>
+    getCapacityDisplayPercent({
+      isFull: isFull(),
+      percentFull: percentFull ?? null,
+    });
+
+  const getEstimateDisplayFullness = (): number =>
+    getCapacityDisplayPercent({
+      isFull: isEstimateFull(),
+      percentFull: estimateFull,
+    });
+
+  const getActiveDisplayFullness = (): number => {
+    // confirmed capacity first
+    if (crossing && !isNil(percentFull)) {
+      return getCapacityDisplayFullness();
+    }
+
+    return getEstimateDisplayFullness();
   };
 
   const renderSpaceDetail = (): ReactElement | null => {
@@ -160,15 +208,18 @@ export const Capacity = ({ slot }: Props): ReactElement | null => {
       reservationsText = (
         <span
           className={clsx(
-            "text-xs italic whitespace-nowrap",
+            "text-xs italic",
             shouldShowLowConfidence
               ? "text-yellow-dark dark:text-yellow-medium"
               : "text-blue-medium dark:text-blue-light"
           )}
         >
-          Forecast
+          {/* forecast label */}
+          {!shouldShowLowConfidence && <span className="block">Forecast</span>}
           {/* low confidence only */}
-          {shouldShowLowConfidence && " · low confidence"}
+          {shouldShowLowConfidence && (
+            <span className="block whitespace-nowrap">Low confidence</span>
+          )}
         </span>
       );
     }
@@ -217,6 +268,23 @@ export const Capacity = ({ slot }: Props): ReactElement | null => {
           {pluralize(estimateLeft, "space")} left
         </>
       );
+      // forecast full threshold
+      if (isFull()) {
+        spaceText = (
+          <>
+            <DoNotEnterIcon className="inline-block mr-1" />
+            Boat full
+          </>
+        );
+        // future warning
+        if (!hasPassed) {
+          spaceClass = clsx(
+            "text-xs whitespace-nowrap",
+            "font-bold",
+            "text-red-dark dark:text-red-light"
+          );
+        }
+      }
     } else {
       return null;
     }
@@ -242,11 +310,18 @@ export const Capacity = ({ slot }: Props): ReactElement | null => {
 
   const showCapacity = Boolean(percentFull);
   const showEstimate = Boolean(
-    !hasPassed && !isNil(estimateFull) && estimateFull > (percentFull ?? 0)
+    !hasPassed &&
+    !(crossing && isFull()) &&
+    !isNil(estimateFull) &&
+    estimateFull > (percentFull ?? 0)
   );
   if (!showCapacity && !showEstimate) {
     return null;
   }
+
+  const capacityIsFull = isFull();
+  const capacityDisplayFullness = getCapacityDisplayFullness();
+  const estimateDisplayFullness = getEstimateDisplayFullness();
 
   return (
     <>
@@ -254,15 +329,13 @@ export const Capacity = ({ slot }: Props): ReactElement | null => {
         <div
           className={clsx(
             "absolute w-0 top-0 left-0 h-full",
-            // eslint-disable-next-line no-nested-ternary
-            {
-              "bg-darken-lower dark:bg-lighten-lower": hasPassed && !isFull(),
-              "bg-full dark:bg-full--dark": hasPassed && isFull(),
-              "bg-blue-light dark:bg-blue-dark": !hasPassed && !isFull(),
-              "bg-loaded dark:bg-loaded--dark": !hasPassed && isFull(),
-            }
+            getCapacityFillClassName({
+              isDaylight,
+              isFull: capacityIsFull,
+            }),
+            getCapacityOpacityClassName({ hasPassed })
           )}
-          style={{ width: `${percentFull}%` }}
+          style={{ width: `${capacityDisplayFullness}%` }}
         >
           {isMiddleZone() && (
             <span
@@ -280,14 +353,16 @@ export const Capacity = ({ slot }: Props): ReactElement | null => {
         <div
           className={clsx(
             "absolute w-1 top-0 h-full",
-            "bg-prediction-gradient",
-            "dark:bg-prediction-gradient--dark",
+            // forecast full threshold
+            isEstimateFull()
+              ? getCapacityFillClassName({ isDaylight, isFull: true })
+              : ["bg-prediction-gradient", "dark:bg-prediction-gradient--dark"],
             "border-darken-lower dark:border-lighten-lower",
             "border-r-4 border-r-dashed"
           )}
           style={{
             left: `${percentFull ?? 0}%`,
-            width: `${estimateFull - (percentFull ?? 0)}%`,
+            width: `${estimateDisplayFullness - (percentFull ?? 0)}%`,
           }}
         >
           {!showCapacity && isMiddleZone() && (

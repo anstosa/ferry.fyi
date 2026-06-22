@@ -100,17 +100,18 @@ const getHistoricalSchedule = async (
 scheduleRouter.get(schedulePaths, async (request, response) => {
   const { departingId, arrivingId, date: dateInput } = request.params;
   const date = dateInput || toWsfDate();
+  const scheduleKey = Schedule.generateKey(departingId, arrivingId, date);
   const historicalSchedule = isHistoricalDate(date)
     ? await getHistoricalSchedule(departingId, arrivingId, date)
     : null;
-  // cache fill guard
-  if (!historicalSchedule && !Schedule.hasFetchedDate(date)) {
+  const hasFetchedDate = Schedule.hasFetchedDate(date);
+  let cachedSchedule = await Schedule.getByIndex(scheduleKey);
+  // requested pair guard
+  if (!historicalSchedule && (!hasFetchedDate || !cachedSchedule)) {
     await updateSchedules(date, departingId, arrivingId);
     await updateEstimates();
+    cachedSchedule = await Schedule.getByIndex(scheduleKey);
   }
-  const cachedSchedule = await Schedule.getByIndex(
-    Schedule.generateKey(departingId, arrivingId, date)
-  );
   const schedule = cachedSchedule?.serialize() ?? historicalSchedule;
   // schedule found guard
   if (schedule) {

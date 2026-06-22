@@ -64,7 +64,7 @@ export const SlotInfo = (props: Props): ReactElement => {
       onClick={onClick}
       aria-label={`${time.toLocaleString(DateTime.DATETIME_SHORT)} sailing`}
     >
-      <Capacity slot={slot} />
+      <Capacity isDaylight={isDaylight} slot={slot} />
       <div className="flex flex-col justify-between items-start z-0">
         <div className="flex-grow" />
         <Status className="" slot={slot} time={time} />

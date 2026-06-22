@@ -123,6 +123,26 @@ html {
     );
   }
 
+  .bg-full-day {
+    background: repeating-linear-gradient(
+      135deg,
+      theme("colors.yellow.medium"),
+      theme("colors.yellow.medium") 10px,
+      theme("colors.yellow.dark") 10px,
+      theme("colors.yellow.dark") 20px,
+    );
+  }
+
+  .bg-full-night {
+    background: repeating-linear-gradient(
+      135deg,
+      theme("colors.blue.medium"),
+      theme("colors.blue.medium") 10px,
+      theme("colors.blue.dark") 10px,
+      theme("colors.blue.dark") 20px,
+    );
+  }
+
   .bg-loaded {
     background: repeating-linear-gradient(
       135deg,
