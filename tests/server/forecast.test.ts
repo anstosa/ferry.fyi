@@ -143,6 +143,9 @@ describe("forecast estimates", () => {
 
     await updateEstimates();
 
+    expect(
+      weatherAdjustmentModel.createWeatherAdjustmentContext
+    ).toHaveBeenCalledWith(expect.objectContaining({ now: expect.any(DateTime) }));
     expect(schedule.slots[0].estimate).toMatchObject({
       confidence: "medium",
       sampleSize: 2,

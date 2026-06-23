@@ -4,12 +4,6 @@ const OPEN_METEO_ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive";
 const OPEN_METEO_FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
 const OPEN_METEO_PROVIDER = "open-meteo";
 
-export const OPEN_METEO_FREE_LIMITS = {
-  daily: 10_000,
-  hourly: 5_000,
-  minutely: 600,
-};
-
 export interface OpenMeteoWeatherRecord {
   cloudCoverPercent: number | null;
   latitude: number;

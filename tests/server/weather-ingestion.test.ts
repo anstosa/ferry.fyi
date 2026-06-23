@@ -56,6 +56,14 @@ const terminal = {
   },
 };
 
+const mateTerminal = {
+  id: "2",
+  location: {
+    latitude: 47.9,
+    longitude: -122.6,
+  },
+};
+
 const weatherRecord = {
   cloudCoverPercent: 80,
   latitude: 47.6,
@@ -159,6 +167,52 @@ describe("weather ingestion", () => {
         zone: "America/Los_Angeles",
       }),
     });
+    const retry = await updateWeatherForecasts({
+      fetchWeather,
+      now: now.plus({ minutes: 1 }),
+    });
+
+    expect(report).toEqual({ recordsWritten: 0, skipped: false });
+    expect(retry).toEqual({ recordsWritten: 1, skipped: false });
+    expect(fetchWeather).toHaveBeenCalledTimes(2);
+  });
+
+  // partial failure behavior
+  it("retries after any terminal forecast fetch fails", async () => {
+    terminalModel.getAll.mockReturnValue({
+      [mateTerminal.id]: mateTerminal,
+      [terminal.id]: terminal,
+    });
+    const fetchWeather = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("rate limited"))
+      .mockResolvedValue([weatherRecord]);
+    const now = DateTime.fromISO("2026-06-01T09:00:00", {
+      zone: "America/Los_Angeles",
+    });
+
+    const report = await updateWeatherForecasts({ fetchWeather, now });
+    const retry = await updateWeatherForecasts({
+      fetchWeather,
+      now: now.plus({ minutes: 1 }),
+    });
+
+    expect(report).toEqual({ recordsWritten: 1, skipped: false });
+    expect(retry).toEqual({ recordsWritten: 2, skipped: false });
+    expect(fetchWeather).toHaveBeenCalledTimes(4);
+  });
+
+  // empty payload behavior
+  it("retries after a terminal forecast fetch returns no rows", async () => {
+    const fetchWeather = vi
+      .fn()
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([weatherRecord]);
+    const now = DateTime.fromISO("2026-06-01T09:00:00", {
+      zone: "America/Los_Angeles",
+    });
+
+    const report = await updateWeatherForecasts({ fetchWeather, now });
     const retry = await updateWeatherForecasts({
       fetchWeather,
       now: now.plus({ minutes: 1 }),

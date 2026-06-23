@@ -28,20 +28,22 @@ export const updateLong = async (): Promise<void> => {
 };
 
 export const updateShort = async (): Promise<void> => {
-  await updateVesselStatus();
-  await updateCapacity();
-  // weather best-effort
+  // short refresh
   try {
-    await updateWeatherForecasts();
-  } catch (error) {
-    // preserve estimate refresh
-    logger.error(
-      `Weather forecast refresh failed: ${
-        error instanceof Error ? error.message : String(error)
-      }`
-    );
+    await updateVesselStatus();
+    await updateCapacity();
+    await updateEstimates();
+  } finally {
+    // weather best-effort
+    updateWeatherForecasts().catch((error) => {
+      // preserve estimate refresh
+      logger.error(
+        `Weather forecast refresh failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+    });
   }
-  await updateEstimates();
 };
 
 // run background refresh

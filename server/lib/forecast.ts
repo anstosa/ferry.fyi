@@ -428,6 +428,7 @@ export const updateEstimates = async (): Promise<void> => {
         DateTime.fromSeconds(slot.time)
       );
       const weatherAdjustmentContext = await createWeatherAdjustmentContext({
+        now,
         schedule,
         slotTimes,
         terminal,
@@ -468,7 +469,6 @@ export const updateEstimates = async (): Promise<void> => {
               driveUpCapacity: liveDriveCapacity,
               reservableCapacity: liveReservableCapacity,
             },
-            schedule,
             slotTime,
             terminal,
           });

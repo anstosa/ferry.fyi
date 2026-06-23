@@ -4,6 +4,7 @@ import { DateTime } from "luxon";
 import { Terminal } from "~/models/Terminal";
 import { WeatherForecast } from "~/models/WeatherForecast";
 
+import { toRequiredISODate } from "./dates";
 import { fetchForecastWeather } from "./openMeteo";
 
 interface UpdateWeatherForecastsInput {
@@ -78,45 +79,59 @@ const runWeatherForecastRefresh = async ({
   if (shouldSkipRefresh(now, ttlHours, force)) {
     return { recordsWritten: 0, skipped: true };
   }
-  const startDate = now.toISODate() ?? "";
-  const endDate =
-    now.plus({ days: DEFAULT_FORECAST_DAYS - 1 }).toISODate() ?? "";
+  const startDate = toRequiredISODate(now);
+  const endDate = toRequiredISODate(
+    now.plus({ days: DEFAULT_FORECAST_DAYS - 1 })
+  );
   const fetchedAt = now.toSeconds();
-  let recordsWritten = 0;
-  let successfulFetches = 0;
-  // terminal forecasts
-  for (const terminal of Object.values(Terminal.getAll())) {
-    // provider failure guard
-    try {
-      const records = await fetchWeather({
-        endDate,
-        latitude: terminal.location.latitude,
-        longitude: terminal.location.longitude,
-        startDate,
-      });
-      // forecast records
-      for (const record of records) {
-        await upsertForecast(terminal.id, fetchedAt, record);
-        recordsWritten += 1;
+  const terminals = Object.values(Terminal.getAll());
+  const terminalResults = await Promise.all(
+    terminals.map(async (terminal) => {
+      let recordsWritten = 0;
+      // provider failure guard
+      try {
+        const records = await fetchWeather({
+          endDate,
+          latitude: terminal.location.latitude,
+          longitude: terminal.location.longitude,
+          startDate,
+        });
+        // empty payload guard
+        if (records.length === 0) {
+          logger.error(
+            `Weather forecast refresh returned no records for ${terminal.id}`
+          );
+          return { recordsWritten, succeeded: false };
+        }
+        // forecast records
+        for (const record of records) {
+          await upsertForecast(terminal.id, fetchedAt, record);
+          recordsWritten += 1;
+        }
+        logger.info(
+          `Updated ${records.length} weather forecast hours for ${terminal.id}`
+        );
+        return { recordsWritten, succeeded: true };
+      } catch (error) {
+        // preserve refresh evidence
+        logger.error(
+          `Weather forecast refresh failed for ${terminal.id}: ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        );
+        return { recordsWritten, succeeded: false };
       }
-      // persisted data guard
-      if (records.length > 0) {
-        successfulFetches += 1;
-      }
-      logger.info(
-        `Updated ${records.length} weather forecast hours for ${terminal.id}`
-      );
-    } catch (error) {
-      // preserve refresh evidence
-      logger.error(
-        `Weather forecast refresh failed for ${terminal.id}: ${
-          error instanceof Error ? error.message : String(error)
-        }`
-      );
-    }
-  }
+    })
+  );
+  const recordsWritten = terminalResults.reduce(
+    (total, result) => total + result.recordsWritten,
+    0
+  );
+  const allTerminalsSucceeded =
+    terminalResults.length > 0 &&
+    terminalResults.every((result) => result.succeeded);
   // successful refresh guard
-  if (successfulFetches > 0) {
+  if (allTerminalsSucceeded) {
     lastRefreshAt = now;
   }
   return { recordsWritten, skipped: false };

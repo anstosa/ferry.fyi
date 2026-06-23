@@ -5,6 +5,7 @@ import Crossing from "~/models/Crossing";
 import { Terminal } from "~/models/Terminal";
 import { WeatherObservation } from "~/models/WeatherObservation";
 
+import { toRequiredISODate } from "./dates";
 import {
   estimateOpenMeteoCallCost,
   fetchHistoricalWeather,
@@ -79,8 +80,8 @@ export const createDateChunks = (
       finalDay
     );
     chunks.push({
-      endDate: chunkEnd.toISODate() ?? "",
-      startDate: cursor.toISODate() ?? "",
+      endDate: toRequiredISODate(chunkEnd),
+      startDate: toRequiredISODate(cursor),
     });
     cursor = chunkEnd.plus({ days: 1 });
   }

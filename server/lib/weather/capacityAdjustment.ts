@@ -8,6 +8,7 @@ import { WeatherCapacityAdjustment } from "~/models/WeatherCapacityAdjustment";
 import { WeatherForecast } from "~/models/WeatherForecast";
 
 export const GLOBAL_MAX_WEATHER_ADJUSTMENT_SPACES = 20;
+export const MAX_WEATHER_FORECAST_AGE_HOURS = 6;
 export const MIN_ADJUSTMENT_SAMPLE_SIZE = 8;
 
 export type CapacityType = "driveUp" | "reservable";
@@ -41,14 +42,14 @@ interface ApplyWeatherAdjustmentInput {
 
 interface GetWeatherAdjustedCapacityInput {
   capacity: CapacityPair;
-  context?: WeatherAdjustmentContext | null;
+  context: WeatherAdjustmentContext | null;
   liveCapacity: CapacityPair;
-  schedule: Schedule;
   slotTime: DateTime;
   terminal: Terminal | null;
 }
 
 interface CreateWeatherAdjustmentContextInput {
+  now: DateTime;
   schedule: Schedule;
   slotTimes: DateTime[];
   terminal: Terminal | null;
@@ -231,6 +232,7 @@ const mapForecastWeather = (forecast: WeatherForecast): WeatherConditions => ({
 
 // build adjustment context
 export const createWeatherAdjustmentContext = async ({
+  now,
   schedule,
   slotTimes,
   terminal,
@@ -252,6 +254,11 @@ export const createWeatherAdjustmentContext = async ({
   const [forecasts, adjustments] = await Promise.all([
     WeatherForecast.findAll({
       where: {
+        fetchedAt: {
+          [Op.gte]: now
+            .minus({ hours: MAX_WEATHER_FORECAST_AGE_HOURS })
+            .toSeconds(),
+        },
         forecastFor: { [Op.in]: forecastHours },
         terminalId: schedule.terminalId,
       },
@@ -280,39 +287,6 @@ export const createWeatherAdjustmentContext = async ({
   return { adjustmentsByBucket, forecastsByHour };
 };
 
-// load uncached forecast
-const loadForecastWeather = async (
-  terminalId: string,
-  forecastFor: number
-): Promise<WeatherConditions | null> => {
-  const forecast = await WeatherForecast.findOne({
-    where: {
-      forecastFor,
-      terminalId,
-    },
-  });
-  // missing forecast guard
-  if (!forecast) {
-    return null;
-  }
-  return mapForecastWeather(forecast);
-};
-
-// load uncached adjustments
-const loadAdjustmentRules = async (
-  schedule: Schedule,
-  buckets: string[]
-): Promise<WeatherAdjustmentRule[]> => {
-  const adjustments = await WeatherCapacityAdjustment.findAll({
-    where: {
-      arrivalId: schedule.mateId,
-      departureId: schedule.terminalId,
-      weatherBucket: { [Op.in]: buckets },
-    },
-  });
-  return adjustments.map(mapAdjustmentRule);
-};
-
 // get context rules
 const getContextAdjustmentRules = (
   context: WeatherAdjustmentContext,
@@ -321,30 +295,29 @@ const getContextAdjustmentRules = (
   buckets.flatMap((bucket) => context.adjustmentsByBucket.get(bucket) ?? []);
 
 // load weather-adjusted capacity
-export const getWeatherAdjustedCapacity = async ({
+export const getWeatherAdjustedCapacity = ({
   capacity,
   context,
   liveCapacity,
-  schedule,
   slotTime,
   terminal,
-}: GetWeatherAdjustedCapacityInput): Promise<CapacityPair> => {
+}: GetWeatherAdjustedCapacityInput): CapacityPair => {
   // missing terminal guard
   if (!terminal) {
     return capacity;
   }
   const forecastFor = slotTime.startOf("hour").toSeconds();
-  const weather =
-    context?.forecastsByHour.get(forecastFor) ??
-    (await loadForecastWeather(schedule.terminalId, forecastFor));
+  // missing context guard
+  if (!context) {
+    return capacity;
+  }
+  const weather = context.forecastsByHour.get(forecastFor);
   // missing forecast guard
   if (!weather) {
     return capacity;
   }
   const buckets = getWeatherBuckets(weather);
-  const adjustments = context
-    ? getContextAdjustmentRules(context, buckets)
-    : await loadAdjustmentRules(schedule, buckets);
+  const adjustments = getContextAdjustmentRules(context, buckets);
   // missing adjustment guard
   if (!adjustments.length) {
     return capacity;
