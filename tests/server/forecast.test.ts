@@ -17,6 +17,11 @@ const holidayModel = vi.hoisted(() => ({
   getWashingtonHolidayDates: vi.fn(),
 }));
 
+const weatherAdjustmentModel = vi.hoisted(() => ({
+  createWeatherAdjustmentContext: vi.fn(),
+  getWeatherAdjustedCapacity: vi.fn(),
+}));
+
 vi.mock("heroku-logger", () => ({
   default: { info: vi.fn() },
 }));
@@ -34,6 +39,8 @@ vi.mock("~/models/Terminal", () => ({
 }));
 
 vi.mock("~/lib/holidays", () => holidayModel);
+
+vi.mock("~/lib/weather/capacityAdjustment", () => weatherAdjustmentModel);
 
 const { updateEstimates } = await import("../../server/lib/forecast");
 
@@ -93,6 +100,12 @@ describe("forecast estimates", () => {
     holidayModel.getWashingtonHolidayDates.mockReset();
     terminalModel.getByIndex.mockReturnValue(terminal);
     holidayModel.getWashingtonHolidayDates.mockResolvedValue(new Set());
+    weatherAdjustmentModel.getWeatherAdjustedCapacity.mockReset();
+    weatherAdjustmentModel.createWeatherAdjustmentContext.mockReset();
+    weatherAdjustmentModel.createWeatherAdjustmentContext.mockResolvedValue(null);
+    weatherAdjustmentModel.getWeatherAdjustedCapacity.mockImplementation(
+      async ({ capacity }) => capacity
+    );
   });
 
   // timer cleanup
@@ -169,6 +182,32 @@ describe("forecast estimates", () => {
       source: "historical",
     });
     expect(schedule.slots[0].estimate.driveUpCapacity).toBeLessThan(50);
+  });
+
+  // weather adjustment behavior
+  it("applies weather adjustment before live capacity constraints", async () => {
+    const liveCrossing = createCrossing({});
+    const schedule = createSchedule({ crossing: liveCrossing });
+    scheduleModel.getAll.mockReturnValue({ [schedule.key]: schedule });
+    crossingModel.findAll.mockResolvedValue([
+      createCrossing({
+        departureTime: toSeconds("2026-06-14T12:00:00"),
+        driveUpCapacity: 20,
+        reservableCapacity: 0,
+      }),
+    ]);
+    weatherAdjustmentModel.getWeatherAdjustedCapacity.mockResolvedValue({
+      driveUpCapacity: 120,
+      reservableCapacity: 50,
+    });
+
+    await updateEstimates();
+
+    expect(schedule.slots[0].estimate).toMatchObject({
+      driveUpCapacity: 80,
+      reservableCapacity: 20,
+    });
+    expect(weatherAdjustmentModel.getWeatherAdjustedCapacity).toHaveBeenCalled();
   });
 
   // disruption behavior

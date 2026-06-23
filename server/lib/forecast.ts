@@ -10,6 +10,10 @@ import { constrain, round } from "shared/lib/math";
 import { values } from "shared/lib/objects";
 
 import { getWashingtonHolidayDates } from "~/lib/holidays";
+import {
+  createWeatherAdjustmentContext,
+  getWeatherAdjustedCapacity,
+} from "~/lib/weather/capacityAdjustment";
 import Crossing from "~/models/Crossing";
 import { Schedule } from "~/models/Schedule";
 import { Terminal } from "~/models/Terminal";
@@ -420,48 +424,77 @@ export const updateEstimates = async (): Promise<void> => {
 
       const holidays = await getHolidayDateMap(schedule, crossings);
 
-      schedule.slots.forEach((slot) => {
-        const slotTime = DateTime.fromSeconds(slot.time);
-        const historical = getHistoricalEstimate(
-          slotTime,
-          crossings,
-          terminal,
-          now,
-          holidays
-        );
-        const disrupted = isDisrupted(slot.crossing);
-        const blended = blendCapacity(historical, slot.crossing, slotTime, now);
-        const totalCapacity = slot.crossing?.totalCapacity ?? DEFAULT_CAPACITY;
-        const liveDriveCapacity =
-          slot.crossing?.driveUpCapacity ?? totalCapacity;
-        const liveReservableCapacity =
-          slot.crossing?.reservableCapacity ?? totalCapacity;
-        // estimate availability guard
-        if (!blended) {
-          return;
-        }
-        const estimate: CrossingEstimate = {
-          confidence: getConfidence(historical, slot.crossing, disrupted),
-          driveUpCapacity: constrain(
-            blended.driveUpCapacity,
-            0,
-            liveDriveCapacity
-          ),
-          reservableCapacity: constrain(
-            blended.reservableCapacity ?? 0,
-            0,
-            liveReservableCapacity
-          ),
-          sampleSize: historical?.sampleSize ?? 0,
-          source: getSource(historical, slot.crossing, disrupted),
-        };
-        // cancelled sailings are treated as low-confidence live estimates
-        if (slot.crossing?.isCancelled) {
-          estimate.driveUpCapacity = slot.crossing.driveUpCapacity;
-          estimate.reservableCapacity = slot.crossing.reservableCapacity;
-        }
-        slot.estimate = estimate;
+      const slotTimes = schedule.slots.map((slot) =>
+        DateTime.fromSeconds(slot.time)
+      );
+      const weatherAdjustmentContext = await createWeatherAdjustmentContext({
+        schedule,
+        slotTimes,
+        terminal,
       });
+
+      // estimate slots
+      await Promise.all(
+        schedule.slots.map(async (slot, index) => {
+          const slotTime = slotTimes[index];
+          const historical = getHistoricalEstimate(
+            slotTime,
+            crossings,
+            terminal,
+            now,
+            holidays
+          );
+          const disrupted = isDisrupted(slot.crossing);
+          const blended = blendCapacity(
+            historical,
+            slot.crossing,
+            slotTime,
+            now
+          );
+          const totalCapacity =
+            slot.crossing?.totalCapacity ?? DEFAULT_CAPACITY;
+          const liveDriveCapacity =
+            slot.crossing?.driveUpCapacity ?? totalCapacity;
+          const liveReservableCapacity =
+            slot.crossing?.reservableCapacity ?? totalCapacity;
+          // estimate availability guard
+          if (!blended) {
+            return;
+          }
+          const adjusted = await getWeatherAdjustedCapacity({
+            capacity: blended,
+            context: weatherAdjustmentContext,
+            liveCapacity: {
+              driveUpCapacity: liveDriveCapacity,
+              reservableCapacity: liveReservableCapacity,
+            },
+            schedule,
+            slotTime,
+            terminal,
+          });
+          const estimate: CrossingEstimate = {
+            confidence: getConfidence(historical, slot.crossing, disrupted),
+            driveUpCapacity: constrain(
+              adjusted.driveUpCapacity,
+              0,
+              liveDriveCapacity
+            ),
+            reservableCapacity: constrain(
+              adjusted.reservableCapacity ?? 0,
+              0,
+              liveReservableCapacity
+            ),
+            sampleSize: historical?.sampleSize ?? 0,
+            source: getSource(historical, slot.crossing, disrupted),
+          };
+          // cancelled sailings are treated as low-confidence live estimates
+          if (slot.crossing?.isCancelled) {
+            estimate.driveUpCapacity = slot.crossing.driveUpCapacity;
+            estimate.reservableCapacity = slot.crossing.reservableCapacity;
+          }
+          slot.estimate = estimate;
+        })
+      );
     })
   );
   logger.info("Updated Estimates");

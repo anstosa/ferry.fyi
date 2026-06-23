@@ -184,7 +184,9 @@
     "lint:js:shared": "cd shared && eslint --ext .ts,.tsx .",
     "lint:js:shared:fix": "yarn lint:js:shared --fix",
     "start": "node scripts/start-dev.js",
-    "start:dev": "node scripts/start-dev.js"
+    "start:dev": "node scripts/start-dev.js",
+    "weather:backfill": "cd server && node ../scripts/register-esbuild.js scripts/backfillWeather.ts",
+    "weather:calculate-adjustments": "cd server && node ../scripts/register-esbuild.js scripts/calculateWeatherAdjustments.ts"
   },
   "resolutions": {
     "@babel/helper-remap-async-to-generator": "7.29.7",

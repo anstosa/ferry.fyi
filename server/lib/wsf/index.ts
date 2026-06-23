@@ -1,6 +1,7 @@
 import logger from "heroku-logger";
 
 import { updateEstimates } from "../forecast";
+import { updateWeatherForecasts } from "../weather/updateForecasts";
 import { setWsfCoreReady, setWsfWarming } from "./api";
 import { hydrateWsfSeed } from "./seed";
 import { updateCameras } from "./updateCameras";
@@ -29,6 +30,17 @@ export const updateLong = async (): Promise<void> => {
 export const updateShort = async (): Promise<void> => {
   await updateVesselStatus();
   await updateCapacity();
+  // weather best-effort
+  try {
+    await updateWeatherForecasts();
+  } catch (error) {
+    // preserve estimate refresh
+    logger.error(
+      `Weather forecast refresh failed: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    );
+  }
   await updateEstimates();
 };
 
