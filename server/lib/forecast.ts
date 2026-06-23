@@ -18,7 +18,7 @@ import Crossing from "~/models/Crossing";
 import { Schedule } from "~/models/Schedule";
 import { Terminal } from "~/models/Terminal";
 
-const ESTIMATE_COMPOSITE_WEEKS = 60;
+const ESTIMATE_COMPOSITE_YEARS = 2;
 const DELAY_DISRUPTION_SECONDS = 15 * 60;
 const DEFAULT_CAPACITY = 145;
 const MIN_WEIGHT = 0.1;
@@ -411,7 +411,7 @@ export const updateEstimates = async (): Promise<void> => {
       }
       const firstTime = schedule.slots[0]?.time;
       const startTime = DateTime.fromSeconds(firstTime)
-        .minus({ weeks: ESTIMATE_COMPOSITE_WEEKS })
+        .minus({ years: ESTIMATE_COMPOSITE_YEARS })
         .toSeconds();
       const terminal = Terminal.getByIndex(schedule.terminalId);
       const crossings = await Crossing.findAll({
@@ -462,16 +462,20 @@ export const updateEstimates = async (): Promise<void> => {
           if (!blended) {
             return;
           }
-          const adjusted = await getWeatherAdjustedCapacity({
-            capacity: blended,
-            context: weatherAdjustmentContext,
-            liveCapacity: {
-              driveUpCapacity: liveDriveCapacity,
-              reservableCapacity: liveReservableCapacity,
-            },
-            slotTime,
-            terminal,
-          });
+          let adjusted = blended;
+          // future sailing guard
+          if (!slot.hasPassed) {
+            adjusted = await getWeatherAdjustedCapacity({
+              capacity: blended,
+              context: weatherAdjustmentContext,
+              liveCapacity: {
+                driveUpCapacity: liveDriveCapacity,
+                reservableCapacity: liveReservableCapacity,
+              },
+              slotTime,
+              terminal,
+            });
+          }
           const estimate: CrossingEstimate = {
             confidence: getConfidence(historical, slot.crossing, disrupted),
             driveUpCapacity: constrain(

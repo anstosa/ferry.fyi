@@ -11,7 +11,7 @@ This pass is backend-only:
 - no machine-learning dependency
 - no paid weather API requirement
 - no automatic retraining
-- no weather override of live capacity, cancellations, or disruptions
+- no weather override above live WSF spaces, cancellations, or disruptions
 
 ## Provider
 
@@ -32,10 +32,12 @@ Sources:
 ## Data flow
 
 1. Run historical backfill to store hourly observations by terminal and hour.
-2. Run adjustment calculation to persist route/weather effect rows.
-3. Runtime forecast refresh stores upcoming hourly weather with a coarse TTL.
-4. `server/lib/forecast.ts` applies enabled adjustment rows after the existing live/historical blend.
-5. Final estimates remain constrained by live capacity and cancellation/disruption behavior.
+2. Backfill skips terminal/date chunks that already have complete hourly Open-Meteo observations.
+3. Run adjustment calculation to persist route/weather effect rows.
+4. Server startup starts backfill and adjustment calculation in the background after Express is listening.
+5. Runtime forecast refresh stores upcoming hourly weather with a coarse TTL.
+6. `server/lib/forecast.ts` applies enabled adjustment rows after the existing live/historical blend.
+7. Final estimates remain constrained to zero-or-more spaces, no more than live WSF spaces, and cancellation/disruption behavior. Weather adjustments are capped at 75 spaces per capacity type.
 
 ## Commands
 
@@ -50,6 +52,8 @@ Run historical backfill:
 ```sh
 yarn weather:backfill
 ```
+
+Rerunning backfill is incremental: complete terminal/date chunks are skipped before any provider request is made.
 
 Calculate adjustment rows:
 

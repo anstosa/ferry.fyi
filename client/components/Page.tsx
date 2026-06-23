@@ -11,6 +11,7 @@ interface Props {
   title?: string;
 }
 
+// app page shell
 export const Page: FunctionComponent<PropsWithChildren<Props>> = ({
   title,
   children,
@@ -18,7 +19,7 @@ export const Page: FunctionComponent<PropsWithChildren<Props>> = ({
   <div
     className={clsx(
       "px-4 pb-10",
-      "min-h-full",
+      "h-full min-h-full overflow-y-auto scrolling-touch",
       "bg-gray-100 text-gray-900 dark:bg-blue-darkest dark:text-gray-300"
     )}
   >

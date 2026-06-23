@@ -10,7 +10,7 @@ const createRule = (input = {}) => ({
   adjustmentSpaces: 0,
   capacityType: "driveUp" as const,
   isEnabled: true,
-  maxAdjustmentSpaces: 20,
+  maxAdjustmentSpaces: 75,
   sampleSize: 20,
   weatherBucket: "precipitation:none",
   ...input,
@@ -37,6 +37,28 @@ describe("weather capacity adjustment", () => {
     });
 
     expect(adjusted.driveUpCapacity).toBe(18);
+  });
+
+  // global cap behavior
+  it("caps combined weather adjustments at seventy-five spaces", () => {
+    const adjusted = applyWeatherAdjustment({
+      capacity: { driveUpCapacity: 100, reservableCapacity: 10 },
+      liveCapacity: { driveUpCapacity: 300, reservableCapacity: 100 },
+      rules: [createRule({ adjustmentSpaces: 200, maxAdjustmentSpaces: 200 })],
+    });
+
+    expect(adjusted.driveUpCapacity).toBe(175);
+  });
+
+  // zero-bound behavior
+  it("does not reduce estimates below zero", () => {
+    const adjusted = applyWeatherAdjustment({
+      capacity: { driveUpCapacity: 30, reservableCapacity: 10 },
+      liveCapacity: { driveUpCapacity: 80, reservableCapacity: 20 },
+      rules: [createRule({ adjustmentSpaces: -200, maxAdjustmentSpaces: 200 })],
+    });
+
+    expect(adjusted.driveUpCapacity).toBe(0);
   });
 
   // live-bound behavior

@@ -182,7 +182,7 @@ export default defineConfig(({ mode }) => ({
   },
   server: {
     host: "0.0.0.0",
-    port: 3000,
+    port: 3042,
     proxy: {
       "/api": `http://localhost:${process.env.PORT ?? "4040"}`,
       "/auth": `http://localhost:${process.env.PORT ?? "4040"}`,

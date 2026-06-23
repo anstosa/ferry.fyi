@@ -4,7 +4,6 @@ import React, { ReactElement, ReactNode, useEffect, useRef } from "react";
 import type { Route } from "shared/contracts/routes";
 import type { Slot } from "shared/contracts/schedules";
 import type { TerminalLocation } from "shared/contracts/terminals";
-import { findWhere } from "shared/lib/arrays";
 import { isNull } from "shared/lib/identity";
 
 import { ErrorBoundary } from "~/components/ErrorBoundary";
@@ -12,6 +11,8 @@ import { VesselTag } from "~/components/VesselTag";
 import { isDuringDaylight } from "~/lib/daylight";
 
 import { Capacity } from "./Capacity";
+import { getCurrentSlot } from "./nowDivider";
+import { getProjectedTiming } from "./projectedTiming";
 import { Status } from "./Status";
 import { Time } from "./Time";
 import { VesselStatus } from "./VesselStatus";
@@ -39,9 +40,9 @@ export const SlotInfo = (props: Props): ReactElement => {
     slot,
     time,
   } = props;
-  const isNext =
-    time.toISODate !== DateTime.local().toISODate &&
-    slot === findWhere(schedule, { hasPassed: false });
+  const isNext = slot === getCurrentSlot(schedule, time);
+  const timing = getProjectedTiming({ schedule, slot });
+  const hasDeparted = timing.departureTime.toMillis() < time.toMillis();
 
   const wrapper = useRef<HTMLDivElement>(null);
 
@@ -65,12 +66,12 @@ export const SlotInfo = (props: Props): ReactElement => {
       onClick={onClick}
       aria-label={`${time.toLocaleString(DateTime.DATETIME_SHORT)} sailing`}
     >
-      <Capacity isDaylight={isDaylight} slot={slot} />
+      <Capacity hasDeparted={hasDeparted} isDaylight={isDaylight} slot={slot} />
       <div className="flex flex-col justify-between items-start z-0">
         <div className="flex-grow" />
-        <Status className="" slot={slot} time={time} />
+        <Status className="" time={time} timing={timing} />
       </div>
-      <Time slot={slot} time={time} isNext={isNext} />
+      <Time time={time} isNext={isNext} timing={timing} />
     </section>
   );
 

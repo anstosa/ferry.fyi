@@ -145,16 +145,17 @@ export const TerminalDropdown = (props: Props): ReactElement => {
                       className={clsx(
                         "whitespace-nowrap",
                         "block cursor-pointer",
-                        "p-2",
-                        "hover:bg-lighten-high",
-                        "flex items-center"
+                        "relative py-2 px-8",
+                        "hover:bg-lighten-high"
                       )}
                       to={`/${getSlug(id)}`}
                       onClick={(event) => onSelect(event, terminal)}
                     >
+                      {/* closest terminal marker */}
+                      {Icon && (
+                        <Icon className="absolute left-2 top-1/2 -translate-y-1/2" />
+                      )}
                       {name}
-                      {/* optional terminal icon */}
-                      {Icon && <Icon className="ml-3" />}
                     </Link>
                   </li>
                 );

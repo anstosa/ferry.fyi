@@ -1,57 +1,70 @@
 import clsx from "clsx";
-import { DateTime, Duration } from "luxon";
+import { DateTime } from "luxon";
 import React, { ReactElement } from "react";
-import type { Slot } from "shared/contracts/schedules";
-import { round } from "shared/lib/math";
+
+import type { ProjectedTiming } from "./projectedTiming";
 
 interface Props {
-  slot: Slot;
   time: DateTime;
   isNext: boolean;
+  timing: ProjectedTiming;
 }
 
-export const Time = ({ slot, isNext, time }: Props): ReactElement => {
-  const { crossing, hasPassed } = slot;
-  const { departureDelta, isCancelled } = crossing ?? {};
-  const delta = Duration.fromObject({ seconds: departureDelta ?? 0 });
-  let deltaMins = round(delta.as("minutes"));
-  const scheduledTime = DateTime.fromSeconds(slot.time);
-  let estimatedTime = scheduledTime.plus(delta);
-  const diff = estimatedTime.diff(time);
-  if (Math.abs(deltaMins) <= 2) {
-    deltaMins = 0;
-    estimatedTime = scheduledTime;
-  }
+export const Time = ({ isNext, time, timing }: Props): ReactElement => {
+  const { delayMins, departureTime, isCancelled } = timing;
+  const hasDeparted = departureTime.toMillis() < time.toMillis();
+  const diff = departureTime.diff(time);
 
   let majorTime;
   let minorTime;
+  let isRelativeDeparture = false;
+  // cancelled sailing
   if (isCancelled) {
     majorTime = "--";
     minorTime = "";
-  } else if (Math.abs(diff.as("hours")) < 1) {
-    const mins = round(Math.abs(diff.as("minutes")));
-    majorTime = mins;
-    minorTime = `min${mins > 1 ? "s" : ""}${hasPassed ? " ago" : ""}`;
+  } else if (
+    !hasDeparted &&
+    diff.as("minutes") >= 0 &&
+    diff.as("minutes") < 60
+  ) {
+    const mins = Math.round(diff.as("minutes"));
+    majorTime = (
+      <span className="whitespace-nowrap">
+        <span className="text-2xl">{mins}</span>{" "}
+        <span className="text-sm">min{mins === 1 ? "" : "s"}</span>
+      </span>
+    );
+    minorTime = departureTime.toFormat("h:mm a");
+    isRelativeDeparture = true;
   } else {
-    majorTime = estimatedTime.toFormat("h:mm");
-    minorTime = estimatedTime.toFormat("a");
+    majorTime = departureTime.toFormat("h:mm");
+    minorTime = departureTime.toFormat("a");
   }
 
   let color = "text-black dark:text-white";
+  // cancelled color
   if (isCancelled) {
     color = "text-red-dark dark:text-red-light";
-  } else if (hasPassed) {
-    color = "text-gray-dark dark:text-gray-medium";
-  } else if (deltaMins >= 10) {
+  } else if (hasDeparted && delayMins >= 4) {
+    // past late color
     color = "text-red-dark dark:text-red-light";
-  } else if (deltaMins >= 4) {
+  } else if (hasDeparted) {
+    // past on-time color
+    color = "text-gray-dark dark:text-gray-medium";
+  } else if (delayMins > 0) {
+    // late departure color
+    color = "text-red-dark dark:text-red-light";
+  } else if (delayMins <= -4) {
+    // early departure color
     color = "text-yellow-dark dark:text-yellow-medium";
   }
 
   let weight;
-  if (hasPassed) {
+  // past weight
+  if (hasDeparted) {
     weight = "font-default";
   } else if (isNext) {
+    // next sailing weight
     weight = "font-bold";
   } else {
     weight = "font-medium";
@@ -62,7 +75,9 @@ export const Time = ({ slot, isNext, time }: Props): ReactElement => {
     >
       <span
         className={clsx(
-          "flex-grow text-2xl leading-none",
+          "flex-grow leading-none",
+          !isRelativeDeparture && "text-2xl",
+          isRelativeDeparture && "whitespace-nowrap",
           "flex flex-col justify-center"
         )}
       >

@@ -14,6 +14,7 @@ import CloseIcon from "~/static/images/icons/solid/times.svg";
 
 interface Props {
   onClose?: () => void;
+  footerDocked?: boolean;
   info?: boolean;
   warning?: boolean;
   error?: boolean;
@@ -63,6 +64,7 @@ const useToast = (): toastHook => {
 
 export const Toast: FunctionComponent<PropsWithChildren<Props>> = ({
   children,
+  footerDocked,
   onClose,
   info,
   Icon,
@@ -86,12 +88,15 @@ export const Toast: FunctionComponent<PropsWithChildren<Props>> = ({
     return null;
   }
 
+  // bottom placement
+  const bottomOffset = footerDocked ? "bottom-0 mb-16" : "bottom-0 mb-24";
+
   return (
     <motion.div
       className={clsx(
         "alert",
         "fixed inset-x-0 z-20",
-        top ? "top-0 sm:mt-24" : "bottom-0 mb-24",
+        top ? "top-0 sm:mt-24" : bottomOffset,
         "sm:left-auto sm:right-10 sm:rounded sm:px-10 sm:w-auto sm:max-w-lg",
         {
           "alert--info": info,

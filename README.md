@@ -85,3 +85,5 @@ WSA
 ## Credits
 
 Thank you to [![BrowserStack](https://user-images.githubusercontent.com/568242/60857158-6ad96100-a1be-11e9-9cdf-aa5872f2f6c5.png)](http://browserstack.com/) for providing free cross-browser testing.
+
+Weather data and forecasts are provided by [Open-Meteo](https://open-meteo.com/) under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Ferry FYI uses and summarizes this data for capacity forecasts.

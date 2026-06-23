@@ -1,18 +1,17 @@
 import { useAuth0 } from "@auth0/auth0-react";
-// import AppleIcon from "~/static/images/icons/brands/apple.svg";
 import { Browser } from "@capacitor/browser";
 import { Share } from "@capacitor/share";
 import clsx from "clsx";
 import { AnimatePresence, motion } from "framer-motion";
-import React, { ReactElement, useEffect, useState } from "react";
+import React, { ReactElement, SVGAttributes, useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { isNull } from "shared/lib/identity";
 
 import { useDevice } from "~/lib/device";
 import { colors } from "~/lib/theme";
 import logo from "~/static/images/icon_monochrome.png";
-import GooglePlayIcon from "~/static/images/icons/brands/google-play.svg";
 import AboutIcon from "~/static/images/icons/solid/address-card.svg";
+import ForecastIcon from "~/static/images/icons/solid/analytics.svg";
 import TicketIcon from "~/static/images/icons/solid/barcode-alt.svg";
 import ScheduleIcon from "~/static/images/icons/solid/calendar-alt.svg";
 import FeedbackIcon from "~/static/images/icons/solid/question-circle.svg";
@@ -36,15 +35,21 @@ interface Props {
   items?: MenuItem[];
 }
 
-const Avatar = () => {
+const Avatar = ({ className }: SVGAttributes<SVGElement>) => {
   const { user } = useAuth0();
+  // profile image guard
   if (user?.picture) {
     return (
-      <img src={user?.picture} className="rounded w-6 mr-6 overflow-hidden" />
+      <img
+        src={user.picture}
+        className={clsx(
+          className,
+          "h-6 w-6 rounded object-cover overflow-hidden"
+        )}
+      />
     );
-  } else {
-    return <UserIcon />;
   }
+  return <UserIcon className={className} />;
 };
 
 export const Menu = ({
@@ -133,6 +138,12 @@ export const Menu = ({
     ...topItems,
     { isSpacer: true },
     ...bottomItems,
+    {
+      Icon: ForecastIcon,
+      label: "Forecasting Explained",
+      path: "/forecasting-explained",
+      isBottom: true,
+    },
     {
       Icon: AboutIcon,
       label: "About",
@@ -291,29 +302,6 @@ export const Menu = ({
                 <MenuItem item={item} key={index} />
               ))}
             </ul>
-            <div className="p-4">
-              {/* {device?.platform === "web" && device?.operatingSystem === "ios" && (
-                <a
-                  href="https://play.google.com/store/apps/details?id=fyi.ferry"
-                  className="button button-invert flex-grow"
-                >
-                  <AppleIcon className="inline-block button-icon text-2xl" />
-                  <span className="button-label">Install on the App Store</span>
-                </a>
-              )} */}
-              {device?.platform === "web" &&
-                device?.operatingSystem === "android" && (
-                  <a
-                    href="https://play.google.com/store/apps/details?id=fyi.ferry"
-                    className="button button-invert flex-grow"
-                  >
-                    <GooglePlayIcon className="inline-block button-icon text-2xl" />
-                    <span className="button-label">
-                      Install on the Play Store
-                    </span>
-                  </a>
-                )}
-            </div>
           </div>
         </motion.nav>
       </>

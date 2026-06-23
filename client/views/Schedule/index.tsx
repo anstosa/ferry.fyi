@@ -7,7 +7,7 @@ import type {
   Schedule as ScheduleClass,
   Slot,
 } from "shared/contracts/schedules";
-import { findWhere, isEmpty } from "shared/lib/arrays";
+import { isEmpty } from "shared/lib/arrays";
 import { values } from "shared/lib/objects";
 
 import { ErrorBoundary } from "~/components/ErrorBoundary";
@@ -18,7 +18,7 @@ import { useTerminals } from "~/lib/terminals";
 import IslandIcon from "~/static/images/icons/solid/island-tropical.svg";
 
 import { NowDivider } from "./NowDivider";
-import { shouldRenderNowDivider } from "./nowDivider";
+import { getCurrentSlot, shouldRenderNowDivider } from "./nowDivider";
 import { SlotInfo } from "./SlotInfo";
 
 interface Props {
@@ -55,6 +55,7 @@ export const Schedule = ({ schedule, time }: Props): ReactElement => {
   };
 
   const renderSchedule = (): ReactElement | null => {
+    // schedule loading guard
     if (!schedule?.slots) {
       return <InlineLoader>Loading schedule...</InlineLoader>;
     }
@@ -73,10 +74,10 @@ export const Schedule = ({ schedule, time }: Props): ReactElement => {
         </div>
       );
     }
-    const currentSlot = findWhere(schedule.slots, { hasPassed: false });
+    const currentSlot = getCurrentSlot(schedule.slots, time);
     let hasCapacityInfo = false;
     // build sailing rows
-    const sailings = slots.map((slot, index) => {
+    const sailings = slots.map((slot) => {
       const { time: slotTime, crossing } = slot;
       if (crossing) {
         hasCapacityInfo = true;
@@ -88,11 +89,10 @@ export const Schedule = ({ schedule, time }: Props): ReactElement => {
       const route = values(terminal.routes)?.find(({ terminalIds }) =>
         terminalIds.includes(schedule.terminalId)
       );
-      const previousSlot = slots[index - 1];
       const showNowDivider = shouldRenderNowDivider({
-        currentSlot,
-        previousSlot,
+        schedule: slots,
         slot,
+        time,
       });
       return (
         <React.Fragment key={slotTime}>
@@ -139,10 +139,6 @@ export const Schedule = ({ schedule, time }: Props): ReactElement => {
       </>
     );
   };
-
-  if (!schedule) {
-    return <InlineLoader>Loading schedule...</InlineLoader>;
-  }
 
   return (
     <>

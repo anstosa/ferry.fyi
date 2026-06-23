@@ -7,6 +7,10 @@ import { WeatherForecast } from "~/models/WeatherForecast";
 import { toRequiredISODate } from "./dates";
 import { fetchForecastWeather } from "./openMeteo";
 
+type ForecastWeatherRecord = Awaited<
+  ReturnType<typeof fetchForecastWeather>
+>[number];
+
 interface UpdateWeatherForecastsInput {
   fetchWeather?: typeof fetchForecastWeather;
   force?: boolean;
@@ -47,25 +51,48 @@ const shouldSkipRefresh = (
   return now.diff(lastRefreshAt, "hours").hours < ttlHours;
 };
 
-// upsert forecast
-const upsertForecast = async (
+// upsert forecasts
+const upsertForecasts = async (
   terminalId: string,
   fetchedAt: number,
-  record: Awaited<ReturnType<typeof fetchForecastWeather>>[number]
-): Promise<void> => {
-  await WeatherForecast.upsert({
-    cloudCoverPercent: record.cloudCoverPercent,
-    fetchedAt,
-    forecastFor: record.time,
-    latitude: record.latitude,
-    longitude: record.longitude,
-    precipitationMm: record.precipitationMm,
-    provider: record.provider,
-    temperatureC: record.temperatureC,
-    timezone: record.timezone,
-    terminalId,
-    windSpeedKmh: record.windSpeedKmh,
+  records: Awaited<ReturnType<typeof fetchForecastWeather>>
+): Promise<number> => {
+  const recordsByKey = new Map<string, ForecastWeatherRecord>();
+  // dedupe provider hours
+  records.forEach((record) => {
+    recordsByKey.set(`${terminalId}:${record.time}:${record.provider}`, record);
   });
+  const uniqueRecords = Array.from(recordsByKey.values());
+  await WeatherForecast.bulkCreate(
+    uniqueRecords.map((record) => ({
+      cloudCoverPercent: record.cloudCoverPercent,
+      fetchedAt,
+      forecastFor: record.time,
+      latitude: record.latitude,
+      longitude: record.longitude,
+      precipitationMm: record.precipitationMm,
+      provider: record.provider,
+      temperatureC: record.temperatureC,
+      timezone: record.timezone,
+      terminalId,
+      windSpeedKmh: record.windSpeedKmh,
+    })),
+    {
+      conflictAttributes: ["terminalId", "forecastFor", "provider"],
+      updateOnDuplicate: [
+        "cloudCoverPercent",
+        "fetchedAt",
+        "latitude",
+        "longitude",
+        "precipitationMm",
+        "temperatureC",
+        "timezone",
+        "windSpeedKmh",
+        "updatedAt",
+      ],
+    }
+  );
+  return uniqueRecords.length;
 };
 
 // run forecast refresh
@@ -103,11 +130,11 @@ const runWeatherForecastRefresh = async ({
           );
           return { recordsWritten, succeeded: false };
         }
-        // forecast records
-        for (const record of records) {
-          await upsertForecast(terminal.id, fetchedAt, record);
-          recordsWritten += 1;
-        }
+        recordsWritten += await upsertForecasts(
+          terminal.id,
+          fetchedAt,
+          records
+        );
         logger.info(
           `Updated ${records.length} weather forecast hours for ${terminal.id}`
         );

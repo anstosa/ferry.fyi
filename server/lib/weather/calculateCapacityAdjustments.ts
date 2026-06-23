@@ -1,7 +1,9 @@
 import logger from "heroku-logger";
 import { DateTime } from "luxon";
+import { Op, QueryTypes } from "sequelize";
 import { round } from "shared/lib/math";
 
+import { db } from "~/lib/db";
 import Crossing from "~/models/Crossing";
 import { WeatherCapacityAdjustment } from "~/models/WeatherCapacityAdjustment";
 import { WeatherObservation } from "~/models/WeatherObservation";
@@ -24,6 +26,23 @@ interface HistoricalWeatherSample {
   weather: WeatherConditions;
 }
 
+interface HistoricalCapacityCrossing {
+  arrivalId: string;
+  departureId: string;
+  departureTime: number;
+  driveUpCapacity: number;
+  reservableCapacity: number | null;
+}
+
+interface HistoricalWeatherObservation {
+  cloudCoverPercent: number | null;
+  observedAt: number;
+  precipitationMm: number | null;
+  temperatureC: number | null;
+  terminalId: string;
+  windSpeedKmh: number | null;
+}
+
 export interface CalculatedWeatherAdjustment {
   adjustmentSpaces: number;
   arrivalId: string;
@@ -37,6 +56,14 @@ export interface CalculatedWeatherAdjustment {
 }
 
 const MIN_EFFECT_SPACES = 3;
+
+interface PersistedWeatherAdjustmentCount {
+  rowsWritten: number;
+}
+
+// build observation key
+const getObservationKey = (terminalId: string, observedAt: number): string =>
+  [terminalId, observedAt].join("::");
 
 // build group key
 const getAdjustmentKey = (
@@ -124,7 +151,7 @@ export const calculateWeatherAdjustmentRows = (
 
 // build route baseline map
 const getRouteBaselines = (
-  crossings: Crossing[]
+  crossings: HistoricalCapacityCrossing[]
 ): Map<
   string,
   {
@@ -132,7 +159,7 @@ const getRouteBaselines = (
     reservableCapacity: number;
   }
 > => {
-  const grouped = new Map<string, Crossing[]>();
+  const grouped = new Map<string, HistoricalCapacityCrossing[]>();
   // route crossings
   crossings.forEach((crossing) => {
     const key = [crossing.departureId, crossing.arrivalId].join("::");
@@ -160,23 +187,62 @@ const getRouteBaselines = (
 export const loadHistoricalWeatherSamples = async (): Promise<
   HistoricalWeatherSample[]
 > => {
-  const crossings = await Crossing.findAll({
+  const crossings = (await Crossing.findAll({
+    attributes: [
+      "arrivalId",
+      "departureId",
+      "departureTime",
+      "driveUpCapacity",
+      "reservableCapacity",
+    ],
+    raw: true,
     where: { isCancelled: false },
-  });
+  })) as unknown as HistoricalCapacityCrossing[];
   const baselines = getRouteBaselines(crossings);
-  const samples: HistoricalWeatherSample[] = [];
-  // crossing rows
-  for (const crossing of crossings) {
-    const observedAt = DateTime.fromSeconds(crossing.departureTime)
+  const crossingHours = crossings.map((crossing) => ({
+    crossing,
+    observedAt: DateTime.fromSeconds(crossing.departureTime)
       .setZone("America/Los_Angeles")
       .startOf("hour")
-      .toSeconds();
-    const observation = await WeatherObservation.findOne({
-      where: {
-        observedAt,
-        terminalId: crossing.departureId,
-      },
-    });
+      .toSeconds(),
+  }));
+  const departureIds = Array.from(
+    new Set(crossingHours.map(({ crossing }) => crossing.departureId))
+  );
+  const observedHours = Array.from(
+    new Set(crossingHours.map(({ observedAt }) => observedAt))
+  );
+  // empty inputs guard
+  if (!departureIds.length || !observedHours.length) {
+    return [];
+  }
+  const observations = (await WeatherObservation.findAll({
+    attributes: [
+      "cloudCoverPercent",
+      "observedAt",
+      "precipitationMm",
+      "temperatureC",
+      "terminalId",
+      "windSpeedKmh",
+    ],
+    raw: true,
+    where: {
+      observedAt: { [Op.in]: observedHours },
+      terminalId: { [Op.in]: departureIds },
+    },
+  })) as unknown as HistoricalWeatherObservation[];
+  const observationsByKey = new Map(
+    observations.map((observation) => [
+      getObservationKey(observation.terminalId, observation.observedAt),
+      observation,
+    ])
+  );
+  const samples: HistoricalWeatherSample[] = [];
+  // crossing rows
+  for (const { crossing, observedAt } of crossingHours) {
+    const observation = observationsByKey.get(
+      getObservationKey(crossing.departureId, observedAt)
+    );
     // missing observation guard
     if (!observation) {
       continue;
@@ -211,10 +277,12 @@ export const persistWeatherAdjustmentRows = async (
   rows: CalculatedWeatherAdjustment[],
   calculatedAt = DateTime.local().toSeconds()
 ): Promise<number> => {
-  let rowsWritten = 0;
-  // adjustment rows
-  for (const row of rows) {
-    await WeatherCapacityAdjustment.upsert({
+  // empty rows guard
+  if (rows.length === 0) {
+    return 0;
+  }
+  await WeatherCapacityAdjustment.bulkCreate(
+    rows.map((row) => ({
       adjustmentSpaces: row.adjustmentSpaces,
       arrivalId: row.arrivalId,
       calculatedAt,
@@ -225,10 +293,26 @@ export const persistWeatherAdjustmentRows = async (
       maxAdjustmentSpaces: row.maxAdjustmentSpaces,
       sampleSize: row.sampleSize,
       weatherBucket: row.weatherBucket,
-    });
-    rowsWritten += 1;
-  }
-  return rowsWritten;
+    })),
+    {
+      conflictAttributes: [
+        "departureId",
+        "arrivalId",
+        "weatherBucket",
+        "capacityType",
+      ],
+      updateOnDuplicate: [
+        "adjustmentSpaces",
+        "calculatedAt",
+        "effectSize",
+        "isEnabled",
+        "maxAdjustmentSpaces",
+        "sampleSize",
+        "updatedAt",
+      ],
+    }
+  );
+  return rows.length;
 };
 
 // calculate and persist adjustments
@@ -236,9 +320,154 @@ export const calculateAndPersistWeatherAdjustments = async (): Promise<{
   rowsCalculated: number;
   rowsWritten: number;
 }> => {
-  const samples = await loadHistoricalWeatherSamples();
-  const rows = calculateWeatherAdjustmentRows(samples);
-  const rowsWritten = await persistWeatherAdjustmentRows(rows);
-  logger.info(`Calculated ${rows.length} weather capacity adjustment rows`);
-  return { rowsCalculated: rows.length, rowsWritten };
+  const [result] = await db.query<PersistedWeatherAdjustmentCount>(
+    `
+      WITH route_baselines AS (
+        SELECT
+          "departureId",
+          "arrivalId",
+          ROUND(AVG(COALESCE("driveUpCapacity", 0))) AS "baselineDriveUpCapacity",
+          ROUND(AVG(COALESCE("reservableCapacity", 0))) AS "baselineReservableCapacity"
+        FROM "Crossings"
+        WHERE "isCancelled" = false
+        GROUP BY "departureId", "arrivalId"
+      ), samples AS (
+        SELECT
+          c."departureId",
+          c."arrivalId",
+          COALESCE(c."driveUpCapacity", 0) - b."baselineDriveUpCapacity" AS "driveUpResidual",
+          COALESCE(c."reservableCapacity", 0) - b."baselineReservableCapacity" AS "reservableResidual",
+          o."cloudCoverPercent",
+          o."precipitationMm",
+          o."temperatureC",
+          o."windSpeedKmh"
+        FROM "Crossings" c
+        INNER JOIN route_baselines b
+          ON b."departureId" = c."departureId"
+          AND b."arrivalId" = c."arrivalId"
+        INNER JOIN "WeatherObservations" o
+          ON o."terminalId" = c."departureId"::text
+          AND o."observedAt" = (FLOOR(c."departureTime" / 3600.0) * 3600)::integer
+        WHERE c."isCancelled" = false
+      ), bucketed AS (
+        SELECT
+          samples."departureId",
+          samples."arrivalId",
+          buckets."weatherBucket",
+          capacity."capacityType",
+          capacity."residual"
+        FROM samples
+        CROSS JOIN LATERAL (
+          VALUES
+            (CASE
+              WHEN samples."precipitationMm" IS NULL THEN 'precipitation:unknown'
+              WHEN samples."precipitationMm" <= 0 THEN 'precipitation:none'
+              WHEN samples."precipitationMm" < 2.5 THEN 'precipitation:light'
+              ELSE 'precipitation:moderate-heavy'
+            END),
+            (CASE
+              WHEN samples."windSpeedKmh" IS NULL THEN 'wind:unknown'
+              WHEN samples."windSpeedKmh" < 15 THEN 'wind:calm'
+              WHEN samples."windSpeedKmh" < 35 THEN 'wind:breezy'
+              ELSE 'wind:windy'
+            END),
+            (CASE
+              WHEN samples."cloudCoverPercent" IS NULL THEN 'cloud:unknown'
+              WHEN samples."cloudCoverPercent" < 25 THEN 'cloud:clear'
+              WHEN samples."cloudCoverPercent" < 75 THEN 'cloud:mixed'
+              ELSE 'cloud:overcast'
+            END),
+            (CASE
+              WHEN samples."temperatureC" IS NULL THEN 'temperature:unknown'
+              WHEN samples."temperatureC" < 8 THEN 'temperature:cold'
+              WHEN samples."temperatureC" < 22 THEN 'temperature:mild'
+              ELSE 'temperature:warm'
+            END)
+        ) AS buckets("weatherBucket")
+        CROSS JOIN LATERAL (
+          VALUES
+            ('driveUp', samples."driveUpResidual"),
+            ('reservable', samples."reservableResidual")
+        ) AS capacity("capacityType", "residual")
+      ), aggregated AS (
+        SELECT
+          "departureId",
+          "arrivalId",
+          "weatherBucket",
+          "capacityType",
+          ROUND(AVG("residual")) AS "adjustmentSpaces",
+          ROUND(AVG(ABS("residual"))::numeric, 2)::float AS "effectSize",
+          COUNT(*)::integer AS "sampleSize"
+        FROM bucketed
+        GROUP BY "departureId", "arrivalId", "weatherBucket", "capacityType"
+      ), calculated AS (
+        SELECT
+          "departureId",
+          "arrivalId",
+          "weatherBucket",
+          "capacityType",
+          "adjustmentSpaces",
+          "effectSize",
+          "sampleSize",
+          LEAST(
+            GREATEST(ABS("adjustmentSpaces"), :minEffectSpaces),
+            :globalMaxWeatherAdjustmentSpaces
+          ) AS "maxAdjustmentSpaces",
+          "sampleSize" >= :minAdjustmentSampleSize
+            AND ABS("adjustmentSpaces") >= :minEffectSpaces AS "isEnabled"
+        FROM aggregated
+      ), inserted AS (
+        INSERT INTO "WeatherCapacityAdjustments" (
+          "departureId",
+          "arrivalId",
+          "weatherBucket",
+          "capacityType",
+          "adjustmentSpaces",
+          "sampleSize",
+          "effectSize",
+          "maxAdjustmentSpaces",
+          "isEnabled",
+          "calculatedAt",
+          "createdAt",
+          "updatedAt"
+        )
+        SELECT
+          "departureId",
+          "arrivalId",
+          "weatherBucket",
+          "capacityType",
+          "adjustmentSpaces",
+          "sampleSize",
+          "effectSize",
+          "maxAdjustmentSpaces",
+          "isEnabled",
+          EXTRACT(EPOCH FROM NOW())::integer,
+          NOW(),
+          NOW()
+        FROM calculated
+        ON CONFLICT ("departureId", "arrivalId", "weatherBucket", "capacityType")
+        DO UPDATE SET
+          "adjustmentSpaces" = EXCLUDED."adjustmentSpaces",
+          "sampleSize" = EXCLUDED."sampleSize",
+          "effectSize" = EXCLUDED."effectSize",
+          "maxAdjustmentSpaces" = EXCLUDED."maxAdjustmentSpaces",
+          "isEnabled" = EXCLUDED."isEnabled",
+          "calculatedAt" = EXCLUDED."calculatedAt",
+          "updatedAt" = EXCLUDED."updatedAt"
+        RETURNING 1
+      )
+      SELECT COUNT(*)::integer AS "rowsWritten" FROM inserted;
+    `,
+    {
+      replacements: {
+        globalMaxWeatherAdjustmentSpaces: GLOBAL_MAX_WEATHER_ADJUSTMENT_SPACES,
+        minAdjustmentSampleSize: MIN_ADJUSTMENT_SAMPLE_SIZE,
+        minEffectSpaces: MIN_EFFECT_SPACES,
+      },
+      type: QueryTypes.SELECT,
+    }
+  );
+  const rowsWritten = result?.rowsWritten ?? 0;
+  logger.info(`Calculated ${rowsWritten} weather capacity adjustment rows`);
+  return { rowsCalculated: rowsWritten, rowsWritten };
 };

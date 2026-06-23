@@ -36,13 +36,13 @@ describe("getCapacityFillClassName", () => {
   });
   // past opacity
   it("fades confirmed capacity when the sailing has passed", () => {
-    expect(getCapacityOpacityClassName({ hasPassed: true })).toBe(
+    expect(getCapacityOpacityClassName({ hasDeparted: true })).toBe(
       "opacity-50"
     );
   });
 
   // future opacity
   it("keeps upcoming confirmed capacity fully opaque", () => {
-    expect(getCapacityOpacityClassName({ hasPassed: false })).toBe("");
+    expect(getCapacityOpacityClassName({ hasDeparted: false })).toBe("");
   });
 });

@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import React, { ReactElement, useEffect, useState } from "react";
+import React, { ReactElement, useEffect, useRef, useState } from "react";
 import type { Slot } from "shared/contracts/schedules";
 import { isNil, isNull } from "shared/lib/identity";
 import { pluralize } from "shared/lib/strings";
@@ -8,7 +8,9 @@ import CarIcon from "~/static/images/icons/solid/car.svg";
 import DoNotEnterIcon from "~/static/images/icons/solid/do-not-enter.svg";
 import ExternalLinkIcon from "~/static/images/icons/solid/external-link-square.svg";
 
+import { shouldUseForecastCapacityStatus } from "./capacityDisplaySource";
 import { getCapacityDisplayPercent, isCapacityFull } from "./capacityFullness";
+import { getCapacityStatusSide } from "./capacityStatusPosition";
 import {
   getCapacityFillClassName,
   getCapacityOpacityClassName,
@@ -17,25 +19,32 @@ import {
 const RESERVATIONS_BASE_URL =
   "https://secureapps.wsdot.wa.gov/Ferries/Reservations/Vehicle/SailingSchedule.aspx?VRSTermId=";
 
-const LEFT_EDGE = 13;
-const RIGHT_EDGE = 85;
-const CAPACITY_WIDTH = 125;
+const ROW_PADDING = 12;
+const STATUS_MARGIN = 16;
+const STATUS_WIDTH = 125;
+const TIME_WIDTH = 64;
 
 interface Props {
+  hasDeparted: boolean;
   isDaylight: boolean;
   slot: Slot;
 }
 
 // schedule capacity bar
-export const Capacity = ({ isDaylight, slot }: Props): ReactElement | null => {
+export const Capacity = ({
+  hasDeparted,
+  isDaylight,
+  slot,
+}: Props): ReactElement | null => {
   const [percentFull, setPercentFull] = useState<number | null>();
   const [spaceLeft, setSpaceLeft] = useState<number | null>();
   const [estimateFull, setEstimateFull] = useState<number | null>();
   const [estimateLeft, setEstimateLeft] = useState<number | null>();
+  const [rowWidth, setRowWidth] = useState<number>(0);
+  const rowRef = useRef<HTMLDivElement>(null);
 
   const {
     estimate,
-    hasPassed,
     vessel: { vehicleCapacity, tallVehicleCapacity },
   } = slot;
 
@@ -44,6 +53,27 @@ export const Capacity = ({ isDaylight, slot }: Props): ReactElement | null => {
   useEffect(() => {
     updateCrossing();
   }, [slot]);
+
+  useEffect(() => {
+    const updateRowWidth = (): void => {
+      // mounted row guard
+      if (!rowRef.current) {
+        return;
+      }
+      setRowWidth(rowRef.current.getBoundingClientRect().width);
+    };
+    updateRowWidth();
+    const resizeObserver = new ResizeObserver(updateRowWidth);
+    // mounted observer guard
+    if (rowRef.current) {
+      resizeObserver.observe(rowRef.current);
+    }
+    window.addEventListener("resize", updateRowWidth);
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener("resize", updateRowWidth);
+    };
+  }, [estimateFull, percentFull]);
 
   const getEstimateLeft = (): number | null => {
     if (!estimate || isNil(estimate.driveUpCapacity)) {
@@ -98,34 +128,6 @@ export const Capacity = ({ isDaylight, slot }: Props): ReactElement | null => {
 
   const allowsReservations = (): boolean => crossing?.hasReservations ?? false;
 
-  const isLeftEdge = (): boolean => {
-    const fullness = getActiveDisplayFullness();
-    const percent = fullness / 100;
-    const totalWidth = window.innerWidth;
-    const width = percent * totalWidth;
-    return width <= LEFT_EDGE;
-  };
-
-  const willFitRight = (): boolean => {
-    const fullness = getActiveDisplayFullness();
-    const percent = fullness / 100;
-    const totalWidth = window.innerWidth;
-    const width = percent * totalWidth;
-    const remainder = totalWidth - width;
-    return remainder >= CAPACITY_WIDTH + RIGHT_EDGE;
-  };
-
-  const isRightEdge = (): boolean => {
-    const fullness = getActiveDisplayFullness();
-    const percent = fullness / 100;
-    const totalWidth = window.innerWidth;
-    const width = percent * totalWidth;
-    const remainder = totalWidth - width;
-    return remainder <= RIGHT_EDGE;
-  };
-
-  const isMiddleZone = (): boolean => !isLeftEdge() && !isRightEdge();
-
   const getActiveCapacityFullness = (): number | null => {
     // confirmed capacity first
     if (crossing && !isNil(percentFull)) {
@@ -165,19 +167,118 @@ export const Capacity = ({ isDaylight, slot }: Props): ReactElement | null => {
       percentFull: estimateFull,
     });
 
-  const getActiveDisplayFullness = (): number => {
-    // confirmed capacity first
-    if (crossing && !isNil(percentFull)) {
+  const hasLiveCapacity = (): boolean =>
+    Boolean(crossing && !isNil(percentFull));
+
+  // forecast capacity availability
+  const hasForecastCapacity = (): boolean =>
+    Boolean(estimate && !isNil(estimateLeft));
+
+  // live empty report check
+  const isLiveCapacityEmpty = (): boolean =>
+    hasLiveCapacity() && spaceLeft === crossing?.totalCapacity;
+
+  // forecast status choice
+  const shouldUseForecastStatus = (): boolean =>
+    shouldUseForecastCapacityStatus({
+      hasDeparted,
+      hasForecastCapacity: hasForecastCapacity(),
+      hasLiveCapacity: hasLiveCapacity(),
+      isLiveCapacityEmpty: isLiveCapacityEmpty(),
+    });
+
+  const getLiveCrossing = (): typeof crossing | null => {
+    // live crossing guard
+    if (!hasLiveCapacity()) {
+      return null;
+    }
+    return crossing ?? null;
+  };
+
+  const getStatusLinePercent = (): number => {
+    // forecast status source
+    if (shouldUseForecastStatus()) {
+      return getEstimateDisplayFullness();
+    }
+    // live capacity line first
+    if (hasLiveCapacity()) {
       return getCapacityDisplayFullness();
     }
-
     return getEstimateDisplayFullness();
+  };
+
+  const getMeasuredRowWidth = (): number => rowWidth || window.innerWidth;
+
+  const getStatusLineX = (): number =>
+    (getStatusLinePercent() / 100) * getMeasuredRowWidth();
+
+  const getTimeColumnLeft = (): number =>
+    getMeasuredRowWidth() - ROW_PADDING - TIME_WIDTH;
+
+  const getStatusSide = (): "left" | "right" =>
+    getCapacityStatusSide({
+      linePercent: getStatusLinePercent(),
+      margin: STATUS_MARGIN,
+      rowPadding: ROW_PADDING,
+      rowWidth: getMeasuredRowWidth(),
+      statusWidth: STATUS_WIDTH,
+      timeWidth: TIME_WIDTH,
+    });
+
+  const getLeftStatusOffset = (): number => {
+    const anchorX = Math.min(getStatusLineX(), getTimeColumnLeft());
+    return getMeasuredRowWidth() - anchorX + STATUS_MARGIN;
+  };
+
+  const renderPositionedStatus = (): ReactElement | null => {
+    const status = renderStatus();
+    // empty status guard
+    if (!status) {
+      return null;
+    }
+    const side = getStatusSide();
+    return (
+      <span
+        className={clsx("absolute top-0", {
+          "ml-4": side === "right",
+          "mr-4": side === "left",
+        })}
+        style={
+          side === "right"
+            ? { left: `${getStatusLinePercent()}%` }
+            : { right: getLeftStatusOffset() }
+        }
+      >
+        {status}
+      </span>
+    );
   };
 
   const renderSpaceDetail = (): ReactElement | null => {
     let reservationsText = null;
-    if (crossing && percentFull) {
-      const { departureId } = crossing;
+    const liveCrossing = getLiveCrossing();
+    if (shouldUseForecastStatus() && estimate) {
+      // low confidence only
+      const shouldShowLowConfidence = estimate.confidence === "low";
+      reservationsText = (
+        <span
+          className={clsx(
+            "text-xs italic",
+            shouldShowLowConfidence
+              ? "text-yellow-dark dark:text-yellow-medium"
+              : "text-blue-medium dark:text-blue-light"
+          )}
+        >
+          {/* forecast label */}
+          {!shouldShowLowConfidence && <span className="block">Forecast</span>}
+          {/* low confidence only */}
+          {shouldShowLowConfidence && (
+            <span className="block whitespace-nowrap">Low confidence</span>
+          )}
+        </span>
+      );
+    } else if (liveCrossing) {
+      const { departureId } = liveCrossing;
       if (hasAvailableReservations()) {
         reservationsText = (
           <a
@@ -229,7 +330,33 @@ export const Capacity = ({ isDaylight, slot }: Props): ReactElement | null => {
   const renderSpace = (): ReactElement | null => {
     let spaceText;
     let spaceClass = clsx("text-xs whitespace-nowrap");
-    if (crossing && percentFull) {
+    if (shouldUseForecastStatus() && !isNil(estimateLeft)) {
+      // forecast spaces
+      spaceClass = clsx(spaceClass, "text-gray-dark dark:text-gray-medium");
+      spaceText = (
+        <>
+          <CarIcon className="inline-block mr-1" />
+          {pluralize(estimateLeft, "space")} left
+        </>
+      );
+      // forecast full threshold
+      if (isEstimateFull()) {
+        spaceText = (
+          <>
+            <DoNotEnterIcon className="inline-block mr-1" />
+            Boat full
+          </>
+        );
+        // future warning
+        if (!hasDeparted) {
+          spaceClass = clsx(
+            "text-xs whitespace-nowrap",
+            "font-bold",
+            "text-red-dark dark:text-red-light"
+          );
+        }
+      }
+    } else if (hasLiveCapacity()) {
       spaceText = (
         <>
           <CarIcon className="inline-block mr-1" />
@@ -243,15 +370,15 @@ export const Capacity = ({ isDaylight, slot }: Props): ReactElement | null => {
             Boat full
           </>
         );
-        if (!hasPassed) {
+        if (!hasDeparted) {
           spaceClass = clsx(
             spaceClass,
             "font-bold",
             "text-red-dark dark:text-red-light"
           );
         }
-      } else if (percentFull > 80) {
-        if (!hasPassed) {
+      } else if ((percentFull ?? 0) > 80) {
+        if (!hasDeparted) {
           spaceClass = clsx(
             spaceClass,
             "font-medium",
@@ -277,7 +404,7 @@ export const Capacity = ({ isDaylight, slot }: Props): ReactElement | null => {
           </>
         );
         // future warning
-        if (!hasPassed) {
+        if (!hasDeparted) {
           spaceClass = clsx(
             "text-xs whitespace-nowrap",
             "font-bold",
@@ -299,7 +426,7 @@ export const Capacity = ({ isDaylight, slot }: Props): ReactElement | null => {
       <div
         className={clsx(
           "flex flex-col pt-3",
-          willFitRight() ? "items-start" : "items-end"
+          getStatusSide() === "right" ? "items-start" : "items-end"
         )}
       >
         {renderSpace()}
@@ -308,9 +435,9 @@ export const Capacity = ({ isDaylight, slot }: Props): ReactElement | null => {
     );
   };
 
-  const showCapacity = Boolean(percentFull);
+  const showCapacity = hasLiveCapacity();
   const showEstimate = Boolean(
-    !hasPassed &&
+    !hasDeparted &&
     !(crossing && isFull()) &&
     !isNil(estimateFull) &&
     estimateFull > (percentFull ?? 0)
@@ -322,9 +449,10 @@ export const Capacity = ({ isDaylight, slot }: Props): ReactElement | null => {
   const capacityIsFull = isFull();
   const capacityDisplayFullness = getCapacityDisplayFullness();
   const estimateDisplayFullness = getEstimateDisplayFullness();
+  const estimateReachesRowEnd = estimateDisplayFullness >= 100;
 
   return (
-    <>
+    <div className="absolute inset-0 overflow-hidden" ref={rowRef}>
       {showCapacity && (
         <div
           className={clsx(
@@ -333,21 +461,10 @@ export const Capacity = ({ isDaylight, slot }: Props): ReactElement | null => {
               isDaylight,
               isFull: capacityIsFull,
             }),
-            getCapacityOpacityClassName({ hasPassed })
+            getCapacityOpacityClassName({ hasDeparted })
           )}
           style={{ width: `${capacityDisplayFullness}%` }}
-        >
-          {isMiddleZone() && (
-            <span
-              className={clsx(
-                "absolute top-0",
-                willFitRight() ? "left-full ml-4" : "right-0 mr-4"
-              )}
-            >
-              {renderStatus()}
-            </span>
-          )}
-        </div>
+        />
       )}
       {showEstimate && !isNil(estimateFull) && (
         <div
@@ -357,36 +474,19 @@ export const Capacity = ({ isDaylight, slot }: Props): ReactElement | null => {
             isEstimateFull()
               ? getCapacityFillClassName({ isDaylight, isFull: true })
               : ["bg-prediction-gradient", "dark:bg-prediction-gradient--dark"],
-            "border-darken-lower dark:border-lighten-lower",
-            "border-r-4 border-r-dashed"
+            // interior forecast edge only
+            !estimateReachesRowEnd && [
+              "border-darken-lower dark:border-lighten-lower",
+              "border-r-4 border-r-dashed",
+            ]
           )}
           style={{
             left: `${percentFull ?? 0}%`,
             width: `${estimateDisplayFullness - (percentFull ?? 0)}%`,
           }}
-        >
-          {!showCapacity && isMiddleZone() && (
-            <span
-              className={clsx(
-                "absolute top-0",
-                willFitRight() ? "left-full ml-4" : "right-0 mr-4"
-              )}
-            >
-              {renderStatus()}
-            </span>
-          )}
-        </div>
+        />
       )}
-      {isLeftEdge() && (
-        <span className="absolute top-0" style={{ left: LEFT_EDGE }}>
-          {renderStatus()}
-        </span>
-      )}
-      {isRightEdge() && (
-        <span className="absolute top-0" style={{ right: RIGHT_EDGE }}>
-          {renderStatus()}
-        </span>
-      )}
-    </>
+      {renderPositionedStatus()}
+    </div>
   );
 };

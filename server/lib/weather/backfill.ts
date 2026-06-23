@@ -1,5 +1,6 @@
 import logger from "heroku-logger";
 import { DateTime } from "luxon";
+import { Op } from "sequelize";
 
 import Crossing from "~/models/Crossing";
 import { Terminal } from "~/models/Terminal";
@@ -35,9 +36,12 @@ export interface BackfillWeatherReport {
   chunks: BackfillChunk[];
   dryRun: boolean;
   recordsWritten: number;
+  skippedChunks: number;
 }
 
 const DEFAULT_CHUNK_DAYS = 14;
+const OPEN_METEO_PROVIDER = "open-meteo";
+const WEATHER_TIMEZONE = "America/Los_Angeles";
 
 // collect weather targets
 export const getWeatherTargets = (): WeatherTarget[] =>
@@ -88,23 +92,98 @@ export const createDateChunks = (
   return chunks;
 };
 
-// upsert observation
-const upsertObservation = async (
+// get chunk bounds
+const getChunkHourRange = (
+  chunk: Pick<BackfillChunk, "endDate" | "startDate">
+): { endExclusive: number; expectedHours: number; start: number } => {
+  const start = DateTime.fromISO(chunk.startDate, {
+    zone: WEATHER_TIMEZONE,
+  }).startOf("day");
+  const endExclusive = DateTime.fromISO(chunk.endDate, {
+    zone: WEATHER_TIMEZONE,
+  })
+    .plus({ days: 1 })
+    .startOf("day");
+  return {
+    endExclusive: endExclusive.toSeconds(),
+    expectedHours: Math.round(endExclusive.diff(start, "hours").hours),
+    start: start.toSeconds(),
+  };
+};
+
+// count existing hours
+const countExistingWeatherHours = (
   terminalId: string,
-  record: OpenMeteoWeatherRecord
-): Promise<void> => {
-  await WeatherObservation.upsert({
-    cloudCoverPercent: record.cloudCoverPercent,
-    latitude: record.latitude,
-    longitude: record.longitude,
-    observedAt: record.time,
-    precipitationMm: record.precipitationMm,
-    provider: record.provider,
-    temperatureC: record.temperatureC,
-    timezone: record.timezone,
-    terminalId,
-    windSpeedKmh: record.windSpeedKmh,
+  chunk: Pick<BackfillChunk, "endDate" | "startDate">
+): Promise<number> => {
+  const { endExclusive, start } = getChunkHourRange(chunk);
+  return WeatherObservation.count({
+    col: "observedAt",
+    distinct: true,
+    where: {
+      observedAt: {
+        [Op.gte]: start,
+        [Op.lt]: endExclusive,
+      },
+      provider: OPEN_METEO_PROVIDER,
+      terminalId,
+    },
   });
+};
+
+// check chunk coverage
+const hasExistingWeatherChunk = async (
+  terminalId: string,
+  chunk: Pick<BackfillChunk, "endDate" | "startDate">
+): Promise<boolean> => {
+  const { expectedHours } = getChunkHourRange(chunk);
+  const existingHours = await countExistingWeatherHours(terminalId, chunk);
+  return existingHours >= expectedHours;
+};
+
+// upsert observations
+const upsertObservations = async (
+  terminalId: string,
+  records: OpenMeteoWeatherRecord[]
+): Promise<number> => {
+  const recordsByKey = new Map<string, OpenMeteoWeatherRecord>();
+  // dedupe provider hours
+  records.forEach((record) => {
+    recordsByKey.set(`${terminalId}:${record.time}:${record.provider}`, record);
+  });
+  const uniqueRecords = Array.from(recordsByKey.values());
+  // empty records guard
+  if (uniqueRecords.length === 0) {
+    return 0;
+  }
+  await WeatherObservation.bulkCreate(
+    uniqueRecords.map((record) => ({
+      cloudCoverPercent: record.cloudCoverPercent,
+      latitude: record.latitude,
+      longitude: record.longitude,
+      observedAt: record.time,
+      precipitationMm: record.precipitationMm,
+      provider: record.provider,
+      temperatureC: record.temperatureC,
+      timezone: record.timezone,
+      terminalId,
+      windSpeedKmh: record.windSpeedKmh,
+    })),
+    {
+      conflictAttributes: ["terminalId", "observedAt", "provider"],
+      updateOnDuplicate: [
+        "cloudCoverPercent",
+        "latitude",
+        "longitude",
+        "precipitationMm",
+        "temperatureC",
+        "timezone",
+        "windSpeedKmh",
+        "updatedAt",
+      ],
+    }
+  );
+  return uniqueRecords.length;
 };
 
 // backfill observations
@@ -116,12 +195,13 @@ export const backfillWeatherObservations = async ({
   const range = await getCrossingWeatherRange();
   // missing range guard
   if (!range) {
-    return { chunks: [], dryRun, recordsWritten: 0 };
+    return { chunks: [], dryRun, recordsWritten: 0, skippedChunks: 0 };
   }
   const targets = getWeatherTargets();
   const dateChunks = createDateChunks(range.start, range.end, chunkDays);
   const chunks: BackfillChunk[] = [];
   let recordsWritten = 0;
+  let skippedChunks = 0;
   // terminal chunks
   for (const target of targets) {
     // date chunks
@@ -141,21 +221,25 @@ export const backfillWeatherObservations = async ({
       if (dryRun) {
         continue;
       }
+      // existing chunk guard
+      if (await hasExistingWeatherChunk(target.terminalId, chunk)) {
+        skippedChunks += 1;
+        logger.info(
+          `Skipped existing weather hours for terminal ${target.terminalId} from ${chunk.startDate} to ${chunk.endDate}`
+        );
+        continue;
+      }
       const records = await fetchWeather({
         endDate: chunk.endDate,
         latitude: target.latitude,
         longitude: target.longitude,
         startDate: chunk.startDate,
       });
-      // weather records
-      for (const record of records) {
-        await upsertObservation(target.terminalId, record);
-        recordsWritten += 1;
-      }
+      recordsWritten += await upsertObservations(target.terminalId, records);
       logger.info(
         `Backfilled ${records.length} weather hours for terminal ${target.terminalId} from ${chunk.startDate} to ${chunk.endDate}`
       );
     }
   }
-  return { chunks, dryRun, recordsWritten };
+  return { chunks, dryRun, recordsWritten, skippedChunks };
 };

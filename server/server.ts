@@ -7,6 +7,8 @@ import { scheduleJob } from "node-schedule";
 import { apiRouter } from "~/controllers/api";
 import { staticRouter } from "~/controllers/static";
 import { dbInit } from "~/lib/db";
+import { backfillWeatherObservations } from "~/lib/weather/backfill";
+import { calculateAndPersistWeatherAdjustments } from "~/lib/weather/calculateCapacityAdjustments";
 import {
   initializeWsfSeed,
   refreshWsfInBackground,
@@ -48,6 +50,37 @@ app.use(morgan("combined"));
 app.use("/api", apiRouter);
 app.use("/", staticRouter);
 
+// run startup weather maintenance
+const refreshWeatherModelInBackground = (): void => {
+  backfillWeatherObservations({ chunkDays: 90 })
+    .then((backfillReport) => {
+      // report backfill result
+      logger.info(
+        `Weather backfill complete: ${backfillReport.recordsWritten} records written, ` +
+          `${backfillReport.skippedChunks} chunks skipped`
+      );
+    })
+    .catch((error: Error) => {
+      // log backfill failure
+      logger.error(`Weather startup backfill failed: ${error.message}`, error);
+    })
+    .then(() => calculateAndPersistWeatherAdjustments())
+    .then((calculationReport) => {
+      // report calculation result
+      logger.info(
+        `Weather adjustment calculation complete: ${calculationReport.rowsWritten} ` +
+          `rows written from ${calculationReport.rowsCalculated} calculated rows`
+      );
+    })
+    .catch((error: Error) => {
+      // log calculation failure
+      logger.error(
+        `Weather startup calculation failed: ${error.message}`,
+        error
+      );
+    });
+};
+
 // start server
 (async () => {
   await dbInit;
@@ -66,6 +99,8 @@ app.use("/", staticRouter);
   logger.info("Initializing WSF");
   // refresh WSF cache asynchronously
   refreshWsfInBackground();
+  // refresh weather model asynchronously
+  refreshWeatherModelInBackground();
   // run slow updates every minute
   scheduleJob({ second: 0 }, updateLong);
   // run fast updates every 30 seconds

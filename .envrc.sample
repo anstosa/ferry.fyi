@@ -34,7 +34,7 @@ export AUTH0_SERVER_SECRET="<get from auth0>"
 export AUTH0_SERVER_AUDIENCE="<get from auth0>"
 export AUTH0_CLIENT_ID="<get from auth0>"
 export AUTH0_CLIENT_AUDIENCE="<get from auth0>"
-export AUTH0_CLIENT_REDIRECT="http://localhost:3000/callback"
+export AUTH0_CLIENT_REDIRECT="http://localhost:3042/callback"
 
 # Sentry
 export SENTRY_DSN="<get from sentry>"

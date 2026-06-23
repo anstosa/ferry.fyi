@@ -1,4 +1,5 @@
 import { DateTime } from "luxon";
+import { Op } from "sequelize";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const scheduleModel = vi.hoisted(() => ({
@@ -114,6 +115,23 @@ describe("forecast estimates", () => {
   });
 
   // blend behavior
+  it("loads two years of history for each estimate", async () => {
+    const schedule = createSchedule({});
+    scheduleModel.getAll.mockReturnValue({ [schedule.key]: schedule });
+    crossingModel.findAll.mockResolvedValue([]);
+
+    await updateEstimates();
+
+    expect(crossingModel.findAll).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          departureTime: { [Op.gte]: toSeconds("2024-06-21T12:00:00") },
+        }),
+      })
+    );
+  });
+
+  // blend behavior
   it("blends live capacity with recency-weighted historical outcomes", async () => {
     const liveCrossing = createCrossing({});
     const schedule = createSchedule({ crossing: liveCrossing });
@@ -211,6 +229,35 @@ describe("forecast estimates", () => {
       reservableCapacity: 20,
     });
     expect(weatherAdjustmentModel.getWeatherAdjustedCapacity).toHaveBeenCalled();
+  });
+
+  // departed sailing behavior
+  it("does not apply weather adjustment to passed sailings", async () => {
+    const liveCrossing = createCrossing({});
+    const schedule = createSchedule({
+      crossing: liveCrossing,
+      hasPassed: true,
+    });
+    scheduleModel.getAll.mockReturnValue({ [schedule.key]: schedule });
+    crossingModel.findAll.mockResolvedValue([
+      createCrossing({
+        departureTime: toSeconds("2026-06-14T12:00:00"),
+        driveUpCapacity: 20,
+        reservableCapacity: 0,
+      }),
+    ]);
+    weatherAdjustmentModel.getWeatherAdjustedCapacity.mockResolvedValue({
+      driveUpCapacity: 0,
+      reservableCapacity: 0,
+    });
+
+    await updateEstimates();
+
+    expect(weatherAdjustmentModel.getWeatherAdjustedCapacity).not.toHaveBeenCalled();
+    expect(schedule.slots[0].estimate).toMatchObject({
+      driveUpCapacity: expect.any(Number),
+      reservableCapacity: expect.any(Number),
+    });
   });
 
   // disruption behavior

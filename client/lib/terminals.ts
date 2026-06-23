@@ -70,8 +70,7 @@ interface TerminalState {
 const terminalsAtom = atom<Terminal[] | null>(null);
 
 export const useTerminals = (): TerminalState => {
-  let location: Point | null = null;
-
+  const [location] = useGeo();
   const [terminals, setTerminals] = useAtom(terminalsAtom);
   const [closestTerminal, setClosestTerminal] =
     useState<TerminalState["closestTerminal"]>(null);
@@ -87,25 +86,30 @@ export const useTerminals = (): TerminalState => {
   }, []);
 
   useEffect(() => {
+    // location readiness guard
     if (isNull(location) || !terminals || isEmpty(terminals)) {
       return;
     }
     let closestTerminal: Terminal | undefined;
     let closestDistance: number = Infinity;
+    // compare terminal distance
     terminals.forEach((terminal) => {
       const { latitude, longitude } = terminal.location;
+      // coordinate guard
       if (!latitude || !longitude) {
         return;
       }
       const distance = getDistance(location as Point, { latitude, longitude });
+      // nearer terminal guard
       if (distance < closestDistance) {
         closestDistance = distance;
         closestTerminal = terminal;
       }
-      if (closestTerminal) {
-        setClosestTerminal(closestTerminal);
-      }
     });
+    // closest terminal guard
+    if (closestTerminal) {
+      setClosestTerminal(closestTerminal);
+    }
   }, [location, terminals]);
 
   useEffect(() => {
@@ -113,8 +117,6 @@ export const useTerminals = (): TerminalState => {
       ...(terminals ?? []).sort(getTerminalSorter(closestTerminal)),
     ]);
   }, [closestTerminal]);
-
-  [location] = useGeo();
 
   return { terminals: terminals ?? [], closestTerminal };
 };

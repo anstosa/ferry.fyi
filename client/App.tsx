@@ -17,6 +17,7 @@ import { useRecordPageViews } from "~/lib/analytics";
 import { useOnline, useWSF } from "~/lib/api";
 import { useDevice } from "~/lib/device";
 import { usePush } from "~/lib/push";
+import { slugs } from "~/lib/terminals";
 import { colors } from "~/lib/theme";
 import { useUser } from "~/lib/user";
 import DumpsterFireIcon from "~/static/images/icons/solid/dumpster-fire.svg";
@@ -24,6 +25,7 @@ import OfflineIcon from "~/static/images/icons/solid/signal-alt-slash.svg";
 import { About } from "~/views/About";
 import { Account } from "~/views/Account";
 import { Feedback } from "~/views/Feedback";
+import { ForecastingExplained } from "~/views/ForecastingExplained";
 import { Home } from "~/views/Home";
 import { Route } from "~/views/Route";
 import { Tickets } from "~/views/Tickets";
@@ -55,6 +57,14 @@ export const App = (): ReactElement => {
   const [{ subscribedTerminals }] = useUser();
   const initializePush = usePush(false);
   const routeResetKey = `${location.pathname}${location.search}`;
+  const routeParts = location.pathname.split("/").filter(Boolean);
+  const isScheduleRoute =
+    // one-terminal route
+    (routeParts.length === 1 && slugs.includes(routeParts[0])) ||
+    // two-terminal route
+    (routeParts.length === 2 &&
+      slugs.includes(routeParts[0]) &&
+      slugs.includes(routeParts[1]));
 
   // wrap route element
   const withRouteBoundary = (
@@ -132,6 +142,13 @@ export const App = (): ReactElement => {
     { path: "account", element: withRouteBoundary("Account", <Account />) },
     { path: "tickets", element: withRouteBoundary("Tickets", <Tickets />) },
     { path: "about", element: withRouteBoundary("About", <About />) },
+    {
+      path: "forecasting-explained",
+      element: withRouteBoundary(
+        "Forecasting Explained",
+        <ForecastingExplained />
+      ),
+    },
     { path: "feedback", element: withRouteBoundary("Feedback", <Feedback />) },
     {
       path: ":terminalSlug",
@@ -185,6 +202,7 @@ export const App = (): ReactElement => {
           {!isOnline && !offlineDismissed && (
             <Toast
               warning
+              footerDocked
               onClose={() => setOfflineDismissed(true)}
               Icon={OfflineIcon}
             >
@@ -192,9 +210,10 @@ export const App = (): ReactElement => {
               things may not be up to date.
             </Toast>
           )}
-          {isWsfOffline && !wsfDismissed && (
+          {isScheduleRoute && isWsfOffline && !wsfDismissed && (
             <Toast
               warning
+              footerDocked
               onClose={() => setWsfDismissed(true)}
               Icon={DumpsterFireIcon}
             >

@@ -7,7 +7,7 @@ import { Terminal } from "~/models/Terminal";
 import { WeatherCapacityAdjustment } from "~/models/WeatherCapacityAdjustment";
 import { WeatherForecast } from "~/models/WeatherForecast";
 
-export const GLOBAL_MAX_WEATHER_ADJUSTMENT_SPACES = 20;
+export const GLOBAL_MAX_WEATHER_ADJUSTMENT_SPACES = 75;
 export const MAX_WEATHER_FORECAST_AGE_HOURS = 6;
 export const MIN_ADJUSTMENT_SAMPLE_SIZE = 8;
 

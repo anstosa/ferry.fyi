@@ -4,7 +4,6 @@ import { Helmet } from "react-helmet-async";
 import DonateIcon from "~/static/images/icons/solid/heart.svg";
 
 import { Page } from "../components/Page";
-import { Content as FeedbackContent } from "./Feedback";
 
 export const About = (): ReactElement => (
   <Page>
@@ -52,6 +51,28 @@ export const About = (): ReactElement => (
       <span className="button-label">Donate</span>
     </a>
 
-    <FeedbackContent />
+    {/* credits attribution */}
+    <h2 className="font-bold text-lg mt-8">Credits</h2>
+    <p className="mt-2">
+      Weather data and forecasts are provided by{" "}
+      <a
+        className="link"
+        href="https://open-meteo.com/"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        Open-Meteo
+      </a>{" "}
+      under{" "}
+      <a
+        className="link"
+        href="https://creativecommons.org/licenses/by/4.0/"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        CC BY 4.0
+      </a>
+      . Ferry FYI uses and summarizes this data for capacity forecasts.
+    </p>
   </Page>
 );

@@ -17,15 +17,15 @@ export const getCapacityFillClassName = ({
 };
 
 interface CapacityOpacityClassNameOptions {
-  hasPassed: boolean;
+  hasDeparted: boolean;
 }
 
 // choose capacity opacity
 export const getCapacityOpacityClassName = ({
-  hasPassed,
+  hasDeparted,
 }: CapacityOpacityClassNameOptions): string => {
   // past sailings fade
-  if (hasPassed) {
+  if (hasDeparted) {
     return "opacity-50";
   }
 

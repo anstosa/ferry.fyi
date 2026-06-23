@@ -10,6 +10,7 @@ import { findWhere } from "shared/lib/arrays";
 import { DateButton } from "~/components/DateButton";
 import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { Footer } from "~/components/Footer";
+import { InstallPromptToast } from "~/components/InstallPromptToast";
 import { RouteSelector } from "~/components/RouteSelector";
 import { Splash } from "~/components/Splash";
 import { useQuery } from "~/lib/browser";
@@ -85,7 +86,6 @@ export const Route = ({
     null,
   ]);
   const [time, setTime] = useState<DateTime>(today);
-  const [tickTimeout, setTickTimeout] = useState<number | null>(null);
   const inputDate = dateInput ? DateTime.fromISO(dateInput) : null;
   const [date, setDate] = useState<DateTime>(
     inputDate?.isValid ? inputDate : today
@@ -99,25 +99,15 @@ export const Route = ({
     }
   });
 
+  // update clock
   useEffect(() => {
-    tick();
-    return () => {
-      if (tickTimeout) {
-        clearTimeout(tickTimeout);
-      }
+    const updateTime = (): void => {
+      setTime(DateTime.local());
     };
+    updateTime();
+    const interval = window.setInterval(updateTime, 10 * 1000);
+    return () => window.clearInterval(interval);
   }, []);
-
-  const tick = async (): Promise<void> => {
-    await updateSchedule();
-    // TODO fix type hack
-    setTickTimeout(window.setTimeout(tick, 10 * 1000));
-  };
-
-  // update schedule on parameter change
-  useEffect(() => {
-    updateSchedule();
-  }, [terminal, mate, date]);
 
   const isToday = date.toISODate() === today.toISODate();
 
@@ -281,6 +271,7 @@ export const Route = ({
     content = <Map vessels={vessels} terminal={terminal} mate={mate} />;
   }
 
+  // initial route guard
   if (!terminal || !mate) {
     return <Splash />;
   }
@@ -308,6 +299,7 @@ export const Route = ({
           {content}
         </ErrorBoundary>
       )}
+      <InstallPromptToast />
       <Footer terminal={terminal} getPath={getPath} />
     </>
   );

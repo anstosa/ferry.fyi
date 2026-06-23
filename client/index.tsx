@@ -143,21 +143,6 @@ whenReady(() => {
   renderAll();
 });
 
-// trigger install prompt on first click
-let defferedPrompt: () => void;
-let hasTriggeredPrompt = false;
-const prompt = () => {
-  if (!hasTriggeredPrompt) {
-    defferedPrompt();
-    hasTriggeredPrompt = true;
-  }
-  window.removeEventListener("click", prompt);
-};
-window.addEventListener("beforeinstallprompt", (event: any) => {
-  defferedPrompt = event.prompt.bind(event);
-  window.addEventListener("click", prompt);
-});
-
 // if there's a gtag, initialize it
 if (!isUndefined(window.gtag)) {
   gtag("event", "conversion", {

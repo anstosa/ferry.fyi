@@ -59,12 +59,28 @@
     </noscript>
     <!-- GTM_NOSCRIPT:END -->
 
-    <a
-      class="absolute -top-10 left-0 z-50 p-2 bg-black text-white focus:top-0"
-      href="#main"
-      tabindex="1"
-    >Skip to main</a>
-    <div class="h-full flex flex-col" id="root"></div>
+    <div class="h-full flex flex-col" id="root">
+      <div
+        aria-label="Loading Ferry FYI"
+        role="status"
+        style="
+          align-items: center;
+          background: #016f52;
+          color: #fff;
+          display: flex;
+          flex-direction: column;
+          inset: 0;
+          justify-content: center;
+          position: fixed;
+        "
+      >
+        <img
+          alt="Ferry FYI"
+          src="/static/images/icon_monochrome.png"
+          style="display: block; width: 5rem;"
+        />
+      </div>
+    </div>
     <script type="module" src="/index.tsx"></script>
   </body>
 </html>

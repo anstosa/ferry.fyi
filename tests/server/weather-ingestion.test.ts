@@ -11,11 +11,12 @@ const terminalModel = vi.hoisted(() => ({
 }));
 
 const observationModel = vi.hoisted(() => ({
-  upsert: vi.fn(),
+  bulkCreate: vi.fn(),
+  count: vi.fn(),
 }));
 
 const forecastModel = vi.hoisted(() => ({
-  upsert: vi.fn(),
+  bulkCreate: vi.fn(),
 }));
 
 vi.mock("heroku-logger", () => ({
@@ -81,8 +82,10 @@ describe("weather ingestion", () => {
     crossingModel.max.mockReset();
     crossingModel.min.mockReset();
     terminalModel.getAll.mockReset();
-    observationModel.upsert.mockReset();
-    forecastModel.upsert.mockReset();
+    observationModel.bulkCreate.mockReset();
+    observationModel.count.mockReset();
+    observationModel.count.mockResolvedValue(0);
+    forecastModel.bulkCreate.mockReset();
     resetWeatherForecastRefreshState();
     terminalModel.getAll.mockReturnValue({ [terminal.id]: terminal });
   });
@@ -111,7 +114,23 @@ describe("weather ingestion", () => {
 
     expect(report.chunks).toHaveLength(1);
     expect(report.recordsWritten).toBe(0);
-    expect(observationModel.upsert).not.toHaveBeenCalled();
+    expect(report.skippedChunks).toBe(0);
+    expect(observationModel.bulkCreate).not.toHaveBeenCalled();
+  });
+
+  // skip behavior
+  it("skips chunks that already have all expected weather hours", async () => {
+    const fetchWeather = vi.fn().mockResolvedValue([weatherRecord]);
+    crossingModel.min.mockResolvedValue(toSeconds("2026-06-01T05:00:00"));
+    crossingModel.max.mockResolvedValue(toSeconds("2026-06-01T05:00:00"));
+    observationModel.count.mockResolvedValue(24);
+
+    const report = await backfillWeatherObservations({ fetchWeather });
+
+    expect(report.recordsWritten).toBe(0);
+    expect(report.skippedChunks).toBe(1);
+    expect(fetchWeather).not.toHaveBeenCalled();
+    expect(observationModel.bulkCreate).not.toHaveBeenCalled();
   });
 
   // upsert behavior
@@ -124,8 +143,16 @@ describe("weather ingestion", () => {
     });
 
     expect(report.recordsWritten).toBe(1);
-    expect(observationModel.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({ observedAt: weatherRecord.time, terminalId: "1" })
+    expect(observationModel.bulkCreate).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({
+          observedAt: weatherRecord.time,
+          terminalId: "1",
+        }),
+      ],
+      expect.objectContaining({
+        conflictAttributes: ["terminalId", "observedAt", "provider"],
+      })
     );
   });
 
@@ -146,8 +173,16 @@ describe("weather ingestion", () => {
     expect(first.skipped).toBe(false);
     expect(second.skipped).toBe(true);
     expect(fetchWeather).toHaveBeenCalledTimes(1);
-    expect(forecastModel.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({ forecastFor: weatherRecord.time, terminalId: "1" })
+    expect(forecastModel.bulkCreate).toHaveBeenCalledWith(
+      [
+        expect.objectContaining({
+          forecastFor: weatherRecord.time,
+          terminalId: "1",
+        }),
+      ],
+      expect.objectContaining({
+        conflictAttributes: ["terminalId", "forecastFor", "provider"],
+      })
     );
   });
 
@@ -226,7 +261,7 @@ describe("weather ingestion", () => {
   // persistence failure behavior
   it("retries after weather forecast persistence fails", async () => {
     const fetchWeather = vi.fn().mockResolvedValue([weatherRecord]);
-    forecastModel.upsert
+    forecastModel.bulkCreate
       .mockRejectedValueOnce(new Error("db busy"))
       .mockResolvedValueOnce(undefined);
     const now = DateTime.fromISO("2026-06-01T09:00:00", {

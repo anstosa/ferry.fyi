@@ -118,7 +118,7 @@ export const RouteSelector = (props: Props): ReactElement => {
         {!isNull(closestTerminal) &&
           closestTerminal.id !== terminal.id &&
           !closestDismissed && (
-            <Toast info>
+            <Toast info footerDocked>
               Looks like your closest terminal is {closestTerminal.name}.
               <div className="button-group mt-5">
                 <Link
@@ -146,7 +146,7 @@ export const RouteSelector = (props: Props): ReactElement => {
             </Toast>
           )}
         {isUndefined(noLocation) && (
-          <Toast info>
+          <Toast info footerDocked>
             <span className="font-bold block">Enable location features?</span>
             This will highlight nearby terminals and warn you when you're not
             looking at the closest terminal
