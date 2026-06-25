@@ -17,6 +17,7 @@ export interface Camera {
   image: CameraImage;
   owner: { name: string; url: string } | null;
   isActive: boolean;
+  carCapacity: number | null;
   carsToBoat: number | null;
   orderFromTerminal: number;
 }

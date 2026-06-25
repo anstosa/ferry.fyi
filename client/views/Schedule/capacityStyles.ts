@@ -13,7 +13,9 @@ export const getCapacityFillClassName = ({
     return isDaylight ? "bg-full-day" : "bg-full-night";
   }
 
-  return isDaylight ? "bg-yellow-medium" : "bg-blue-medium";
+  return isDaylight
+    ? "bg-day-confirmed-light dark:bg-day-confirmed-dark"
+    : "bg-night-confirmed-light dark:bg-night-confirmed-dark";
 };
 
 interface CapacityOpacityClassNameOptions {

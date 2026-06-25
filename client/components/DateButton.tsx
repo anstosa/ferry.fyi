@@ -33,7 +33,9 @@ export const DateButton = ({
   return (
     <div
       className={clsx(
-        "rounded bg-white text-green-dark",
+        "rounded border border-[rgba(1,111,82,0.18)]",
+        "bg-day-normal-light text-green-dark shadow-sm",
+        "dark:border-[rgba(255,255,255,0.08)] dark:bg-night-normal-dark dark:text-[#e0f0f4]",
         "relative flex flex-col items-center justify-center p-3",
         "cursor-pointer w-10 h-10",
         {

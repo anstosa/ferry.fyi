@@ -120,7 +120,7 @@ export const TerminalDropdown = (props: Props): ReactElement => {
             className={clsx(
               "absolute top-full left-0",
               "bg-green-dark shadow-lg",
-              "-ml-2 py-2",
+              "-ml-8 py-2",
               "flex items-stretch",
               "max-h-screen"
             )}

@@ -1,6 +1,7 @@
 export type CapacityStatusSide = "left" | "right";
 
 interface CapacityStatusSideOptions {
+  leftReservedWidth?: number;
   linePercent: number;
   margin: number;
   rowPadding: number;
@@ -11,6 +12,7 @@ interface CapacityStatusSideOptions {
 
 // choose status side
 export const getCapacityStatusSide = ({
+  leftReservedWidth = 0,
   linePercent,
   margin,
   rowPadding,
@@ -23,8 +25,9 @@ export const getCapacityStatusSide = ({
     return "right";
   }
   const lineX = (linePercent / 100) * rowWidth;
+  const statusLeft = Math.max(lineX, leftReservedWidth);
   const timeLeft = rowWidth - rowPadding - timeWidth;
-  const statusRight = lineX + margin + statusWidth;
+  const statusRight = statusLeft + margin + statusWidth;
   // line collision guard
   if (lineX >= timeLeft) {
     return "left";

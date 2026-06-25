@@ -15,6 +15,11 @@ import {
   getCapacityFillClassName,
   getCapacityOpacityClassName,
 } from "./capacityStyles";
+import {
+  getScheduleSailingContext,
+  getScheduleSpaceClassName,
+  type ScheduleRowState,
+} from "./scheduleColors";
 
 const RESERVATIONS_BASE_URL =
   "https://secureapps.wsdot.wa.gov/Ferries/Reservations/Vehicle/SailingSchedule.aspx?VRSTermId=";
@@ -27,6 +32,7 @@ const TIME_WIDTH = 64;
 interface Props {
   hasDeparted: boolean;
   isDaylight: boolean;
+  leftReservedWidth?: number;
   slot: Slot;
 }
 
@@ -34,6 +40,7 @@ interface Props {
 export const Capacity = ({
   hasDeparted,
   isDaylight,
+  leftReservedWidth = 0,
   slot,
 }: Props): ReactElement | null => {
   const [percentFull, setPercentFull] = useState<number | null>();
@@ -49,6 +56,7 @@ export const Capacity = ({
   } = slot;
 
   const { crossing } = slot;
+  const sailingContext = getScheduleSailingContext({ isDaylight });
 
   useEffect(() => {
     updateCrossing();
@@ -219,6 +227,7 @@ export const Capacity = ({
     getCapacityStatusSide({
       linePercent: getStatusLinePercent(),
       margin: STATUS_MARGIN,
+      leftReservedWidth,
       rowPadding: ROW_PADDING,
       rowWidth: getMeasuredRowWidth(),
       statusWidth: STATUS_WIDTH,
@@ -227,7 +236,29 @@ export const Capacity = ({
 
   const getLeftStatusOffset = (): number => {
     const anchorX = Math.min(getStatusLineX(), getTimeColumnLeft());
-    return getMeasuredRowWidth() - anchorX + STATUS_MARGIN;
+    // left badge clearance
+    const safeAnchorX = Math.max(
+      anchorX,
+      leftReservedWidth + STATUS_MARGIN * 2 + STATUS_WIDTH
+    );
+    return Math.max(0, getMeasuredRowWidth() - safeAnchorX + STATUS_MARGIN);
+  };
+
+  const getRightStatusOffset = (): number => {
+    // left badge clearance
+    return Math.max(getStatusLineX(), leftReservedWidth) + STATUS_MARGIN;
+  };
+
+  const getPositionedStatusStyle = (): React.CSSProperties => {
+    const side = getStatusSide();
+    // right-side label
+    if (side === "right") {
+      return { left: getRightStatusOffset() };
+    }
+    return {
+      left: leftReservedWidth + STATUS_MARGIN,
+      right: getLeftStatusOffset(),
+    };
   };
 
   const renderPositionedStatus = (): ReactElement | null => {
@@ -236,19 +267,8 @@ export const Capacity = ({
     if (!status) {
       return null;
     }
-    const side = getStatusSide();
     return (
-      <span
-        className={clsx("absolute top-0", {
-          "ml-4": side === "right",
-          "mr-4": side === "left",
-        })}
-        style={
-          side === "right"
-            ? { left: `${getStatusLinePercent()}%` }
-            : { right: getLeftStatusOffset() }
-        }
-      >
+      <span className="absolute top-0" style={getPositionedStatusStyle()}>
         {status}
       </span>
     );
@@ -257,18 +277,12 @@ export const Capacity = ({
   const renderSpaceDetail = (): ReactElement | null => {
     let reservationsText = null;
     const liveCrossing = getLiveCrossing();
+    const detailClassName = getScheduleSpaceClassName(sailingContext, "normal");
     if (shouldUseForecastStatus() && estimate) {
       // low confidence only
       const shouldShowLowConfidence = estimate.confidence === "low";
       reservationsText = (
-        <span
-          className={clsx(
-            "text-xs italic",
-            shouldShowLowConfidence
-              ? "text-yellow-dark dark:text-yellow-medium"
-              : "text-blue-medium dark:text-blue-light"
-          )}
-        >
+        <span className={clsx("text-xs italic", detailClassName)}>
           {/* forecast label */}
           {!shouldShowLowConfidence && <span className="block">Forecast</span>}
           {/* low confidence only */}
@@ -282,10 +296,7 @@ export const Capacity = ({
       if (hasAvailableReservations()) {
         reservationsText = (
           <a
-            className={clsx(
-              "text-xs link",
-              "text-dark-green dark:text-green-light"
-            )}
+            className={clsx("text-xs link", detailClassName)}
             href={RESERVATIONS_BASE_URL + departureId}
             target="_blank"
             rel="noreferrer noopener"
@@ -307,14 +318,7 @@ export const Capacity = ({
       // low confidence only
       const shouldShowLowConfidence = estimate.confidence === "low";
       reservationsText = (
-        <span
-          className={clsx(
-            "text-xs italic",
-            shouldShowLowConfidence
-              ? "text-yellow-dark dark:text-yellow-medium"
-              : "text-blue-medium dark:text-blue-light"
-          )}
-        >
+        <span className={clsx("text-xs italic", detailClassName)}>
           {/* forecast label */}
           {!shouldShowLowConfidence && <span className="block">Forecast</span>}
           {/* low confidence only */}
@@ -332,7 +336,11 @@ export const Capacity = ({
     let spaceClass = clsx("text-xs whitespace-nowrap");
     if (shouldUseForecastStatus() && !isNil(estimateLeft)) {
       // forecast spaces
-      spaceClass = clsx(spaceClass, "text-gray-dark dark:text-gray-medium");
+      const state: ScheduleRowState = isEstimateFull() ? "full" : "normal";
+      spaceClass = clsx(
+        spaceClass,
+        getScheduleSpaceClassName(sailingContext, state)
+      );
       spaceText = (
         <>
           <CarIcon className="inline-block mr-1" />
@@ -352,11 +360,16 @@ export const Capacity = ({
           spaceClass = clsx(
             "text-xs whitespace-nowrap",
             "font-bold",
-            "text-red-dark dark:text-red-light"
+            getScheduleSpaceClassName(sailingContext, "full")
           );
         }
       }
     } else if (hasLiveCapacity()) {
+      const state: ScheduleRowState = isFull() ? "full" : "confirmed";
+      spaceClass = clsx(
+        spaceClass,
+        getScheduleSpaceClassName(sailingContext, state)
+      );
       spaceText = (
         <>
           <CarIcon className="inline-block mr-1" />
@@ -374,21 +387,21 @@ export const Capacity = ({
           spaceClass = clsx(
             spaceClass,
             "font-bold",
-            "text-red-dark dark:text-red-light"
+            getScheduleSpaceClassName(sailingContext, "full")
           );
         }
       } else if ((percentFull ?? 0) > 80) {
         if (!hasDeparted) {
-          spaceClass = clsx(
-            spaceClass,
-            "font-medium",
-            "text-yellow-dark dark:text-yellow-medium"
-          );
+          spaceClass = clsx(spaceClass, "font-medium");
         }
       }
     } else if (estimate && !isNil(estimateLeft)) {
       // forecast spaces
-      spaceClass = clsx(spaceClass, "text-gray-dark dark:text-gray-medium");
+      const state: ScheduleRowState = isFull() ? "full" : "normal";
+      spaceClass = clsx(
+        spaceClass,
+        getScheduleSpaceClassName(sailingContext, state)
+      );
       spaceText = (
         <>
           <CarIcon className="inline-block mr-1" />
@@ -408,7 +421,7 @@ export const Capacity = ({
           spaceClass = clsx(
             "text-xs whitespace-nowrap",
             "font-bold",
-            "text-red-dark dark:text-red-light"
+            getScheduleSpaceClassName(sailingContext, "full")
           );
         }
       }

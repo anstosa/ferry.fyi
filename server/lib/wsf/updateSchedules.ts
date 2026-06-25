@@ -137,48 +137,51 @@ const updateSchedulePair = async (
   const seenVessels: Vessel[] = [];
 
   const slots = await Promise.all(
-    Times.map(async ({ DepartingTime, VesselID, LoadingRule }) => {
-      const time = wsfDateToTimestamp(DepartingTime);
-      // invalid time guard
-      if (isNull(time)) {
-        return null;
+    Times.map(
+      async ({ DepartingTime, VesselID, LoadingRule, VesselPositionNum }) => {
+        const time = wsfDateToTimestamp(DepartingTime);
+        // invalid time guard
+        if (isNull(time)) {
+          return null;
+        }
+        const departureTime = DateTime.fromSeconds(time);
+        const vessel = Vessel.getByIndex(String(VesselID));
+        // missing vessel guard
+        if (!vessel) {
+          return null;
+        }
+        // first vessel reset
+        if (!seenVessels.includes(vessel)) {
+          vessel.update({ departureDelta: 0 });
+          vessel.save();
+          seenVessels.push(vessel);
+        }
+        const crossing = await Crossing.findOne({
+          where: {
+            departureId: terminalId,
+            arrivalId: mateId,
+            departureTime: time,
+          },
+        });
+        return {
+          allowsPassengers: [
+            WSF.LoadingRules.PASSENGER,
+            WSF.LoadingRules.BOTH,
+          ].includes(LoadingRule),
+          allowsVehicles: [
+            WSF.LoadingRules.VEHICLE,
+            WSF.LoadingRules.BOTH,
+          ].includes(LoadingRule),
+          crossing,
+          hasPassed: departureTime < DateTime.local(),
+          mateId,
+          time,
+          vessel,
+          vesselPosition: VesselPositionNum,
+          wuid: getWuid(time),
+        };
       }
-      const departureTime = DateTime.fromSeconds(time);
-      const vessel = Vessel.getByIndex(String(VesselID));
-      // missing vessel guard
-      if (!vessel) {
-        return null;
-      }
-      // first vessel reset
-      if (!seenVessels.includes(vessel)) {
-        vessel.update({ departureDelta: 0 });
-        vessel.save();
-        seenVessels.push(vessel);
-      }
-      const crossing = await Crossing.findOne({
-        where: {
-          departureId: terminalId,
-          arrivalId: mateId,
-          departureTime: time,
-        },
-      });
-      return {
-        allowsPassengers: [
-          WSF.LoadingRules.PASSENGER,
-          WSF.LoadingRules.BOTH,
-        ].includes(LoadingRule),
-        allowsVehicles: [
-          WSF.LoadingRules.VEHICLE,
-          WSF.LoadingRules.BOTH,
-        ].includes(LoadingRule),
-        crossing,
-        hasPassed: departureTime < DateTime.local(),
-        mateId,
-        time,
-        vessel,
-        wuid: getWuid(time),
-      };
-    })
+    )
   );
 
   const key = Schedule.generateKey(terminalId, mateId, date);

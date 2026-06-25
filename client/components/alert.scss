@@ -1,13 +1,14 @@
 .alert {
-  @apply bg-gray-light;
+  @apply bg-day-normal-light;
   @apply py-10;
   @apply px-4;
   @apply shadow-lg;
   @apply w-full;
-  @apply text-black;
+  @apply text-gray-dark;
 
   &--info {
-    @apply bg-blue-light;
+    @apply bg-night-normal-light;
+    @apply text-blue-dark;
 
     .alert__close {
       @apply text-blue-dark;
@@ -15,7 +16,8 @@
   }
 
   &--warning {
-    @apply bg-yellow-medium;
+    @apply bg-day-confirmed-light;
+    @apply text-yellow-dark;
 
     .alert__close {
       @apply text-yellow-dark;
@@ -23,10 +25,45 @@
   }
 
   &--error {
-    @apply bg-red-light;
+    @apply bg-stale-light;
+    @apply text-white;
 
     .alert__close {
-      @apply text-red-dark;
+      @apply text-white;
+    }
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .alert {
+    @apply bg-night-normal-dark;
+    @apply text-[#e0f0f4];
+
+    &--info {
+      @apply bg-blue-dark;
+      @apply text-[#e0f0f4];
+
+      .alert__close {
+        @apply text-[#6fb8c8];
+      }
+    }
+
+    &--warning {
+      @apply bg-day-confirmed-dark;
+      @apply text-[#fce580];
+
+      .alert__close {
+        @apply text-[#f2b705];
+      }
+    }
+
+    &--error {
+      @apply bg-stale-dark;
+      @apply text-[#ffb3b0];
+
+      .alert__close {
+        @apply text-[#ffb3b0];
+      }
     }
   }
 }

@@ -1,307 +1,368 @@
 {
   "1233": {
     "title": "Main Holding",
-    "carsToBoat": 126,
-    "orderFromTerminal": 1
+    "carsToBoat": null,
+    "orderFromTerminal": 1,
+    "carCapacity": 136
   },
   "9035": {
     "title": "Holding",
-    "carsToBoat": 24,
-    "orderFromTerminal": 1
+    "carsToBoat": null,
+    "orderFromTerminal": 1,
+    "carCapacity": 650
   },
   "9037": {
     "title": "Holding",
-    "carsToBoat": 15,
-    "orderFromTerminal": 1
+    "carsToBoat": null,
+    "orderFromTerminal": 1,
+    "carCapacity": 230
   },
   "9038": {
     "title": "Holding",
-    "carsToBoat": 149,
-    "orderFromTerminal": 1
+    "carsToBoat": null,
+    "orderFromTerminal": 1,
+    "carCapacity": 84
   },
   "9039": {
     "title": "Dock (facing away)",
-    "carsToBoat": 24,
-    "orderFromTerminal": 0
+    "carsToBoat": 160,
+    "orderFromTerminal": 0,
+    "carCapacity": null
   },
   "9040": {
     "title": "Holding",
-    "carsToBoat": 85,
-    "orderFromTerminal": 1
+    "carsToBoat": null,
+    "orderFromTerminal": 1,
+    "carCapacity": 212
   },
   "9041": {
     "title": "Bunker Trail (facing towards)",
-    "carsToBoat": 62,
-    "orderFromTerminal": 2
+    "carsToBoat": 140,
+    "orderFromTerminal": 2,
+    "carCapacity": null
   },
   "9042": {
     "title": "Bunker Trail (facing away)",
-    "carsToBoat": 65,
-    "orderFromTerminal": 3
+    "carsToBoat": 143,
+    "orderFromTerminal": 3,
+    "carCapacity": null
   },
   "9043": {
     "title": "112th Street (facing towards)",
-    "carsToBoat": 96,
-    "orderFromTerminal": 4
+    "carsToBoat": 178,
+    "orderFromTerminal": 4,
+    "carCapacity": null
   },
   "9044": {
     "title": "112th Street (facing away)",
-    "carsToBoat": 99,
-    "orderFromTerminal": 5
+    "carsToBoat": 181,
+    "orderFromTerminal": 5,
+    "carCapacity": null
   },
   "9045": {
     "title": "Holding",
-    "carsToBoat": 18,
-    "orderFromTerminal": 1
+    "carsToBoat": null,
+    "orderFromTerminal": 1,
+    "carCapacity": 4
   },
   "9046": {
     "title": "Tollbooth (facing away)",
-    "carsToBoat": 21,
-    "orderFromTerminal": 2
+    "carsToBoat": 6,
+    "orderFromTerminal": 2,
+    "carCapacity": null
   },
   "9047": {
     "title": "Dock",
     "carsToBoat": null,
-    "orderFromTerminal": 0
+    "orderFromTerminal": 0,
+    "carCapacity": null
   },
   "9048": {
     "title": "Holding",
-    "carsToBoat": 75,
-    "orderFromTerminal": 1
+    "carsToBoat": null,
+    "orderFromTerminal": 1,
+    "carCapacity": 450
   },
   "9049": {
     "title": "Tollbooth (facing away)",
-    "carsToBoat": 99,
-    "orderFromTerminal": 2
+    "carsToBoat": 478,
+    "orderFromTerminal": 2,
+    "carCapacity": null
   },
   "9151": {
     "title": "Holding",
     "carsToBoat": null,
-    "orderFromTerminal": 1
+    "orderFromTerminal": 1,
+    "carCapacity": 288
   },
   "9152": {
     "title": "Ferry Sign East",
-    "carsToBoat": 451,
-    "orderFromTerminal": 6
+    "carsToBoat": 733,
+    "orderFromTerminal": 6,
+    "carCapacity": null
   },
   "9153": {
     "title": "Fir Hollow Drive (facing away)",
-    "carsToBoat": 451,
-    "orderFromTerminal": 5
+    "carsToBoat": 733,
+    "orderFromTerminal": 5,
+    "carCapacity": null
   },
   "9154": {
     "title": "Barber Cut Off Road (facing towards)",
-    "carsToBoat": 355,
-    "orderFromTerminal": 4
+    "carsToBoat": 628,
+    "orderFromTerminal": 4,
+    "carCapacity": null
   },
   "9155": {
     "title": "Dayton Street (facing away)",
-    "carsToBoat": 271,
-    "orderFromTerminal": 2
+    "carsToBoat": 184,
+    "orderFromTerminal": 2,
+    "carCapacity": null
   },
   "9156": {
     "title": "100th Ave (facing towards)",
-    "carsToBoat": 478,
-    "orderFromTerminal": 5
+    "carsToBoat": 618,
+    "orderFromTerminal": 5,
+    "carCapacity": null
   },
   "9157": {
     "title": "Holding",
-    "carsToBoat": 280,
-    "orderFromTerminal": 1
+    "carsToBoat": null,
+    "orderFromTerminal": 1,
+    "carCapacity": 174
   },
   "9159": {
     "title": "Pine Street (facing away)",
-    "carsToBoat": 208,
-    "orderFromTerminal": 4
+    "carsToBoat": 318,
+    "orderFromTerminal": 4,
+    "carCapacity": null
   },
   "9160": {
     "title": "Pine Street (facing towards)",
-    "carsToBoat": 205,
-    "orderFromTerminal": 3
+    "carsToBoat": 315,
+    "orderFromTerminal": 3,
+    "carCapacity": null
   },
   "9161": {
     "title": "Clover Lane (facing towards)",
-    "carsToBoat": 345,
-    "orderFromTerminal": 5
+    "carsToBoat": 546,
+    "orderFromTerminal": 5,
+    "carCapacity": null
   },
   "9162": {
     "title": "School (facing towards)",
-    "carsToBoat": 455,
-    "orderFromTerminal": 6
+    "carsToBoat": 666,
+    "orderFromTerminal": 6,
+    "carCapacity": null
   },
   "9163": {
     "title": "School (facing away)",
-    "carsToBoat": 457,
-    "orderFromTerminal": 7
+    "carsToBoat": 669,
+    "orderFromTerminal": 7,
+    "carCapacity": null
   },
   "9164": {
     "title": "Holding",
-    "carsToBoat": 72,
-    "orderFromTerminal": 1
+    "carsToBoat": null,
+    "orderFromTerminal": 1,
+    "carCapacity": 246
   },
   "9166": {
     "title": "Holding",
     "carsToBoat": null,
-    "orderFromTerminal": 1
+    "orderFromTerminal": 1,
+    "carCapacity": 190
   },
   "9167": {
     "title": "Holding",
     "carsToBoat": null,
-    "orderFromTerminal": 1
+    "orderFromTerminal": 1,
+    "carCapacity": 100
   },
   "9168": {
     "title": "Tollbooth (facing away)",
-    "carsToBoat": null,
-    "orderFromTerminal": 2
+    "carsToBoat": 100,
+    "orderFromTerminal": 2,
+    "carCapacity": null
   },
   "9169": {
     "title": "Holding",
     "carsToBoat": null,
-    "orderFromTerminal": 1
+    "orderFromTerminal": 1,
+    "carCapacity": 120
   },
   "9170": {
     "title": "Tollbooth (facing away)",
-    "carsToBoat": null,
-    "orderFromTerminal": 2
+    "carsToBoat": 120,
+    "orderFromTerminal": 2,
+    "carCapacity": null
   },
   "9172": {
     "title": "Tollbooth (facing away)",
-    "carsToBoat": 31,
-    "orderFromTerminal": 2
+    "carsToBoat": 190,
+    "orderFromTerminal": 2,
+    "carCapacity": null
   },
   "9173": {
     "title": "Dock",
     "carsToBoat": null,
-    "orderFromTerminal": 0
+    "orderFromTerminal": 0,
+    "carCapacity": null
   },
   "9174": {
     "title": "Food Mart (facing towards)",
-    "carsToBoat": 122,
-    "orderFromTerminal": 3
+    "carsToBoat": 292,
+    "orderFromTerminal": 3,
+    "carCapacity": null
   },
   "9175": {
     "title": "Post Office (facing away)",
-    "carsToBoat": 149,
-    "orderFromTerminal": 4
+    "carsToBoat": 322,
+    "orderFromTerminal": 4,
+    "carCapacity": null
   },
   "9377": {
     "title": "Playground (facing away)",
-    "carsToBoat": 95,
-    "orderFromTerminal": 4
+    "carsToBoat": 155,
+    "orderFromTerminal": 4,
+    "carCapacity": null
   },
   "9391": {
     "title": "Holding",
     "carsToBoat": null,
-    "orderFromTerminal": 1
+    "orderFromTerminal": 1,
+    "carCapacity": 160
   },
   "9394": {
     "title": "5th Street (facing towards)",
-    "carsToBoat": 153,
-    "orderFromTerminal": 3
+    "carsToBoat": 334,
+    "orderFromTerminal": 3,
+    "carCapacity": null
   },
   "9402": {
     "title": "Tollbooth (facing away)",
-    "carsToBoat": 152,
-    "orderFromTerminal": 2
+    "carsToBoat": 102,
+    "orderFromTerminal": 2,
+    "carCapacity": null
   },
   "9403": {
     "title": "Trenton Street (facing away)",
-    "carsToBoat": 66,
-    "orderFromTerminal": 3
+    "carsToBoat": 123,
+    "orderFromTerminal": 3,
+    "carCapacity": null
   },
   "9404": {
     "title": "Lincoln Park (facing away)",
-    "carsToBoat": 157,
-    "orderFromTerminal": 5
+    "carsToBoat": 224,
+    "orderFromTerminal": 5,
+    "carCapacity": null
   },
   "9476": {
     "title": "Winslow Way (facing towards)",
-    "carsToBoat": 73,
-    "orderFromTerminal": 2
+    "carsToBoat": 262,
+    "orderFromTerminal": 2,
+    "carCapacity": null
   },
   "9477": {
     "title": "Winslow Way (facing away)",
-    "carsToBoat": 73,
-    "orderFromTerminal": 3
+    "carsToBoat": 262,
+    "orderFromTerminal": 3,
+    "carCapacity": null
   },
   "9478": {
     "title": "High School (facing away)",
-    "carsToBoat": 257,
-    "orderFromTerminal": 5
+    "carsToBoat": 465,
+    "orderFromTerminal": 5,
+    "carCapacity": null
   },
   "9479": {
     "title": "High School (facing towards)",
-    "carsToBoat": 257,
-    "orderFromTerminal": 4
+    "carsToBoat": 465,
+    "orderFromTerminal": 4,
+    "carCapacity": null
   },
   "9502": {
     "title": "Overflow Holding",
-    "carsToBoat": 55,
-    "orderFromTerminal": 2
+    "carsToBoat": null,
+    "orderFromTerminal": 2,
+    "carCapacity": 136
   },
   "9688": {
     "title": "Holding",
-    "carsToBoat": 52,
-    "orderFromTerminal": 1
+    "carsToBoat": null,
+    "orderFromTerminal": 1,
+    "carCapacity": 175
   },
   "9689": {
     "title": "Tollbooth (facing away)",
-    "carsToBoat": 52,
-    "orderFromTerminal": 2
+    "carsToBoat": 175,
+    "orderFromTerminal": 2,
+    "carCapacity": null
   },
   "9692": {
     "title": "Tollbooth (facing away)",
-    "carsToBoat": 41,
-    "orderFromTerminal": 4
+    "carsToBoat": 101,
+    "orderFromTerminal": 4,
+    "carCapacity": null
   },
   "9693": {
     "title": "Back Holding (facing away)",
-    "carsToBoat": 30,
-    "orderFromTerminal": 3
+    "carsToBoat": null,
+    "orderFromTerminal": 3,
+    "carCapacity": 88
   },
   "9717": {
     "title": "Holding (facing away)",
-    "carsToBoat": 8,
-    "orderFromTerminal": 1
+    "carsToBoat": null,
+    "orderFromTerminal": 1,
+    "carCapacity": 80
   },
   "9728": {
     "title": "5th Street (facing away)",
-    "carsToBoat": 155,
-    "orderFromTerminal": 4
+    "carsToBoat": 337,
+    "orderFromTerminal": 4,
+    "carCapacity": null
   },
   "9741": {
     "title": "Holding",
-    "carsToBoat": 132,
-    "orderFromTerminal": 1
+    "carsToBoat": null,
+    "orderFromTerminal": 1,
+    "carCapacity": 50
   },
   "9742": {
     "title": "Tollbooth (facing away)",
-    "carsToBoat": 127,
-    "orderFromTerminal": 2
+    "carsToBoat": 55,
+    "orderFromTerminal": 2,
+    "carCapacity": null
   },
   "9813": {
     "title": "Tollbooth (facing away)",
-    "carsToBoat": 100,
-    "orderFromTerminal": 2
+    "carsToBoat": 288,
+    "orderFromTerminal": 2,
+    "carCapacity": null
   },
   "9944": {
     "title": "Tollbooth (facing towards)",
-    "carsToBoat": 153,
-    "orderFromTerminal": 2
+    "carsToBoat": 257,
+    "orderFromTerminal": 2,
+    "carCapacity": null
   },
   "10112": {
     "title": "Holding",
-    "carsToBoat": 30,
-    "orderFromTerminal": 2
+    "carsToBoat": null,
+    "orderFromTerminal": 2,
+    "carCapacity": 88
   },
   "10113": {
     "title": "Front Holding (facing towards)",
-    "carsToBoat": 30,
-    "orderFromTerminal": 1
+    "carsToBoat": null,
+    "orderFromTerminal": 1,
+    "carCapacity": 88
   },
   "10266": {
     "title": "Downtown (facing away)",
-    "carsToBoat": 173,
-    "orderFromTerminal": 3
+    "carsToBoat": 427,
+    "orderFromTerminal": 3,
+    "carCapacity": null
   }
 }

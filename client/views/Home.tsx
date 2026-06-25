@@ -218,9 +218,9 @@ export const Home = (): ReactElement => {
     closestTerminal
   );
   return (
-    <div className="relative bg-green-dark text-white overflow-y-scroll scrolling-touch">
+    <div className="relative overflow-y-scroll scrolling-touch bg-[linear-gradient(135deg,#016f52_0%,#004d61_100%)] text-white">
       <Link
-        className="absolute top-0 left-0 m-4 mt-safe-top flex items-center px-4 py-2 text-lg font-bold hover:bg-lighten-high"
+        className="absolute top-0 left-0 mt-safe-top flex items-center px-4 py-2 text-lg font-bold hover:bg-lighten-high"
         to="/tickets"
       >
         <TicketIcon className="mr-3" />
@@ -239,7 +239,7 @@ export const Home = (): ReactElement => {
           )}
           {routeGroups.map((routeGroup) => (
             <section className="col-span-2 min-w-0" key={routeGroup.id}>
-              <h2 className="px-4 pb-2 text-center text-sm font-bold uppercase tracking-wide text-lighten-high">
+              <h2 className="px-4 pb-2 text-center text-sm font-extrabold uppercase tracking-[0.18em] text-[#fce580] drop-shadow-sm">
                 {routeGroup.label}
               </h2>
               <ul

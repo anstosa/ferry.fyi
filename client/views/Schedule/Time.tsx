@@ -3,20 +3,37 @@ import { DateTime } from "luxon";
 import React, { ReactElement } from "react";
 
 import type { ProjectedTiming } from "./projectedTiming";
+import {
+  getLateTextClassName,
+  getScheduleTimeMajorClassName,
+  getScheduleTimeMinorClassName,
+  type ScheduleRowState,
+  type ScheduleSailingContext,
+} from "./scheduleColors";
 
 interface Props {
   time: DateTime;
   isNext: boolean;
+  context: ScheduleSailingContext;
+  rowState: ScheduleRowState;
   timing: ProjectedTiming;
 }
 
-export const Time = ({ isNext, time, timing }: Props): ReactElement => {
+export const Time = ({
+  context,
+  isNext,
+  rowState,
+  time,
+  timing,
+}: Props): ReactElement => {
   const { delayMins, departureTime, isCancelled } = timing;
   const hasDeparted = departureTime.toMillis() < time.toMillis();
   const diff = departureTime.diff(time);
 
   let majorTime;
+  let majorTimeClass = getScheduleTimeMajorClassName(context, rowState);
   let minorTime;
+  let minorTimeClass = getScheduleTimeMinorClassName(context, rowState);
   let isRelativeDeparture = false;
   // cancelled sailing
   if (isCancelled) {
@@ -30,10 +47,11 @@ export const Time = ({ isNext, time, timing }: Props): ReactElement => {
     const mins = Math.round(diff.as("minutes"));
     majorTime = (
       <span className="whitespace-nowrap">
-        <span className="text-2xl">{mins}</span>{" "}
-        <span className="text-sm">min{mins === 1 ? "" : "s"}</span>
+        <span className="text-[17px]">{mins}</span>{" "}
+        <span className="text-[17px]">min{mins === 1 ? "" : "s"}</span>
       </span>
     );
+    majorTimeClass = "text-countdown";
     minorTime = departureTime.toFormat("h:mm a");
     isRelativeDeparture = true;
   } else {
@@ -41,22 +59,19 @@ export const Time = ({ isNext, time, timing }: Props): ReactElement => {
     minorTime = departureTime.toFormat("a");
   }
 
-  let color = "text-black dark:text-white";
   // cancelled color
   if (isCancelled) {
-    color = "text-red-dark dark:text-red-light";
+    majorTimeClass = getLateTextClassName();
+    minorTimeClass = getLateTextClassName();
   } else if (hasDeparted && delayMins >= 4) {
     // past late color
-    color = "text-red-dark dark:text-red-light";
-  } else if (hasDeparted) {
-    // past on-time color
-    color = "text-gray-dark dark:text-gray-medium";
+    majorTimeClass = getLateTextClassName();
   } else if (delayMins > 0) {
     // late departure color
-    color = "text-red-dark dark:text-red-light";
+    majorTimeClass = getLateTextClassName();
   } else if (delayMins <= -4) {
     // early departure color
-    color = "text-yellow-dark dark:text-yellow-medium";
+    majorTimeClass = "text-yellow-dark dark:text-yellow-medium";
   }
 
   let weight;
@@ -70,20 +85,20 @@ export const Time = ({ isNext, time, timing }: Props): ReactElement => {
     weight = "font-medium";
   }
   return (
-    <div
-      className={clsx("flex flex-col", "text-center w-16 z-0", color, weight)}
-    >
+    <div className={clsx("flex flex-col", "text-center w-16 z-0", weight)}>
       <span
         className={clsx(
           "flex-grow leading-none",
           !isRelativeDeparture && "text-2xl",
+          isRelativeDeparture && "font-medium",
           isRelativeDeparture && "whitespace-nowrap",
+          majorTimeClass,
           "flex flex-col justify-center"
         )}
       >
         {majorTime}
       </span>
-      <span className={clsx("text-sm")}>{minorTime}</span>
+      <span className={clsx("text-sm", minorTimeClass)}>{minorTime}</span>
     </div>
   );
 };

@@ -34,6 +34,7 @@ export interface Slot {
   mateId: string;
   time: number;
   vessel: Vessel;
+  vesselPosition?: number;
   wuid: string;
 }
 

@@ -78,8 +78,9 @@ const renderMarkerLabel = ({
       </div>
       <div
         className={[
-          "absolute z-10 px-2 py-1 rounded-full shadow",
-          "bg-white text-gray-900 dark:bg-gray-darkest dark:text-white",
+          "absolute z-10 px-2 py-1 rounded-full border shadow",
+          "border-[rgba(1,111,82,0.18)] bg-day-normal-light text-gray-dark",
+          "dark:border-[rgba(255,255,255,0.08)] dark:bg-night-normal-dark dark:text-[#e0f0f4]",
           "text-xs font-bold whitespace-nowrap transform",
           labelPlacement,
         ].join(" ")}
@@ -193,7 +194,7 @@ export const Map = ({ terminal, mate, vessels }: Props): ReactElement => {
         const root = renderMarkerIcon(
           renderMarkerLabel({
             icon: <MapPinIcon />,
-            iconClassName: "text-3xl text-white drop-shadow",
+            iconClassName: "text-3xl text-green-dark drop-shadow",
             label: targetTerminal.name,
             labelPlacement: getLabelPlacement(index),
           }),
@@ -221,7 +222,7 @@ export const Map = ({ terminal, mate, vessels }: Props): ReactElement => {
         const root = renderMarkerIcon(
           renderMarkerLabel({
             icon: <VesselIcon />,
-            iconClassName: "text-3xl text-green-dark drop-shadow",
+            iconClassName: "text-3xl text-countdown drop-shadow",
             iconStyle: { transform: `rotate(${heading}deg)` },
             label: getVesselLabel(vessel),
             labelPlacement: getLabelPlacement(index + 1),
@@ -247,7 +248,7 @@ export const Map = ({ terminal, mate, vessels }: Props): ReactElement => {
       const root = renderMarkerIcon(
         renderMarkerLabel({
           icon: <UserLocationIcon />,
-          iconClassName: "text-2xl text-blue-medium drop-shadow",
+          iconClassName: "text-2xl text-blue-dark drop-shadow",
           label: "You",
           labelPlacement: getLabelPlacement(newMarkers.length),
         }),
@@ -333,7 +334,7 @@ export const Map = ({ terminal, mate, vessels }: Props): ReactElement => {
       </Header>
       <main
         ref={mapRef}
-        className="map-container flex-grow bg-white dark:bg-black"
+        className="map-container flex-grow bg-day-normal-light dark:bg-night-normal-dark"
       />
     </>
   );

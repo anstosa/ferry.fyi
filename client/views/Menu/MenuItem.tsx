@@ -47,7 +47,9 @@ export const MenuItem = ({ item }: Props): ReactElement | null => {
   const { Icon, label } = item;
   const itemClass = "w-full";
   const wrapperClass = clsx(
-    "flex py-4 px-6 hover:bg-lighten-lower cursor-pointer",
+    "flex py-4 px-6 cursor-pointer",
+    "border-l-4 border-transparent",
+    "hover:border-countdown hover:bg-lighten-lower",
     {
       "text-lighten-highest": "isBottom" in item,
     }

@@ -17,8 +17,8 @@ const WrapHeader: FunctionComponent<PropsWithChildren> = ({ children }) => (
   <header
     className={clsx(
       "fixed top-0 inset-x-0 z-20",
-      "bg-green-dark text-white",
-      "w-full shadow-lg h-16",
+      "bg-[linear-gradient(135deg,#016f52_0%,#016f52_68%,#004d61_100%)] text-white",
+      "w-full border-b border-[rgba(255,255,255,0.12)] shadow-lg h-16",
       "flex justify-center",
       "pr-safe-right pl-safe-left mt-safe-top"
     )}
@@ -115,7 +115,10 @@ export const Header: FunctionComponent<PropsWithChildren<Props>> = (props) => {
         {children}
       </WrapHeader>
       <div
-        className={clsx("h-16 w-full flex-shrink-0", "bg-white dark:bg-black")}
+        className={clsx(
+          "h-16 w-full flex-shrink-0",
+          "bg-day-normal-light dark:bg-night-normal-dark"
+        )}
       />
     </>
   );

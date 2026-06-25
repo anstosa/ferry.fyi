@@ -161,6 +161,7 @@ export namespace WSF {
     VesselID: number;
     VesselName: string;
     VesselHandicapAccessible: boolean;
+    VesselPositionNum?: number;
     Routes: number[];
     AnnotationIndexes: number[];
   }

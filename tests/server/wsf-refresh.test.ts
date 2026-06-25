@@ -25,6 +25,10 @@ const capacityModel = vi.hoisted(() => ({
   updateCapacity: vi.fn(),
 }));
 
+const normalRouteVesselModel = vi.hoisted(() => ({
+  updateNormalRouteVessels: vi.fn(),
+}));
+
 const routeModel = vi.hoisted(() => ({
   updateRoutes: vi.fn(),
 }));
@@ -54,15 +58,17 @@ vi.mock("~/lib/wsf/updateCameras", () => cameraModel);
 
 vi.mock("~/lib/wsf/updateCapacity", () => capacityModel);
 
+vi.mock("~/lib/wsf/updateNormalRouteVessels", () => normalRouteVesselModel);
+
 vi.mock("~/lib/wsf/updateRoutes", () => routeModel);
 
 vi.mock("~/lib/wsf/updateTerminals", () => terminalModel);
 
 vi.mock("~/lib/wsf/updateVessels", () => vesselModel);
 
-const { updateShort } = await import("../../server/lib/wsf");
+const { updateDaily, updateShort } = await import("../../server/lib/wsf");
 
-describe("WSF short refresh", () => {
+describe("WSF refresh", () => {
   // failure isolation
   it("starts best-effort weather refresh when estimate refresh fails", async () => {
     vesselModel.updateVesselStatus.mockResolvedValue(undefined);
@@ -76,5 +82,16 @@ describe("WSF short refresh", () => {
     await expect(updateShort()).rejects.toThrow(Error);
 
     expect(weatherRefreshModel.updateWeatherForecasts).toHaveBeenCalled();
+  });
+
+  // daily inference
+  it("updates normal route vessel assignments during daily refresh", async () => {
+    normalRouteVesselModel.updateNormalRouteVessels.mockResolvedValue(undefined);
+
+    await updateDaily();
+
+    expect(
+      normalRouteVesselModel.updateNormalRouteVessels
+    ).toHaveBeenCalledOnce();
   });
 });

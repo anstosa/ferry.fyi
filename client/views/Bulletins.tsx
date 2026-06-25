@@ -16,6 +16,10 @@ import { Toast } from "~/components/Toast";
 import { useUser } from "~/lib/user";
 import UnsubscribedIcon from "~/static/images/icons/regular/bell.svg";
 import SubscribedIcon from "~/static/images/icons/solid/bell.svg";
+import BellAlertIcon from "~/static/images/icons/solid/bell-exclamation.svg";
+import WarningIcon from "~/static/images/icons/solid/exclamation-triangle.svg";
+import ExternalLinkIcon from "~/static/images/icons/solid/external-link-alt.svg";
+import InfoIcon from "~/static/images/icons/solid/info-circle.svg";
 import WSDOTIcon from "~/static/images/icons/wsdot.svg";
 
 import { Header } from "./Header";
@@ -32,6 +36,37 @@ const HOURS_BY_SPELLED: Record<string, number> = {
   five: 5,
   six: 6,
 };
+
+interface BulletinLevelStyles {
+  accent: string;
+  badge: string;
+  Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+  label: string;
+}
+
+// bulletin severity style
+const getBulletinLevelStyles = (level: Level): BulletinLevelStyles => {
+  // high severity guard
+  if (level === Level.HIGH) {
+    return {
+      accent: "bg-stale-light dark:bg-stale-dark",
+      badge:
+        "border-stale-light bg-stale-light text-white dark:border-stale-dark dark:bg-stale-dark dark:text-[#ffb3b0]",
+      Icon: WarningIcon,
+      label: "High impact",
+    };
+  }
+  return {
+    accent: "bg-blue-dark dark:bg-[#6fb8c8]",
+    badge:
+      "border-blue-dark bg-night-normal-light text-blue-dark dark:border-[#6fb8c8] dark:bg-blue-dark dark:text-[#b8e4f0]",
+    Icon: InfoIcon,
+    label: "Advisory",
+  };
+};
+
+// active bulletin guard
+const isActiveBulletin = ({ level }: Bulletin): boolean => level !== Level.LOW;
 
 export const getWaitTime = ({ title }: Bulletin): string | null => {
   let match = title.match(WAIT_NUMBER_HOURS_MATCH);
@@ -182,30 +217,88 @@ export const Bulletins = ({ terminal, mate, time }: Props): ReactElement => {
   >(null);
 
   if (!terminal) {
-    return <InlineLoader>Loading cameras...</InlineLoader>;
+    return <InlineLoader>Loading alerts...</InlineLoader>;
   }
 
+  const activeBulletins = terminal.bulletins.filter((bulletin) => {
+    // low priority guard
+    return isActiveBulletin(bulletin);
+  });
+
   const renderBulletin = (bulletin: Bulletin): ReactNode => {
-    const { bodyHTML, level, routePrefix, title } = bulletin;
-    if (level === Level.LOW) {
-      return null;
-    }
+    const { bodyHTML, date, level, routePrefix, title, url } = bulletin;
+    const { accent, badge, Icon, label } = getBulletinLevelStyles(level);
     const filteredDescription = bodyHTML
       .replace(/<script>.*<\/script>/, "")
       .replace(/\s*style=".*"\s*/g, "")
-      .replace(/<p>/g, '<p class="my-2">')
-      .replace(/<ul>/g, '<ul class="list-disc pl-4">');
+      .replace(/<p>/g, '<p class="my-2 leading-relaxed">')
+      .replace(/<ul>/g, '<ul class="my-2 list-disc space-y-1 pl-5">')
+      .replace(
+        /<a /g,
+        '<a class="font-semibold text-blue-dark underline decoration-[#6fb8c8] underline-offset-2 dark:text-[#6fb8c8]" '
+      );
     return (
-      <li className="flex flex-col pb-8 relative" key={title}>
-        <span className="text text-lighten-high text-bold mb-1">
-          {getBulletinTime(bulletin, time)}
-          {routePrefix === "All" ? "" : ` for ${routePrefix}`}
-        </span>
-        <span className="font-medium text-lg mb-2">{title}</span>
-        <div
-          className="text-sm"
-          dangerouslySetInnerHTML={{ __html: filteredDescription }}
-        />
+      <li
+        className={clsx(
+          "relative overflow-hidden rounded-2xl border bg-white shadow-sm",
+          "border-[rgba(0,0,0,0.08)]",
+          "dark:border-[rgba(255,255,255,0.08)] dark:bg-[#00202a]"
+        )}
+        key={`${date}:${title}`}
+      >
+        <span className={clsx("absolute inset-y-0 left-0 w-1.5", accent)} />
+        <article className="p-4 pl-5">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <span
+              className={clsx(
+                "inline-flex items-center rounded-full border px-2.5 py-1",
+                "text-2xs font-bold uppercase tracking-wide",
+                badge
+              )}
+            >
+              <Icon className="mr-1.5 h-3 w-3" />
+              {label}
+            </span>
+            <span className="rounded-full bg-day-normal-light px-2.5 py-1 text-2xs font-semibold uppercase tracking-wide text-[#7a5400] dark:bg-[#261f00] dark:text-[#f2b705]">
+              {getBulletinTime(bulletin, time)}
+            </span>
+            {routePrefix !== "All" && (
+              <span className="rounded-full bg-night-normal-light px-2.5 py-1 text-2xs font-semibold uppercase tracking-wide text-blue-dark dark:bg-blue-dark dark:text-[#b8e4f0]">
+                {routePrefix}
+              </span>
+            )}
+          </div>
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-night-normal-light text-blue-dark dark:bg-blue-dark dark:text-[#b8e4f0]">
+              <BellAlertIcon className="h-5 w-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg font-bold leading-snug text-gray-darkest dark:text-white">
+                {title}
+              </h2>
+              <div
+                className="mt-2 text-sm leading-relaxed text-gray-dark dark:text-[#e0f0f4]"
+                dangerouslySetInnerHTML={{ __html: filteredDescription }}
+              />
+              {url && (
+                <a
+                  className={clsx(
+                    "mt-3 inline-flex items-center rounded-full border px-3 py-1.5",
+                    "border-blue-dark text-xs font-bold text-blue-dark",
+                    "hover:bg-night-normal-light",
+                    "dark:border-[#6fb8c8] dark:text-[#6fb8c8] dark:hover:bg-[rgba(255,255,255,0.08)]"
+                  )}
+                  href={url}
+                  rel="noopener noreferrer"
+                  target="_blank"
+                >
+                  View WSF alert
+                  <ExternalLinkIcon className="ml-2 h-3 w-3" />
+                </a>
+              )}
+            </div>
+          </div>
+        </article>
       </li>
     );
   };
@@ -237,7 +330,7 @@ export const Bulletins = ({ terminal, mate, time }: Props): ReactElement => {
           showForMate={setMateSubscribePrompt}
         />
       </Header>
-      <main className="flex-grow overflow-y-scroll scrolling-touch bg-white text-black dark:bg-black dark:text-white">
+      <main className="flex-grow overflow-y-scroll scrolling-touch bg-day-normal-light text-gray-dark dark:bg-night-normal-dark dark:text-[#e0f0f4]">
         <AnimatePresence>
           {!isNull(showMateSubscribePrompt) && mate && (
             <Toast
@@ -260,9 +353,61 @@ export const Bulletins = ({ terminal, mate, time }: Props): ReactElement => {
             </Toast>
           )}
         </AnimatePresence>
-        <ul className={clsx("px-8 py-4 relative")}>
-          {terminal.bulletins.map(renderBulletin)}
-        </ul>
+        <section className="mx-auto w-full max-w-3xl px-4 py-5 sm:px-6">
+          <div
+            className={clsx(
+              "mb-4 overflow-hidden rounded-2xl border shadow-sm",
+              "border-[rgba(0,0,0,0.08)]",
+              "bg-[linear-gradient(135deg,#016f52_0%,#004d61_100%)]",
+              "text-white"
+            )}
+          >
+            <div className="p-4 sm:p-5">
+              <div className="flex items-start gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/15">
+                  <BellAlertIcon className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-2xs font-bold uppercase tracking-[0.16em] text-[#b8e4f0]">
+                    Terminal alerts
+                  </p>
+                  <h1 className="mt-1 text-2xl font-bold leading-tight">
+                    {terminal.name}
+                  </h1>
+                  <p className="mt-2 text-sm leading-relaxed text-white/85">
+                    {activeBulletins.length > 0
+                      ? `${activeBulletins.length} active ${
+                          activeBulletins.length === 1 ? "alert" : "alerts"
+                        } from WSF`
+                      : "No active service alerts right now"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+          {activeBulletins.length > 0 ? (
+            <ul className="flex flex-col gap-4">
+              {activeBulletins.map(renderBulletin)}
+            </ul>
+          ) : (
+            <div
+              className={clsx(
+                "rounded-2xl border bg-white p-6 text-center shadow-sm",
+                "border-[rgba(0,0,0,0.08)]",
+                "dark:border-[rgba(255,255,255,0.08)] dark:bg-[#00202a]"
+              )}
+            >
+              <BellAlertIcon className="mx-auto mb-3 h-8 w-8 text-blue-dark dark:text-[#6fb8c8]" />
+              <h2 className="text-lg font-bold text-gray-darkest dark:text-white">
+                All clear
+              </h2>
+              <p className="mt-2 text-sm text-gray-dark dark:text-[#b8d5de]">
+                WSF has no active medium or high priority alerts for this
+                terminal.
+              </p>
+            </div>
+          )}
+        </section>
       </main>
     </>
   );

@@ -18,35 +18,85 @@ import { InlineLoader } from "~/components/InlineLoader";
 import { locationToUrl } from "~/lib/maps";
 import { useScrollPosition } from "~/lib/scroll";
 import CarIcon from "~/static/images/icons/solid/car.svg";
-import MapIcon from "~/static/images/icons/solid/map-marker.svg";
+import MapIcon from "~/static/images/icons/solid/map.svg";
+import PinIcon from "~/static/images/icons/solid/map-marker.svg";
+import ShipIcon from "~/static/images/icons/solid/ship.svg";
 import WSDOTIcon from "~/static/images/icons/wsdot.svg";
 
 import { ReloadButton } from "../components/ReloadButton";
 import { Header } from "./Header";
 
 interface Props {
+  mate?: Terminal | null;
   terminal: Terminal | null;
 }
 
 interface CameraListProps {
+  mate?: Terminal | null;
   terminal: Terminal;
+}
+
+interface CameraCountDetails {
+  count: number | null;
+  label: string | null;
 }
 
 const CAMERA_REFRESH_MS = 10 * 1000;
 const NO_CAMERAS_MESSAGE = "This terminal does not have cameras";
 
-export const Cameras = ({ terminal }: Props): ReactElement => {
+export const Cameras = ({ mate, terminal }: Props): ReactElement => {
   // loading guard
   if (!terminal) {
     return <InlineLoader>Loading cameras...</InlineLoader>;
   }
-  return <CameraList terminal={terminal} />;
+  return <CameraList mate={mate} terminal={terminal} />;
+};
+
+// resolve camera count
+const getCameraCountDetails = (camera: Camera): CameraCountDetails => {
+  const { carCapacity, carsToBoat } = camera;
+  // queue-only guard
+  if (isNull(carCapacity)) {
+    // empty count guard
+    if (isNull(carsToBoat)) {
+      return { count: null, label: null };
+    }
+    return { count: carsToBoat, label: `${carsToBoat} cars to boat` };
+  }
+  return { count: carCapacity, label: `${carCapacity} car capacity` };
+};
+
+// round sailings up
+const roundUpToTenth = (value: number): number => Math.ceil(value * 10) / 10;
+
+// format sailing count
+const formatSailingCount = (
+  cars: number,
+  vehicleCapacity?: number
+): string | null => {
+  // missing capacity guard
+  if (!vehicleCapacity) {
+    return null;
+  }
+  const sailings = roundUpToTenth(cars / vehicleCapacity);
+  const formattedSailings = sailings.toFixed(1);
+  return `${formattedSailings} sailings`;
 };
 
 // render loaded terminal
-const CameraList = ({ terminal }: CameraListProps): ReactElement => {
+const CameraList = ({ mate, terminal }: CameraListProps): ReactElement => {
   const { cameras } = terminal;
   const hasCameras = cameras.length > 0;
+  const activeRoute = mate
+    ? Object.values(terminal.routes ?? {}).find(({ terminalIds }) => {
+        // selected route match
+        return (
+          terminalIds.includes(terminal.id) && terminalIds.includes(mate.id)
+        );
+      })
+    : null;
+  const sailingVehicleCapacity =
+    activeRoute?.normalVehicleCapacity ?? activeRoute?.averageVehicleCapacity;
   const [cameraTime, setCameraTime] = useState<number>(
     DateTime.local().toSeconds()
   );
@@ -104,19 +154,25 @@ const CameraList = ({ terminal }: CameraListProps): ReactElement => {
 
   // render camera item
   const renderCamera = (camera: Camera, index: number): ReactNode => {
-    const { carsToBoat, id, title, image, location, owner } = camera;
+    const { id, title, image, location, owner } = camera;
     const mapsUrl = locationToUrl(location);
     const imageKey = `${id}-${cameraTime}`;
     const imageLoaded = loadedImages[imageKey] ?? false;
     const isFirst = index === 0;
     const markerRef = isFirst ? firstMarker : undefined;
+    const { count: carCount, label: carCountLabel } =
+      getCameraCountDetails(camera);
+    const sailingCount = isNull(carCount)
+      ? null
+      : formatSailingCount(carCount, sailingVehicleCapacity);
 
     return (
       <li className={clsx("flex flex-col", "relative")} key={id}>
         <div
           className={clsx(
-            "w-full max-w-[480px] rounded",
-            "bg-gray-light dark:bg-gray-dark"
+            "w-full max-w-[480px] overflow-hidden rounded-lg border shadow-sm",
+            "border-[rgba(0,0,0,0.08)] bg-night-normal-light",
+            "dark:border-[rgba(255,255,255,0.08)] dark:bg-night-normal-dark"
           )}
         >
           <img
@@ -124,7 +180,7 @@ const CameraList = ({ terminal }: CameraListProps): ReactElement => {
             className={clsx(
               "block w-full max-w-[480px]",
               imageLoaded ? "h-auto" : "h-[300px] opacity-0",
-              owner?.name && "border border-black"
+              owner?.name && "border border-[rgba(0,0,0,0.08)]"
             )}
             alt={`Traffic Camera: ${title}`}
             onLoad={() => {
@@ -142,24 +198,44 @@ const CameraList = ({ terminal }: CameraListProps): ReactElement => {
             className={clsx(
               "absolute top-0 left-0 -ml-[3.375rem] z-10",
               "flex h-9 w-12 items-center justify-center",
-              "bg-white text-black dark:bg-black dark:text-white"
+              "text-white"
             )}
           >
-            <MapIcon className="text-2xl" />
+            <span className="absolute inset-y-0 right-0 w-screen rounded-r-full bg-green-dark shadow-sm" />
+            <PinIcon className="relative z-10 text-2xl" />
           </div>
-          <a
-            href={mapsUrl}
-            target="_blank"
-            className="link"
-            rel="noopener noreferrer"
-          >
-            {title}
-          </a>
-          {/* cars-to-boat guard */}
-          {!isNull(carsToBoat) && (
-            <span className={clsx("font-normal text-sm")}>
+          <span className="flex min-h-9 items-center gap-3 text-gray-dark dark:text-[#e0f0f4]">
+            <span className="flex-1">{title}</span>
+            <a
+              href={mapsUrl}
+              target="_blank"
+              className={clsx(
+                "flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
+                "text-blue-dark hover:bg-night-normal-light",
+                "dark:text-[#6fb8c8] dark:hover:bg-[rgba(255,255,255,0.08)]"
+              )}
+              rel="noopener noreferrer"
+              aria-label={`Open ${title} in maps`}
+            >
+              <MapIcon className="text-lg" />
+            </a>
+          </span>
+          {/* car count guard */}
+          {carCountLabel && (
+            <span
+              className={clsx("font-normal text-sm text-black dark:text-white")}
+            >
               <CarIcon className="inline-block mr-2" />
-              {carsToBoat} cars to boat
+              {carCountLabel}
+            </span>
+          )}
+          {/* sailing count guard */}
+          {sailingCount && (
+            <span
+              className={clsx("font-normal text-sm text-black dark:text-white")}
+            >
+              <ShipIcon className="inline-block mr-2" />
+              {sailingCount}
             </span>
           )}
         </span>
@@ -196,7 +272,7 @@ const CameraList = ({ terminal }: CameraListProps): ReactElement => {
         />
       </Header>
       <main
-        className="flex-grow overflow-y-scroll scrolling-touch bg-white text-black dark:bg-black dark:text-white"
+        className="flex-grow overflow-y-scroll scrolling-touch bg-day-normal-light text-gray-dark dark:bg-night-normal-dark dark:text-[#e0f0f4]"
         ref={wrapper}
       >
         <div
@@ -212,7 +288,7 @@ const CameraList = ({ terminal }: CameraListProps): ReactElement => {
           {hasCameras && (
             <div
               className={clsx(
-                "border-l-4 border-dotted border-black dark:border-white",
+                "border-l-4 border-dotted border-countdown",
                 "w-1",
                 "absolute bottom-0 left-0 ml-8",
                 isNull(timelineStart) && "hidden"
@@ -231,7 +307,7 @@ const CameraList = ({ terminal }: CameraListProps): ReactElement => {
                 className={clsx(
                   "fixed top-16 left-0 w-full h-2",
                   "pointer-events-none z-20",
-                  "bg-gradient-to-b from-darken-medium to-transparent"
+                  "bg-gradient-to-b from-[rgba(0,77,97,0.28)] to-transparent dark:from-[rgba(0,0,0,0.55)]"
                 )}
                 initial={{ opacity: 0.5 }}
                 animate={{ opacity: 1 }}

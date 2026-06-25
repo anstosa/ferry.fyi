@@ -4,9 +4,9 @@ import React, { ReactElement } from "react";
 export const NowDivider = (): ReactElement => (
   <li
     aria-label="Current time"
-    className="h-4 bg-blue-medium dark:bg-blue-light flex items-center justify-center"
+    className="h-7 bg-now-bar flex items-center justify-center"
   >
-    <span className="text-white text-xs font-bold leading-none tracking-wide">
+    <span className="text-white text-[11px] font-medium leading-none tracking-[0.07em]">
       NOW
     </span>
   </li>

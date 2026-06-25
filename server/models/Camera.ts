@@ -13,6 +13,7 @@ export class Camera extends CacheableModel implements CameraClass {
   static cacheKey = "cameras";
   static index = "id";
 
+  carCapacity!: number | null;
   carsToBoat!: number | null;
   id!: string;
   image!: CameraImage;
@@ -53,6 +54,7 @@ export class Camera extends CacheableModel implements CameraClass {
 
   serialize(): CameraClass {
     return CacheableModel.serialize({
+      carCapacity: this.carCapacity,
       carsToBoat: this.carsToBoat,
       id: this.id,
       image: this.image,

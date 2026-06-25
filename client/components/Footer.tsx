@@ -22,8 +22,8 @@ const WrapFooter: FunctionComponent<PropsWithChildren> = ({ children }) => (
   <footer
     className={clsx(
       "fixed bottom-0 inset-x z-10",
-      "bg-green-dark text-white",
-      "w-full shadow-up-lg h-16",
+      "bg-[linear-gradient(135deg,#016f52_0%,#004d61_32%,#004d61_100%)] text-white",
+      "w-full border-t border-[rgba(255,255,255,0.12)] shadow-up-lg h-16",
       "flex justify-center",
       "animate",
       "pr-safe-right pl-safe-left mb-safe-bottom",
@@ -52,8 +52,8 @@ const FooterLink: FunctionComponent<PropsWithChildren<{ path: string }>> = ({
     end
     className="p-4 border-t-4 border-b-4 border-transparent"
     style={({ isActive }) => ({
-      color: isActive ? colors.white : colors.lighten.medium,
-      borderBottomColor: isActive ? colors.white : "transparent",
+      color: isActive ? colors.white : colors.lighten.high,
+      borderBottomColor: isActive ? colors.countdown : "transparent",
     })}
   >
     {children}
@@ -82,7 +82,7 @@ export const Footer = ({ terminal, getPath }: Props): ReactElement => {
     );
     if (hours < 6) {
       summary = getWaitTime(latest) || getLastBulletinTime(terminal);
-      backgroundColor = "bg-red-dark";
+      backgroundColor = "bg-stale-light dark:bg-stale-dark";
     } else {
       summary = null;
       backgroundColor = "";
@@ -108,7 +108,10 @@ export const Footer = ({ terminal, getPath }: Props): ReactElement => {
   return (
     <>
       <div
-        className={clsx("h-16 w-full flex-shrink-0", "bg-white dark:bg-black")}
+        className={clsx(
+          "h-16 w-full flex-shrink-0",
+          "bg-day-normal-light dark:bg-night-normal-dark"
+        )}
       />
       <WrapFooter>
         <FooterLink path={getPath({ view: "schedule" })}>
@@ -124,7 +127,7 @@ export const Footer = ({ terminal, getPath }: Props): ReactElement => {
         <div className="flex-1" />
         {renderBulletins()}
       </WrapFooter>
-      <div className="h-safe-bottom w-full bg-green-dark" />
+      <div className="h-safe-bottom w-full bg-blue-dark" />
     </>
   );
 };

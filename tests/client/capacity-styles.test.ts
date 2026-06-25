@@ -8,16 +8,16 @@ import {
 // capacity style contract
 describe("getCapacityFillClassName", () => {
   // daylight loading fill
-  it("uses yellow medium for confirmed daylight capacity", () => {
+  it("uses the day confirmed token for confirmed daylight capacity", () => {
     expect(getCapacityFillClassName({ isDaylight: true, isFull: false })).toBe(
-      "bg-yellow-medium"
+      "bg-day-confirmed-light dark:bg-day-confirmed-dark"
     );
   });
 
   // nighttime loading fill
-  it("uses blue medium for confirmed nighttime capacity", () => {
+  it("uses the night confirmed token for confirmed nighttime capacity", () => {
     expect(getCapacityFillClassName({ isDaylight: false, isFull: false })).toBe(
-      "bg-blue-medium"
+      "bg-night-confirmed-light dark:bg-night-confirmed-dark"
     );
   });
 

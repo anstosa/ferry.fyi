@@ -38,4 +38,29 @@ describe("Route.getMatesByTerminalId", () => {
 
     expect(mateNames).toEqual(["Anacortes", "Mukilteo", "Vashon"]);
   });
+
+  // route capacity serialization
+  it("serializes normal vehicle capacity when the updater has set it", () => {
+    const route = new Route({
+      abbreviation: "test",
+      crossingTime: 0,
+      date: "2026-06-22",
+      description: "Test route",
+      id: "route",
+      galleyHours: [
+        { days: [1], endTime: "10:00", startTime: "09:00", vesselPosition: 1 },
+      ],
+      normalVehicleCapacity: 262,
+      normalVehicleMaxCapacity: 202,
+      terminalIds: ["source", "mate"],
+    });
+
+    expect(route.serialize()).toMatchObject({
+      galleyHours: [
+        { days: [1], endTime: "10:00", startTime: "09:00", vesselPosition: 1 },
+      ],
+      normalVehicleCapacity: 262,
+      normalVehicleMaxCapacity: 202,
+    });
+  });
 });

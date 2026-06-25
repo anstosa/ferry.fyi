@@ -6,6 +6,7 @@ import { setWsfCoreReady, setWsfWarming } from "./api";
 import { hydrateWsfSeed } from "./seed";
 import { updateCameras } from "./updateCameras";
 import { updateCapacity } from "./updateCapacity";
+import { updateNormalRouteVessels } from "./updateNormalRouteVessels";
 import { updateRoutes } from "./updateRoutes";
 import { updateTerminals } from "./updateTerminals";
 import { updateVessels, updateVesselStatus } from "./updateVessels";
@@ -25,6 +26,11 @@ export const updateLong = async (): Promise<void> => {
   await updateTerminals();
   setWsfCoreReady(true);
   setWsfWarming(false);
+};
+
+// run daily route-vessel inference
+export const updateDaily = async (): Promise<void> => {
+  await updateNormalRouteVessels();
 };
 
 export const updateShort = async (): Promise<void> => {
@@ -50,6 +56,7 @@ export const updateShort = async (): Promise<void> => {
 export const refreshWsfInBackground = (): void => {
   updateLong()
     .then(updateShort)
+    .then(updateDaily)
     .catch((error: Error) => {
       logger.error(`WSF background refresh failed: ${error.message}`, error);
       setWsfWarming(false);

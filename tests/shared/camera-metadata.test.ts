@@ -13,15 +13,21 @@ describe("camera metadata", () => {
     expect(metadataIds).toEqual(cameraIds);
   });
 
-  // direct cars-to-boat shape
-  it("uses direct carsToBoat values instead of segment metadata", () => {
+  // direct car-count shape
+  it("uses direct car count values instead of segment metadata", () => {
     Object.entries(cameras).forEach(([id, camera]) => {
       // old metadata guard
       expect(camera).not.toHaveProperty("feetToNext");
       expect(camera).not.toHaveProperty("spacesToNext");
+      expect(camera).toHaveProperty("carCapacity");
       expect(camera).toHaveProperty("carsToBoat");
 
-      const { carsToBoat } = camera;
+      const { carCapacity, carsToBoat } = camera;
+      // nullable capacity guard
+      expect(
+        typeof carCapacity === "number" || carCapacity === null,
+        `${id} must have a number or null carCapacity estimate`
+      ).toBe(true);
       // nullable estimate guard
       expect(
         typeof carsToBoat === "number" || carsToBoat === null,
@@ -30,10 +36,33 @@ describe("camera metadata", () => {
     });
   });
 
+  // holding camera capacity rule
+  it("shows terminal capacities only on holding cameras", () => {
+    Object.entries(cameras).forEach(([id, camera]) => {
+      const isHoldingCamera = camera.title.includes("Holding");
+      // holding camera guard
+      if (isHoldingCamera) {
+        expect(
+          camera.carCapacity,
+          `${id} holding camera must show car capacity`
+        ).toBeGreaterThan(0);
+        expect(camera.carsToBoat).toBeNull();
+        return;
+      }
+      expect(camera.carCapacity).toBeNull();
+    });
+  });
+
   // estimate regression samples
-  it("keeps representative map-derived estimates and null decisions", () => {
-    expect(cameras["9944"].carsToBoat).toBe(153);
-    expect(cameras["10266"].carsToBoat).toBe(173);
+  it("keeps representative capacity, queue, and null decisions", () => {
+    expect(cameras["9048"].carCapacity).toBe(450);
+    expect(cameras["9048"].carsToBoat).toBeNull();
+    expect(cameras["9741"].carCapacity).toBe(50);
+    expect(cameras["9741"].carsToBoat).toBeNull();
+    expect(cameras["9944"].carCapacity).toBeNull();
+    expect(cameras["9944"].carsToBoat).toBe(257);
+    expect(cameras["10266"].carsToBoat).toBe(427);
+    expect(cameras["9047"].carCapacity).toBeNull();
     expect(cameras["9047"].carsToBoat).toBeNull();
   });
 

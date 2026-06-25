@@ -232,7 +232,7 @@ export const Menu = ({
           className={clsx(
             "animate",
             "flex flex-col",
-            "bg-green-dark text-white shadow-lg",
+            "bg-[linear-gradient(135deg,#016f52_0%,#004d61_100%)] text-white shadow-lg",
             "w-full h-screen max-w-xs",
             "fixed top-0 z-30 -left-full",
             "pt-safe-top pb-safe-bottom pl-safe-left"
@@ -246,7 +246,12 @@ export const Menu = ({
           }
         >
           <div
-            className={clsx("h-16 w-full p-4", "text-2xl", "flex items-center")}
+            className={clsx(
+              "h-16 w-full p-4",
+              "text-2xl",
+              "flex items-center",
+              "border-b border-[rgba(255,255,255,0.12)]"
+            )}
           >
             <Link to="/" className="flex items-center">
               <img src={logo} className="inline-block mr-4 w-10" />

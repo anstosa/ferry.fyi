@@ -18,4 +18,12 @@ describe("terminal route data", () => {
       expect(route.terminalIds).not.toContain("19");
     });
   });
+
+  // route capacity metadata
+  it("keeps average vehicle capacities for camera sailing estimates", () => {
+    Object.values(wsfCore.routes).forEach((route) => {
+      // capacity guard
+      expect(route.averageVehicleCapacity).toBeGreaterThan(0);
+    });
+  });
 });

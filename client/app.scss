@@ -12,10 +12,13 @@
 @import "react-day-picker/style.css";
 
 .date-button-picker {
-  @apply bg-white;
-  @apply text-gray-900;
+  @apply bg-day-normal-light;
+  @apply text-gray-dark;
   @apply rounded;
   @apply rounded-tr-none;
+  @apply border;
+  @apply border-[rgba(1,111,82,0.18)];
+  @apply shadow-lg;
 
   --rdp-accent-color: theme("colors.green.dark");
   --rdp-accent-background-color: theme("colors.green.light");
@@ -42,7 +45,8 @@
     &:nth-child(7) {
       @apply font-bold;
       @apply rounded-none;
-      @apply bg-green-lightest;
+      @apply bg-night-normal-light;
+      @apply text-blue-dark;
     }
   }
 
@@ -52,7 +56,7 @@
     &:nth-child(6),
     &:nth-child(7) {
       @apply rounded-none;
-      @apply bg-green-lightest;
+      @apply bg-night-normal-light;
     }
 
     &.rdp-past:not(.rdp-selected):not(.rdp-disabled):not(.rdp-outside) .rdp-day_button {
@@ -66,11 +70,35 @@
     }
 
     &:hover:not(.rdp-disabled):not(.rdp-selected):not(.rdp-outside) .rdp-day_button {
-      @apply bg-green-light;
+      @apply bg-countdown;
+      @apply text-white;
     }
 
     &.rdp-today .rdp-day_button {
       @apply text-green-dark;
+    }
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .date-button-picker {
+    @apply bg-night-normal-dark;
+    @apply text-[#e0f0f4];
+    @apply border-[rgba(255,255,255,0.08)];
+
+    .rdp-weekday {
+      &:nth-child(6),
+      &:nth-child(7) {
+        @apply bg-day-normal-dark;
+        @apply text-[#c49a30];
+      }
+    }
+
+    .rdp-day {
+      &:nth-child(6),
+      &:nth-child(7) {
+        @apply bg-day-normal-dark;
+      }
     }
   }
 }
@@ -126,20 +154,20 @@ html {
   .bg-full-day {
     background: repeating-linear-gradient(
       135deg,
-      theme("colors.yellow.medium"),
-      theme("colors.yellow.medium") 10px,
-      theme("colors.yellow.lightest") 10px,
-      theme("colors.yellow.lightest") 20px,
+      theme("colors.day-stripe-a.light"),
+      theme("colors.day-stripe-a.light") 10px,
+      theme("colors.day-stripe-b.light") 10px,
+      theme("colors.day-stripe-b.light") 20px,
     );
   }
 
   .bg-full-night {
     background: repeating-linear-gradient(
       135deg,
-      theme("colors.blue.medium"),
-      theme("colors.blue.medium") 10px,
-      theme("colors.blue.light") 10px,
-      theme("colors.blue.light") 20px,
+      theme("colors.night-stripe-a.light"),
+      theme("colors.night-stripe-a.light") 10px,
+      theme("colors.night-stripe-b.light") 10px,
+      theme("colors.night-stripe-b.light") 20px,
     );
   }
 
@@ -147,20 +175,20 @@ html {
     .bg-full-day {
       background: repeating-linear-gradient(
         135deg,
-        theme("colors.yellow.medium"),
-        theme("colors.yellow.medium") 10px,
-        theme("colors.yellow.dark") 10px,
-        theme("colors.yellow.dark") 20px,
+        theme("colors.day-stripe-a.dark"),
+        theme("colors.day-stripe-a.dark") 10px,
+        theme("colors.day-stripe-b.dark") 10px,
+        theme("colors.day-stripe-b.dark") 20px,
       );
     }
 
     .bg-full-night {
       background: repeating-linear-gradient(
         135deg,
-        theme("colors.blue.medium"),
-        theme("colors.blue.medium") 10px,
-        theme("colors.blue.dark") 10px,
-        theme("colors.blue.dark") 20px,
+        theme("colors.night-stripe-a.dark"),
+        theme("colors.night-stripe-a.dark") 10px,
+        theme("colors.night-stripe-b.dark") 10px,
+        theme("colors.night-stripe-b.dark") 20px,
       );
     }
   }

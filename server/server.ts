@@ -12,6 +12,7 @@ import { calculateAndPersistWeatherAdjustments } from "~/lib/weather/calculateCa
 import {
   initializeWsfSeed,
   refreshWsfInBackground,
+  updateDaily,
   updateLong,
   updateShort,
 } from "~/lib/wsf";
@@ -101,6 +102,8 @@ const refreshWeatherModelInBackground = (): void => {
   refreshWsfInBackground();
   // refresh weather model asynchronously
   refreshWeatherModelInBackground();
+  // run daily inference after overnight cache reset
+  scheduleJob({ hour: 4, minute: 10, second: 0 }, updateDaily);
   // run slow updates every minute
   scheduleJob({ second: 0 }, updateLong);
   // run fast updates every 30 seconds

@@ -264,7 +264,7 @@ export const Route = ({
       </>
     );
   } else if (view === "cameras") {
-    content = <Cameras terminal={terminal} />;
+    content = <Cameras mate={mate} terminal={terminal} />;
   } else if (view === "alerts") {
     content = <Bulletins terminal={terminal} mate={mate} time={time} />;
   } else if (view === "map") {

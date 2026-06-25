@@ -17,6 +17,10 @@ export class Route extends CacheableModel implements RouteClass {
   description!: string;
   crossingTime!: number;
   terminalIds!: string[];
+  averageVehicleCapacity?: number;
+  galleyHours?: RouteClass["galleyHours"];
+  normalVehicleCapacity?: number;
+  normalVehicleMaxCapacity?: number;
 
   static getMatesByTerminalId(terminalId: string): Terminal[] {
     const terminalIds: string[] = [];
@@ -54,6 +58,10 @@ export class Route extends CacheableModel implements RouteClass {
       description: this.description,
       crossingTime: this.crossingTime,
       terminalIds: this.terminalIds,
+      averageVehicleCapacity: this.averageVehicleCapacity,
+      galleyHours: this.galleyHours,
+      normalVehicleCapacity: this.normalVehicleCapacity,
+      normalVehicleMaxCapacity: this.normalVehicleMaxCapacity,
     });
   }
 }

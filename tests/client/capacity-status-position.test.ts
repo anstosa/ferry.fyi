@@ -22,6 +22,16 @@ describe("getCapacityStatusSide", () => {
     );
   });
 
+  it("accounts for reserved left-side labels before checking time collisions", () => {
+    expect(
+      getCapacityStatusSide({
+        ...DEFAULT_OPTIONS,
+        leftReservedWidth: 220,
+        linePercent: 1,
+      })
+    ).toBe("left");
+  });
+
   it("places status on the left when the line reaches the time column", () => {
     expect(
       getCapacityStatusSide({ ...DEFAULT_OPTIONS, linePercent: 100 })

@@ -20,6 +20,10 @@ import IslandIcon from "~/static/images/icons/solid/island-tropical.svg";
 import { NowDivider } from "./NowDivider";
 import { getCurrentSlot, shouldRenderNowDivider } from "./nowDivider";
 import { SlotInfo } from "./SlotInfo";
+import {
+  getCurrentRouteMaxVehicleCapacity,
+  getRouteMaxVehicleCapacity,
+} from "./smallBoat";
 
 interface Props {
   schedule: ScheduleClass | null;
@@ -75,6 +79,12 @@ export const Schedule = ({ schedule, time }: Props): ReactElement => {
       );
     }
     const currentSlot = getCurrentSlot(schedule.slots, time);
+    const currentRouteMaxVehicleCapacity = getCurrentRouteMaxVehicleCapacity(
+      slots.map(({ vessel }) => {
+        // collect scheduled capacity
+        return vessel.vehicleCapacity;
+      })
+    );
     let hasCapacityInfo = false;
     // build sailing rows
     const sailings = slots.map((slot) => {
@@ -82,12 +92,23 @@ export const Schedule = ({ schedule, time }: Props): ReactElement => {
       if (crossing) {
         hasCapacityInfo = true;
       }
-      const terminal = terminals.find(({ id }) => id === schedule.terminalId);
+      const terminal = terminals.find(({ id }) => {
+        // selected terminal match
+        return id === schedule.terminalId;
+      });
       if (!terminal) {
         return null;
       }
-      const route = values(terminal.routes)?.find(({ terminalIds }) =>
-        terminalIds.includes(schedule.terminalId)
+      const route = values(terminal.routes)?.find(({ terminalIds }) => {
+        // selected route match
+        return (
+          terminalIds.includes(schedule.terminalId) &&
+          terminalIds.includes(schedule.mateId)
+        );
+      });
+      const routeMaxVehicleCapacity = getRouteMaxVehicleCapacity(
+        currentRouteMaxVehicleCapacity,
+        route?.normalVehicleMaxCapacity
       );
       const showNowDivider = shouldRenderNowDivider({
         schedule: slots,
@@ -111,6 +132,7 @@ export const Schedule = ({ schedule, time }: Props): ReactElement => {
               onClick={() => toggleExpand(slot)}
               schedule={slots}
               route={route}
+              routeMaxVehicleCapacity={routeMaxVehicleCapacity}
               setElement={(element: HTMLDivElement) => {
                 // current slot anchor
                 if (slot === currentSlot) {
@@ -158,7 +180,7 @@ export const Schedule = ({ schedule, time }: Props): ReactElement => {
           className={clsx(
             "w-full max-w-6xl bg-white dark:bg-black",
             "lg:border-l lg:border-r",
-            "border-gray-medium dark:border-gray-dark"
+            "border-[rgba(0,0,0,0.08)] dark:border-[rgba(255,255,255,0.08)]"
           )}
         >
           {renderSchedule()}
