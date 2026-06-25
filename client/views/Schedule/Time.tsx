@@ -19,6 +19,7 @@ interface Props {
   timing: ProjectedTiming;
 }
 
+// render schedule time
 export const Time = ({
   context,
   isNext,
@@ -46,9 +47,11 @@ export const Time = ({
   ) {
     const mins = Math.round(diff.as("minutes"));
     majorTime = (
-      <span className="whitespace-nowrap">
-        <span className="text-[17px]">{mins}</span>{" "}
-        <span className="text-[17px]">min{mins === 1 ? "" : "s"}</span>
+      <span className="inline-flex items-baseline justify-center whitespace-nowrap leading-none">
+        <span className="text-[28px] leading-none">{mins}</span>
+        <span className="ml-0.5 text-[10px] font-medium leading-none">
+          min{mins === 1 ? "" : "s"}
+        </span>
       </span>
     );
     majorTimeClass = "text-countdown";
@@ -98,7 +101,15 @@ export const Time = ({
       >
         {majorTime}
       </span>
-      <span className={clsx("text-sm", minorTimeClass)}>{minorTime}</span>
+      <span
+        className={clsx(
+          "text-sm",
+          isRelativeDeparture && "whitespace-nowrap text-[11px]",
+          minorTimeClass
+        )}
+      >
+        {minorTime}
+      </span>
     </div>
   );
 };
