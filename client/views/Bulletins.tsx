@@ -7,6 +7,7 @@ import { useLocation } from "react-router-dom";
 import { type Bulletin, Level } from "shared/contracts/bulletins";
 import type { Terminal } from "shared/contracts/terminals";
 import { without } from "shared/lib/arrays";
+import { isDelayBulletin } from "shared/lib/bulletins";
 import { isNull, isUndefined } from "shared/lib/identity";
 import { round } from "shared/lib/math";
 import { capitalize } from "shared/lib/strings";
@@ -66,7 +67,17 @@ const getBulletinLevelStyles = (level: Level): BulletinLevelStyles => {
 };
 
 // active bulletin guard
-const isActiveBulletin = ({ level }: Bulletin): boolean => level !== Level.LOW;
+const isActiveBulletin = (bulletin: Bulletin): boolean => {
+  // low priority guard
+  if (bulletin.level === Level.LOW) {
+    return false;
+  }
+  // projected delay guard
+  if (isDelayBulletin(bulletin)) {
+    return false;
+  }
+  return true;
+};
 
 export const getWaitTime = ({ title }: Bulletin): string | null => {
   let match = title.match(WAIT_NUMBER_HOURS_MATCH);

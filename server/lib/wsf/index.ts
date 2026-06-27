@@ -1,5 +1,7 @@
 import logger from "heroku-logger";
 
+import { sendCancellationNotifications } from "../cancellationNotifications";
+import { sendDelayNotifications } from "../delayNotifications";
 import { updateEstimates } from "../forecast";
 import { updateTideForecasts } from "../tides/updateForecasts";
 import { updateWeatherForecasts } from "../weather/updateForecasts";
@@ -40,6 +42,8 @@ export const updateShort = async (): Promise<void> => {
     await updateVesselStatus();
     await updateCapacity();
     await updateEstimates();
+    await sendCancellationNotifications();
+    await sendDelayNotifications();
   } finally {
     // tide best-effort
     updateTideForecasts().catch((error) => {

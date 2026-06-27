@@ -140,8 +140,8 @@ export const Menu = ({
     ...bottomItems,
     {
       Icon: ForecastIcon,
-      label: "Forecasting Explained",
-      path: "/forecasting-explained",
+      label: "Forecasting",
+      path: "/forecasting",
       isBottom: true,
     },
     {

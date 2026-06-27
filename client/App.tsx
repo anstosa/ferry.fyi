@@ -9,7 +9,12 @@ import { AnimatePresence } from "framer-motion";
 import { Settings } from "luxon";
 import React, { ReactElement, useEffect } from "react";
 import ReactGA from "react-ga4";
-import { useLocation, useNavigate, useRoutes } from "react-router-dom";
+import {
+  Navigate,
+  useLocation,
+  useNavigate,
+  useRoutes,
+} from "react-router-dom";
 
 import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { Splash } from "~/components/Splash";
@@ -143,11 +148,12 @@ export const App = (): ReactElement => {
     { path: "tickets", element: withRouteBoundary("Tickets", <Tickets />) },
     { path: "about", element: withRouteBoundary("About", <About />) },
     {
+      path: "forecasting",
+      element: withRouteBoundary("Forecasting", <ForecastingExplained />),
+    },
+    {
       path: "forecasting-explained",
-      element: withRouteBoundary(
-        "Forecasting Explained",
-        <ForecastingExplained />
-      ),
+      element: <Navigate replace to="/forecasting" />,
     },
     { path: "feedback", element: withRouteBoundary("Feedback", <Feedback />) },
     {

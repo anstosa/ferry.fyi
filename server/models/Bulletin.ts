@@ -5,9 +5,10 @@ import {
   Level,
   SortedLevels,
 } from "shared/contracts/bulletins";
+import { isDelayBulletin } from "shared/lib/bulletins";
 
-import { auth0 } from "~/lib/auth0";
 import { sendPush } from "~/lib/push";
+import { getSubscribedTerminalPushMessages } from "~/lib/pushSubscriptions";
 
 import { CacheableModel } from "./CacheableModel";
 import { Terminal } from "./Terminal";
@@ -32,6 +33,7 @@ export class Bulletin extends CacheableModel implements BulletinClass {
   bodyHTML!: string;
   bodyText!: string;
   id!: string;
+  ignoreAll!: boolean;
   terminalId!: string;
   title!: string;
   url?: string;
@@ -42,7 +44,8 @@ export class Bulletin extends CacheableModel implements BulletinClass {
       data.bodyText || convert(data.bodyHTML, { wordwrap: false });
     const title = Bulletin.normalizeTitle(data.title);
     const level = Bulletin.getLevel(data);
-    super({ ...data, bodyText, id, level, title });
+    const ignoreAll = isDelayBulletin({ ...data, bodyText, title });
+    super({ ...data, bodyText, id, ignoreAll, level, title });
     this.rawTitle = data.title;
     this.sendPushes();
   }
@@ -57,37 +60,25 @@ export class Bulletin extends CacheableModel implements BulletinClass {
       // don't send pushes for less important bulletins
       return;
     }
-    const users = await auth0.users.list({ search_engine: "v3" });
-    // auth0 user page
-    for await (const user of users) {
-      const subscribedTerminals = user.app_metadata?.subscribedTerminals;
-      const token = user.app_metadata?.fcmToken;
-      // subscription metadata guard
-      if (!Array.isArray(subscribedTerminals)) {
-        continue;
-      }
-      if (!subscribedTerminals.includes(this.terminalId)) {
-        // user not subscribed to this terminal
-        continue;
-      }
-      if (typeof token !== "string") {
-        // user does not have an FCM Token saved
-        console.warn("Subscribed user without FCM Token", user.user_id);
-        continue;
-      }
-      sendPush({
-        token,
-        data: {
-          title: `${
-            this.routePrefix === "All" ? "" : `[${this.routePrefix}] `
-          }${this.title}`,
-          body: this.bodyText,
-          date: String(this.date),
-          ...(this.url ? { url: this.url } : {}),
-          terminalId: this.terminalId,
-          userId: user.user_id ?? "",
-        },
-      });
+    if (this.ignoreAll) {
+      // delay alerts use projections
+      return;
+    }
+    const messages = await getSubscribedTerminalPushMessages({
+      data: {
+        title: `${
+          this.routePrefix === "All" ? "" : `[${this.routePrefix}] `
+        }${this.title}`,
+        body: this.bodyText,
+        date: String(this.date),
+        ...(this.url ? { url: this.url } : {}),
+        terminalId: this.terminalId,
+      },
+      terminalIds: [this.terminalId],
+    });
+    // push queue
+    for (const message of messages) {
+      sendPush(message);
     }
   }
 
