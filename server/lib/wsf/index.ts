@@ -1,6 +1,7 @@
 import logger from "heroku-logger";
 
 import { updateEstimates } from "../forecast";
+import { updateTideForecasts } from "../tides/updateForecasts";
 import { updateWeatherForecasts } from "../weather/updateForecasts";
 import { setWsfCoreReady, setWsfWarming } from "./api";
 import { hydrateWsfSeed } from "./seed";
@@ -40,6 +41,15 @@ export const updateShort = async (): Promise<void> => {
     await updateCapacity();
     await updateEstimates();
   } finally {
+    // tide best-effort
+    updateTideForecasts().catch((error) => {
+      // preserve estimate refresh
+      logger.error(
+        `Tide forecast refresh failed: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+    });
     // weather best-effort
     updateWeatherForecasts().catch((error) => {
       // preserve estimate refresh

@@ -7,6 +7,7 @@ import { scheduleJob } from "node-schedule";
 import { apiRouter } from "~/controllers/api";
 import { staticRouter } from "~/controllers/static";
 import { dbInit } from "~/lib/db";
+import { backfillTideObservations } from "~/lib/tides/backfill";
 import { backfillWeatherObservations } from "~/lib/weather/backfill";
 import { calculateAndPersistWeatherAdjustments } from "~/lib/weather/calculateCapacityAdjustments";
 import {
@@ -82,6 +83,22 @@ const refreshWeatherModelInBackground = (): void => {
     });
 };
 
+// run startup tide maintenance
+const refreshTideModelInBackground = (): void => {
+  backfillTideObservations()
+    .then((backfillReport) => {
+      // report backfill result
+      logger.info(
+        `Tide backfill complete: ${backfillReport.recordsWritten} records written, ` +
+          `${backfillReport.skippedChunks} chunks skipped`
+      );
+    })
+    .catch((error: Error) => {
+      // log backfill failure
+      logger.error(`Tide startup backfill failed: ${error.message}`, error);
+    });
+};
+
 // start server
 (async () => {
   await dbInit;
@@ -102,6 +119,8 @@ const refreshWeatherModelInBackground = (): void => {
   refreshWsfInBackground();
   // refresh weather model asynchronously
   refreshWeatherModelInBackground();
+  // refresh tide model asynchronously
+  refreshTideModelInBackground();
   // run daily inference after overnight cache reset
   scheduleJob({ hour: 4, minute: 10, second: 0 }, updateDaily);
   // run slow updates every minute

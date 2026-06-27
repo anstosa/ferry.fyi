@@ -15,6 +15,7 @@ export class Vessel extends CacheableModel implements VesselClass {
   classId!: string;
   departedTime!: number;
   departureDelta!: number;
+  gpsDelay!: VesselClass["gpsDelay"];
   dockedTime!: number;
   estimatedArrivalTime!: number;
   hasCarDeckRestroom!: boolean;
@@ -57,6 +58,7 @@ export class Vessel extends CacheableModel implements VesselClass {
       classId: this.classId,
       departedTime: this.departedTime,
       departureDelta: this.departureDelta,
+      gpsDelay: this.gpsDelay,
       dockedTime: this.dockedTime,
       estimatedArrivalTime: this.estimatedArrivalTime,
       hasCarDeckRestroom: this.hasCarDeckRestroom,

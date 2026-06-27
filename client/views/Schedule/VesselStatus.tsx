@@ -9,7 +9,7 @@ import { locationToUrl } from "~/lib/maps";
 import { knotsToMph } from "~/lib/speed";
 
 import { getLateTextClassName } from "./scheduleColors";
-import { getRoundedEtaMinutes, roundStatusNumber } from "./vesselStatus";
+import { roundStatusNumber } from "./vesselStatus";
 
 interface Props {
   className?: string;
@@ -24,19 +24,11 @@ export const VesselStatus = ({
   vessel,
   time,
 }: Props): ReactElement => {
-  const {
-    dockedTime,
-    estimatedArrivalTime,
-    isAtDock,
-    location,
-    heading,
-    speed,
-    vesselWatchUrl,
-  } = vessel;
+  const { dockedTime, isAtDock, location, heading, speed, vesselWatchUrl } =
+    vessel;
 
   let statusText: string;
   let detailText: string | undefined;
-  let etaText: string | undefined;
   let lateText: string | undefined;
   // late sailing guard
   if (delayMins > 0) {
@@ -50,35 +42,20 @@ export const VesselStatus = ({
       detailText = `${pluralize(deltaMins, "min")} ago`;
     }
   } else {
-    const etaMins = getRoundedEtaMinutes(estimatedArrivalTime, time);
-    // eta availability guard
-    if (etaMins !== null) {
-      etaText = `ETA ${pluralize(etaMins, "min")}`;
-    }
     statusText = "Sailing";
     detailText = `${roundStatusNumber(knotsToMph(speed))}mph ${
       (heading && degreesToHeading(heading)) || ""
     }`;
   }
 
-  return (
-    <a
-      className={clsx(
-        "text-sm no-underline",
-        (etaText || lateText) && "inline-flex flex-col items-end",
-        className
-      )}
-      href={vesselWatchUrl ?? (location && locationToUrl(location))}
-    >
+  const content = (
+    <>
       {lateText && (
         <span className={clsx("font-bold", getLateTextClassName())}>
           {lateText}
         </span>
       )}
-      {etaText && (
-        <span className={clsx("font-bold", lateText && "mt-1")}>{etaText}</span>
-      )}
-      <span className={clsx((etaText || lateText) && "mt-1")}>
+      <span className={clsx(lateText && "mt-1")}>
         <span>{statusText}</span>
         {detailText && (
           <>
@@ -87,6 +64,23 @@ export const VesselStatus = ({
           </>
         )}
       </span>
+    </>
+  );
+  const statusClassName = clsx(
+    "text-sm no-underline",
+    lateText && "inline-flex flex-col items-end",
+    className
+  );
+  // docked status guard
+  if (isAtDock) {
+    return <span className={statusClassName}>{content}</span>;
+  }
+  return (
+    <a
+      className={statusClassName}
+      href={vesselWatchUrl ?? (location && locationToUrl(location))}
+    >
+      {content}
     </a>
   );
 };

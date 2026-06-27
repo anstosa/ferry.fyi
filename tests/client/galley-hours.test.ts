@@ -45,6 +45,57 @@ describe("getGalleyStatus", () => {
     ).toBe("closed");
   });
 
+  // flexible position match
+  it("matches vessel position numbers from string schedule payloads", () => {
+    expect(
+      getGalleyStatus({
+        route,
+        sailingTime: DateTime.fromISO("2026-06-24T09:00:00"),
+        slot: { ...slot, vesselPosition: "1" } as unknown as Slot,
+      })
+    ).toBe("open");
+  });
+
+  // docked in-service guard
+  it("allows a docked vessel to show open inside its service window", () => {
+    const dockedSlot = {
+      ...slot,
+      arrivalTime: DateTime.fromISO("2026-06-24T09:30:00").toSeconds(),
+      time: DateTime.fromISO("2026-06-24T09:00:00").toSeconds(),
+      vessel: { id: "vessel", isAtDock: true },
+    } as Slot;
+
+    expect(
+      getGalleyStatus({
+        currentTime: DateTime.fromISO("2026-06-24T09:15:00"),
+        route,
+        sailingTime: DateTime.fromISO("2026-06-24T09:00:00"),
+        schedule: [dockedSlot],
+        slot: dockedSlot,
+      })
+    ).toBe("open");
+  });
+
+  // after-service guard
+  it("marks a docked vessel closed after its scheduled service window", () => {
+    const dockedSlot = {
+      ...slot,
+      arrivalTime: DateTime.fromISO("2026-06-24T09:30:00").toSeconds(),
+      time: DateTime.fromISO("2026-06-24T09:00:00").toSeconds(),
+      vessel: { id: "vessel", isAtDock: true },
+    } as Slot;
+
+    expect(
+      getGalleyStatus({
+        currentTime: DateTime.fromISO("2026-06-24T22:30:00"),
+        route,
+        sailingTime: DateTime.fromISO("2026-06-24T09:00:00"),
+        schedule: [dockedSlot],
+        slot: dockedSlot,
+      })
+    ).toBe("closed");
+  });
+
   // missing data
   it("returns unknown without structured hours", () => {
     expect(

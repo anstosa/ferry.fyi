@@ -3,12 +3,12 @@ import { AnimatePresence } from "framer-motion";
 import { DateTime } from "luxon";
 import React, { ReactElement, useEffect, useState } from "react";
 import scrollIntoView from "scroll-into-view";
+import type { Route } from "shared/contracts/routes";
 import type {
   Schedule as ScheduleClass,
   Slot,
 } from "shared/contracts/schedules";
 import { isEmpty } from "shared/lib/arrays";
-import { values } from "shared/lib/objects";
 
 import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { InlineLoader } from "~/components/InlineLoader";
@@ -26,11 +26,12 @@ import {
 } from "./smallBoat";
 
 interface Props {
+  route?: Route;
   schedule: ScheduleClass | null;
   time: DateTime;
 }
 
-export const Schedule = ({ schedule, time }: Props): ReactElement => {
+export const Schedule = ({ route, schedule, time }: Props): ReactElement => {
   const { terminals } = useTerminals();
   const [currentElement, setCurrentElement] = useState<HTMLDivElement | null>(
     null
@@ -99,13 +100,6 @@ export const Schedule = ({ schedule, time }: Props): ReactElement => {
       if (!terminal) {
         return null;
       }
-      const route = values(terminal.routes)?.find(({ terminalIds }) => {
-        // selected route match
-        return (
-          terminalIds.includes(schedule.terminalId) &&
-          terminalIds.includes(schedule.mateId)
-        );
-      });
       const routeMaxVehicleCapacity = getRouteMaxVehicleCapacity(
         currentRouteMaxVehicleCapacity,
         route?.normalVehicleMaxCapacity
@@ -130,6 +124,7 @@ export const Schedule = ({ schedule, time }: Props): ReactElement => {
               isExpanded={slotTime === expanded?.time}
               location={terminal.location}
               onClick={() => toggleExpand(slot)}
+              terminalId={schedule.terminalId}
               schedule={slots}
               route={route}
               routeMaxVehicleCapacity={routeMaxVehicleCapacity}

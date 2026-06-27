@@ -1,21 +1,36 @@
-// format rounded length
-export const formatVesselLength = (length?: string): string | null => {
-  // missing length guard
-  if (!length) {
-    return null;
-  }
-  const feetMatch = length.match(/([\d.]+)\s*'/);
-  const inchMatch = length.match(/([\d.]+)\s*"/);
-  // feet-and-inches guard
-  if (feetMatch) {
-    const feet = Number(feetMatch[1]);
-    const inches = inchMatch ? Number(inchMatch[1]) : 0;
-    return `${Math.ceil(feet + inches / 12)} ft`;
-  }
-  const numericLength = Number.parseFloat(length);
-  // numeric fallback guard
-  if (!Number.isNaN(numericLength)) {
-    return `${Math.ceil(numericLength)} ft`;
-  }
-  return length;
+import type { Vessel } from "shared/contracts/vessels";
+
+export interface VesselProfileStats {
+  passengerCapacityLabel: string;
+  regularVehicleCapacity: number;
+  tallVehicleCapacity: number;
+  vehicleCapacity: number;
+  vesselClassLabel: string;
+}
+
+// build vessel profile labels
+export const getVesselProfileStats = (
+  vessel: Vessel,
+  assetClassName?: string
+): VesselProfileStats => {
+  const passengerCapacity = vessel.passengerCapacity ?? NaN;
+  const tallVehicleCapacity = vessel.tallVehicleCapacity ?? 0;
+  const vehicleCapacity = vessel.vehicleCapacity ?? 0;
+  const vesselClassName = assetClassName ?? vessel.classId;
+  // passenger fallback
+  const passengerCapacityLabel = Number.isFinite(passengerCapacity)
+    ? passengerCapacity.toLocaleString()
+    : "Unknown";
+  // class fallback
+  const vesselClassLabel = vessel.yearBuilt
+    ? `${vesselClassName || "Unknown"} (${vessel.yearBuilt})`
+    : vesselClassName || "Unknown";
+
+  return {
+    passengerCapacityLabel,
+    regularVehicleCapacity: vehicleCapacity - tallVehicleCapacity,
+    tallVehicleCapacity,
+    vehicleCapacity,
+    vesselClassLabel,
+  };
 };

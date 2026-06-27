@@ -123,7 +123,7 @@ export const RouteSelector = (props: Props): ReactElement => {
               <div className="button-group mt-5">
                 <Link
                   className={clsx(
-                    "button button-group-left",
+                    "button button-group-left alert__button-primary",
                     "truncate",
                     "bg-blue-dark border-transparent text-white",
                     "hover:bg-blue-darkest"
@@ -153,7 +153,7 @@ export const RouteSelector = (props: Props): ReactElement => {
             <div className="button-group mt-5">
               <button
                 className={clsx(
-                  "button button-group-left",
+                  "button button-group-left alert__button-primary",
                   "truncate",
                   "bg-blue-dark border-transparent text-white",
                   "hover:bg-blue-darkest"

@@ -40,6 +40,7 @@ interface HistoricalWeatherObservation {
   precipitationMm: number | null;
   temperatureC: number | null;
   terminalId: string;
+  windGustKmh: number | null;
   windSpeedKmh: number | null;
 }
 
@@ -223,6 +224,7 @@ export const loadHistoricalWeatherSamples = async (): Promise<
       "precipitationMm",
       "temperatureC",
       "terminalId",
+      "windGustKmh",
       "windSpeedKmh",
     ],
     raw: true,
@@ -265,6 +267,7 @@ export const loadHistoricalWeatherSamples = async (): Promise<
         cloudCoverPercent: observation.cloudCoverPercent,
         precipitationMm: observation.precipitationMm,
         temperatureC: observation.temperatureC,
+        windGustKmh: observation.windGustKmh,
         windSpeedKmh: observation.windSpeedKmh,
       },
     });
@@ -340,6 +343,7 @@ export const calculateAndPersistWeatherAdjustments = async (): Promise<{
           o."cloudCoverPercent",
           o."precipitationMm",
           o."temperatureC",
+          o."windGustKmh",
           o."windSpeedKmh"
         FROM "Crossings" c
         INNER JOIN route_baselines b
@@ -370,6 +374,12 @@ export const calculateAndPersistWeatherAdjustments = async (): Promise<{
               WHEN samples."windSpeedKmh" < 15 THEN 'wind:calm'
               WHEN samples."windSpeedKmh" < 35 THEN 'wind:breezy'
               ELSE 'wind:windy'
+            END),
+            (CASE
+              WHEN samples."windGustKmh" IS NULL THEN 'gust:unknown'
+              WHEN samples."windGustKmh" < 25 THEN 'gust:calm'
+              WHEN samples."windGustKmh" < 50 THEN 'gust:breezy'
+              ELSE 'gust:windy'
             END),
             (CASE
               WHEN samples."cloudCoverPercent" IS NULL THEN 'cloud:unknown'

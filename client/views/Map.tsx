@@ -1,3 +1,5 @@
+import clsx from "clsx";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   LngLatBounds,
   Map as Mapbox,
@@ -6,12 +8,14 @@ import {
 } from "mapbox-gl";
 import React, {
   CSSProperties,
+  MouseEvent,
   ReactElement,
   useEffect,
   useRef,
   useState,
 } from "react";
 import { createRoot } from "react-dom/client";
+import type { Route } from "shared/contracts/routes";
 import type { Terminal } from "shared/contracts/terminals";
 import type { Vessel } from "shared/contracts/vessels";
 import { isEmpty } from "shared/lib/arrays";
@@ -19,7 +23,11 @@ import { isNull } from "shared/lib/identity";
 
 import { useGeo } from "~/lib/geo";
 import { knotsToMph } from "~/lib/speed";
+import { getSlug, useTerminals } from "~/lib/terminals";
 import { isDark } from "~/lib/theme";
+import { useWindowSize } from "~/lib/window";
+import CaretDownIcon from "~/static/images/icons/solid/caret-down.svg";
+import CaretUpIcon from "~/static/images/icons/solid/caret-up.svg";
 import UserLocationIcon from "~/static/images/icons/solid/dot-circle.svg";
 import VesselIcon from "~/static/images/icons/solid/location-arrow.svg";
 import MapPinIcon from "~/static/images/icons/solid/map-pin.svg";
@@ -31,6 +39,7 @@ const DEFAULT_TOP = 47;
 const DEFAULT_LEFT = -121;
 const DEFAULT_BOTTOM = 49;
 const DEFAULT_RIGHT = -123;
+const ABBREVIATION_BREAKPOINT = 350;
 const LABEL_PLACEMENTS = [
   "top-full left-1/2 mt-1 -translate-x-1/2",
   "bottom-full left-1/2 mb-1 -translate-x-1/2",
@@ -39,8 +48,9 @@ const LABEL_PLACEMENTS = [
 ];
 
 interface Props {
-  terminal: Terminal | null;
   mate: Terminal | null;
+  setRoute: (target: string, mate?: string) => void;
+  terminal: Terminal | null;
   vessels: Vessel[];
 }
 
@@ -57,11 +67,182 @@ interface RenderedMarker {
   root: ReturnType<typeof createRoot>;
 }
 
+interface RouteOption {
+  mate: Terminal;
+  route: Route;
+  terminal: Terminal;
+}
+
+interface RouteDropdownProps {
+  isOpen: boolean;
+  onSelect: (event: MouseEvent, option: RouteOption) => void;
+  options: RouteOption[];
+  selectedLabel: string;
+  setOpen: (state: boolean) => void;
+}
+
 type LocatedVessel = Vessel & { location: NonNullable<Vessel["location"]> };
 
 // stagger labels
 const getLabelPlacement = (index: number): string =>
   LABEL_PLACEMENTS[index % LABEL_PLACEMENTS.length];
+
+// route option label
+const getRouteLabel = (route: Route): string => route.description;
+
+// route option short label
+const getRouteShortLabel = (route: Route): string => route.abbreviation;
+
+// active route lookup
+const getActiveRoute = (
+  terminal: Terminal | null,
+  mate: Terminal | null
+): Route | null => {
+  // missing route context guard
+  if (!terminal || !mate) {
+    return null;
+  }
+  return (
+    Object.values(terminal.routes ?? {}).find(({ terminalIds }) => {
+      // selected route match
+      return terminalIds.includes(terminal.id) && terminalIds.includes(mate.id);
+    }) ?? null
+  );
+};
+
+// collect unique route choices
+const getRouteOptions = (
+  terminals: Terminal[],
+  activeRouteId?: string
+): RouteOption[] => {
+  const terminalsById = Object.fromEntries(
+    terminals.map((terminal) => {
+      return [terminal.id, terminal];
+    })
+  );
+  const routesById = new globalThis.Map<string, RouteOption>();
+  // terminal route loop
+  terminals.forEach((terminal) => {
+    // route loop
+    Object.values(terminal.routes ?? {}).forEach((route) => {
+      // current route guard
+      if (route.id === activeRouteId) {
+        return;
+      }
+      // duplicate route guard
+      if (routesById.has(route.id)) {
+        return;
+      }
+      const routeTerminals = route.terminalIds
+        .map((terminalId) => {
+          return terminalsById[terminalId];
+        })
+        .filter((terminal): terminal is Terminal => Boolean(terminal));
+      // incomplete route guard
+      if (routeTerminals.length < 2) {
+        return;
+      }
+      routesById.set(route.id, {
+        mate: routeTerminals[1],
+        route,
+        terminal: routeTerminals[0],
+      });
+    });
+  });
+  return Array.from(routesById.values()).sort((left, right) => {
+    // alphabetical route order
+    return getRouteLabel(left.route).localeCompare(getRouteLabel(right.route));
+  });
+};
+
+// route dropdown render
+const RouteDropdown = ({
+  isOpen,
+  onSelect,
+  options,
+  selectedLabel,
+  setOpen,
+}: RouteDropdownProps): ReactElement => {
+  const { width } = useWindowSize();
+  const selectedShortLabel = selectedLabel
+    .split(" / ")
+    .map((part) => {
+      return part.trim()[0];
+    })
+    .join("/");
+  const selectedText =
+    width > ABBREVIATION_BREAKPOINT ? selectedLabel : selectedShortLabel;
+  // empty options guard
+  if (isEmpty(options)) {
+    return <span className="truncate">{selectedText}</span>;
+  }
+  return (
+    <div className="relative min-w-0 cursor-pointer">
+      <div
+        className="flex min-w-0 items-center"
+        onClick={() => setOpen(!isOpen)}
+        aria-label="Expand Routes"
+      >
+        <span className="truncate">{selectedText}</span>
+        <div
+          className={clsx(
+            "absolute top-full -mt-1 flex w-full justify-center",
+            "text-lighten-medium"
+          )}
+        >
+          {isOpen ? <CaretUpIcon /> : <CaretDownIcon />}
+        </div>
+      </div>
+      {/* route menu backdrop */}
+      {isOpen && (
+        <div
+          className="fixed top-0 left-0 h-screen w-screen cursor-default"
+          onClick={() => setOpen(false)}
+        />
+      )}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            className={clsx(
+              "absolute top-full left-1/2 z-30 -translate-x-1/2",
+              "max-h-[calc(100vh-4rem)] overflow-y-auto scrolling-touch",
+              "bg-green-dark py-2 shadow-lg"
+            )}
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: "easeInOut", type: "tween" }}
+          >
+            <ul>
+              {options.map((option) => {
+                const { route } = option;
+                return (
+                  <li key={route.id}>
+                    <button
+                      className={clsx(
+                        "block w-full cursor-pointer whitespace-nowrap",
+                        "py-2 px-8 text-left hover:bg-lighten-high"
+                      )}
+                      type="button"
+                      onClick={(event) => onSelect(event, option)}
+                    >
+                      <span className="max-[350px]:hidden">
+                        {getRouteLabel(route)}
+                      </span>
+                      <span className="hidden max-[350px]:inline">
+                        {getRouteShortLabel(route)}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
 
 // marker label render
 const renderMarkerLabel = ({
@@ -131,11 +312,23 @@ const getVesselLabel = (vessel: Vessel): string => {
   return `${vessel.name} · ${speedMph} mph`;
 };
 
-export const Map = ({ terminal, mate, vessels }: Props): ReactElement => {
+export const Map = ({
+  mate,
+  setRoute,
+  terminal,
+  vessels,
+}: Props): ReactElement => {
   const mapRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<RenderedMarker[]>([]);
   const [map, setMap] = useState<Mapbox | null>(null);
+  const [isRouteOpen, setRouteOpen] = useState<boolean>(false);
   const [userLocation] = useGeo();
+  const { terminals } = useTerminals();
+  const activeRoute = getActiveRoute(terminal, mate);
+  const routeOptions = getRouteOptions(terminals, activeRoute?.id);
+  const routeLabel =
+    activeRoute?.description ??
+    (terminal && mate ? `${terminal.name} / ${mate.name}` : "Route");
 
   const updateMarkers = (): void => {
     // default coords based on Puget Sound
@@ -327,10 +520,23 @@ export const Map = ({ terminal, mate, vessels }: Props): ReactElement => {
             : []),
         ]}
       >
-        <span className="text-center flex-1">
-          {terminal && mate && `${terminal.name} to ${mate.name}`} Map
-        </span>
-        <div className="h-6 w-6 ml-4" />
+        <div className="min-w-0 flex-1" />
+        <div className="min-w-0 text-center">
+          <RouteDropdown
+            isOpen={isRouteOpen}
+            options={routeOptions}
+            selectedLabel={routeLabel}
+            setOpen={setRouteOpen}
+            onSelect={(event, option) => {
+              event.preventDefault();
+              setRouteOpen(false);
+              setRoute(getSlug(option.terminal.id), getSlug(option.mate.id));
+            }}
+          />
+        </div>
+        <span className="ml-2 shrink-0">Map</span>
+        <div className="min-w-0 flex-1" />
+        <div className="ml-4 h-6 w-6" />
       </Header>
       <main
         ref={mapRef}

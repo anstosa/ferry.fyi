@@ -1,16 +1,47 @@
+import type { Vessel } from "shared/contracts/vessels";
 import { describe, expect, it } from "vitest";
 
-import { formatVesselLength } from "../../client/views/Schedule/vesselProfile";
+import { getVesselProfileStats } from "../../client/views/Schedule/vesselProfile";
 
-// vessel profile formatting
-describe("vessel profile formatting", () => {
-  // feet and inches rounding
-  it("rounds vessel length up to the nearest whole foot", () => {
-    expect(formatVesselLength("362' 3\"")).toBe("363 ft");
+describe("vessel profile stats", () => {
+  // historical vessel fallback
+  it("handles historical placeholder vessels without full metadata", () => {
+    const stats = getVesselProfileStats({
+      abbreviation: "Hist",
+      id: "historical",
+      name: "Historical sailing",
+      speed: 0,
+      tallVehicleCapacity: 0,
+      vehicleCapacity: 139,
+      vesselWatchUrl: "",
+    } as Vessel);
+
+    expect(stats).toMatchObject({
+      passengerCapacityLabel: "Unknown",
+      regularVehicleCapacity: 139,
+      tallVehicleCapacity: 0,
+      vehicleCapacity: 139,
+      vesselClassLabel: "Unknown",
+    });
   });
 
-  // whole foot passthrough
-  it("drops inches from whole-foot lengths", () => {
-    expect(formatVesselLength("310'")).toBe("310 ft");
+  // class asset fallback
+  it("prefers asset class names and keeps build years", () => {
+    const stats = getVesselProfileStats(
+      {
+        classId: "Jumbo Mark II",
+        passengerCapacity: 2500,
+        tallVehicleCapacity: 20,
+        vehicleCapacity: 200,
+        yearBuilt: 1997,
+      } as Vessel,
+      "Olympic"
+    );
+
+    expect(stats).toMatchObject({
+      passengerCapacityLabel: "2,500",
+      regularVehicleCapacity: 180,
+      vesselClassLabel: "Olympic (1997)",
+    });
   });
 });

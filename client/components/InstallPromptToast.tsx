@@ -53,7 +53,7 @@ export const InstallPromptToast = (): ReactElement | null => {
       Get back to Ferry FYI easier by adding it to your homescreen
       <div className="button-group mt-5">
         <button
-          className="button button-group-left truncate bg-blue-dark border-transparent text-white hover:bg-blue-darkest"
+          className="button button-group-left alert__button-primary truncate bg-blue-dark border-transparent text-white hover:bg-blue-darkest"
           onClick={async () => {
             // trigger prompt
             await triggerInstallPrompt();

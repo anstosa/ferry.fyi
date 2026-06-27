@@ -7,21 +7,30 @@ import React, {
 } from "react";
 import ReactGA from "react-ga4";
 
+import { OnboardSailingBanner } from "~/components/OnboardSailingBanner";
 import { ReloadButton } from "~/components/ReloadButton";
 import MenuIcon from "~/static/images/icons/solid/bars.svg";
 import { Menu, ShareOptions } from "~/views/Menu";
 
 import { MenuItem } from "./Menu/MenuItem";
 
-const WrapHeader: FunctionComponent<PropsWithChildren> = ({ children }) => (
+interface WrapHeaderProps {
+  hasTopBanner: boolean;
+}
+
+const WrapHeader: FunctionComponent<PropsWithChildren<WrapHeaderProps>> = ({
+  children,
+  hasTopBanner,
+}) => (
   <header
     className={clsx(
-      "fixed top-0 inset-x-0 z-20",
+      "fixed inset-x-0 z-20",
       "bg-[linear-gradient(135deg,#016f52_0%,#016f52_68%,#004d61_100%)] text-white",
       "w-full border-b border-[rgba(255,255,255,0.12)] shadow-lg h-16",
       "flex justify-center",
       "pr-safe-right pl-safe-left mt-safe-top"
     )}
+    style={{ top: hasTopBanner ? "80px" : 0 }}
   >
     <div className={clsx("w-full max-w-6xl p-4", "flex items-center")}>
       {children}
@@ -40,6 +49,7 @@ export const Header: FunctionComponent<PropsWithChildren<Props>> = (props) => {
   const { isReloading, reload, children, share, items } = props;
   const [isMenuOpen, setMenuOpen] = useState<boolean>(false);
   const [isFakeReloading, setFakeReloading] = useState<boolean>(false);
+  const [hasTopBanner, setHasTopBanner] = useState<boolean>(false);
 
   const openNav = () => {
     setMenuOpen(true);
@@ -110,13 +120,15 @@ export const Header: FunctionComponent<PropsWithChildren<Props>> = (props) => {
         share={share}
         items={items}
       />
-      <WrapHeader>
+      <OnboardSailingBanner onVisibilityChange={setHasTopBanner} />
+      <WrapHeader hasTopBanner={hasTopBanner}>
         {renderMenuToggle()}
         {children}
       </WrapHeader>
       <div
         className={clsx(
-          "h-16 w-full flex-shrink-0",
+          hasTopBanner ? "h-[144px]" : "h-16",
+          "w-full flex-shrink-0",
           "bg-day-normal-light dark:bg-night-normal-dark"
         )}
       />

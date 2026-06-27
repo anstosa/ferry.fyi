@@ -1,38 +1,45 @@
 import clsx from "clsx";
 import { AnimatePresence, motion } from "framer-motion";
-import { DateTime } from "luxon";
 import React, {
   CSSProperties,
   ReactElement,
   ReactNode,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
+import type { CameraFrameStatus } from "shared/contracts/cameraFrames";
 import type { Camera } from "shared/contracts/cameras";
 import type { Terminal } from "shared/contracts/terminals";
 import { isNull } from "shared/lib/identity";
 
 import { InlineLoader } from "~/components/InlineLoader";
+import { getCameraFrames } from "~/lib/cameras";
 import { locationToUrl } from "~/lib/maps";
 import { useScrollPosition } from "~/lib/scroll";
+import { getSlug, useTerminals } from "~/lib/terminals";
 import CarIcon from "~/static/images/icons/solid/car.svg";
+import LocationIcon from "~/static/images/icons/solid/location.svg";
 import MapIcon from "~/static/images/icons/solid/map.svg";
 import PinIcon from "~/static/images/icons/solid/map-marker.svg";
 import ShipIcon from "~/static/images/icons/solid/ship.svg";
 import WSDOTIcon from "~/static/images/icons/wsdot.svg";
 
 import { ReloadButton } from "../components/ReloadButton";
+import { TerminalDropdown } from "../components/TerminalDropdown";
 import { Header } from "./Header";
 
 interface Props {
   mate?: Terminal | null;
+  setRoute: (target: string, mate?: string) => void;
   terminal: Terminal | null;
 }
 
 interface CameraListProps {
   mate?: Terminal | null;
+  setRoute: Props["setRoute"];
   terminal: Terminal;
 }
 
@@ -44,12 +51,12 @@ interface CameraCountDetails {
 const CAMERA_REFRESH_MS = 10 * 1000;
 const NO_CAMERAS_MESSAGE = "This terminal does not have cameras";
 
-export const Cameras = ({ mate, terminal }: Props): ReactElement => {
+export const Cameras = ({ mate, setRoute, terminal }: Props): ReactElement => {
   // loading guard
   if (!terminal) {
     return <InlineLoader>Loading cameras...</InlineLoader>;
   }
-  return <CameraList mate={mate} terminal={terminal} />;
+  return <CameraList mate={mate} setRoute={setRoute} terminal={terminal} />;
 };
 
 // resolve camera count
@@ -84,7 +91,11 @@ const formatSailingCount = (
 };
 
 // render loaded terminal
-const CameraList = ({ mate, terminal }: CameraListProps): ReactElement => {
+const CameraList = ({
+  mate,
+  setRoute,
+  terminal,
+}: CameraListProps): ReactElement => {
   const { cameras } = terminal;
   const hasCameras = cameras.length > 0;
   const activeRoute = mate
@@ -97,15 +108,23 @@ const CameraList = ({ mate, terminal }: CameraListProps): ReactElement => {
     : null;
   const sailingVehicleCapacity =
     activeRoute?.normalVehicleCapacity ?? activeRoute?.averageVehicleCapacity;
-  const [cameraTime, setCameraTime] = useState<number>(
-    DateTime.local().toSeconds()
-  );
+  const [frameStatuses, setFrameStatuses] = useState<
+    Record<string, CameraFrameStatus>
+  >({});
   const [timelineStart, setTimelineStart] = useState<number | null>(null);
   const [loadedImages, setLoadedImages] = useState<Record<string, boolean>>({});
   const firstMarker = useRef<HTMLDivElement | null>(null);
   const timeline = useRef<HTMLDivElement | null>(null);
   const wrapper = useRef<HTMLDivElement | null>(null);
   const { y } = useScrollPosition(wrapper);
+  const [isTerminalOpen, setTerminalOpen] = useState<boolean>(false);
+  const { terminals, closestTerminal } = useTerminals();
+  // memoize camera ids
+  const cameraIds = useMemo(() => {
+    return cameras.map(({ id }) => {
+      return id;
+    });
+  }, [cameras]);
 
   // align timeline rail
   const updateTimelineStart = useCallback((): void => {
@@ -120,16 +139,26 @@ const CameraList = ({ mate, terminal }: CameraListProps): ReactElement => {
     setTimelineStart(markerBox.top - containerBox.top);
   }, []);
 
-  // refresh camera images
+  // refresh frame metadata
+  const refreshFrameStatuses = useCallback(async (): Promise<void> => {
+    // empty camera guard
+    if (cameraIds.length === 0) {
+      return;
+    }
+    setFrameStatuses(await getCameraFrames(cameraIds));
+  }, [cameraIds]);
+
+  // poll frame metadata
   useEffect(() => {
+    refreshFrameStatuses().catch(console.error);
     const interval = window.setInterval(() => {
-      setCameraTime(DateTime.local().toSeconds());
+      refreshFrameStatuses().catch(console.error);
     }, CAMERA_REFRESH_MS);
     return () => {
       // remove refresh interval
       window.clearInterval(interval);
     };
-  }, []);
+  }, [refreshFrameStatuses]);
 
   // recalculate rail start
   useEffect(() => {
@@ -145,7 +174,10 @@ const CameraList = ({ mate, terminal }: CameraListProps): ReactElement => {
     };
   }, [updateTimelineStart]);
 
-  const reload = () => setCameraTime(DateTime.local().toSeconds());
+  // manual freshness check
+  const reload = (): void => {
+    refreshFrameStatuses().catch(console.error);
+  };
 
   // track image load
   const markImageLoaded = (imageKey: string): void => {
@@ -156,8 +188,14 @@ const CameraList = ({ mate, terminal }: CameraListProps): ReactElement => {
   const renderCamera = (camera: Camera, index: number): ReactNode => {
     const { id, title, image, location, owner } = camera;
     const mapsUrl = locationToUrl(location);
-    const imageKey = `${id}-${cameraTime}`;
+    const frameStatus = frameStatuses[id];
+    const frameToken = frameStatus?.frameToken ?? null;
+    const isStale = frameStatus?.isStale ?? false;
+    const imageKey = `${id}-${frameToken ?? "initial"}`;
     const imageLoaded = loadedImages[imageKey] ?? false;
+    const imageSource = frameToken
+      ? `${image.url}?frame=${encodeURIComponent(frameToken)}`
+      : image.url;
     const isFirst = index === 0;
     const markerRef = isFirst ? firstMarker : undefined;
     const { count: carCount, label: carCountLabel } =
@@ -170,16 +208,17 @@ const CameraList = ({ mate, terminal }: CameraListProps): ReactElement => {
       <li className={clsx("flex flex-col", "relative")} key={id}>
         <div
           className={clsx(
-            "w-full max-w-[480px] overflow-hidden rounded-lg border shadow-sm",
+            "group relative w-full max-w-[480px] overflow-hidden rounded-lg border shadow-sm",
             "border-[rgba(0,0,0,0.08)] bg-night-normal-light",
             "dark:border-[rgba(255,255,255,0.08)] dark:bg-night-normal-dark"
           )}
         >
           <img
-            src={`${image.url}?${cameraTime}`}
+            src={imageSource}
             className={clsx(
-              "block w-full max-w-[480px]",
+              "block w-full max-w-[480px] transition-[filter,opacity]",
               imageLoaded ? "h-auto" : "h-[300px] opacity-0",
+              isStale && "blur-sm group-hover:blur-none",
               owner?.name && "border border-[rgba(0,0,0,0.08)]"
             )}
             alt={`Traffic Camera: ${title}`}
@@ -191,6 +230,18 @@ const CameraList = ({ mate, terminal }: CameraListProps): ReactElement => {
               }
             }}
           />
+          {/* stale frame warning */}
+          {isStale && (
+            <div
+              className={clsx(
+                "absolute inset-0 flex items-center justify-center p-4 text-center",
+                "bg-[rgba(0,0,0,0.55)] text-sm font-bold text-white",
+                "transition-opacity group-hover:opacity-0"
+              )}
+            >
+              Camera not updating. Hover to show anyway.
+            </div>
+          )}
         </div>
         <span className="relative mt-3 mb-2 flex flex-col gap-1 px-1 text-lg font-bold">
           <div
@@ -264,7 +315,34 @@ const CameraList = ({ mate, terminal }: CameraListProps): ReactElement => {
             : []),
         ]}
       >
-        <span className="text-center flex-1">{terminal.name} Cameras</span>
+        <div className="flex-1 min-w-0" />
+        <div className="min-w-0 text-center">
+          <TerminalDropdown
+            terminals={terminals
+              .filter(({ id }) => {
+                // current terminal guard
+                return id !== terminal.id;
+              })
+              .map((terminal) => {
+                return {
+                  ...(terminal.id === closestTerminal?.id && {
+                    Icon: LocationIcon,
+                  }),
+                  terminal,
+                };
+              })}
+            selected={terminal}
+            isOpen={isTerminalOpen}
+            setOpen={setTerminalOpen}
+            onSelect={(event, selectedTerminal) => {
+              event.preventDefault();
+              setTerminalOpen(false);
+              setRoute(getSlug(selectedTerminal.id));
+            }}
+          />
+        </div>
+        <span className="ml-2 shrink-0">Cameras</span>
+        <div className="flex-1 min-w-0" />
         <ReloadButton
           onClick={() => reload()}
           ariaLabel="Reload Cameras"

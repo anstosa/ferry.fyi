@@ -43,6 +43,13 @@ describe("schedule color tokens", () => {
     );
   });
 
+  // night forecast capacity text
+  it("uses contrast-safe light-mode night capacity text", () => {
+    expect(getScheduleSpaceClassName("night", "normal")).toContain(
+      "text-[#1f5664]"
+    );
+  });
+
   // full capacity text
   it("uses full day badge text tokens", () => {
     expect(getScheduleSpaceClassName("day", "full")).toContain(

@@ -186,7 +186,9 @@
     "start": "node scripts/start-dev.js",
     "start:dev": "node scripts/start-dev.js",
     "weather:backfill": "cd server && node ../scripts/register-esbuild.js scripts/backfillWeather.ts",
-    "weather:calculate-adjustments": "cd server && node ../scripts/register-esbuild.js scripts/calculateWeatherAdjustments.ts"
+    "weather:calculate-adjustments": "cd server && node ../scripts/register-esbuild.js scripts/calculateWeatherAdjustments.ts",
+    "tides:backfill": "cd server && node ../scripts/register-esbuild.js scripts/backfillTides.ts",
+    "tides:update-forecasts": "cd server && node ../scripts/register-esbuild.js scripts/updateTideForecasts.ts"
   },
   "resolutions": {
     "@babel/helper-remap-async-to-generator": "7.29.7",

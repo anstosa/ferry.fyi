@@ -31,6 +31,7 @@ export interface WeatherConditions {
   cloudCoverPercent: number | null;
   precipitationMm: number | null;
   temperatureC: number | null;
+  windGustKmh: number | null;
   windSpeedKmh: number | null;
 }
 
@@ -99,6 +100,23 @@ export const getWindBucket = (windSpeedKmh: number | null): string => {
   return "wind:windy";
 };
 
+// bucket gusts
+export const getGustBucket = (windGustKmh: number | null): string => {
+  // missing gusts
+  if (windGustKmh === null) {
+    return "gust:unknown";
+  }
+  // calm gusts
+  if (windGustKmh < 25) {
+    return "gust:calm";
+  }
+  // noticeable gusts
+  if (windGustKmh < 50) {
+    return "gust:breezy";
+  }
+  return "gust:windy";
+};
+
 // bucket clouds
 export const getCloudBucket = (cloudCoverPercent: number | null): string => {
   // missing cloud cover
@@ -137,6 +155,7 @@ export const getTemperatureBucket = (temperatureC: number | null): string => {
 export const getWeatherBuckets = (weather: WeatherConditions): string[] => [
   getPrecipitationBucket(weather.precipitationMm),
   getWindBucket(weather.windSpeedKmh),
+  getGustBucket(weather.windGustKmh),
   getCloudBucket(weather.cloudCoverPercent),
   getTemperatureBucket(weather.temperatureC),
 ];
@@ -227,6 +246,7 @@ const mapForecastWeather = (forecast: WeatherForecast): WeatherConditions => ({
   cloudCoverPercent: forecast.cloudCoverPercent,
   precipitationMm: forecast.precipitationMm,
   temperatureC: forecast.temperatureC,
+  windGustKmh: forecast.windGustKmh,
   windSpeedKmh: forecast.windSpeedKmh,
 });
 

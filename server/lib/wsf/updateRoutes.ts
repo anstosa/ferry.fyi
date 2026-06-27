@@ -1,4 +1,6 @@
 import logger from "heroku-logger";
+import type { Route as RouteClass } from "shared/contracts/routes";
+import wsfCore from "shared/data/wsf-core.json";
 
 import { Route } from "~/models/Route";
 import { WSF } from "~/typings/wsf";
@@ -19,6 +21,12 @@ const getRouteApi = (
   date: string = toWsfDate()
 ): string =>
   `${API_SCHEDULE}/routedetails/${date}/${departingId}/${arrivingId}`;
+const staticRoutes = wsfCore.routes as Record<string, Partial<RouteClass>>;
+
+// merge static route metadata
+const getStaticRouteData = (routeId: string): Partial<RouteClass> => {
+  return staticRoutes[routeId] ?? {};
+};
 
 export const updateRoutes = async (
   date: string = toWsfDate()
@@ -48,19 +56,18 @@ export const updateRoutes = async (
         if (!routeData) {
           return null;
         }
+        const routeId = String(routeData.RouteID);
         const data = {
-          id: String(routeData.RouteID),
+          ...getStaticRouteData(routeId),
+          id: routeId,
           abbreviation: routeData.RouteAbbrev,
           description: routeData.Description,
           crossingTime: Number(routeData.CrossingTime),
         };
-        const [route, wasCreated] = Route.getOrCreate(
-          String(routeData.RouteID),
-          {
-            ...data,
-            terminalIds: [departingId, arrivingId],
-          }
-        );
+        const [route, wasCreated] = Route.getOrCreate(routeId, {
+          ...data,
+          terminalIds: [departingId, arrivingId],
+        });
         // existing route guard
         if (!wasCreated) {
           route.update({

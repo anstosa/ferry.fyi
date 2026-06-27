@@ -16,6 +16,7 @@ import { registerRoute } from "workbox-routing";
 import {
   CacheFirst,
   NetworkFirst,
+  NetworkOnly,
   StaleWhileRevalidate,
 } from "workbox-strategies";
 
@@ -92,6 +93,9 @@ const CACHE_FONTS = "fonts";
 const CACHE_OTHER = "other";
 
 // cache all first-party requests
+
+// keep camera freshness live
+registerRoute(new RegExp("/api/cameras/frames.*"), new NetworkOnly());
 
 // Prefer faster load for rarely changing data
 registerRoute(

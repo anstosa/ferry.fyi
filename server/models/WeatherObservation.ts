@@ -12,6 +12,7 @@ export class WeatherObservation extends Model {
   temperatureC!: number | null;
   terminalId!: string;
   timezone!: string | null;
+  windGustKmh!: number | null;
   windSpeedKmh!: number | null;
 }
 
@@ -26,6 +27,7 @@ WeatherObservation.init(
     temperatureC: DataTypes.FLOAT,
     terminalId: DataTypes.STRING,
     timezone: DataTypes.STRING,
+    windGustKmh: DataTypes.FLOAT,
     windSpeedKmh: DataTypes.FLOAT,
   },
   { sequelize: db, modelName: "WeatherObservation" }

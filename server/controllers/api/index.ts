@@ -3,6 +3,7 @@ import { Router } from "express";
 import { getWsfStatus } from "~/lib/wsf/api";
 
 import { assignAuthUser, requireAuth } from "./auth";
+import { cameraRouter } from "./cameras";
 import { debugRouter } from "./debug";
 import { scheduleRouter } from "./schedule";
 import { terminalRouter } from "./terminals";
@@ -25,6 +26,7 @@ apiRouter.use((request, response, next) => {
   next();
 });
 
+apiRouter.use("/cameras", cameraRouter);
 apiRouter.use("/vessels", vesselRouter);
 apiRouter.use("/terminals", terminalRouter);
 apiRouter.use("/schedule", scheduleRouter);

@@ -75,6 +75,7 @@ const upsertForecasts = async (
       temperatureC: record.temperatureC,
       timezone: record.timezone,
       terminalId,
+      windGustKmh: record.windGustKmh,
       windSpeedKmh: record.windSpeedKmh,
     })),
     {
@@ -87,6 +88,7 @@ const upsertForecasts = async (
         "precipitationMm",
         "temperatureC",
         "timezone",
+        "windGustKmh",
         "windSpeedKmh",
         "updatedAt",
       ],

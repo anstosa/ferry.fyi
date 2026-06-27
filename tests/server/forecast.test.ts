@@ -173,6 +173,34 @@ describe("forecast estimates", () => {
     expect(schedule.slots[0].estimate.driveUpCapacity).toBeGreaterThan(20);
   });
 
+  // vessel capacity normalization
+  it("forecasts car counts instead of fullness percentages across boat sizes", async () => {
+    const schedule = createSchedule({
+      vessel: {
+        id: "small-vessel",
+        tallVehicleCapacity: 0,
+        vehicleCapacity: 120,
+      },
+    });
+    scheduleModel.getAll.mockReturnValue({ [schedule.key]: schedule });
+    crossingModel.findAll.mockResolvedValue([
+      createCrossing({
+        departureTime: toSeconds("2026-06-14T12:00:00"),
+        driveUpCapacity: 100,
+        reservableCapacity: 0,
+        totalCapacity: 200,
+      }),
+    ]);
+
+    await updateEstimates();
+
+    expect(schedule.slots[0].estimate).toMatchObject({
+      driveUpCapacity: 20,
+      reservableCapacity: 0,
+      source: "historical",
+    });
+  });
+
   // holiday behavior
   it("weights matching holiday history over ordinary same-weekday history", async () => {
     const schedule = createSchedule({

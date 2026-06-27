@@ -13,6 +13,7 @@ const createSample = (input = {}) => ({
     cloudCoverPercent: 90,
     precipitationMm: 3,
     temperatureC: 5,
+    windGustKmh: 55,
     windSpeedKmh: 40,
   },
   ...input,

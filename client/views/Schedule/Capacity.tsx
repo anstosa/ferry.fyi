@@ -56,6 +56,7 @@ export const Capacity = ({
   } = slot;
 
   const { crossing } = slot;
+  const isCancelled = crossing?.isCancelled === true;
   const sailingContext = getScheduleSailingContext({ isDaylight });
 
   useEffect(() => {
@@ -163,17 +164,27 @@ export const Capacity = ({
   const isEstimateFull = (): boolean =>
     isCapacityFull({ percentFull: estimateFull, spacesLeft: estimateLeft });
 
-  const getCapacityDisplayFullness = (): number =>
-    getCapacityDisplayPercent({
+  const getCapacityDisplayFullness = (): number => {
+    // cancelled sailing guard
+    if (isCancelled) {
+      return 0;
+    }
+    return getCapacityDisplayPercent({
       isFull: isFull(),
       percentFull: percentFull ?? null,
     });
+  };
 
-  const getEstimateDisplayFullness = (): number =>
-    getCapacityDisplayPercent({
+  const getEstimateDisplayFullness = (): number => {
+    // cancelled sailing guard
+    if (isCancelled) {
+      return 0;
+    }
+    return getCapacityDisplayPercent({
       isFull: isEstimateFull(),
       percentFull: estimateFull,
     });
+  };
 
   const hasLiveCapacity = (): boolean =>
     Boolean(crossing && !isNil(percentFull));
@@ -432,6 +443,10 @@ export const Capacity = ({
   };
 
   const renderStatus = (): ReactElement | null => {
+    // cancelled sailing guard
+    if (isCancelled) {
+      return null;
+    }
     if (!crossing && !estimate) {
       return null;
     }
@@ -448,8 +463,9 @@ export const Capacity = ({
     );
   };
 
-  const showCapacity = hasLiveCapacity();
+  const showCapacity = hasLiveCapacity() || isCancelled;
   const showEstimate = Boolean(
+    !isCancelled &&
     !hasDeparted &&
     !(crossing && isFull()) &&
     !isNil(estimateFull) &&
@@ -459,7 +475,7 @@ export const Capacity = ({
     return null;
   }
 
-  const capacityIsFull = isFull();
+  const capacityIsFull = !isCancelled && isFull();
   const capacityDisplayFullness = getCapacityDisplayFullness();
   const estimateDisplayFullness = getEstimateDisplayFullness();
   const estimateReachesRowEnd = estimateDisplayFullness >= 100;

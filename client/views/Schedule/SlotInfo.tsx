@@ -8,8 +8,15 @@ import { isNull } from "shared/lib/identity";
 
 import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { isDuringDaylight } from "~/lib/daylight";
-import CalendarIcon from "~/static/images/icons/solid/calendar-alt.svg";
+import { vesselAssets } from "~/lib/generated/vesselAssets";
+import {
+  isLocalhostSimulationEnabled,
+  setSimulatedVessel,
+} from "~/lib/onboardSimulation";
+import { useTrackedVessel } from "~/lib/onboardTracking";
 import CarIcon from "~/static/images/icons/solid/car.svg";
+import CheckCircleIcon from "~/static/images/icons/solid/check-circle.svg";
+import ExclamationCircleIcon from "~/static/images/icons/solid/exclamation-circle.svg";
 import RulerIcon from "~/static/images/icons/solid/ruler-combined.svg";
 import ShipIcon from "~/static/images/icons/solid/ship.svg";
 import UsersIcon from "~/static/images/icons/solid/users.svg";
@@ -20,17 +27,17 @@ import { getGalleyStatus } from "./galleyHours";
 import { getCurrentSlot } from "./nowDivider";
 import { getProjectedTiming } from "./projectedTiming";
 import {
-  getLateTextClassName,
   getScheduleRowClassName,
   getScheduleRowState,
   getScheduleSailingContext,
 } from "./scheduleColors";
 import { isSmallBoatCapacity } from "./smallBoat";
 import { Status } from "./Status";
+import { getTidalCancellationRisk } from "./tidalCancellationRisk";
 import { Time } from "./Time";
-import { formatVesselLength } from "./vesselProfile";
+import { getVesselProfileStats } from "./vesselProfile";
 import { VesselStatus } from "./VesselStatus";
-import { getForecastLateText, isAfterCurrentSlot } from "./vesselStatus";
+import { getDelayCardModel } from "./vesselStatus";
 
 const SMALL_BOAT_ROW_LABEL_SAFE_WIDTH = 20;
 
@@ -44,6 +51,7 @@ interface Props {
   routeMaxVehicleCapacity?: number;
   schedule: Slot[];
   setElement: (element: HTMLDivElement) => void;
+  terminalId: string;
   time: DateTime;
 }
 
@@ -58,11 +66,19 @@ export const SlotInfo = (props: Props): ReactElement => {
     schedule,
     setElement,
     slot,
+    terminalId,
     time,
   } = props;
+  const [, setTrackedVesselId] = useTrackedVessel();
   const currentSlot = getCurrentSlot(schedule, time);
   const isNext = slot === currentSlot;
   const timing = getProjectedTiming({ schedule, slot });
+  const tidalCancellationRisk = getTidalCancellationRisk({
+    departureTerminalId: terminalId,
+    slot,
+  });
+  const isConfirmedCancelled = timing.isCancelled;
+  const hasTidalCancellationRisk = Boolean(tidalCancellationRisk);
   const hasDeparted = timing.departureTime.toMillis() < time.toMillis();
   const isDaylight = isDuringDaylight(
     DateTime.fromSeconds(slot.time),
@@ -80,8 +96,10 @@ export const SlotInfo = (props: Props): ReactElement => {
           100
         )
       : null;
-  const vesselVehicleCapacity =
-    slot.vessel.vehicleCapacity - slot.vessel.tallVehicleCapacity;
+  const vesselVehicleCapacity = Math.max(
+    0,
+    (slot.vessel.vehicleCapacity ?? 0) - (slot.vessel.tallVehicleCapacity ?? 0)
+  );
   const estimateSpacesLeft = slot.estimate
     ? slot.estimate.driveUpCapacity + (slot.estimate.reservableCapacity ?? 0)
     : null;
@@ -116,6 +134,43 @@ export const SlotInfo = (props: Props): ReactElement => {
 
   const wrapper = useRef<HTMLDivElement>(null);
 
+  // render cancellation frame
+  const renderCancellationFrame = (): ReactNode => {
+    // normal sailing guard
+    if (!isConfirmedCancelled && !hasTidalCancellationRisk) {
+      return null;
+    }
+    const isPastCancelled = isConfirmedCancelled && slot.hasPassed;
+    return (
+      <div
+        aria-hidden="true"
+        className={clsx(
+          "pointer-events-none absolute inset-1 z-20 rounded-xl",
+          "border-4 border-dotted",
+          isConfirmedCancelled
+            ? "border-red-dark dark:border-red-light"
+            : "border-late-light dark:border-late-dark",
+          isPastCancelled && "opacity-30"
+        )}
+      >
+        {/* cancelled stamp */}
+        {isConfirmedCancelled && (
+          <span
+            className={clsx(
+              "absolute left-1/2 top-1/2",
+              "-translate-x-1/2 -translate-y-1/2 -rotate-6",
+              "text-4xl font-black uppercase tracking-[0.25em]",
+              "text-red-dark opacity-30 dark:text-red-light",
+              "sm:text-5xl"
+            )}
+          >
+            CANCELLED
+          </span>
+        )}
+      </div>
+    );
+  };
+
   // expose row element
   useEffect(() => {
     // mounted ref guard
@@ -128,7 +183,7 @@ export const SlotInfo = (props: Props): ReactElement => {
     <section
       className={clsx(
         // align full stripes
-        "relative p-3 h-[84.85px]",
+        "relative isolate p-3 h-[84.85px]",
         "flex justify-between",
         "cursor-pointer"
       )}
@@ -136,6 +191,8 @@ export const SlotInfo = (props: Props): ReactElement => {
       onClick={onClick}
       aria-label={`${time.toLocaleString(DateTime.DATETIME_SHORT)} sailing`}
     >
+      {/* cancellation frame */}
+      {renderCancellationFrame()}
       <Capacity
         hasDeparted={hasDeparted}
         isDaylight={isDaylight}
@@ -194,56 +251,143 @@ export const SlotInfo = (props: Props): ReactElement => {
     </div>
   );
 
+  // render delay card
+  const renderDelayCard = (
+    delayCard: ReturnType<typeof getDelayCardModel>
+  ): ReactNode => {
+    const isOrange = delayCard.isLate;
+    const StatusIcon = isOrange ? ExclamationCircleIcon : CheckCircleIcon;
+    return (
+      <section
+        className={clsx(
+          "col-span-2 rounded-lg border p-3",
+          isOrange
+            ? [
+                "border-late-light bg-[#fff3e8] text-late-light",
+                "dark:border-late-dark dark:bg-late-dark/20 dark:text-late-dark",
+              ]
+            : [
+                "border-blue-medium bg-blue-lightest text-blue-dark",
+                "dark:border-blue-light dark:bg-blue-dark/30 dark:text-blue-light",
+              ]
+        )}
+      >
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 text-base font-bold leading-tight">
+            <StatusIcon className="h-5 w-5 shrink-0" />
+            <span>{delayCard.title}</span>
+          </div>
+          <dl className="mt-3 grid grid-cols-2 gap-2 text-xs">
+            {delayCard.signals.map(({ label, value }) => {
+              // delay signal row
+              return (
+                <div
+                  className="rounded bg-white/70 p-2 text-gray-darkest dark:bg-black/20 dark:text-white"
+                  key={label}
+                >
+                  <dt className="font-semibold uppercase tracking-wide text-gray-dark dark:text-gray-light">
+                    {label}
+                  </dt>
+                  <dd
+                    className={clsx(
+                      "mt-1 font-bold",
+                      value === "Unavailable" &&
+                        "text-gray-medium dark:text-gray-medium"
+                    )}
+                  >
+                    {value}
+                  </dd>
+                </div>
+              );
+            })}
+          </dl>
+        </div>
+      </section>
+    );
+  };
+
+  // render tidal risk card
+  const renderTidalRiskCard = (): ReactNode => {
+    // risk availability guard
+    if (!tidalCancellationRisk) {
+      return null;
+    }
+    return (
+      <section
+        className={clsx(
+          "col-span-2 rounded-lg border p-3",
+          "border-late-light bg-[#fff3e8] text-late-light",
+          "dark:border-late-dark dark:bg-late-dark/20 dark:text-late-dark"
+        )}
+      >
+        <div className="flex items-start gap-2">
+          <ExclamationCircleIcon className="mt-0.5 h-5 w-5 shrink-0" />
+          <div>
+            <div className="text-base font-bold leading-tight">
+              {tidalCancellationRisk.title}
+            </div>
+            <p className="mt-2 text-xs leading-snug text-gray-darkest dark:text-white">
+              {tidalCancellationRisk.explanation}
+            </p>
+          </div>
+        </div>
+      </section>
+    );
+  };
+
   // render details card
   const renderDetails = (): ReactNode => {
     const { vessel } = slot;
+    const { classId, hasGalley, hasWiFi, name } = vessel;
+    const vesselAsset = vesselAssets[vessel.id];
     const {
-      classId,
-      hasElevator,
-      hasGalley,
-      hasRestroom,
-      hasWiFi,
-      isAdaAccessible,
-      length,
-      name,
-      passengerCapacity,
+      passengerCapacityLabel,
+      regularVehicleCapacity,
       tallVehicleCapacity,
       vehicleCapacity,
-      yearBuilt,
-    } = vessel;
-    const regularVehicleCapacity = vehicleCapacity - tallVehicleCapacity;
-    const formattedLength = formatVesselLength(length);
-    const galleyStatus = getGalleyStatus({
-      route,
-      sailingTime: DateTime.fromSeconds(slot.time),
+      vesselClassLabel,
+    } = getVesselProfileStats(vessel, vesselAsset?.className ?? classId);
+    const delayCard = getDelayCardModel({
+      delayMins: timing.delayMins,
       slot,
     });
-    const amenityChips = [
-      hasGalley && {
-        label:
-          galleyStatus === "unknown"
-            ? "Galley"
-            : `Galley ${galleyStatus.toUpperCase()}`,
-        status: galleyStatus,
-      },
-      hasElevator && { label: "Elevator", status: "unknown" },
-      hasRestroom && { label: "Restroom", status: "unknown" },
-      hasWiFi && { label: "Wi-Fi", status: "unknown" },
-      isAdaAccessible && { label: "ADA", status: "unknown" },
-    ].filter(
-      (amenity): amenity is { label: string; status: typeof galleyStatus } => {
-        // available amenity guard
-        return Boolean(amenity);
-      }
-    );
-    // future forecast delay
-    const forecastLateText = isAfterCurrentSlot({
-      currentSlot,
+    const galleyStatus = getGalleyStatus({
+      currentTime: time,
+      route,
+      sailingTime: DateTime.fromSeconds(slot.time),
       schedule,
       slot,
-    })
-      ? getForecastLateText(timing.delayMins)
-      : null;
+    });
+    const galleyChipStatus =
+      hasGalley && galleyStatus === "open" ? "open" : "closed";
+    const galleyChipLabel = hasGalley
+      ? `Galley ${galleyChipStatus.toUpperCase()}`
+      : "NO Galley";
+    const amenityChips: Array<{
+      label: string;
+      status: typeof galleyStatus;
+    }> = [
+      {
+        label: galleyChipLabel,
+        status: galleyChipStatus,
+      },
+      {
+        label: hasWiFi ? "Wi-Fi ON" : "Wi-Fi OFF",
+        status: hasWiFi ? "open" : "closed",
+      },
+    ];
+    const canTrackBoat = Boolean(
+      isNext &&
+      vessel.gpsDelay &&
+      vessel.arrivingTerminalId &&
+      vessel.departingTerminalId
+    );
+    // track boat action
+    const trackBoat = (event: React.MouseEvent<HTMLButtonElement>): void => {
+      event.preventDefault();
+      event.stopPropagation();
+      setTrackedVesselId(vessel.id);
+    };
     // collapsed guard
     if (!isExpanded) {
       return null;
@@ -267,20 +411,25 @@ export const SlotInfo = (props: Props): ReactElement => {
         >
           <header
             className={clsx(
-              "relative p-4",
+              "relative overflow-hidden p-4",
               "bg-gradient-to-br from-blue-lightest via-white to-yellow-lightest",
               "dark:from-blue-darkest dark:via-gray-darkest dark:to-yellow-dark"
             )}
           >
-            <ShipIcon
-              className={clsx(
-                "absolute -right-3 -top-4",
-                "text-7xl opacity-10"
-              )}
-            />
+            {/* vessel image guard */}
+            {vesselAsset && (
+              <img
+                alt=""
+                className={clsx(
+                  "pointer-events-none absolute bottom-0 right-0 max-w-none translate-x-1/2",
+                  "max-h-[110%] w-full select-none object-contain object-left-bottom"
+                )}
+                src={vesselAsset.image}
+              />
+            )}
             <div className="relative">
               <div className="flex items-start justify-between gap-3">
-                <div>
+                <div className="max-w-[70%]">
                   {/* small boat guard */}
                   {isSmallBoat && (
                     <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -296,38 +445,49 @@ export const SlotInfo = (props: Props): ReactElement => {
                       </span>
                     </div>
                   )}
-                  <h3 className="text-2xl font-bold leading-tight">{name}</h3>
-                  <p className="mt-1 text-xs text-gray-dark dark:text-gray-light">
-                    Class {classId}
-                    {formattedLength ? ` · ${formattedLength}` : ""}
-                  </p>
-                </div>
-                {(isNext || forecastLateText) && (
-                  <ErrorBoundary
-                    className="m-0"
-                    fallbackTitle="Vessel status crashed"
-                    fallbackMessage="Live vessel status is unavailable for this sailing."
+                  <h3
+                    className="text-2xl font-bold leading-tight"
+                    onClick={(event) => {
+                      // ctrl-click guard
+                      if (!event.ctrlKey) {
+                        return;
+                      }
+                      // localhost simulation guard
+                      if (!isLocalhostSimulationEnabled()) {
+                        return;
+                      }
+                      event.preventDefault();
+                      event.stopPropagation();
+                      setSimulatedVessel(vessel.id);
+                    }}
                   >
-                    {/* next sailing live status */}
-                    {isNext ? (
+                    {name}
+                  </h3>
+                  <div className="mt-1 flex flex-wrap items-center gap-2">
+                    <ErrorBoundary
+                      className="m-0"
+                      fallbackTitle="Vessel status crashed"
+                      fallbackMessage="Live vessel status is unavailable for this sailing."
+                    >
+                      {/* live vessel status */}
                       <VesselStatus
-                        className="shrink-0 text-right font-medium"
-                        delayMins={timing.delayMins}
+                        className="block items-start text-left font-medium text-gray-dark dark:text-gray-light"
                         vessel={vessel}
                         time={time}
                       />
-                    ) : (
-                      <span
-                        className={clsx(
-                          "shrink-0 text-right text-sm font-bold",
-                          getLateTextClassName()
-                        )}
+                    </ErrorBoundary>
+                    {/* track boat guard */}
+                    {canTrackBoat && (
+                      <button
+                        className="link text-sm font-bold text-blue-dark dark:text-blue-light"
+                        type="button"
+                        onClick={trackBoat}
                       >
-                        {forecastLateText}
-                      </span>
+                        Track Boat
+                      </button>
                     )}
-                  </ErrorBoundary>
-                )}
+                  </div>
+                </div>
               </div>
               <div className="mt-3 flex w-full flex-wrap gap-2">
                 {amenityChips.map(({ label, status }) => {
@@ -354,22 +514,22 @@ export const SlotInfo = (props: Props): ReactElement => {
             </div>
           </header>
           <div className="grid grid-cols-2 gap-3 p-4">
+            {/* tidal risk card */}
+            {renderTidalRiskCard()}
+            {/* timing card */}
+            {!isConfirmedCancelled && renderDelayCard(delayCard)}
             {renderProfileStat(
               "Vehicle deck",
               `${vehicleCapacity} cars`,
               CarIcon
             )}
             {renderProfileStat(
-              "Regular / tall",
+              "Cars / Trucks",
               `${regularVehicleCapacity} / ${tallVehicleCapacity}`,
               RulerIcon
             )}
-            {renderProfileStat(
-              "Passengers",
-              passengerCapacity.toLocaleString(),
-              UsersIcon
-            )}
-            {renderProfileStat("Build year", yearBuilt, CalendarIcon)}
+            {renderProfileStat("Passengers", passengerCapacityLabel, UsersIcon)}
+            {renderProfileStat("Class", vesselClassLabel, ShipIcon)}
           </div>
         </article>
       </div>
@@ -384,6 +544,7 @@ export const SlotInfo = (props: Props): ReactElement => {
         "border-b",
         "border-[rgba(0,0,0,0.06)] dark:border-[rgba(255,255,255,0.06)]",
         "flex flex-col",
+        "relative",
         background
       )}
     >

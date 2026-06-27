@@ -1,6 +1,10 @@
 import logger from "heroku-logger";
 import { DateTime } from "luxon";
+import { values } from "shared/lib/objects";
 
+import { calculateGpsDelayForLeg, findGpsDelayLeg } from "~/lib/wsf/gpsDelay";
+import { Schedule } from "~/models/Schedule";
+import { Terminal } from "~/models/Terminal";
 import { Vessel } from "~/models/Vessel";
 import { WSF } from "~/typings/wsf";
 
@@ -83,26 +87,57 @@ export const updateVesselStatus = async (): Promise<any> => {
   if (!vessels) {
     return;
   }
+  const schedules = values(Schedule.getAll());
+  const terminals = values(Terminal.getAll());
+  const now = DateTime.local();
   vessels.forEach((VesselData) => {
     let vessel = Vessel.getByIndex(String(VesselData.VesselID));
     const departedTime = wsfDateToTimestamp(VesselData.LeftDock);
     const departureTime = wsfDateToTimestamp(VesselData.ScheduledDeparture);
     const estimatedArrivalTime = wsfDateToTimestamp(VesselData.Eta);
     let departureDelta: number | undefined;
+    // dock event delay
     if (departureTime && departedTime) {
       departureDelta = departedTime - departureTime;
     } else {
       departureDelta = vessel?.departureDelta;
     }
+    const gpsDelayLeg = findGpsDelayLeg({
+      arrivalTerminalId: VesselData.ArrivingTerminalID,
+      departureTerminalId: VesselData.DepartingTerminalID,
+      scheduledDepartureTime: departureTime,
+      schedules,
+      terminals,
+      vesselId: String(VesselData.VesselID),
+    });
+    const dockDelaySeconds =
+      departureTime && departedTime ? departedTime - departureTime : null;
+    const etaDelaySeconds =
+      gpsDelayLeg && estimatedArrivalTime
+        ? estimatedArrivalTime - gpsDelayLeg.scheduledArrivalTime
+        : null;
+    const gpsDelay = gpsDelayLeg
+      ? calculateGpsDelayForLeg({
+          dockDelaySeconds,
+          etaDelaySeconds,
+          leg: gpsDelayLeg,
+          now: now.toSeconds(),
+          vesselLocation: {
+            latitude: VesselData.Latitude,
+            longitude: VesselData.Longitude,
+          },
+        })
+      : null;
     let dockedTime: number | undefined;
     if (VesselData.AtDock && !vessel?.isAtDock) {
-      dockedTime = DateTime.local().toMillis();
+      dockedTime = now.toMillis();
     }
     const data = {
       arrivingTerminalId: VesselData.ArrivingTerminalID,
       departingTerminalId: VesselData.DepartingTerminalID,
       departedTime,
       departureDelta,
+      gpsDelay: gpsDelay ?? undefined,
       dockedTime,
       estimatedArrivalTime,
       heading: VesselData.Heading,

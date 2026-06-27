@@ -1,5 +1,23 @@
 import { MapPoint } from "./cameras";
 
+export type GpsDelayConfidence = "low" | "medium" | "high";
+
+export interface GpsDelaySignals {
+  dockDelaySeconds: number | null;
+  etaDelaySeconds: number | null;
+  progress: number;
+  scheduledArrivalTime: number;
+  scheduledDepartureTime: number;
+}
+
+export interface GpsDelayDetails {
+  confidence: GpsDelayConfidence;
+  delaySeconds: number;
+  explanation: string;
+  signals: GpsDelaySignals;
+  source: "gps";
+}
+
 export interface Vessel {
   abbreviation: string;
   arrivingTerminalId?: number;
@@ -8,6 +26,7 @@ export interface Vessel {
   classId: string;
   departedTime?: number;
   departureDelta?: number;
+  gpsDelay?: GpsDelayDetails;
   dockedTime?: number;
   estimatedArrivalTime?: number;
   hasCarDeckRestroom: boolean;

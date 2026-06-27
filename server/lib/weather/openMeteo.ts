@@ -13,6 +13,7 @@ export interface OpenMeteoWeatherRecord {
   temperatureC: number | null;
   timezone: string | null;
   time: number;
+  windGustKmh: number | null;
   windSpeedKmh: number | null;
 }
 
@@ -24,6 +25,7 @@ interface OpenMeteoHourlyResponse {
     precipitation?: Array<number | null>;
     temperature_2m?: Array<number | null>;
     time?: string[];
+    wind_gusts_10m?: Array<number | null>;
     wind_speed_10m?: Array<number | null>;
   };
   latitude: number;
@@ -36,6 +38,7 @@ interface ValidOpenMeteoHourly {
   precipitation: Array<number | null>;
   temperature_2m: Array<number | null>;
   time: string[];
+  wind_gusts_10m: Array<number | null>;
   wind_speed_10m: Array<number | null>;
 }
 
@@ -53,6 +56,7 @@ const HOURLY_VARIABLES = [
   "temperature_2m",
   "cloud_cover",
   "wind_speed_10m",
+  "wind_gusts_10m",
   "precipitation",
 ] as const;
 
@@ -112,6 +116,7 @@ export const normalizeOpenMeteoResponse = (
     temperatureC: readNullableNumber(hourly.temperature_2m, index),
     timezone: response.timezone ?? null,
     time: DateTime.fromISO(time, { zone: "America/Los_Angeles" }).toSeconds(),
+    windGustKmh: readNullableNumber(hourly.wind_gusts_10m, index),
     windSpeedKmh: readNullableNumber(hourly.wind_speed_10m, index),
   }));
 };

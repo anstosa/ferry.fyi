@@ -39,12 +39,10 @@ vi.mock("~/models/WeatherForecast", () => ({
   WeatherForecast: forecastModel,
 }));
 
-const { backfillWeatherObservations, createDateChunks } = await import(
-  "../../server/lib/weather/backfill"
-);
-const { resetWeatherForecastRefreshState, updateWeatherForecasts } = await import(
-  "../../server/lib/weather/updateForecasts"
-);
+const { backfillWeatherObservations, createDateChunks } =
+  await import("../../server/lib/weather/backfill");
+const { resetWeatherForecastRefreshState, updateWeatherForecasts } =
+  await import("../../server/lib/weather/updateForecasts");
 
 const toSeconds = (input: string): number =>
   DateTime.fromISO(input, { zone: "America/Los_Angeles" }).toSeconds();
@@ -74,6 +72,7 @@ const weatherRecord = {
   provider: "open-meteo",
   temperatureC: 12,
   time: toSeconds("2026-06-01T12:00:00"),
+  windGustKmh: 32,
   windSpeedKmh: 20,
 };
 
@@ -148,6 +147,7 @@ describe("weather ingestion", () => {
         expect.objectContaining({
           observedAt: weatherRecord.time,
           terminalId: "1",
+          windGustKmh: 32,
         }),
       ],
       expect.objectContaining({
@@ -163,7 +163,11 @@ describe("weather ingestion", () => {
       zone: "America/Los_Angeles",
     });
 
-    const first = await updateWeatherForecasts({ fetchWeather, now, ttlHours: 3 });
+    const first = await updateWeatherForecasts({
+      fetchWeather,
+      now,
+      ttlHours: 3,
+    });
     const second = await updateWeatherForecasts({
       fetchWeather,
       now: now.plus({ hours: 1 }),
@@ -178,6 +182,7 @@ describe("weather ingestion", () => {
         expect.objectContaining({
           forecastFor: weatherRecord.time,
           terminalId: "1",
+          windGustKmh: 32,
         }),
       ],
       expect.objectContaining({

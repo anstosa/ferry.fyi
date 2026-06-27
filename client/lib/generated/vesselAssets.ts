@@ -1,0 +1,156 @@
+export interface VesselAsset {
+  className: string;
+  image: string;
+  name: string;
+  sourceUrl: string;
+}
+
+export const vesselAssets: Record<string, VesselAsset> = {
+  "25": {
+    className: "Jumbo Mark II",
+    image: "/static/images/vessels/25-puyallup.png",
+    name: "Puyallup",
+    sourceUrl:
+      "https://wsdot.com/ferries/vesselwatch/VesselDetail.aspx?vessel_id=25",
+  },
+  "32": {
+    className: "Jumbo Mark II",
+    image: "/static/images/vessels/32-tacoma.png",
+    name: "Tacoma",
+    sourceUrl:
+      "https://wsdot.com/ferries/vesselwatch/VesselDetail.aspx?vessel_id=32",
+  },
+  "37": {
+    className: "Jumbo Mark II",
+    image: "/static/images/vessels/37-wenatchee.png",
+    name: "Wenatchee",
+    sourceUrl:
+      "https://wsdot.com/ferries/vesselwatch/VesselDetail.aspx?vessel_id=37",
+  },
+  "30": {
+    className: "Jumbo",
+    image: "/static/images/vessels/30-spokane.png",
+    name: "Spokane",
+    sourceUrl:
+      "https://wsdot.com/ferries/vesselwatch/VesselDetail.aspx?vessel_id=30",
+  },
+  "36": {
+    className: "Jumbo",
+    image: "/static/images/vessels/36-walla-walla.png",
+    name: "Walla Walla",
+    sourceUrl:
+      "https://wsdot.com/ferries/vesselwatch/VesselDetail.aspx?vessel_id=36",
+  },
+  "17": {
+    className: "Super",
+    image: "/static/images/vessels/17-kaleetan.png",
+    name: "Kaleetan",
+    sourceUrl:
+      "https://wsdot.com/ferries/vesselwatch/VesselDetail.aspx?vessel_id=17",
+  },
+  "38": {
+    className: "Super",
+    image: "/static/images/vessels/38-yakima.png",
+    name: "Yakima",
+    sourceUrl:
+      "https://wsdot.com/ferries/vesselwatch/VesselDetail.aspx?vessel_id=38",
+  },
+  "74": {
+    className: "Olympic",
+    image: "/static/images/vessels/74-chimacum.png",
+    name: "Chimacum",
+    sourceUrl:
+      "https://wsdot.com/ferries/vesselwatch/VesselDetail.aspx?vessel_id=74",
+  },
+  "69": {
+    className: "Olympic",
+    image: "/static/images/vessels/69-samish.png",
+    name: "Samish",
+    sourceUrl:
+      "https://wsdot.com/ferries/vesselwatch/VesselDetail.aspx?vessel_id=69",
+  },
+  "75": {
+    className: "Olympic",
+    image: "/static/images/vessels/75-suquamish.png",
+    name: "Suquamish",
+    sourceUrl:
+      "https://wsdot.com/ferries/vesselwatch/VesselDetail.aspx?vessel_id=75",
+  },
+  "68": {
+    className: "Olympic",
+    image: "/static/images/vessels/68-tokitae.png",
+    name: "Tokitae",
+    sourceUrl:
+      "https://wsdot.com/ferries/vesselwatch/VesselDetail.aspx?vessel_id=68",
+  },
+  "1": {
+    className: "Issaquah",
+    image: "/static/images/vessels/1-cathlamet.png",
+    name: "Cathlamet",
+    sourceUrl:
+      "https://wsdot.com/ferries/vesselwatch/VesselDetail.aspx?vessel_id=1",
+  },
+  "2": {
+    className: "Issaquah",
+    image: "/static/images/vessels/2-chelan.png",
+    name: "Chelan",
+    sourceUrl:
+      "https://wsdot.com/ferries/vesselwatch/VesselDetail.aspx?vessel_id=2",
+  },
+  "15": {
+    className: "Issaquah",
+    image: "/static/images/vessels/15-issaquah.png",
+    name: "Issaquah",
+    sourceUrl:
+      "https://wsdot.com/ferries/vesselwatch/VesselDetail.aspx?vessel_id=15",
+  },
+  "18": {
+    className: "Issaquah",
+    image: "/static/images/vessels/18-kitsap.png",
+    name: "Kitsap",
+    sourceUrl:
+      "https://wsdot.com/ferries/vesselwatch/VesselDetail.aspx?vessel_id=18",
+  },
+  "19": {
+    className: "Issaquah",
+    image: "/static/images/vessels/19-kittitas.png",
+    name: "Kittitas",
+    sourceUrl:
+      "https://wsdot.com/ferries/vesselwatch/VesselDetail.aspx?vessel_id=19",
+  },
+  "28": {
+    className: "Issaquah",
+    image: "/static/images/vessels/28-sealth.png",
+    name: "Sealth",
+    sourceUrl:
+      "https://wsdot.com/ferries/vesselwatch/VesselDetail.aspx?vessel_id=28",
+  },
+  "33": {
+    className: "Evergreen State",
+    image: "/static/images/vessels/33-tillikum.png",
+    name: "Tillikum",
+    sourceUrl:
+      "https://wsdot.com/ferries/vesselwatch/VesselDetail.aspx?vessel_id=33",
+  },
+  "65": {
+    className: "Kwa-di Tabil",
+    image: "/static/images/vessels/65-chetzemoka.png",
+    name: "Chetzemoka",
+    sourceUrl:
+      "https://wsdot.com/ferries/vesselwatch/VesselDetail.aspx?vessel_id=65",
+  },
+  "52": {
+    className: "Kwa-di Tabil",
+    image: "/static/images/vessels/52-kennewick.png",
+    name: "Kennewick",
+    sourceUrl:
+      "https://wsdot.com/ferries/vesselwatch/VesselDetail.aspx?vessel_id=52",
+  },
+  "66": {
+    className: "Kwa-di Tabil",
+    image: "/static/images/vessels/66-salish.png",
+    name: "Salish",
+    sourceUrl:
+      "https://wsdot.com/ferries/vesselwatch/VesselDetail.aspx?vessel_id=66",
+  },
+} as const;

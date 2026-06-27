@@ -21,13 +21,30 @@ export interface CrossingEstimate {
   source?: ForecastSource;
 }
 
+export interface SlotWeather {
+  windGustKmh: number | null;
+  windSpeedKmh: number | null;
+}
+
+export interface SlotTide {
+  arrivalStationId?: string;
+  arrivalWaterLevelM?: number | null;
+  lowestWaterLevelM?: number | null;
+  stationId: string;
+  waterLevelM: number | null;
+}
+
 export type ForecastConfidence = "low" | "medium" | "high";
 
 export type ForecastSource = "blended" | "disruption" | "historical" | "live";
 
+export type CancellationReason = "tidal";
+
 export interface Slot {
   allowsPassengers: boolean;
   allowsVehicles: boolean;
+  arrivalTime?: number;
+  cancellationReason?: CancellationReason;
   crossing?: Crossing;
   estimate?: CrossingEstimate;
   hasPassed: boolean;
@@ -35,6 +52,8 @@ export interface Slot {
   time: number;
   vessel: Vessel;
   vesselPosition?: number;
+  tide?: SlotTide;
+  weather?: SlotWeather;
   wuid: string;
 }
 

@@ -127,6 +127,7 @@ const countExistingWeatherHours = (
       },
       provider: OPEN_METEO_PROVIDER,
       terminalId,
+      windGustKmh: { [Op.not]: null },
     },
   });
 };
@@ -167,6 +168,7 @@ const upsertObservations = async (
       temperatureC: record.temperatureC,
       timezone: record.timezone,
       terminalId,
+      windGustKmh: record.windGustKmh,
       windSpeedKmh: record.windSpeedKmh,
     })),
     {
@@ -178,6 +180,7 @@ const upsertObservations = async (
         "precipitationMm",
         "temperatureC",
         "timezone",
+        "windGustKmh",
         "windSpeedKmh",
         "updatedAt",
       ],

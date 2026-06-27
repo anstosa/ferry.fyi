@@ -46,6 +46,29 @@
       .alert__close {
         @apply text-[#6fb8c8];
       }
+
+      .button {
+        @apply border-white;
+        @apply text-white;
+
+        &:hover {
+          @apply bg-white;
+          @apply border-transparent;
+          @apply text-blue-dark;
+        }
+      }
+
+      .alert__button-primary {
+        @apply bg-white;
+        @apply border-transparent;
+        @apply text-blue-dark;
+
+        &:hover {
+          @apply bg-lighten-high;
+          @apply border-transparent;
+          @apply text-blue-dark;
+        }
+      }
     }
 
     &--warning {

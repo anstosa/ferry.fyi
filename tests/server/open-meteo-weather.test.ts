@@ -21,7 +21,7 @@ describe("Open-Meteo weather provider", () => {
 
     expect(url.hostname).toBe("archive-api.open-meteo.com");
     expect(url.searchParams.get("hourly")).toBe(
-      "temperature_2m,cloud_cover,wind_speed_10m,precipitation"
+      "temperature_2m,cloud_cover,wind_speed_10m,wind_gusts_10m,precipitation"
     );
     expect(url.searchParams.get("timezone")).toBe("America/Los_Angeles");
     expect(url.searchParams.get("wind_speed_unit")).toBe("kmh");
@@ -35,6 +35,7 @@ describe("Open-Meteo weather provider", () => {
         precipitation: [1.2],
         temperature_2m: [12.5],
         time: ["2026-06-01T13:00"],
+        wind_gusts_10m: [35],
         wind_speed_10m: [22],
       },
       latitude: 47.6,
@@ -48,6 +49,7 @@ describe("Open-Meteo weather provider", () => {
       provider: "open-meteo",
       temperatureC: 12.5,
       timezone: "America/Los_Angeles",
+      windGustKmh: 35,
       windSpeedKmh: 22,
     });
   });
@@ -93,6 +95,7 @@ describe("Open-Meteo weather provider", () => {
           precipitation: [],
           temperature_2m: [],
           time: [],
+          wind_gusts_10m: [],
           wind_speed_10m: [],
         },
         latitude: 47.6,

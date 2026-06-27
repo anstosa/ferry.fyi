@@ -112,7 +112,7 @@ export const getScheduleSpaceClassName = (
   }
   return context === "day"
     ? "text-[#a07c30] dark:text-[#c49a30]"
-    : "text-[#3f7d8c] dark:text-[#5aa0b0]";
+    : "text-[#1f5664] dark:text-[#5aa0b0]";
 };
 
 export const getLateTextClassName = (): string =>

@@ -5,6 +5,7 @@ import { isNull } from "shared/lib/identity";
 import { values } from "shared/lib/objects";
 
 import Crossing from "~/models/Crossing";
+import { Route } from "~/models/Route";
 import { Schedule } from "~/models/Schedule";
 import { Terminal } from "~/models/Terminal";
 import { Vessel } from "~/models/Vessel";
@@ -12,6 +13,10 @@ import { WSF } from "~/typings/wsf";
 
 import { wsfRequest } from "./api";
 import { toWsfDate, wsfDateToTimestamp } from "./date";
+import {
+  getTidalCancellationsForDate,
+  TidalCancellation,
+} from "./tidalCancellations";
 
 // API paths
 
@@ -29,19 +34,38 @@ const getScheduleApi = (
 let lastFlushDate: number | null = null;
 const inProgressSchedules = new Map<string, Promise<void>>();
 
+// scheduled arrival fallback
+const getEstimatedScheduledArrivalTime = (
+  departureTime: number,
+  terminalId: string,
+  mateId: string
+): number | undefined => {
+  const route = values(Route.getByTerminalId(terminalId)).find((route) => {
+    // matching mate guard
+    return route.terminalIds.includes(mateId);
+  });
+  // crossing time guard
+  if (!route?.crossingTime) {
+    return undefined;
+  }
+  return departureTime + route.crossingTime * 60;
+};
+
 const updateTiming = (): void => {
   const now = DateTime.local();
   values(Schedule.getAll()).forEach((schedule) => {
-    const seenVessels: Vessel[] = [];
     schedule.slots.forEach((slot) => {
+      // arrival time backfill
+      if (!slot.arrivalTime) {
+        slot.arrivalTime = getEstimatedScheduledArrivalTime(
+          slot.time,
+          schedule.terminalId,
+          schedule.mateId
+        );
+      }
       const vessel = Vessel.getByIndex(slot.vessel?.id);
       if (!vessel) {
         return;
-      }
-      if (!seenVessels.includes(vessel)) {
-        vessel.update({ departureDelta: 0 });
-        vessel.save();
-        seenVessels.push(vessel);
       }
       slot.vessel = vessel;
       const { crossing, time } = slot;
@@ -52,6 +76,152 @@ const updateTiming = (): void => {
       }
     });
   });
+};
+
+// cancelled crossing model
+const buildCancelledCrossing = (
+  cancellation: TidalCancellation,
+  totalCapacity: number
+): Crossing =>
+  Crossing.build({
+    arrivalId: cancellation.arrivalId,
+    departureDelta: 0,
+    departureId: cancellation.departureId,
+    departureTime: cancellation.departureTime,
+    driveUpCapacity: 0,
+    hasDriveUp: false,
+    hasReservations: false,
+    isCancelled: true,
+    reservableCapacity: 0,
+    totalCapacity,
+  }) as Crossing;
+
+// synthetic vessel fallback
+const getCancelledVesselFallback = (cancellation: TidalCancellation): Vessel =>
+  ({
+    abbreviation: cancellation.vesselName ?? "Cancelled",
+    id: cancellation.vesselId ?? "cancelled",
+    name: cancellation.vesselName ?? "Cancelled sailing",
+    speed: 0,
+    tallVehicleCapacity: 0,
+    vehicleCapacity: 0,
+    vesselWatchUrl: "",
+  }) as Vessel;
+
+// cancellation vessel
+const getCancellationVessel = (cancellation: TidalCancellation): Vessel => {
+  const vesselById = cancellation.vesselId
+    ? Vessel.getByIndex(cancellation.vesselId)
+    : null;
+  // id match guard
+  if (vesselById) {
+    return vesselById;
+  }
+  const vesselByName = values(Vessel.getAll()).find((vessel) => {
+    return vessel.name === cancellation.vesselName;
+  });
+  // name match guard
+  if (vesselByName) {
+    return vesselByName;
+  }
+  return getCancelledVesselFallback(cancellation);
+};
+
+// merge tidal cancellations
+const mergeTidalCancellations = (
+  slots: Slot[],
+  cancellations: TidalCancellation[],
+  terminalId: string,
+  mateId: string
+): Slot[] => {
+  const slotsByTime = new Map(slots.map((slot) => [slot.time, slot]));
+  cancellations.forEach((cancellation) => {
+    const vessel = getCancellationVessel(cancellation);
+    const crossing = buildCancelledCrossing(
+      cancellation,
+      vessel.vehicleCapacity
+    );
+    const existingSlot = slotsByTime.get(cancellation.departureTime);
+    // existing slot guard
+    if (existingSlot) {
+      existingSlot.cancellationReason = "tidal";
+      existingSlot.crossing = crossing;
+      existingSlot.vessel = vessel;
+      return;
+    }
+    const time = DateTime.fromSeconds(cancellation.departureTime);
+    slotsByTime.set(cancellation.departureTime, {
+      allowsPassengers: true,
+      allowsVehicles: true,
+      arrivalTime: getEstimatedScheduledArrivalTime(
+        cancellation.departureTime,
+        terminalId,
+        mateId
+      ),
+      cancellationReason: "tidal",
+      crossing,
+      hasPassed: time < DateTime.local(),
+      mateId,
+      time: cancellation.departureTime,
+      vessel,
+      vesselPosition: cancellation.vesselPosition,
+      wuid: getWuid(cancellation.departureTime),
+    });
+  });
+  return Array.from(slotsByTime.values()).sort((left, right) => {
+    return left.time - right.time;
+  });
+};
+
+// best-effort tidal lookup
+const getBestEffortTidalCancellations = async (
+  date: string,
+  terminalId: string,
+  mateId: string
+): Promise<TidalCancellation[]> => {
+  // tidal best-effort
+  try {
+    return await getTidalCancellationsForDate(date, terminalId, mateId);
+  } catch (error: any) {
+    logger.error(`Tidal cancellation update failed: ${error.message}`, error);
+    return [];
+  }
+};
+
+// refresh cached tidal slots
+const refreshCachedTidalCancellations = async (
+  date: string,
+  terminalId?: string,
+  mateId?: string
+): Promise<void> => {
+  const targetSchedule = terminalId
+    ? Schedule.getByIndex(Schedule.generateKey(terminalId, mateId ?? "", date))
+    : null;
+  const schedules = targetSchedule
+    ? [targetSchedule]
+    : values(Schedule.getByDate(date));
+  await Promise.all(
+    schedules.map(async (schedule) => {
+      const cancellations = await getBestEffortTidalCancellations(
+        date,
+        schedule.terminalId,
+        schedule.mateId
+      );
+      // cancellation guard
+      if (!cancellations.length) {
+        return;
+      }
+      schedule.update({
+        slots: mergeTidalCancellations(
+          schedule.slots,
+          cancellations,
+          schedule.terminalId,
+          schedule.mateId
+        ),
+      });
+      schedule.save();
+    })
+  );
 };
 
 // "Weekly Unique Identifier"
@@ -134,11 +304,15 @@ const updateSchedulePair = async (
   const {
     TerminalCombos: [{ Times }],
   } = response;
-  const seenVessels: Vessel[] = [];
-
   const slots = await Promise.all(
     Times.map(
-      async ({ DepartingTime, VesselID, LoadingRule, VesselPositionNum }) => {
+      async ({
+        ArrivingTime,
+        DepartingTime,
+        VesselID,
+        LoadingRule,
+        VesselPositionNum,
+      }) => {
         const time = wsfDateToTimestamp(DepartingTime);
         // invalid time guard
         if (isNull(time)) {
@@ -149,12 +323,6 @@ const updateSchedulePair = async (
         // missing vessel guard
         if (!vessel) {
           return null;
-        }
-        // first vessel reset
-        if (!seenVessels.includes(vessel)) {
-          vessel.update({ departureDelta: 0 });
-          vessel.save();
-          seenVessels.push(vessel);
         }
         const crossing = await Crossing.findOne({
           where: {
@@ -168,6 +336,9 @@ const updateSchedulePair = async (
             WSF.LoadingRules.PASSENGER,
             WSF.LoadingRules.BOTH,
           ].includes(LoadingRule),
+          arrivalTime: ArrivingTime
+            ? wsfDateToTimestamp(ArrivingTime)
+            : getEstimatedScheduledArrivalTime(time, terminalId, mateId),
           allowsVehicles: [
             WSF.LoadingRules.VEHICLE,
             WSF.LoadingRules.BOTH,
@@ -184,12 +355,23 @@ const updateSchedulePair = async (
     )
   );
 
+  const cancellations = await getBestEffortTidalCancellations(
+    date,
+    terminalId,
+    mateId
+  );
+  const mergedSlots = mergeTidalCancellations(
+    slots.filter(Boolean) as Slot[],
+    cancellations,
+    terminalId,
+    mateId
+  );
   const key = Schedule.generateKey(terminalId, mateId, date);
   const data = {
     date,
     key,
     mateId,
-    slots: slots.filter(Boolean) as Slot[],
+    slots: mergedSlots,
     terminalId,
     validRange,
   };
@@ -227,6 +409,8 @@ export const updateSchedules = async (
     // fresh cache guard
     if (cacheFlushDate === lastFlushDate && hasTargetSchedule) {
       logger.info(`Skipped Schedule Update for ${targetKey}`);
+      await refreshCachedTidalCancellations(date, terminalId, mateId);
+      updateTiming();
       return;
     }
     lastFlushDate = cacheFlushDate;

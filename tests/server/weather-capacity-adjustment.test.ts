@@ -100,11 +100,13 @@ describe("weather capacity adjustment", () => {
         cloudCoverPercent: 90,
         precipitationMm: 3,
         temperatureC: 5,
+        windGustKmh: 55,
         windSpeedKmh: 40,
       })
     ).toEqual([
       "precipitation:moderate-heavy",
       "wind:windy",
+      "gust:windy",
       "cloud:overcast",
       "temperature:cold",
     ]);

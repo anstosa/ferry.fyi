@@ -6,6 +6,7 @@ import type { Schedule as ScheduleClass } from "shared/contracts/schedules";
 import type { Terminal } from "shared/contracts/terminals";
 import type { Vessel } from "shared/contracts/vessels";
 import { findWhere } from "shared/lib/arrays";
+import { values } from "shared/lib/objects";
 
 import { DateButton } from "~/components/DateButton";
 import { ErrorBoundary } from "~/components/ErrorBoundary";
@@ -208,6 +209,15 @@ export const Route = ({
     setTime(time);
   };
 
+  const selectedRoute =
+    terminal && mate
+      ? values(terminal.routes)?.find(({ terminalIds }) => {
+          // selected route match
+          return (
+            terminalIds.includes(terminal.id) && terminalIds.includes(mate.id)
+          );
+        })
+      : undefined;
   const contentResetKey = `${view}:${terminal?.id ?? ""}:${mate?.id ?? ""}:${date.toISODate()}`;
   const todayOnlyView: TodayOnlyView | null =
     view === "schedule" || isToday ? null : view;
@@ -260,15 +270,22 @@ export const Route = ({
             />
           </Header>
         )}
-        <Schedule time={time} schedule={schedule} />
+        <Schedule route={selectedRoute} time={time} schedule={schedule} />
       </>
     );
   } else if (view === "cameras") {
-    content = <Cameras mate={mate} terminal={terminal} />;
+    content = <Cameras mate={mate} setRoute={setRoute} terminal={terminal} />;
   } else if (view === "alerts") {
     content = <Bulletins terminal={terminal} mate={mate} time={time} />;
   } else if (view === "map") {
-    content = <Map vessels={vessels} terminal={terminal} mate={mate} />;
+    content = (
+      <Map
+        mate={mate}
+        setRoute={setRoute}
+        terminal={terminal}
+        vessels={vessels}
+      />
+    );
   }
 
   // initial route guard

@@ -4,6 +4,9 @@ import { Op } from "sequelize";
 import {
   CrossingEstimate,
   ForecastConfidence,
+  Slot,
+  type SlotTide,
+  type SlotWeather,
 } from "shared/contracts/schedules";
 import { isEmpty } from "shared/lib/arrays";
 import { constrain, round } from "shared/lib/math";
@@ -11,8 +14,13 @@ import { values } from "shared/lib/objects";
 
 import { getWashingtonHolidayDates } from "~/lib/holidays";
 import {
+  createTideForecastContext,
+  type TideConditions,
+} from "~/lib/tides/context";
+import {
   createWeatherAdjustmentContext,
   getWeatherAdjustedCapacity,
+  type WeatherConditions,
 } from "~/lib/weather/capacityAdjustment";
 import Crossing from "~/models/Crossing";
 import { Schedule } from "~/models/Schedule";
@@ -20,7 +28,6 @@ import { Terminal } from "~/models/Terminal";
 
 const ESTIMATE_COMPOSITE_YEARS = 2;
 const DELAY_DISRUPTION_SECONDS = 15 * 60;
-const DEFAULT_CAPACITY = 145;
 const MIN_WEIGHT = 0.1;
 const ZENITH = 90.833;
 
@@ -38,6 +45,10 @@ interface HistoricalSample extends CapacityPair {
 
 interface HistoricalEstimate extends CapacityPair {
   sampleSize: number;
+  weight: number;
+}
+
+interface NormalizedCapacitySample extends CapacityPair {
   weight: number;
 }
 
@@ -210,13 +221,68 @@ const weightedMean = (
   return totalWeight ? weightedTotal / totalWeight : 0;
 };
 
+// slot vehicle capacity
+const getSlotVehicleCapacity = (slot: Slot): number => {
+  const { tallVehicleCapacity, vehicleCapacity } = slot.vessel;
+  return vehicleCapacity - tallVehicleCapacity;
+};
+
+// normalize historical sample
+const normalizeHistoricalSample = (
+  sample: HistoricalSample,
+  targetTotalCapacity: number
+): NormalizedCapacitySample => {
+  const { crossing, driveUpCapacity, reservableCapacity, weight } = sample;
+  const totalAvailable = driveUpCapacity + (reservableCapacity ?? 0);
+  const occupiedSpaces = constrain(
+    crossing.totalCapacity - totalAvailable,
+    0,
+    crossing.totalCapacity
+  );
+  const targetAvailable = constrain(
+    targetTotalCapacity - occupiedSpaces,
+    0,
+    targetTotalCapacity
+  );
+  const reservableShare = totalAvailable
+    ? (reservableCapacity ?? 0) / totalAvailable
+    : 0;
+  const normalizedReservableCapacity = round(targetAvailable * reservableShare);
+  return {
+    driveUpCapacity: targetAvailable - normalizedReservableCapacity,
+    reservableCapacity: normalizedReservableCapacity,
+    weight,
+  };
+};
+
+// constrain total capacity
+const constrainCapacityPair = (
+  capacity: CapacityPair,
+  maxDriveUpCapacity: number,
+  maxReservableCapacity: number,
+  maxTotalCapacity: number
+): CapacityPair => {
+  const reservableCapacity = constrain(
+    capacity.reservableCapacity ?? 0,
+    0,
+    maxReservableCapacity
+  );
+  const driveUpCapacity = constrain(
+    capacity.driveUpCapacity,
+    0,
+    Math.min(maxDriveUpCapacity, maxTotalCapacity - reservableCapacity)
+  );
+  return { driveUpCapacity, reservableCapacity };
+};
+
 // historical estimate
 const getHistoricalEstimate = (
   slotTime: DateTime,
   crossings: Crossing[],
   terminal: Terminal | null,
   now: DateTime,
-  holidays: HolidayDateMap
+  holidays: HolidayDateMap,
+  targetTotalCapacity: number
 ): HistoricalEstimate | null => {
   const samples: HistoricalSample[] = crossings
     .filter((crossing) =>
@@ -234,10 +300,15 @@ const getHistoricalEstimate = (
     return null;
   }
 
+  const normalizedSamples = samples.map((sample) => {
+    // normalize boat size
+    return normalizeHistoricalSample(sample, targetTotalCapacity);
+  });
+
   return {
     driveUpCapacity: round(
       weightedMean(
-        samples.map(({ driveUpCapacity, weight }) => ({
+        normalizedSamples.map(({ driveUpCapacity, weight }) => ({
           value: driveUpCapacity,
           weight,
         }))
@@ -245,7 +316,7 @@ const getHistoricalEstimate = (
     ),
     reservableCapacity: round(
       weightedMean(
-        samples.map(({ reservableCapacity, weight }) => ({
+        normalizedSamples.map(({ reservableCapacity, weight }) => ({
           value: reservableCapacity ?? 0,
           weight,
         }))
@@ -309,6 +380,54 @@ const blendCapacity = (
           (historical.reservableCapacity ?? 0) * historyWeight
       )
     ),
+  };
+};
+
+// lowest tide level
+const getLowestTideLevel = (
+  departureTide?: TideConditions,
+  arrivalTide?: TideConditions
+): number | null => {
+  const levels = [departureTide?.waterLevelM, arrivalTide?.waterLevelM].filter(
+    (level): level is number => typeof level === "number"
+  );
+  // missing tide guard
+  if (levels.length === 0) {
+    return null;
+  }
+  return Math.min(...levels);
+};
+
+// slot tide contract
+const getSlotTide = (
+  departureTide?: TideConditions,
+  arrivalTide?: TideConditions
+): SlotTide | undefined => {
+  // missing tide guard
+  if (!departureTide && !arrivalTide) {
+    return undefined;
+  }
+  const fallbackTide = departureTide ?? arrivalTide;
+  return {
+    arrivalStationId: arrivalTide?.stationId,
+    arrivalWaterLevelM: arrivalTide?.waterLevelM,
+    lowestWaterLevelM: getLowestTideLevel(departureTide, arrivalTide),
+    stationId: fallbackTide?.stationId ?? "",
+    waterLevelM: departureTide?.waterLevelM ?? null,
+  };
+};
+
+// slot weather contract
+const getSlotWeather = (
+  weather?: WeatherConditions
+): SlotWeather | undefined => {
+  // missing weather guard
+  if (!weather) {
+    return undefined;
+  }
+  return {
+    windGustKmh: weather.windGustKmh,
+    windSpeedKmh: weather.windSpeedKmh,
   };
 };
 
@@ -433,17 +552,52 @@ export const updateEstimates = async (): Promise<void> => {
         slotTimes,
         terminal,
       });
+      const tideForecastContexts = new Map<
+        string,
+        Awaited<ReturnType<typeof createTideForecastContext>>
+      >();
+      const tideTerminalIds = Array.from(
+        new Set([
+          schedule.terminalId,
+          ...schedule.slots.map((slot) => slot.mateId),
+        ])
+      );
+      // tide terminal contexts
+      for (const terminalId of tideTerminalIds) {
+        tideForecastContexts.set(
+          terminalId,
+          await createTideForecastContext({
+            slotTimes,
+            terminalId,
+          })
+        );
+      }
 
       // estimate slots
       await Promise.all(
         schedule.slots.map(async (slot, index) => {
           const slotTime = slotTimes[index];
+          const slotWeather = weatherAdjustmentContext?.forecastsByHour.get(
+            slotTime.startOf("hour").toSeconds()
+          );
+          slot.weather = getSlotWeather(slotWeather);
+          const tideHour = slotTime.startOf("hour").toSeconds();
+          const departureTide = tideForecastContexts
+            .get(schedule.terminalId)
+            ?.forecastsByHour.get(tideHour);
+          const arrivalTide = tideForecastContexts
+            .get(slot.mateId)
+            ?.forecastsByHour.get(tideHour);
+          slot.tide = getSlotTide(departureTide, arrivalTide);
+          const totalCapacity =
+            slot.crossing?.totalCapacity ?? getSlotVehicleCapacity(slot);
           const historical = getHistoricalEstimate(
             slotTime,
             crossings,
             terminal,
             now,
-            holidays
+            holidays,
+            totalCapacity
           );
           const disrupted = isDisrupted(slot.crossing);
           const blended = blendCapacity(
@@ -452,8 +606,7 @@ export const updateEstimates = async (): Promise<void> => {
             slotTime,
             now
           );
-          const totalCapacity =
-            slot.crossing?.totalCapacity ?? DEFAULT_CAPACITY;
+          // capacity already resolved
           const liveDriveCapacity =
             slot.crossing?.driveUpCapacity ?? totalCapacity;
           const liveReservableCapacity =
@@ -476,18 +629,16 @@ export const updateEstimates = async (): Promise<void> => {
               terminal,
             });
           }
+          const constrained = constrainCapacityPair(
+            adjusted,
+            liveDriveCapacity,
+            liveReservableCapacity,
+            totalCapacity
+          );
           const estimate: CrossingEstimate = {
             confidence: getConfidence(historical, slot.crossing, disrupted),
-            driveUpCapacity: constrain(
-              adjusted.driveUpCapacity,
-              0,
-              liveDriveCapacity
-            ),
-            reservableCapacity: constrain(
-              adjusted.reservableCapacity ?? 0,
-              0,
-              liveReservableCapacity
-            ),
+            driveUpCapacity: constrained.driveUpCapacity,
+            reservableCapacity: constrained.reservableCapacity,
             sampleSize: historical?.sampleSize ?? 0,
             source: getSource(historical, slot.crossing, disrupted),
           };

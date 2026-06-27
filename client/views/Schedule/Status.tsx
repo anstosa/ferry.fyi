@@ -12,7 +12,6 @@ interface Props {
   timing: ProjectedTiming;
 }
 
-const textRed = "text-red-dark dark:text-red-light";
 const textYellow = "text-yellow-dark dark:text-yellow-medium";
 
 export const Status = ({ className, time, timing }: Props): ReactElement => {
@@ -26,8 +25,7 @@ export const Status = ({ className, time, timing }: Props): ReactElement => {
 
   // cancelled sailing
   if (isCancelled) {
-    statusText = "Cancelled";
-    statusClass = clsx(statusClass, "font-bold uppercase", textRed);
+    statusText = "";
   } else if (Math.abs(delayMins) > 0) {
     // delayed sailing label
     const direction = delayMins < 0 ? "ahead" : "late";

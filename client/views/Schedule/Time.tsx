@@ -27,9 +27,10 @@ export const Time = ({
   time,
   timing,
 }: Props): ReactElement => {
-  const { delayMins, departureTime, isCancelled } = timing;
-  const hasDeparted = departureTime.toMillis() < time.toMillis();
-  const diff = departureTime.diff(time);
+  const { delayMins, departureTime, isCancelled, scheduledTime } = timing;
+  const displayDepartureTime = isCancelled ? scheduledTime : departureTime;
+  const hasDeparted = displayDepartureTime.toMillis() < time.toMillis();
+  const diff = displayDepartureTime.diff(time);
 
   let majorTime;
   let majorTimeClass = getScheduleTimeMajorClassName(context, rowState);
@@ -38,8 +39,8 @@ export const Time = ({
   let isRelativeDeparture = false;
   // cancelled sailing
   if (isCancelled) {
-    majorTime = "--";
-    minorTime = "";
+    majorTime = scheduledTime.toFormat("h:mm");
+    minorTime = scheduledTime.toFormat("a");
   } else if (
     !hasDeparted &&
     diff.as("minutes") >= 0 &&
@@ -55,11 +56,11 @@ export const Time = ({
       </span>
     );
     majorTimeClass = "text-countdown";
-    minorTime = departureTime.toFormat("h:mm a");
+    minorTime = displayDepartureTime.toFormat("h:mm a");
     isRelativeDeparture = true;
   } else {
-    majorTime = departureTime.toFormat("h:mm");
-    minorTime = departureTime.toFormat("a");
+    majorTime = displayDepartureTime.toFormat("h:mm");
+    minorTime = displayDepartureTime.toFormat("a");
   }
 
   // cancelled color
