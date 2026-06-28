@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   getLateTextClassName,
+  getScheduleLiveSpaceState,
   getScheduleRowClassName,
   getScheduleRowState,
   getScheduleSailingContext,
@@ -41,6 +42,39 @@ describe("schedule color tokens", () => {
     expect(getScheduleTimeMinorClassName("night", "confirmed")).toContain(
       "text-[#b8d5de]"
     );
+  });
+
+  // right-side live forecast label
+  it("uses normal text when live capacity is extended by a right-side forecast", () => {
+    expect(
+      getScheduleLiveSpaceState({
+        hasForecastExtension: true,
+        isFull: false,
+        statusSide: "right",
+      })
+    ).toBe("normal");
+  });
+
+  // left-side live forecast label
+  it("keeps confirmed text when the live capacity label sits on the fill", () => {
+    expect(
+      getScheduleLiveSpaceState({
+        hasForecastExtension: true,
+        isFull: false,
+        statusSide: "left",
+      })
+    ).toBe("confirmed");
+  });
+
+  // full live forecast label
+  it("keeps full text priority for live forecast labels", () => {
+    expect(
+      getScheduleLiveSpaceState({
+        hasForecastExtension: true,
+        isFull: true,
+        statusSide: "right",
+      })
+    ).toBe("full");
   });
 
   // night forecast capacity text

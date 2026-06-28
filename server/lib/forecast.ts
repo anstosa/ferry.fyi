@@ -28,6 +28,7 @@ import { Terminal } from "~/models/Terminal";
 
 const ESTIMATE_COMPOSITE_YEARS = 2;
 const DELAY_DISRUPTION_SECONDS = 15 * 60;
+const CANCELLED_CAPACITY_ROLLOVER_SHARE = 0.6;
 const MIN_WEIGHT = 0.1;
 const ZENITH = 90.833;
 
@@ -273,6 +274,34 @@ const constrainCapacityPair = (
     Math.min(maxDriveUpCapacity, maxTotalCapacity - reservableCapacity)
   );
   return { driveUpCapacity, reservableCapacity };
+};
+
+// forecasted occupied spaces
+const getForecastedOccupiedCapacity = (
+  capacity: CapacityPair,
+  totalCapacity: number
+): number => {
+  const availableCapacity =
+    capacity.driveUpCapacity + (capacity.reservableCapacity ?? 0);
+  return constrain(totalCapacity - availableCapacity, 0, totalCapacity);
+};
+
+// cancelled demand rollover
+const addCancelledRolloverDemand = (
+  capacity: CapacityPair,
+  rolloverDemand: number
+): CapacityPair => {
+  const roundedDemand = Math.max(0, round(rolloverDemand));
+  const driveUpReduction = Math.min(capacity.driveUpCapacity, roundedDemand);
+  const reservableReduction = Math.min(
+    capacity.reservableCapacity ?? 0,
+    roundedDemand - driveUpReduction
+  );
+  return {
+    driveUpCapacity: capacity.driveUpCapacity - driveUpReduction,
+    reservableCapacity:
+      (capacity.reservableCapacity ?? 0) - reservableReduction,
+  };
 };
 
 // historical estimate
@@ -573,83 +602,89 @@ export const updateEstimates = async (): Promise<void> => {
         );
       }
 
-      // estimate slots
-      await Promise.all(
-        schedule.slots.map(async (slot, index) => {
-          const slotTime = slotTimes[index];
-          const slotWeather = weatherAdjustmentContext?.forecastsByHour.get(
-            slotTime.startOf("hour").toSeconds()
-          );
-          slot.weather = getSlotWeather(slotWeather);
-          const tideHour = slotTime.startOf("hour").toSeconds();
-          const departureTide = tideForecastContexts
-            .get(schedule.terminalId)
-            ?.forecastsByHour.get(tideHour);
-          const arrivalTide = tideForecastContexts
-            .get(slot.mateId)
-            ?.forecastsByHour.get(tideHour);
-          slot.tide = getSlotTide(departureTide, arrivalTide);
-          const totalCapacity =
-            slot.crossing?.totalCapacity ?? getSlotVehicleCapacity(slot);
-          const historical = getHistoricalEstimate(
+      let rolloverDemand = 0;
+      // estimate slots sequentially for cancellation spillover
+      for (const [index, slot] of schedule.slots.entries()) {
+        const slotTime = slotTimes[index];
+        const slotWeather = weatherAdjustmentContext?.forecastsByHour.get(
+          slotTime.startOf("hour").toSeconds()
+        );
+        slot.weather = getSlotWeather(slotWeather);
+        const tideHour = slotTime.startOf("hour").toSeconds();
+        const departureTide = tideForecastContexts
+          .get(schedule.terminalId)
+          ?.forecastsByHour.get(tideHour);
+        const arrivalTide = tideForecastContexts
+          .get(slot.mateId)
+          ?.forecastsByHour.get(tideHour);
+        slot.tide = getSlotTide(departureTide, arrivalTide);
+        const totalCapacity =
+          slot.crossing?.totalCapacity ?? getSlotVehicleCapacity(slot);
+        const historical = getHistoricalEstimate(
+          slotTime,
+          crossings,
+          terminal,
+          now,
+          holidays,
+          totalCapacity
+        );
+        const disrupted = isDisrupted(slot.crossing);
+        const blended = blendCapacity(historical, slot.crossing, slotTime, now);
+        // capacity already resolved
+        const liveDriveCapacity =
+          slot.crossing?.driveUpCapacity ?? totalCapacity;
+        const liveReservableCapacity =
+          slot.crossing?.reservableCapacity ?? totalCapacity;
+        // estimate availability guard
+        if (!blended) {
+          continue;
+        }
+        let adjusted = blended;
+        // future sailing guard
+        if (!slot.hasPassed) {
+          adjusted = await getWeatherAdjustedCapacity({
+            capacity: blended,
+            context: weatherAdjustmentContext,
+            liveCapacity: {
+              driveUpCapacity: liveDriveCapacity,
+              reservableCapacity: liveReservableCapacity,
+            },
             slotTime,
-            crossings,
             terminal,
-            now,
-            holidays,
-            totalCapacity
+          });
+        }
+        const constrained = constrainCapacityPair(
+          adjusted,
+          liveDriveCapacity,
+          liveReservableCapacity,
+          totalCapacity
+        );
+        let rolloverAdjusted = constrained;
+        // active rollover guard
+        if (rolloverDemand > 0 && !slot.crossing?.isCancelled) {
+          rolloverAdjusted = addCancelledRolloverDemand(
+            constrained,
+            rolloverDemand
           );
-          const disrupted = isDisrupted(slot.crossing);
-          const blended = blendCapacity(
-            historical,
-            slot.crossing,
-            slotTime,
-            now
-          );
-          // capacity already resolved
-          const liveDriveCapacity =
-            slot.crossing?.driveUpCapacity ?? totalCapacity;
-          const liveReservableCapacity =
-            slot.crossing?.reservableCapacity ?? totalCapacity;
-          // estimate availability guard
-          if (!blended) {
-            return;
-          }
-          let adjusted = blended;
-          // future sailing guard
-          if (!slot.hasPassed) {
-            adjusted = await getWeatherAdjustedCapacity({
-              capacity: blended,
-              context: weatherAdjustmentContext,
-              liveCapacity: {
-                driveUpCapacity: liveDriveCapacity,
-                reservableCapacity: liveReservableCapacity,
-              },
-              slotTime,
-              terminal,
-            });
-          }
-          const constrained = constrainCapacityPair(
-            adjusted,
-            liveDriveCapacity,
-            liveReservableCapacity,
-            totalCapacity
-          );
-          const estimate: CrossingEstimate = {
-            confidence: getConfidence(historical, slot.crossing, disrupted),
-            driveUpCapacity: constrained.driveUpCapacity,
-            reservableCapacity: constrained.reservableCapacity,
-            sampleSize: historical?.sampleSize ?? 0,
-            source: getSource(historical, slot.crossing, disrupted),
-          };
-          // cancelled sailings are treated as low-confidence live estimates
-          if (slot.crossing?.isCancelled) {
-            estimate.driveUpCapacity = slot.crossing.driveUpCapacity;
-            estimate.reservableCapacity = slot.crossing.reservableCapacity;
-          }
-          slot.estimate = estimate;
-        })
-      );
+          rolloverDemand = 0;
+        }
+        const estimate: CrossingEstimate = {
+          confidence: getConfidence(historical, slot.crossing, disrupted),
+          driveUpCapacity: rolloverAdjusted.driveUpCapacity,
+          reservableCapacity: rolloverAdjusted.reservableCapacity,
+          sampleSize: historical?.sampleSize ?? 0,
+          source: getSource(historical, slot.crossing, disrupted),
+        };
+        // cancelled sailings are treated as low-confidence live estimates
+        if (slot.crossing?.isCancelled) {
+          rolloverDemand +=
+            getForecastedOccupiedCapacity(constrained, totalCapacity) *
+            CANCELLED_CAPACITY_ROLLOVER_SHARE;
+          estimate.driveUpCapacity = slot.crossing.driveUpCapacity;
+          estimate.reservableCapacity = slot.crossing.reservableCapacity;
+        }
+        slot.estimate = estimate;
+      }
     })
   );
   logger.info("Updated Estimates");

@@ -1,6 +1,6 @@
 import { DateTime } from "luxon";
 import type { Slot } from "shared/contracts/schedules";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   getDelayRecoveryMins,
@@ -102,6 +102,19 @@ const makeSlot = ({
   }) as Slot;
 
 describe("projected schedule timing", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(
+      DateTime.fromISO("2026-06-21T09:00:00", {
+        zone: "America/Los_Angeles",
+      }).toJSDate()
+    );
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("uses recorded departure time for past sailings", () => {
     const slot = makeSlot({
       delayMins: 12,
@@ -129,6 +142,20 @@ describe("projected schedule timing", () => {
         "h:mm"
       )
     ).toBe("10:12");
+  });
+
+  it("does not seed future service days from the live boat delay", () => {
+    vi.setSystemTime(
+      DateTime.fromISO("2026-06-27T20:57:00", {
+        zone: "America/Los_Angeles",
+      }).toJSDate()
+    );
+    const slot = makeSlot({
+      time: "2026-06-28T05:30:00",
+      vesselDelayMins: 6,
+    });
+
+    expect(getProjectedTiming({ schedule: [slot], slot }).delayMins).toBe(0);
   });
 
   it("prefers boat-level delay over stale terminal-specific on-time data", () => {

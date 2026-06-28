@@ -7,7 +7,7 @@ import { useLocation } from "react-router-dom";
 import { type Bulletin, Level } from "shared/contracts/bulletins";
 import type { Terminal } from "shared/contracts/terminals";
 import { without } from "shared/lib/arrays";
-import { isDelayBulletin } from "shared/lib/bulletins";
+import { isSuppressedBulletin } from "shared/lib/bulletins";
 import { isNull, isUndefined } from "shared/lib/identity";
 import { round } from "shared/lib/math";
 import { capitalize } from "shared/lib/strings";
@@ -19,7 +19,7 @@ import UnsubscribedIcon from "~/static/images/icons/regular/bell.svg";
 import SubscribedIcon from "~/static/images/icons/solid/bell.svg";
 import BellAlertIcon from "~/static/images/icons/solid/bell-exclamation.svg";
 import WarningIcon from "~/static/images/icons/solid/exclamation-triangle.svg";
-import ExternalLinkIcon from "~/static/images/icons/solid/external-link-alt.svg";
+import ExternalLinkIcon from "~/static/images/icons/solid/external-link.svg";
 import InfoIcon from "~/static/images/icons/solid/info-circle.svg";
 import WSDOTIcon from "~/static/images/icons/wsdot.svg";
 
@@ -72,8 +72,8 @@ const isActiveBulletin = (bulletin: Bulletin): boolean => {
   if (bulletin.level === Level.LOW) {
     return false;
   }
-  // projected delay guard
-  if (isDelayBulletin(bulletin)) {
+  // app-managed alert guard
+  if (isSuppressedBulletin(bulletin)) {
     return false;
   }
   return true;
@@ -279,10 +279,7 @@ export const Bulletins = ({ terminal, mate, time }: Props): ReactElement => {
               </span>
             )}
           </div>
-          <div className="flex items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-night-normal-light text-blue-dark dark:bg-blue-dark dark:text-[#b8e4f0]">
-              <BellAlertIcon className="h-5 w-5" />
-            </div>
+          <div className="flex items-start">
             <div className="min-w-0 flex-1">
               <h2 className="text-lg font-bold leading-snug text-gray-darkest dark:text-white">
                 {title}

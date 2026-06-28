@@ -23,9 +23,9 @@ import {
   useSimulatedVesselId,
 } from "~/lib/onboardSimulation";
 import { useTrackedVessel } from "~/lib/onboardTracking";
-import { useTerminals } from "~/lib/terminals";
+import { getSlug, useTerminals } from "~/lib/terminals";
 import { useLiveVessels } from "~/lib/vessels";
-import MapPinIcon from "~/static/images/icons/solid/map-pin.svg";
+import MapMarkerIcon from "~/static/images/icons/solid/map-marker.svg";
 
 interface Props {
   onVisibilityChange: (isVisible: boolean) => void;
@@ -33,7 +33,9 @@ interface Props {
 
 interface ProgressTrackProps {
   departureLabel: string;
+  departureSlug: string;
   destinationLabel: string;
+  destinationSlug: string;
   etaMinutes: number;
   isArrived?: boolean;
   isDocked?: boolean;
@@ -54,6 +56,7 @@ interface SailingNoticeProps {
 
 interface TerminalPinProps {
   align: "left" | "right";
+  ariaLabel: string;
   label: string;
 }
 
@@ -119,24 +122,32 @@ const SailingNotice = ({
 };
 
 // route endpoint pin
-const TerminalPin = ({ align, label }: TerminalPinProps): ReactElement => (
+const TerminalPin = ({
+  align,
+  ariaLabel,
+  label,
+}: TerminalPinProps): ReactElement => (
   <div
     className={clsx(
-      "absolute inset-y-0 z-20 w-32 text-white",
+      "absolute inset-y-0 z-20 w-10 text-white",
       align === "left" ? "left-0" : "right-0"
     )}
+    aria-label={ariaLabel}
   >
     <span
       className={clsx(
-        "absolute bottom-[45px] max-w-full truncate text-base font-bold leading-tight drop-shadow",
-        align === "left" ? "left-0" : "right-0 text-right"
+        "absolute bottom-6 rounded-full bg-white/20 px-1.5 py-2",
+        "text-[0.65rem] font-black uppercase leading-none tracking-[0.16em]",
+        "shadow-sm ring-1 ring-white/40 backdrop-blur",
+        align === "left" ? "left-0" : "right-0"
       )}
+      style={{ writingMode: "vertical-rl" }}
     >
       {label}
     </span>
-    <MapPinIcon
+    <MapMarkerIcon
       className={clsx(
-        "absolute bottom-0 text-lg drop-shadow",
+        "absolute bottom-0 text-xl drop-shadow",
         align === "left" ? "left-0" : "right-0"
       )}
     />
@@ -182,7 +193,9 @@ const FerryVesselIcon = ({ vesselId }: { vesselId: string }): ReactElement => {
 // sailing progress track
 const ProgressTrack = ({
   departureLabel,
+  departureSlug,
   destinationLabel,
+  destinationSlug,
   etaMinutes,
   isArrived = false,
   isDocked = false,
@@ -214,9 +227,17 @@ const ProgressTrack = ({
 
   return (
     <div className="relative h-[80px] min-w-0 text-white">
-      <TerminalPin align="left" label={departureLabel} />
-      <TerminalPin align="right" label={destinationLabel} />
-      <div className="absolute bottom-[45px] left-1/2 z-30 max-w-[calc(100%-18rem)] -translate-x-1/2">
+      <TerminalPin
+        align="left"
+        ariaLabel={departureLabel}
+        label={departureSlug}
+      />
+      <TerminalPin
+        align="right"
+        ariaLabel={destinationLabel}
+        label={destinationSlug}
+      />
+      <div className="absolute bottom-[45px] left-1/2 z-30 max-w-[calc(100%-7rem)] -translate-x-1/2">
         {/* stop tracking guard */}
         {isTracking && onStopTracking && (
           <button
@@ -272,7 +293,9 @@ const SailingCard = ({
   >
     <ProgressTrack
       departureLabel={departureTerminal.name}
+      departureSlug={getSlug(departureTerminal.id)}
       destinationLabel={destinationTerminal.name}
+      destinationSlug={getSlug(destinationTerminal.id)}
       etaMinutes={etaMinutes}
       isArrived={isArrived}
       isDocked={isDocked}

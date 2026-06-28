@@ -28,9 +28,9 @@ import { isDark } from "~/lib/theme";
 import { useWindowSize } from "~/lib/window";
 import CaretDownIcon from "~/static/images/icons/solid/caret-down.svg";
 import CaretUpIcon from "~/static/images/icons/solid/caret-up.svg";
-import UserLocationIcon from "~/static/images/icons/solid/dot-circle.svg";
+import UserLocationIcon from "~/static/images/icons/solid/location.svg";
 import VesselIcon from "~/static/images/icons/solid/location-arrow.svg";
-import MapPinIcon from "~/static/images/icons/solid/map-pin.svg";
+import MapPinIcon from "~/static/images/icons/solid/map-marker.svg";
 import WSDOTIcon from "~/static/images/icons/wsdot.svg";
 
 import { Header } from "./Header";

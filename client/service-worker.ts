@@ -51,7 +51,8 @@ onBackgroundMessage(messaging, (payload) => {
     console.log("Background notification: ", payload.data);
     return self.registration.showNotification(payload.data.title, {
       body: payload.data.body,
-      icon: "https://ferry.fyi/assets/apple-touch-icon.png",
+      badge: "/static/images/notification-badge.png",
+      icon: "/static/images/icon-192x192.png",
       data: {
         url: payload.data.url,
       },
@@ -61,15 +62,26 @@ onBackgroundMessage(messaging, (payload) => {
   }
 });
 
+// normalize notification target
+const getNotificationUrl = (event: NotificationEvent): string => {
+  const rawUrl = event.notification.data?.url;
+  // missing url fallback
+  if (typeof rawUrl !== "string") {
+    return self.location.origin;
+  }
+  return new URL(rawUrl, self.location.origin).href;
+};
+
 self.addEventListener("notificationclick", (event: NotificationEvent) => {
   event.notification.close();
+  const url = getNotificationUrl(event);
   event.waitUntil(
     self.clients
       .matchAll({
         type: "window",
       })
       .then((clientList) => {
-        const { url } = event.notification.data;
+        // focus existing client
         for (let index = 0; index < clientList.length; index++) {
           const client = clientList[index];
           client.navigate(url);

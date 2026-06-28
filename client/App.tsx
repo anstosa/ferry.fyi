@@ -168,6 +168,10 @@ export const App = (): ReactElement => {
           element: withRouteBoundary("Cameras", <Route view="cameras" />),
         },
         {
+          path: "terminal",
+          element: withRouteBoundary("Terminal", <Route view="terminal" />),
+        },
+        {
           path: "map",
           element: withRouteBoundary("Map", <Route view="map" />),
         },
@@ -185,6 +189,10 @@ export const App = (): ReactElement => {
             {
               path: "cameras",
               element: withRouteBoundary("Cameras", <Route view="cameras" />),
+            },
+            {
+              path: "terminal",
+              element: withRouteBoundary("Terminal", <Route view="terminal" />),
             },
             {
               path: "map",

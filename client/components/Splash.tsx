@@ -54,7 +54,7 @@ export const Splash: FC<PropsWithChildren> = ({ children }) => {
   return (
     <div
       className="
-        bg-green-dark text-white
+        bg-ferry-gradient text-white
         fixed inset-0
         flex flex-col justify-center items-center
       "

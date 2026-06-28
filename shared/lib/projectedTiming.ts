@@ -11,6 +11,8 @@ const REFERENCE_POWER_TO_WEIGHT = 2.4;
 const REFERENCE_SAILING_MINUTES = 20;
 const SAILING_RECOVERY_WEIGHT = 0.01;
 const SPEED_RECOVERY_WEIGHT = 1.5;
+const WSF_SERVICE_DAY_START_HOUR = 3;
+const WSF_SERVICE_ZONE = "America/Los_Angeles";
 
 export interface ProjectedTiming {
   delayMins: number;
@@ -49,8 +51,31 @@ const getGpsDelayMins = (slot: Slot): number | null => {
   return round(delaySeconds / 60);
 };
 
+// service day key
+const getServiceDayKey = (time: DateTime): string => {
+  const zonedTime = time.setZone(WSF_SERVICE_ZONE);
+  const serviceDate =
+    zonedTime.hour < WSF_SERVICE_DAY_START_HOUR
+      ? zonedTime.minus({ day: 1 })
+      : zonedTime;
+  return serviceDate.toISODate() ?? "";
+};
+
+// current service day check
+const isCurrentServiceDaySlot = (slot: Slot): boolean => {
+  return (
+    getServiceDayKey(
+      DateTime.fromSeconds(slot.time, { zone: WSF_SERVICE_ZONE })
+    ) === getServiceDayKey(DateTime.local().setZone(WSF_SERVICE_ZONE))
+  );
+};
+
 // boat delay minutes
 const getVesselDelayMins = (slot: Slot): number | null => {
+  // future service day guard
+  if (!isCurrentServiceDaySlot(slot)) {
+    return null;
+  }
   const departureDelta = slot.vessel?.departureDelta;
   // missing vessel delay guard
   if (isNull(departureDelta) || isNil(departureDelta)) {

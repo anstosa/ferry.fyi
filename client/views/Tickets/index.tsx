@@ -48,7 +48,7 @@ const ticketsAtom = atomWithStorage<Array<TicketStorage | ReservationAccount>>(
 );
 
 const BUTTON_CLASSES = clsx(
-  "button button-invert",
+  "button button-primary",
   "flex-grow flex-wrap",
   "px-0"
 );
@@ -265,7 +265,7 @@ export const Tickets = (): ReactElement => {
               placeholder="Ticket number"
             />
             <input
-              className="button button-invert"
+              className="button button-primary"
               type="submit"
               value="Add Ticket"
             />

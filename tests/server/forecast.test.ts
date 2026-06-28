@@ -103,7 +103,9 @@ describe("forecast estimates", () => {
     holidayModel.getWashingtonHolidayDates.mockResolvedValue(new Set());
     weatherAdjustmentModel.getWeatherAdjustedCapacity.mockReset();
     weatherAdjustmentModel.createWeatherAdjustmentContext.mockReset();
-    weatherAdjustmentModel.createWeatherAdjustmentContext.mockResolvedValue(null);
+    weatherAdjustmentModel.createWeatherAdjustmentContext.mockResolvedValue(
+      null
+    );
     weatherAdjustmentModel.getWeatherAdjustedCapacity.mockImplementation(
       async ({ capacity }) => capacity
     );
@@ -163,7 +165,9 @@ describe("forecast estimates", () => {
 
     expect(
       weatherAdjustmentModel.createWeatherAdjustmentContext
-    ).toHaveBeenCalledWith(expect.objectContaining({ now: expect.any(DateTime) }));
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ now: expect.any(DateTime) })
+    );
     expect(schedule.slots[0].estimate).toMatchObject({
       confidence: "medium",
       sampleSize: 2,
@@ -256,7 +260,9 @@ describe("forecast estimates", () => {
       driveUpCapacity: 80,
       reservableCapacity: 20,
     });
-    expect(weatherAdjustmentModel.getWeatherAdjustedCapacity).toHaveBeenCalled();
+    expect(
+      weatherAdjustmentModel.getWeatherAdjustedCapacity
+    ).toHaveBeenCalled();
   });
 
   // departed sailing behavior
@@ -281,7 +287,9 @@ describe("forecast estimates", () => {
 
     await updateEstimates();
 
-    expect(weatherAdjustmentModel.getWeatherAdjustedCapacity).not.toHaveBeenCalled();
+    expect(
+      weatherAdjustmentModel.getWeatherAdjustedCapacity
+    ).not.toHaveBeenCalled();
     expect(schedule.slots[0].estimate).toMatchObject({
       driveUpCapacity: expect.any(Number),
       reservableCapacity: expect.any(Number),
@@ -308,6 +316,39 @@ describe("forecast estimates", () => {
       driveUpCapacity: 80,
       reservableCapacity: 20,
       source: "disruption",
+    });
+  });
+
+  // cancellation rollover behavior
+  it("adds sixty percent of cancelled demand to the next sailing", async () => {
+    const cancelledCrossing = createCrossing({
+      departureTime: toSeconds("2026-06-21T12:00:00"),
+      driveUpCapacity: 40,
+      isCancelled: true,
+      reservableCapacity: 0,
+      totalCapacity: 100,
+    });
+    const nextCrossing = createCrossing({
+      departureTime: toSeconds("2026-06-21T13:00:00"),
+      driveUpCapacity: 100,
+      reservableCapacity: 0,
+      totalCapacity: 100,
+    });
+    const schedule = createSchedule({ crossing: cancelledCrossing });
+    schedule.slots.push({
+      ...schedule.slots[0],
+      crossing: nextCrossing,
+      time: toSeconds("2026-06-21T13:00:00"),
+      wuid: "next-slot",
+    });
+    scheduleModel.getAll.mockReturnValue({ [schedule.key]: schedule });
+    crossingModel.findAll.mockResolvedValue([]);
+
+    await updateEstimates();
+
+    expect(schedule.slots[1].estimate).toMatchObject({
+      driveUpCapacity: 64,
+      reservableCapacity: 0,
     });
   });
 });

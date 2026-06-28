@@ -22,7 +22,7 @@ import { useScrollPosition } from "~/lib/scroll";
 import { getSlug, useTerminals } from "~/lib/terminals";
 import CarIcon from "~/static/images/icons/solid/car.svg";
 import LocationIcon from "~/static/images/icons/solid/location.svg";
-import MapIcon from "~/static/images/icons/solid/map.svg";
+import MapIcon from "~/static/images/icons/solid/map-marked.svg";
 import PinIcon from "~/static/images/icons/solid/map-marker.svg";
 import ShipIcon from "~/static/images/icons/solid/ship.svg";
 import WSDOTIcon from "~/static/images/icons/wsdot.svg";

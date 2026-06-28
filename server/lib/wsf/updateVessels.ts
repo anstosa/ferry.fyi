@@ -1,5 +1,6 @@
 import logger from "heroku-logger";
 import { DateTime } from "luxon";
+import VESSEL_DATA_OVERRIDES from "shared/data/vessels.json";
 import { values } from "shared/lib/objects";
 
 import { calculateGpsDelayForLeg, findGpsDelayLeg } from "~/lib/wsf/gpsDelay";
@@ -18,8 +19,17 @@ const API_CACHE = `${API_VESSELS}/cacheflushdate`;
 const API_LOCATIONS = `${API_VESSELS}/vessellocations`;
 const API_VERBOSE = `${API_VESSELS}/vesselverbose`;
 
+interface VesselDataOverride {
+  hasWiFi?: boolean;
+}
+
+// vessel metadata overrides
+const VESSEL_OVERRIDES: Record<string, VesselDataOverride> =
+  VESSEL_DATA_OVERRIDES;
+
 let lastFlushDate: number | null = null;
 
+// update vessel metadata
 export const updateVessels = async (): Promise<void> => {
   const cacheFlushDate = wsfDateToTimestamp(
     await wsfRequest<string>(API_CACHE)
@@ -36,6 +46,7 @@ export const updateVessels = async (): Promise<void> => {
   if (!vessels) {
     return;
   }
+  // vessel refresh
   vessels.forEach((VesselData) => {
     const data = {
       abbreviation: VesselData.VesselAbbrev,
@@ -67,6 +78,11 @@ export const updateVessels = async (): Promise<void> => {
       yearBuilt: VesselData.YearBuilt,
       yearRebuilt: VesselData.YearRebuilt,
     };
+    const override = VESSEL_OVERRIDES[String(VesselData.VesselID)];
+    // local data override
+    if (override) {
+      Object.assign(data, override);
+    }
 
     const [vessel, wasCreated] = Vessel.getOrCreate(
       String(VesselData.VesselID),

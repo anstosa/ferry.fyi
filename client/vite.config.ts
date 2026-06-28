@@ -42,6 +42,7 @@ const TITLE = `${NAME} - Seattle Area Ferry Schedule and Tracker`;
 const DESCRIPTION =
   "A ferry schedule and tracker for the greater Seattle area.";
 const COLOR = colors.green.dark;
+const BACKGROUND_COLOR = colors.blue.dark;
 
 // read build env
 const getEnv = (key: string, fallback?: string): string | undefined => {
@@ -109,6 +110,10 @@ const getContentType = (filePath: string): string => {
   // svg lookup
   if (extension === ".svg") {
     return "image/svg+xml";
+  }
+  // favicon lookup
+  if (extension === ".ico") {
+    return "image/x-icon";
   }
   // html lookup
   if (extension === ".html") {
@@ -219,14 +224,26 @@ export default defineConfig(({ mode }) => ({
       strategies: "injectManifest",
       injectRegister: false,
       manifest: {
+        id: "/",
         name: NAME,
         short_name: NAME,
         description: DESCRIPTION,
-        background_color: COLOR,
+        lang: "en-US",
+        start_url: "/",
+        scope: "/",
+        display: "standalone",
+        orientation: "portrait-primary",
+        categories: ["navigation", "travel", "utilities"],
+        background_color: BACKGROUND_COLOR,
         theme_color: COLOR,
         icons: [
           {
-            src: "/static/images/icon.png",
+            src: "/static/images/icon-192x192.png",
+            sizes: "192x192",
+            type: "image/png",
+          },
+          {
+            src: "/static/images/icon-512x512.png",
             sizes: "512x512",
             type: "image/png",
           },
@@ -237,12 +254,13 @@ export default defineConfig(({ mode }) => ({
             purpose: "maskable",
           },
         ],
+        related_applications: [{ platform: "play", id: "fyi.ferry" }],
         shortcuts: [
           {
             name: "Schedule",
             description: "View the schedule",
             url: "/",
-            icons: [{ src: "/static/images/icons/solid/calendar-alt.svg" }],
+            icons: [{ src: "/static/images/icons/solid/calendar-week.svg" }],
           },
           {
             name: "Tickets",

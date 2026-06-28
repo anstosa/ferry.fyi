@@ -59,6 +59,23 @@ describe("cancelled sailing display", () => {
     expect(container.textContent).not.toContain("--");
   });
 
+  // scheduled color behavior
+  it("does not color cancelled departure times as late", () => {
+    const { container } = renderElement(
+      React.createElement(Time, {
+        context: "day",
+        isNext: false,
+        rowState: "normal",
+        time: scheduledTime.minus({ hours: 2 }),
+        timing,
+      })
+    );
+    const renderedTime = container.firstElementChild;
+
+    expect(renderedTime?.className).not.toContain("text-late-light");
+    expect(renderedTime?.className).not.toContain("dark:text-late-dark");
+  });
+
   // status text behavior
   it("does not render bottom-left cancelled status text", () => {
     const { container } = renderElement(

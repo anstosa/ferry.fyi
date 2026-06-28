@@ -35,7 +35,7 @@ export const Time = ({
   let majorTime;
   let majorTimeClass = getScheduleTimeMajorClassName(context, rowState);
   let minorTime;
-  let minorTimeClass = getScheduleTimeMinorClassName(context, rowState);
+  const minorTimeClass = getScheduleTimeMinorClassName(context, rowState);
   let isRelativeDeparture = false;
   // cancelled sailing
   if (isCancelled) {
@@ -63,14 +63,11 @@ export const Time = ({
     minorTime = displayDepartureTime.toFormat("a");
   }
 
-  // cancelled color
-  if (isCancelled) {
-    majorTimeClass = getLateTextClassName();
-    minorTimeClass = getLateTextClassName();
-  } else if (hasDeparted && delayMins >= 4) {
+  // late color
+  if (!isCancelled && hasDeparted && delayMins >= 4) {
     // past late color
     majorTimeClass = getLateTextClassName();
-  } else if (delayMins > 0) {
+  } else if (!isCancelled && delayMins > 0) {
     // late departure color
     majorTimeClass = getLateTextClassName();
   } else if (delayMins <= -4) {

@@ -17,8 +17,8 @@ import { useTrackedVessel } from "~/lib/onboardTracking";
 import CarIcon from "~/static/images/icons/solid/car.svg";
 import CheckCircleIcon from "~/static/images/icons/solid/check-circle.svg";
 import ExclamationCircleIcon from "~/static/images/icons/solid/exclamation-circle.svg";
-import RulerIcon from "~/static/images/icons/solid/ruler-combined.svg";
 import ShipIcon from "~/static/images/icons/solid/ship.svg";
+import TruckIcon from "~/static/images/icons/solid/truck.svg";
 import UsersIcon from "~/static/images/icons/solid/users.svg";
 
 import { Capacity } from "./Capacity";
@@ -148,7 +148,7 @@ export const SlotInfo = (props: Props): ReactElement => {
           "pointer-events-none absolute inset-1 z-20 rounded-xl",
           "border-4 border-dotted",
           isConfirmedCancelled
-            ? "border-red-dark dark:border-red-light"
+            ? "border-red-dark dark:border-red-dark"
             : "border-late-light dark:border-late-dark",
           isPastCancelled && "opacity-30"
         )}
@@ -160,7 +160,7 @@ export const SlotInfo = (props: Props): ReactElement => {
               "absolute left-1/2 top-1/2",
               "-translate-x-1/2 -translate-y-1/2 -rotate-6",
               "text-4xl font-black uppercase tracking-[0.25em]",
-              "text-red-dark opacity-30 dark:text-red-light",
+              "text-red-dark opacity-30 dark:text-red-dark",
               "sm:text-5xl"
             )}
           >
@@ -312,12 +312,21 @@ export const SlotInfo = (props: Props): ReactElement => {
     if (!tidalCancellationRisk) {
       return null;
     }
+    // confirmed cancellation tone
+    const isConfirmedCancellationCard = isConfirmedCancelled;
     return (
       <section
         className={clsx(
           "col-span-2 rounded-lg border p-3",
-          "border-late-light bg-[#fff3e8] text-late-light",
-          "dark:border-late-dark dark:bg-late-dark/20 dark:text-late-dark"
+          isConfirmedCancellationCard
+            ? [
+                "border-red-dark bg-red-light text-red-dark",
+                "dark:border-red-dark dark:bg-red-dark dark:text-white",
+              ]
+            : [
+                "border-late-light bg-[#fff3e8] text-late-light",
+                "dark:border-late-dark dark:bg-late-dark/20 dark:text-late-dark",
+              ]
         )}
       >
         <div className="flex items-start gap-2">
@@ -326,7 +335,14 @@ export const SlotInfo = (props: Props): ReactElement => {
             <div className="text-base font-bold leading-tight">
               {tidalCancellationRisk.title}
             </div>
-            <p className="mt-2 text-xs leading-snug text-gray-darkest dark:text-white">
+            <p
+              className={clsx(
+                "mt-2 text-xs leading-snug",
+                isConfirmedCancellationCard
+                  ? "text-red-dark dark:text-white"
+                  : "text-gray-darkest dark:text-white"
+              )}
+            >
               {tidalCancellationRisk.explanation}
             </p>
           </div>
@@ -526,7 +542,7 @@ export const SlotInfo = (props: Props): ReactElement => {
             {renderProfileStat(
               "Cars / Trucks",
               `${regularVehicleCapacity} / ${tallVehicleCapacity}`,
-              RulerIcon
+              TruckIcon
             )}
             {renderProfileStat("Passengers", passengerCapacityLabel, UsersIcon)}
             {renderProfileStat("Class", vesselClassLabel, ShipIcon)}

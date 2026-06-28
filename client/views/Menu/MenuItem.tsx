@@ -47,7 +47,7 @@ export const MenuItem = ({ item }: Props): ReactElement | null => {
   const { Icon, label } = item;
   const itemClass = "w-full";
   const wrapperClass = clsx(
-    "flex py-4 px-6 cursor-pointer",
+    "flex py-4 px-5 cursor-pointer",
     "border-l-4 border-transparent",
     "hover:border-countdown hover:bg-lighten-lower",
     {
@@ -56,8 +56,7 @@ export const MenuItem = ({ item }: Props): ReactElement | null => {
   );
   const content = (
     <>
-      {" "}
-      <Icon className="mr-6 text-2xl" />
+      <Icon className="mr-6 w-6 shrink-0 text-center text-2xl" />
       <span className="flex-grow text-xl">{label}</span>
     </>
   );

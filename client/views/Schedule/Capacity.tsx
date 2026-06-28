@@ -6,7 +6,7 @@ import { pluralize } from "shared/lib/strings";
 
 import CarIcon from "~/static/images/icons/solid/car.svg";
 import DoNotEnterIcon from "~/static/images/icons/solid/do-not-enter.svg";
-import ExternalLinkIcon from "~/static/images/icons/solid/external-link-square.svg";
+import ExternalLinkIcon from "~/static/images/icons/solid/external-link.svg";
 
 import { shouldUseForecastCapacityStatus } from "./capacityDisplaySource";
 import { getCapacityDisplayPercent, isCapacityFull } from "./capacityFullness";
@@ -16,6 +16,7 @@ import {
   getCapacityOpacityClassName,
 } from "./capacityStyles";
 import {
+  getScheduleLiveSpaceState,
   getScheduleSailingContext,
   getScheduleSpaceClassName,
   type ScheduleRowState,
@@ -206,6 +207,15 @@ export const Capacity = ({
       isLiveCapacityEmpty: isLiveCapacityEmpty(),
     });
 
+  // forecast extension visibility
+  const showEstimate = Boolean(
+    !isCancelled &&
+    !hasDeparted &&
+    !(crossing && isFull()) &&
+    !isNil(estimateFull) &&
+    estimateFull > (percentFull ?? 0)
+  );
+
   const getLiveCrossing = (): typeof crossing | null => {
     // live crossing guard
     if (!hasLiveCapacity()) {
@@ -376,7 +386,11 @@ export const Capacity = ({
         }
       }
     } else if (hasLiveCapacity()) {
-      const state: ScheduleRowState = isFull() ? "full" : "confirmed";
+      const state = getScheduleLiveSpaceState({
+        hasForecastExtension: showEstimate,
+        isFull: isFull(),
+        statusSide: getStatusSide(),
+      });
       spaceClass = clsx(
         spaceClass,
         getScheduleSpaceClassName(sailingContext, state)
@@ -464,13 +478,6 @@ export const Capacity = ({
   };
 
   const showCapacity = hasLiveCapacity() || isCancelled;
-  const showEstimate = Boolean(
-    !isCancelled &&
-    !hasDeparted &&
-    !(crossing && isFull()) &&
-    !isNil(estimateFull) &&
-    estimateFull > (percentFull ?? 0)
-  );
   if (!showCapacity && !showEstimate) {
     return null;
   }

@@ -25,10 +25,11 @@ import { Bulletins } from "./Bulletins";
 import { Cameras } from "./Cameras";
 import { Map } from "./Map";
 import { Schedule } from "./Schedule";
+import { TerminalDetails } from "./TerminalDetails";
 
-export type View = "schedule" | "cameras" | "map" | "alerts";
+export type View = "schedule" | "cameras" | "terminal" | "map" | "alerts";
 
-type TodayOnlyView = Exclude<View, "schedule">;
+type TodayOnlyView = Exclude<View, "schedule" | "terminal">;
 
 const TODAY_ONLY_VIEW_LABELS: Record<TodayOnlyView, string> = {
   alerts: "bulletins",
@@ -220,7 +221,7 @@ export const Route = ({
       : undefined;
   const contentResetKey = `${view}:${terminal?.id ?? ""}:${mate?.id ?? ""}:${date.toISODate()}`;
   const todayOnlyView: TodayOnlyView | null =
-    view === "schedule" || isToday ? null : view;
+    view === "schedule" || view === "terminal" || isToday ? null : view;
   let content: ReactElement | null = null;
 
   // off-date tab guard
@@ -275,6 +276,15 @@ export const Route = ({
     );
   } else if (view === "cameras") {
     content = <Cameras mate={mate} setRoute={setRoute} terminal={terminal} />;
+  } else if (view === "terminal" && terminal) {
+    content = (
+      <TerminalDetails
+        getPath={getPath}
+        mate={mate}
+        setRoute={setRoute}
+        terminal={terminal}
+      />
+    );
   } else if (view === "alerts") {
     content = <Bulletins terminal={terminal} mate={mate} time={time} />;
   } else if (view === "map") {

@@ -94,6 +94,28 @@ export const getScheduleTimeMinorClassName = (
     : "text-[#888888] dark:text-[#4a8090]";
 };
 
+interface ScheduleLiveSpaceStateOptions {
+  hasForecastExtension: boolean;
+  isFull: boolean;
+  statusSide: "left" | "right";
+}
+
+export const getScheduleLiveSpaceState = ({
+  hasForecastExtension,
+  isFull,
+  statusSide,
+}: ScheduleLiveSpaceStateOptions): ScheduleRowState => {
+  // full state wins
+  if (isFull) {
+    return "full";
+  }
+  // right labels sit off the confirmed fill
+  if (hasForecastExtension && statusSide === "right") {
+    return "normal";
+  }
+  return "confirmed";
+};
+
 export const getScheduleSpaceClassName = (
   context: ScheduleSailingContext,
   state: ScheduleRowState

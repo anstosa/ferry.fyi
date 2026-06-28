@@ -70,7 +70,8 @@ export const usePush = (requestPermission: boolean): InitializePush => {
             console.log("Foreground notification: ", payload.data);
             const notification = new Notification(payload.data.title, {
               body: payload.data.body,
-              icon: "/static/images/icon.png",
+              badge: "/static/images/notification-badge.png",
+              icon: "/static/images/icon-192x192.png",
             });
             notification.addEventListener("click", () => {
               navigate(

@@ -44,7 +44,7 @@ export const About = (): ReactElement => (
     <a
       href="https://ballydiean.farm/donate"
       target="_blank"
-      className="button button-invert flex-grow mt-4"
+      className="button button-primary flex-grow mt-4"
       rel="noreferrer"
     >
       <DonateIcon className="inline-block button-icon text-2xl" />

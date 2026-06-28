@@ -10,7 +10,24 @@
     <title>%APP_TITLE%</title>
     <meta name="description" content="%APP_DESCRIPTION%" />
     <link vite-ignore rel="canonical" href="%BASE_URL%" />
-    <link rel="icon" href="/static/images/icon.png" type="image/png" />
+    <link rel="icon" href="/static/images/favicon.ico" sizes="any" />
+    <link
+      rel="icon"
+      href="/static/images/favicon-32x32.png"
+      sizes="32x32"
+      type="image/png"
+    />
+    <link
+      rel="icon"
+      href="/static/images/favicon-16x16.png"
+      sizes="16x16"
+      type="image/png"
+    />
+    <link
+      rel="apple-touch-icon"
+      href="/static/images/apple-touch-icon.png"
+      sizes="180x180"
+    />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -34,6 +51,10 @@
     <meta itemprop="description" content="%APP_DESCRIPTION%" />
     <meta vite-ignore itemprop="image" content="%SOCIAL_IMAGE%" />
     <meta name="theme-color" content="%THEME_COLOR%" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Ferry FYI" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
     <link vite-ignore href="https://api.mapbox.com/mapbox-gl-js/v3.25.0/mapbox-gl.css" rel="stylesheet" />
 
@@ -65,7 +86,7 @@
         role="status"
         style="
           align-items: center;
-          background: #016f52;
+          background: linear-gradient(135deg, #016f52 0%, #004d61 100%);
           color: #fff;
           display: flex;
           flex-direction: column;

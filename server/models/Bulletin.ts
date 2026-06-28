@@ -1,20 +1,30 @@
 import { convert } from "html-to-text";
 import { DateTime } from "luxon";
+import { Op } from "sequelize";
 import {
   Bulletin as BulletinClass,
   Level,
   SortedLevels,
 } from "shared/contracts/bulletins";
-import { isDelayBulletin } from "shared/lib/bulletins";
+import { isSuppressedBulletin } from "shared/lib/bulletins";
 
 import { sendPush } from "~/lib/push";
 import { getSubscribedTerminalPushMessages } from "~/lib/pushSubscriptions";
 
 import { CacheableModel } from "./CacheableModel";
+import { PersistedBulletin } from "./PersistedBulletin";
 import { Terminal } from "./Terminal";
 
 const startupTime = DateTime.now().toUnixInteger();
 const ROUTE_MATCH = /^([\w/]+)\s*-\s*/;
+
+interface NormalizedBulletinInput extends BulletinInput {
+  bodyText: string;
+  id: string;
+  ignoreAll: boolean;
+  level: Level;
+  title: string;
+}
 
 type BulletinInput = Omit<
   BulletinClass,
@@ -39,15 +49,81 @@ export class Bulletin extends CacheableModel implements BulletinClass {
   url?: string;
 
   constructor(data: BulletinInput) {
+    const normalizedData = Bulletin.normalizeInput(data);
+    super(normalizedData);
+    this.rawTitle = data.title;
+    this.sendPushes();
+  }
+
+  // normalize bulletin input
+  static normalizeInput(data: BulletinInput): NormalizedBulletinInput {
     const id = Bulletin.generateIndex(data);
     const bodyText =
       data.bodyText || convert(data.bodyHTML, { wordwrap: false });
     const title = Bulletin.normalizeTitle(data.title);
     const level = Bulletin.getLevel(data);
-    const ignoreAll = isDelayBulletin({ ...data, bodyText, title });
-    super({ ...data, bodyText, id, ignoreAll, level, title });
-    this.rawTitle = data.title;
-    this.sendPushes();
+    const ignoreAll = isSuppressedBulletin({ ...data, bodyText, title });
+    return { ...data, bodyText, id, ignoreAll, level, title };
+  }
+
+  // get or update cached bulletin
+  static getOrUpdate(index: string, data: BulletinInput): [Bulletin, boolean] {
+    const [bulletin, wasCreated] = Bulletin.getOrCreate(index, data);
+    // existing bulletin guard
+    if (!wasCreated) {
+      bulletin.update(Bulletin.normalizeInput(data));
+      bulletin.rawTitle = data.title;
+      bulletin.save();
+    }
+    return [bulletin, wasCreated];
+  }
+
+  // persist active bulletin
+  async persistActive(seenAt: number): Promise<void> {
+    const existingBulletin = await PersistedBulletin.findByPk(this.id);
+    const data = {
+      bodyHTML: this.bodyHTML,
+      bodyText: this.bodyText,
+      date: this.date,
+      ignoreAll: this.ignoreAll,
+      inactiveAt: null,
+      lastSeenAt: seenAt,
+      level: this.level,
+      rawTitle: this.rawTitle,
+      terminalId: this.terminalId,
+      title: this.title,
+      url: this.url ?? null,
+    };
+    // existing row guard
+    if (existingBulletin) {
+      await existingBulletin.update(data);
+      return;
+    }
+    await PersistedBulletin.create({
+      ...data,
+      firstSeenAt: seenAt,
+      id: this.id,
+    });
+  }
+
+  // mark missing terminal bulletins inactive
+  static async markInactiveForTerminal(
+    terminalId: string,
+    activeIds: string[],
+    inactiveAt: number
+  ): Promise<void> {
+    const idFilter =
+      activeIds.length > 0 ? { id: { [Op.notIn]: activeIds } } : {};
+    await PersistedBulletin.update(
+      { inactiveAt },
+      {
+        where: {
+          ...idFilter,
+          inactiveAt: null,
+          terminalId,
+        },
+      }
+    );
   }
 
   async sendPushes(): Promise<void> {
@@ -61,7 +137,7 @@ export class Bulletin extends CacheableModel implements BulletinClass {
       return;
     }
     if (this.ignoreAll) {
-      // delay alerts use projections
+      // app-managed alerts
       return;
     }
     const messages = await getSubscribedTerminalPushMessages({
@@ -133,7 +209,7 @@ export class Bulletin extends CacheableModel implements BulletinClass {
   };
 
   static generateIndex = (data: BulletinInput): string =>
-    `${data.date}-${data.title}`;
+    `${data.terminalId}-${data.date}-${data.title}`;
 
   serialize(): BulletinClass {
     return CacheableModel.serialize({

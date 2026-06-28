@@ -10,10 +10,11 @@ import { NavLink } from "react-router-dom";
 import type { Terminal } from "shared/contracts/terminals";
 
 import { colors } from "~/lib/theme";
+import BellAlertIcon from "~/static/images/icons/solid/bell-exclamation.svg";
 import ScheduleIcon from "~/static/images/icons/solid/calendar-week.svg";
 import VideoIcon from "~/static/images/icons/solid/cctv.svg";
-import WarningIcon from "~/static/images/icons/solid/exclamation-triangle.svg";
-import MapIcon from "~/static/images/icons/solid/map-marked.svg";
+import TerminalIcon from "~/static/images/icons/solid/garage-car.svg";
+import MapIcon from "~/static/images/icons/solid/route.svg";
 import { GetPath } from "~/views/Route";
 
 import { getLastBulletinTime, getWaitTime } from "../views/Bulletins";
@@ -100,7 +101,7 @@ export const Footer = ({ terminal, getPath }: Props): ReactElement => {
         to={getPath({ view: "alerts" })}
       >
         {summary && <span className="truncate mr-2">{summary}</span>}
-        <WarningIcon className="text-2xl" />
+        <BellAlertIcon className="text-2xl" />
       </NavLink>
     );
   };
@@ -119,6 +120,9 @@ export const Footer = ({ terminal, getPath }: Props): ReactElement => {
         </FooterLink>
         <FooterLink path={getPath({ view: "cameras" })}>
           <VideoIcon className="text-2xl" />
+        </FooterLink>
+        <FooterLink path={getPath({ view: "terminal" })}>
+          <TerminalIcon className="text-2xl" />
         </FooterLink>
         <FooterLink path={getPath({ view: "map" })}>
           <MapIcon className="text-2xl" />

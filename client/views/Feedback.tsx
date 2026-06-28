@@ -12,7 +12,7 @@ export const Content = (): ReactElement => (
     <p className="mt-2">See something wrong? Want to request a feature?</p>
     <div className="flex mt-4">
       <a
-        className="button button-invert flex-grow"
+        className="button button-primary flex-grow"
         href="https://github.com/anstosa/ferry.fyi/issues"
         target="_blank"
         rel="noopener noreferrer"
