@@ -1,10 +1,24 @@
 import { Router } from "express";
-import { AppMetadata, UserUpdatePayload } from "shared/contracts/user";
+import {
+  AlertSubscriptions,
+  AppMetadata,
+  UserUpdatePayload,
+} from "shared/contracts/user";
+import { isAlertSubscriptionChannel } from "shared/lib/alertSubscriptions";
 import { isObject } from "shared/lib/objects";
 
 import { auth0, Auth0UserUpdate } from "~/lib/auth0";
 
 const userRouter = Router();
+
+// auth0 response data
+const getAuth0Data = <T>(input: T | { data?: T }): T | undefined => {
+  // v5 response guard
+  if (isObject(input) && "data" in input) {
+    return input.data as T | undefined;
+  }
+  return input as T;
+};
 
 const getStringList = (input: unknown): string[] | undefined => {
   // string list guard
@@ -17,6 +31,29 @@ const getStringList = (input: unknown): string[] | undefined => {
   return input;
 };
 
+const getAlertSubscriptions = (
+  input: unknown
+): AlertSubscriptions | undefined => {
+  // subscriptions object guard
+  if (!isObject(input)) {
+    return undefined;
+  }
+  const subscriptions: AlertSubscriptions = {};
+  Object.entries(input).forEach(([routeKey, channels]) => {
+    // channel list guard
+    if (!Array.isArray(channels)) {
+      return;
+    }
+    const validChannels = channels.filter(isAlertSubscriptionChannel);
+    // empty channel guard
+    if (validChannels.length === 0) {
+      return;
+    }
+    subscriptions[routeKey] = Array.from(new Set(validChannels));
+  });
+  return subscriptions;
+};
+
 const sanitizeAppMetadata = (input: unknown): AppMetadata | undefined => {
   // metadata object guard
   if (!isObject(input)) {
@@ -27,6 +64,11 @@ const sanitizeAppMetadata = (input: unknown): AppMetadata | undefined => {
   // tickets allow-list
   if (tickets) {
     metadata.tickets = tickets;
+  }
+  const alertSubscriptions = getAlertSubscriptions(input.alertSubscriptions);
+  // alert subscriptions allow-list
+  if (alertSubscriptions) {
+    metadata.alertSubscriptions = alertSubscriptions;
   }
   const subscribedTerminals = getStringList(input.subscribedTerminals);
   // subscription allow-list
@@ -60,7 +102,7 @@ const sanitizeUserUpdate = (input: unknown): UserUpdatePayload => {
 
 userRouter.get("/", async (request, response) => {
   const user = await auth0.users.get(response.locals.user.sub);
-  return response.send(user.data);
+  return response.send(getAuth0Data(user));
 });
 
 userRouter.post("/", async (request, response) => {
@@ -68,7 +110,7 @@ userRouter.post("/", async (request, response) => {
     response.locals.user.sub,
     sanitizeUserUpdate(request.body) as Auth0UserUpdate
   );
-  return response.send(user.data);
+  return response.send(getAuth0Data(user));
 });
 
 export { sanitizeUserUpdate, userRouter };

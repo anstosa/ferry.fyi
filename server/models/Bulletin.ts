@@ -6,7 +6,7 @@ import {
   Level,
   SortedLevels,
 } from "shared/contracts/bulletins";
-import { isSuppressedBulletin } from "shared/lib/bulletins";
+import { isSuppressedBulletin, isWaitTimeBulletin } from "shared/lib/bulletins";
 
 import { sendPush } from "~/lib/push";
 import { getSubscribedTerminalPushMessages } from "~/lib/pushSubscriptions";
@@ -141,6 +141,7 @@ export class Bulletin extends CacheableModel implements BulletinClass {
       return;
     }
     const messages = await getSubscribedTerminalPushMessages({
+      channel: isWaitTimeBulletin(this) ? "wait-times" : "service-alerts",
       data: {
         title: `${
           this.routePrefix === "All" ? "" : `[${this.routePrefix}] `

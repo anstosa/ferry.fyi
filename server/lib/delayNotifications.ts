@@ -190,6 +190,7 @@ const getSubscribedRouteMessages = (
   content: DelayNotificationContent
 ): Promise<Message[]> => {
   return getSubscribedTerminalPushMessages({
+    channel: "delays",
     data: {
       body: content.body,
       date: String(Math.floor(Date.now() / 1000)),

@@ -303,6 +303,7 @@ const getSubscribedRouteMessages = (
   content: CancellationNotificationContent
 ): Promise<Message[]> => {
   return getSubscribedTerminalPushMessages({
+    channel: "cancellations",
     data: {
       body: content.body,
       date: String(Math.floor(Date.now() / 1000)),

@@ -3,16 +3,27 @@ import { Browser } from "@capacitor/browser";
 import { DateTime } from "luxon";
 import React, { ReactElement, ReactNode } from "react";
 import { Helmet } from "react-helmet-async";
+import { Link } from "react-router-dom";
+import type { AlertSubscriptionChannel } from "shared/contracts/user";
+import { getAlertSubscriptionChannelLabel } from "shared/lib/alertSubscriptions";
 import { pluralize } from "shared/lib/strings";
 
 import { Page } from "~/components/Page";
 import { Splash } from "~/components/Splash";
 import { useDevice } from "~/lib/device";
+import { getSlug, useTerminals } from "~/lib/terminals";
 import { useUser } from "~/lib/user";
 
 interface DetailRowProps {
   label: string;
   value?: ReactNode;
+}
+
+interface SubscriptionSummary {
+  channels: AlertSubscriptionChannel[];
+  label: string;
+  path: string;
+  routeKey: string;
 }
 
 // account detail row
@@ -74,11 +85,48 @@ const getDateLabel = (value?: string | null): string | null => {
   return date.toLocaleString(DateTime.DATETIME_MED);
 };
 
+// route subscription summaries
+const getSubscriptionSummaries = (
+  alertSubscriptions: Record<string, AlertSubscriptionChannel[]> | undefined,
+  terminals: ReturnType<typeof useTerminals>["terminals"]
+): SubscriptionSummary[] => {
+  // empty subscriptions guard
+  if (!alertSubscriptions) {
+    return [];
+  }
+  return Object.entries(alertSubscriptions)
+    .map(([routeKey, channels]) => {
+      const [firstTerminalId, secondTerminalId] = routeKey.split(":");
+      const firstTerminal = terminals.find(({ id }) => id === firstTerminalId);
+      const secondTerminal = terminals.find(
+        ({ id }) => id === secondTerminalId
+      );
+      // route data guard
+      if (!firstTerminal || !secondTerminal || channels.length === 0) {
+        return null;
+      }
+      return {
+        channels,
+        label: `${firstTerminal.name} / ${secondTerminal.name}`,
+        path: `/${getSlug(firstTerminal.id)}/${getSlug(secondTerminal.id)}/subscribe`,
+        routeKey,
+      };
+    })
+    .filter((summary): summary is SubscriptionSummary => {
+      return Boolean(summary);
+    });
+};
+
 export const Account = withAuthenticationRequired(
   (): ReactElement => {
     const { user, logout } = useAuth0();
-    const [{ subscribedTerminals, tickets }] = useUser();
+    const [{ alertSubscriptions, subscribedTerminals, tickets }] = useUser();
     const device = useDevice();
+    const { terminals } = useTerminals();
+    const subscriptionSummaries = getSubscriptionSummaries(
+      alertSubscriptions,
+      terminals
+    );
     const userClaims = user as Record<string, unknown> | undefined;
     const name =
       getStringClaim(userClaims, "name") ??
@@ -137,13 +185,65 @@ export const Account = withAuthenticationRequired(
             <dl>
               <DetailRow
                 label="Alerts"
-                value={pluralize(subscribedTerminals?.length ?? 0, "terminal")}
+                value={pluralize(
+                  subscriptionSummaries.length,
+                  "route subscription"
+                )}
               />
               <DetailRow
                 label="Tickets"
                 value={pluralize(tickets?.length ?? 0, "saved ticket")}
               />
             </dl>
+          </section>
+
+          <section
+            className="rounded bg-white p-6 shadow dark:bg-black"
+            id="subscriptions"
+          >
+            <h3 className="mb-3 text-xl font-bold">Alert subscriptions</h3>
+            {subscriptionSummaries.length > 0 ? (
+              <ul className="flex flex-col gap-3">
+                {subscriptionSummaries.map(
+                  ({ channels, label, path, routeKey }) => (
+                    <li key={routeKey}>
+                      <Link
+                        className="block rounded-xl border border-gray-200 p-3 no-underline transition hover:border-blue-dark hover:bg-blue-dark/5 dark:border-gray-dark dark:hover:border-[#6fb8c8] dark:hover:bg-white/[0.04]"
+                        to={path}
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="font-bold text-blue-dark dark:text-[#6fb8c8]">
+                            {label}
+                          </span>
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {channels.map((channel) => (
+                            <span
+                              className="rounded-full bg-green-dark/10 px-2.5 py-1 text-xs font-bold text-green-dark dark:bg-green-light/10 dark:text-green-light"
+                              key={channel}
+                            >
+                              {getAlertSubscriptionChannelLabel(channel)}
+                            </span>
+                          ))}
+                        </div>
+                      </Link>
+                    </li>
+                  )
+                )}
+              </ul>
+            ) : (
+              <p className="text-sm text-gray-dark dark:text-gray-medium">
+                You are not subscribed to any route alert channels yet.
+              </p>
+            )}
+            {(subscribedTerminals?.length ?? 0) > 0 && (
+              <p className="mt-4 rounded-xl bg-day-normal-light p-3 text-sm text-gray-dark dark:bg-blue-dark dark:text-[#b8d5de]">
+                You also have legacy all-alert subscriptions for{" "}
+                {pluralize(subscribedTerminals?.length ?? 0, "terminal")}.
+                Editing a route subscription will move that route to channel
+                controls.
+              </p>
+            )}
           </section>
 
           <button

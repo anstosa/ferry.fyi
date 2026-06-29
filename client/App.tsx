@@ -59,7 +59,7 @@ export const App = (): ReactElement => {
   const navigate = useNavigate();
   const location = useLocation();
   const { handleRedirectCallback } = useAuth0();
-  const [{ subscribedTerminals }] = useUser();
+  const [{ alertSubscriptions, subscribedTerminals }] = useUser();
   const initializePush = usePush(false);
   const routeResetKey = `${location.pathname}${location.search}`;
   const routeParts = location.pathname.split("/").filter(Boolean);
@@ -86,10 +86,19 @@ export const App = (): ReactElement => {
   );
 
   useEffect(() => {
-    if (subscribedTerminals && subscribedTerminals.length > 0) {
+    const hasRouteSubscriptions = Object.values(alertSubscriptions ?? {}).some(
+      (channels) => {
+        return channels.length > 0;
+      }
+    );
+    // subscription guard
+    if (
+      hasRouteSubscriptions ||
+      (subscribedTerminals && subscribedTerminals.length > 0)
+    ) {
       initializePush();
     }
-  }, [subscribedTerminals]);
+  }, [alertSubscriptions, subscribedTerminals]);
 
   useEffect(() => {
     if (device?.isNativeMobile) {
@@ -180,6 +189,10 @@ export const App = (): ReactElement => {
           element: withRouteBoundary("Alerts", <Route view="alerts" />),
         },
         {
+          path: "subscribe",
+          element: withRouteBoundary("Subscribe", <Route view="subscribe" />),
+        },
+        {
           path: ":mateSlug",
           children: [
             {
@@ -201,6 +214,13 @@ export const App = (): ReactElement => {
             {
               path: "alerts",
               element: withRouteBoundary("Alerts", <Route view="alerts" />),
+            },
+            {
+              path: "subscribe",
+              element: withRouteBoundary(
+                "Subscribe",
+                <Route view="subscribe" />
+              ),
             },
           ],
         },

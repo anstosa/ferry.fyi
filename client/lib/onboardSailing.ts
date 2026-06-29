@@ -4,6 +4,7 @@ import type { Vessel } from "shared/contracts/vessels";
 import { constrain, round } from "shared/lib/math";
 
 import { getDistance, Point } from "./geo";
+import { knotsToMph } from "./speed";
 
 interface ProjectedPoint {
   distanceFromRoute: number;
@@ -147,10 +148,72 @@ const isOnWaterProgress = (progress: number): boolean => {
 const isMovingFerry = (vessel: Vessel): boolean => {
   return (
     Boolean(vessel.location) &&
-    Boolean(vessel.gpsDelay) &&
     !vessel.isAtDock &&
     vessel.speed >= MIN_MOVING_SPEED_KNOTS
   );
+};
+
+// fallback progress
+const getProjectedRouteProgress = ({
+  departureTerminal,
+  destinationTerminal,
+  vessel,
+}: {
+  departureTerminal: Terminal;
+  destinationTerminal: Terminal;
+  vessel: Vessel;
+}): number | null => {
+  // GPS progress guard
+  if (vessel.gpsDelay) {
+    return constrain(vessel.gpsDelay.signals.progress, 0, 1);
+  }
+  // location progress guard
+  if (vessel.location) {
+    const routeProjection = projectPointToRoute(
+      departureTerminal.location,
+      destinationTerminal.location,
+      vessel.location
+    );
+    return routeProjection ? routeProjection.progress : null;
+  }
+  // dock fallback guard
+  if (vessel.isAtDock) {
+    return 0;
+  }
+  return null;
+};
+
+// fallback ETA
+const getFallbackEtaMinutes = ({
+  departureTerminal,
+  destinationTerminal,
+  progress,
+  vessel,
+}: {
+  departureTerminal: Terminal;
+  destinationTerminal: Terminal;
+  progress: number;
+  vessel: Vessel;
+}): number => {
+  const estimatedArrivalTime = normalizeTimestampSeconds(
+    vessel.estimatedArrivalTime
+  );
+  const now = Date.now() / 1000;
+  // WSF ETA guard
+  if (estimatedArrivalTime && estimatedArrivalTime > now) {
+    return Math.max(1, round((estimatedArrivalTime - now) / 60));
+  }
+  const crossingMiles = getDistance(
+    departureTerminal.location,
+    destinationTerminal.location
+  );
+  const remainingMiles = crossingMiles * (1 - progress);
+  const speedMph = knotsToMph(vessel.speed);
+  // speed fallback guard
+  if (speedMph > 0 && remainingMiles > 0) {
+    return Math.max(1, round((remainingMiles / speedMph) * 60));
+  }
+  return 1;
 };
 
 // build onboard match
@@ -177,20 +240,36 @@ const getVesselMatch = ({
   if (!departureTerminal || !destinationTerminal) {
     return null;
   }
-  const { gpsDelay } = vessel;
-  // gps delay guard
-  if (!gpsDelay) {
+  const progress = getProjectedRouteProgress({
+    departureTerminal,
+    destinationTerminal,
+    vessel,
+  });
+  // progress guard
+  if (progress === null) {
     return null;
   }
-  const progress = constrain(gpsDelay.signals.progress, 0, 1);
   // vessel on-water guard
   if (!allowTerminalProgress && !isOnWaterProgress(progress)) {
     return null;
   }
-  const { scheduledArrivalTime, scheduledDepartureTime } = gpsDelay.signals;
-  const scheduledDuration = scheduledArrivalTime - scheduledDepartureTime;
-  const remainingCrossingSeconds = scheduledDuration * (1 - progress);
-  const etaMinutes = Math.max(1, round(remainingCrossingSeconds / 60));
+  const { gpsDelay } = vessel;
+  const etaMinutes = gpsDelay
+    ? Math.max(
+        1,
+        round(
+          ((gpsDelay.signals.scheduledArrivalTime -
+            gpsDelay.signals.scheduledDepartureTime) *
+            (1 - progress)) /
+            60
+        )
+      )
+    : getFallbackEtaMinutes({
+        departureTerminal,
+        destinationTerminal,
+        progress,
+        vessel,
+      });
   return {
     departureTerminal,
     destinationTerminal,

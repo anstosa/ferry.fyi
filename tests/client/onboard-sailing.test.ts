@@ -153,6 +153,19 @@ describe("onboard sailing detection", () => {
     expect(match?.etaMinutes).toBe(10);
   });
 
+  // tracked GPS fallback
+  it("tracks a requested moving ferry from its live route position without GPS delay", () => {
+    const match = getTrackedSailing({
+      terminals,
+      vesselId: "vessel",
+      vessels: [makeVessel({ gpsDelay: undefined, speed: 30 })],
+    });
+
+    expect(match?.vessel.id).toBe("vessel");
+    expect(match?.progress).toBe(0.5);
+    expect(match?.etaMinutes).toBe(60);
+  });
+
   // tracked docked boat
   it("tracks a requested docked ferry with live route context", () => {
     const match = getTrackedSailing({
@@ -318,8 +331,8 @@ describe("onboard sailing detection", () => {
   });
 
   // stale/non-moving guard
-  it("requires a live moving GPS delay signal", () => {
-    expect(getMatch({ gpsDelay: undefined })).toBeNull();
+  it("requires a live moving ferry for automatic onboard detection", () => {
+    expect(getMatch({ gpsDelay: undefined, speed: 30 })?.progress).toBe(0.5);
     expect(getMatch({ isAtDock: true })).toBeNull();
     expect(getMatch({ speed: 0 })).toBeNull();
   });

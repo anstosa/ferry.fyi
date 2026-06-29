@@ -113,6 +113,65 @@ html {
   to { background-position: 100%; }
 }
 
+@keyframes app-content-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes splash-wave-draw {
+  0% {
+    stroke-dashoffset: 112;
+  }
+
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes splash-wave-float {
+  0%,
+  100% {
+    opacity: 0.42;
+    transform: translateY(1px);
+  }
+
+  50% {
+    opacity: 0.92;
+    transform: translateY(-1px);
+  }
+}
+
+@keyframes route-tab-enter-to-left {
+  from {
+    opacity: 0.78;
+    transform: translateX(28px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes route-tab-enter-to-right {
+  from {
+    opacity: 0.78;
+    transform: translateX(-28px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 @layer utilities {
   .bg-ferry-gradient {
     background: linear-gradient(135deg, #016f52 0%, #004d61 100%);
@@ -217,7 +276,7 @@ html {
   }
 
   .bg-loading {
-    animation: 10s linear infinte loading;
+    animation: 10s linear infinite loading;
     background: linear-gradient(
       to right,
       theme("colors.blue.light"),
@@ -235,6 +294,46 @@ html {
         theme("colors.blue.dark") 150px,
       );
     }
+  }
+}
+
+@layer base {
+  :root {
+    --app-motion-duration-fast: 140ms;
+    --app-motion-duration: 220ms;
+    --app-motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  main,
+  [data-app-view] {
+    animation:
+      app-content-enter
+      var(--app-motion-duration)
+      var(--app-motion-ease);
+  }
+
+  a,
+  button,
+  [role="button"],
+  input,
+  select,
+  textarea {
+    transition-duration: var(--app-motion-duration-fast);
+    transition-property:
+      background-color,
+      border-color,
+      box-shadow,
+      color,
+      filter,
+      opacity,
+      transform;
+    transition-timing-function: var(--app-motion-ease);
+  }
+
+  button:not(:disabled):active,
+  [role="button"]:not(:disabled):active,
+  a:active {
+    transform: translateY(1px) scale(0.99);
   }
 }
 
@@ -277,6 +376,91 @@ html {
     @apply bg-white;
   }
 
+  .splash-logo {
+    filter: drop-shadow(0 12px 26px rgb(0 0 0 / 22%));
+  }
+
+  .splash-loader-waves {
+    filter: drop-shadow(0 10px 18px rgb(0 0 0 / 16%));
+    height: theme("spacing.12");
+    overflow: visible;
+    width: theme("spacing.40");
+  }
+
+  .splash-loader-wave {
+    animation:
+      splash-wave-draw 2.4s ease-in-out infinite,
+      splash-wave-float 3.2s var(--app-motion-ease) infinite;
+    fill: none;
+    stroke: currentcolor;
+    stroke-dasharray: 56 56;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+
+  .splash-loader-wave--back {
+    animation-delay: -800ms, -400ms;
+    opacity: 0.32;
+    stroke-width: 1.5;
+  }
+
+  .splash-loader-wave--middle {
+    animation-delay: -400ms, -900ms;
+    opacity: 0.58;
+    stroke-width: 2.5;
+  }
+
+  .splash-loader-wave--front {
+    animation-delay: 0ms, -1300ms;
+    opacity: 0.82;
+    stroke-width: 3;
+  }
+
+  .route-tab-motion {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    overflow-x: hidden;
+  }
+
+  .route-tab-motion > main {
+    animation:
+      route-tab-enter-to-right
+      var(--app-motion-duration)
+      var(--app-motion-ease);
+    will-change: transform, opacity;
+  }
+
+  .route-tab-motion--to-left > main {
+    animation-name: route-tab-enter-to-left;
+  }
+
+  section,
+  article,
+  header,
+  footer,
+  .date-button-picker,
+  .alert,
+  .button,
+  .rounded,
+  .rounded-lg,
+  .rounded-xl,
+  .rounded-2xl {
+    transition-duration: var(--app-motion-duration);
+    transition-property:
+      background-color,
+      border-color,
+      box-shadow,
+      color,
+      filter,
+      opacity,
+      transform;
+    transition-timing-function: var(--app-motion-ease);
+  }
+
   @include meta.load-css("components/alert");
   @include meta.load-css("components/button");
   @include meta.load-css("components/field");
@@ -289,3 +473,14 @@ html {
 
 // Inject tailwind utility classes
 @tailwind utilities;
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
+  }
+}

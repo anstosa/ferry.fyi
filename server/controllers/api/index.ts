@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { RequestHandler, Response, Router } from "express";
 
 import { getWsfStatus } from "~/lib/wsf/api";
 
@@ -13,18 +13,48 @@ import { vesselRouter } from "./vessels";
 
 const apiRouter = Router();
 
-// wrap all routes with wsf status middleware
-apiRouter.use((request, response, next) => {
-  const defaultJson = response.json;
-  const wrapJson: (typeof response)["json"] = (body) => {
-    return defaultJson.call(response, {
-      wsfStatus: getWsfStatus(),
-      body,
-    });
+const isWrappedApiBody = (body: unknown): boolean => {
+  // envelope guard
+  return (
+    body !== null &&
+    typeof body === "object" &&
+    "wsfStatus" in body &&
+    "body" in body
+  );
+};
+
+const wrapApiBody = (body: unknown): unknown => {
+  // duplicate envelope guard
+  if (isWrappedApiBody(body)) {
+    return body;
+  }
+  return {
+    wsfStatus: getWsfStatus(),
+    body,
+  };
+};
+
+export const wrapApiResponse: RequestHandler = (request, response, next) => {
+  const defaultSend = response.send;
+  const sendJson = (body: unknown): Response => {
+    response.type("application/json");
+    return defaultSend.call(response, JSON.stringify(wrapApiBody(body)));
+  };
+  const wrapJson: (typeof response)["json"] = (body) => sendJson(body);
+  const wrapSend: (typeof response)["send"] = (body) => {
+    // empty status guard
+    if (typeof body === "undefined") {
+      return defaultSend.call(response, body);
+    }
+    return sendJson(body);
   };
   response.json = wrapJson;
+  response.send = wrapSend;
   next();
-});
+};
+
+// wrap all routes with wsf status middleware
+apiRouter.use(wrapApiResponse);
 
 apiRouter.use("/cameras", cameraRouter);
 apiRouter.use("/vessels", vesselRouter);

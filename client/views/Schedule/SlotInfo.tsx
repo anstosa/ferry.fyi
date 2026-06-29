@@ -1,4 +1,5 @@
 import clsx from "clsx";
+import { AnimatePresence, motion } from "framer-motion";
 import { DateTime } from "luxon";
 import React, { ReactElement, ReactNode, useEffect, useRef } from "react";
 import type { Route } from "shared/contracts/routes";
@@ -17,6 +18,7 @@ import { useTrackedVessel } from "~/lib/onboardTracking";
 import CarIcon from "~/static/images/icons/solid/car.svg";
 import CheckCircleIcon from "~/static/images/icons/solid/check-circle.svg";
 import ExclamationCircleIcon from "~/static/images/icons/solid/exclamation-circle.svg";
+import ExternalLinkIcon from "~/static/images/icons/solid/external-link.svg";
 import ShipIcon from "~/static/images/icons/solid/ship.svg";
 import TruckIcon from "~/static/images/icons/solid/truck.svg";
 import UsersIcon from "~/static/images/icons/solid/users.svg";
@@ -392,11 +394,15 @@ export const SlotInfo = (props: Props): ReactElement => {
         status: hasWiFi ? "open" : "closed",
       },
     ];
+    const isVesselSailingNow = !vessel.isAtDock;
+    const hasTrackableRouteContext = Boolean(
+      vessel.arrivingTerminalId && vessel.departingTerminalId
+    );
+    const hasTrackableLiveSignal = Boolean(vessel.gpsDelay || vessel.location);
     const canTrackBoat = Boolean(
-      isNext &&
-      vessel.gpsDelay &&
-      vessel.arrivingTerminalId &&
-      vessel.departingTerminalId
+      (isNext || isVesselSailingNow) &&
+      hasTrackableRouteContext &&
+      hasTrackableLiveSignal
     );
     // track boat action
     const trackBoat = (event: React.MouseEvent<HTMLButtonElement>): void => {
@@ -404,10 +410,6 @@ export const SlotInfo = (props: Props): ReactElement => {
       event.stopPropagation();
       setTrackedVesselId(vessel.id);
     };
-    // collapsed guard
-    if (!isExpanded) {
-      return null;
-    }
     return (
       <div
         className={clsx(
@@ -546,6 +548,21 @@ export const SlotInfo = (props: Props): ReactElement => {
             )}
             {renderProfileStat("Passengers", passengerCapacityLabel, UsersIcon)}
             {renderProfileStat("Class", vesselClassLabel, ShipIcon)}
+            {/* wsf vessel link guard */}
+            {vessel.vesselWatchUrl && (
+              <a
+                className={clsx(
+                  "button button-primary col-span-2",
+                  "bg-blue-dark text-white dark:bg-blue-light dark:text-blue-darkest"
+                )}
+                href={vessel.vesselWatchUrl}
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                <span className="button-label">Open WSF Vessel Page</span>
+                <ExternalLinkIcon className="button-icon" />
+              </a>
+            )}
           </div>
         </article>
       </div>
@@ -565,7 +582,20 @@ export const SlotInfo = (props: Props): ReactElement => {
       )}
     >
       {renderHeader()}
-      {renderDetails()}
+      <AnimatePresence initial={false}>
+        {isExpanded && (
+          <motion.div
+            animate={{ height: "auto", opacity: 1, y: 0 }}
+            exit={{ height: 0, opacity: 0, y: -6 }}
+            initial={{ height: 0, opacity: 0, y: -6 }}
+            key="details"
+            style={{ overflow: "hidden" }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+          >
+            {renderDetails()}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </li>
   );
 };

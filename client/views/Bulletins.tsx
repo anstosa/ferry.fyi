@@ -1,19 +1,15 @@
-import { useAuth0 } from "@auth0/auth0-react";
 import clsx from "clsx";
-import { AnimatePresence } from "framer-motion";
 import { DateTime } from "luxon";
-import React, { ReactElement, ReactNode, useState } from "react";
-import { useLocation } from "react-router-dom";
+import React, { ReactElement, ReactNode } from "react";
+import { Link } from "react-router-dom";
 import { type Bulletin, Level } from "shared/contracts/bulletins";
 import type { Terminal } from "shared/contracts/terminals";
-import { without } from "shared/lib/arrays";
+import { hasRouteSubscription } from "shared/lib/alertSubscriptions";
 import { isSuppressedBulletin } from "shared/lib/bulletins";
-import { isNull, isUndefined } from "shared/lib/identity";
 import { round } from "shared/lib/math";
 import { capitalize } from "shared/lib/strings";
 
 import { InlineLoader } from "~/components/InlineLoader";
-import { Toast } from "~/components/Toast";
 import { useUser } from "~/lib/user";
 import UnsubscribedIcon from "~/static/images/icons/regular/bell.svg";
 import SubscribedIcon from "~/static/images/icons/solid/bell.svg";
@@ -24,6 +20,7 @@ import InfoIcon from "~/static/images/icons/solid/info-circle.svg";
 import WSDOTIcon from "~/static/images/icons/wsdot.svg";
 
 import { Header } from "./Header";
+import type { GetPath } from "./Route";
 
 const WAIT_NUMBER_HOURS_MATCH = /^[^\d]*(\d+) (Hour|Hr) Wait.*$/i;
 const WAIT_SPELL_HOURS_MATCH =
@@ -107,89 +104,39 @@ export const getWaitTime = ({ title }: Bulletin): string | null => {
   return null;
 };
 
-interface ButtonProps {
-  terminalId: string;
-  mateId?: string;
-  dark?: boolean;
-  showForMate?: (isSubscribed: boolean) => void;
-  onChange?: () => void;
+interface SubscribeLinkProps {
+  getPath: GetPath;
+  mate: Terminal | null;
+  terminal: Terminal;
 }
 
-const SubscribeButton = ({
-  terminalId,
-  mateId,
-  dark,
-  showForMate,
-  onChange,
-}: ButtonProps): ReactElement => {
-  const [isSubscribing, setSubscribing] = useState<boolean>(false);
-  const [{ subscribedTerminals, isAuthenticated }, { updateUser }] = useUser();
-  const { loginWithRedirect } = useAuth0();
-  const location = useLocation();
-  if (isAuthenticated && !subscribedTerminals) {
-    return (
-      <button className={clsx("button button-invert button-disabled")}>
-        Loading...
-      </button>
-    );
-  }
-  const isSubscribed = subscribedTerminals
-    ? subscribedTerminals.includes(terminalId)
-    : false;
+const SubscribeLink = ({
+  getPath,
+  mate,
+  terminal,
+}: SubscribeLinkProps): ReactElement => {
+  const [{ alertSubscriptions, subscribedTerminals }] = useUser();
+  const terminalIds = mate ? [terminal.id, mate.id] : [terminal.id];
+  const isLegacySubscribed = terminalIds.some((terminalId) => {
+    return subscribedTerminals?.includes(terminalId) ?? false;
+  });
+  const isSubscribed =
+    hasRouteSubscription(alertSubscriptions, terminalIds) || isLegacySubscribed;
+  const label = isSubscribed ? "Edit subscription" : "Subscribe";
+
   return (
-    <button
+    <Link
       className={clsx("button", {
         "button-invert": isSubscribed,
         "button-outline": !isSubscribed,
-        "border-green-dark text-green-dark": dark && !isSubscribed,
-        "bg-green-dark text-white": dark && isSubscribed,
       })}
-      onClick={async () => {
-        if (!isAuthenticated || !subscribedTerminals) {
-          loginWithRedirect({
-            appState: { redirectPath: location.pathname },
-            authorizationParams: {
-              redirect_uri: process.env.AUTH0_CLIENT_REDIRECT,
-            },
-          });
-          return;
-        } else if (isSubscribed) {
-          setSubscribing(true);
-          if (!isUndefined(mateId) && subscribedTerminals.includes(mateId)) {
-            showForMate?.(false);
-          }
-          await updateUser({
-            app_metadata: {
-              subscribedTerminals: without(subscribedTerminals, terminalId),
-            },
-          });
-        } else {
-          if (!isUndefined(mateId) && !subscribedTerminals.includes(mateId)) {
-            showForMate?.(true);
-          }
-          setSubscribing(true);
-          await updateUser({
-            app_metadata: {
-              subscribedTerminals: [...subscribedTerminals, terminalId],
-            },
-          });
-        }
-        setSubscribing(false);
-        onChange?.();
-      }}
+      to={getPath({ view: "subscribe" })}
     >
       <div className="button-icon">
         {isSubscribed ? <SubscribedIcon /> : <UnsubscribedIcon />}
       </div>
-      <span className="button-label">
-        {/* eslint-disable-next-line no-nested-ternary */}
-        {isSubscribing
-          ? "Loading..."
-          : isSubscribed
-            ? "Unsubscribe"
-            : "Subscribe"}
-      </span>
-    </button>
+      <span className="button-label">{label}</span>
+    </Link>
   );
 };
 
@@ -217,16 +164,18 @@ export const getLastBulletinTime = (terminal: Terminal): string => {
 };
 
 interface Props {
+  getPath: GetPath;
   terminal: Terminal | null;
   mate: Terminal | null;
   time: DateTime;
 }
 
-export const Bulletins = ({ terminal, mate, time }: Props): ReactElement => {
-  const [showMateSubscribePrompt, setMateSubscribePrompt] = useState<
-    boolean | null
-  >(null);
-
+export const Bulletins = ({
+  getPath,
+  terminal,
+  mate,
+  time,
+}: Props): ReactElement => {
   if (!terminal) {
     return <InlineLoader>Loading alerts...</InlineLoader>;
   }
@@ -332,35 +281,8 @@ export const Bulletins = ({ terminal, mate, time }: Props): ReactElement => {
         ]}
       >
         <span className="text-center flex-1">{terminal.name} Alerts</span>
-        <SubscribeButton
-          terminalId={terminal.id}
-          mateId={mate?.id}
-          showForMate={setMateSubscribePrompt}
-        />
       </Header>
       <main className="flex-grow overflow-y-scroll scrolling-touch bg-day-normal-light text-gray-dark dark:bg-night-normal-dark dark:text-[#e0f0f4]">
-        <AnimatePresence>
-          {!isNull(showMateSubscribePrompt) && mate && (
-            <Toast
-              info
-              top
-              onClose={() => {
-                setMateSubscribePrompt(null);
-              }}
-            >
-              <div className="flex flex-col gap-4 items-right">
-                Also{" "}
-                {showMateSubscribePrompt ? "subscribe to" : "unsubscribe from"}{" "}
-                {mate?.name}?
-                <SubscribeButton
-                  dark
-                  terminalId={mate.id}
-                  onChange={() => setMateSubscribePrompt(null)}
-                />
-              </div>
-            </Toast>
-          )}
-        </AnimatePresence>
         <section className="mx-auto w-full max-w-3xl px-4 py-5 sm:px-6">
           <div
             className={clsx(
@@ -371,24 +293,33 @@ export const Bulletins = ({ terminal, mate, time }: Props): ReactElement => {
             )}
           >
             <div className="p-4 sm:p-5">
-              <div className="flex items-start gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/15">
-                  <BellAlertIcon className="h-5 w-5" />
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+                <div className="flex min-w-0 flex-1 items-start gap-3">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/15">
+                    <BellAlertIcon className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-2xs font-bold uppercase tracking-[0.16em] text-[#b8e4f0]">
+                      Terminal alerts
+                    </p>
+                    <h1 className="mt-1 text-2xl font-bold leading-tight">
+                      {terminal.name}
+                    </h1>
+                    <p className="mt-2 text-sm leading-relaxed text-white/85">
+                      {activeBulletins.length > 0
+                        ? `${activeBulletins.length} active ${
+                            activeBulletins.length === 1 ? "alert" : "alerts"
+                          } from WSF`
+                        : "No active service alerts right now"}
+                    </p>
+                  </div>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-2xs font-bold uppercase tracking-[0.16em] text-[#b8e4f0]">
-                    Terminal alerts
-                  </p>
-                  <h1 className="mt-1 text-2xl font-bold leading-tight">
-                    {terminal.name}
-                  </h1>
-                  <p className="mt-2 text-sm leading-relaxed text-white/85">
-                    {activeBulletins.length > 0
-                      ? `${activeBulletins.length} active ${
-                          activeBulletins.length === 1 ? "alert" : "alerts"
-                        } from WSF`
-                      : "No active service alerts right now"}
-                  </p>
+                <div className="w-full sm:w-auto sm:shrink-0">
+                  <SubscribeLink
+                    getPath={getPath}
+                    terminal={terminal}
+                    mate={mate}
+                  />
                 </div>
               </div>
             </div>

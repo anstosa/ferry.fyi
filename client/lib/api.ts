@@ -17,11 +17,44 @@ export const useWSF = (): WSFStatus => {
 
 const inProgress: Record<string, Promise<any>> = {};
 
-const processResponse = ({ data }: HttpResponse): any => {
-  if (data.wsfStatus && !isEqual(data.wsfStatus, wsfStatus)) {
-    ({ wsfStatus } = data);
+// request cache key
+const getRequestKey = (path: string, accessToken?: string): string => {
+  return `${path}:${accessToken ? "auth" : "anon"}`;
+};
+
+// parse response data
+const getResponseData = (data: unknown): unknown => {
+  // json string guard
+  if (typeof data !== "string") {
+    return data;
   }
-  return data.body;
+  try {
+    return JSON.parse(data);
+  } catch {
+    return data;
+  }
+};
+
+export const processResponse = ({ data }: HttpResponse): any => {
+  const responseData = getResponseData(data);
+  // api envelope guard
+  if (
+    responseData &&
+    typeof responseData === "object" &&
+    "wsfStatus" in responseData &&
+    !isEqual(responseData.wsfStatus, wsfStatus)
+  ) {
+    ({ wsfStatus } = responseData as { wsfStatus: WSFStatus });
+  }
+  // legacy body guard
+  if (
+    responseData &&
+    typeof responseData === "object" &&
+    "body" in responseData
+  ) {
+    return responseData.body;
+  }
+  return responseData;
 };
 
 const getAuthHeader = (accessToken?: string): { Authorization?: string } => {
@@ -32,8 +65,10 @@ export const get = async <T = Record<string, unknown>>(
   path: string,
   accessToken?: string
 ): Promise<T> => {
-  if (path in inProgress) {
-    return await inProgress[path];
+  const requestKey = getRequestKey(path, accessToken);
+  // in-flight guard
+  if (requestKey in inProgress) {
+    return await inProgress[requestKey];
   }
   const promise = Http.request({
     headers: {
@@ -43,10 +78,12 @@ export const get = async <T = Record<string, unknown>>(
     url: `${API_BASE_URL}${path}`,
   }).then(processResponse);
   // eslint-disable-next-line require-atomic-updates
-  inProgress[path] = promise;
-  const result = await promise;
-  delete inProgress[path];
-  return result;
+  inProgress[requestKey] = promise;
+  try {
+    return await promise;
+  } finally {
+    delete inProgress[requestKey];
+  }
 };
 
 export const post = async <T = Record<string, unknown>>(

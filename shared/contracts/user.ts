@@ -1,4 +1,13 @@
+export type AlertSubscriptionChannel =
+  | "cancellations"
+  | "delays"
+  | "service-alerts"
+  | "wait-times";
+
+export type AlertSubscriptions = Record<string, AlertSubscriptionChannel[]>;
+
 export interface AppMetadata {
+  alertSubscriptions?: AlertSubscriptions;
   tickets?: string[];
   subscribedTerminals?: string[];
   fcmToken?: string | null;

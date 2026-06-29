@@ -3,7 +3,10 @@ import request from "supertest";
 import { describe, expect, it, vi } from "vitest";
 
 import { assignAuthUser, requireAuth } from "../../server/controllers/api/auth";
-import { sanitizeUserUpdate, userRouter } from "../../server/controllers/api/user";
+import {
+  sanitizeUserUpdate,
+  userRouter,
+} from "../../server/controllers/api/user";
 
 const auth0Users = vi.hoisted(() => ({
   get: vi.fn(),
@@ -96,6 +99,25 @@ describe("user API", () => {
     });
   });
 
+  // direct SDK response case
+  it("returns current Auth0 users from direct SDK response bodies", async () => {
+    auth0Users.get.mockResolvedValueOnce({
+      app_metadata: { tickets: ["abc"] },
+      user_id: "auth0|123",
+    });
+    const app = createApp();
+
+    const response = await request(app)
+      .get("/api/user")
+      .set("Authorization", "Bearer valid")
+      .expect(200);
+
+    expect(response.body).toEqual({
+      app_metadata: { tickets: ["abc"] },
+      user_id: "auth0|123",
+    });
+  });
+
   // update allow-list case
   it("updates only the allowed Auth0 metadata fields", async () => {
     auth0Users.update.mockResolvedValueOnce({
@@ -111,6 +133,10 @@ describe("user API", () => {
       .set("Authorization", "Bearer valid")
       .send({
         app_metadata: {
+          alertSubscriptions: {
+            "5:14": ["delays", "cancellations", "bad-channel"],
+            bad: "not-array",
+          },
           blocked: true,
           fcmToken: "token",
           tickets: ["abc"],
@@ -122,7 +148,11 @@ describe("user API", () => {
       .expect(200);
 
     expect(auth0Users.update).toHaveBeenCalledWith("auth0|123", {
-      app_metadata: { fcmToken: "token", tickets: ["abc"] },
+      app_metadata: {
+        alertSubscriptions: { "5:14": ["delays", "cancellations"] },
+        fcmToken: "token",
+        tickets: ["abc"],
+      },
     });
     expect(response.body).toEqual({
       app_metadata: { fcmToken: "token", tickets: ["abc"] },
@@ -138,11 +168,19 @@ describe("sanitizeUserUpdate", () => {
   it("drops privileged top-level Auth0 fields", () => {
     expect(
       sanitizeUserUpdate({
-        app_metadata: { subscribedTerminals: ["sea"] },
+        app_metadata: {
+          alertSubscriptions: { "sea:bre": ["service-alerts"] },
+          subscribedTerminals: ["sea"],
+        },
         blocked: true,
         email: "attacker@example.com",
         user_metadata: { isAuthenticated: false },
       })
-    ).toEqual({ app_metadata: { subscribedTerminals: ["sea"] } });
+    ).toEqual({
+      app_metadata: {
+        alertSubscriptions: { "sea:bre": ["service-alerts"] },
+        subscribedTerminals: ["sea"],
+      },
+    });
   });
 });

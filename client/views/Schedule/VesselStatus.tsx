@@ -5,7 +5,6 @@ import type { Vessel } from "shared/contracts/vessels";
 import { pluralize } from "shared/lib/strings";
 
 import { degreesToHeading } from "~/lib/compass";
-import { locationToUrl } from "~/lib/maps";
 import { knotsToMph } from "~/lib/speed";
 
 import { getLateTextClassName } from "./scheduleColors";
@@ -24,8 +23,7 @@ export const VesselStatus = ({
   vessel,
   time,
 }: Props): ReactElement => {
-  const { dockedTime, isAtDock, location, heading, speed, vesselWatchUrl } =
-    vessel;
+  const { dockedTime, isAtDock, heading, speed } = vessel;
 
   let statusText: string;
   let detailText: string | undefined;
@@ -71,16 +69,5 @@ export const VesselStatus = ({
     lateText && "inline-flex flex-col items-end",
     className
   );
-  // docked status guard
-  if (isAtDock) {
-    return <span className={statusClassName}>{content}</span>;
-  }
-  return (
-    <a
-      className={statusClassName}
-      href={vesselWatchUrl ?? (location && locationToUrl(location))}
-    >
-      {content}
-    </a>
-  );
+  return <span className={statusClassName}>{content}</span>;
 };

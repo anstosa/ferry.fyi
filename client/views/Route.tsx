@@ -1,5 +1,5 @@
 import { DateTime } from "luxon";
-import React, { ReactElement, useEffect, useState } from "react";
+import React, { ReactElement, useEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import type { Schedule as ScheduleClass } from "shared/contracts/schedules";
@@ -21,15 +21,45 @@ import { getSlug, getTerminal } from "~/lib/terminals";
 import WSDOTIcon from "~/static/images/icons/wsdot.svg";
 import { Header } from "~/views/Header";
 
+import { AlertSubscription } from "./AlertSubscription";
 import { Bulletins } from "./Bulletins";
 import { Cameras } from "./Cameras";
 import { Map } from "./Map";
 import { Schedule } from "./Schedule";
 import { TerminalDetails } from "./TerminalDetails";
 
-export type View = "schedule" | "cameras" | "terminal" | "map" | "alerts";
+export type View =
+  | "schedule"
+  | "cameras"
+  | "terminal"
+  | "map"
+  | "alerts"
+  | "subscribe";
 
-type TodayOnlyView = Exclude<View, "schedule" | "terminal">;
+type TodayOnlyView = Exclude<View, "schedule" | "terminal" | "subscribe">;
+
+const TAB_ORDER: View[] = [
+  "schedule",
+  "cameras",
+  "terminal",
+  "map",
+  "alerts",
+  "subscribe",
+];
+
+type TabDirection = "to-left" | "to-right";
+
+// tab order index
+const getTabIndex = (input: View): number => TAB_ORDER.indexOf(input);
+
+// tab slide direction
+const getTabDirection = (previous: View, current: View): TabDirection => {
+  // left tab guard
+  if (getTabIndex(current) < getTabIndex(previous)) {
+    return "to-left";
+  }
+  return "to-right";
+};
 
 const TODAY_ONLY_VIEW_LABELS: Record<TodayOnlyView, string> = {
   alerts: "bulletins",
@@ -92,6 +122,13 @@ export const Route = ({
   const [date, setDate] = useState<DateTime>(
     inputDate?.isValid ? inputDate : today
   );
+  const previousViewRef = useRef<View>(view);
+  const tabDirection = getTabDirection(previousViewRef.current, view);
+
+  // remember selected tab
+  useEffect(() => {
+    previousViewRef.current = view;
+  }, [view]);
 
   const vessels: Vessel[] = [];
 
@@ -220,8 +257,14 @@ export const Route = ({
         })
       : undefined;
   const contentResetKey = `${view}:${terminal?.id ?? ""}:${mate?.id ?? ""}:${date.toISODate()}`;
+  const contentMotionKey = `${view}:${terminal?.id ?? ""}:${mate?.id ?? ""}`;
   const todayOnlyView: TodayOnlyView | null =
-    view === "schedule" || view === "terminal" || isToday ? null : view;
+    view === "schedule" ||
+    view === "terminal" ||
+    view === "subscribe" ||
+    isToday
+      ? null
+      : view;
   let content: ReactElement | null = null;
 
   // off-date tab guard
@@ -286,7 +329,14 @@ export const Route = ({
       />
     );
   } else if (view === "alerts") {
-    content = <Bulletins terminal={terminal} mate={mate} time={time} />;
+    content = (
+      <Bulletins
+        getPath={getPath}
+        terminal={terminal}
+        mate={mate}
+        time={time}
+      />
+    );
   } else if (view === "map") {
     content = (
       <Map
@@ -295,6 +345,10 @@ export const Route = ({
         terminal={terminal}
         vessels={vessels}
       />
+    );
+  } else if (view === "subscribe" && terminal && mate) {
+    content = (
+      <AlertSubscription getPath={getPath} terminal={terminal} mate={mate} />
     );
   }
 
@@ -323,7 +377,12 @@ export const Route = ({
           fallbackTitle="Route view crashed"
           fallbackMessage="This route section hit an unexpected error. Switch tabs or try again."
         >
-          {content}
+          <div
+            className={`route-tab-motion route-tab-motion--${tabDirection}`}
+            key={contentMotionKey}
+          >
+            {content}
+          </div>
         </ErrorBoundary>
       )}
       <InstallPromptToast />

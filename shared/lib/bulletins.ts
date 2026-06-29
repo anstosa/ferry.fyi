@@ -6,6 +6,10 @@ const SAILING_CONTEXT_MATCH =
 const SENTENCE_SPLIT_MATCH = /[.!?\n]+/;
 const TIDAL_CANCELLATION_MATCH = /\b(cancell?ed|cancell?ations?|cancel)\b/i;
 const TIDE_CONTEXT_MATCH = /\bextreme low tide|low tide|tidal|tide\b/i;
+const WAIT_NUMBER_HOURS_MATCH = /^[^\d]*(\d+) (Hour|Hr) Wait.*$/i;
+const WAIT_SPELL_HOURS_MATCH =
+  /^.*(one|two|three|four|five|six)( 1\/2){0,1} (Hour|Hr) Wait.*$/i;
+const WAIT_MINUTES_MATCH = /^[^\d]*(\d+) (Minute|Min) Wait.*$/i;
 
 interface BulletinInput {
   bodyHTML?: string;
@@ -47,6 +51,17 @@ export const isTidalCancellationBulletin = (
   return getSearchableChunks(bulletin).some((chunk) => {
     return (
       TIDAL_CANCELLATION_MATCH.test(chunk) && TIDE_CONTEXT_MATCH.test(chunk)
+    );
+  });
+};
+
+// wait bulletin detection
+export const isWaitTimeBulletin = (bulletin: BulletinInput): boolean => {
+  return getSearchableChunks(bulletin).some((chunk) => {
+    return (
+      WAIT_NUMBER_HOURS_MATCH.test(chunk) ||
+      WAIT_SPELL_HOURS_MATCH.test(chunk) ||
+      WAIT_MINUTES_MATCH.test(chunk)
     );
   });
 };

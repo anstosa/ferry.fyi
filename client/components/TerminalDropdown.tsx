@@ -30,12 +30,14 @@ interface Props {
   terminals: TerminalOption[];
   selected: Terminal;
   isOpen: boolean;
+  getOptionPath?: (terminal: Terminal) => string;
   setOpen: (state: boolean) => void;
   onSelect: (event: MouseEvent, terminal: Terminal) => void;
 }
 
 export const TerminalDropdown = (props: Props): ReactElement => {
-  const { terminals, isOpen, selected, setOpen, onSelect } = props;
+  const { terminals, getOptionPath, isOpen, selected, setOpen, onSelect } =
+    props;
   const { width } = useWindowSize();
   const terminalListRef = useRef<HTMLUListElement | null>(null);
   const [needsScroll, setNeedsScroll] = useState(false);
@@ -148,7 +150,7 @@ export const TerminalDropdown = (props: Props): ReactElement => {
                         "relative py-2 px-8",
                         "hover:bg-lighten-high"
                       )}
-                      to={`/${getSlug(id)}`}
+                      to={getOptionPath?.(terminal) ?? `/${getSlug(id)}`}
                       onClick={(event) => onSelect(event, terminal)}
                     >
                       {/* closest terminal marker */}

@@ -23,7 +23,7 @@ import {
   useSimulatedVesselId,
 } from "~/lib/onboardSimulation";
 import { useTrackedVessel } from "~/lib/onboardTracking";
-import { getSlug, useTerminals } from "~/lib/terminals";
+import { useTerminals } from "~/lib/terminals";
 import { useLiveVessels } from "~/lib/vessels";
 import MapMarkerIcon from "~/static/images/icons/solid/map-marker.svg";
 
@@ -293,9 +293,9 @@ const SailingCard = ({
   >
     <ProgressTrack
       departureLabel={departureTerminal.name}
-      departureSlug={getSlug(departureTerminal.id)}
+      departureSlug={departureTerminal.abbreviation}
       destinationLabel={destinationTerminal.name}
-      destinationSlug={getSlug(destinationTerminal.id)}
+      destinationSlug={destinationTerminal.abbreviation}
       etaMinutes={etaMinutes}
       isArrived={isArrived}
       isDocked={isDocked}
