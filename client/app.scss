@@ -177,6 +177,14 @@ html {
     background: linear-gradient(135deg, #016f52 0%, #004d61 100%);
   }
 
+  .bg-ferry-header-gradient {
+    background: var(--app-header-gradient);
+  }
+
+  .bg-ferry-footer-gradient {
+    background: var(--app-footer-gradient);
+  }
+
   .bg-prediction-gradient {
     background: linear-gradient(
       to left,
@@ -302,6 +310,26 @@ html {
     --app-motion-duration-fast: 140ms;
     --app-motion-duration: 220ms;
     --app-motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --app-header-gradient: linear-gradient(
+      135deg,
+      #016f52 0%,
+      #016f52 68%,
+      #004d61 100%
+    );
+    --app-footer-gradient: linear-gradient(
+      135deg,
+      #016f52 0%,
+      #004d61 32%,
+      #004d61 100%
+    );
+  }
+
+  body {
+    background:
+      var(--app-header-gradient) top / 100% env(safe-area-inset-top) no-repeat,
+      var(--app-footer-gradient) bottom / 100% env(safe-area-inset-bottom)
+        no-repeat,
+      var(--app-footer-gradient);
   }
 
   main,

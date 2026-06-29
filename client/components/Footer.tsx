@@ -23,7 +23,7 @@ const WrapFooter: FunctionComponent<PropsWithChildren> = ({ children }) => (
   <footer
     className={clsx(
       "fixed bottom-0 inset-x-0 z-10",
-      "bg-[linear-gradient(135deg,#016f52_0%,#004d61_32%,#004d61_100%)] text-white",
+      "bg-ferry-footer-gradient text-white",
       "h-[calc(4rem+env(safe-area-inset-bottom))] w-full border-t border-[rgba(255,255,255,0.12)] shadow-up-lg",
       "flex justify-center",
       "animate",
@@ -146,7 +146,7 @@ export const Footer = ({ terminal, getPath }: Props): ReactElement => {
           {renderBulletins()}
         </LayoutGroup>
       </WrapFooter>
-      <div className="h-safe-bottom w-full bg-blue-dark" />
+      <div className="h-safe-bottom w-full bg-ferry-footer-gradient" />
     </>
   );
 };

@@ -25,7 +25,7 @@ const WrapHeader: FunctionComponent<PropsWithChildren<WrapHeaderProps>> = ({
   <header
     className={clsx(
       "fixed inset-x-0 z-20",
-      "bg-[linear-gradient(135deg,#016f52_0%,#016f52_68%,#004d61_100%)] text-white",
+      "bg-ferry-header-gradient text-white",
       "w-full border-b border-[rgba(255,255,255,0.12)] shadow-lg h-16",
       "flex justify-center",
       "pr-safe-right pl-safe-left mt-safe-top"
@@ -93,7 +93,7 @@ export const Header: FunctionComponent<PropsWithChildren<Props>> = (props) => {
         className={clsx(
           "fixed top-0 inset-x-0 z-20",
           "h-safe-top",
-          "bg-green-dark"
+          "bg-ferry-header-gradient"
         )}
       />
       <Menu
