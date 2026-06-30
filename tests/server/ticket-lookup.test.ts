@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { writeFileSync } from "node:fs";
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("node:child_process", async (importOriginal) => {
   const actual = await importOriginal<typeof import("node:child_process")>();
@@ -10,13 +10,6 @@ vi.mock("node:child_process", async (importOriginal) => {
     execFile: vi.fn(),
   };
 });
-
-import {
-  fetchTicket,
-  getTicketLookupId,
-  resetTicketLookupSession,
-  TicketLookupUnavailableError,
-} from "../../server/lib/wsf/ticket";
 
 const TICKET_LOOKUP_HTML = `
   <div id="TicketLookup">
@@ -32,6 +25,7 @@ const TICKET_LOOKUP_HTML = `
 `;
 
 const execFileMock = vi.mocked(execFile);
+let ticketModule: typeof import("../../server/lib/wsf/ticket");
 
 type CurlMockResponse = {
   body: string;
@@ -62,19 +56,17 @@ const mockCurlResponses = (responses: CurlMockResponse[]): void => {
 };
 
 describe("Wave2Go ticket lookup", () => {
-  beforeEach(() => {
-    resetTicketLookupSession();
+  // fresh module cache
+  beforeEach(async () => {
+    vi.resetModules();
     vi.clearAllMocks();
-  });
-
-  afterEach(() => {
-    resetTicketLookupSession();
+    ticketModule = await import("../../server/lib/wsf/ticket");
   });
 
   // QR URL lookup id behavior
   it("extracts visual IDs from QR URL payloads", () => {
     expect(
-      getTicketLookupId(
+      ticketModule.getTicketLookupId(
         "https://wave2go.wsdot.com/webstore/account/ticketLookup.aspx?VisualID=1234567890"
       )
     ).toBe("1234567890");
@@ -82,7 +74,9 @@ describe("Wave2Go ticket lookup", () => {
 
   // QR query lookup id behavior
   it("extracts visual IDs from raw QR query payloads", () => {
-    expect(getTicketLookupId("VisualID=1234567890&foo=bar")).toBe("1234567890");
+    expect(ticketModule.getTicketLookupId("VisualID=1234567890&foo=bar")).toBe(
+      "1234567890"
+    );
   });
 
   // QR URL lookup request behavior
@@ -100,7 +94,7 @@ describe("Wave2Go ticket lookup", () => {
       },
     ]);
 
-    const ticket = await fetchTicket(
+    const ticket = await ticketModule.fetchTicket(
       "https://wave2go.wsdot.com/webstore/account/ticketLookup.aspx?VisualID=1234567890"
     );
 
@@ -136,8 +130,8 @@ describe("Wave2Go ticket lookup", () => {
       },
     ]);
 
-    await fetchTicket("1234567890");
-    await fetchTicket("1234567890");
+    await ticketModule.fetchTicket("1234567890");
+    await ticketModule.fetchTicket("1234567890");
 
     expect(execFileMock).toHaveBeenCalledTimes(3);
     expect(execFileMock.mock.calls[2][1]).toContain("Cookie: session=test");
@@ -168,7 +162,7 @@ describe("Wave2Go ticket lookup", () => {
       },
     ]);
 
-    const ticket = await fetchTicket("1234567890");
+    const ticket = await ticketModule.fetchTicket("1234567890");
 
     expect(execFileMock.mock.calls[3][1]).toContain("Cookie: session=new");
     expect(ticket).toMatchObject({
@@ -194,7 +188,7 @@ describe("Wave2Go ticket lookup", () => {
       },
     ]);
 
-    await fetchTicket("1234567890");
+    await ticketModule.fetchTicket("1234567890");
 
     expect(execFileMock.mock.calls[0][1]).toContain(
       "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
@@ -216,7 +210,7 @@ describe("Wave2Go ticket lookup", () => {
       },
     ]);
 
-    await expect(fetchTicket("123")).resolves.toBeNull();
+    await expect(ticketModule.fetchTicket("123")).resolves.toBeNull();
   });
 
   // upstream failure behavior
@@ -229,8 +223,8 @@ describe("Wave2Go ticket lookup", () => {
       },
     ]);
 
-    await expect(fetchTicket("123")).rejects.toBeInstanceOf(
-      TicketLookupUnavailableError
+    await expect(ticketModule.fetchTicket("123")).rejects.toBeInstanceOf(
+      ticketModule.TicketLookupUnavailableError
     );
   });
 
@@ -249,8 +243,8 @@ describe("Wave2Go ticket lookup", () => {
       },
     ]);
 
-    await expect(fetchTicket("123")).rejects.toBeInstanceOf(
-      TicketLookupUnavailableError
+    await expect(ticketModule.fetchTicket("123")).rejects.toBeInstanceOf(
+      ticketModule.TicketLookupUnavailableError
     );
   });
 });

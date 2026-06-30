@@ -66,11 +66,6 @@ type CurlResponse = {
   status: number;
 };
 
-// test cache reset
-export const resetTicketLookupSession = (): void => {
-  wsfCookie = null;
-};
-
 // cookie cache setter
 const setWsfCookie = (cookie: string): string => {
   wsfCookie = cookie;
