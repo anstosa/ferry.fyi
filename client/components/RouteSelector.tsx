@@ -140,7 +140,7 @@ export const RouteSelector = (props: Props): ReactElement => {
                   className="button button-group-right truncate"
                   onClick={() => setClosestDismissed(true)}
                 >
-                  Stay on {terminal.name}
+                  Stay here
                 </button>
               </div>
             </Toast>

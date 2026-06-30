@@ -40,7 +40,6 @@ interface ProgressTrackProps {
   isArrived?: boolean;
   isDocked?: boolean;
   isTracking?: boolean;
-  onStopTracking?: () => void;
   progress: number;
   vesselId: string;
   vesselName: string;
@@ -64,7 +63,6 @@ type VisibleSailing = OnboardSailingMatch & {
   isArrived?: boolean;
   isDocked?: boolean;
   isTracking?: boolean;
-  onStopTracking?: () => void;
 };
 
 const VESSEL_REFRESH_MS = 15 * 1000;
@@ -138,7 +136,7 @@ const TerminalPin = ({
       className={clsx(
         "absolute bottom-6 rounded-full bg-white/20 px-1.5 py-2",
         "text-[0.65rem] font-black uppercase leading-none tracking-[0.16em]",
-        "shadow-sm ring-1 ring-white/40 backdrop-blur",
+        "rotate-180 shadow-sm ring-1 ring-white/40 backdrop-blur",
         align === "left" ? "left-0" : "right-0"
       )}
       style={{ writingMode: "vertical-rl" }}
@@ -200,7 +198,6 @@ const ProgressTrack = ({
   isArrived = false,
   isDocked = false,
   isTracking = false,
-  onStopTracking,
   progress,
   vesselId,
   vesselName,
@@ -238,19 +235,6 @@ const ProgressTrack = ({
         label={destinationSlug}
       />
       <div className="absolute bottom-[45px] left-1/2 z-30 max-w-[calc(100%-7rem)] -translate-x-1/2">
-        {/* stop tracking guard */}
-        {isTracking && onStopTracking && (
-          <button
-            className={clsx(
-              "absolute right-full top-1/2 mr-2 -translate-y-1/2",
-              "whitespace-nowrap text-xs font-bold text-white underline"
-            )}
-            type="button"
-            onClick={onStopTracking}
-          >
-            Stop tracking
-          </button>
-        )}
         <SailingNotice
           etaMinutes={etaMinutes}
           isArrived={isArrived}
@@ -281,7 +265,6 @@ const SailingCard = ({
   isArrived,
   isDocked,
   isTracking,
-  onStopTracking,
   progress,
   vessel,
 }: VisibleSailing): ReactElement => (
@@ -300,7 +283,6 @@ const SailingCard = ({
       isArrived={isArrived}
       isDocked={isDocked}
       isTracking={isTracking}
-      onStopTracking={onStopTracking}
       progress={progress}
       vesselId={vessel.id}
       vesselName={vessel.name}
@@ -319,7 +301,7 @@ export const OnboardSailingBanner: FunctionComponent<Props> = ({
     null
   );
   const simulatedVesselId = useSimulatedVesselId();
-  const [trackedVesselId, setTrackedVesselId] = useTrackedVessel();
+  const [trackedVesselId] = useTrackedVessel();
   const isTrackingEnabled = Boolean(
     (location || simulatedVesselId || trackedVesselId) && terminals.length > 0
   );
@@ -361,7 +343,6 @@ export const OnboardSailingBanner: FunctionComponent<Props> = ({
       etaMinutes: trackedEtaMinutes ?? activeSailing.etaMinutes,
       isDocked: activeSailing.vessel.isAtDock,
       isTracking: Boolean(trackedSailing),
-      onStopTracking: () => setTrackedVesselId(null),
       progress: projectedProgress,
     };
   }

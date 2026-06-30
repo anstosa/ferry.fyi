@@ -125,9 +125,11 @@ whenReady(() => {
               authorizationParams={{
                 audience: process.env.AUTH0_CLIENT_AUDIENCE as string,
                 redirect_uri: process.env.AUTH0_CLIENT_REDIRECT as string,
-                scope: "read:current_user",
+                scope: "openid profile email read:current_user offline_access",
               }}
               cacheLocation="localstorage"
+              useRefreshTokens={true}
+              useRefreshTokensFallback={true}
             >
               <UserProvider>
                 <App />

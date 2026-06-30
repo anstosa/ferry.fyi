@@ -1,16 +1,29 @@
 import { Router } from "express";
 
-import { fetchTicket } from "~/lib/wsf/ticket";
+import { fetchTicket, TicketLookupUnavailableError } from "~/lib/wsf/ticket";
 
 const ticketRouter = Router();
 
 ticketRouter.get("/:ticketId", async (request, response) => {
   const { ticketId } = request.params;
-  const ticket = await fetchTicket(ticketId);
-  if (!ticket) {
-    return response.status(404).send();
+  try {
+    const ticket = await fetchTicket(ticketId);
+    // missing ticket guard
+    if (!ticket) {
+      return response.status(404).send({ error: "ticket_not_found" });
+    }
+    return response.send(ticket);
+  } catch (error) {
+    // upstream unavailable guard
+    if (error instanceof TicketLookupUnavailableError) {
+      return response.status(503).send({
+        error: "ticket_lookup_unavailable",
+        message: error.message,
+        status: error.status,
+      });
+    }
+    throw error;
   }
-  return response.send(ticket);
 });
 
 export { ticketRouter };

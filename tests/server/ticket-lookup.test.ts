@@ -1,0 +1,256 @@
+import { execFile } from "node:child_process";
+import { writeFileSync } from "node:fs";
+
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+vi.mock("node:child_process", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("node:child_process")>();
+  return {
+    ...actual,
+    execFile: vi.fn(),
+  };
+});
+
+import {
+  fetchTicket,
+  getTicketLookupId,
+  resetTicketLookupSession,
+  TicketLookupUnavailableError,
+} from "../../server/lib/wsf/ticket";
+
+const TICKET_LOOKUP_HTML = `
+  <div id="TicketLookup">
+    <span data-text="Description">Seattle / Bainbridge Multi-Ride</span>
+    <span data-text="ExpirationDate">July 30, 2026</span>
+    <span data-text="VisualId">1234567890</span>
+    <span data-text="ItemName">Adult Multi-Ride Pass</span>
+    <span data-text="Plu">ABC123</span>
+    <span data-text="Price">$45.00</span>
+    <span data-text="Status">Valid</span>
+    <span data-text="TotalRemainingUses">10</span>
+  </div>
+`;
+
+const execFileMock = vi.mocked(execFile);
+
+type CurlMockResponse = {
+  body: string;
+  headers: string;
+  status: number;
+};
+
+// curl response queue
+const mockCurlResponses = (responses: CurlMockResponse[]): void => {
+  execFileMock.mockImplementation(((_command, args, _options, callback) => {
+    const response = responses.shift();
+
+    // queued response guard
+    if (!response) {
+      throw new Error("Unexpected curl request");
+    }
+
+    const headerPath = (args as string[])[
+      (args as string[]).indexOf("--dump-header") + 1
+    ];
+    writeFileSync(headerPath, response.headers);
+    callback?.(
+      null,
+      `${response.body}__FERRY_FYI_CURL_STATUS__:${response.status}`,
+      ""
+    );
+  }) as typeof execFile);
+};
+
+describe("Wave2Go ticket lookup", () => {
+  beforeEach(() => {
+    resetTicketLookupSession();
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    resetTicketLookupSession();
+  });
+
+  // QR URL lookup id behavior
+  it("extracts visual IDs from QR URL payloads", () => {
+    expect(
+      getTicketLookupId(
+        "https://wave2go.wsdot.com/webstore/account/ticketLookup.aspx?VisualID=1234567890"
+      )
+    ).toBe("1234567890");
+  });
+
+  // QR query lookup id behavior
+  it("extracts visual IDs from raw QR query payloads", () => {
+    expect(getTicketLookupId("VisualID=1234567890&foo=bar")).toBe("1234567890");
+  });
+
+  // QR URL lookup request behavior
+  it("looks up multi-ride QR URL payloads by visual ID", async () => {
+    mockCurlResponses([
+      {
+        body: "ok",
+        headers: "HTTP/2 200\r\nset-cookie: session=test; path=/\r\n\r\n",
+        status: 200,
+      },
+      {
+        body: TICKET_LOOKUP_HTML,
+        headers: "HTTP/2 200\r\n\r\n",
+        status: 200,
+      },
+    ]);
+
+    const ticket = await fetchTicket(
+      "https://wave2go.wsdot.com/webstore/account/ticketLookup.aspx?VisualID=1234567890"
+    );
+
+    expect(execFileMock.mock.calls[1][1]).toContain(
+      "https://wave2go.wsdot.com/webstore/account/ticketLookup.aspx?VisualID=1234567890"
+    );
+    expect(execFileMock.mock.calls[1][1]).toContain("Cookie: session=test");
+    expect(ticket).toMatchObject({
+      description: "Seattle / Bainbridge Multi-Ride",
+      id: "1234567890",
+      name: "Adult Multi-Ride Pass",
+      usesRemaining: 10,
+    });
+  });
+
+  // cookie reuse behavior
+  it("reuses Wave2Go cookies across ticket lookups", async () => {
+    mockCurlResponses([
+      {
+        body: "ok",
+        headers: "HTTP/2 200\r\nset-cookie: session=test; path=/\r\n\r\n",
+        status: 200,
+      },
+      {
+        body: TICKET_LOOKUP_HTML,
+        headers: "HTTP/2 200\r\n\r\n",
+        status: 200,
+      },
+      {
+        body: TICKET_LOOKUP_HTML,
+        headers: "HTTP/2 200\r\n\r\n",
+        status: 200,
+      },
+    ]);
+
+    await fetchTicket("1234567890");
+    await fetchTicket("1234567890");
+
+    expect(execFileMock).toHaveBeenCalledTimes(3);
+    expect(execFileMock.mock.calls[2][1]).toContain("Cookie: session=test");
+  });
+
+  // stale cookie behavior
+  it("refreshes stale Wave2Go cookies once", async () => {
+    mockCurlResponses([
+      {
+        body: "ok",
+        headers: "HTTP/2 200\r\nset-cookie: session=old; path=/\r\n\r\n",
+        status: 200,
+      },
+      {
+        body: "blocked",
+        headers: "HTTP/2 403\r\n\r\n",
+        status: 403,
+      },
+      {
+        body: "ok",
+        headers: "HTTP/2 200\r\nset-cookie: session=new; path=/\r\n\r\n",
+        status: 200,
+      },
+      {
+        body: TICKET_LOOKUP_HTML,
+        headers: "HTTP/2 200\r\n\r\n",
+        status: 200,
+      },
+    ]);
+
+    const ticket = await fetchTicket("1234567890");
+
+    expect(execFileMock.mock.calls[3][1]).toContain("Cookie: session=new");
+    expect(ticket).toMatchObject({
+      description: "Seattle / Bainbridge Multi-Ride",
+      id: "1234567890",
+      name: "Adult Multi-Ride Pass",
+      usesRemaining: 10,
+    });
+  });
+
+  // browser header behavior
+  it("sends browser-like headers through curl", async () => {
+    mockCurlResponses([
+      {
+        body: "ok",
+        headers: "HTTP/2 200\r\nset-cookie: session=test; path=/\r\n\r\n",
+        status: 200,
+      },
+      {
+        body: TICKET_LOOKUP_HTML,
+        headers: "HTTP/2 200\r\n\r\n",
+        status: 200,
+      },
+    ]);
+
+    await fetchTicket("1234567890");
+
+    expect(execFileMock.mock.calls[0][1]).toContain(
+      "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+    );
+  });
+
+  // incomplete lookup behavior
+  it("returns null for incomplete ticket lookup pages", async () => {
+    mockCurlResponses([
+      {
+        body: "ok",
+        headers: "HTTP/2 200\r\nset-cookie: session=test; path=/\r\n\r\n",
+        status: 200,
+      },
+      {
+        body: `<div id="TicketLookup"><span data-text="VisualId">123</span></div>`,
+        headers: "HTTP/2 200\r\n\r\n",
+        status: 200,
+      },
+    ]);
+
+    await expect(fetchTicket("123")).resolves.toBeNull();
+  });
+
+  // upstream failure behavior
+  it("reports upstream landing-page failures as unavailable", async () => {
+    mockCurlResponses([
+      {
+        body: "blocked",
+        headers: "HTTP/2 403\r\n\r\n",
+        status: 403,
+      },
+    ]);
+
+    await expect(fetchTicket("123")).rejects.toBeInstanceOf(
+      TicketLookupUnavailableError
+    );
+  });
+
+  // anti-bot challenge behavior
+  it("reports Cloudflare ticket pages as unavailable", async () => {
+    mockCurlResponses([
+      {
+        body: "ok",
+        headers: "HTTP/2 200\r\nset-cookie: session=test; path=/\r\n\r\n",
+        status: 200,
+      },
+      {
+        body: "<title>Just a moment...</title>",
+        headers: "HTTP/2 200\r\n\r\n",
+        status: 200,
+      },
+    ]);
+
+    await expect(fetchTicket("123")).rejects.toBeInstanceOf(
+      TicketLookupUnavailableError
+    );
+  });
+});

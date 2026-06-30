@@ -1,27 +1,35 @@
 .button {
   @apply appearance-none;
   @apply bg-transparent;
-  @apply border-2;
-  @apply border-gray-darkest;
+  @apply border;
+  @apply border-[rgba(0,0,0,0.08)];
   @apply content-center;
   @apply cursor-pointer;
   @apply flex;
-  @apply font-medium;
+  @apply font-black;
+  @apply gap-2;
   @apply items-center;
   @apply justify-center;
   @apply h-12;
   @apply overflow-hidden;
-  @apply rounded;
+  @apply rounded-2xl;
+  @apply shadow-sm;
   @apply text-gray-darkest;
   @apply text-sm;
   @apply tracking-wide;
   @apply truncate;
   @apply whitespace-nowrap;
-  @apply px-8;
+  @apply px-5;
+
+  @media (prefers-color-scheme: dark) {
+    @apply border-[rgba(255,255,255,0.08)];
+    @apply text-white;
+  }
 
   &-small {
     @apply h-8;
-    @apply px-2;
+    @apply rounded-xl;
+    @apply px-3;
     @apply text-xs;
   }
 
@@ -33,9 +41,13 @@
   }
 
   &:hover {
-    @apply border-transparent;
-    @apply bg-black;
-    @apply text-white;
+    @apply -translate-y-0.5;
+    @apply border-[rgba(0,0,0,0.12)];
+    @apply shadow-lg;
+
+    @media (prefers-color-scheme: dark) {
+      @apply border-[rgba(255,255,255,0.14)];
+    }
   }
 
   &:focus {
@@ -45,10 +57,16 @@
   &-stealth {
     @apply bg-transparent;
     @apply border-0;
+    @apply shadow-none;
 
     &:hover {
       @apply bg-transparent;
-      @apply text-black;
+      @apply shadow-none;
+      @apply text-gray-darkest;
+
+      @media (prefers-color-scheme: dark) {
+        @apply text-white;
+      }
     }
   }
 
@@ -59,13 +77,59 @@
 
     &:hover {
       @apply border-transparent;
-      @apply bg-black;
+      @apply bg-green-light;
+      @apply text-white;
 
       &.button-destructive {
         @apply border-red-dark;
         @apply bg-red-dark;
         @apply text-white;
       }
+    }
+  }
+
+  &-secondary {
+    @apply bg-gray-lightest;
+    @apply text-gray-dark;
+
+    @media (prefers-color-scheme: dark) {
+      @apply bg-lighten-lower;
+      @apply text-white;
+    }
+
+    &:hover {
+      @apply bg-white;
+      @apply text-gray-darkest;
+
+      @media (prefers-color-scheme: dark) {
+        @apply bg-lighten-low;
+        @apply text-white;
+      }
+    }
+  }
+
+  &-danger {
+    @apply border-transparent;
+    @apply bg-red-dark;
+    @apply text-white;
+
+    &:hover {
+      @apply border-transparent;
+      @apply bg-red-dark;
+      @apply text-white;
+    }
+  }
+
+  &-glass {
+    @apply border-lighten-lower;
+    @apply bg-lighten-lower;
+    @apply text-white;
+    @apply backdrop-blur;
+
+    &:hover {
+      @apply border-lighten-low;
+      @apply bg-lighten-low;
+      @apply text-white;
     }
   }
 
@@ -76,7 +140,7 @@
     &:hover {
       @apply border-transparent;
       @apply bg-white;
-      @apply text-green-dark
+      @apply text-green-dark;
     }
   }
 
@@ -97,12 +161,19 @@
     }
   }
 
+  &-icon-only {
+    @apply h-11;
+    @apply w-11;
+    @apply rounded-full;
+    @apply p-0;
+  }
+
   &-icon + &-label {
-    @apply ml-2;
+    @apply ml-0;
   }
 
   &-label + &-icon {
-    @apply ml-2;
+    @apply ml-0;
   }
 
   &-group {

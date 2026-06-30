@@ -1,4 +1,4 @@
-import { Http, HttpResponse } from "@capacitor-community/http";
+import { CapacitorHttp, HttpResponse } from "@capacitor/core";
 import { useEffect, useState } from "react";
 import type { WSFStatus } from "shared/contracts/api";
 import { isEqual } from "shared/lib/objects";
@@ -16,6 +16,19 @@ export const useWSF = (): WSFStatus => {
 };
 
 const inProgress: Record<string, Promise<any>> = {};
+
+export class ApiError extends Error {
+  status: number;
+  data: unknown;
+
+  // api error details
+  constructor(status: number, data: unknown) {
+    super(`API request failed with status ${status}`);
+    this.name = "ApiError";
+    this.status = status;
+    this.data = data;
+  }
+}
 
 // request cache key
 const getRequestKey = (path: string, accessToken?: string): string => {
@@ -35,8 +48,12 @@ const getResponseData = (data: unknown): unknown => {
   }
 };
 
-export const processResponse = ({ data }: HttpResponse): any => {
-  const responseData = getResponseData(data);
+export const processResponse = (response: HttpResponse): any => {
+  const responseData = getResponseData(response.data);
+  // http error guard
+  if (response.status < 200 || response.status >= 300) {
+    throw new ApiError(response.status, responseData);
+  }
   // api envelope guard
   if (
     responseData &&
@@ -70,7 +87,7 @@ export const get = async <T = Record<string, unknown>>(
   if (requestKey in inProgress) {
     return await inProgress[requestKey];
   }
-  const promise = Http.request({
+  const promise = CapacitorHttp.request({
     headers: {
       ...getAuthHeader(accessToken),
     },
@@ -91,7 +108,7 @@ export const post = async <T = Record<string, unknown>>(
   data: Record<string, unknown>,
   accessToken?: string
 ): Promise<T> => {
-  const response = await Http.request({
+  const response = await CapacitorHttp.request({
     method: "POST",
     url: `${API_BASE_URL}${path}`,
     headers: {

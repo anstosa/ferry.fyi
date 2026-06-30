@@ -1,14 +1,24 @@
 import { Share } from "@capacitor/share";
+import { BrowserQRCodeSvgWriter } from "@zxing/browser";
+import { EncodeHintType } from "@zxing/library";
 import clsx from "clsx";
 import JsBarcode from "jsbarcode";
+import { DateTime } from "luxon";
 import React, { ReactElement, useEffect, useRef, useState } from "react";
-import { ReservationAccount, TicketStorage } from "shared/contracts/tickets";
+import {
+  ReservationAccount,
+  TicketCodeFormat,
+  TicketStorage,
+} from "shared/contracts/tickets";
+import { pluralize } from "shared/lib/strings";
 
+import { toShortDateString } from "~/lib/date";
 import logo from "~/static/images/icon_monochrome.png";
 import RemoveConfirmIcon from "~/static/images/icons/solid/exclamation-square.svg";
-import ShareIcon from "~/static/images/icons/solid/share-square.svg";
+import ShareIcon from "~/static/images/icons/solid/share-alt.svg";
 import StopIcon from "~/static/images/icons/solid/times.svg";
 import RemoveIcon from "~/static/images/icons/solid/trash.svg";
+import WSDOTIcon from "~/static/images/icons/wsdot.svg";
 
 interface Props {
   ticket: TicketStorage | ReservationAccount;
@@ -16,23 +26,226 @@ interface Props {
   onClose: () => void;
 }
 
+interface ConfirmationState {
+  action: "share" | "delete";
+  message: string;
+  primaryLabel: string;
+  title: string;
+}
+
+const QR_CODE_SIZE = 224;
+const QR_CODE_HINTS = new Map([[EncodeHintType.MARGIN, 0]]);
+
+// multi-ride detector
+const isMultiRideTicket = (ticket: TicketStorage): boolean => {
+  const passText = `${ticket.description} ${ticket.name} ${ticket.plu}`;
+
+  // QR fallback pass
+  if (ticket.codeFormat === "qr" && !ticket.description && !ticket.name) {
+    return true;
+  }
+
+  // remaining rides guard
+  if (typeof ticket.usesRemaining === "number" && ticket.usesRemaining > 1) {
+    return true;
+  }
+
+  return /multi|pass|commuter|monthly|10[- ]?ride|ten[- ]?ride/i.test(passText);
+};
+
+// get display title
+const getTicketTitle = (ticket: TicketStorage | ReservationAccount): string =>
+  getWsfTicketTitle(ticket);
+
+// get display subtitle
+const getTicketSubtitle = (
+  ticket: TicketStorage | ReservationAccount
+): string => {
+  // reservation subtitle
+  if (ticket.type === "reservation") {
+    return `Same ${getTicketCodeLabel(ticket)} for all reservations`;
+  }
+
+  // QR value subtitle
+  if (ticket.codeFormat === "qr") {
+    return ticket.id;
+  }
+
+  return ticket.name || ticket.plu || ticket.id;
+};
+
+// get display code label
+const getTicketCodeLabel = (
+  ticket: TicketStorage | ReservationAccount
+): string => {
+  // QR code label
+  if (ticket.codeFormat === "qr") {
+    return "QR code";
+  }
+
+  return "barcode";
+};
+
+// get WSF product title
+const getWsfTicketTitle = (
+  ticket: TicketStorage | ReservationAccount
+): string => {
+  // reservation title
+  if (ticket.type === "reservation") {
+    return "WSF reservation account";
+  }
+
+  // product title
+  if (isMultiRideTicket(ticket)) {
+    return "WSF Multi-ride pass";
+  }
+
+  return "WSF single-ride pass";
+};
+
+// multi-ride detail labels
+const getMultiRideDetails = (
+  ticket: TicketStorage | ReservationAccount
+): string[] => {
+  // ticket detail guard
+  if (ticket.type !== "ticket" || !isMultiRideTicket(ticket)) {
+    return [];
+  }
+
+  const details: string[] = [];
+
+  // expiration label
+  if (typeof ticket.expirationDate === "number") {
+    details.push(
+      `Expires ${toShortDateString(DateTime.fromMillis(ticket.expirationDate))}`
+    );
+  }
+
+  // rides label
+  if (typeof ticket.usesRemaining === "number") {
+    details.push(`${pluralize(ticket.usesRemaining, "ride")} left`);
+  }
+
+  return details;
+};
+
+// trim QR whitespace
+const trimQrSvgPadding = (svg: SVGSVGElement): void => {
+  const rects = Array.from(svg.querySelectorAll("rect"));
+
+  // empty SVG guard
+  if (rects.length === 0) {
+    return;
+  }
+
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = 0;
+  let maxY = 0;
+
+  rects.forEach((rect) => {
+    const x = Number(rect.getAttribute("x"));
+    const y = Number(rect.getAttribute("y"));
+    const width = Number(rect.getAttribute("width"));
+    const height = Number(rect.getAttribute("height"));
+
+    // invalid rect guard
+    if (
+      Number.isNaN(x) ||
+      Number.isNaN(y) ||
+      Number.isNaN(width) ||
+      Number.isNaN(height)
+    ) {
+      return;
+    }
+
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x + width);
+    maxY = Math.max(maxY, y + height);
+  });
+
+  // bounds guard
+  if (!Number.isFinite(minX) || !Number.isFinite(minY)) {
+    return;
+  }
+
+  svg.setAttribute("viewBox", `${minX} ${minY} ${maxX - minX} ${maxY - minY}`);
+  svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+};
+
+// render QR code
+const renderQrCode = (container: HTMLDivElement, code: string): void => {
+  const writer = new BrowserQRCodeSvgWriter();
+  const svg = writer.write(code, QR_CODE_SIZE, QR_CODE_SIZE, QR_CODE_HINTS);
+  svg.setAttribute("class", "h-56 w-56 max-w-full");
+  trimQrSvgPadding(svg);
+  container.replaceChildren(svg);
+};
+
+// render barcode
+const renderBarcode = (
+  container: HTMLDivElement,
+  code: string,
+  codeFormat: TicketCodeFormat
+): void => {
+  // QR render path
+  if (codeFormat === "qr") {
+    renderQrCode(container, code);
+    return;
+  }
+
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+
+  try {
+    // eslint-disable-next-line new-cap
+    JsBarcode(svg, code, {
+      background: "transparent",
+      displayValue: true,
+      font: "monospace",
+      fontOptions: "bold",
+      fontSize: 16,
+      height: 96,
+      margin: 0,
+      textMargin: 12,
+      width: 2,
+    });
+    svg.setAttribute("class", "max-w-full");
+    container.replaceChildren(svg);
+  } catch {
+    renderQrCode(container, code);
+  }
+};
+
 export const BarcodeOverlay = ({
   ticket,
   onClose,
   onDelete,
 }: Props): ReactElement | null => {
-  const barcodeRef = useRef<SVGSVGElement | null>(null);
+  const codeContainerRef = useRef<HTMLDivElement | null>(null);
+  const ticketTitle = getTicketTitle(ticket);
+  const ticketSubtitle = getTicketSubtitle(ticket);
+  const ticketCodeLabel = getTicketCodeLabel(ticket);
+  const wsfTicketTitle = getWsfTicketTitle(ticket);
+  const isQrCode = ticket.codeFormat === "qr";
+  const multiRideDetails = getMultiRideDetails(ticket);
+  const [confirmation, setConfirmation] = useState<ConfirmationState | null>(
+    null
+  );
 
   useEffect(() => {
-    if (barcodeRef.current && ticket?.id) {
-      // eslint-disable-next-line new-cap
-      JsBarcode(barcodeRef.current, ticket?.id);
+    const codeContainer = codeContainerRef.current;
+
+    // code render guard
+    if (codeContainer && ticket?.id) {
+      renderBarcode(codeContainer, ticket.id, ticket.codeFormat ?? "barcode");
     }
-  }, [barcodeRef.current, ticket?.id]);
+  }, [ticket?.codeFormat, ticket?.id]);
 
   // track whether we have native sharing available
   const [canShare, setShare] = useState<boolean>(false);
   useEffect(() => {
+    // initialize sharing
     const initShare = async () => {
       const { value: canShare } = await Share.canShare();
       setShare(canShare);
@@ -46,99 +259,248 @@ export const BarcodeOverlay = ({
     return () => setDeleting(null);
   }, []);
 
+  // missing ticket guard
   if (!ticket) {
     return null;
   }
 
+  // share current ticket immediately
+  const shareTicketNow = async () => {
+    const sharedText = ticketTitle;
+    const query = new URLSearchParams({
+      add: ticket.id,
+      format: ticket.codeFormat ?? "barcode",
+    });
+
+    try {
+      await Share.share({
+        title: "Shared Ticket on Ferry FYI",
+        text: sharedText,
+        url: `${process.env.BASE_URL}/tickets?${query.toString()}`,
+        dialogTitle: sharedText,
+      });
+    } catch (error) {
+      console.error("Failed to share", error);
+    }
+  };
+
+  // share current ticket
+  const shareTicket = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+
+    // reservation warning
+    if (ticket.type === "reservation") {
+      setConfirmation({
+        action: "share",
+        message:
+          "Reservation account codes do not change. Sharing this code will also give the recipient access to any future reservations you make.",
+        primaryLabel: "Share anyway",
+        title: "Share reservation account?",
+      });
+      return;
+    }
+
+    await shareTicketNow();
+  };
+
+  // delete with confirmation
+  const deleteTicket = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+
+    // reservation warning
+    if (ticket.type === "reservation") {
+      setConfirmation({
+        action: "delete",
+        message:
+          "Reservation account codes do not change. Removing this account will remove access to the saved barcode for current and future reservations.",
+        primaryLabel: "Remove",
+        title: "Remove reservation account?",
+      });
+      return;
+    }
+
+    // confirmed delete
+    if (isDeleting === ticket.id) {
+      setDeleting(null);
+      await onDelete(ticket);
+      return;
+    }
+
+    setDeleting(ticket.id);
+  };
+
+  // run confirmation action
+  const confirmAction = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+
+    // missing confirmation guard
+    if (!confirmation) {
+      return;
+    }
+
+    // share confirmation
+    if (confirmation.action === "share") {
+      setConfirmation(null);
+      await shareTicketNow();
+      return;
+    }
+
+    setConfirmation(null);
+    await onDelete(ticket);
+  };
+
+  // cancel confirmation
+  const cancelConfirmation = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    setConfirmation(null);
+  };
+
   return (
     <div
       className={clsx(
-        "z-20 fixed inset-0",
-        "w-full h-full",
-        "bg-darken-high",
-        "flex flex-col items-center justify-center"
+        "fixed inset-0 z-20 flex h-full w-full items-center justify-center",
+        "bg-[rgba(0,20,26,0.86)] px-4 py-8 backdrop-blur-md"
       )}
       onClick={() => onClose()}
     >
       <button
-        className="absolute top-5 right-5 text-2xl"
+        className="button button-glass button-icon-only absolute right-5 top-5 text-2xl"
         onClick={() => onClose()}
+        type="button"
       >
         <StopIcon className="text-xl" />
       </button>
       <div
         className={clsx(
-          "bg-green-dark text-white",
-          "text-2xl px-10 py-4 font-bold",
-          "w-full max-w-lg rounded-t",
-          "flex items-center"
+          "relative w-full max-w-lg overflow-hidden rounded-3xl shadow-2xl",
+          "border border-white/15 bg-white text-gray-darkest"
         )}
+        onClick={(event) => event.stopPropagation()}
       >
-        <img src={logo} className="inline-block mr-4 w-10" />
-        Ferry FYI
-      </div>
-      <div
-        className={clsx("gradient-green-to-bottom", "w-full max-w-lg h-10")}
-      />
-      <div
-        className={clsx(
-          "rounded-b px-10 py-4 bg-white text-black",
-          "w-full max-w-lg relative",
-          "flex flex-col items-center"
-        )}
-      >
-        {"description" in ticket && (
-          <span className="font-mono font-bold">{ticket.description}</span>
-        )}
-        {ticket.type === "reservation" && (
-          <span className="font-mono font-bold">Reservation Account</span>
-        )}
-        <svg ref={barcodeRef} />
-        <div
-          className={clsx(
-            "flex items-center justify-center gap-10",
-            "absolute bottom-0 p-10 -mb-28",
-            "text-2xl text-white"
+        <div className="relative overflow-hidden bg-[linear-gradient(135deg,#016f52_0%,#004d61_100%)] px-5 py-5 text-white">
+          <div className="absolute -right-12 -top-12 h-36 w-36 rounded-full bg-white/10" />
+          <div className="absolute -bottom-16 left-12 h-32 w-32 rounded-full bg-yellow-medium/20 blur-sm" />
+          <div className="relative grid grid-cols-[3.5rem_1fr] items-center gap-x-3 gap-y-2">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/12">
+              <img src={logo} className="h-11 w-11 rounded-xl object-contain" />
+            </div>
+            <p className="text-sm font-extrabold uppercase tracking-[0.2em] text-yellow-lightest">
+              Ferry FYI
+            </p>
+            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/12 text-white">
+              <WSDOTIcon className="h-9 w-9" aria-label="WSF" />
+            </span>
+            <h2 className="min-w-0 text-xl font-black leading-tight tracking-tight">
+              {wsfTicketTitle}
+            </h2>
+          </div>
+        </div>
+
+        <div className="px-5 py-5">
+          {/* barcode subtitle */}
+          {isQrCode ? null : (
+            <p className="mx-auto mb-4 max-w-xs break-all text-center text-sm font-bold text-gray-dark">
+              {ticketSubtitle}
+            </p>
           )}
-        >
-          {canShare && (
+
+          {/* multi-ride details */}
+          {multiRideDetails.length > 0 ? (
+            <div className="mb-3 flex flex-wrap justify-center gap-2">
+              {multiRideDetails.map((detail) => (
+                <span
+                  className="rounded-full bg-darken-lowest px-3 py-1 text-sm font-bold text-gray-dark"
+                  key={detail}
+                >
+                  {detail}
+                </span>
+              ))}
+            </div>
+          ) : null}
+
+          <div className="rounded-3xl border border-[rgba(0,0,0,0.08)] bg-white p-4 shadow-inner">
+            <div className="flex min-h-40 items-center justify-center rounded-2xl bg-white">
+              <div
+                ref={codeContainerRef}
+                className="flex w-full items-center justify-center"
+              />
+            </div>
+            {/* QR value */}
+            {isQrCode ? (
+              <p className="mx-auto mt-3 max-w-xs break-all text-center font-mono text-sm font-bold tracking-wide text-gray-dark">
+                {ticketSubtitle}
+              </p>
+            ) : null}
+          </div>
+
+          <p className="mt-4 text-center text-sm font-semibold text-gray-dark">
+            Keep brightness up and show this {ticketCodeLabel} at the booth.
+          </p>
+
+          <div className="mt-5 grid grid-cols-2 gap-3">
             <button
-              onClick={async (event) => {
-                event.stopPropagation();
-                const sharedText =
-                  ticket.type === "ticket"
-                    ? ticket.description
-                    : "Reservation Account";
-                try {
-                  await Share.share({
-                    title: "Shared Ticket on Ferry FYI",
-                    text: sharedText,
-                    url: `${process.env.BASE_URL}/tickets?add=${ticket.id}`,
-                    dialogTitle: sharedText,
-                  });
-                } catch (error) {
-                  console.error("Failed to share", error);
-                }
-              }}
+              className={clsx("button", {
+                "button-danger": isDeleting === ticket.id,
+                "button-secondary": isDeleting !== ticket.id,
+                "col-span-2": !canShare,
+              })}
+              onClick={deleteTicket}
+              type="button"
             >
-              <ShareIcon />
+              {isDeleting === ticket.id ? (
+                <RemoveConfirmIcon />
+              ) : (
+                <RemoveIcon />
+              )}
+              {isDeleting === ticket.id ? "Tap again to delete" : "Remove"}
             </button>
-          )}
-          <button
-            onClick={async (event) => {
-              event.stopPropagation();
-              if (isDeleting === ticket.id) {
-                setDeleting(null);
-                await onDelete(ticket);
-              } else {
-                setDeleting(ticket.id);
-              }
-            }}
-          >
-            {isDeleting === ticket.id ? <RemoveConfirmIcon /> : <RemoveIcon />}
-          </button>
+            {canShare && (
+              <button
+                className="button button-primary"
+                onClick={shareTicket}
+                type="button"
+              >
+                <ShareIcon />
+                Share
+              </button>
+            )}
+          </div>
         </div>
       </div>
+      {confirmation ? (
+        <div
+          className="absolute inset-0 z-30 flex items-center justify-center bg-[rgba(0,20,26,0.86)] px-5 backdrop-blur-md"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="w-full max-w-sm rounded-3xl border border-white/15 bg-white p-5 text-gray-darkest shadow-2xl">
+            <h3 className="text-xl font-black text-green-dark">
+              {confirmation.title}
+            </h3>
+            <p className="mt-3 text-sm font-semibold leading-relaxed text-gray-dark">
+              {confirmation.message}
+            </p>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <button
+                className="button button-secondary"
+                onClick={cancelConfirmation}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                className={clsx("button", {
+                  "button-primary": confirmation.action === "share",
+                  "button-danger": confirmation.action === "delete",
+                })}
+                onClick={confirmAction}
+                type="button"
+              >
+                {confirmation.primaryLabel}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 };

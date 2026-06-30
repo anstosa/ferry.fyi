@@ -117,6 +117,8 @@ export const Route = ({
   const [[terminal, mate], setTerminals] = useState<Array<Terminal | null>>([
     null,
   ]);
+  // schedule race guard
+  const scheduleRequestRef = useRef<number>(0);
   const [time, setTime] = useState<DateTime>(today);
   const inputDate = dateInput ? DateTime.fromISO(dateInput) : null;
   const [date, setDate] = useState<DateTime>(
@@ -220,6 +222,8 @@ export const Route = ({
     if (!mate || !findWhere(terminal.mates, { id: mate.id })) {
       mate = terminal?.mates?.[0] ?? null;
     }
+    // invalidate stale schedule
+    scheduleRequestRef.current += 1;
     setTerminals([terminal, mate]);
 
     const path = getPath({ terminal, mate: mate ?? undefined });
@@ -235,16 +239,28 @@ export const Route = ({
   };
 
   const updateSchedule = async (): Promise<void> => {
-    if (isUpdating || !terminal || !mate) {
+    // terminal readiness guard
+    if (!terminal || !mate) {
       return;
     }
+    const requestId = scheduleRequestRef.current + 1;
+    scheduleRequestRef.current = requestId;
     setUpdating(true);
-    const { schedule, timestamp } = await getSchedule(terminal, mate, date);
-    setSchedule(schedule);
-    setUpdating(false);
-
-    const time = DateTime.fromSeconds(timestamp);
-    setTime(time);
+    try {
+      const { schedule, timestamp } = await getSchedule(terminal, mate, date);
+      // stale response guard
+      if (requestId !== scheduleRequestRef.current) {
+        return;
+      }
+      setSchedule(schedule);
+      const time = DateTime.fromSeconds(timestamp);
+      setTime(time);
+    } finally {
+      // latest request guard
+      if (requestId === scheduleRequestRef.current) {
+        setUpdating(false);
+      }
+    }
   };
 
   const selectedRoute =

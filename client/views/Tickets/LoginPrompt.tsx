@@ -38,18 +38,28 @@ export const LoginPrompt = (): ReactElement | null => {
     return null;
   }
   return (
-    <li
-      className={clsx(
-        "my-4 w-full",
-        "text-center font-bold",
-        "p-4 rounded cursor-pointer",
-        "bg-blue-medium dark:bg-blue-light",
-        "outline outline-blue-dark dark:outline-blue-medium",
-        "text-black"
-      )}
-      onClick={() => login()}
-    >
-      Create a free account to save tickets
+    <li>
+      <button
+        className={clsx(
+          "group flex w-full items-center justify-between gap-4 rounded-2xl border p-4 text-left shadow-sm",
+          "border-blue-light bg-blue-lightest text-blue-dark hover:-translate-y-0.5 hover:shadow-lg",
+          "dark:border-white/10 dark:bg-white/10 dark:text-blue-light"
+        )}
+        onClick={() => login()}
+        type="button"
+      >
+        <span>
+          <span className="block text-base font-black">
+            Create a free account
+          </span>
+          <span className="mt-1 block text-sm font-semibold text-gray-dark dark:text-white/65">
+            Sync saved tickets across devices
+          </span>
+        </span>
+        <span className="rounded-full bg-white px-3 py-1 text-xs font-black uppercase tracking-[0.14em] text-blue-dark dark:bg-blue-light dark:text-blue-darkest">
+          Sync
+        </span>
+      </button>
     </li>
   );
 };

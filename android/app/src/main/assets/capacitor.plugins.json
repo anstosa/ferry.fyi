@@ -1,17 +1,5 @@
 [
 	{
-		"pkg": "@byteowls/capacitor-oauth2",
-		"classpath": "com.byteowls.capacitor.oauth2.OAuth2ClientPlugin"
-	},
-	{
-		"pkg": "@capacitor-community/barcode-scanner",
-		"classpath": "com.getcapacitor.community.barcodescanner.BarcodeScanner"
-	},
-	{
-		"pkg": "@capacitor-community/http",
-		"classpath": "com.getcapacitor.plugin.http.Http"
-	},
-	{
 		"pkg": "@capacitor-community/keep-awake",
 		"classpath": "com.getcapacitor.community.keepawake.KeepAwakePlugin"
 	},
@@ -22,6 +10,10 @@
 	{
 		"pkg": "@capacitor/app",
 		"classpath": "com.capacitorjs.plugins.app.AppPlugin"
+	},
+	{
+		"pkg": "@capacitor/barcode-scanner",
+		"classpath": "com.capacitorjs.barcodescanner.CapacitorBarcodeScannerPlugin"
 	},
 	{
 		"pkg": "@capacitor/browser",
@@ -42,9 +34,5 @@
 	{
 		"pkg": "@capacitor/status-bar",
 		"classpath": "com.capacitorjs.plugins.statusbar.StatusBarPlugin"
-	},
-	{
-		"pkg": "moots-capacitor-dark-mode",
-		"classpath": "com.au.capacitor.darkmode.DarkModePlugin"
 	}
 ]

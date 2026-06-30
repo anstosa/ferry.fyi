@@ -8,12 +8,18 @@ export interface Ticket {
   status: string;
   usesRemaining: number;
 }
-export interface TicketStorage extends Ticket {
+
+export type TicketCodeFormat = "barcode" | "qr";
+
+export interface TicketStorage extends Partial<Ticket> {
   type: "ticket";
+  id: string;
   nickname?: string;
+  codeFormat?: TicketCodeFormat;
 }
 export interface ReservationAccount {
   type: "reservation";
   nickname?: string;
   id: string;
+  codeFormat?: TicketCodeFormat;
 }

@@ -35,10 +35,16 @@ interface Props {
   items?: MenuItem[];
 }
 
+// menu avatar
 const Avatar = ({ className }: SVGAttributes<SVGElement>) => {
   const { user } = useAuth0();
+  const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null);
+
+  // image failure fallback
+  const handleImageError = () => setFailedImageUrl(user?.picture ?? null);
+
   // profile image guard
-  if (user?.picture) {
+  if (user?.picture && failedImageUrl !== user.picture) {
     return (
       <img
         src={user.picture}
@@ -46,6 +52,7 @@ const Avatar = ({ className }: SVGAttributes<SVGElement>) => {
           className,
           "h-6 w-6 rounded object-cover overflow-hidden"
         )}
+        onError={handleImageError}
       />
     );
   }
