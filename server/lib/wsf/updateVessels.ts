@@ -3,6 +3,11 @@ import { DateTime } from "luxon";
 import VESSEL_DATA_OVERRIDES from "shared/data/vessels.json";
 import { values } from "shared/lib/objects";
 
+import {
+  formatLogBlock,
+  formatTerminalList,
+  formatVesselList,
+} from "~/lib/logging";
 import { calculateGpsDelayForLeg, findGpsDelayLeg } from "~/lib/wsf/gpsDelay";
 import { Schedule } from "~/models/Schedule";
 import { Terminal } from "~/models/Terminal";
@@ -34,16 +39,21 @@ export const updateVessels = async (): Promise<void> => {
   const cacheFlushDate = wsfDateToTimestamp(
     await wsfRequest<string>(API_CACHE)
   );
+  // fresh cache guard
   if (cacheFlushDate === lastFlushDate) {
-    logger.info("Skipped Vessel Update");
+    logger.info("Skipped vessel metadata update; cache flush unchanged");
     return;
   } else {
-    logger.info("Started Vessel Update");
+    logger.info(
+      `Started vessel metadata update; cache flush ${cacheFlushDate}`
+    );
   }
   lastFlushDate = cacheFlushDate;
 
   const vessels = await wsfRequest<WSF.VesselsVerboseResponse[]>(API_VERBOSE);
+  // missing vessels guard
   if (!vessels) {
+    logger.info("Skipped vessel metadata update; WSF returned no vessels");
     return;
   }
   // vessel refresh
@@ -88,24 +98,43 @@ export const updateVessels = async (): Promise<void> => {
       String(VesselData.VesselID),
       data
     );
-    if (!wasCreated) {
-      vessel.update(data);
+    // created vessel guard
+    if (wasCreated) {
+      vessel.save();
+      return;
     }
+    vessel.update(data);
     vessel.save();
   });
-  logger.info(`Updated ${Object.keys(Vessel.getAll()).length} Vessels`);
+  logger.info(
+    formatLogBlock("Vessel metadata update complete", [
+      {
+        heading: "summary",
+        lines: [`vessels: ${Object.keys(Vessel.getAll()).length}`],
+      },
+      {
+        heading: "refreshed vessels",
+        lines: formatVesselList(vessels.map((vessel) => vessel.VesselID)),
+      },
+    ])
+  );
 };
 
 export const updateVesselStatus = async (): Promise<any> => {
-  logger.info("Started Vessel Status Update");
+  logger.info("Started vessel status update");
   const vessels =
     await wsfRequest<WSF.VesselsLocationResponse[]>(API_LOCATIONS);
+  // missing vessels guard
   if (!vessels) {
+    logger.info("Skipped vessel status update; WSF returned no vessels");
     return;
   }
   const schedules = values(Schedule.getAll());
   const terminals = values(Terminal.getAll());
   const now = DateTime.local();
+  let createdVessels = 0;
+  let updatedVessels = 0;
+  let vesselsAtDock = 0;
   vessels.forEach((VesselData) => {
     let vessel = Vessel.getByIndex(String(VesselData.VesselID));
     const departedTime = wsfDateToTimestamp(VesselData.LeftDock);
@@ -145,6 +174,7 @@ export const updateVesselStatus = async (): Promise<any> => {
         })
       : null;
     let dockedTime: number | undefined;
+    // newly docked guard
     if (VesselData.AtDock && !vessel?.isAtDock) {
       dockedTime = now.toMillis();
     }
@@ -170,12 +200,38 @@ export const updateVesselStatus = async (): Promise<any> => {
         crossing: VesselData.EtaBasis,
       },
     };
+    // existing vessel guard
     if (vessel) {
       vessel.update(data);
+      updatedVessels += 1;
     } else {
       [vessel] = Vessel.getOrCreate(String(VesselData.VesselID), data);
+      createdVessels += 1;
+    }
+    // docked vessel guard
+    if (VesselData.AtDock) {
+      vesselsAtDock += 1;
     }
     vessel.save();
   });
-  logger.info(`Updated ${Object.keys(Vessel.getAll()).length} Vessel Statuses`);
+  const departingTerminalIds = Array.from(
+    new Set(vessels.map((vessel) => vessel.DepartingTerminalID))
+  );
+  logger.info(
+    formatLogBlock("Vessel status update complete", [
+      {
+        heading: "summary",
+        lines: [
+          `existing vessels: ${updatedVessels}`,
+          `new vessels: ${createdVessels}`,
+          `at dock: ${vesselsAtDock}`,
+          `underway: ${vessels.length - vesselsAtDock}`,
+        ],
+      },
+      {
+        heading: "departing terminals",
+        lines: formatTerminalList(departingTerminalIds),
+      },
+    ])
+  );
 };

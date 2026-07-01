@@ -2,23 +2,15 @@ import { Router } from "express";
 import {
   AlertSubscriptions,
   AppMetadata,
+  CurrentUser,
   UserUpdatePayload,
 } from "shared/contracts/user";
 import { isAlertSubscriptionChannel } from "shared/lib/alertSubscriptions";
 import { isObject } from "shared/lib/objects";
 
-import { auth0, Auth0UserUpdate } from "~/lib/auth0";
+import { UserSettings } from "~/models/UserSettings";
 
 const userRouter = Router();
-
-// auth0 response data
-const getAuth0Data = <T>(input: T | { data?: T }): T | undefined => {
-  // v5 response guard
-  if (isObject(input) && "data" in input) {
-    return input.data as T | undefined;
-  }
-  return input as T;
-};
 
 const getStringList = (input: unknown): string[] | undefined => {
   // string list guard
@@ -86,7 +78,7 @@ const sanitizeAppMetadata = (input: unknown): AppMetadata | undefined => {
   return metadata;
 };
 
-const sanitizeUserUpdate = (input: unknown): UserUpdatePayload => {
+export const sanitizeUserUpdate = (input: unknown): UserUpdatePayload => {
   // payload object guard
   if (!isObject(input)) {
     return {};
@@ -100,17 +92,37 @@ const sanitizeUserUpdate = (input: unknown): UserUpdatePayload => {
   return payload;
 };
 
+// find or create app settings
+const getUserSettings = async (subject: string): Promise<UserSettings> => {
+  const [settings] = await UserSettings.findOrCreate({
+    defaults: { appMetadata: {}, subject },
+    where: { subject },
+  });
+  return settings;
+};
+
+// user response body
+const serializeUserSettings = (settings: UserSettings): CurrentUser => {
+  return {
+    app_metadata: settings.appMetadata ?? {},
+    user_id: settings.subject,
+  };
+};
+
 userRouter.get("/", async (request, response) => {
-  const user = await auth0.users.get(response.locals.user.sub);
-  return response.send(getAuth0Data(user));
+  const settings = await getUserSettings(response.locals.user.sub);
+  return response.send(serializeUserSettings(settings));
 });
 
 userRouter.post("/", async (request, response) => {
-  const user = await auth0.users.update(
-    response.locals.user.sub,
-    sanitizeUserUpdate(request.body) as Auth0UserUpdate
-  );
-  return response.send(getAuth0Data(user));
+  const settings = await getUserSettings(response.locals.user.sub);
+  const update = sanitizeUserUpdate(request.body);
+  const appMetadata = {
+    ...(settings.appMetadata ?? {}),
+    ...(update.app_metadata ?? {}),
+  };
+  await settings.update({ appMetadata });
+  return response.send(serializeUserSettings(settings));
 });
 
-export { sanitizeUserUpdate, userRouter };
+export { userRouter };

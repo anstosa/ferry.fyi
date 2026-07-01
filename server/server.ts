@@ -1,7 +1,6 @@
 import cors from "cors";
 import express, { NextFunction, Request, Response } from "express";
 import logger from "heroku-logger";
-import morgan from "morgan";
 import { scheduleJob } from "node-schedule";
 
 import { apiRouter } from "~/controllers/api";
@@ -46,8 +45,6 @@ if (process.env.NODE_ENV === "production") {
 }
 app.use(express.json());
 app.use(cors());
-// log requests
-app.use(morgan("combined"));
 // mount routes
 app.use("/api", apiRouter);
 app.use("/", staticRouter);
@@ -105,7 +102,7 @@ const refreshTideModelInBackground = (): void => {
   initializeWsfSeed();
   // start server before initializing WSF since that can take a couple minutes
   const server = app.listen(process.env.PORT, () =>
-    logger.info("Server started")
+    logger.info(`Server started on port ${process.env.PORT ?? "default"}`)
   );
   process.once("SIGUSR2", () => {
     logger.info("Gracefully shutting down server...");
@@ -114,7 +111,7 @@ const refreshTideModelInBackground = (): void => {
       process.kill(process.pid, "SIGUSR2");
     });
   });
-  logger.info("Initializing WSF");
+  logger.info("Initializing WSF cache and background refresh jobs");
   // refresh WSF cache asynchronously
   refreshWsfInBackground();
   // refresh weather model asynchronously
@@ -132,5 +129,7 @@ const refreshTideModelInBackground = (): void => {
     Schedule.purge();
     Route.purge();
   });
-  logger.info("WSF Initialized");
+  logger.info(
+    "WSF refresh jobs scheduled: daily 04:10, long every minute, short every 30 seconds"
+  );
 })();

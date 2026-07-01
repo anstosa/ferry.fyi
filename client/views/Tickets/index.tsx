@@ -15,6 +15,8 @@ import { BarcodeFormat, DecodeHintType } from "@zxing/library";
 import clsx from "clsx";
 import { useAtom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
+import jsQR from "jsqr";
+import { DateTime } from "luxon";
 import React, { ReactElement, useEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import type {
@@ -37,6 +39,8 @@ import ErrorIcon from "~/static/images/icons/solid/exclamation-triangle.svg";
 import ExternalLinkIcon from "~/static/images/icons/solid/external-link.svg";
 import UploadIcon from "~/static/images/icons/solid/image.svg";
 import ManualIcon from "~/static/images/icons/solid/keyboard.svg";
+import SpinnerIcon from "~/static/images/icons/solid/spinner-third.svg";
+import SyncIcon from "~/static/images/icons/solid/sync-alt.svg";
 import StopIcon from "~/static/images/icons/solid/times.svg";
 
 import { BarcodeOverlay } from "./BarcodeOverlay";
@@ -72,6 +76,25 @@ const HEADER_ACTION_ICON_CLASSES = clsx(
   "bg-white/15 text-yellow-lightest group-hover:bg-yellow-lightest group-hover:text-green-dark"
 );
 
+const IMAGE_DECODE_CROP_CENTERS = [
+  { x: 0.32, y: 0.42 },
+  { x: 0.5, y: 0.42 },
+  { x: 0.68, y: 0.42 },
+  { x: 0.32, y: 0.56 },
+  { x: 0.5, y: 0.56 },
+  { x: 0.68, y: 0.56 },
+  { x: 0.32, y: 0.62 },
+  { x: 0.5, y: 0.62 },
+  { x: 0.68, y: 0.62 },
+  { x: 0.32, y: 0.7 },
+  { x: 0.5, y: 0.7 },
+  { x: 0.68, y: 0.7 },
+];
+const IMAGE_DECODE_CROP_SCALES = [0.24, 0.32, 0.42, 0.58, 0.74];
+const IMAGE_DECODE_MAX_VARIANTS = 72;
+const IMAGE_DECODE_MIN_CANVAS_SIZE = 900;
+const IMAGE_DECODE_MAX_CANVAS_SIZE = 1600;
+
 // WSF purchase links
 const WSF_RESERVATION_URL =
   "https://secureapps.wsdot.wa.gov/ferries/reservations/vehicle/default.aspx?op=Make+reservations";
@@ -98,6 +121,20 @@ type BarcodeDetectorWindow = Window &
   typeof globalThis & {
     BarcodeDetector?: BrowserBarcodeDetectorConstructor;
   };
+
+interface TicketImageCropRegion {
+  height: number;
+  label: string;
+  width: number;
+  x: number;
+  y: number;
+}
+
+interface TicketImageDecodeVariant {
+  cleanup: () => void;
+  imageData: ImageData;
+  url: string;
+}
 
 // detector result format
 const getTicketCodeFormatFromDetector = (format?: string): TicketCodeFormat => {
@@ -176,6 +213,191 @@ const getTicketLookupPath = (code: string): string => {
   return `/tickets/${encodeURIComponent(code)}`;
 };
 
+// load uploaded image
+const loadTicketImage = (file: File): Promise<HTMLImageElement> =>
+  new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    // uploaded image loaded
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(image);
+    };
+    // uploaded image failed
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Unable to load uploaded ticket image"));
+    };
+    image.src = url;
+  });
+
+// clamp QR crop
+const getTicketImageCropRegion = (
+  imageWidth: number,
+  imageHeight: number,
+  centerX: number,
+  centerY: number,
+  size: number,
+  label: string
+): TicketImageCropRegion => {
+  const cropWidth = Math.min(size, imageWidth);
+  const cropHeight = Math.min(size, imageHeight);
+  const x = Math.min(
+    Math.max(0, centerX * imageWidth - cropWidth / 2),
+    imageWidth - cropWidth
+  );
+  const y = Math.min(
+    Math.max(0, centerY * imageHeight - cropHeight / 2),
+    imageHeight - cropHeight
+  );
+
+  return { height: cropHeight, label, width: cropWidth, x, y };
+};
+
+// choose QR crop candidates
+const getTicketImageCropRegions = (
+  imageWidth: number,
+  imageHeight: number
+): TicketImageCropRegion[] => {
+  const regions: TicketImageCropRegion[] = [
+    { height: imageHeight, label: "full", width: imageWidth, x: 0, y: 0 },
+  ];
+  const shortestSide = Math.min(imageWidth, imageHeight);
+  // crop size pass
+  for (const scale of IMAGE_DECODE_CROP_SCALES) {
+    const cropSize = shortestSide * scale;
+    // crop center pass
+    for (const center of IMAGE_DECODE_CROP_CENTERS) {
+      regions.push(
+        getTicketImageCropRegion(
+          imageWidth,
+          imageHeight,
+          center.x,
+          center.y,
+          cropSize,
+          `qr-crop-${scale}-${center.x}-${center.y}`
+        )
+      );
+    }
+  }
+
+  regions.push({
+    height: imageHeight * 0.5,
+    label: "ticket-band",
+    width: imageWidth * 0.86,
+    x: imageWidth * 0.07,
+    y: imageHeight * 0.28,
+  });
+
+  const seenRegions = new Set<string>();
+  return regions.filter((region) => {
+    const key = [region.x, region.y, region.width, region.height]
+      .map(Math.round)
+      .join(":");
+    // duplicate crop guard
+    if (seenRegions.has(key)) {
+      return false;
+    }
+    seenRegions.add(key);
+    return true;
+  });
+};
+
+// canvas blob helper
+const getCanvasBlob = (canvas: HTMLCanvasElement): Promise<Blob | null> =>
+  new Promise((resolve) => {
+    canvas.toBlob(resolve, "image/png");
+  });
+
+// render enhanced decode image
+const renderTicketImageVariant = async (
+  image: HTMLImageElement,
+  region: TicketImageCropRegion
+): Promise<TicketImageDecodeVariant | null> => {
+  const largestCropSide = Math.max(region.width, region.height);
+  const outputLargestSide = Math.min(
+    IMAGE_DECODE_MAX_CANVAS_SIZE,
+    Math.max(IMAGE_DECODE_MIN_CANVAS_SIZE, largestCropSide)
+  );
+  const scale = outputLargestSide / largestCropSide;
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(region.width * scale);
+  canvas.height = Math.round(region.height * scale);
+  const context = canvas.getContext("2d");
+  // canvas support guard
+  if (!context) {
+    return null;
+  }
+
+  context.imageSmoothingEnabled = true;
+  context.drawImage(
+    image,
+    region.x,
+    region.y,
+    region.width,
+    region.height,
+    0,
+    0,
+    canvas.width,
+    canvas.height
+  );
+
+  const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+  const blob = await getCanvasBlob(canvas);
+  // blob creation guard
+  if (!blob) {
+    return null;
+  }
+
+  const url = URL.createObjectURL(blob);
+  return {
+    cleanup: () => URL.revokeObjectURL(url),
+    imageData,
+    url,
+  };
+};
+
+// build decode variants
+const createTicketImageDecodeVariants = async (
+  file: File
+): Promise<TicketImageDecodeVariant[]> => {
+  const image = await loadTicketImage(file);
+  const regions = getTicketImageCropRegions(
+    image.naturalWidth || image.width,
+    image.naturalHeight || image.height
+  ).slice(0, IMAGE_DECODE_MAX_VARIANTS);
+  const variants: TicketImageDecodeVariant[] = [];
+  // render crop variants
+  for (const region of regions) {
+    const variant = await renderTicketImageVariant(image, region);
+    // variant creation guard
+    if (variant) {
+      variants.push(variant);
+    }
+  }
+  return variants;
+};
+
+// ZXing URL detector
+const decodeTicketImageUrlWithZxing = async (
+  reader: BrowserMultiFormatReader,
+  url: string,
+  tryHarder: boolean
+): Promise<TicketCodeScan> => {
+  // rotate fallback toggle
+  if (tryHarder) {
+    reader.hints.set(DecodeHintType.TRY_HARDER, true);
+  } else {
+    reader.hints.delete(DecodeHintType.TRY_HARDER);
+  }
+
+  const result = await reader.decodeFromImageUrl(url);
+  return {
+    code: result.getText(),
+    codeFormat: getTicketCodeFormatFromZxing(result.getBarcodeFormat()),
+  };
+};
+
 // native browser detector
 const decodeTicketImageWithBarcodeDetector = async (
   file: File
@@ -213,6 +435,50 @@ const decodeTicketImageWithBarcodeDetector = async (
   }
 };
 
+// jsQR crop detector
+const decodeTicketImageVariantWithJsQr = (
+  variant: TicketImageDecodeVariant
+): TicketCodeScan | null => {
+  const result = jsQR(
+    variant.imageData.data,
+    variant.imageData.width,
+    variant.imageData.height,
+    { inversionAttempts: "attemptBoth" }
+  );
+  // jsQR result guard
+  if (!result?.data) {
+    return null;
+  }
+
+  return { code: result.data, codeFormat: "qr" };
+};
+
+// jsQR image detector
+const decodeTicketImageVariantsWithJsQr = async (
+  file: File
+): Promise<TicketCodeScan | null> => {
+  let variants: TicketImageDecodeVariant[] = [];
+
+  try {
+    variants = await createTicketImageDecodeVariants(file);
+    // scan crop variants
+    for (const variant of variants) {
+      const qrResult = decodeTicketImageVariantWithJsQr(variant);
+      // QR crop hit
+      if (qrResult) {
+        return qrResult;
+      }
+    }
+  } finally {
+    // release variant URLs
+    for (const variant of variants) {
+      variant.cleanup();
+    }
+  }
+
+  return null;
+};
+
 // ZXing image detector
 const decodeTicketImageWithZxing = async (
   reader: BrowserMultiFormatReader,
@@ -222,28 +488,43 @@ const decodeTicketImageWithZxing = async (
   const url = URL.createObjectURL(file);
 
   try {
-    // rotate fallback toggle
-    if (tryHarder) {
-      reader.hints.set(DecodeHintType.TRY_HARDER, true);
-    } else {
-      reader.hints.delete(DecodeHintType.TRY_HARDER);
-    }
-
-    const result = await reader.decodeFromImageUrl(url);
-    return {
-      code: result.getText(),
-      codeFormat: getTicketCodeFormatFromZxing(result.getBarcodeFormat()),
-    };
-  } catch (error) {
-    // final decode diagnostics
-    if (tryHarder) {
-      console.error("Unable to decode uploaded ticket image", error);
-    }
-
+    return await decodeTicketImageUrlWithZxing(reader, url, tryHarder);
+  } catch {
     return null;
   } finally {
     URL.revokeObjectURL(url);
   }
+};
+
+// ZXing crop detector
+const decodeTicketImageVariantsWithZxing = async (
+  reader: BrowserMultiFormatReader,
+  file: File
+): Promise<TicketCodeScan | null> => {
+  let variants: TicketImageDecodeVariant[] = [];
+  let lastError: unknown = null;
+
+  try {
+    variants = await createTicketImageDecodeVariants(file);
+    // decode crop variants
+    for (const variant of variants) {
+      try {
+        return await decodeTicketImageUrlWithZxing(reader, variant.url, true);
+      } catch (error) {
+        lastError = error;
+      }
+    }
+  } catch (error) {
+    lastError = error;
+  } finally {
+    // release variant URLs
+    for (const variant of variants) {
+      variant.cleanup();
+    }
+  }
+
+  console.error("Unable to decode uploaded ticket image", lastError);
+  return null;
 };
 
 // uploaded ticket detector
@@ -258,6 +539,13 @@ const decodeTicketImage = async (
     return detectedCode;
   }
 
+  const qrVariantCode = await decodeTicketImageVariantsWithJsQr(file);
+
+  // QR crop hit
+  if (qrVariantCode) {
+    return qrVariantCode;
+  }
+
   const directCode = await decodeTicketImageWithZxing(reader, file, false);
 
   // direct ZXing hit
@@ -265,7 +553,14 @@ const decodeTicketImage = async (
     return directCode;
   }
 
-  return decodeTicketImageWithZxing(reader, file, true);
+  const tryHarderCode = await decodeTicketImageWithZxing(reader, file, true);
+
+  // try-harder ZXing hit
+  if (tryHarderCode) {
+    return tryHarderCode;
+  }
+
+  return decodeTicketImageVariantsWithZxing(reader, file);
 };
 
 // collapse duplicate accounts
@@ -304,12 +599,63 @@ const sortTickets = (
   });
 };
 
+// preferred camera
+const getPreferredCameraId = (
+  cameras: MediaDeviceInfo[]
+): string | undefined => {
+  const rearCamera = cameras.find(({ label }) =>
+    /back|trás|rear|traseira|environment|ambiente/gi.test(label)
+  );
+
+  return (rearCamera || cameras.at(-1))?.deviceId;
+};
+
+// WSF expiration boundary
+const getTicketExpirationBoundary = (): DateTime =>
+  DateTime.local()
+    .set({
+      hour: 3,
+      minute: 0,
+      second: 0,
+      millisecond: 0,
+    })
+    .plus({ day: 1 });
+
+// unusable ticket grouping
+const isInvalidTicket = (
+  ticket: TicketStorage | ReservationAccount
+): boolean => {
+  // reservation accounts stay active
+  if (ticket.type !== "ticket") {
+    return false;
+  }
+
+  const { expirationDate, usesRemaining } = ticket;
+
+  // pending lookups stay active
+  if (typeof expirationDate !== "number" || typeof usesRemaining !== "number") {
+    return false;
+  }
+
+  // upstream invalid status
+  if (ticket.status !== "Valid") {
+    return true;
+  }
+
+  // expired pass
+  if (DateTime.fromMillis(expirationDate) < getTicketExpirationBoundary()) {
+    return true;
+  }
+
+  return usesRemaining === 0;
+};
+
 export const Tickets = (): ReactElement => {
   const [selectedCameraId, setSelectedCameraId] = useState<string | undefined>(
     undefined
   );
   const [controls, setControls] = useState<IScannerControls | null>(null);
-  const [, setCameras] = useState<MediaDeviceInfo[]>([]);
+  const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
   const previewRef = useRef<HTMLVideoElement | null>(null);
   const [reader] = useState(new BrowserMultiFormatReader(hints));
   const [tickets, setTickets] = useAtom(ticketsAtom);
@@ -317,10 +663,12 @@ export const Tickets = (): ReactElement => {
   const [isScanning, setScanning] = useState<boolean>(false);
   const [isAdding, setAdding] = useState<boolean>(false);
   const [isManualEntry, setManualEntry] = useState<boolean>(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<
     TicketStorage | ReservationAccount | null
   >(null);
+  const [showInvalidTickets, setShowInvalidTickets] = useState<boolean>(false);
   const brightnessRef = useRef<number | null>(null);
   const { add: codeInput, format: codeFormatInput } = useQuery();
   const device = useDevice();
@@ -336,15 +684,12 @@ export const Tickets = (): ReactElement => {
     });
   }, [savedTickets]);
 
-  const fetchCameras = async () => {
+  // list scanner cameras
+  const fetchCameras = async (): Promise<MediaDeviceInfo[]> => {
     const cameras = await BrowserCodeReader.listVideoInputDevices();
     setCameras(cameras);
-
-    const rearCamera = cameras.find(({ label }) =>
-      /back|trás|rear|traseira|environment|ambiente/gi.test(label)
-    );
-
-    setSelectedCameraId((rearCamera || cameras.pop())?.deviceId);
+    setSelectedCameraId(getPreferredCameraId(cameras));
+    return cameras;
   };
 
   const updateTickets = async () => {
@@ -380,6 +725,7 @@ export const Tickets = (): ReactElement => {
       inputControls.stop();
       setControls(null);
     }
+    setCameraError(null);
     setTicketNumber("");
     setScanning(false);
   };
@@ -534,6 +880,88 @@ export const Tickets = (): ReactElement => {
     }
   }
 
+  // start browser scanner
+  const startWebScanner = async (cameraId?: string): Promise<void> => {
+    setScanning(true);
+    setCameraError(null);
+    setControls(null);
+    let nextCameraId = cameraId ?? selectedCameraId;
+
+    try {
+      const availableCameras = await BrowserCodeReader.listVideoInputDevices();
+      setCameras(availableCameras);
+      nextCameraId = nextCameraId ?? getPreferredCameraId(availableCameras);
+
+      // selected camera cache
+      if (nextCameraId) {
+        setSelectedCameraId(nextCameraId);
+      }
+
+      reader.hints.set(DecodeHintType.TRY_HARDER, false);
+      const nextControls = await reader.decodeFromVideoDevice(
+        nextCameraId,
+        previewRef.current ?? undefined,
+        (result, error, controls) => {
+          // scan result
+          if (result) {
+            stopScanning(controls);
+            addCode(result.getText(), {
+              codeFormat: getTicketCodeFormatFromZxing(
+                result.getBarcodeFormat()
+              ),
+            });
+          }
+        }
+      );
+      setControls(nextControls);
+
+      try {
+        const refreshedCameras =
+          await BrowserCodeReader.listVideoInputDevices();
+        setCameras(refreshedCameras);
+      } catch {}
+    } catch (error) {
+      console.error("Unable to start camera scanner", error);
+      setCameraError("Camera unavailable. Check browser camera permissions.");
+    }
+  };
+
+  // switch browser scanner camera
+  const switchCamera = async (): Promise<void> => {
+    let availableCameras = cameras;
+
+    try {
+      availableCameras = await BrowserCodeReader.listVideoInputDevices();
+      setCameras(availableCameras);
+    } catch {}
+
+    // alternate camera guard
+    if (availableCameras.length < 2) {
+      return;
+    }
+
+    const currentIndex = availableCameras.findIndex(
+      ({ deviceId }) => deviceId === selectedCameraId
+    );
+    const nextIndex =
+      currentIndex >= 0 ? (currentIndex + 1) % availableCameras.length : 0;
+    const nextCameraId = availableCameras[nextIndex]?.deviceId;
+
+    // next camera guard
+    if (!nextCameraId) {
+      return;
+    }
+
+    // active controls
+    if (controls) {
+      controls.stop();
+      setControls(null);
+    }
+
+    setSelectedCameraId(nextCameraId);
+    await startWebScanner(nextCameraId);
+  };
+
   const scan = async () => {
     // device guard
     if (!device) {
@@ -542,30 +970,7 @@ export const Tickets = (): ReactElement => {
     setScanning(true);
     // web scanner
     if (device.platform === "web") {
-      // camera guard
-      if (!selectedCameraId) {
-        console.error("No camera selected!");
-        setScanning(false);
-        return;
-      }
-      reader.hints.set(DecodeHintType.TRY_HARDER, false);
-      setControls(
-        await reader.decodeFromVideoDevice(
-          selectedCameraId,
-          previewRef.current ?? undefined,
-          (result, error, controls) => {
-            // scan result
-            if (result) {
-              stopScanning(controls);
-              addCode(result.getText(), {
-                codeFormat: getTicketCodeFormatFromZxing(
-                  result.getBarcodeFormat()
-                ),
-              });
-            }
-          }
-        )
-      );
+      await startWebScanner();
     } else {
       try {
         const result = await CapacitorBarcodeScanner.scanBarcode({
@@ -593,6 +998,10 @@ export const Tickets = (): ReactElement => {
 
   const normalizedTickets = normalizeTicketList(tickets);
   const sortedTickets = sortTickets(normalizedTickets);
+  const activeTickets = sortedTickets.filter(
+    (ticket) => !isInvalidTicket(ticket)
+  );
+  const invalidTickets = sortedTickets.filter(isInvalidTicket);
   const ticketCount = normalizedTickets.length;
 
   return (
@@ -613,10 +1022,6 @@ export const Tickets = (): ReactElement => {
               <h2 className="mt-2 text-3xl font-black tracking-tight">
                 Ferry tickets, ready to scan
               </h2>
-              <p className="mt-2 max-w-xl text-sm font-semibold text-white/80">
-                Save Wave2Go tickets, QR passes, and reservation barcodes for
-                quick boarding, sharing, and offline access.
-              </p>
             </div>
             <div className="grid grid-cols-3 gap-2">
               <button
@@ -794,7 +1199,8 @@ export const Tickets = (): ReactElement => {
               </p>
             </li>
           )}
-          {sortedTickets.map((ticket) => (
+          {/* active tickets */}
+          {activeTickets.map((ticket) => (
             <ErrorBoundary
               className="my-4"
               fallbackTitle="Ticket crashed"
@@ -805,6 +1211,48 @@ export const Tickets = (): ReactElement => {
               <Ticket ticket={ticket} onClick={() => openOverlay(ticket)} />
             </ErrorBoundary>
           ))}
+          {invalidTickets.length ? (
+            <li>
+              <button
+                className={clsx(
+                  "flex w-full items-center justify-between rounded-2xl",
+                  "border border-[rgba(0,0,0,0.08)] bg-white px-4 py-3",
+                  "text-left text-gray-darkest shadow-sm",
+                  "dark:border-[rgba(255,255,255,0.08)] dark:bg-[#00202a]",
+                  "dark:text-white"
+                )}
+                onClick={() => setShowInvalidTickets((isShown) => !isShown)}
+                type="button"
+              >
+                <span>
+                  <span className="block text-sm font-black uppercase tracking-[0.16em] text-red-dark dark:text-red-light">
+                    Invalid tickets
+                  </span>
+                  <span className="block text-sm font-semibold text-gray-dark dark:text-white/65">
+                    {invalidTickets.length} hidden{" "}
+                    {invalidTickets.length === 1 ? "ticket" : "tickets"}
+                  </span>
+                </span>
+                <span className="text-sm font-black text-green-dark dark:text-green-light">
+                  {showInvalidTickets ? "Hide" : "Show"}
+                </span>
+              </button>
+            </li>
+          ) : null}
+          {/* invalid tickets */}
+          {showInvalidTickets
+            ? invalidTickets.map((ticket) => (
+                <ErrorBoundary
+                  className="my-4"
+                  fallbackTitle="Ticket crashed"
+                  fallbackMessage="This ticket could not be shown. Your other tickets are still available."
+                  key={ticket.id}
+                  resetKey={ticket.id}
+                >
+                  <Ticket ticket={ticket} onClick={() => openOverlay(ticket)} />
+                </ErrorBoundary>
+              ))
+            : null}
         </ul>
       </section>
 
@@ -830,31 +1278,77 @@ export const Tickets = (): ReactElement => {
 
       <video
         ref={previewRef}
-        className="z-20 fixed inset-0 w-full h-full bg-cover bg-darken-medium"
-        style={{ display: controls ? "block" : "none" }}
+        className="fixed inset-0 z-20 h-full w-full bg-black object-cover"
+        style={{
+          display: isScanning && device.platform === "web" ? "block" : "none",
+        }}
       />
 
       {isScanning && device.platform === "web" && (
-        <>
-          {!controls && (
-            <div
-              className={clsx(
-                "z-20 fixed inset-0",
-                "w-full h-full bg-cover bg-darken-medium text-2xl text-white",
-                "flex items-center justify-center"
-              )}
+        <div className="fixed inset-0 z-30 flex flex-col justify-between bg-[linear-gradient(180deg,rgba(0,20,26,0.74)_0%,rgba(0,20,26,0.12)_34%,rgba(0,20,26,0.72)_100%)] px-5 py-6 text-white">
+          <div className="relative z-10 flex justify-end">
+            <button
+              aria-label="Close scanner"
+              className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/20 bg-black/35 text-xl shadow-lg backdrop-blur transition hover:bg-black/50"
+              onClick={() => stopScanning()}
+              type="button"
             >
-              <ErrorIcon className="mr-2" />
-              Camera Error
+              <StopIcon />
+            </button>
+          </div>
+
+          <div className="pointer-events-none relative z-10 flex flex-1 flex-col items-center justify-center gap-5 py-8">
+            {controls ? (
+              <div className="relative z-20 text-center drop-shadow-lg">
+                <p className="text-2xl font-black">Scan your ticket</p>
+                <p className="mt-2 text-sm font-semibold text-white/80">
+                  Center the barcode or QR code inside the frame.
+                </p>
+              </div>
+            ) : null}
+            <div className="relative flex aspect-[1.55/1] w-full max-w-sm items-center justify-center rounded-3xl border-2 border-white/75 shadow-[0_0_0_9999px_rgba(0,0,0,0.22)]">
+              <span className="absolute -left-1 -top-1 h-12 w-12 rounded-tl-3xl border-l-4 border-t-4 border-yellow-lightest" />
+              <span className="absolute -right-1 -top-1 h-12 w-12 rounded-tr-3xl border-r-4 border-t-4 border-yellow-lightest" />
+              <span className="absolute -bottom-1 -left-1 h-12 w-12 rounded-bl-3xl border-b-4 border-l-4 border-yellow-lightest" />
+              <span className="absolute -bottom-1 -right-1 h-12 w-12 rounded-br-3xl border-b-4 border-r-4 border-yellow-lightest" />
+              {controls ? null : (
+                <div className="px-6 text-center drop-shadow-lg">
+                  {cameraError ? (
+                    <ErrorIcon className="mx-auto mb-3 text-4xl text-yellow-lightest" />
+                  ) : (
+                    <SpinnerIcon className="mx-auto mb-3 animate-spin text-4xl text-yellow-lightest" />
+                  )}
+                  <h2 className="text-xl font-black">
+                    {cameraError ? "Camera unavailable" : "Starting camera"}
+                  </h2>
+                  <p className="mt-2 text-sm font-semibold text-white/80">
+                    {cameraError ?? "Allow camera access to start scanning."}
+                  </p>
+                </div>
+              )}
             </div>
-          )}
-          <button
-            className="fixed z-20 top-5 right-5 text-2xl"
-            onClick={() => stopScanning()}
-          >
-            <StopIcon />
-          </button>
-        </>
+          </div>
+
+          <div className="relative z-10 flex justify-end">
+            <button
+              aria-label="Switch camera"
+              className={clsx(
+                "flex h-14 w-14 shrink-0 items-center justify-center",
+                "rounded-2xl border border-white/20 bg-yellow-lightest",
+                "text-2xl text-green-dark shadow-lg transition",
+                "hover:-translate-y-0.5 hover:bg-white",
+                {
+                  "cursor-not-allowed opacity-45": cameras.length < 2,
+                }
+              )}
+              disabled={cameras.length < 2}
+              onClick={() => switchCamera()}
+              type="button"
+            >
+              <SyncIcon />
+            </button>
+          </div>
+        </div>
       )}
     </Page>
   );

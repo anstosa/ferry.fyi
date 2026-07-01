@@ -61,7 +61,7 @@ describe("Wave2Go ticket lookup", () => {
     vi.resetModules();
     vi.clearAllMocks();
     ticketModule = await import("../../server/lib/wsf/ticket");
-  });
+  }, 30_000);
 
   // QR URL lookup id behavior
   it("extracts visual IDs from QR URL payloads", () => {

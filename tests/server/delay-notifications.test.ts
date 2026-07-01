@@ -1,10 +1,6 @@
 import type { Slot } from "shared/contracts/schedules";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("~/lib/auth0", () => ({
-  auth0: { users: { list: vi.fn() } },
-}));
-
 vi.mock("~/lib/push", () => ({
   sendPush: vi.fn(),
 }));

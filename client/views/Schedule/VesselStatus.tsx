@@ -7,6 +7,7 @@ import { pluralize } from "shared/lib/strings";
 import { degreesToHeading } from "~/lib/compass";
 import { knotsToMph } from "~/lib/speed";
 
+import { isLateForSummary } from "./delayThreshold";
 import { getLateTextClassName } from "./scheduleColors";
 import { roundStatusNumber } from "./vesselStatus";
 
@@ -29,7 +30,7 @@ export const VesselStatus = ({
   let detailText: string | undefined;
   let lateText: string | undefined;
   // late sailing guard
-  if (delayMins > 0) {
+  if (isLateForSummary(delayMins)) {
     lateText = `${pluralize(roundStatusNumber(delayMins), "min")} late`;
   }
   if (isAtDock) {

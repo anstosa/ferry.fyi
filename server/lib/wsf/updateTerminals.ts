@@ -1,5 +1,6 @@
 import logger from "heroku-logger";
 
+import { formatLogBlock, formatTerminalList } from "~/lib/logging";
 import { Bulletin } from "~/models/Bulletin";
 import { Camera } from "~/models/Camera";
 import { Route } from "~/models/Route";
@@ -26,15 +27,18 @@ export const updateTerminals = async (): Promise<void> => {
   const cacheFlushDate = wsfDateToTimestamp(
     await wsfRequest<string>(API_CACHE)
   );
+  // fresh cache guard
   if (cacheFlushDate === lastFlushDate) {
-    logger.info("Skipped Terminal Update");
+    logger.info("Skipped terminal update; cache flush unchanged");
     return;
   } else {
-    logger.info("Started Terminal Update");
+    logger.info(`Started terminal update; cache flush ${cacheFlushDate}`);
   }
   const terminals =
     await wsfRequest<WSF.TerminalVerboseResponse[]>(API_VERBOSE);
+  // missing terminals guard
   if (!terminals) {
+    logger.info("Skipped terminal update; WSF returned no terminals");
     return;
   }
   purgeRemovedTerminalData();
@@ -143,5 +147,18 @@ export const updateTerminals = async (): Promise<void> => {
   // eslint-disable-next-line require-atomic-updates
   lastFlushDate = cacheFlushDate;
 
-  logger.info(`Updated ${Object.keys(Terminal.getAll()).length} Terminals`);
+  logger.info(
+    formatLogBlock("Terminal update complete", [
+      {
+        heading: "summary",
+        lines: [`terminals: ${Object.keys(Terminal.getAll()).length}`],
+      },
+      {
+        heading: "refreshed terminals",
+        lines: formatTerminalList(
+          refreshedTerminals.map((terminal) => terminal.id)
+        ),
+      },
+    ])
+  );
 };

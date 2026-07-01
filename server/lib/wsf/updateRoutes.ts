@@ -2,6 +2,11 @@ import logger from "heroku-logger";
 import type { Route as RouteClass } from "shared/contracts/routes";
 import wsfCore from "shared/data/wsf-core.json";
 
+import {
+  formatLogBlock,
+  formatRouteLegName,
+  formatRouteList,
+} from "~/lib/logging";
 import { Route } from "~/models/Route";
 import { WSF } from "~/typings/wsf";
 
@@ -31,12 +36,14 @@ const getStaticRouteData = (routeId: string): Partial<RouteClass> => {
 export const updateRoutes = async (
   date: string = toWsfDate()
 ): Promise<void> => {
-  logger.info("Started Routes Update");
+  logger.info(`Started route update for ${date}`);
   const mates = await wsfRequest<WSF.MatesResponse[]>(getMatesApi(date));
+  // missing mates guard
   if (!mates) {
+    logger.info(`Skipped route update for ${date}; WSF returned no mates`);
     return;
   }
-  await Promise.all(
+  const updatedRoutes = await Promise.all(
     mates
       // skip retired terminals
       .filter(
@@ -54,6 +61,12 @@ export const updateRoutes = async (
           )) ?? [];
         // route missing guard
         if (!routeData) {
+          logger.info(
+            `Skipped route pair ${formatRouteLegName(
+              departingId,
+              arrivingId
+            )}; WSF returned no route data`
+          );
           return null;
         }
         const routeId = String(routeData.RouteID);
@@ -82,5 +95,28 @@ export const updateRoutes = async (
       })
   );
   purgeRemovedTerminalData();
-  logger.info(`Updated ${Object.keys(Route.getAll()).length} Routes`);
+  const updatedRouteIds = updatedRoutes
+    .filter((route): route is Route => {
+      // updated route guard
+      return Boolean(route);
+    })
+    .map((route) => {
+      // readable route id
+      return route.id;
+    });
+  logger.info(
+    formatLogBlock("Route update complete", [
+      {
+        heading: "summary",
+        lines: [
+          `date: ${date}`,
+          `routes: ${Object.keys(Route.getAll()).length}`,
+        ],
+      },
+      {
+        heading: "updated routes",
+        lines: formatRouteList(updatedRouteIds),
+      },
+    ])
+  );
 };

@@ -2,6 +2,7 @@ import logger from "heroku-logger";
 import { DateTime } from "luxon";
 import { Op } from "sequelize";
 
+import { formatLogBlock, formatTerminalList } from "~/lib/logging";
 import Crossing from "~/models/Crossing";
 import { TideObservation } from "~/models/TideObservation";
 
@@ -204,7 +205,21 @@ export const backfillTideObservations = async ({
       if (missingTerminalIds.length === 0) {
         skippedChunks += 1;
         logger.info(
-          `Skipped existing tide hours for station ${stationId} from ${chunk.startDate} to ${chunk.endDate}`
+          formatLogBlock("Tide backfill skipped", [
+            {
+              heading: "summary",
+              lines: [
+                `station: ${stationId}`,
+                `from: ${chunk.startDate}`,
+                `to: ${chunk.endDate}`,
+                "reason: existing tide hours complete",
+              ],
+            },
+            {
+              heading: "terminals",
+              lines: formatTerminalList(terminalIds),
+            },
+          ])
         );
         continue;
       }
@@ -218,7 +233,21 @@ export const backfillTideObservations = async ({
         recordsWritten += await upsertObservations(terminalId, records);
       }
       logger.info(
-        `Backfilled ${records.length} tide hours for station ${stationId} from ${chunk.startDate} to ${chunk.endDate}`
+        formatLogBlock("Tide backfill complete", [
+          {
+            heading: "summary",
+            lines: [
+              `station: ${stationId}`,
+              `from: ${chunk.startDate}`,
+              `to: ${chunk.endDate}`,
+              `hours: ${records.length}`,
+            ],
+          },
+          {
+            heading: "terminals written",
+            lines: formatTerminalList(missingTerminalIds),
+          },
+        ])
       );
     }
   }

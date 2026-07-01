@@ -1,6 +1,6 @@
 import express, { NextFunction, Request, Response } from "express";
 import request from "supertest";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { assignAuthUser, requireAuth } from "../../server/controllers/api/auth";
 import {
@@ -8,13 +8,12 @@ import {
   userRouter,
 } from "../../server/controllers/api/user";
 
-const auth0Users = vi.hoisted(() => ({
-  get: vi.fn(),
-  update: vi.fn(),
+const userSettings = vi.hoisted(() => ({
+  findOrCreate: vi.fn(),
 }));
 
-vi.mock("~/lib/auth0", () => ({
-  auth0: { users: auth0Users },
+vi.mock("~/models/UserSettings", () => ({
+  UserSettings: userSettings,
 }));
 
 vi.mock("~/lib/wsf/api", () => ({
@@ -48,6 +47,19 @@ vi.mock("express-oauth2-jwt-bearer", () => ({
     },
 }));
 
+// user settings fixture
+const makeSettings = (appMetadata = {}) => {
+  const settings = {
+    appMetadata,
+    subject: "auth0|123",
+    update: vi.fn(async (data: { appMetadata: Record<string, unknown> }) => {
+      settings.appMetadata = data.appMetadata;
+      return settings;
+    }),
+  };
+  return settings;
+};
+
 // create test app
 const createApp = (): express.Express => {
   const app = express();
@@ -59,6 +71,10 @@ const createApp = (): express.Express => {
 // protected user api
 
 describe("user API", () => {
+  beforeEach(() => {
+    userSettings.findOrCreate.mockReset();
+  });
+
   // missing token case
   it("rejects requests without a token", async () => {
     const app = createApp();
@@ -81,10 +97,9 @@ describe("user API", () => {
   });
 
   // current user case
-  it("returns the current Auth0 user", async () => {
-    auth0Users.get.mockResolvedValueOnce({
-      data: { app_metadata: { tickets: ["abc"] }, user_id: "auth0|123" },
-    });
+  it("returns the current DB-backed app metadata", async () => {
+    const settings = makeSettings({ tickets: ["abc"] });
+    userSettings.findOrCreate.mockResolvedValueOnce([settings, false]);
     const app = createApp();
 
     const response = await request(app)
@@ -92,26 +107,10 @@ describe("user API", () => {
       .set("Authorization", "Bearer valid")
       .expect(200);
 
-    expect(auth0Users.get).toHaveBeenCalledWith("auth0|123");
-    expect(response.body).toEqual({
-      app_metadata: { tickets: ["abc"] },
-      user_id: "auth0|123",
+    expect(userSettings.findOrCreate).toHaveBeenCalledWith({
+      defaults: { appMetadata: {}, subject: "auth0|123" },
+      where: { subject: "auth0|123" },
     });
-  });
-
-  // direct SDK response case
-  it("returns current Auth0 users from direct SDK response bodies", async () => {
-    auth0Users.get.mockResolvedValueOnce({
-      app_metadata: { tickets: ["abc"] },
-      user_id: "auth0|123",
-    });
-    const app = createApp();
-
-    const response = await request(app)
-      .get("/api/user")
-      .set("Authorization", "Bearer valid")
-      .expect(200);
-
     expect(response.body).toEqual({
       app_metadata: { tickets: ["abc"] },
       user_id: "auth0|123",
@@ -119,13 +118,9 @@ describe("user API", () => {
   });
 
   // update allow-list case
-  it("updates only the allowed Auth0 metadata fields", async () => {
-    auth0Users.update.mockResolvedValueOnce({
-      data: {
-        app_metadata: { fcmToken: "token", tickets: ["abc"] },
-        user_id: "auth0|123",
-      },
-    });
+  it("updates only allowed app metadata fields in the DB", async () => {
+    const settings = makeSettings({ subscribedTerminals: ["14"] });
+    userSettings.findOrCreate.mockResolvedValueOnce([settings, false]);
     const app = createApp();
 
     const response = await request(app)
@@ -147,15 +142,21 @@ describe("user API", () => {
       })
       .expect(200);
 
-    expect(auth0Users.update).toHaveBeenCalledWith("auth0|123", {
-      app_metadata: {
+    expect(settings.update).toHaveBeenCalledWith({
+      appMetadata: {
         alertSubscriptions: { "5:14": ["delays", "cancellations"] },
         fcmToken: "token",
+        subscribedTerminals: ["14"],
         tickets: ["abc"],
       },
     });
     expect(response.body).toEqual({
-      app_metadata: { fcmToken: "token", tickets: ["abc"] },
+      app_metadata: {
+        alertSubscriptions: { "5:14": ["delays", "cancellations"] },
+        fcmToken: "token",
+        subscribedTerminals: ["14"],
+        tickets: ["abc"],
+      },
       user_id: "auth0|123",
     });
   });

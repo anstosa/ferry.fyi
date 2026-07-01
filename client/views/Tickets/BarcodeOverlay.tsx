@@ -12,7 +12,6 @@ import {
 } from "shared/contracts/tickets";
 import { pluralize } from "shared/lib/strings";
 
-import { toShortDateString } from "~/lib/date";
 import logo from "~/static/images/icon_monochrome.png";
 import RemoveConfirmIcon from "~/static/images/icons/solid/exclamation-square.svg";
 import ShareIcon from "~/static/images/icons/solid/share-alt.svg";
@@ -33,8 +32,22 @@ interface ConfirmationState {
   title: string;
 }
 
+interface PassDetail {
+  label: string;
+  tone: "green" | "red" | "yellow";
+}
+
 const QR_CODE_SIZE = 224;
 const QR_CODE_HINTS = new Map([[EncodeHintType.MARGIN, 0]]);
+const PASS_DETAIL_CLASSES: Record<PassDetail["tone"], string> = {
+  green: "bg-green-lightest text-green-dark",
+  red: "bg-red-light text-red-dark",
+  yellow: "bg-yellow-lightest text-yellow-darkest",
+};
+
+// multi-ride text terms
+const MULTI_RIDE_PATTERN =
+  /\b(?:multi|passes?|commuter|monthly|10[- ]?ride|ten[- ]?ride|20[- ]?ride|twenty[- ]?ride)\b/i;
 
 // multi-ride detector
 const isMultiRideTicket = (ticket: TicketStorage): boolean => {
@@ -50,12 +63,18 @@ const isMultiRideTicket = (ticket: TicketStorage): boolean => {
     return true;
   }
 
-  return /multi|pass|commuter|monthly|10[- ]?ride|ten[- ]?ride/i.test(passText);
+  return MULTI_RIDE_PATTERN.test(passText);
 };
 
 // get display title
-const getTicketTitle = (ticket: TicketStorage | ReservationAccount): string =>
-  getWsfTicketTitle(ticket);
+const getTicketTitle = (ticket: TicketStorage | ReservationAccount): string => {
+  // reservation title
+  if (ticket.type === "reservation") {
+    return getWsfTicketTitle(ticket);
+  }
+
+  return ticket.description || getWsfTicketTitle(ticket);
+};
 
 // get display subtitle
 const getTicketSubtitle = (
@@ -103,27 +122,106 @@ const getWsfTicketTitle = (
   return "WSF single-ride pass";
 };
 
-// multi-ride detail labels
-const getMultiRideDetails = (
+// format pass date
+const formatPassExpirationDate = (expirationDate: DateTime): string =>
+  expirationDate.toFormat("dd/MM/yyyy");
+
+// expiration status
+const getExpirationDetail = (expirationDate: DateTime): PassDetail => {
+  const expirationDay = expirationDate.startOf("day");
+  const today = DateTime.local().startOf("day");
+  const daysUntilExpiration = Math.floor(
+    expirationDay.diff(today, "days").days
+  );
+  const formattedExpirationDate = formatPassExpirationDate(expirationDate);
+
+  // expired pass
+  if (daysUntilExpiration < 0) {
+    return {
+      label: `Expired ${formattedExpirationDate}`,
+      tone: "red",
+    };
+  }
+
+  // safe expiration window
+  if (daysUntilExpiration >= 7) {
+    return {
+      label: `Expires ${formattedExpirationDate}`,
+      tone: "green",
+    };
+  }
+
+  // warning expiration window
+  if (daysUntilExpiration >= 1) {
+    return {
+      label: `Expires ${formattedExpirationDate}`,
+      tone: "yellow",
+    };
+  }
+
+  return {
+    label: `Expires ${formattedExpirationDate}`,
+    tone: "yellow",
+  };
+};
+
+// ride status
+const getRideDetail = (
+  usesRemaining: number,
+  isMultiRide: boolean
+): PassDetail => {
+  // single ride state
+  if (!isMultiRide) {
+    return {
+      label: usesRemaining > 0 ? "Unused" : "Used",
+      tone: usesRemaining > 0 ? "green" : "red",
+    };
+  }
+
+  // plenty of rides
+  if (usesRemaining >= 5) {
+    return {
+      label: `${pluralize(usesRemaining, "ride")} remaining`,
+      tone: "green",
+    };
+  }
+
+  // low rides
+  if (usesRemaining >= 1) {
+    return {
+      label: `${pluralize(usesRemaining, "ride")} remaining`,
+      tone: "yellow",
+    };
+  }
+
+  return {
+    label: `${pluralize(usesRemaining, "ride")} remaining`,
+    tone: "red",
+  };
+};
+
+// pass detail labels
+const getPassDetails = (
   ticket: TicketStorage | ReservationAccount
-): string[] => {
+): PassDetail[] => {
   // ticket detail guard
-  if (ticket.type !== "ticket" || !isMultiRideTicket(ticket)) {
+  if (ticket.type !== "ticket") {
     return [];
   }
 
-  const details: string[] = [];
+  const details: PassDetail[] = [];
+  const isMultiRide = isMultiRideTicket(ticket);
+
+  // usage label first
+  if (typeof ticket.usesRemaining === "number") {
+    details.push(getRideDetail(ticket.usesRemaining, isMultiRide));
+  }
 
   // expiration label
   if (typeof ticket.expirationDate === "number") {
     details.push(
-      `Expires ${toShortDateString(DateTime.fromMillis(ticket.expirationDate))}`
+      getExpirationDetail(DateTime.fromMillis(ticket.expirationDate))
     );
-  }
-
-  // rides label
-  if (typeof ticket.usesRemaining === "number") {
-    details.push(`${pluralize(ticket.usesRemaining, "ride")} left`);
   }
 
   return details;
@@ -226,9 +324,8 @@ export const BarcodeOverlay = ({
   const ticketTitle = getTicketTitle(ticket);
   const ticketSubtitle = getTicketSubtitle(ticket);
   const ticketCodeLabel = getTicketCodeLabel(ticket);
-  const wsfTicketTitle = getWsfTicketTitle(ticket);
   const isQrCode = ticket.codeFormat === "qr";
-  const multiRideDetails = getMultiRideDetails(ticket);
+  const passDetails = getPassDetails(ticket);
   const [confirmation, setConfirmation] = useState<ConfirmationState | null>(
     null
   );
@@ -391,7 +488,7 @@ export const BarcodeOverlay = ({
               <WSDOTIcon className="h-9 w-9" aria-label="WSF" />
             </span>
             <h2 className="min-w-0 text-xl font-black leading-tight tracking-tight">
-              {wsfTicketTitle}
+              {ticketTitle}
             </h2>
           </div>
         </div>
@@ -404,15 +501,18 @@ export const BarcodeOverlay = ({
             </p>
           )}
 
-          {/* multi-ride details */}
-          {multiRideDetails.length > 0 ? (
+          {/* pass details */}
+          {passDetails.length > 0 ? (
             <div className="mb-3 flex flex-wrap justify-center gap-2">
-              {multiRideDetails.map((detail) => (
+              {passDetails.map((detail) => (
                 <span
-                  className="rounded-full bg-darken-lowest px-3 py-1 text-sm font-bold text-gray-dark"
-                  key={detail}
+                  className={clsx(
+                    "rounded-full px-3 py-1 text-sm font-bold",
+                    PASS_DETAIL_CLASSES[detail.tone]
+                  )}
+                  key={detail.label}
                 >
-                  {detail}
+                  {detail.label}
                 </span>
               ))}
             </div>

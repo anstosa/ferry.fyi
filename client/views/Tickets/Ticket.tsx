@@ -1,6 +1,6 @@
 import clsx from "clsx";
 import { DateTime } from "luxon";
-import React, { ReactElement, ReactNode } from "react";
+import React, { ReactElement } from "react";
 import type {
   ReservationAccount,
   TicketStorage,
@@ -33,6 +33,10 @@ const PRODUCT_TITLES: Record<ProductLabel, string> = {
   "Single Ride Ticket": "WSF single-ride pass",
 };
 
+// multi-ride text terms
+const MULTI_RIDE_PATTERN =
+  /\b(?:multi|passes?|commuter|monthly|10[- ]?ride|ten[- ]?ride|20[- ]?ride|twenty[- ]?ride)\b/i;
+
 // multi-ride detector
 const isMultiRideTicket = (ticket: TicketStorage): boolean => {
   const passText = `${ticket.description} ${ticket.name} ${ticket.plu}`;
@@ -47,7 +51,7 @@ const isMultiRideTicket = (ticket: TicketStorage): boolean => {
     return true;
   }
 
-  return /multi|pass|commuter|monthly|10[- ]?ride|ten[- ]?ride/i.test(passText);
+  return MULTI_RIDE_PATTERN.test(passText);
 };
 
 // product stub label
@@ -68,9 +72,8 @@ const getProductLabel = (
 };
 
 export const Ticket = ({ ticket, onClick }: Props): ReactElement => {
-  let badge: ReactNode = null;
   let name: string;
-  let status: ReactNode;
+  let status: ReactElement;
   let subtitle: string;
   const typeLabel = getProductLabel(ticket);
   const typeLabelLines = PRODUCT_LABEL_LINES[typeLabel];
@@ -86,8 +89,7 @@ export const Ticket = ({ ticket, onClick }: Props): ReactElement => {
     const { expirationDate: expirationDateMillis, usesRemaining } = ticket;
     const hasExpirationDate = typeof expirationDateMillis === "number";
     const hasUsesRemaining = typeof usesRemaining === "number";
-    const isValid = ticket.status === "Valid";
-    name = productTitle;
+    name = ticket.description || productTitle;
     subtitle =
       ticket.codeFormat === "qr"
         ? ticket.id
@@ -111,54 +113,37 @@ export const Ticket = ({ ticket, onClick }: Props): ReactElement => {
         .plus({ day: 1 });
       const isExpired = expirationDate < today;
       const isEmpty = usesRemaining === 0;
-      badge = (
-        <span
-          className={clsx(
-            "rounded-full px-3 py-1 text-xs font-black uppercase tracking-[0.14em]",
-            {
-              "bg-green-lightest text-green-dark dark:bg-green-light/20 dark:text-green-light":
-                isValid && !isExpired && !isEmpty,
-              "bg-red-light text-red-dark dark:bg-red-dark/25 dark:text-red-light":
-                !isValid || isExpired || isEmpty,
-            }
-          )}
-        >
-          {isValid && !isExpired && !isEmpty ? "Ready" : "Check"}
-        </span>
-      );
+      const isSingleRide = typeLabel === "Single Ride Ticket";
+      let usageLabel = `${pluralize(usesRemaining, "ride")} left`;
+      // single ride label
+      if (isSingleRide) {
+        usageLabel = isEmpty ? "Used" : "Unused";
+      }
       status = (
         <div className="mt-3 flex flex-wrap items-center gap-2 text-sm font-bold">
-          {!isValid && (
-            <span className="rounded-full bg-red-light px-3 py-1 text-red-dark dark:bg-red-dark/25 dark:text-red-light">
-              Invalid
-            </span>
-          )}
-          {(isValid || isExpired) && (
-            <span
-              className={clsx("rounded-full px-3 py-1", {
-                "bg-darken-lowest text-gray-dark dark:bg-white/10 dark:text-white/70":
-                  !isExpired,
-                "bg-red-light text-red-dark dark:bg-red-dark/25 dark:text-red-light":
-                  isExpired,
-              })}
-            >
-              {isExpired
-                ? "Expired"
-                : `Expires ${toShortDateString(expirationDate)}`}
-            </span>
-          )}
-          {(isValid || (!isExpired && isEmpty)) && (
-            <span
-              className={clsx("rounded-full px-3 py-1", {
-                "bg-darken-lowest text-gray-dark dark:bg-white/10 dark:text-white/70":
-                  !isEmpty,
-                "bg-red-light text-red-dark dark:bg-red-dark/25 dark:text-red-light":
-                  isEmpty,
-              })}
-            >
-              {pluralize(usesRemaining, "use")} left
-            </span>
-          )}
+          <span
+            className={clsx("rounded-full px-3 py-1", {
+              "bg-darken-lowest text-gray-dark dark:bg-white/10 dark:text-white/70":
+                !isExpired,
+              "bg-red-light text-red-dark dark:bg-red-dark/25 dark:text-red-light":
+                isExpired,
+            })}
+          >
+            {isExpired ? "Expired" : "Expires"}{" "}
+            {toShortDateString(expirationDate)}
+          </span>
+          <span
+            className={clsx("rounded-full px-3 py-1", {
+              "bg-darken-lowest text-gray-dark dark:bg-white/10 dark:text-white/70":
+                !isSingleRide && !isEmpty,
+              "bg-green-lightest text-green-dark dark:bg-green-light/20 dark:text-green-light":
+                isSingleRide && !isEmpty,
+              "bg-red-light text-red-dark dark:bg-red-dark/25 dark:text-red-light":
+                isEmpty,
+            })}
+          >
+            {usageLabel}
+          </span>
         </div>
       );
     }
@@ -226,9 +211,6 @@ export const Ticket = ({ ticket, onClick }: Props): ReactElement => {
                   {subtitle}
                 </span>
               </span>
-              {badge ? (
-                <span className="shrink-0 self-start">{badge}</span>
-              ) : null}
             </span>
             {status}
           </span>

@@ -3,6 +3,7 @@ import { DateTime } from "luxon";
 import React, { ReactElement } from "react";
 import { pluralize } from "shared/lib/strings";
 
+import { isLateForSummary } from "./delayThreshold";
 import type { ProjectedTiming } from "./projectedTiming";
 import { getLateTextClassName } from "./scheduleColors";
 
@@ -26,17 +27,17 @@ export const Status = ({ className, time, timing }: Props): ReactElement => {
   // cancelled sailing
   if (isCancelled) {
     statusText = "";
-  } else if (Math.abs(delayMins) > 0) {
+  } else if (isLateForSummary(delayMins) || delayMins < 0) {
     // delayed sailing label
     const direction = delayMins < 0 ? "ahead" : "late";
     statusText = `${pluralize(Math.abs(delayMins), "min")} ${direction}`;
     statusClass = clsx(
       statusClass,
       "font-bold",
-      delayMins > 0 ? getLateTextClassName() : textYellow
+      isLateForSummary(delayMins) ? getLateTextClassName() : textYellow
     );
     // late scheduled time
-    if (delayMins > 0) {
+    if (isLateForSummary(delayMins)) {
       scheduled = `Scheduled ${formattedScheduledTime}`;
     }
   } else {

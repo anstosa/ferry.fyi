@@ -18,7 +18,6 @@
     "@capacitor/share": "^8.0.1",
     "@capacitor/status-bar": "^8.0.2",
     "@sentry/react": "^10.59.0",
-    "auth0": "^5.12.0",
     "compression": "^1.8.1",
     "cors": "^2.8.6",
     "express": "^5.2.1",
@@ -28,8 +27,8 @@
     "heroku-logger": "^0.3.3",
     "html-to-text": "^10.0.0",
     "jsdom": "^29.1.1",
+    "jsqr": "^1.4.0",
     "luxon": "^3.7.2",
-    "morgan": "^1.11.0",
     "node-schedule": "^2.1.1",
     "pg": "^8.22.0",
     "pg-hstore": "^2.3.4",
@@ -59,7 +58,6 @@
     "@types/lodash": "^4.17.24",
     "@types/luxon": "^3.7.2",
     "@types/mapbox-gl": "^3.5.0",
-    "@types/morgan": "^1.9.10",
     "@types/node": "24",
     "@types/node-schedule": "^2.1.8",
     "@types/nodemon": "^3.1.1",
@@ -185,7 +183,8 @@
     "weather:backfill": "cd server && node ../scripts/register-esbuild.js scripts/backfillWeather.ts",
     "weather:calculate-adjustments": "cd server && node ../scripts/register-esbuild.js scripts/calculateWeatherAdjustments.ts",
     "tides:backfill": "cd server && node ../scripts/register-esbuild.js scripts/backfillTides.ts",
-    "tides:update-forecasts": "cd server && node ../scripts/register-esbuild.js scripts/updateTideForecasts.ts"
+    "tides:update-forecasts": "cd server && node ../scripts/register-esbuild.js scripts/updateTideForecasts.ts",
+    "user-settings:migrate-auth0": "cd server && node ../scripts/register-esbuild.js scripts/migrateAuth0UserSettings.ts"
   },
   "resolutions": {
     "@babel/helper-remap-async-to-generator": "7.29.7",

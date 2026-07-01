@@ -4,6 +4,11 @@ import { Slot, ValidRange } from "shared/contracts/schedules";
 import { isNull } from "shared/lib/identity";
 import { values } from "shared/lib/objects";
 
+import {
+  formatLogBlock,
+  formatRouteLegName,
+  formatScheduleTarget,
+} from "~/lib/logging";
 import Crossing from "~/models/Crossing";
 import { Route } from "~/models/Route";
 import { Schedule } from "~/models/Schedule";
@@ -293,13 +298,13 @@ const updateSchedulePair = async (
   mateId: string,
   date: string,
   validRange: ValidRange | null
-): Promise<void> => {
+): Promise<number> => {
   const response = await wsfRequest<WSF.ScheduleResponse>(
     getScheduleApi(terminalId, mateId, date)
   );
   // missing response guard
   if (!response) {
-    return;
+    return 0;
   }
   const {
     TerminalCombos: [{ Times }],
@@ -382,6 +387,7 @@ const updateSchedulePair = async (
     schedule.update(data);
   }
   schedule.save();
+  return mergedSlots.length;
 };
 
 export const updateSchedules = async (
@@ -390,6 +396,7 @@ export const updateSchedules = async (
   mateId?: string
 ): Promise<void> => {
   const targetKey = `${date}:${terminalId ?? "*"}:${mateId ?? "*"}`;
+  const targetLabel = formatScheduleTarget(date, terminalId, mateId);
   const inProgress = inProgressSchedules.get(targetKey);
   // in-flight guard
   if (inProgress) {
@@ -408,26 +415,57 @@ export const updateSchedules = async (
       : Schedule.hasFetchedDate(date);
     // fresh cache guard
     if (cacheFlushDate === lastFlushDate && hasTargetSchedule) {
-      logger.info(`Skipped Schedule Update for ${targetKey}`);
+      logger.info(
+        `Skipped schedule update for ${targetLabel}; cache flush unchanged`
+      );
       await refreshCachedTidalCancellations(date, terminalId, mateId);
       updateTiming();
       return;
     }
     lastFlushDate = cacheFlushDate;
-    logger.info(`Started Schedule Update for ${targetKey}`);
+    logger.info(
+      `Started schedule update for ${targetLabel}; cache flush ${
+        cacheFlushDate ?? "unknown"
+      }`
+    );
     const validRange = await getValidRange();
     const schedulesToUpdate = getSchedulePairs(terminalId, mateId);
-    await Promise.all(
+    const slotCounts = await Promise.all(
       schedulesToUpdate.map(async ([targetTerminalId, targetMateId]) => {
-        await updateSchedulePair(
+        const slotCount = await updateSchedulePair(
           targetTerminalId,
           targetMateId,
           date,
           validRange
         );
+        logger.info(
+          `Updated schedule pair ${formatRouteLegName(
+            targetTerminalId,
+            targetMateId
+          )} for ${date}: ${slotCount} sailings`
+        );
+        return slotCount;
       })
     );
-    logger.info(`Updated ${schedulesToUpdate.length} Schedules for ${date}`);
+    const totalSlots = slotCounts.reduce((total, slotCount) => {
+      // total sailings
+      return total + slotCount;
+    }, 0);
+    logger.info(
+      formatLogBlock("Schedule update complete", [
+        {
+          heading: "target",
+          lines: [targetLabel],
+        },
+        {
+          heading: "summary",
+          lines: [
+            `schedule pairs: ${schedulesToUpdate.length}`,
+            `total sailings: ${totalSlots}`,
+          ],
+        },
+      ])
+    );
     updateTiming();
   })();
 

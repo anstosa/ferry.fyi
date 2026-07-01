@@ -2,6 +2,8 @@ import { DateTime } from "luxon";
 import type { Slot } from "shared/contracts/schedules";
 import { pluralize } from "shared/lib/strings";
 
+import { isLateForSummary } from "./delayThreshold";
+
 // round eta minutes
 export const getRoundedEtaMinutes = (
   estimatedArrivalTime: number | undefined,
@@ -47,7 +49,7 @@ export const isAfterCurrentSlot = ({
 // forecast delay label
 export const getForecastLateText = (delayMins: number): string | null => {
   // on-time guard
-  if (delayMins <= 0) {
+  if (!isLateForSummary(delayMins)) {
     return null;
   }
   return `Forecast ${pluralize(roundStatusNumber(delayMins), "min")} late`;
@@ -88,7 +90,7 @@ export const formatDelaySeconds = (seconds?: number | null): string => {
 
 // delay card title
 const getDelayCardTitle = (seconds: number, hasPassed?: boolean): string => {
-  const delayText = formatDelaySeconds(seconds);
+  const delayText = formatSummaryDelaySeconds(seconds);
   // past sailing guard
   if (hasPassed) {
     return delayText;
@@ -111,6 +113,16 @@ const getScheduledWindowText = (slot: Slot): string => {
 const getVesselReportText = (slot: Slot): string =>
   formatDelaySeconds(slot.vessel.departureDelta);
 
+// summary delay label
+const formatSummaryDelaySeconds = (seconds: number): string => {
+  const mins = roundStatusNumber(seconds / 60);
+  // small late guard
+  if (mins > 0 && !isLateForSummary(mins)) {
+    return "On time";
+  }
+  return formatDelaySeconds(seconds);
+};
+
 // expanded delay model
 export const getDelayCardModel = ({
   delayMins,
@@ -121,7 +133,7 @@ export const getDelayCardModel = ({
   if (gpsDelay?.signals.scheduledDepartureTime === slot.time) {
     return {
       isConfirmed: slot.hasPassed,
-      isLate: gpsDelay.delaySeconds > 0,
+      isLate: isLateForSummary(gpsDelay.delaySeconds / 60),
       isProjected: !slot.hasPassed,
       signals: [
         { label: "Schedule", value: getScheduledWindowText(slot) },
@@ -141,7 +153,7 @@ export const getDelayCardModel = ({
   const title = getDelayCardTitle(delayMins * 60, slot.hasPassed);
   return {
     isConfirmed: slot.hasPassed,
-    isLate: delayMins > 0,
+    isLate: isLateForSummary(delayMins),
     isProjected: !slot.hasPassed,
     signals: [
       { label: "Schedule", value: getScheduledWindowText(slot) },

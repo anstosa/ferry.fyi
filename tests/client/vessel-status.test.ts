@@ -106,6 +106,39 @@ describe("vessel status formatting", () => {
     expect(card.isProjected).toBe(true);
   });
 
+  // small GPS delay summary
+  it("counts GPS delays up to three minutes as on time in summaries", () => {
+    const slot = {
+      arrivalTime: 2000,
+      crossing: { departureDelta: 3 * 60 },
+      time: 1000,
+      vessel: {
+        departureDelta: 3 * 60 + 20,
+        gpsDelay: {
+          confidence: "high",
+          delaySeconds: 3 * 60 + 20,
+          explanation: "GPS explanation",
+          signals: {
+            dockDelaySeconds: 3 * 60 + 20,
+            etaDelaySeconds: 3 * 60 + 20,
+            progress: 0.5,
+            scheduledArrivalTime: 2000,
+            scheduledDepartureTime: 1000,
+          },
+          source: "gps",
+        },
+      },
+    } as Slot;
+
+    const card = getDelayCardModel({ delayMins: 3, slot });
+
+    expect(card.title).toBe("Projected on time");
+    expect(card.isLate).toBe(false);
+    expect(card.signals.find(({ label }) => label === "GPS Reports")?.value).toBe(
+      "3 mins late"
+    );
+  });
+
   // non-matching GPS delay card
   it("uses fallback card details when vessel GPS belongs to another slot", () => {
     const slot = {
@@ -221,6 +254,27 @@ describe("vessel status formatting", () => {
     ).toBe("6 mins late");
   });
 
+  // small fallback delay summary
+  it("counts fallback delays up to three minutes as on time in summaries", () => {
+    const slot = {
+      crossing: { departureDelta: 3 * 60 },
+      arrivalTime: 2000,
+      time: 1000,
+      vessel: {
+        departureDelta: 3 * 60,
+        estimatedArrivalTime: 2000 + 3 * 60,
+      },
+    } as Slot;
+
+    const card = getDelayCardModel({ delayMins: 3, slot });
+
+    expect(card.title).toBe("Projected on time");
+    expect(card.isLate).toBe(false);
+    expect(
+      card.signals.find(({ label }) => label === "Terminal Reports")?.value
+    ).toBe("3 mins late");
+  });
+
   // past on-time delay card
   it("uses bare on-time text for past delay cards", () => {
     const slot = {
@@ -240,6 +294,9 @@ describe("vessel status formatting", () => {
   // future delay label
   it("labels future vessel delays as forecasts", () => {
     expect(getForecastLateText(12.5)).toBe("Forecast 13 mins late");
+    expect(getForecastLateText(4)).toBe("Forecast 4 mins late");
+    expect(getForecastLateText(3.4)).toBeNull();
+    expect(getForecastLateText(3)).toBeNull();
     expect(getForecastLateText(0)).toBeNull();
   });
 

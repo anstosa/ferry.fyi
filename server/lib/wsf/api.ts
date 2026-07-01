@@ -14,6 +14,10 @@ const wsfStatus: WSFStatus = {
   warming: true,
 };
 
+// redact request credentials
+const getLoggedUrl = (url: string): string =>
+  url.replace(/apiaccesscode=[^&]+/i, "apiaccesscode=[redacted]");
+
 export const getWsfStatus = (): WSFStatus => wsfStatus;
 
 // set core readiness
@@ -46,7 +50,8 @@ const fetchWithTimeout = async (url: string): Promise<Response> => {
 
 export const wsfRequest = async <T>(path: string): Promise<T | undefined> => {
   const url = `${path}${path.includes("cacheflushdate") ? "" : API_ACCESS}`;
-  // logger.debug(`WSF request <${url}>`);
+  const loggedUrl = getLoggedUrl(url);
+  // logger.debug(`WSF request <${loggedUrl}>`);
   try {
     const response = await fetchWithTimeout(url);
     // successful response guard
@@ -57,7 +62,7 @@ export const wsfRequest = async <T>(path: string): Promise<T | undefined> => {
     }
     wsfStatus.offline = true;
     logger.error(
-      `WSF request error ${response.status} <${url}>: ${await response.text()}`,
+      `WSF request error ${response.status} <${loggedUrl}>: ${await response.text()}`,
       response
     );
   } catch (error: any) {
@@ -65,10 +70,10 @@ export const wsfRequest = async <T>(path: string): Promise<T | undefined> => {
     // timeout error guard
     if (error.name === "AbortError") {
       logger.error(
-        `WSF request timeout <${url}> after ${REQUEST_TIMEOUT_MS}ms`
+        `WSF request timeout <${loggedUrl}> after ${REQUEST_TIMEOUT_MS}ms`
       );
       return;
     }
-    logger.error(`WSF request error <${url}>: ${error.message}`, error);
+    logger.error(`WSF request error <${loggedUrl}>: ${error.message}`, error);
   }
 };

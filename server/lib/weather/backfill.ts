@@ -2,6 +2,7 @@ import logger from "heroku-logger";
 import { DateTime } from "luxon";
 import { Op } from "sequelize";
 
+import { formatLogBlock, formatTerminalName } from "~/lib/logging";
 import Crossing from "~/models/Crossing";
 import { Terminal } from "~/models/Terminal";
 import { WeatherObservation } from "~/models/WeatherObservation";
@@ -228,7 +229,17 @@ export const backfillWeatherObservations = async ({
       if (await hasExistingWeatherChunk(target.terminalId, chunk)) {
         skippedChunks += 1;
         logger.info(
-          `Skipped existing weather hours for terminal ${target.terminalId} from ${chunk.startDate} to ${chunk.endDate}`
+          formatLogBlock("Weather backfill skipped", [
+            {
+              heading: "summary",
+              lines: [
+                `terminal: ${formatTerminalName(target.terminalId)}`,
+                `from: ${chunk.startDate}`,
+                `to: ${chunk.endDate}`,
+                "reason: existing weather hours complete",
+              ],
+            },
+          ])
         );
         continue;
       }
@@ -240,7 +251,17 @@ export const backfillWeatherObservations = async ({
       });
       recordsWritten += await upsertObservations(target.terminalId, records);
       logger.info(
-        `Backfilled ${records.length} weather hours for terminal ${target.terminalId} from ${chunk.startDate} to ${chunk.endDate}`
+        formatLogBlock("Weather backfill complete", [
+          {
+            heading: "summary",
+            lines: [
+              `terminal: ${formatTerminalName(target.terminalId)}`,
+              `from: ${chunk.startDate}`,
+              `to: ${chunk.endDate}`,
+              `hours: ${records.length}`,
+            ],
+          },
+        ])
       );
     }
   }

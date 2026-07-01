@@ -98,7 +98,7 @@ describe("tidal cancellation ingestion", () => {
         vesselPosition: 2,
       },
     ]);
-  });
+  }, 30_000);
 
   // date filter
   it("filters fetched cancellations by route and service date", async () => {

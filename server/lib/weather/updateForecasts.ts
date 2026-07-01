@@ -1,6 +1,7 @@
 import logger from "heroku-logger";
 import { DateTime } from "luxon";
 
+import { formatLogBlock, formatTerminalName } from "~/lib/logging";
 import { Terminal } from "~/models/Terminal";
 import { WeatherForecast } from "~/models/WeatherForecast";
 
@@ -128,7 +129,12 @@ const runWeatherForecastRefresh = async ({
         // empty payload guard
         if (records.length === 0) {
           logger.error(
-            `Weather forecast refresh returned no records for ${terminal.id}`
+            formatLogBlock("Weather forecast refresh returned no records", [
+              {
+                heading: "summary",
+                lines: [`terminal: ${formatTerminalName(terminal.id)}`],
+              },
+            ])
           );
           return { recordsWritten, succeeded: false };
         }
@@ -138,15 +144,29 @@ const runWeatherForecastRefresh = async ({
           records
         );
         logger.info(
-          `Updated ${records.length} weather forecast hours for ${terminal.id}`
+          formatLogBlock("Weather forecast update complete", [
+            {
+              heading: "summary",
+              lines: [
+                `terminal: ${formatTerminalName(terminal.id)}`,
+                `hours: ${records.length}`,
+              ],
+            },
+          ])
         );
         return { recordsWritten, succeeded: true };
       } catch (error) {
         // preserve refresh evidence
         logger.error(
-          `Weather forecast refresh failed for ${terminal.id}: ${
-            error instanceof Error ? error.message : String(error)
-          }`
+          formatLogBlock("Weather forecast refresh failed", [
+            {
+              heading: "summary",
+              lines: [
+                `terminal: ${formatTerminalName(terminal.id)}`,
+                `error: ${error instanceof Error ? error.message : String(error)}`,
+              ],
+            },
+          ])
         );
         return { recordsWritten, succeeded: false };
       }

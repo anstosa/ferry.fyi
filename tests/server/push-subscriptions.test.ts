@@ -1,46 +1,36 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const usersList = vi.hoisted(() => vi.fn());
+const userSettings = vi.hoisted(() => ({
+  findAll: vi.fn(),
+}));
 
-vi.mock("~/lib/auth0", () => ({
-  auth0: { users: { list: usersList } },
+vi.mock("~/models/UserSettings", () => ({
+  UserSettings: userSettings,
 }));
 
 import { getSubscribedTerminalPushMessages } from "~/lib/pushSubscriptions";
 
-const makeUsers = (users: unknown[]) => ({
-  async *[Symbol.asyncIterator]() {
-    // user page fixture
-    for (const user of users) {
-      yield user;
-    }
-  },
-});
+// user settings fixture
+const makeSettings = (subject: string, appMetadata: Record<string, unknown>) => {
+  return { appMetadata, subject };
+};
 
 describe("push subscriptions", () => {
   beforeEach(() => {
-    usersList.mockReset();
+    userSettings.findAll.mockReset();
   });
 
   it("matches route subscriptions by channel", async () => {
-    usersList.mockResolvedValueOnce(
-      makeUsers([
-        {
-          app_metadata: {
-            alertSubscriptions: { "5:14": ["delays"] },
-            fcmToken: "delay-token",
-          },
-          user_id: "delay-user",
-        },
-        {
-          app_metadata: {
-            alertSubscriptions: { "5:14": ["cancellations"] },
-            fcmToken: "cancel-token",
-          },
-          user_id: "cancel-user",
-        },
-      ])
-    );
+    userSettings.findAll.mockResolvedValueOnce([
+      makeSettings("delay-user", {
+        alertSubscriptions: { "5:14": ["delays"] },
+        fcmToken: "delay-token",
+      }),
+      makeSettings("cancel-user", {
+        alertSubscriptions: { "5:14": ["cancellations"] },
+        fcmToken: "cancel-token",
+      }),
+    ]);
 
     const messages = await getSubscribedTerminalPushMessages({
       channel: "delays",
@@ -57,17 +47,12 @@ describe("push subscriptions", () => {
   });
 
   it("keeps legacy terminal subscriptions subscribed to all channels", async () => {
-    usersList.mockResolvedValueOnce(
-      makeUsers([
-        {
-          app_metadata: {
-            fcmToken: "legacy-token",
-            subscribedTerminals: ["14"],
-          },
-          user_id: "legacy-user",
-        },
-      ])
-    );
+    userSettings.findAll.mockResolvedValueOnce([
+      makeSettings("legacy-user", {
+        fcmToken: "legacy-token",
+        subscribedTerminals: ["14"],
+      }),
+    ]);
 
     const messages = await getSubscribedTerminalPushMessages({
       channel: "cancellations",

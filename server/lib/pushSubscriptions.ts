@@ -5,7 +5,7 @@ import type {
 } from "shared/contracts/user";
 import { getRouteSubscriptionKey } from "shared/lib/alertSubscriptions";
 
-import { auth0 } from "./auth0";
+import { UserSettings } from "~/models/UserSettings";
 
 interface SubscribedTerminalPushInput {
   channel?: AlertSubscriptionChannel;
@@ -67,15 +67,16 @@ export const getSubscribedTerminalPushMessages = async ({
   data,
   terminalIds,
 }: SubscribedTerminalPushInput): Promise<Message[]> => {
-  const users = await auth0.users.list({ search_engine: "v3" });
+  const users = await UserSettings.findAll();
   const messages: Message[] = [];
-  // auth0 user page
-  for await (const user of users) {
-    const subscribedTerminals = user.app_metadata?.subscribedTerminals;
-    const alertSubscriptions = user.app_metadata?.alertSubscriptions as
-      | AlertSubscriptions
-      | undefined;
-    const token = user.app_metadata?.fcmToken;
+  // settings row page
+  for (const user of users) {
+    const appMetadata = user.appMetadata ?? {};
+    const {
+      alertSubscriptions,
+      fcmToken: token,
+      subscribedTerminals,
+    } = appMetadata;
     const isSubscribed =
       hasLegacyTerminalSubscription(subscribedTerminals, terminalIds) ||
       hasRouteSubscription({ alertSubscriptions, channel, terminalIds });
@@ -85,14 +86,14 @@ export const getSubscribedTerminalPushMessages = async ({
     }
     // token guard
     if (typeof token !== "string") {
-      console.warn("Subscribed user without FCM Token", user.user_id);
+      console.warn("Subscribed user without FCM Token", user.subject);
       continue;
     }
     messages.push({
       token,
       data: {
         ...data,
-        userId: user.user_id ?? "",
+        userId: user.subject,
       },
     });
   }

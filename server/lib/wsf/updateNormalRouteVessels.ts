@@ -3,6 +3,7 @@ import { DateTime } from "luxon";
 import { Op } from "sequelize";
 import { values } from "shared/lib/objects";
 
+import { formatLogBlock, formatRouteList } from "~/lib/logging";
 import { NormalRouteVessel } from "~/models/NormalRouteVessel";
 import { Route } from "~/models/Route";
 import { Vessel } from "~/models/Vessel";
@@ -329,7 +330,7 @@ const persistRouteAssignments = async (
 export const updateNormalRouteVessels = async (
   startDate: DateTime = DateTime.local()
 ): Promise<void> => {
-  logger.info("Started Normal Route Vessel Update");
+  logger.info("Started normal route vessel inference update");
   const sampleDates = Array.from({ length: NORMAL_SAMPLE_DAYS }, (_, index) => {
     // create sample date
     return getSampleDate(startDate, index);
@@ -338,10 +339,12 @@ export const updateNormalRouteVessels = async (
   const routePairs = await getRoutePairs(sampleDates[0]);
   const knownRouteIds = new Set(values(Route.getAll()).map(({ id }) => id));
   let normalAssignments = 0;
+  let skippedRoutes = 0;
   // process route pairs
   for (const routePair of routePairs) {
     // known route guard
     if (knownRouteIds.size > 0 && !knownRouteIds.has(routePair.routeId)) {
+      skippedRoutes += 1;
       continue;
     }
     const observations = await getRouteObservations(routePair, sampleDates);
@@ -355,7 +358,24 @@ export const updateNormalRouteVessels = async (
     updateRouteNormalCapacity(routePair.routeId, assignments);
     await persistRouteAssignments(routePair.routeId, assignments);
   }
+  const routeIds = routePairs.map((routePair) => {
+    // readable route id
+    return routePair.routeId;
+  });
   logger.info(
-    `Updated ${normalAssignments} normal route vessel assignments across ${routePairs.length} routes`
+    formatLogBlock("Normal route vessel update complete", [
+      {
+        heading: "summary",
+        lines: [
+          `normal assignments: ${normalAssignments}`,
+          `routes processed: ${routePairs.length - skippedRoutes}`,
+          `routes discovered: ${routePairs.length}`,
+        ],
+      },
+      {
+        heading: "routes",
+        lines: formatRouteList(routeIds),
+      },
+    ])
   );
 };

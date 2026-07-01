@@ -51,15 +51,31 @@ export const usePush = (requestPermission: boolean): InitializePush => {
         },
       });
     }
-  }, [fcmToken, updateUser, user?.user_id, shouldRequestPermission]);
+  }, [
+    fcmToken,
+    isAuthenticated,
+    savedFcmToken,
+    shouldRequestPermission,
+    updateUser,
+    user?.user_id,
+  ]);
 
   useEffect(() => {
     const initialize = async () => {
       try {
+        const serviceWorkerRegistration = await getRegistration();
+
+        // registration guard
+        if (!serviceWorkerRegistration) {
+          return;
+        }
+
         const token = await getToken(messaging, {
           vapidKey: process.env.FIREBASE_VAPID_KEY,
-          serviceWorkerRegistration: getRegistration(),
+          serviceWorkerRegistration,
         });
+
+        // token guard
         if (!token) {
           console.warn("Failed to get FCM Token");
           return;

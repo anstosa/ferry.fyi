@@ -36,6 +36,13 @@ const timing: ProjectedTiming = {
   scheduledTime,
 };
 
+const threeMinutesLateTiming: ProjectedTiming = {
+  delayMins: 3,
+  departureTime: scheduledTime.plus({ minutes: 3 }),
+  isCancelled: false,
+  scheduledTime,
+};
+
 // cancelled row display
 describe("cancelled sailing display", () => {
   afterEach(() => {
@@ -86,5 +93,35 @@ describe("cancelled sailing display", () => {
     );
 
     expect(container.textContent).not.toContain("Cancelled");
+  });
+
+  // small delay status behavior
+  it("does not show three-minute delays on the sailing card", () => {
+    const { container } = renderElement(
+      React.createElement(Status, {
+        time: scheduledTime.minus({ hours: 2 }),
+        timing: threeMinutesLateTiming,
+      })
+    );
+
+    expect(container.textContent).not.toContain("late");
+    expect(container.textContent).not.toContain("Scheduled");
+  });
+
+  // small delay color behavior
+  it("does not color three-minute delayed departure times as late", () => {
+    const { container } = renderElement(
+      React.createElement(Time, {
+        context: "day",
+        isExpanded: false,
+        isNext: false,
+        rowState: "normal",
+        time: scheduledTime.minus({ hours: 2 }),
+        timing: threeMinutesLateTiming,
+      })
+    );
+
+    expect(container.innerHTML).not.toContain("text-late-light");
+    expect(container.innerHTML).not.toContain("dark:text-late-dark");
   });
 });

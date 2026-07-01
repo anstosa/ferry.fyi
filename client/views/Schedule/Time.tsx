@@ -2,6 +2,7 @@ import clsx from "clsx";
 import { DateTime } from "luxon";
 import React, { ReactElement } from "react";
 
+import { isLateForSummary } from "./delayThreshold";
 import type { ProjectedTiming } from "./projectedTiming";
 import {
   getLateTextClassName,
@@ -13,6 +14,7 @@ import {
 
 interface Props {
   time: DateTime;
+  isExpanded: boolean;
   isNext: boolean;
   context: ScheduleSailingContext;
   rowState: ScheduleRowState;
@@ -22,6 +24,7 @@ interface Props {
 // render schedule time
 export const Time = ({
   context,
+  isExpanded,
   isNext,
   rowState,
   time,
@@ -64,10 +67,10 @@ export const Time = ({
   }
 
   // late color
-  if (!isCancelled && hasDeparted && delayMins >= 4) {
+  if (!isCancelled && hasDeparted && isLateForSummary(delayMins)) {
     // past late color
     majorTimeClass = getLateTextClassName();
-  } else if (!isCancelled && delayMins > 0) {
+  } else if (!isCancelled && isLateForSummary(delayMins)) {
     // late departure color
     majorTimeClass = getLateTextClassName();
   } else if (delayMins <= -4) {
@@ -86,7 +89,13 @@ export const Time = ({
     weight = "font-medium";
   }
   return (
-    <div className={clsx("flex flex-col", "text-center w-16 z-0", weight)}>
+    <div
+      className={clsx(
+        "relative flex -translate-y-1 flex-col pb-3",
+        "text-center w-16 z-0",
+        weight
+      )}
+    >
       <span
         className={clsx(
           "flex-grow leading-none",
@@ -107,6 +116,35 @@ export const Time = ({
         )}
       >
         {minorTime}
+      </span>
+      <span
+        className={clsx(
+          "absolute -bottom-1 left-1/2 w-14 -translate-x-1/2",
+          "text-center text-[8px] font-black uppercase leading-none",
+          "tracking-[0.08em]",
+          "text-green-dark/65 dark:text-green-light/65"
+        )}
+      >
+        <span>Details</span>
+        <svg
+          aria-hidden="true"
+          className={clsx(
+            "absolute -right-1 -top-px h-2 w-2 transition-transform",
+            {
+              "rotate-180": isExpanded,
+            }
+          )}
+          fill="none"
+          viewBox="0 0 8 8"
+        >
+          <path
+            d="M1 2.5 4 5.5 7 2.5"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.25"
+          />
+        </svg>
       </span>
     </div>
   );

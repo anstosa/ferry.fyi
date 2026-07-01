@@ -187,11 +187,23 @@ export const SlotInfo = (props: Props): ReactElement => {
         // align full stripes
         "relative isolate p-3 h-[84.85px]",
         "flex justify-between",
-        "cursor-pointer"
+        "cursor-pointer transition",
+        "hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2",
+        "focus-visible:ring-green-light dark:hover:bg-white/10"
       )}
       ref={wrapper}
       onClick={onClick}
+      onKeyDown={(event) => {
+        // keyboard activation
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onClick();
+        }
+      }}
+      role="button"
       aria-label={`${time.toLocaleString(DateTime.DATETIME_SHORT)} sailing`}
+      aria-expanded={isExpanded}
+      tabIndex={0}
     >
       {/* cancellation frame */}
       {renderCancellationFrame()}
@@ -223,6 +235,7 @@ export const SlotInfo = (props: Props): ReactElement => {
       </div>
       <Time
         context={sailingContext}
+        isExpanded={isExpanded}
         isNext={isNext}
         rowState={timeRowState}
         time={time}

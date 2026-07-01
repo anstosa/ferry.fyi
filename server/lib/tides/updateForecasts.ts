@@ -1,6 +1,7 @@
 import logger from "heroku-logger";
 import { DateTime } from "luxon";
 
+import { formatLogBlock, formatTerminalList } from "~/lib/logging";
 import { TideForecast } from "~/models/TideForecast";
 
 import { toRequiredISODate } from "../weather/dates";
@@ -117,7 +118,18 @@ const runTideForecastRefresh = async ({
         // empty payload guard
         if (records.length === 0) {
           logger.error(
-            `Tide forecast refresh returned no records for ${stationId}`
+            formatLogBlock("Tide forecast refresh returned no records", [
+              {
+                heading: "summary",
+                lines: [`station: ${stationId}`],
+              },
+              {
+                heading: "terminals",
+                lines: formatTerminalList(
+                  targets.map((target) => target.terminalId)
+                ),
+              },
+            ])
           );
           return { recordsWritten, succeeded: false };
         }
@@ -131,15 +143,38 @@ const runTideForecastRefresh = async ({
           0
         );
         logger.info(
-          `Updated ${records.length} tide forecast hours for station ${stationId}`
+          formatLogBlock("Tide forecast update complete", [
+            {
+              heading: "summary",
+              lines: [`station: ${stationId}`, `hours: ${records.length}`],
+            },
+            {
+              heading: "terminals",
+              lines: formatTerminalList(
+                targets.map((target) => target.terminalId)
+              ),
+            },
+          ])
         );
         return { recordsWritten, succeeded: true };
       } catch (error) {
         // preserve refresh evidence
         logger.error(
-          `Tide forecast refresh failed for ${stationId}: ${
-            error instanceof Error ? error.message : String(error)
-          }`
+          formatLogBlock("Tide forecast refresh failed", [
+            {
+              heading: "summary",
+              lines: [
+                `station: ${stationId}`,
+                `error: ${error instanceof Error ? error.message : String(error)}`,
+              ],
+            },
+            {
+              heading: "terminals",
+              lines: formatTerminalList(
+                targets.map((target) => target.terminalId)
+              ),
+            },
+          ])
         );
         return { recordsWritten, succeeded: false };
       }
