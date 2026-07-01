@@ -55,12 +55,12 @@ export const getForecastLateText = (delayMins: number): string | null => {
   return `Forecast ${pluralize(roundStatusNumber(delayMins), "min")} late`;
 };
 
-export interface DelayCardSignal {
+interface DelayCardSignal {
   label: string;
   value: string;
 }
 
-export interface DelayCardModel {
+interface DelayCardModel {
   isConfirmed: boolean;
   isLate: boolean;
   isProjected: boolean;
