@@ -108,10 +108,7 @@ export class Bulletin extends CacheableModel implements BulletinClass {
       });
     } catch (error) {
       // duplicate insert race
-      if (
-        error instanceof UniqueConstraintError ||
-        (error as { name?: string }).name === "SequelizeUniqueConstraintError"
-      ) {
+      if (error instanceof UniqueConstraintError) {
         await PersistedBulletin.update(data, { where: { id: this.id } });
         return;
       }

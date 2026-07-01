@@ -142,6 +142,17 @@ describe("delay notifications", () => {
     expect(events[0]).toMatchObject({ threshold: 45, type: "behind" });
   });
 
+  // route re-cross regression
+  it("notifies when a route drops below and crosses a threshold again", () => {
+    getDelayNotificationEvents([makeSchedule(14)]);
+    getDelayNotificationEvents([makeSchedule(17)]);
+    getDelayNotificationEvents([makeSchedule(14)]);
+
+    const events = getDelayNotificationEvents([makeSchedule(17)]);
+
+    expect(events).toMatchObject([{ threshold: 15, type: "behind" }]);
+  });
+
   it("notifies when a delayed vessel returns to schedule", () => {
     getDelayNotificationEvents([makeSchedule(17)]);
 

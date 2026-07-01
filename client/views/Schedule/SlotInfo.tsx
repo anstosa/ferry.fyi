@@ -8,6 +8,7 @@ import type { TerminalLocation } from "shared/contracts/terminals";
 import { isNull } from "shared/lib/identity";
 
 import { ErrorBoundary } from "~/components/ErrorBoundary";
+import { ExternalPillLink } from "~/components/ExternalPillLink";
 import { isDuringDaylight } from "~/lib/daylight";
 import { vesselAssets } from "~/lib/generated/vesselAssets";
 import {
@@ -18,7 +19,6 @@ import { useTrackedVessel } from "~/lib/onboardTracking";
 import CarIcon from "~/static/images/icons/solid/car.svg";
 import CheckCircleIcon from "~/static/images/icons/solid/check-circle.svg";
 import ExclamationCircleIcon from "~/static/images/icons/solid/exclamation-circle.svg";
-import ExternalLinkIcon from "~/static/images/icons/solid/external-link.svg";
 import ShipIcon from "~/static/images/icons/solid/ship.svg";
 import TruckIcon from "~/static/images/icons/solid/truck.svg";
 import UsersIcon from "~/static/images/icons/solid/users.svg";
@@ -563,19 +563,12 @@ export const SlotInfo = (props: Props): ReactElement => {
             {renderProfileStat("Class", vesselClassLabel, ShipIcon)}
             {/* wsf vessel link guard */}
             {vessel.vesselWatchUrl && (
-              <a
-                className={clsx(
-                  "col-span-2 inline-flex w-fit items-center rounded-full border px-3 py-1.5 text-xs font-bold",
-                  "border-blue-dark text-blue-dark hover:bg-night-normal-light",
-                  "dark:border-[#6fb8c8] dark:text-[#6fb8c8] dark:hover:bg-[rgba(255,255,255,0.08)]"
-                )}
+              <ExternalPillLink
+                className="col-span-2"
                 href={vessel.vesselWatchUrl}
-                rel="noopener noreferrer"
-                target="_blank"
               >
                 WSF vessel page
-                <ExternalLinkIcon className="ml-2 h-3 w-3" />
-              </a>
+              </ExternalPillLink>
             )}
           </div>
         </article>

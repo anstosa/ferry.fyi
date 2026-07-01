@@ -1,4 +1,4 @@
-import { Op } from "sequelize";
+import { Op, UniqueConstraintError } from "sequelize";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const persistedBulletinModel = vi.hoisted(() => ({
@@ -137,9 +137,9 @@ describe("bulletin persistence", () => {
   // insert race regression
   it("updates an existing row when a concurrent insert wins the race", async () => {
     persistedBulletinModel.findByPk.mockResolvedValue(null);
-    persistedBulletinModel.create.mockRejectedValue({
-      name: "SequelizeUniqueConstraintError",
-    });
+    persistedBulletinModel.create.mockRejectedValue(
+      new UniqueConstraintError({ message: "duplicate bulletin" })
+    );
 
     const bulletin = new Bulletin({
       bodyHTML: "<p>Use alternate route.</p>",

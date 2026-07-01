@@ -3,11 +3,11 @@ import React, { ReactElement, ReactNode, useState } from "react";
 import { Link } from "react-router-dom";
 import type { Terminal, TerminalInfo } from "shared/contracts/terminals";
 
+import { ExternalPillLink } from "~/components/ExternalPillLink";
 import { TerminalDropdown } from "~/components/TerminalDropdown";
 import { locationToUrl } from "~/lib/maps";
 import { getSlug, useTerminals } from "~/lib/terminals";
 import CheckIcon from "~/static/images/icons/solid/check-circle.svg";
-import ExternalLinkIcon from "~/static/images/icons/solid/external-link.svg";
 import InfoIcon from "~/static/images/icons/solid/info-circle.svg";
 import LocationIcon from "~/static/images/icons/solid/location.svg";
 import MapIcon from "~/static/images/icons/solid/map-marked.svg";
@@ -255,19 +255,9 @@ export const TerminalDetails = ({
               </a>
               {/* terminal url guard */}
               {terminal.terminalUrl && (
-                <a
-                  href={terminal.terminalUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={clsx(
-                    "inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-bold",
-                    "border-blue-dark text-blue-dark hover:bg-night-normal-light",
-                    "dark:border-[#6fb8c8] dark:text-[#6fb8c8] dark:hover:bg-[rgba(255,255,255,0.08)]"
-                  )}
-                >
+                <ExternalPillLink href={terminal.terminalUrl}>
                   WSF terminal page
-                  <ExternalLinkIcon className="ml-2 h-3 w-3" />
-                </a>
+                </ExternalPillLink>
               )}
             </div>
           </DetailCard>

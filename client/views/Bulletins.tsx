@@ -9,13 +9,13 @@ import { isSuppressedBulletin } from "shared/lib/bulletins";
 import { round } from "shared/lib/math";
 import { capitalize } from "shared/lib/strings";
 
+import { ExternalPillLink } from "~/components/ExternalPillLink";
 import { InlineLoader } from "~/components/InlineLoader";
 import { useUser } from "~/lib/user";
 import UnsubscribedIcon from "~/static/images/icons/regular/bell.svg";
 import SubscribedIcon from "~/static/images/icons/solid/bell.svg";
 import BellAlertIcon from "~/static/images/icons/solid/bell-exclamation.svg";
 import WarningIcon from "~/static/images/icons/solid/exclamation-triangle.svg";
-import ExternalLinkIcon from "~/static/images/icons/solid/external-link.svg";
 import InfoIcon from "~/static/images/icons/solid/info-circle.svg";
 import WSDOTIcon from "~/static/images/icons/wsdot.svg";
 
@@ -238,20 +238,9 @@ export const Bulletins = ({
                 dangerouslySetInnerHTML={{ __html: filteredDescription }}
               />
               {url && (
-                <a
-                  className={clsx(
-                    "mt-3 inline-flex items-center rounded-full border px-3 py-1.5",
-                    "border-blue-dark text-xs font-bold text-blue-dark",
-                    "hover:bg-night-normal-light",
-                    "dark:border-[#6fb8c8] dark:text-[#6fb8c8] dark:hover:bg-[rgba(255,255,255,0.08)]"
-                  )}
-                  href={url}
-                  rel="noopener noreferrer"
-                  target="_blank"
-                >
+                <ExternalPillLink className="mt-3" href={url}>
                   View WSF alert
-                  <ExternalLinkIcon className="ml-2 h-3 w-3" />
-                </a>
+                </ExternalPillLink>
               )}
             </div>
           </div>

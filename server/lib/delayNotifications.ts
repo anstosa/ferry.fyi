@@ -30,10 +30,19 @@ interface RouteDelayState {
   vessels: RouteDelayVessel[];
 }
 
-export interface DelayNotificationEvent extends RouteDelayState {
-  threshold?: number;
-  type: "behind" | "on-schedule";
-}
+type DelayNotificationBehindEvent = RouteDelayState & {
+  threshold: number;
+  type: "behind";
+};
+
+type DelayNotificationRecoveryEvent = RouteDelayState & {
+  threshold?: never;
+  type: "on-schedule";
+};
+
+export type DelayNotificationEvent =
+  | DelayNotificationBehindEvent
+  | DelayNotificationRecoveryEvent;
 
 interface DelayNotificationContent {
   body: string;
@@ -173,7 +182,7 @@ const getNextNotifiedThreshold = (
   if (event?.type === "behind" && event.threshold) {
     return event.threshold;
   }
-  return previousThreshold;
+  return Math.min(previousThreshold, getDelayThreshold(routeState.delayMins));
 };
 
 // delay events
