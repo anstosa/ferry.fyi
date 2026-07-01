@@ -134,6 +134,37 @@ describe("bulletin persistence", () => {
     expect(Terminal.getByIndex("5")?.bulletins).toHaveLength(1);
   });
 
+  // insert race regression
+  it("updates an existing row when a concurrent insert wins the race", async () => {
+    persistedBulletinModel.findByPk.mockResolvedValue(null);
+    persistedBulletinModel.create.mockRejectedValue({
+      name: "SequelizeUniqueConstraintError",
+    });
+
+    const bulletin = new Bulletin({
+      bodyHTML: "<p>Use alternate route.</p>",
+      date: 1781907734,
+      terminalId: "5",
+      title: "Muk/Clin - Service Alert - Dock work",
+      url: "https://ferry.fyi/5/alerts",
+    });
+
+    await bulletin.persistActive(1781907800);
+
+    expect(persistedBulletinModel.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        inactiveAt: null,
+        lastSeenAt: 1781907800,
+        title: "Service Alert - Dock work",
+      }),
+      {
+        where: {
+          id: "5-1781907734-Muk/Clin - Service Alert - Dock work",
+        },
+      }
+    );
+  });
+
   it("marks every active terminal bulletin inactive when WSF returns none", async () => {
     await Bulletin.markInactiveForTerminal("5", [], 1234);
 

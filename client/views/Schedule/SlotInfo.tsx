@@ -565,15 +565,16 @@ export const SlotInfo = (props: Props): ReactElement => {
             {vessel.vesselWatchUrl && (
               <a
                 className={clsx(
-                  "button button-primary col-span-2",
-                  "bg-blue-dark text-white dark:bg-blue-light dark:text-blue-darkest"
+                  "col-span-2 inline-flex w-fit items-center rounded-full border px-3 py-1.5 text-xs font-bold",
+                  "border-blue-dark text-blue-dark hover:bg-night-normal-light",
+                  "dark:border-[#6fb8c8] dark:text-[#6fb8c8] dark:hover:bg-[rgba(255,255,255,0.08)]"
                 )}
                 href={vessel.vesselWatchUrl}
                 rel="noopener noreferrer"
                 target="_blank"
               >
-                <span className="button-label">Open WSF Vessel Page</span>
-                <ExternalLinkIcon className="button-icon" />
+                WSF vessel page
+                <ExternalLinkIcon className="ml-2 h-3 w-3" />
               </a>
             )}
           </div>

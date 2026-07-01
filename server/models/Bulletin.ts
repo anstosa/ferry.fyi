@@ -1,6 +1,6 @@
 import { convert } from "html-to-text";
 import { DateTime } from "luxon";
-import { Op } from "sequelize";
+import { Op, UniqueConstraintError } from "sequelize";
 import {
   Bulletin as BulletinClass,
   Level,
@@ -99,11 +99,24 @@ export class Bulletin extends CacheableModel implements BulletinClass {
       await existingBulletin.update(data);
       return;
     }
-    await PersistedBulletin.create({
-      ...data,
-      firstSeenAt: seenAt,
-      id: this.id,
-    });
+    // create new row first
+    try {
+      await PersistedBulletin.create({
+        ...data,
+        firstSeenAt: seenAt,
+        id: this.id,
+      });
+    } catch (error) {
+      // duplicate insert race
+      if (
+        error instanceof UniqueConstraintError ||
+        (error as { name?: string }).name === "SequelizeUniqueConstraintError"
+      ) {
+        await PersistedBulletin.update(data, { where: { id: this.id } });
+        return;
+      }
+      throw error;
+    }
   }
 
   // mark missing terminal bulletins inactive

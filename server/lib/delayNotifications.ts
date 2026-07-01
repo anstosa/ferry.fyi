@@ -12,13 +12,25 @@ const ON_SCHEDULE_THRESHOLD = 15;
 
 interface DelayCandidate {
   delayMins: number;
-  key: string;
   mateId: string;
   terminalId: string;
   vesselName: string;
 }
 
-export interface DelayNotificationEvent extends DelayCandidate {
+interface RouteDelayVessel {
+  delayMins: number;
+  vesselName: string;
+}
+
+interface RouteDelayState {
+  delayMins: number;
+  key: string;
+  mateId: string;
+  terminalId: string;
+  vessels: RouteDelayVessel[];
+}
+
+export interface DelayNotificationEvent extends RouteDelayState {
   threshold?: number;
   type: "behind" | "on-schedule";
 }
@@ -29,11 +41,11 @@ interface DelayNotificationContent {
   url: string;
 }
 
-const previousDelayMinsByKey = new Map<string, number>();
+const notifiedThresholdByRouteKey = new Map<string, number>();
 
 // notification state reset
 export const resetDelayNotificationState = (): void => {
-  previousDelayMinsByKey.clear();
+  notifiedThresholdByRouteKey.clear();
 };
 
 // active GPS match
@@ -63,62 +75,105 @@ const getScheduleDelayCandidates = (schedule: Schedule): DelayCandidate[] => {
       candidateSlotsByVesselId.set(vesselId, slot);
     }
   });
-  return Array.from(candidateSlotsByVesselId.entries()).map(
-    ([vesselId, candidateSlot]) => {
-      // candidate projection
-      const timing = getProjectedTiming({
-        schedule: schedule.slots,
-        slot: candidateSlot,
-      });
-      return {
-        delayMins: Math.max(0, timing.delayMins),
-        key: `${schedule.terminalId}:${schedule.mateId}:${vesselId}`,
-        mateId: schedule.mateId,
-        terminalId: schedule.terminalId,
-        vesselName: candidateSlot.vessel.name,
-      };
-    }
-  );
+  return Array.from(candidateSlotsByVesselId.values()).map((candidateSlot) => {
+    // candidate projection
+    const timing = getProjectedTiming({
+      schedule: schedule.slots,
+      slot: candidateSlot,
+    });
+    return {
+      delayMins: Math.max(0, timing.delayMins),
+      mateId: schedule.mateId,
+      terminalId: schedule.terminalId,
+      vesselName: candidateSlot.vessel.name,
+    };
+  });
 };
 
-// crossed threshold
-const getCrossedDelayThreshold = (
-  previousDelayMins: number,
-  currentDelayMins: number
-): number | null => {
-  let crossedThreshold: number | null = null;
+// route key
+const getRouteKey = (terminalId: string, mateId: string): string => {
+  return `${terminalId}:${mateId}`;
+};
+
+// highest delay threshold
+const getDelayThreshold = (delayMins: number): number => {
+  let crossedThreshold = 0;
   // threshold scan
   for (const threshold of DELAY_THRESHOLDS) {
-    // crossing guard
-    if (previousDelayMins < threshold && currentDelayMins >= threshold) {
+    // threshold reached guard
+    if (delayMins >= threshold) {
       crossedThreshold = threshold;
     }
   }
   return crossedThreshold;
 };
 
+// route delay state
+const getRouteDelayState = (
+  schedule: Schedule,
+  candidates: DelayCandidate[]
+): RouteDelayState => {
+  const delayedVessels = candidates
+    .filter((candidate) => {
+      // delayed vessel guard
+      return candidate.delayMins > 0;
+    })
+    .sort((left, right) => {
+      // largest delay first
+      return right.delayMins - left.delayMins;
+    })
+    .map(({ delayMins, vesselName }) => {
+      return { delayMins, vesselName };
+    });
+  return {
+    delayMins: Math.max(0, ...candidates.map(({ delayMins }) => delayMins)),
+    key: getRouteKey(schedule.terminalId, schedule.mateId),
+    mateId: schedule.mateId,
+    terminalId: schedule.terminalId,
+    vessels: delayedVessels,
+  };
+};
+
 // notification event
 const getDelayNotificationEvent = (
-  candidate: DelayCandidate,
-  previousDelayMins: number | undefined
+  routeState: RouteDelayState,
+  previousThreshold: number | undefined
 ): DelayNotificationEvent | null => {
   // first observation guard
-  if (previousDelayMins === undefined) {
+  if (previousThreshold === undefined) {
     return null;
   }
   // back on schedule guard
-  if (previousDelayMins > ON_SCHEDULE_THRESHOLD && candidate.delayMins <= 0) {
-    return { ...candidate, type: "on-schedule" };
+  if (previousThreshold >= ON_SCHEDULE_THRESHOLD && routeState.delayMins <= 0) {
+    return { ...routeState, type: "on-schedule" };
   }
-  const threshold = getCrossedDelayThreshold(
-    previousDelayMins,
-    candidate.delayMins
-  );
-  // threshold guard
-  if (!threshold) {
+  const threshold = getDelayThreshold(routeState.delayMins);
+  // escalation guard
+  if (threshold <= previousThreshold) {
     return null;
   }
-  return { ...candidate, threshold, type: "behind" };
+  return { ...routeState, threshold, type: "behind" };
+};
+
+// next route threshold state
+const getNextNotifiedThreshold = (
+  event: DelayNotificationEvent | null,
+  previousThreshold: number | undefined,
+  routeState: RouteDelayState
+): number => {
+  // initial state guard
+  if (previousThreshold === undefined) {
+    return getDelayThreshold(routeState.delayMins);
+  }
+  // recovery guard
+  if (event?.type === "on-schedule") {
+    return 0;
+  }
+  // escalation guard
+  if (event?.type === "behind" && event.threshold) {
+    return event.threshold;
+  }
+  return previousThreshold;
 };
 
 // delay events
@@ -129,24 +184,28 @@ export const getDelayNotificationEvents = (
   const events: DelayNotificationEvent[] = [];
   // schedule scan
   schedules.forEach((schedule) => {
-    // vessel scan
-    getScheduleDelayCandidates(schedule).forEach((candidate) => {
-      activeKeys.add(candidate.key);
-      const event = getDelayNotificationEvent(
-        candidate,
-        previousDelayMinsByKey.get(candidate.key)
-      );
-      // event guard
-      if (event) {
-        events.push(event);
-      }
-      previousDelayMinsByKey.set(candidate.key, candidate.delayMins);
-    });
+    const candidates = getScheduleDelayCandidates(schedule);
+    // empty route guard
+    if (candidates.length === 0) {
+      return;
+    }
+    const routeState = getRouteDelayState(schedule, candidates);
+    const previousThreshold = notifiedThresholdByRouteKey.get(routeState.key);
+    const event = getDelayNotificationEvent(routeState, previousThreshold);
+    activeKeys.add(routeState.key);
+    // event guard
+    if (event) {
+      events.push(event);
+    }
+    notifiedThresholdByRouteKey.set(
+      routeState.key,
+      getNextNotifiedThreshold(event, previousThreshold, routeState)
+    );
   });
-  previousDelayMinsByKey.forEach((_, key) => {
+  notifiedThresholdByRouteKey.forEach((_, key) => {
     // stale state guard
     if (!activeKeys.has(key)) {
-      previousDelayMinsByKey.delete(key);
+      notifiedThresholdByRouteKey.delete(key);
     }
   });
   return events;
@@ -172,13 +231,22 @@ export const formatDelayNotification = (
   // recovery notification
   if (event.type === "on-schedule") {
     return {
-      body: `${event.vesselName} is back on schedule`,
+      body: "All ferries are back on schedule",
       title: `${routeName} is back on schedule`,
       url,
     };
   }
+  const body =
+    event.vessels.length > 0
+      ? event.vessels
+          .map(({ delayMins, vesselName }) => {
+            // vessel delay summary
+            return `${vesselName} is ${delayMins}mins late`;
+          })
+          .join("; ")
+      : "Ferries are running behind schedule";
   return {
-    body: `${event.vesselName} is running ${event.delayMins}mins late`,
+    body,
     title: `${routeName} is ${event.threshold}+ mins behind`,
     url,
   };

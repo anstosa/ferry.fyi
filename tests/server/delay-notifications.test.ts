@@ -80,17 +80,38 @@ describe("delay notifications", () => {
         terminalId: "14",
         threshold: 15,
         type: "behind",
-        vesselName: "Tokitae",
+        vessels: [{ delayMins: 17, vesselName: "Tokitae" }],
       },
     ]);
   });
 
-  it("tracks each vessel on the route independently", () => {
+  // route threshold regression
+  it("does not repeat a route threshold for another delayed vessel", () => {
     const suquamish = { ...baseVessel, id: "suquamish", name: "Suquamish" };
     getDelayNotificationEvents([
       {
-        ...makeSchedule(14),
-        slots: [makeSlot(14), makeSlot(29, suquamish, 2000)],
+        ...makeSchedule(17),
+        slots: [makeSlot(17), makeSlot(14, suquamish, 2000)],
+      } as Schedule,
+    ]);
+
+    const events = getDelayNotificationEvents([
+      {
+        ...makeSchedule(17),
+        slots: [makeSlot(17), makeSlot(16, suquamish, 2000)],
+      } as Schedule,
+    ]);
+
+    expect(events).toEqual([]);
+  });
+
+  // route summary regression
+  it("includes every delayed route vessel when a higher threshold is crossed", () => {
+    const suquamish = { ...baseVessel, id: "suquamish", name: "Suquamish" };
+    getDelayNotificationEvents([
+      {
+        ...makeSchedule(17),
+        slots: [makeSlot(17), makeSlot(29, suquamish, 2000)],
       } as Schedule,
     ]);
 
@@ -102,8 +123,13 @@ describe("delay notifications", () => {
     ]);
 
     expect(events).toMatchObject([
-      { threshold: 15, vesselName: "Tokitae" },
-      { threshold: 30, vesselName: "Suquamish" },
+      {
+        threshold: 30,
+        vessels: [
+          { delayMins: 31, vesselName: "Suquamish" },
+          { delayMins: 17, vesselName: "Tokitae" },
+        ],
+      },
     ]);
   });
 
@@ -125,7 +151,7 @@ describe("delay notifications", () => {
       {
         delayMins: 0,
         type: "on-schedule",
-        vesselName: "Tokitae",
+        vessels: [],
       },
     ]);
   });
@@ -178,16 +204,16 @@ describe("delay notifications", () => {
 
     const content = formatDelayNotification({
       delayMins: 17,
-      key: "14:5:tokitae",
+      key: "14:5",
       mateId: "5",
       terminalId: "14",
       threshold: 15,
       type: "behind",
-      vesselName: "Tokitae",
+      vessels: [{ delayMins: 17, vesselName: "Tokitae" }],
     });
 
     expect(content).toEqual({
-      body: "Tokitae is running 17mins late",
+      body: "Tokitae is 17mins late",
       title: "Mukilteo/Clinton is 15+ mins behind",
       url: "https://ferry.fyi/mukilteo/clinton",
     });
