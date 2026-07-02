@@ -364,15 +364,15 @@ export const Map = ({
 
     const newMarkers: RenderedMarker[] = [];
 
+    // map readiness guard
+    if (!map || !terminal || !mate) {
+      return;
+    }
+
     // remove existing markers
     if (!isEmpty(markersRef.current)) {
       removeRenderedMarkers(markersRef.current);
       markersRef.current = [];
-    }
-
-    // map readiness guard
-    if (!map || !terminal || !mate) {
-      return;
     }
 
     // add terminal markers
@@ -484,12 +484,15 @@ export const Map = ({
         ? "mapbox://styles/ferryfyi/ckvzb5jy11hmj14o4imlemf5h"
         : "mapbox://styles/ferryfyi/ckvzbpoh21ggd14pdjorf1z5x",
     });
-    setMap(map);
     map.addControl(new NavigationControl({ showCompass: false }));
-    map.on("load", updateMarkers);
+    // publish loaded map
+    const handleLoad = (): void => {
+      setMap(map);
+    };
+    map.on("load", handleLoad);
     return () => {
       // cleanup map instance
-      map.off("load", updateMarkers);
+      map.off("load", handleLoad);
       removeRenderedMarkers(markersRef.current);
       markersRef.current = [];
       map.remove();

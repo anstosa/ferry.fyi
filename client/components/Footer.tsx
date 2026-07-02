@@ -39,7 +39,7 @@ const WrapFooter: FunctionComponent<PropsWithChildren> = ({ children }) => (
 // active tab underline
 const FooterSelection = (): ReactElement => (
   <motion.span
-    className="absolute inset-x-3 bottom-0 h-1 rounded-full bg-countdown"
+    className="absolute inset-x-3 bottom-0 h-1 rounded-full bg-white/45"
     layoutId="footer-selection"
     transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
   />
@@ -101,7 +101,7 @@ export const Footer = ({ terminal, getPath }: Props): ReactElement => {
       <NavLink
         className={({ isActive }) =>
           clsx(
-            "relative flex h-16 min-w-0 flex-no-wrap cursor-pointer items-center justify-end p-4",
+            "relative flex h-16 min-w-0 flex-no-wrap cursor-pointer items-center justify-end border-y-4 border-transparent p-4",
             isActive ? "text-white" : "text-lighten-high",
             backgroundColor
           )

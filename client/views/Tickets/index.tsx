@@ -14,7 +14,6 @@ import {
 import { BarcodeFormat, DecodeHintType } from "@zxing/library";
 import clsx from "clsx";
 import { useAtom } from "jotai";
-import { atomWithStorage } from "jotai/utils";
 import jsQR from "jsqr";
 import { DateTime } from "luxon";
 import React, { ReactElement, useEffect, useRef, useState } from "react";
@@ -45,6 +44,7 @@ import StopIcon from "~/static/images/icons/solid/times.svg";
 
 import { BarcodeOverlay } from "./BarcodeOverlay";
 import { LoginPrompt } from "./LoginPrompt";
+import { normalizeTicketList, ticketsAtom } from "./storage";
 import { Ticket } from "./Ticket";
 
 const hints = new Map();
@@ -59,11 +59,6 @@ interface TicketCodeScan {
 }
 
 const QR_SAVED_TICKET_PREFIX = "qr:";
-
-const ticketsAtom = atomWithStorage<Array<TicketStorage | ReservationAccount>>(
-  "tickets",
-  []
-);
 
 const HEADER_ACTION_CLASSES = clsx(
   "group flex min-h-16 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border px-2 py-2 text-center backdrop-blur transition",
@@ -561,28 +556,6 @@ const decodeTicketImage = async (
   }
 
   return decodeTicketImageVariantsWithZxing(reader, file);
-};
-
-// collapse duplicate accounts
-const normalizeTicketList = (
-  tickets: Array<TicketStorage | ReservationAccount>
-): Array<TicketStorage | ReservationAccount> => {
-  let hasReservationAccount = false;
-
-  return tickets.filter((ticket) => {
-    // normal tickets remain
-    if (ticket.type !== "reservation") {
-      return true;
-    }
-
-    // first account remains
-    if (!hasReservationAccount) {
-      hasReservationAccount = true;
-      return true;
-    }
-
-    return false;
-  });
 };
 
 // account-first sorting

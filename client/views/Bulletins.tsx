@@ -1,16 +1,19 @@
 import clsx from "clsx";
 import { DateTime } from "luxon";
-import React, { ReactElement, ReactNode } from "react";
+import React, { ReactElement, ReactNode, useState } from "react";
 import { Link } from "react-router-dom";
 import { type Bulletin, Level } from "shared/contracts/bulletins";
+import type { Route } from "shared/contracts/routes";
 import type { Terminal } from "shared/contracts/terminals";
-import { hasRouteSubscription } from "shared/lib/alertSubscriptions";
+import { isRuleForRoute } from "shared/lib/alertSubscriptions";
 import { isSuppressedBulletin } from "shared/lib/bulletins";
 import { round } from "shared/lib/math";
 import { capitalize } from "shared/lib/strings";
 
 import { ExternalPillLink } from "~/components/ExternalPillLink";
+import { HeaderDropdown } from "~/components/HeaderDropdown";
 import { InlineLoader } from "~/components/InlineLoader";
+import { getSlug, useTerminals } from "~/lib/terminals";
 import { useUser } from "~/lib/user";
 import UnsubscribedIcon from "~/static/images/icons/regular/bell.svg";
 import SubscribedIcon from "~/static/images/icons/solid/bell.svg";
@@ -34,6 +37,11 @@ const HOURS_BY_SPELLED: Record<string, number> = {
   five: 5,
   six: 6,
 };
+interface RouteOption {
+  mate: Terminal;
+  route: Route;
+  terminal: Terminal;
+}
 
 interface BulletinLevelStyles {
   accent: string;
@@ -76,6 +84,71 @@ const isActiveBulletin = (bulletin: Bulletin): boolean => {
   return true;
 };
 
+// collect route choices
+const getRouteOptions = (terminals: Terminal[]): RouteOption[] => {
+  const terminalsById = Object.fromEntries(
+    terminals.map((terminal) => {
+      return [terminal.id, terminal];
+    })
+  );
+  const routesById = new Map<string, RouteOption>();
+  // terminal route loop
+  terminals.forEach((terminal) => {
+    // route loop
+    Object.values(terminal.routes ?? {}).forEach((route) => {
+      // duplicate route guard
+      if (routesById.has(route.id)) {
+        return;
+      }
+      const routeTerminals = route.terminalIds
+        .map((terminalId) => {
+          return terminalsById[terminalId];
+        })
+        .filter((terminal): terminal is Terminal => Boolean(terminal));
+      // incomplete route guard
+      if (routeTerminals.length < 2) {
+        return;
+      }
+      routesById.set(route.id, {
+        mate: routeTerminals[1],
+        route,
+        terminal: routeTerminals[0],
+      });
+    });
+  });
+  return Array.from(routesById.values()).sort((left, right) => {
+    // alphabetical route order
+    return left.route.description.localeCompare(right.route.description);
+  });
+};
+
+// route bulletin key
+const getBulletinKey = (bulletin: Bulletin): string => {
+  return [bulletin.date, bulletin.title, bulletin.url ?? ""].join(":");
+};
+
+// route bulletin filter
+const getRouteBulletins = (
+  terminal: Terminal,
+  mate: Terminal | null
+): Bulletin[] => {
+  const bulletinsByKey = new Map<string, Bulletin>();
+  // route terminal loop
+  [terminal, mate]
+    .filter((routeTerminal): routeTerminal is Terminal => {
+      return Boolean(routeTerminal);
+    })
+    .forEach((routeTerminal) => {
+      routeTerminal.bulletins.filter(isActiveBulletin).forEach((bulletin) => {
+        bulletinsByKey.set(getBulletinKey(bulletin), bulletin);
+      });
+    });
+  return Array.from(bulletinsByKey.values()).sort((left, right) => {
+    // newest first
+    return right.date - left.date;
+  });
+};
+
 export const getWaitTime = ({ title }: Bulletin): string | null => {
   let match = title.match(WAIT_NUMBER_HOURS_MATCH);
   if (match) {
@@ -115,14 +188,13 @@ const SubscribeLink = ({
   mate,
   terminal,
 }: SubscribeLinkProps): ReactElement => {
-  const [{ alertSubscriptions, subscribedTerminals }] = useUser();
+  const [{ alertRules }] = useUser();
   const terminalIds = mate ? [terminal.id, mate.id] : [terminal.id];
-  const isLegacySubscribed = terminalIds.some((terminalId) => {
-    return subscribedTerminals?.includes(terminalId) ?? false;
+  const hasAlertRules = alertRules?.some((rule) => {
+    return isRuleForRoute(rule, terminalIds);
   });
-  const isSubscribed =
-    hasRouteSubscription(alertSubscriptions, terminalIds) || isLegacySubscribed;
-  const label = isSubscribed ? "Edit subscription" : "Subscribe";
+  const isSubscribed = hasAlertRules;
+  const label = isSubscribed ? "Edit alerts" : "Set up alerts";
 
   return (
     <Link
@@ -165,25 +237,42 @@ export const getLastBulletinTime = (terminal: Terminal): string => {
 
 interface Props {
   getPath: GetPath;
-  terminal: Terminal | null;
   mate: Terminal | null;
+  setRoute: (target: string, mate?: string) => void;
+  terminal: Terminal | null;
   time: DateTime;
 }
 
 export const Bulletins = ({
   getPath,
-  terminal,
   mate,
+  setRoute,
+  terminal,
   time,
 }: Props): ReactElement => {
+  const { terminals } = useTerminals();
+  const [isRouteOpen, setRouteOpen] = useState<boolean>(false);
+  const routeOptions = getRouteOptions(terminals);
+
+  // route loading guard
   if (!terminal) {
     return <InlineLoader>Loading alerts...</InlineLoader>;
   }
 
-  const activeBulletins = terminal.bulletins.filter((bulletin) => {
-    // low priority guard
-    return isActiveBulletin(bulletin);
-  });
+  const selectedRoute = mate
+    ? Object.values(terminal.routes ?? {}).find((route) => {
+        // selected route match
+        return (
+          route.terminalIds.includes(terminal.id) &&
+          route.terminalIds.includes(mate.id)
+        );
+      })
+    : undefined;
+  const routeName =
+    selectedRoute?.description ??
+    (mate ? `${terminal.name} / ${mate.name}` : terminal.name);
+  const routeShortName = selectedRoute?.abbreviation ?? routeName;
+  const activeBulletins = getRouteBulletins(terminal, mate);
 
   const renderBulletin = (bulletin: Bulletin): ReactNode => {
     const { bodyHTML, date, level, routePrefix, title, url } = bulletin;
@@ -254,7 +343,7 @@ export const Bulletins = ({
       <Header
         share={{
           shareButtonText: "Share Alerts",
-          sharedText: `Alerts for ${terminal.name} Ferry Terminal`,
+          sharedText: `Alerts for ${routeName}`,
         }}
         items={[
           ...(terminal.terminalUrl
@@ -269,7 +358,36 @@ export const Bulletins = ({
             : []),
         ]}
       >
-        <span className="text-center flex-1">{terminal.name} Alerts</span>
+        <div className="min-w-0 flex-1" />
+        <div className="min-w-0 text-center">
+          <HeaderDropdown
+            ariaLabel="Expand routes"
+            getKey={(option) => {
+              // route option key
+              return option.route.id;
+            }}
+            getLabel={(option) => {
+              // route option label
+              return option.route.description;
+            }}
+            getShortLabel={(option) => {
+              // route option short label
+              return option.route.abbreviation;
+            }}
+            isOpen={isRouteOpen}
+            onSelect={(event, option) => {
+              event.preventDefault();
+              setRouteOpen(false);
+              setRoute(getSlug(option.terminal.id), getSlug(option.mate.id));
+            }}
+            options={routeOptions}
+            selectedLabel={routeName}
+            selectedShortLabel={routeShortName}
+            setOpen={setRouteOpen}
+          />
+        </div>
+        <span className="ml-2 shrink-0">Alerts</span>
+        <div className="min-w-0 flex-1" />
       </Header>
       <main className="flex-grow overflow-y-scroll scrolling-touch bg-day-normal-light text-gray-dark dark:bg-night-normal-dark dark:text-[#e0f0f4]">
         <section className="mx-auto w-full max-w-3xl px-4 py-5 sm:px-6">
@@ -289,10 +407,10 @@ export const Bulletins = ({
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-2xs font-bold uppercase tracking-[0.16em] text-[#b8e4f0]">
-                      Terminal alerts
+                      Route alerts
                     </p>
                     <h1 className="mt-1 text-2xl font-bold leading-tight">
-                      {terminal.name}
+                      {routeName}
                     </h1>
                     <p className="mt-2 text-sm leading-relaxed text-white/85">
                       {activeBulletins.length > 0
@@ -330,8 +448,7 @@ export const Bulletins = ({
                 All clear
               </h2>
               <p className="mt-2 text-sm text-gray-dark dark:text-[#b8d5de]">
-                WSF has no active medium or high priority alerts for this
-                terminal.
+                WSF has no active medium or high priority alerts for this route.
               </p>
             </div>
           )}

@@ -1,85 +1,87 @@
 import { Message } from "firebase-admin/messaging";
+import { DateTime } from "luxon";
 import type {
+  AlertRule,
   AlertSubscriptionChannel,
-  AlertSubscriptions,
 } from "shared/contracts/user";
-import { getRouteSubscriptionKey } from "shared/lib/alertSubscriptions";
+import { hasAlertRuleSubscription } from "shared/lib/alertSubscriptions";
 
+import {
+  hasAppMetadataChanged,
+  normalizeAppMetadata,
+} from "~/lib/alertMetadata";
 import { UserSettings } from "~/models/UserSettings";
 
 interface SubscribedTerminalPushInput {
   channel?: AlertSubscriptionChannel;
+  currentTime?: DateTime;
   data: Record<string, string>;
+  departureTerminalId?: string;
+  departureTimes?: number[];
   terminalIds: string[];
 }
 
-// route subscription match
-const hasRouteSubscription = ({
-  alertSubscriptions,
+// scheduled rule match
+const hasScheduledRuleSubscription = ({
+  alertRules,
   channel,
+  currentTime,
+  departureTerminalId,
+  departureTimes,
   terminalIds,
 }: {
-  alertSubscriptions: AlertSubscriptions | undefined;
+  alertRules: AlertRule[] | undefined;
   channel?: AlertSubscriptionChannel;
+  currentTime?: DateTime;
+  departureTerminalId?: string;
+  departureTimes?: number[];
   terminalIds: string[];
 }): boolean => {
-  // channel guard
-  if (!channel || !alertSubscriptions) {
-    return false;
-  }
-  const routeKey =
-    terminalIds.length > 1 ? getRouteSubscriptionKey(terminalIds) : undefined;
-  // exact route guard
-  if (routeKey && alertSubscriptions[routeKey]?.includes(channel)) {
-    return true;
-  }
-  return Object.entries(alertSubscriptions).some(
-    ([subscriptionKey, channels]) => {
-      // channel membership guard
-      if (!channels.includes(channel)) {
-        return false;
-      }
-      const subscribedTerminalIds = subscriptionKey.split(":");
-      return terminalIds.some((terminalId) => {
-        return subscribedTerminalIds.includes(terminalId);
-      });
-    }
-  );
+  return hasAlertRuleSubscription(alertRules, {
+    channel,
+    currentTime,
+    departureTerminalId,
+    departureTimes,
+    terminalIds,
+  });
 };
 
-// legacy subscription match
-const hasLegacyTerminalSubscription = (
-  subscribedTerminals: unknown,
-  terminalIds: string[]
-): boolean => {
-  // legacy metadata guard
-  if (!Array.isArray(subscribedTerminals)) {
-    return false;
+// normalize persisted settings
+const normalizeUserSettings = async (
+  user: UserSettings
+): Promise<ReturnType<typeof normalizeAppMetadata>> => {
+  const appMetadata = user.appMetadata ?? {};
+  const normalizedMetadata = normalizeAppMetadata(appMetadata);
+  // stale metadata guard
+  if (hasAppMetadataChanged(appMetadata, normalizedMetadata)) {
+    await user.update({ appMetadata: normalizedMetadata });
   }
-  return terminalIds.some((terminalId) => {
-    return subscribedTerminals.includes(terminalId);
-  });
+  return normalizedMetadata;
 };
 
 // subscribed terminal messages
 export const getSubscribedTerminalPushMessages = async ({
   channel,
+  currentTime,
   data,
+  departureTerminalId,
+  departureTimes,
   terminalIds,
 }: SubscribedTerminalPushInput): Promise<Message[]> => {
   const users = await UserSettings.findAll();
   const messages: Message[] = [];
   // settings row page
   for (const user of users) {
-    const appMetadata = user.appMetadata ?? {};
-    const {
-      alertSubscriptions,
-      fcmToken: token,
-      subscribedTerminals,
-    } = appMetadata;
-    const isSubscribed =
-      hasLegacyTerminalSubscription(subscribedTerminals, terminalIds) ||
-      hasRouteSubscription({ alertSubscriptions, channel, terminalIds });
+    const appMetadata = await normalizeUserSettings(user);
+    const { alertRules, fcmToken: token } = appMetadata;
+    const isSubscribed = hasScheduledRuleSubscription({
+      alertRules,
+      channel,
+      currentTime,
+      departureTerminalId,
+      departureTimes,
+      terminalIds,
+    });
     // route subscription guard
     if (!isSubscribed) {
       continue;

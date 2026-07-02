@@ -18,6 +18,22 @@ export const getCapacityFillClassName = ({
     : "bg-night-confirmed-light dark:bg-night-confirmed-dark";
 };
 
+interface ForecastCapacityFillClassNameOptions {
+  isFull: boolean;
+}
+
+// choose forecast fill
+export const getForecastCapacityFillClassName = ({
+  isFull,
+}: ForecastCapacityFillClassNameOptions): string | string[] => {
+  // full forecasts use neutral stripes
+  if (isFull) {
+    return ["bg-full", "dark:bg-full--dark"];
+  }
+
+  return ["bg-prediction-gradient", "dark:bg-prediction-gradient--dark"];
+};
+
 interface CapacityOpacityClassNameOptions {
   hasDeparted: boolean;
 }

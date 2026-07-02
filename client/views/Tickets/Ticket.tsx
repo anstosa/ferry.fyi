@@ -6,6 +6,7 @@ import type {
   TicketStorage,
 } from "shared/contracts/tickets";
 import { pluralize } from "shared/lib/strings";
+import { getTicketDisplayInfo } from "shared/lib/tickets";
 
 import { toShortDateString } from "~/lib/date";
 
@@ -28,14 +29,14 @@ const PRODUCT_LABEL_LINES: Record<ProductLabel, [string, string]> = {
 
 // card product titles
 const PRODUCT_TITLES: Record<ProductLabel, string> = {
-  "Reservation Account": "WSF reservation account",
-  "Multi-Ride Ticket": "WSF Multi-ride pass",
-  "Single Ride Ticket": "WSF single-ride pass",
+  "Reservation Account": "WSF Reservation Account",
+  "Multi-Ride Ticket": "WSF Multi-Ride Pass",
+  "Single Ride Ticket": "WSF Single-Ride Pass",
 };
 
 // multi-ride text terms
 const MULTI_RIDE_PATTERN =
-  /\b(?:multi|passes?|commuter|monthly|10[- ]?ride|ten[- ]?ride|20[- ]?ride|twenty[- ]?ride)\b/i;
+  /\b(?:multi|passes?|commuter|monthly|\d+[- ]?rides?|ten[- ]?rides?|twenty[- ]?rides?)\b/i;
 
 // multi-ride detector
 const isMultiRideTicket = (ticket: TicketStorage): boolean => {
@@ -73,6 +74,7 @@ const getProductLabel = (
 
 export const Ticket = ({ ticket, onClick }: Props): ReactElement => {
   let name: string;
+  let routeName: string | undefined;
   let status: ReactElement;
   let subtitle: string;
   const typeLabel = getProductLabel(ticket);
@@ -80,6 +82,8 @@ export const Ticket = ({ ticket, onClick }: Props): ReactElement => {
   const productTitle = PRODUCT_TITLES[typeLabel];
   // account tab variant
   const isReservationAccount = ticket.type === "reservation";
+  // multi-ride theme variant
+  const isMultiRideProduct = typeLabel === "Multi-Ride Ticket";
   const codeLabel = ticket.codeFormat === "qr" ? "QR code" : "barcode";
   const isCodeSubtitle =
     ticket.type === "reservation" || ticket.codeFormat === "qr";
@@ -87,13 +91,24 @@ export const Ticket = ({ ticket, onClick }: Props): ReactElement => {
   // ticket display
   if (ticket.type === "ticket") {
     const { expirationDate: expirationDateMillis, usesRemaining } = ticket;
+    const {
+      routeName: ticketRouteName,
+      subtitle: ticketSubtitle,
+      title: ticketTitle,
+    } = getTicketDisplayInfo({
+      description: ticket.description,
+      fallbackTitle: productTitle,
+      name: ticket.name,
+      plu: ticket.plu || ticket.id,
+    });
     const hasExpirationDate = typeof expirationDateMillis === "number";
     const hasUsesRemaining = typeof usesRemaining === "number";
-    name = ticket.description || productTitle;
+    routeName = ticketRouteName;
+    name = ticketTitle;
     subtitle =
       ticket.codeFormat === "qr"
         ? ticket.id
-        : ticket.name || ticket.plu || ticket.id;
+        : ticketSubtitle || ticket.plu || ticket.id;
     // incomplete ticket guard
     if (!hasExpirationDate || !hasUsesRemaining) {
       status = (
@@ -162,8 +177,15 @@ export const Ticket = ({ ticket, onClick }: Props): ReactElement => {
       <button
         className={clsx(
           "group relative w-full overflow-hidden rounded-2xl border p-0 text-left shadow-sm",
-          "border-[rgba(0,0,0,0.08)] bg-white text-gray-darkest hover:-translate-y-0.5 hover:shadow-lg",
-          "dark:border-[rgba(255,255,255,0.08)] dark:bg-[#00202a] dark:text-white"
+          "text-gray-darkest hover:-translate-y-0.5 hover:shadow-lg dark:text-white",
+          {
+            // standard card theme
+            "border-[rgba(0,0,0,0.08)] bg-white dark:border-[rgba(255,255,255,0.08)] dark:bg-[#00202a]":
+              !isMultiRideProduct,
+            // multi-ride card theme
+            "border-transparent bg-white dark:border-transparent dark:bg-[#211800]":
+              isMultiRideProduct,
+          }
         )}
         onClick={() => onClick()}
         type="button"
@@ -174,11 +196,16 @@ export const Ticket = ({ ticket, onClick }: Props): ReactElement => {
         <span className="flex min-h-28 items-stretch">
           <span
             className={clsx(
-              "relative flex w-20 shrink-0 items-center justify-center px-3 py-4 text-white",
+              "relative flex w-20 shrink-0 items-center justify-center px-3 py-4",
               {
-                "bg-[linear-gradient(180deg,#00835f_0%,#006f52_55%,#005a4a_100%)]":
-                  !isReservationAccount,
-                "bg-[radial-gradient(circle_at_50%_18%,rgba(255,255,255,0.22)_0%,rgba(255,255,255,0)_34%),linear-gradient(180deg,#00364a_0%,#00798b_100%)]":
+                // single-ride stub theme
+                "bg-[radial-gradient(circle_at_34%_16%,rgba(255,255,255,0.46)_0%,rgba(255,255,255,0.18)_24%,rgba(255,255,255,0)_42%),linear-gradient(180deg,#00835f_0%,#006f52_58%,#005a4a_100%)] text-white":
+                  !isReservationAccount && !isMultiRideProduct,
+                // multi-ride stub theme
+                "bg-[radial-gradient(circle_at_78%_14%,rgba(255,255,255,0.55)_0%,rgba(255,255,255,0.22)_24%,rgba(255,255,255,0)_42%),linear-gradient(180deg,#f2b705_0%,#c98a00_58%,#7a5400_100%)] text-white":
+                  isMultiRideProduct,
+                // reservation stub theme
+                "bg-[radial-gradient(circle_at_66%_15%,rgba(255,255,255,0.34)_0%,rgba(255,255,255,0.12)_24%,rgba(255,255,255,0)_42%),linear-gradient(180deg,#00364a_0%,#00798b_100%)] text-white":
                   isReservationAccount,
               }
             )}
@@ -194,16 +221,62 @@ export const Ticket = ({ ticket, onClick }: Props): ReactElement => {
               </span>
             </span>
           </span>
-          <span className="flex min-w-0 flex-1 flex-col justify-between p-4">
+          <span
+            className={clsx("flex min-w-0 flex-1 flex-col p-4", {
+              // standard spacing
+              "justify-between": !isReservationAccount,
+              // reservation spacing
+              "justify-center gap-2": isReservationAccount,
+              // multi-ride text panel
+              "bg-white dark:bg-white": isMultiRideProduct,
+            })}
+          >
             <span className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
               <span className="min-w-0">
-                <span className="block break-words text-xl font-black leading-tight tracking-tight text-green-dark dark:text-green-light">
+                {/* route chip */}
+                {ticket.type === "ticket" && routeName ? (
+                  <span
+                    className={clsx(
+                      "mb-2 inline-flex max-w-full rounded-full px-2.5 py-1 text-2xs font-black uppercase tracking-[0.14em]",
+                      {
+                        // multi-ride route chip
+                        "bg-yellow-medium/20 text-yellow-dark dark:bg-yellow-medium/15 dark:text-yellow-lightest":
+                          isMultiRideProduct,
+                        // default route chip
+                        "bg-blue-dark/10 text-blue-dark dark:bg-[#6fb8c8]/15 dark:text-[#6fb8c8]":
+                          !isMultiRideProduct,
+                      }
+                    )}
+                  >
+                    <span className="truncate">{routeName}</span>
+                  </span>
+                ) : null}
+                <span
+                  className={clsx(
+                    "block break-words text-xl font-black leading-tight tracking-tight",
+                    {
+                      // multi-ride title theme
+                      "text-yellow-dark dark:text-yellow-dark":
+                        isMultiRideProduct,
+                      // reservation title theme
+                      "text-blue-dark dark:text-[#6fb8c8]":
+                        isReservationAccount,
+                      // default title theme
+                      "text-green-dark dark:text-green-light":
+                        !isMultiRideProduct && !isReservationAccount,
+                    }
+                  )}
+                >
                   {name}
                 </span>
                 <span
                   className={clsx(
-                    "mt-1 block truncate text-sm font-semibold text-gray-dark dark:text-white/60",
+                    "block truncate text-sm font-semibold text-gray-dark",
                     {
+                      // reservation subtitle spacing
+                      "mt-2": isReservationAccount,
+                      // standard subtitle spacing
+                      "mt-1": !isReservationAccount,
                       "font-mono tracking-wide": isCodeSubtitle,
                     }
                   )}

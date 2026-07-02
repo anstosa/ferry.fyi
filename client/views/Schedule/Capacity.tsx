@@ -14,6 +14,7 @@ import { getCapacityStatusSide } from "./capacityStatusPosition";
 import {
   getCapacityFillClassName,
   getCapacityOpacityClassName,
+  getForecastCapacityFillClassName,
 } from "./capacityStyles";
 import {
   getScheduleLiveSpaceState,
@@ -506,10 +507,8 @@ export const Capacity = ({
         <div
           className={clsx(
             "absolute w-1 top-0 h-full",
-            // forecast full threshold
-            isEstimateFull()
-              ? getCapacityFillClassName({ isDaylight, isFull: true })
-              : ["bg-prediction-gradient", "dark:bg-prediction-gradient--dark"],
+            // forecast fill
+            getForecastCapacityFillClassName({ isFull: isEstimateFull() }),
             // interior forecast edge only
             !estimateReachesRowEnd && [
               "border-darken-lower dark:border-lighten-lower",

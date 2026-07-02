@@ -11,6 +11,7 @@ import {
   TicketStorage,
 } from "shared/contracts/tickets";
 import { pluralize } from "shared/lib/strings";
+import { getTicketDisplayInfo } from "shared/lib/tickets";
 
 import logo from "~/static/images/icon_monochrome.png";
 import RemoveConfirmIcon from "~/static/images/icons/solid/exclamation-square.svg";
@@ -47,7 +48,7 @@ const PASS_DETAIL_CLASSES: Record<PassDetail["tone"], string> = {
 
 // multi-ride text terms
 const MULTI_RIDE_PATTERN =
-  /\b(?:multi|passes?|commuter|monthly|10[- ]?ride|ten[- ]?ride|20[- ]?ride|twenty[- ]?ride)\b/i;
+  /\b(?:multi|passes?|commuter|monthly|\d+[- ]?rides?|ten[- ]?rides?|twenty[- ]?rides?)\b/i;
 
 // multi-ride detector
 const isMultiRideTicket = (ticket: TicketStorage): boolean => {
@@ -73,7 +74,12 @@ const getTicketTitle = (ticket: TicketStorage | ReservationAccount): string => {
     return getWsfTicketTitle(ticket);
   }
 
-  return ticket.description || getWsfTicketTitle(ticket);
+  return getTicketDisplayInfo({
+    description: ticket.description,
+    fallbackTitle: getWsfTicketTitle(ticket),
+    name: ticket.name,
+    plu: ticket.plu || ticket.id,
+  }).title;
 };
 
 // get display subtitle
@@ -90,7 +96,33 @@ const getTicketSubtitle = (
     return ticket.id;
   }
 
-  return ticket.name || ticket.plu || ticket.id;
+  return (
+    getTicketDisplayInfo({
+      description: ticket.description,
+      fallbackTitle: getWsfTicketTitle(ticket),
+      name: ticket.name,
+      plu: ticket.plu || ticket.id,
+    }).subtitle ||
+    ticket.plu ||
+    ticket.id
+  );
+};
+
+// get display route
+const getTicketRouteName = (
+  ticket: TicketStorage | ReservationAccount
+): string | undefined => {
+  // reservation route guard
+  if (ticket.type === "reservation") {
+    return undefined;
+  }
+
+  return getTicketDisplayInfo({
+    description: ticket.description,
+    fallbackTitle: getWsfTicketTitle(ticket),
+    name: ticket.name,
+    plu: ticket.plu || ticket.id,
+  }).routeName;
 };
 
 // get display code label
@@ -111,15 +143,15 @@ const getWsfTicketTitle = (
 ): string => {
   // reservation title
   if (ticket.type === "reservation") {
-    return "WSF reservation account";
+    return "WSF Reservation Account";
   }
 
   // product title
   if (isMultiRideTicket(ticket)) {
-    return "WSF Multi-ride pass";
+    return "WSF Multi-Ride Pass";
   }
 
-  return "WSF single-ride pass";
+  return "WSF Single-Ride Pass";
 };
 
 // format pass date
@@ -323,8 +355,14 @@ export const BarcodeOverlay = ({
   const codeContainerRef = useRef<HTMLDivElement | null>(null);
   const ticketTitle = getTicketTitle(ticket);
   const ticketSubtitle = getTicketSubtitle(ticket);
+  const ticketRouteName = getTicketRouteName(ticket);
   const ticketCodeLabel = getTicketCodeLabel(ticket);
   const isQrCode = ticket.codeFormat === "qr";
+  // account theme variant
+  const isReservationAccount = ticket.type === "reservation";
+  // multi-ride theme variant
+  const isMultiRideProduct =
+    ticket.type === "ticket" && isMultiRideTicket(ticket);
   const passDetails = getPassDetails(ticket);
   const [confirmation, setConfirmation] = useState<ConfirmationState | null>(
     null
@@ -460,8 +498,9 @@ export const BarcodeOverlay = ({
       )}
       onClick={() => onClose()}
     >
+      {/* wide close control */}
       <button
-        className="button button-glass button-icon-only absolute right-5 top-5 text-2xl"
+        className="button button-glass button-icon-only absolute right-5 top-5 hidden text-2xl sm:flex"
         onClick={() => onClose()}
         type="button"
       >
@@ -474,22 +513,82 @@ export const BarcodeOverlay = ({
         )}
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="relative overflow-hidden bg-[linear-gradient(135deg,#016f52_0%,#004d61_100%)] px-5 py-5 text-white">
+        {/* tight close control */}
+        <button
+          className="button button-glass button-icon-only absolute right-4 top-4 z-10 text-2xl sm:hidden"
+          onClick={() => onClose()}
+          type="button"
+        >
+          <StopIcon className="text-xl" />
+        </button>
+        <div
+          className={clsx("relative overflow-hidden px-5 py-5", {
+            // single-ride overlay theme
+            "bg-[radial-gradient(circle_at_18%_12%,rgba(255,255,255,0.46)_0%,rgba(255,255,255,0.18)_22%,rgba(255,255,255,0)_42%),linear-gradient(135deg,#016f52_0%,#006f52_52%,#004d61_100%)] text-white":
+              !isMultiRideProduct && !isReservationAccount,
+            // multi-ride overlay theme
+            "bg-[radial-gradient(circle_at_78%_14%,rgba(255,255,255,0.58)_0%,rgba(255,255,255,0.24)_22%,rgba(255,255,255,0)_42%),linear-gradient(135deg,#f2b705_0%,#c98a00_58%,#7a5400_100%)] text-white":
+              isMultiRideProduct,
+            // reservation overlay theme
+            "bg-[radial-gradient(circle_at_58%_15%,rgba(255,255,255,0.34)_0%,rgba(255,255,255,0.12)_23%,rgba(255,255,255,0)_42%),linear-gradient(135deg,#00364a_0%,#00798b_100%)] text-white":
+              isReservationAccount,
+          })}
+        >
           <div className="absolute -right-12 -top-12 h-36 w-36 rounded-full bg-white/10" />
           <div className="absolute -bottom-16 left-12 h-32 w-32 rounded-full bg-yellow-medium/20 blur-sm" />
           <div className="relative grid grid-cols-[3.5rem_1fr] items-center gap-x-3 gap-y-2">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/12">
               <img src={logo} className="h-11 w-11 rounded-xl object-contain" />
             </div>
-            <p className="text-sm font-extrabold uppercase tracking-[0.2em] text-yellow-lightest">
+            <p
+              className={clsx(
+                "text-sm font-extrabold uppercase tracking-[0.2em]",
+                {
+                  // multi-ride brand text
+                  "text-white": isMultiRideProduct,
+                  // reservation brand text
+                  "text-[#b8e4f0]": isReservationAccount,
+                  // default brand text
+                  "text-yellow-lightest":
+                    !isMultiRideProduct && !isReservationAccount,
+                }
+              )}
+            >
               Ferry FYI
             </p>
             <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/12 text-white">
               <WSDOTIcon className="h-9 w-9" aria-label="WSF" />
             </span>
-            <h2 className="min-w-0 text-xl font-black leading-tight tracking-tight">
-              {ticketTitle}
-            </h2>
+            <div className="min-w-0">
+              {/* route chip */}
+              {ticketRouteName ? (
+                <p
+                  className={clsx(
+                    "mb-1 inline-flex max-w-full rounded-full px-2.5 py-1 text-2xs font-black uppercase tracking-[0.14em]",
+                    {
+                      // multi-ride route chip
+                      "bg-white/20 text-white": isMultiRideProduct,
+                      // default route chip
+                      "bg-white/15 text-yellow-lightest":
+                        !isMultiRideProduct && !isReservationAccount,
+                    }
+                  )}
+                >
+                  <span className="truncate">{ticketRouteName}</span>
+                </p>
+              ) : null}
+              <h2
+                className={clsx(
+                  "min-w-0 text-xl font-black leading-tight tracking-tight",
+                  {
+                    // reservation title theme
+                    "text-[#b8e4f0]": isReservationAccount,
+                  }
+                )}
+              >
+                {ticketTitle}
+              </h2>
+            </div>
           </div>
         </div>
 

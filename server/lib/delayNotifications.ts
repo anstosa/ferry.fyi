@@ -12,6 +12,7 @@ const ON_SCHEDULE_THRESHOLD = 15;
 
 interface DelayCandidate {
   delayMins: number;
+  departureTime: number;
   mateId: string;
   terminalId: string;
   vesselName: string;
@@ -19,11 +20,13 @@ interface DelayCandidate {
 
 interface RouteDelayVessel {
   delayMins: number;
+  departureTime: number;
   vesselName: string;
 }
 
 interface RouteDelayState {
   delayMins: number;
+  departureTimes: number[];
   key: string;
   mateId: string;
   terminalId: string;
@@ -92,6 +95,7 @@ const getScheduleDelayCandidates = (schedule: Schedule): DelayCandidate[] => {
     });
     return {
       delayMins: Math.max(0, timing.delayMins),
+      departureTime: candidateSlot.time,
       mateId: schedule.mateId,
       terminalId: schedule.terminalId,
       vesselName: candidateSlot.vessel.name,
@@ -131,11 +135,15 @@ const getRouteDelayState = (
       // largest delay first
       return right.delayMins - left.delayMins;
     })
-    .map(({ delayMins, vesselName }) => {
-      return { delayMins, vesselName };
+    .map(({ delayMins, departureTime, vesselName }) => {
+      return { delayMins, departureTime, vesselName };
     });
   return {
     delayMins: Math.max(0, ...candidates.map(({ delayMins }) => delayMins)),
+    departureTimes: candidates.map(({ departureTime }) => {
+      // candidate departure time
+      return departureTime;
+    }),
     key: getRouteKey(schedule.terminalId, schedule.mateId),
     mateId: schedule.mateId,
     terminalId: schedule.terminalId,
@@ -275,6 +283,8 @@ const getSubscribedRouteMessages = (
       title: content.title,
       url: content.url,
     },
+    departureTerminalId: event.terminalId,
+    departureTimes: event.departureTimes,
     terminalIds: [event.terminalId, event.mateId],
   });
 };

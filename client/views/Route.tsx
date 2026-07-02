@@ -62,7 +62,7 @@ const getTabDirection = (previous: View, current: View): TabDirection => {
 };
 
 const TODAY_ONLY_VIEW_LABELS: Record<TodayOnlyView, string> = {
-  alerts: "bulletins",
+  alerts: "alerts",
   cameras: "cameras",
   map: "map",
 };
@@ -348,8 +348,9 @@ export const Route = ({
     content = (
       <Bulletins
         getPath={getPath}
-        terminal={terminal}
         mate={mate}
+        setRoute={setRoute}
+        terminal={terminal}
         time={time}
       />
     );
@@ -364,7 +365,12 @@ export const Route = ({
     );
   } else if (view === "subscribe" && terminal && mate) {
     content = (
-      <AlertSubscription getPath={getPath} terminal={terminal} mate={mate} />
+      <AlertSubscription
+        getPath={getPath}
+        mate={mate}
+        setRoute={setRoute}
+        terminal={terminal}
+      />
     );
   }
 
@@ -373,8 +379,19 @@ export const Route = ({
     return <Splash />;
   }
 
+  const routeTitle =
+    selectedRoute?.description ?? `${terminal.name} / ${mate.name}`;
+  let routePageTitle = `${terminal.name} to ${mate.name}`;
+  // route alerts title
+  if (view === "alerts") {
+    routePageTitle = `${routeTitle} Alerts`;
+  }
+  // pair alerts title
+  if (view === "subscribe") {
+    routePageTitle = `${terminal.name} to ${mate.name} Alerts`;
+  }
   // sync to server.ts
-  const title = `${terminal.name} to ${mate.name}${
+  const title = `${routePageTitle}${
     isToday ? "" : ` on ${formattedDate.join(" ")}`
   } - Ferry FYI`;
 

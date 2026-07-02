@@ -1,26 +1,50 @@
 import { useAuth0 } from "@auth0/auth0-react";
 import { Browser } from "@capacitor/browser";
 import clsx from "clsx";
-import React, { ReactElement, ReactNode, useEffect, useState } from "react";
+import { DateTime } from "luxon";
+import React, {
+  ReactElement,
+  ReactNode,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { Helmet } from "react-helmet-async";
 import { Link, useLocation } from "react-router-dom";
+import type { Schedule } from "shared/contracts/schedules";
 import type { Terminal } from "shared/contracts/terminals";
-import type { AlertSubscriptionChannel } from "shared/contracts/user";
+import type {
+  AlertRule,
+  AlertSubscriptionChannel,
+} from "shared/contracts/user";
 import {
-  ALERT_SUBSCRIPTION_CHANNEL_IDS,
   ALERT_SUBSCRIPTION_CHANNELS,
+  createFullDayAlertRule,
+  EVERY_DAY_DAYS,
+  getAlertRuleTimeFromDate,
+  getAlertRuleTimeSeconds,
   getRouteSubscriptionKey,
+  isFullDayAlertRule,
+  isOneTimeAlertRule,
+  isRuleForRoute,
+  normalizeAlertRuleDays,
+  WEEKDAY_DAYS,
+  WEEKEND_DAYS,
 } from "shared/lib/alertSubscriptions";
 import { without } from "shared/lib/arrays";
 
+import { HeaderDropdown } from "~/components/HeaderDropdown";
+import { LoadingWaves } from "~/components/LoadingWaves";
 import { Splash } from "~/components/Splash";
-import { TerminalDropdown } from "~/components/TerminalDropdown";
 import { useDevice } from "~/lib/device";
+import { getSchedule } from "~/lib/schedule";
 import { getSlug, useTerminals } from "~/lib/terminals";
 import { useUser } from "~/lib/user";
 import BellIcon from "~/static/images/icons/solid/bell.svg";
 import BellSlashIcon from "~/static/images/icons/solid/bell-slash.svg";
 import CheckIcon from "~/static/images/icons/solid/check-circle.svg";
+import ArrowLeftIcon from "~/static/images/icons/solid/long-arrow-alt-left.svg";
+import ArrowRightIcon from "~/static/images/icons/solid/long-arrow-alt-right.svg";
 import type { GetPath } from "~/views/Route";
 
 import { Header } from "./Header";
@@ -28,8 +52,67 @@ import { Header } from "./Header";
 interface Props {
   getPath: GetPath;
   mate: Terminal;
+  setRoute: (target: string, mate?: string) => void;
   terminal: Terminal;
 }
+
+type ScheduleMode = "always" | "custom";
+type DayPreset = "custom" | "every-day" | "weekdays" | "weekends";
+
+interface DraftAlertRule {
+  daysOfWeek: number[];
+  endTime: string;
+  id: string;
+  routeKey: string;
+  startTime: string;
+  terminalIds: string[];
+}
+
+interface AlertRuleEditorProps {
+  disabled: boolean;
+  mate: Terminal;
+  onChange: (rule: DraftAlertRule) => void;
+  onRemove: () => void;
+  rule: DraftAlertRule;
+  terminal: Terminal;
+}
+
+interface DepartureOption {
+  label: string;
+  terminalIds: string[];
+  value: string;
+}
+
+interface TerminalPairOption {
+  key: string;
+  label: string;
+  mate: Terminal;
+  shortLabel: string;
+  terminal: Terminal;
+}
+
+interface SailingRow {
+  key: string;
+  terminalIds: string[];
+  time: number;
+}
+
+const DAY_OPTIONS = [
+  { day: 1, label: "M" },
+  { day: 2, label: "T" },
+  { day: 3, label: "W" },
+  { day: 4, label: "T" },
+  { day: 5, label: "F" },
+  { day: 6, label: "S" },
+  { day: 7, label: "S" },
+];
+
+// id factory
+const createRuleId = (): string => {
+  return `rule-${Date.now().toString(36)}-${Math.random()
+    .toString(36)
+    .slice(2)}`;
+};
 
 // channel equality guard
 const areChannelsEqual = (
@@ -44,41 +127,608 @@ const areChannelsEqual = (
   );
 };
 
-// legacy route guard
-const isLegacySubscribedRoute = (
-  subscribedTerminals: string[] | undefined,
-  terminalIds: string[]
-): boolean => {
-  return terminalIds.some((terminalId) => {
-    return subscribedTerminals?.includes(terminalId) ?? false;
+// collect terminal-pair choices
+const getTerminalPairOptions = (
+  terminals: Terminal[]
+): TerminalPairOption[] => {
+  const optionsByPairKey = new Map<string, TerminalPairOption>();
+  // terminal pair loop
+  terminals.forEach((terminal) => {
+    // mate loop
+    (terminal.mates ?? []).forEach((mate) => {
+      const pairKey = [terminal.id, mate.id].sort().join(":");
+      // duplicate direction guard
+      if (optionsByPairKey.has(pairKey)) {
+        return;
+      }
+      const [first, second] = [terminal, mate].sort((left, right) => {
+        // stable pair order
+        return left.name.localeCompare(right.name);
+      });
+      optionsByPairKey.set(pairKey, {
+        key: pairKey,
+        label: `${first.name} to ${second.name}`,
+        mate: second,
+        shortLabel: `${first.abbreviation} → ${second.abbreviation}`,
+        terminal: first,
+      });
+    });
+  });
+  return Array.from(optionsByPairKey.values()).sort((left, right) => {
+    // alphabetical pair order
+    return left.label.localeCompare(right.label);
   });
 };
 
-// terminal subscription guard
-const hasSubscribedTerminal = ({
-  alertSubscriptions,
-  subscribedTerminals,
-  terminalId,
-}: {
-  alertSubscriptions: Record<string, AlertSubscriptionChannel[]> | undefined;
-  subscribedTerminals: string[] | undefined;
-  terminalId: string;
-}): boolean => {
-  // legacy terminal guard
-  if (subscribedTerminals?.includes(terminalId)) {
-    return true;
+// route rule filter
+const getRouteRules = (
+  alertRules: AlertRule[] | undefined,
+  terminalIds: string[]
+): AlertRule[] => {
+  return (alertRules ?? []).filter((rule) => {
+    // recurring route guard
+    return isRuleForRoute(rule, terminalIds) && !isOneTimeAlertRule(rule);
+  });
+};
+
+// draft conversion
+const getDraftRules = (rules: AlertRule[]): DraftAlertRule[] => {
+  return rules
+    .filter((rule) => {
+      return !isFullDayAlertRule(rule);
+    })
+    .map(({ daysOfWeek, endTime, id, routeKey, startTime, terminalIds }) => {
+      return { daysOfWeek, endTime, id, routeKey, startTime, terminalIds };
+    });
+};
+
+// rule channels
+const getInitialRuleChannels = (
+  routeRules: AlertRule[],
+  fallbackChannels: AlertSubscriptionChannel[]
+): AlertSubscriptionChannel[] => {
+  const ruleChannels = routeRules.flatMap((rule) => rule.channels);
+  // rule channel guard
+  if (ruleChannels.length > 0) {
+    return Array.from(new Set(ruleChannels));
   }
-  return Object.entries(alertSubscriptions ?? {}).some(
-    ([routeKey, channels]) => {
-      const terminalIds = routeKey.split(":");
-      return terminalIds.includes(terminalId) && channels.length > 0;
+  return fallbackChannels;
+};
+
+// day preset lookup
+const getDayPreset = (daysOfWeek: number[]): DayPreset => {
+  const days = normalizeAlertRuleDays(daysOfWeek);
+  const dayKey = days.join(":");
+  // weekday guard
+  if (dayKey === WEEKDAY_DAYS.join(":")) {
+    return "weekdays";
+  }
+  // weekend guard
+  if (dayKey === WEEKEND_DAYS.join(":")) {
+    return "weekends";
+  }
+  // every-day guard
+  if (dayKey === EVERY_DAY_DAYS.join(":")) {
+    return "every-day";
+  }
+  return "custom";
+};
+
+// days by preset
+const getDaysForPreset = (
+  preset: DayPreset,
+  currentDays: number[]
+): number[] => {
+  // weekday preset
+  if (preset === "weekdays") {
+    return WEEKDAY_DAYS;
+  }
+  // weekend preset
+  if (preset === "weekends") {
+    return WEEKEND_DAYS;
+  }
+  // every-day preset
+  if (preset === "every-day") {
+    return EVERY_DAY_DAYS;
+  }
+  return currentDays;
+};
+
+// next matching date
+const getPreviewDate = (daysOfWeek: number[]): DateTime => {
+  const today = DateTime.local().startOf("day");
+  // day scan
+  for (let offset = 0; offset < 14; offset += 1) {
+    const candidate = today.plus({ days: offset });
+    // matching weekday guard
+    if (daysOfWeek.includes(candidate.weekday)) {
+      return candidate;
     }
+  }
+  return today;
+};
+
+// readable time
+const getTimeLabel = (time: string): string => {
+  return DateTime.fromFormat(time, "HH:mm").toFormat("h:mm a");
+};
+
+// readable days
+const getDaysLabel = (daysOfWeek: number[]): string => {
+  const preset = getDayPreset(daysOfWeek);
+  // preset label guard
+  if (preset === "weekdays") {
+    return "Weekdays";
+  }
+  // preset label guard
+  if (preset === "weekends") {
+    return "Weekends";
+  }
+  // preset label guard
+  if (preset === "every-day") {
+    return "Every day";
+  }
+  return DAY_OPTIONS.filter(({ day }) => daysOfWeek.includes(day))
+    .map(({ label }) => label)
+    .join(" ");
+};
+
+// effective end time
+const getDraftRuleEndTime = (rule: DraftAlertRule): string => {
+  return rule.endTime || rule.startTime;
+};
+
+// draft validity
+const isDraftRuleComplete = (rule: DraftAlertRule): boolean => {
+  // required fields guard
+  if (
+    rule.daysOfWeek.length === 0 ||
+    rule.terminalIds.length === 0 ||
+    !rule.startTime
+  ) {
+    return false;
+  }
+  return (
+    getAlertRuleTimeSeconds(rule.startTime) <=
+    getAlertRuleTimeSeconds(getDraftRuleEndTime(rule))
+  );
+};
+
+// draft save error
+const getDraftRuleSaveError = (rule: DraftAlertRule): string | null => {
+  // sailing selection guard
+  if (!rule.startTime) {
+    return "Select at least one sailing for each custom window before saving.";
+  }
+  // day selection guard
+  if (rule.daysOfWeek.length === 0) {
+    return "Select at least one day for each custom window before saving.";
+  }
+  // terminal selection guard
+  if (rule.terminalIds.length === 0) {
+    return "Select a departure terminal for each custom window before saving.";
+  }
+  // reversed range guard
+  if (
+    getAlertRuleTimeSeconds(rule.startTime) >
+    getAlertRuleTimeSeconds(getDraftRuleEndTime(rule))
+  ) {
+    return "Select the end sailing after the start sailing before saving.";
+  }
+  return null;
+};
+
+// custom save error
+const getCustomScheduleSaveError = (rules: DraftAlertRule[]): string | null => {
+  // empty window guard
+  if (rules.length === 0) {
+    return "Add at least one custom window before saving.";
+  }
+  return rules.map(getDraftRuleSaveError).find(Boolean) ?? null;
+};
+
+// draft serialization
+const serializeDraftRules = (rules: DraftAlertRule[]): string => {
+  return JSON.stringify(
+    rules
+      .map((rule) => ({
+        ...rule,
+        daysOfWeek: normalizeAlertRuleDays(rule.daysOfWeek),
+        terminalIds: [...rule.terminalIds].sort(),
+      }))
+      .sort((left, right) => left.id.localeCompare(right.id))
+  );
+};
+
+// schedule by direction
+const getScheduleForDirection = async ({
+  date,
+  mate,
+  terminal,
+}: {
+  date: DateTime;
+  mate: Terminal;
+  terminal: Terminal;
+}): Promise<Schedule | null> => {
+  try {
+    const response = await getSchedule(terminal, mate, date);
+    return response.schedule;
+  } catch (error) {
+    console.warn("Failed to load alert schedule preview", error);
+    return null;
+  }
+};
+
+// rule editor
+const AlertRuleEditor = ({
+  disabled,
+  mate,
+  onChange,
+  onRemove,
+  rule,
+  terminal,
+}: AlertRuleEditorProps): ReactElement => {
+  const [schedules, setSchedules] = useState<Record<string, Schedule | null>>(
+    {}
+  );
+  const [isLoadingSchedules, setLoadingSchedules] = useState<boolean>(false);
+  const [isCustomDaysOpen, setCustomDaysOpen] = useState<boolean>(false);
+  const departureOptions: DepartureOption[] = [
+    { label: terminal.name, terminalIds: [terminal.id], value: terminal.id },
+    { label: mate.name, terminalIds: [mate.id], value: mate.id },
+    {
+      label: "Both",
+      terminalIds: [terminal.id, mate.id],
+      value: "both",
+    },
+  ];
+  const previewDate = useMemo(
+    () => getPreviewDate(rule.daysOfWeek),
+    [rule.daysOfWeek.join(":")]
+  );
+  const dayPreset = getDayPreset(rule.daysOfWeek);
+  const showCustomDays = dayPreset === "custom" || isCustomDaysOpen;
+  // combined sailing rows
+  const sailingRows = useMemo((): SailingRow[] => {
+    const departuresByTime = new Map<number, Set<string>>();
+    // selected terminal scan
+    rule.terminalIds.forEach((terminalId) => {
+      const slots = schedules[terminalId]?.slots ?? [];
+      // slot grouping
+      slots.forEach((slot) => {
+        const terminalIdsForTime =
+          departuresByTime.get(slot.time) ?? new Set<string>();
+        terminalIdsForTime.add(terminalId);
+        departuresByTime.set(slot.time, terminalIdsForTime);
+      });
+    });
+    return Array.from(departuresByTime.entries())
+      .map(([time, terminalIdsForTime]) => {
+        return {
+          key: String(time),
+          terminalIds: Array.from(terminalIdsForTime),
+          time,
+        };
+      })
+      .sort((left, right) => left.time - right.time);
+  }, [rule.terminalIds.join(":"), schedules]);
+
+  // load preview schedules
+  useEffect(() => {
+    let isCancelled = false;
+    const loadSchedules = async (): Promise<void> => {
+      setLoadingSchedules(true);
+      const entries = await Promise.all(
+        rule.terminalIds.map(async (terminalId) => {
+          const departingTerminal =
+            terminalId === terminal.id ? terminal : mate;
+          const arrivingTerminal = terminalId === terminal.id ? mate : terminal;
+          const schedule = await getScheduleForDirection({
+            date: previewDate,
+            mate: arrivingTerminal,
+            terminal: departingTerminal,
+          });
+          return [terminalId, schedule] as const;
+        })
+      );
+      // stale load guard
+      if (!isCancelled) {
+        setSchedules(Object.fromEntries(entries));
+        setLoadingSchedules(false);
+      }
+    };
+    loadSchedules();
+    return () => {
+      isCancelled = true;
+    };
+  }, [mate, previewDate.toISODate(), rule.terminalIds.join(":"), terminal]);
+
+  // departure radio change
+  const setDepartureOption = (terminalIds: string[]): void => {
+    onChange({
+      ...rule,
+      terminalIds,
+    });
+  };
+
+  // day preset change
+  const setDayPreset = (preset: DayPreset): void => {
+    const isCustomPreset = preset === "custom";
+    setCustomDaysOpen(isCustomPreset);
+    // custom reveal guard
+    if (isCustomPreset) {
+      return;
+    }
+    onChange({
+      ...rule,
+      daysOfWeek: getDaysForPreset(preset, rule.daysOfWeek),
+    });
+  };
+
+  // custom day toggle
+  const toggleDay = (day: number): void => {
+    const isSelected = rule.daysOfWeek.includes(day);
+    const daysOfWeek = isSelected
+      ? without(rule.daysOfWeek, day)
+      : [...rule.daysOfWeek, day];
+    // empty days guard
+    if (daysOfWeek.length === 0) {
+      return;
+    }
+    onChange({ ...rule, daysOfWeek: normalizeAlertRuleDays(daysOfWeek) });
+  };
+
+  // sailing click
+  const selectSailing = (time: number): void => {
+    const selectedTime = getAlertRuleTimeFromDate(DateTime.fromSeconds(time));
+    // reset selection guard
+    if (!rule.startTime || rule.endTime) {
+      onChange({ ...rule, endTime: "", startTime: selectedTime });
+      return;
+    }
+    const startSeconds = getAlertRuleTimeSeconds(rule.startTime);
+    const selectedSeconds = getAlertRuleTimeSeconds(selectedTime);
+    // ordered window guard
+    if (selectedSeconds < startSeconds) {
+      onChange({ ...rule, endTime: rule.startTime, startTime: selectedTime });
+      return;
+    }
+    onChange({ ...rule, endTime: selectedTime });
+  };
+
+  // selected sailing guard
+  const isTimeSelected = (time: number): boolean => {
+    // incomplete window guard
+    if (!rule.startTime) {
+      return false;
+    }
+    const slotTime = getAlertRuleTimeFromDate(DateTime.fromSeconds(time));
+    const slotSeconds = getAlertRuleTimeSeconds(slotTime);
+    const startSeconds = getAlertRuleTimeSeconds(rule.startTime);
+    const endSeconds = rule.endTime
+      ? getAlertRuleTimeSeconds(rule.endTime)
+      : startSeconds;
+    return slotSeconds >= startSeconds && slotSeconds <= endSeconds;
+  };
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-white/10 dark:bg-white/[0.03]">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm font-bold text-gray-darkest dark:text-white">
+            Alert window
+          </p>
+          <p className="mt-1 text-xs text-gray-dark dark:text-[#b8d5de]">
+            Pick the first and last sailing you want covered.
+          </p>
+        </div>
+        <button
+          className="text-xs font-bold text-stale-light dark:text-[#ffb3b0]"
+          disabled={disabled}
+          onClick={onRemove}
+          type="button"
+        >
+          Remove
+        </button>
+      </div>
+
+      <div className="mt-4">
+        <p className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-blue-dark dark:text-[#6fb8c8]">
+          Departing from
+        </p>
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+          {departureOptions.map((option) => {
+            const isSelected =
+              option.terminalIds.length === rule.terminalIds.length &&
+              option.terminalIds.every((terminalId) => {
+                return rule.terminalIds.includes(terminalId);
+              });
+            return (
+              <button
+                aria-pressed={isSelected}
+                className={clsx(
+                  "flex items-center gap-2 rounded-xl border px-3 py-2 text-left text-sm font-bold transition",
+                  isSelected
+                    ? "border-green-dark bg-green-dark text-white dark:border-green-light dark:bg-green-light dark:text-blue-darkest"
+                    : "border-gray-300 bg-white text-gray-dark dark:border-white/20 dark:bg-transparent dark:text-[#d8e8ec]"
+                )}
+                disabled={disabled}
+                key={option.value}
+                onClick={() => setDepartureOption(option.terminalIds)}
+                type="button"
+              >
+                <span
+                  className={clsx(
+                    "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border",
+                    isSelected
+                      ? "border-white bg-white text-green-dark dark:border-blue-darkest dark:bg-blue-darkest dark:text-green-light"
+                      : "border-gray-400 bg-white dark:border-white/30 dark:bg-transparent"
+                  )}
+                >
+                  {isSelected && (
+                    <span className="h-2 w-2 rounded-full bg-current" />
+                  )}
+                </span>
+                <span>{option.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="mt-4">
+        <p className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-blue-dark dark:text-[#6fb8c8]">
+          Days
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {[
+            ["weekdays", "Weekdays"],
+            ["weekends", "Weekends"],
+            ["every-day", "Every day"],
+            ["custom", "Custom"],
+          ].map(([preset, label]) => {
+            const isSelected =
+              preset === "custom"
+                ? showCustomDays
+                : !showCustomDays && dayPreset === preset;
+            return (
+              <button
+                aria-pressed={isSelected}
+                className={clsx(
+                  "rounded-full border px-3 py-1.5 text-sm font-bold transition",
+                  isSelected
+                    ? "border-blue-dark bg-blue-dark text-white dark:border-[#6fb8c8] dark:bg-[#6fb8c8] dark:text-blue-darkest"
+                    : "border-gray-300 bg-white text-gray-dark dark:border-white/20 dark:bg-transparent dark:text-[#d8e8ec]"
+                )}
+                disabled={disabled}
+                key={preset}
+                onClick={() => setDayPreset(preset as DayPreset)}
+                type="button"
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+        {showCustomDays && (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {DAY_OPTIONS.map(({ day, label }) => {
+              const isSelected = rule.daysOfWeek.includes(day);
+              return (
+                <button
+                  aria-pressed={isSelected}
+                  className={clsx(
+                    "h-9 w-9 rounded-full border text-sm font-bold transition",
+                    isSelected
+                      ? "border-green-dark bg-green-dark text-white dark:border-green-light dark:bg-green-light dark:text-blue-darkest"
+                      : "border-gray-300 bg-white text-gray-dark dark:border-white/20 dark:bg-transparent dark:text-[#d8e8ec]"
+                  )}
+                  disabled={disabled}
+                  key={day}
+                  onClick={() => toggleDay(day)}
+                  type="button"
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <div className="mt-4">
+        <p className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-blue-dark dark:text-[#6fb8c8]">
+          Sailings
+        </p>
+        <p className="mb-3 text-xs text-gray-dark dark:text-[#b8d5de]">
+          Showing {previewDate.toFormat("cccc")} sailings. Tap one sailing to
+          start, then another to end.
+        </p>
+        {isLoadingSchedules && (
+          <div className="mb-3 flex items-center gap-3 rounded-xl bg-blue-dark/5 px-3 py-2 text-sm font-semibold text-gray-dark dark:bg-white/[0.04] dark:text-[#b8d5de]">
+            <LoadingWaves
+              className="h-8 w-20 text-blue-dark dark:text-[#6fb8c8]"
+              label="Loading sailings"
+              svgClassName="h-6 w-20"
+            />
+            <span>Loading sailings…</span>
+          </div>
+        )}
+        <div>
+          <div className="mb-2 grid grid-cols-[1fr_auto_1fr] items-center gap-3 text-xs font-bold uppercase tracking-[0.14em] text-blue-dark dark:text-[#6fb8c8]">
+            <span className="text-left">{terminal.name}</span>
+            <span className="w-20" />
+            <span className="text-right">{mate.name}</span>
+          </div>
+          {sailingRows.length === 0 ? (
+            <p className="text-sm text-gray-dark dark:text-[#b8d5de]">
+              No preview sailings available.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {sailingRows.map(({ key, terminalIds: rowTerminalIds, time }) => {
+                const isSelected = isTimeSelected(time);
+                const hasLeftDeparture = rowTerminalIds.includes(terminal.id);
+                const hasRightDeparture = rowTerminalIds.includes(mate.id);
+                const departureNames = rowTerminalIds
+                  .map((terminalId) => {
+                    return terminalId === terminal.id
+                      ? terminal.name
+                      : mate.name;
+                  })
+                  .join(" and ");
+                const label = DateTime.fromSeconds(time).toFormat("h:mm a");
+                return (
+                  <button
+                    aria-label={`${label} from ${departureNames}`}
+                    aria-pressed={isSelected}
+                    className={clsx(
+                      "grid grid-cols-[1fr_auto_1fr] items-center gap-3 rounded-lg border px-3 py-2 text-sm font-bold transition",
+                      isSelected
+                        ? "border-green-dark bg-green-dark text-white dark:border-green-light dark:bg-green-light dark:text-blue-darkest"
+                        : "border-gray-200 bg-white text-gray-dark hover:border-blue-dark dark:border-white/10 dark:bg-[#00202a] dark:text-[#d8e8ec] dark:hover:border-[#6fb8c8]"
+                    )}
+                    disabled={disabled}
+                    key={key}
+                    onClick={() => selectSailing(time)}
+                    type="button"
+                  >
+                    <span className="flex justify-start">
+                      {hasLeftDeparture && (
+                        <ArrowRightIcon className="h-5 w-5" />
+                      )}
+                    </span>
+                    <span className="w-20 text-center">{label}</span>
+                    <span className="flex justify-end">
+                      {hasRightDeparture && (
+                        <ArrowLeftIcon className="h-5 w-5" />
+                      )}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {isDraftRuleComplete(rule) && (
+        <p className="mt-4 rounded-lg bg-green-dark/10 p-2 text-sm text-green-dark dark:bg-green-light/10 dark:text-green-light">
+          {getDaysLabel(rule.daysOfWeek)} · {getTimeLabel(rule.startTime)}
+          {rule.endTime && rule.endTime !== rule.startTime
+            ? ` through ${getTimeLabel(rule.endTime)}`
+            : ""}{" "}
+          sailings
+        </p>
+      )}
+    </div>
   );
 };
 
 export const AlertSubscription = ({
   getPath,
   mate,
+  setRoute,
   terminal,
 }: Props): ReactElement => {
   const device = useDevice();
@@ -86,47 +736,40 @@ export const AlertSubscription = ({
   const { isAuthenticated, isLoading, loginWithRedirect } = useAuth0();
   const { terminals } = useTerminals();
   const [
-    { alertSubscriptions, isUserLoading, subscribedTerminals, user, userError },
+    { alertRules, isUserLoading, user, userError },
     { refreshUser, updateUser },
   ] = useUser();
-  const [isTerminalOpen, setTerminalOpen] = useState<boolean>(false);
+  const [isRouteOpen, setRouteOpen] = useState<boolean>(false);
   const [loginError, setLoginError] = useState<Error | null>(null);
   const terminalIds = [terminal.id, mate.id];
   const routeKey = getRouteSubscriptionKey(terminalIds);
-  const savedChannels = alertSubscriptions?.[routeKey] ?? [];
-  const legacySubscribed = isLegacySubscribedRoute(
-    subscribedTerminals,
-    terminalIds
-  );
-  const initialChannels =
-    savedChannels.length > 0 || !legacySubscribed
-      ? savedChannels
-      : ALERT_SUBSCRIPTION_CHANNEL_IDS;
+  const routeRules = getRouteRules(alertRules, terminalIds);
+  const initialChannels = getInitialRuleChannels(routeRules, []);
+  const initialMode: ScheduleMode = routeRules.some((rule) => {
+    return !isFullDayAlertRule(rule);
+  })
+    ? "custom"
+    : "always";
+  const initialDraftRules = getDraftRules(routeRules);
   const [selectedChannels, setSelectedChannels] =
     useState<AlertSubscriptionChannel[]>(initialChannels);
+  const [scheduleMode, setScheduleMode] = useState<ScheduleMode>(initialMode);
+  const [draftRules, setDraftRules] =
+    useState<DraftAlertRule[]>(initialDraftRules);
   const [isSaving, setSaving] = useState<boolean>(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [wasSaved, setWasSaved] = useState<boolean>(false);
   const isSubscribed = initialChannels.length > 0;
-  const hasChanges = !areChannelsEqual(selectedChannels, initialChannels);
-  const routeName = `${terminal.name} / ${mate.name}`;
-  const titleText = `${terminal.name} Notifications`;
-  const terminalOptions = terminals
-    .filter(({ id }) => {
-      // current terminal guard
-      return id !== terminal.id;
-    })
-    .map((terminalOption) => {
-      return {
-        ...(hasSubscribedTerminal({
-          alertSubscriptions,
-          subscribedTerminals,
-          terminalId: terminalOption.id,
-        }) && {
-          Icon: BellIcon,
-        }),
-        terminal: terminalOption,
-      };
-    });
+  const customRuleError =
+    scheduleMode === "custom" ? getCustomScheduleSaveError(draftRules) : null;
+  const hasChanges =
+    !areChannelsEqual(selectedChannels, initialChannels) ||
+    scheduleMode !== initialMode ||
+    serializeDraftRules(draftRules) !== serializeDraftRules(initialDraftRules);
+  const terminalPairOptions = getTerminalPairOptions(terminals);
+  const pairName = `${terminal.name} to ${mate.name}`;
+  const pairShortName = `${terminal.abbreviation} → ${mate.abbreviation}`;
+  const titleText = `${pairName} Alerts`;
 
   // auth redirect
   useEffect(() => {
@@ -173,8 +816,16 @@ export const AlertSubscription = ({
 
   // sync saved state
   useEffect(() => {
+    setSaveError(null);
     setSelectedChannels(initialChannels);
-  }, [routeKey, initialChannels.join(":")]);
+    setScheduleMode(initialMode);
+    setDraftRules(initialDraftRules);
+  }, [
+    routeKey,
+    initialChannels.join(":"),
+    initialMode,
+    serializeDraftRules(initialDraftRules),
+  ]);
 
   // auth loading guard
   if (isLoading || (!isAuthenticated && !loginError)) {
@@ -183,6 +834,7 @@ export const AlertSubscription = ({
 
   // channel toggle
   const toggleChannel = (channel: AlertSubscriptionChannel): void => {
+    setSaveError(null);
     setWasSaved(false);
     setSelectedChannels((currentChannels) => {
       // selected guard
@@ -193,27 +845,113 @@ export const AlertSubscription = ({
     });
   };
 
-  // save subscription
-  const saveSubscription = async (
-    channels: AlertSubscriptionChannel[] = selectedChannels
-  ): Promise<void> => {
-    setSaving(true);
-    const nextAlertSubscriptions = { ...(alertSubscriptions ?? {}) };
-    // empty route guard
-    if (channels.length === 0) {
-      delete nextAlertSubscriptions[routeKey];
-    } else {
-      nextAlertSubscriptions[routeKey] = channels;
+  // default draft rule
+  const createDefaultDraftRule = (): DraftAlertRule => {
+    return {
+      daysOfWeek: WEEKDAY_DAYS,
+      endTime: "",
+      id: createRuleId(),
+      routeKey,
+      startTime: "",
+      terminalIds: [terminal.id],
+    };
+  };
+
+  // schedule mode change
+  const changeScheduleMode = (mode: ScheduleMode): void => {
+    setSaveError(null);
+    setWasSaved(false);
+    setScheduleMode(mode);
+    // first custom rule guard
+    if (mode === "custom" && draftRules.length === 0) {
+      setDraftRules([createDefaultDraftRule()]);
     }
-    const nextSubscribedTerminals = terminalIds.reduce(
-      (currentTerminals, terminalId) => without(currentTerminals, terminalId),
-      subscribedTerminals ?? []
-    );
+  };
+
+  // draft rule update
+  const updateDraftRule = (nextRule: DraftAlertRule): void => {
+    setSaveError(null);
+    setWasSaved(false);
+    setDraftRules((currentRules) => {
+      return currentRules.map((rule) => {
+        // target rule guard
+        if (rule.id === nextRule.id) {
+          return nextRule;
+        }
+        return rule;
+      });
+    });
+  };
+
+  // add draft rule
+  const addDraftRule = (): void => {
+    setSaveError(null);
+    setWasSaved(false);
+    setDraftRules((currentRules) => [
+      ...currentRules,
+      createDefaultDraftRule(),
+    ]);
+  };
+
+  // remove draft rule
+  const removeDraftRule = (ruleId: string): void => {
+    setSaveError(null);
+    setWasSaved(false);
+    setDraftRules((currentRules) => {
+      return currentRules.filter((rule) => rule.id !== ruleId);
+    });
+  };
+
+  // saved rule builder
+  const getNextRouteRules = (
+    channels: AlertSubscriptionChannel[]
+  ): AlertRule[] => {
+    // unsubscribed guard
+    if (channels.length === 0) {
+      return [];
+    }
+    // all-day route guard
+    if (scheduleMode === "always") {
+      return [
+        createFullDayAlertRule({
+          channels,
+          id: routeRules.find(isFullDayAlertRule)?.id ?? createRuleId(),
+          routeKey,
+          terminalIds,
+        }),
+      ];
+    }
+    return draftRules.filter(isDraftRuleComplete).map((rule) => {
+      return { ...rule, channels, endTime: getDraftRuleEndTime(rule) };
+    });
+  };
+
+  // save subscription
+  const saveSubscription = async ({
+    channels = selectedChannels,
+    shouldValidateCustom = true,
+  }: {
+    channels?: AlertSubscriptionChannel[];
+    shouldValidateCustom?: boolean;
+  } = {}): Promise<void> => {
+    const nextSaveError = customRuleError;
+    // custom validation guard
+    if (shouldValidateCustom && nextSaveError) {
+      setSaveError(nextSaveError);
+      setWasSaved(false);
+      return;
+    }
+    setSaveError(null);
+    setSaving(true);
+    const nextAlertRules = (alertRules ?? []).filter((rule) => {
+      // keep unrelated and one-time rules
+      return !isRuleForRoute(rule, terminalIds) || isOneTimeAlertRule(rule);
+    });
+    nextAlertRules.push(...getNextRouteRules(channels));
     try {
       await updateUser({
         app_metadata: {
-          alertSubscriptions: nextAlertSubscriptions,
-          subscribedTerminals: nextSubscribedTerminals,
+          alertRules: nextAlertRules,
         },
       });
       setWasSaved(true);
@@ -225,7 +963,7 @@ export const AlertSubscription = ({
   // unsubscribe route
   const unsubscribe = async (): Promise<void> => {
     setSelectedChannels([]);
-    await saveSubscription([]);
+    await saveSubscription({ channels: [], shouldValidateCustom: false });
   };
 
   // blocked state renderer
@@ -240,7 +978,7 @@ export const AlertSubscription = ({
   }): ReactElement => (
     <>
       <Header>
-        <span className="text-center flex-1">Alert subscription</span>
+        <span className="text-center flex-1">Alerts</span>
       </Header>
       <main className="flex-grow overflow-y-scroll scrolling-touch bg-day-normal-light px-4 py-8 text-gray-dark dark:bg-night-normal-dark dark:text-[#e0f0f4]">
         <section className="mx-auto max-w-2xl rounded-2xl border border-[rgba(0,0,0,0.08)] bg-white p-5 shadow-sm dark:border-[rgba(255,255,255,0.08)] dark:bg-[#00202a]">
@@ -307,21 +1045,36 @@ export const AlertSubscription = ({
         />
       </Helmet>
       <Header>
-        <div className="flex-1 min-w-0" />
+        <div className="min-w-0 flex-1" />
         <div className="min-w-0 text-center">
-          <TerminalDropdown
-            terminals={terminalOptions}
-            selected={terminal}
-            isOpen={isTerminalOpen}
-            getOptionPath={(selectedTerminal) => {
-              return `/${getSlug(selectedTerminal.id)}/subscribe`;
+          <HeaderDropdown
+            ariaLabel="Expand terminal pairs"
+            getKey={(option) => {
+              // pair option key
+              return option.key;
             }}
-            setOpen={setTerminalOpen}
-            onSelect={() => setTerminalOpen(false)}
+            getLabel={(option) => {
+              // pair option label
+              return option.label;
+            }}
+            getShortLabel={(option) => {
+              // pair option short label
+              return option.shortLabel;
+            }}
+            isOpen={isRouteOpen}
+            onSelect={(event, option) => {
+              event.preventDefault();
+              setRouteOpen(false);
+              setRoute(getSlug(option.terminal.id), getSlug(option.mate.id));
+            }}
+            options={terminalPairOptions}
+            selectedLabel={pairName}
+            selectedShortLabel={pairShortName}
+            setOpen={setRouteOpen}
           />
         </div>
-        <span className="ml-2 shrink-0">Notifications</span>
-        <div className="flex-1 min-w-0" />
+        <span className="ml-2 shrink-0">Alerts</span>
+        <div className="min-w-0 flex-1" />
       </Header>
       <main className="flex-grow overflow-y-scroll scrolling-touch bg-day-normal-light text-gray-dark dark:bg-night-normal-dark dark:text-[#e0f0f4]">
         <section className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-5 pb-24 sm:px-6">
@@ -332,14 +1085,14 @@ export const AlertSubscription = ({
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-2xs font-bold uppercase tracking-[0.16em] text-blue-dark dark:text-[#6fb8c8]">
-                  {isSubscribed ? "Edit subscription" : "Subscribe"}
+                  {isSubscribed ? "Edit alerts" : "Set up alerts"}
                 </p>
                 <h1 className="mt-1 text-2xl font-bold leading-tight text-gray-darkest dark:text-white">
                   {titleText}
                 </h1>
                 <p className="mt-2 text-sm leading-relaxed text-gray-dark dark:text-[#b8d5de]">
                   Choose exactly which push notifications you want for{" "}
-                  {routeName}.
+                  {pairName}.
                 </p>
               </div>
             </div>
@@ -347,7 +1100,7 @@ export const AlertSubscription = ({
 
           <div className="rounded-2xl border border-[rgba(0,0,0,0.08)] bg-white p-4 shadow-sm dark:border-[rgba(255,255,255,0.08)] dark:bg-[#00202a]">
             <h2 className="mb-3 text-lg font-bold text-gray-darkest dark:text-white">
-              Notification channels
+              Alert channels
             </h2>
             <div className="flex flex-col gap-3">
               {ALERT_SUBSCRIPTION_CHANNELS.map(({ description, id, label }) => {
@@ -388,10 +1141,84 @@ export const AlertSubscription = ({
             </div>
           </div>
 
+          <div className="rounded-2xl border border-[rgba(0,0,0,0.08)] bg-white p-4 shadow-sm dark:border-[rgba(255,255,255,0.08)] dark:bg-[#00202a]">
+            <h2 className="text-lg font-bold text-gray-darkest dark:text-white">
+              Alert schedule
+            </h2>
+            <p className="mt-1 text-sm text-gray-dark dark:text-[#b8d5de]">
+              Filter alerts to sailings you actually care about.
+            </p>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              {[
+                [
+                  "always",
+                  "Any time",
+                  "Send alerts whenever this route has news.",
+                ],
+                [
+                  "custom",
+                  "Custom sailing windows",
+                  "Send alerts only for selected sailing ranges.",
+                ],
+              ].map(([mode, label, description]) => {
+                const isSelected = scheduleMode === mode;
+                return (
+                  <button
+                    aria-pressed={isSelected}
+                    className={clsx(
+                      "rounded-xl border p-3 text-left transition",
+                      isSelected
+                        ? "border-green-dark bg-green-dark/10 text-green-dark dark:border-green-light dark:bg-green-light/10 dark:text-green-light"
+                        : "border-gray-200 bg-gray-50 text-gray-dark hover:border-blue-dark dark:border-white/10 dark:bg-white/[0.03] dark:text-[#d8e8ec] dark:hover:border-[#6fb8c8]"
+                    )}
+                    disabled={isSaving}
+                    key={mode}
+                    onClick={() => changeScheduleMode(mode as ScheduleMode)}
+                    type="button"
+                  >
+                    <span className="block font-bold">{label}</span>
+                    <span className="mt-1 block text-sm opacity-80">
+                      {description}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {scheduleMode === "custom" && (
+              <div className="mt-4 flex flex-col gap-3">
+                {draftRules.map((rule) => (
+                  <AlertRuleEditor
+                    disabled={isSaving}
+                    key={rule.id}
+                    mate={mate}
+                    onChange={updateDraftRule}
+                    onRemove={() => removeDraftRule(rule.id)}
+                    rule={rule}
+                    terminal={terminal}
+                  />
+                ))}
+                <button
+                  className="button border-blue-dark text-blue-dark hover:bg-blue-dark hover:text-white dark:border-white dark:text-white dark:hover:bg-white dark:hover:text-green-dark"
+                  disabled={isSaving}
+                  onClick={addDraftRule}
+                  type="button"
+                >
+                  Add another window
+                </button>
+              </div>
+            )}
+          </div>
+
           <div className="flex flex-col gap-3 rounded-2xl border border-[rgba(0,0,0,0.08)] bg-white p-4 shadow-sm dark:border-[rgba(255,255,255,0.08)] dark:bg-[#00202a]">
             {wasSaved && (
               <p className="rounded-xl bg-green-dark/10 px-3 py-2 text-sm font-bold text-green-dark dark:bg-green-light/10 dark:text-green-light">
-                Subscription saved.
+                Alerts saved.
+              </p>
+            )}
+            {saveError && (
+              <p className="rounded-xl bg-day-normal-light px-3 py-2 text-sm text-gray-dark dark:bg-blue-dark dark:text-[#b8d5de]">
+                {saveError}
               </p>
             )}
             <button
@@ -402,7 +1229,7 @@ export const AlertSubscription = ({
               onClick={() => saveSubscription()}
               type="button"
             >
-              {isSaving ? "Saving..." : "Save subscription"}
+              {isSaving ? "Saving..." : "Save alerts"}
             </button>
             {isSubscribed && (
               <button
@@ -414,14 +1241,14 @@ export const AlertSubscription = ({
                 <div className="button-icon">
                   <BellSlashIcon />
                 </div>
-                <span className="button-label">Unsubscribe from route</span>
+                <span className="button-label">Turn off route alerts</span>
               </button>
             )}
             <Link
               className="link self-center text-sm font-bold text-blue-dark dark:text-[#6fb8c8]"
               to="/account#subscriptions"
             >
-              View all routes you are subscribed to
+              View all saved alerts
             </Link>
           </div>
         </section>

@@ -311,6 +311,8 @@ const getSubscribedRouteMessages = (
       title: content.title,
       url: content.url,
     },
+    departureTerminalId: event.terminalId,
+    departureTimes: [event.time],
     terminalIds: [event.terminalId, event.mateId],
   });
 };

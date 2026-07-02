@@ -6,7 +6,19 @@ export type AlertSubscriptionChannel =
 
 export type AlertSubscriptions = Record<string, AlertSubscriptionChannel[]>;
 
+export interface AlertRule {
+  channels: AlertSubscriptionChannel[];
+  date?: string;
+  daysOfWeek: number[];
+  endTime: string;
+  id: string;
+  routeKey: string;
+  startTime: string;
+  terminalIds: string[];
+}
+
 export interface AppMetadata {
+  alertRules?: AlertRule[];
   alertSubscriptions?: AlertSubscriptions;
   tickets?: string[];
   subscribedTerminals?: string[];

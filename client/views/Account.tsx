@@ -1,11 +1,23 @@
 import { useAuth0, withAuthenticationRequired } from "@auth0/auth0-react";
 import { Browser } from "@capacitor/browser";
+import { useAtomValue } from "jotai";
 import { DateTime } from "luxon";
 import React, { ReactElement, ReactNode } from "react";
 import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
-import type { AlertSubscriptionChannel } from "shared/contracts/user";
-import { getAlertSubscriptionChannelLabel } from "shared/lib/alertSubscriptions";
+import type {
+  AlertRule,
+  AlertSubscriptionChannel,
+} from "shared/contracts/user";
+import {
+  EVERY_DAY_DAYS,
+  getAlertSubscriptionChannelLabel,
+  isFullDayAlertRule,
+  isOneTimeAlertRule,
+  normalizeAlertRuleDays,
+  WEEKDAY_DAYS,
+  WEEKEND_DAYS,
+} from "shared/lib/alertSubscriptions";
 import { pluralize } from "shared/lib/strings";
 
 import { Page } from "~/components/Page";
@@ -13,6 +25,10 @@ import { Splash } from "~/components/Splash";
 import { useDevice } from "~/lib/device";
 import { getSlug, useTerminals } from "~/lib/terminals";
 import { useUser } from "~/lib/user";
+import {
+  getReservationAccountCount,
+  ticketsAtom,
+} from "~/views/Tickets/storage";
 
 interface DetailRowProps {
   label: string;
@@ -21,10 +37,58 @@ interface DetailRowProps {
 
 interface SubscriptionSummary {
   channels: AlertSubscriptionChannel[];
+  detail: string;
   label: string;
   path: string;
   routeKey: string;
+  typeLabel: string;
 }
+
+interface TicketSummaryCounts {
+  reservationAccountCount: number;
+  savedTicketCount: number;
+}
+
+// day list key
+const getDayKey = (daysOfWeek: number[]): string => {
+  return normalizeAlertRuleDays(daysOfWeek).join(":");
+};
+
+// day summary
+const getDaysSummary = (daysOfWeek: number[]): string => {
+  const dayKey = getDayKey(daysOfWeek);
+  // every day guard
+  if (dayKey === EVERY_DAY_DAYS.join(":")) {
+    return "Every day";
+  }
+  // weekday guard
+  if (dayKey === WEEKDAY_DAYS.join(":")) {
+    return "Weekdays";
+  }
+  // weekend guard
+  if (dayKey === WEEKEND_DAYS.join(":")) {
+    return "Weekends";
+  }
+  const labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  return normalizeAlertRuleDays(daysOfWeek)
+    .map((day) => labels[day - 1])
+    .join(", ");
+};
+
+// channel summary
+const getChannelSummary = (channels: AlertSubscriptionChannel[]): string => {
+  return channels.map(getAlertSubscriptionChannelLabel).join(", ");
+};
+
+// sailing date label
+const getSailingDateLabel = (date: string): string => {
+  return DateTime.fromISO(date).toFormat("LLL d");
+};
+
+// sailing time label
+const getSailingTimeLabel = (time: string): string => {
+  return DateTime.fromFormat(time, "HH:mm").toFormat("h:mm a");
+};
 
 // account detail row
 const DetailRow = ({ label, value }: DetailRowProps): ReactElement | null => {
@@ -85,31 +149,72 @@ const getDateLabel = (value?: string | null): string | null => {
   return date.toLocaleString(DateTime.DATETIME_MED);
 };
 
-// route subscription summaries
-const getSubscriptionSummaries = (
-  alertSubscriptions: Record<string, AlertSubscriptionChannel[]> | undefined,
+// alert rule summaries
+const getAlertRuleSummaries = (
+  alertRules: AlertRule[] | undefined,
   terminals: ReturnType<typeof useTerminals>["terminals"]
 ): SubscriptionSummary[] => {
-  // empty subscriptions guard
-  if (!alertSubscriptions) {
+  // empty rules guard
+  if (!alertRules) {
     return [];
   }
-  return Object.entries(alertSubscriptions)
-    .map(([routeKey, channels]) => {
-      const [firstTerminalId, secondTerminalId] = routeKey.split(":");
+  return alertRules
+    .map((rule) => {
+      const [firstTerminalId, secondTerminalId] = rule.routeKey.split(":");
       const firstTerminal = terminals.find(({ id }) => id === firstTerminalId);
       const secondTerminal = terminals.find(
         ({ id }) => id === secondTerminalId
       );
       // route data guard
-      if (!firstTerminal || !secondTerminal || channels.length === 0) {
+      if (!firstTerminal || !secondTerminal || rule.channels.length === 0) {
         return null;
       }
+      const departingNames = rule.terminalIds
+        .map(
+          (terminalId) => terminals.find(({ id }) => id === terminalId)?.name
+        )
+        .filter(Boolean)
+        .join(" / ");
+      const direction = `From ${departingNames || "route"}`;
+      let detail = `${getChannelSummary(rule.channels)} · ${direction}`;
+      let path = `/${getSlug(firstTerminal.id)}/${getSlug(secondTerminal.id)}/subscribe`;
+      let typeLabel = "Route alerts";
+      // full day summary
+      if (isFullDayAlertRule(rule)) {
+        detail = `${getChannelSummary(rule.channels)} · Any time`;
+      }
+      // scheduled summary
+      if (!isFullDayAlertRule(rule)) {
+        detail = [
+          getChannelSummary(rule.channels),
+          getDaysSummary(rule.daysOfWeek),
+          `${getSailingTimeLabel(rule.startTime)}–${getSailingTimeLabel(
+            rule.endTime
+          )}`,
+          direction,
+        ].join(" · ");
+      }
+      // one-time summary
+      if (isOneTimeAlertRule(rule)) {
+        detail = [
+          getChannelSummary(rule.channels),
+          `${getSailingDateLabel(rule.date)} at ${getSailingTimeLabel(
+            rule.startTime
+          )}`,
+          direction,
+        ].join(" · ");
+        path = `/${getSlug(firstTerminal.id)}/${getSlug(
+          secondTerminal.id
+        )}?date=${rule.date}`;
+        typeLabel = "One-time alert";
+      }
       return {
-        channels,
+        channels: rule.channels,
+        detail,
         label: `${firstTerminal.name} / ${secondTerminal.name}`,
-        path: `/${getSlug(firstTerminal.id)}/${getSlug(secondTerminal.id)}/subscribe`,
-        routeKey,
+        path,
+        routeKey: rule.id,
+        typeLabel,
       };
     })
     .filter((summary): summary is SubscriptionSummary => {
@@ -117,16 +222,43 @@ const getSubscriptionSummaries = (
     });
 };
 
+// ticket summary text
+const getTicketSummary = ({
+  reservationAccountCount,
+  savedTicketCount,
+}: TicketSummaryCounts): string => {
+  const parts: string[] = [];
+
+  // saved ticket summary
+  if (savedTicketCount > 0) {
+    parts.push(pluralize(savedTicketCount, "saved ticket"));
+  }
+
+  // reservation account summary
+  if (reservationAccountCount > 0) {
+    parts.push(pluralize(reservationAccountCount, "reservation account"));
+  }
+
+  // empty wallet guard
+  if (parts.length === 0) {
+    return "No saved tickets or reservation accounts yet.";
+  }
+
+  return `${parts.join(" and ")} ready in Tickets.`;
+};
+
 export const Account = withAuthenticationRequired(
   (): ReactElement => {
     const { user, logout } = useAuth0();
-    const [{ alertSubscriptions, subscribedTerminals, tickets }] = useUser();
+    const [{ alertRules, tickets }] = useUser();
     const device = useDevice();
     const { terminals } = useTerminals();
-    const subscriptionSummaries = getSubscriptionSummaries(
-      alertSubscriptions,
-      terminals
-    );
+    const storedTickets = useAtomValue(ticketsAtom);
+    const subscriptionSummaries = getAlertRuleSummaries(alertRules, terminals);
+    const ticketSummary = getTicketSummary({
+      reservationAccountCount: getReservationAccountCount(storedTickets),
+      savedTicketCount: tickets?.length ?? 0,
+    });
     const userClaims = user as Record<string, unknown> | undefined;
     const name =
       getStringClaim(userClaims, "name") ??
@@ -181,31 +313,36 @@ export const Account = withAuthenticationRequired(
           </section>
 
           <section className="rounded bg-white p-6 shadow dark:bg-black">
-            <h3 className="mb-3 text-xl font-bold">Ferry FYI</h3>
-            <dl>
-              <DetailRow
-                label="Alerts"
-                value={pluralize(
-                  subscriptionSummaries.length,
-                  "route subscription"
-                )}
-              />
-              <DetailRow
-                label="Tickets"
-                value={pluralize(tickets?.length ?? 0, "saved ticket")}
-              />
-            </dl>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h3 className="text-xl font-bold">Tickets</h3>
+                <p className="mt-2 text-sm text-gray-dark dark:text-gray-medium">
+                  {ticketSummary}
+                </p>
+              </div>
+              <Link
+                className="button button-primary no-underline"
+                to="/tickets"
+              >
+                View tickets
+              </Link>
+            </div>
           </section>
 
           <section
             className="rounded bg-white p-6 shadow dark:bg-black"
             id="subscriptions"
           >
-            <h3 className="mb-3 text-xl font-bold">Alert subscriptions</h3>
+            <h3 className="mb-3 text-xl font-bold">Alerts</h3>
+            <p className="mb-4 text-sm text-gray-dark dark:text-gray-medium">
+              {subscriptionSummaries.length > 0
+                ? `${pluralize(subscriptionSummaries.length, "saved alert")}.`
+                : "You have not saved any alerts yet."}
+            </p>
             {subscriptionSummaries.length > 0 ? (
               <ul className="flex flex-col gap-3">
                 {subscriptionSummaries.map(
-                  ({ channels, label, path, routeKey }) => (
+                  ({ channels, detail, label, path, routeKey, typeLabel }) => (
                     <li key={routeKey}>
                       <Link
                         className="block rounded-xl border border-gray-200 p-3 no-underline transition hover:border-blue-dark hover:bg-blue-dark/5 dark:border-gray-dark dark:hover:border-[#6fb8c8] dark:hover:bg-white/[0.04]"
@@ -215,7 +352,13 @@ export const Account = withAuthenticationRequired(
                           <span className="font-bold text-blue-dark dark:text-[#6fb8c8]">
                             {label}
                           </span>
+                          <span className="rounded-full bg-blue-dark/10 px-2.5 py-1 text-2xs font-bold uppercase tracking-wide text-blue-dark dark:bg-[#6fb8c8]/10 dark:text-[#6fb8c8]">
+                            {typeLabel}
+                          </span>
                         </div>
+                        <p className="mt-1 text-sm text-gray-dark dark:text-gray-medium">
+                          {detail}
+                        </p>
                         <div className="mt-2 flex flex-wrap gap-2">
                           {channels.map((channel) => (
                             <span
@@ -233,15 +376,8 @@ export const Account = withAuthenticationRequired(
               </ul>
             ) : (
               <p className="text-sm text-gray-dark dark:text-gray-medium">
-                You are not subscribed to any route alert channels yet.
-              </p>
-            )}
-            {(subscribedTerminals?.length ?? 0) > 0 && (
-              <p className="mt-4 rounded-xl bg-day-normal-light p-3 text-sm text-gray-dark dark:bg-blue-dark dark:text-[#b8d5de]">
-                You also have legacy all-alert subscriptions for{" "}
-                {pluralize(subscribedTerminals?.length ?? 0, "terminal")}.
-                Editing a route subscription will move that route to channel
-                controls.
+                Add route alerts from any terminal alerts page, or one-time
+                alerts from an expanded sailing.
               </p>
             )}
           </section>

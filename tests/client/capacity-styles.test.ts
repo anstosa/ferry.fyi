@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   getCapacityFillClassName,
   getCapacityOpacityClassName,
+  getForecastCapacityFillClassName,
 } from "../../client/views/Schedule/capacityStyles";
 
 // capacity style contract
@@ -34,6 +35,22 @@ describe("getCapacityFillClassName", () => {
       "bg-full-night"
     );
   });
+  // forecast loading fill
+  it("uses a neutral prediction gradient for partial forecast capacity", () => {
+    expect(getForecastCapacityFillClassName({ isFull: false })).toEqual([
+      "bg-prediction-gradient",
+      "dark:bg-prediction-gradient--dark",
+    ]);
+  });
+
+  // forecast full fill
+  it("uses grayscale stripes when forecast capacity is full", () => {
+    expect(getForecastCapacityFillClassName({ isFull: true })).toEqual([
+      "bg-full",
+      "dark:bg-full--dark",
+    ]);
+  });
+
   // past opacity
   it("fades confirmed capacity when the sailing has passed", () => {
     expect(getCapacityOpacityClassName({ hasDeparted: true })).toBe(

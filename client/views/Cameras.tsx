@@ -113,18 +113,39 @@ const CameraList = ({
   >({});
   const [timelineStart, setTimelineStart] = useState<number | null>(null);
   const [loadedImages, setLoadedImages] = useState<Record<string, boolean>>({});
+  const [revealedStaleImages, setRevealedStaleImages] = useState<
+    Record<string, boolean>
+  >({});
+  const [isTouchDevice, setTouchDevice] = useState<boolean>(false);
   const firstMarker = useRef<HTMLDivElement | null>(null);
   const timeline = useRef<HTMLDivElement | null>(null);
   const wrapper = useRef<HTMLDivElement | null>(null);
   const { y } = useScrollPosition(wrapper);
   const [isTerminalOpen, setTerminalOpen] = useState<boolean>(false);
+  const [canScrollFurtherDown, setCanScrollFurtherDown] =
+    useState<boolean>(false);
   const { terminals, closestTerminal } = useTerminals();
+  const isScrolledFromTop = y > 0;
   // memoize camera ids
   const cameraIds = useMemo(() => {
     return cameras.map(({ id }) => {
       return id;
     });
   }, [cameras]);
+
+  // update scroll shadows
+  const updateScrollShadows = useCallback((): void => {
+    const scrollContainer = wrapper.current;
+    // missing scroll guard
+    if (!scrollContainer) {
+      setCanScrollFurtherDown(false);
+      return;
+    }
+    setCanScrollFurtherDown(
+      scrollContainer.scrollTop + scrollContainer.clientHeight <
+        scrollContainer.scrollHeight - 1
+    );
+  }, []);
 
   // align timeline rail
   const updateTimelineStart = useCallback((): void => {
@@ -148,6 +169,14 @@ const CameraList = ({
     setFrameStatuses(await getCameraFrames(cameraIds));
   }, [cameraIds]);
 
+  // detect touch devices
+  useEffect(() => {
+    const coarsePointerQuery = window.matchMedia("(hover: none)");
+    setTouchDevice(
+      coarsePointerQuery.matches || window.navigator.maxTouchPoints > 0
+    );
+  }, []);
+
   // poll frame metadata
   useEffect(() => {
     refreshFrameStatuses().catch(console.error);
@@ -163,16 +192,26 @@ const CameraList = ({
   // recalculate rail start
   useEffect(() => {
     updateTimelineStart();
-  }, [terminal.id, updateTimelineStart]);
+    updateScrollShadows();
+  }, [terminal.id, updateScrollShadows, updateTimelineStart]);
+
+  // recalculate on scroll
+  useEffect(() => {
+    updateScrollShadows();
+  }, [updateScrollShadows, y]);
 
   // recalculate on resize
   useEffect(() => {
-    window.addEventListener("resize", updateTimelineStart);
+    const updateLayout = (): void => {
+      updateTimelineStart();
+      updateScrollShadows();
+    };
+    window.addEventListener("resize", updateLayout);
     return () => {
       // remove resize listener
-      window.removeEventListener("resize", updateTimelineStart);
+      window.removeEventListener("resize", updateLayout);
     };
-  }, [updateTimelineStart]);
+  }, [updateScrollShadows, updateTimelineStart]);
 
   // manual freshness check
   const reload = (): void => {
@@ -182,17 +221,24 @@ const CameraList = ({
   // track image load
   const markImageLoaded = (imageKey: string): void => {
     setLoadedImages((current) => ({ ...current, [imageKey]: true }));
+    window.setTimeout(updateScrollShadows, 0);
+  };
+
+  // reveal stale image
+  const revealStaleImage = (cameraId: string): void => {
+    setRevealedStaleImages((current) => ({ ...current, [cameraId]: true }));
   };
 
   // render camera item
   const renderCamera = (camera: Camera, index: number): ReactNode => {
-    const { id, title, image, location, owner } = camera;
+    const { id, title, image, location } = camera;
     const mapsUrl = locationToUrl(location);
     const frameStatus = frameStatuses[id];
     const frameToken = frameStatus?.frameToken ?? null;
     const isStale = frameStatus?.isStale ?? false;
     const imageKey = `${id}-${frameToken ?? "initial"}`;
     const imageLoaded = loadedImages[imageKey] ?? false;
+    const isStaleRevealed = revealedStaleImages[id] ?? false;
     const imageSource = frameToken
       ? `${image.url}?frame=${encodeURIComponent(frameToken)}`
       : image.url;
@@ -208,9 +254,8 @@ const CameraList = ({
       <li className={clsx("flex flex-col", "relative")} key={id}>
         <div
           className={clsx(
-            "group relative w-full max-w-[480px] overflow-hidden rounded-lg border shadow-sm",
-            "border-[rgba(0,0,0,0.08)] bg-night-normal-light",
-            "dark:border-[rgba(255,255,255,0.08)] dark:bg-night-normal-dark"
+            "group relative w-full max-w-[480px] overflow-hidden shadow-sm",
+            "bg-night-normal-light dark:bg-night-normal-dark"
           )}
         >
           <img
@@ -218,8 +263,9 @@ const CameraList = ({
             className={clsx(
               "block w-full max-w-[480px] transition-[filter,opacity]",
               imageLoaded ? "h-auto" : "h-[300px] opacity-0",
-              isStale && "blur-sm group-hover:blur-none",
-              owner?.name && "border border-[rgba(0,0,0,0.08)]"
+              isStale &&
+                !isStaleRevealed &&
+                (isTouchDevice ? "blur-sm" : "blur-sm group-hover:blur-none")
             )}
             alt={`Traffic Camera: ${title}`}
             onLoad={() => {
@@ -230,16 +276,36 @@ const CameraList = ({
               }
             }}
           />
+          {/* inset image edge */}
+          <span className="pointer-events-none absolute inset-0 shadow-[inset_0_0_0_1px_#000]" />
           {/* stale frame warning */}
-          {isStale && (
+          {isStale && !isStaleRevealed && (
             <div
               className={clsx(
                 "absolute inset-0 flex items-center justify-center p-4 text-center",
                 "bg-[rgba(0,0,0,0.55)] text-sm font-bold text-white",
-                "transition-opacity group-hover:opacity-0"
+                !isTouchDevice && "transition-opacity group-hover:opacity-0"
               )}
+              onClick={() => {
+                // touch reveal guard
+                if (isTouchDevice) {
+                  revealStaleImage(id);
+                }
+              }}
+              onKeyDown={(event) => {
+                // keyboard reveal guard
+                if (
+                  isTouchDevice &&
+                  (event.key === "Enter" || event.key === " ")
+                ) {
+                  revealStaleImage(id);
+                }
+              }}
+              role={isTouchDevice ? "button" : undefined}
+              tabIndex={isTouchDevice ? 0 : undefined}
             >
-              Camera not updating. Hover to show anyway.
+              Camera not updating. {isTouchDevice ? "Touch" : "Hover"} to show
+              anyway.
             </div>
           )}
         </div>
@@ -380,17 +446,33 @@ const CameraList = ({
           )}
           {/* Top shadow on scroll */}
           <AnimatePresence>
-            {y > 0 && (
+            {isScrolledFromTop && (
               <motion.div
                 className={clsx(
-                  "fixed top-16 left-0 w-full h-2",
+                  "fixed left-0 top-16 h-3 w-full",
                   "pointer-events-none z-20",
-                  "bg-gradient-to-b from-[rgba(0,77,97,0.28)] to-transparent dark:from-[rgba(0,0,0,0.55)]"
+                  "bg-gradient-to-b from-[rgba(0,77,97,0.24)] to-transparent dark:from-[rgba(0,0,0,0.5)]"
                 )}
-                initial={{ opacity: 0.5 }}
+                initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                exit={{ opacity: 0.5 }}
-                transition={{ duration: 0.1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.12 }}
+              />
+            )}
+          </AnimatePresence>
+          {/* Bottom shadow on scroll */}
+          <AnimatePresence>
+            {canScrollFurtherDown && (
+              <motion.div
+                className={clsx(
+                  "fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 h-3 w-full",
+                  "pointer-events-none z-20",
+                  "bg-gradient-to-t from-[rgba(0,77,97,0.24)] to-transparent dark:from-[rgba(0,0,0,0.5)]"
+                )}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.12 }}
               />
             )}
           </AnimatePresence>

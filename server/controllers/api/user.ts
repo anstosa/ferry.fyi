@@ -1,50 +1,21 @@
 import { Router } from "express";
 import {
-  AlertSubscriptions,
   AppMetadata,
   CurrentUser,
   UserUpdatePayload,
 } from "shared/contracts/user";
-import { isAlertSubscriptionChannel } from "shared/lib/alertSubscriptions";
 import { isObject } from "shared/lib/objects";
 
+import {
+  getAlertRules,
+  getAlertSubscriptions,
+  getStringList,
+  hasAppMetadataChanged,
+  normalizeAppMetadata,
+} from "~/lib/alertMetadata";
 import { UserSettings } from "~/models/UserSettings";
 
 const userRouter = Router();
-
-const getStringList = (input: unknown): string[] | undefined => {
-  // string list guard
-  if (
-    !Array.isArray(input) ||
-    !input.every((value) => typeof value === "string")
-  ) {
-    return undefined;
-  }
-  return input;
-};
-
-const getAlertSubscriptions = (
-  input: unknown
-): AlertSubscriptions | undefined => {
-  // subscriptions object guard
-  if (!isObject(input)) {
-    return undefined;
-  }
-  const subscriptions: AlertSubscriptions = {};
-  Object.entries(input).forEach(([routeKey, channels]) => {
-    // channel list guard
-    if (!Array.isArray(channels)) {
-      return;
-    }
-    const validChannels = channels.filter(isAlertSubscriptionChannel);
-    // empty channel guard
-    if (validChannels.length === 0) {
-      return;
-    }
-    subscriptions[routeKey] = Array.from(new Set(validChannels));
-  });
-  return subscriptions;
-};
 
 const sanitizeAppMetadata = (input: unknown): AppMetadata | undefined => {
   // metadata object guard
@@ -52,18 +23,23 @@ const sanitizeAppMetadata = (input: unknown): AppMetadata | undefined => {
     return undefined;
   }
   const metadata: AppMetadata = {};
+  const alertRules = getAlertRules(input.alertRules);
+  // alert rules allow-list
+  if (alertRules) {
+    metadata.alertRules = alertRules;
+  }
   const tickets = getStringList(input.tickets);
   // tickets allow-list
   if (tickets) {
     metadata.tickets = tickets;
   }
   const alertSubscriptions = getAlertSubscriptions(input.alertSubscriptions);
-  // alert subscriptions allow-list
+  // old route alert conversion
   if (alertSubscriptions) {
     metadata.alertSubscriptions = alertSubscriptions;
   }
   const subscribedTerminals = getStringList(input.subscribedTerminals);
-  // subscription allow-list
+  // old terminal alert conversion
   if (subscribedTerminals) {
     metadata.subscribedTerminals = subscribedTerminals;
   }
@@ -71,11 +47,12 @@ const sanitizeAppMetadata = (input: unknown): AppMetadata | undefined => {
   if (typeof input.fcmToken === "string" || input.fcmToken === null) {
     metadata.fcmToken = input.fcmToken;
   }
+  const normalizedMetadata = normalizeAppMetadata(metadata);
   // empty metadata guard
-  if (Object.keys(metadata).length === 0) {
+  if (Object.keys(normalizedMetadata).length === 0) {
     return undefined;
   }
-  return metadata;
+  return normalizedMetadata;
 };
 
 export const sanitizeUserUpdate = (input: unknown): UserUpdatePayload => {
@@ -101,28 +78,45 @@ const getUserSettings = async (subject: string): Promise<UserSettings> => {
   return settings;
 };
 
+// persisted metadata migration
+const getNormalizedAppMetadata = async (
+  settings: UserSettings
+): Promise<AppMetadata> => {
+  const currentMetadata = settings.appMetadata ?? {};
+  const nextMetadata = normalizeAppMetadata(currentMetadata);
+  // stale metadata guard
+  if (hasAppMetadataChanged(currentMetadata, nextMetadata)) {
+    await settings.update({ appMetadata: nextMetadata });
+  }
+  return nextMetadata;
+};
+
 // user response body
-const serializeUserSettings = (settings: UserSettings): CurrentUser => {
+const serializeUserSettings = (
+  settings: UserSettings,
+  appMetadata: AppMetadata
+): CurrentUser => {
   return {
-    app_metadata: settings.appMetadata ?? {},
+    app_metadata: appMetadata,
     user_id: settings.subject,
   };
 };
 
 userRouter.get("/", async (request, response) => {
   const settings = await getUserSettings(response.locals.user.sub);
-  return response.send(serializeUserSettings(settings));
+  const appMetadata = await getNormalizedAppMetadata(settings);
+  return response.send(serializeUserSettings(settings, appMetadata));
 });
 
 userRouter.post("/", async (request, response) => {
   const settings = await getUserSettings(response.locals.user.sub);
   const update = sanitizeUserUpdate(request.body);
-  const appMetadata = {
-    ...(settings.appMetadata ?? {}),
+  const appMetadata = normalizeAppMetadata({
+    ...normalizeAppMetadata(settings.appMetadata ?? {}),
     ...(update.app_metadata ?? {}),
-  };
+  });
   await settings.update({ appMetadata });
-  return response.send(serializeUserSettings(settings));
+  return response.send(serializeUserSettings(settings, appMetadata));
 });
 
 export { userRouter };

@@ -8,6 +8,8 @@ import React, {
 
 import logo from "~/static/images/icon_monochrome.png";
 
+import { LoadingWaves } from "./LoadingWaves";
+
 export const Splash: FC<PropsWithChildren> = ({ children }) => {
   const [isHelpVisible, setHelpVisible] = useState<boolean>(false);
 
@@ -54,31 +56,7 @@ export const Splash: FC<PropsWithChildren> = ({ children }) => {
       "
     >
       <img src={logo} className="w-20 splash-logo" />
-      <div
-        aria-label="Loading"
-        className="relative mt-8 flex h-16 w-40 items-center justify-center"
-        role="status"
-      >
-        <svg
-          aria-hidden="true"
-          className="splash-loader-waves"
-          focusable="false"
-          viewBox="0 0 160 48"
-        >
-          <path
-            className="splash-loader-wave splash-loader-wave--back"
-            d="M4 26 C18 14 34 14 48 26 S78 38 94 26 124 14 156 26"
-          />
-          <path
-            className="splash-loader-wave splash-loader-wave--middle"
-            d="M4 24 C20 10 36 10 52 24 S84 38 100 24 132 10 156 24"
-          />
-          <path
-            className="splash-loader-wave splash-loader-wave--front"
-            d="M4 29 C20 18 36 18 52 29 S84 40 100 29 132 18 156 29"
-          />
-        </svg>
-      </div>
+      <LoadingWaves className="mt-8" />
       {children && <span className="max-w-sm mt-8">{children}</span>}
       {renderHelp()}
     </div>

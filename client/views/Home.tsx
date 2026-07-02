@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { Terminal as TerminalClass } from "shared/contracts/terminals";
 import { isEmpty } from "shared/lib/arrays";
 
+import { LoadingWaves } from "~/components/LoadingWaves";
 import { getSlug, useTerminals } from "~/lib/terminals";
 import logo from "~/static/images/icon_monochrome.png";
 import TicketIcon from "~/static/images/icons/solid/barcode-alt.svg";
@@ -233,8 +234,18 @@ export const Home = (): ReactElement => {
       <div className="w-full flex justify-center px-4 pb-8">
         <div className="grid w-full max-w-3xl grid-cols-2 gap-x-4 gap-y-6">
           {isEmpty(terminals) && (
-            <div className={clsx(LI_CLASSES, "col-span-2 opacity-50")}>
-              Loading terminals...
+            <div
+              className={clsx(
+                LI_CLASSES,
+                "col-span-2 flex flex-col items-center justify-center gap-2 opacity-80"
+              )}
+            >
+              <LoadingWaves
+                className="h-10 w-28 text-yellow-lightest"
+                label="Loading terminals"
+                svgClassName="h-8 w-28"
+              />
+              <span>Loading terminals…</span>
             </div>
           )}
           {routeGroups.map((routeGroup) => (

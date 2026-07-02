@@ -1,21 +1,44 @@
+import { useAuth0 } from "@auth0/auth0-react";
+import { Browser } from "@capacitor/browser";
 import clsx from "clsx";
 import { AnimatePresence, motion } from "framer-motion";
 import { DateTime } from "luxon";
-import React, { ReactElement, ReactNode, useEffect, useRef } from "react";
+import React, {
+  ReactElement,
+  ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { useLocation } from "react-router-dom";
 import type { Route } from "shared/contracts/routes";
 import type { Slot } from "shared/contracts/schedules";
 import type { TerminalLocation } from "shared/contracts/terminals";
+import type { AlertRule } from "shared/contracts/user";
+import {
+  createOneTimeSailingAlertRule,
+  getAlertRuleDateFromDate,
+  getAlertRuleTimeFromDate,
+  getRouteSubscriptionKey,
+  isOneTimeSailingAlertRuleForSailing,
+} from "shared/lib/alertSubscriptions";
 import { isNull } from "shared/lib/identity";
+import { pluralize } from "shared/lib/strings";
 
 import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { ExternalPillLink } from "~/components/ExternalPillLink";
 import { isDuringDaylight } from "~/lib/daylight";
+import { useDevice } from "~/lib/device";
 import { vesselAssets } from "~/lib/generated/vesselAssets";
 import {
   isLocalhostSimulationEnabled,
   setSimulatedVessel,
 } from "~/lib/onboardSimulation";
 import { useTrackedVessel } from "~/lib/onboardTracking";
+import { usePush } from "~/lib/push";
+import { useUser } from "~/lib/user";
+import BellIcon from "~/static/images/icons/regular/bell.svg";
+import BellSolidIcon from "~/static/images/icons/solid/bell.svg";
 import CarIcon from "~/static/images/icons/solid/car.svg";
 import CheckCircleIcon from "~/static/images/icons/solid/check-circle.svg";
 import ExclamationCircleIcon from "~/static/images/icons/solid/exclamation-circle.svg";
@@ -24,7 +47,11 @@ import TruckIcon from "~/static/images/icons/solid/truck.svg";
 import UsersIcon from "~/static/images/icons/solid/users.svg";
 
 import { Capacity } from "./Capacity";
-import { isCapacityFull } from "./capacityFullness";
+import { getCapacityDisplayPercent, isCapacityFull } from "./capacityFullness";
+import {
+  getCapacityFillClassName,
+  getForecastCapacityFillClassName,
+} from "./capacityStyles";
 import { getGalleyStatus } from "./galleyHours";
 import { getCurrentSlot } from "./nowDivider";
 import { getProjectedTiming } from "./projectedTiming";
@@ -42,6 +69,44 @@ import { VesselStatus } from "./VesselStatus";
 import { getDelayCardModel } from "./vesselStatus";
 
 const SMALL_BOAT_ROW_LABEL_SAFE_WIDTH = 20;
+
+// sailing alert id
+const getSailingAlertRuleId = ({
+  routeKey,
+  sailingTime,
+  terminalId,
+}: {
+  routeKey: string;
+  sailingTime: DateTime;
+  terminalId: string;
+}): string => {
+  const date = getAlertRuleDateFromDate(sailingTime);
+  const time = getAlertRuleTimeFromDate(sailingTime).replace(":", "");
+  return `sailing-alert:${routeKey}:${terminalId}:${date}:${time}`;
+};
+
+// remove sailing alert
+const removeSailingAlertRule = (
+  rules: AlertRule[],
+  {
+    routeKey,
+    sailingTime,
+    terminalId,
+  }: {
+    routeKey: string;
+    sailingTime: DateTime;
+    terminalId: string;
+  }
+): AlertRule[] => {
+  return rules.filter((rule) => {
+    // target rule guard
+    return !isOneTimeSailingAlertRuleForSailing(rule, {
+      routeKey,
+      sailingTime,
+      terminalId,
+    });
+  });
+};
 
 interface Props {
   className?: string;
@@ -71,10 +136,41 @@ export const SlotInfo = (props: Props): ReactElement => {
     terminalId,
     time,
   } = props;
+  const device = useDevice();
+  const locationRoute = useLocation();
+  const { isAuthenticated, isLoading, loginWithRedirect } = useAuth0();
+  const [{ alertRules, isUserLoading }, { updateUser }] = useUser();
+  const initializePush = usePush(false);
+  const [isSailingAlertSaving, setSailingAlertSaving] =
+    useState<boolean>(false);
+  const [sailingAlertError, setSailingAlertError] = useState<string | null>(
+    null
+  );
   const [, setTrackedVesselId] = useTrackedVessel();
   const currentSlot = getCurrentSlot(schedule, time);
   const isNext = slot === currentSlot;
   const timing = getProjectedTiming({ schedule, slot });
+  const sailingTime = DateTime.fromSeconds(slot.time);
+  const sailingTerminalIds = [terminalId, slot.mateId];
+  const sailingRouteKey = getRouteSubscriptionKey(sailingTerminalIds);
+  const sailingAlertRule = createOneTimeSailingAlertRule({
+    id: getSailingAlertRuleId({
+      routeKey: sailingRouteKey,
+      sailingTime,
+      terminalId,
+    }),
+    routeKey: sailingRouteKey,
+    sailingTime,
+    terminalIds: [terminalId],
+  });
+  const isSailingAlertSubscribed = (alertRules ?? []).some((rule) => {
+    // one-time sailing match
+    return isOneTimeSailingAlertRuleForSailing(rule, {
+      routeKey: sailingRouteKey,
+      sailingTime,
+      terminalId,
+    });
+  });
   const tidalCancellationRisk = getTidalCancellationRisk({
     departureTerminalId: terminalId,
     slot,
@@ -180,6 +276,79 @@ export const SlotInfo = (props: Props): ReactElement => {
       setElement(wrapper.current);
     }
   }, [wrapper]);
+
+  // login redirect
+  const requestLogin = async (): Promise<void> => {
+    const loginOptions = {
+      appState: {
+        redirectPath: `${locationRoute.pathname}${locationRoute.search}`,
+      },
+      authorizationParams: {
+        redirect_uri: process.env.AUTH0_CLIENT_REDIRECT,
+      },
+    };
+    try {
+      // native browser login
+      if (device?.isNativeMobile) {
+        await loginWithRedirect({
+          ...loginOptions,
+          openUrl: async (url) => {
+            await Browser.open({ url });
+          },
+        });
+        return;
+      }
+      await loginWithRedirect(loginOptions);
+    } catch (error) {
+      setSailingAlertError(
+        error instanceof Error ? error.message : "Unable to start sign in"
+      );
+    }
+  };
+
+  // sailing alert toggle
+  const toggleSailingAlert = async (
+    event: React.MouseEvent<HTMLButtonElement>
+  ): Promise<void> => {
+    event.preventDefault();
+    event.stopPropagation();
+    setSailingAlertError(null);
+    // auth guard
+    if (!isAuthenticated) {
+      await requestLogin();
+      return;
+    }
+    // loading guard
+    if (isLoading || isUserLoading || isSailingAlertSaving) {
+      return;
+    }
+    setSailingAlertSaving(true);
+    const currentAlertRules = alertRules ?? [];
+    const nextAlertRules = isSailingAlertSubscribed
+      ? removeSailingAlertRule(currentAlertRules, {
+          routeKey: sailingRouteKey,
+          sailingTime,
+          terminalId,
+        })
+      : [...currentAlertRules, sailingAlertRule];
+    try {
+      await updateUser({
+        app_metadata: {
+          alertRules: nextAlertRules,
+        },
+      });
+      // push permission guard
+      if (!isSailingAlertSubscribed) {
+        initializePush();
+      }
+    } catch (error) {
+      setSailingAlertError(
+        error instanceof Error ? error.message : "Unable to save alert"
+      );
+    } finally {
+      setSailingAlertSaving(false);
+    }
+  };
 
   const renderHeader = (): ReactNode => (
     <section
@@ -321,6 +490,180 @@ export const SlotInfo = (props: Props): ReactElement => {
     );
   };
 
+  // render capacity card
+  const renderCapacityCard = ({
+    isForecast,
+    percentFull,
+    spacesLeft,
+  }: {
+    isForecast?: boolean;
+    percentFull: number | null;
+    spacesLeft: number | null;
+  }): ReactNode => {
+    const isUnavailable = percentFull === null || spacesLeft === null;
+    const isFullCapacity = isCapacityFull({ percentFull, spacesLeft });
+    const displayPercent = getCapacityDisplayPercent({
+      isFull: isFullCapacity,
+      percentFull,
+    });
+    const confirmedBorderClassName = isDaylight
+      ? "border-day-confirmed-light dark:border-day-confirmed-dark"
+      : "border-night-confirmed-light dark:border-night-confirmed-dark";
+    const confirmedFillClassName = isDaylight
+      ? "bg-day-normal-light dark:bg-day-normal-dark"
+      : "bg-night-normal-light dark:bg-night-normal-dark";
+    let fillClassName: string | string[] = confirmedFillClassName;
+    // forecast fill
+    if (isForecast) {
+      fillClassName = getForecastCapacityFillClassName({
+        isFull: isFullCapacity,
+      });
+    } else if (isFullCapacity) {
+      fillClassName = getCapacityFillClassName({ isDaylight, isFull: true });
+    }
+    let headline = "Unavailable";
+    let detail = isForecast ? "No forecast yet" : "No confirmed count yet";
+    // available capacity copy
+    if (!isUnavailable) {
+      headline = `${Math.round(percentFull)}% full`;
+      detail = isFullCapacity
+        ? "Boat full"
+        : `${pluralize(spacesLeft, "space")} left`;
+    }
+    return (
+      <section
+        className={clsx(
+          "relative overflow-hidden rounded-lg border p-3",
+          isUnavailable
+            ? [
+                "border-gray-medium bg-white text-gray-dark",
+                "dark:border-gray-dark dark:bg-black/20 dark:text-gray-light",
+              ]
+            : [
+                "bg-white text-gray-darkest dark:bg-black/20 dark:text-white",
+                isForecast
+                  ? "border-2 border-dashed border-gray-medium dark:border-gray-medium"
+                  : ["border-2", confirmedBorderClassName],
+              ]
+        )}
+      >
+        {/* capacity fill */}
+        {!isUnavailable && (
+          <div
+            aria-hidden="true"
+            className={clsx("absolute inset-y-0 left-0", fillClassName)}
+            style={{ width: `${displayPercent}%` }}
+          />
+        )}
+        <div className="relative">
+          <p className="text-2xs font-bold uppercase tracking-wide opacity-80">
+            {isForecast ? "Forecast capacity" : "Confirmed capacity"}
+          </p>
+          <p className="mt-1 text-xl font-black leading-tight">{headline}</p>
+          <p className="mt-1 text-xs font-semibold opacity-90">{detail}</p>
+        </div>
+      </section>
+    );
+  };
+
+  // render sailing alert button
+  const renderSailingAlertButton = (): ReactNode => {
+    const AlertIcon = isSailingAlertSubscribed ? BellSolidIcon : BellIcon;
+    const alertLabel = isSailingAlertSubscribed
+      ? "Turn off this sailing alert"
+      : "Add this sailing alert";
+    return (
+      <button
+        aria-label={alertLabel}
+        aria-pressed={isSailingAlertSubscribed}
+        className={clsx(
+          "absolute right-3 top-3 rounded-full border p-2 shadow-sm transition",
+          isSailingAlertSubscribed
+            ? [
+                "border-green-dark bg-green-dark text-white",
+                "dark:border-green-light dark:bg-green-light dark:text-green-dark",
+              ]
+            : [
+                "border-blue-medium bg-white text-blue-dark hover:bg-blue-lightest",
+                "dark:border-blue-light dark:bg-black/30 dark:text-blue-light",
+              ],
+          (isLoading || isSailingAlertSaving || isUserLoading) &&
+            "cursor-wait opacity-70"
+        )}
+        disabled={isLoading || isSailingAlertSaving || isUserLoading}
+        onClick={toggleSailingAlert}
+        title={alertLabel}
+        type="button"
+      >
+        <AlertIcon
+          className={clsx("h-5 w-5", isSailingAlertSaving && "animate-pulse")}
+        />
+      </button>
+    );
+  };
+
+  // render sailing card
+  const renderSailingCard = (
+    delayCard: ReturnType<typeof getDelayCardModel>
+  ): ReactNode => {
+    const sailingTimeLabel = sailingTime.toFormat("ccc, LLL d · h:mm a");
+    return (
+      <article
+        className={clsx(
+          "relative mb-3 overflow-hidden rounded-xl border",
+          "border-gray-medium bg-white text-black shadow-sm",
+          "dark:border-gray-dark dark:bg-gray-darkest dark:text-white"
+        )}
+      >
+        {renderSailingAlertButton()}
+        <header
+          className={clsx(
+            "p-4 pr-16",
+            "bg-gradient-to-br from-green-lightest via-white to-blue-lightest",
+            "dark:from-green-dark dark:via-gray-darkest dark:to-blue-darkest"
+          )}
+        >
+          <p className="text-2xs font-bold uppercase tracking-wide text-gray-dark dark:text-gray-light">
+            Sailing
+          </p>
+          <h3 className="mt-1 text-2xl font-bold leading-tight">
+            {sailingTimeLabel}
+          </h3>
+          {/* sailing alert explanation */}
+          {isSailingAlertSubscribed && (
+            <p className="mt-1 text-sm text-gray-dark dark:text-gray-light">
+              One-time alerts cover delays, cancellations, and tidal
+              cancellation risk for this departure only.
+            </p>
+          )}
+          {/* sailing alert error */}
+          {sailingAlertError && (
+            <p className="mt-2 rounded bg-red-light p-2 text-xs font-semibold text-red-dark dark:bg-red-dark dark:text-white">
+              {sailingAlertError}
+            </p>
+          )}
+        </header>
+        <div className="grid grid-cols-2 gap-3 p-4">
+          {/* tidal risk card */}
+          {renderTidalRiskCard()}
+          {/* timing card */}
+          {!isConfirmedCancelled && renderDelayCard(delayCard)}
+          {/* confirmed capacity card */}
+          {renderCapacityCard({
+            percentFull: livePercentFull,
+            spacesLeft: liveSpacesLeft,
+          })}
+          {/* forecast capacity card */}
+          {renderCapacityCard({
+            isForecast: true,
+            percentFull: estimatePercentFull,
+            spacesLeft: estimateSpacesLeft,
+          })}
+        </div>
+      </article>
+    );
+  };
+
   // render tidal risk card
   const renderTidalRiskCard = (): ReactNode => {
     // risk availability guard
@@ -432,6 +775,7 @@ export const SlotInfo = (props: Props): ReactElement => {
           className
         )}
       >
+        {renderSailingCard(delayCard)}
         <article
           className={clsx(
             "overflow-hidden rounded-xl border",
@@ -476,8 +820,11 @@ export const SlotInfo = (props: Props): ReactElement => {
                       </span>
                     </div>
                   )}
+                  <p className="text-2xs font-bold uppercase tracking-wide text-gray-dark dark:text-gray-light">
+                    Vessel
+                  </p>
                   <h3
-                    className="text-2xl font-bold leading-tight"
+                    className="mt-1 text-2xl font-bold leading-tight"
                     onClick={(event) => {
                       // ctrl-click guard
                       if (!event.ctrlKey) {
@@ -545,10 +892,6 @@ export const SlotInfo = (props: Props): ReactElement => {
             </div>
           </header>
           <div className="grid grid-cols-2 gap-3 p-4">
-            {/* tidal risk card */}
-            {renderTidalRiskCard()}
-            {/* timing card */}
-            {!isConfirmedCancelled && renderDelayCard(delayCard)}
             {renderProfileStat(
               "Vehicle deck",
               `${vehicleCapacity} cars`,

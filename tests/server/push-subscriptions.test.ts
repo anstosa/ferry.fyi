@@ -1,3 +1,4 @@
+import { DateTime } from "luxon";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const userSettings = vi.hoisted(() => ({
@@ -11,8 +12,19 @@ vi.mock("~/models/UserSettings", () => ({
 import { getSubscribedTerminalPushMessages } from "~/lib/pushSubscriptions";
 
 // user settings fixture
-const makeSettings = (subject: string, appMetadata: Record<string, unknown>) => {
-  return { appMetadata, subject };
+const makeSettings = (
+  subject: string,
+  appMetadata: Record<string, unknown>
+) => {
+  const settings = {
+    appMetadata,
+    subject,
+    update: vi.fn(async (data: { appMetadata: Record<string, unknown> }) => {
+      settings.appMetadata = data.appMetadata;
+      return settings;
+    }),
+  };
+  return settings;
 };
 
 describe("push subscriptions", () => {
@@ -46,10 +58,196 @@ describe("push subscriptions", () => {
     ]);
   });
 
-  it("keeps legacy terminal subscriptions subscribed to all channels", async () => {
+  it("matches scheduled alert rules by direction, day, time, and channel", async () => {
     userSettings.findAll.mockResolvedValueOnce([
-      makeSettings("legacy-user", {
-        fcmToken: "legacy-token",
+      makeSettings("commuter", {
+        alertRules: [
+          {
+            channels: ["delays"],
+            daysOfWeek: [1, 2, 3, 4, 5],
+            endTime: "07:30",
+            id: "morning",
+            routeKey: "14:5",
+            startTime: "06:00",
+            terminalIds: ["14"],
+          },
+        ],
+        fcmToken: "commuter-token",
+      }),
+      makeSettings("wrong-direction", {
+        alertRules: [
+          {
+            channels: ["delays"],
+            daysOfWeek: [1, 2, 3, 4, 5],
+            endTime: "07:30",
+            id: "reverse",
+            routeKey: "14:5",
+            startTime: "06:00",
+            terminalIds: ["5"],
+          },
+        ],
+        fcmToken: "reverse-token",
+      }),
+    ]);
+
+    const messages = await getSubscribedTerminalPushMessages({
+      channel: "delays",
+      data: { title: "Delay" },
+      departureTerminalId: "14",
+      departureTimes: [DateTime.fromISO("2026-07-06T06:45:00").toSeconds()],
+      terminalIds: ["14", "5"],
+    });
+
+    expect(messages).toEqual([
+      {
+        data: { title: "Delay", userId: "commuter" },
+        token: "commuter-token",
+      },
+    ]);
+  });
+
+  it("matches a one-sailing alert rule when start and end are the same", async () => {
+    userSettings.findAll.mockResolvedValueOnce([
+      makeSettings("single-sailing", {
+        alertRules: [
+          {
+            channels: ["delays"],
+            daysOfWeek: [1, 2, 3, 4, 5],
+            endTime: "06:45",
+            id: "single",
+            routeKey: "14:5",
+            startTime: "06:45",
+            terminalIds: ["14"],
+          },
+        ],
+        fcmToken: "single-token",
+      }),
+    ]);
+
+    const messages = await getSubscribedTerminalPushMessages({
+      channel: "delays",
+      data: { title: "Delay" },
+      departureTerminalId: "14",
+      departureTimes: [DateTime.fromISO("2026-07-06T06:45:00").toSeconds()],
+      terminalIds: ["14", "5"],
+    });
+
+    expect(messages).toEqual([
+      {
+        data: { title: "Delay", userId: "single-sailing" },
+        token: "single-token",
+      },
+    ]);
+  });
+
+  // one-time sailing date
+  it("matches dated one-time sailing rules only on the selected day", async () => {
+    const settings = [
+      makeSettings("single-day-sailing", {
+        alertRules: [
+          {
+            channels: ["delays"],
+            date: "2026-07-06",
+            daysOfWeek: [1],
+            endTime: "06:45",
+            id: "single-day",
+            routeKey: "14:5",
+            startTime: "06:45",
+            terminalIds: ["14"],
+          },
+        ],
+        fcmToken: "single-day-token",
+      }),
+    ];
+    userSettings.findAll.mockResolvedValueOnce(settings);
+
+    const selectedDayMessages = await getSubscribedTerminalPushMessages({
+      channel: "delays",
+      data: { title: "Delay" },
+      departureTerminalId: "14",
+      departureTimes: [DateTime.fromISO("2026-07-06T06:45:00").toSeconds()],
+      terminalIds: ["14", "5"],
+    });
+
+    userSettings.findAll.mockResolvedValueOnce(settings);
+
+    const nextWeekMessages = await getSubscribedTerminalPushMessages({
+      channel: "delays",
+      data: { title: "Delay" },
+      departureTerminalId: "14",
+      departureTimes: [DateTime.fromISO("2026-07-13T06:45:00").toSeconds()],
+      terminalIds: ["14", "5"],
+    });
+
+    expect(selectedDayMessages).toEqual([
+      {
+        data: { title: "Delay", userId: "single-day-sailing" },
+        token: "single-day-token",
+      },
+    ]);
+    expect(nextWeekMessages).toEqual([]);
+  });
+
+  it("uses the current time for terminal alerts without a sailing", async () => {
+    userSettings.findAll.mockResolvedValueOnce([
+      makeSettings("service-user", {
+        alertRules: [
+          {
+            channels: ["service-alerts"],
+            daysOfWeek: [1, 2, 3, 4, 5],
+            endTime: "17:00",
+            id: "afternoon",
+            routeKey: "14:5",
+            startTime: "15:30",
+            terminalIds: ["5"],
+          },
+        ],
+        fcmToken: "service-token",
+      }),
+    ]);
+
+    const messages = await getSubscribedTerminalPushMessages({
+      channel: "service-alerts",
+      currentTime: DateTime.fromISO("2026-07-06T16:00:00"),
+      data: { title: "Service" },
+      terminalIds: ["5"],
+    });
+
+    expect(messages).toEqual([
+      {
+        data: { title: "Service", userId: "service-user" },
+        token: "service-token",
+      },
+    ]);
+  });
+
+  it("converts old multi-stop terminal alerts into pair matches", async () => {
+    userSettings.findAll.mockResolvedValueOnce([
+      makeSettings("old-anacortes-user", {
+        fcmToken: "old-anacortes-token",
+        subscribedTerminals: ["1"],
+      }),
+    ]);
+
+    const messages = await getSubscribedTerminalPushMessages({
+      channel: "delays",
+      data: { title: "Delay" },
+      departureTerminalId: "1",
+      terminalIds: ["1", "13"],
+    });
+
+    expect(messages).toEqual([
+      {
+        data: { title: "Delay", userId: "old-anacortes-user" },
+        token: "old-anacortes-token",
+      },
+    ]);
+  });
+
+  it("converts old terminal alerts before matching channels", async () => {
+    userSettings.findAll.mockResolvedValueOnce([
+      makeSettings("old-terminal-user", {
+        fcmToken: "old-terminal-token",
         subscribedTerminals: ["14"],
       }),
     ]);
@@ -62,8 +260,8 @@ describe("push subscriptions", () => {
 
     expect(messages).toEqual([
       {
-        data: { title: "Cancellation", userId: "legacy-user" },
-        token: "legacy-token",
+        data: { title: "Cancellation", userId: "old-terminal-user" },
+        token: "old-terminal-token",
       },
     ]);
   });

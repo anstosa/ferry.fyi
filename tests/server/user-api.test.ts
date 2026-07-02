@@ -117,6 +117,57 @@ describe("user API", () => {
     });
   });
 
+  // stored alert conversion case
+  it("converts old saved alerts on read", async () => {
+    const settings = makeSettings({
+      alertSubscriptions: { "5:14": ["delays"] },
+      subscribedTerminals: ["14"],
+      tickets: ["abc"],
+    });
+    userSettings.findOrCreate.mockResolvedValueOnce([settings, false]);
+    const app = createApp();
+
+    const response = await request(app)
+      .get("/api/user")
+      .set("Authorization", "Bearer valid")
+      .expect(200);
+
+    expect(settings.update).toHaveBeenCalledWith({
+      appMetadata: {
+        alertRules: [
+          {
+            channels: ["delays"],
+            daysOfWeek: [1, 2, 3, 4, 5, 6, 7],
+            endTime: "24:00",
+            id: "route-alert:14:5",
+            routeKey: "14:5",
+            startTime: "00:00",
+            terminalIds: ["5", "14"],
+          },
+          {
+            channels: [
+              "delays",
+              "cancellations",
+              "wait-times",
+              "service-alerts",
+            ],
+            daysOfWeek: [1, 2, 3, 4, 5, 6, 7],
+            endTime: "24:00",
+            id: "terminal-alert:14:14:5",
+            routeKey: "14:5",
+            startTime: "00:00",
+            terminalIds: ["14"],
+          },
+        ],
+        tickets: ["abc"],
+      },
+    });
+    expect(response.body).toEqual({
+      app_metadata: settings.update.mock.calls[0][0].appMetadata,
+      user_id: "auth0|123",
+    });
+  });
+
   // update allow-list case
   it("updates only allowed app metadata fields in the DB", async () => {
     const settings = makeSettings({ subscribedTerminals: ["14"] });
@@ -128,6 +179,19 @@ describe("user API", () => {
       .set("Authorization", "Bearer valid")
       .send({
         app_metadata: {
+          alertRules: [
+            {
+              channels: ["delays", "bad-channel"],
+              date: "2026-07-06",
+              daysOfWeek: [5, 1],
+              endTime: "07:30",
+              id: "morning",
+              routeKey: "14:5",
+              startTime: "06:00",
+              terminalIds: ["14", "bad"],
+            },
+            { bad: true },
+          ],
           alertSubscriptions: {
             "5:14": ["delays", "cancellations", "bad-channel"],
             bad: "not-array",
@@ -144,17 +208,55 @@ describe("user API", () => {
 
     expect(settings.update).toHaveBeenCalledWith({
       appMetadata: {
-        alertSubscriptions: { "5:14": ["delays", "cancellations"] },
+        alertRules: [
+          {
+            channels: ["delays"],
+            date: "2026-07-06",
+            daysOfWeek: [1, 5],
+            endTime: "07:30",
+            id: "morning",
+            routeKey: "14:5",
+            startTime: "06:00",
+            terminalIds: ["14"],
+          },
+          {
+            channels: ["delays", "cancellations"],
+            daysOfWeek: [1, 2, 3, 4, 5, 6, 7],
+            endTime: "24:00",
+            id: "route-alert:14:5",
+            routeKey: "14:5",
+            startTime: "00:00",
+            terminalIds: ["5", "14"],
+          },
+        ],
         fcmToken: "token",
-        subscribedTerminals: ["14"],
         tickets: ["abc"],
       },
     });
     expect(response.body).toEqual({
       app_metadata: {
-        alertSubscriptions: { "5:14": ["delays", "cancellations"] },
+        alertRules: [
+          {
+            channels: ["delays"],
+            date: "2026-07-06",
+            daysOfWeek: [1, 5],
+            endTime: "07:30",
+            id: "morning",
+            routeKey: "14:5",
+            startTime: "06:00",
+            terminalIds: ["14"],
+          },
+          {
+            channels: ["delays", "cancellations"],
+            daysOfWeek: [1, 2, 3, 4, 5, 6, 7],
+            endTime: "24:00",
+            id: "route-alert:14:5",
+            routeKey: "14:5",
+            startTime: "00:00",
+            terminalIds: ["5", "14"],
+          },
+        ],
         fcmToken: "token",
-        subscribedTerminals: ["14"],
         tickets: ["abc"],
       },
       user_id: "auth0|123",
@@ -170,6 +272,17 @@ describe("sanitizeUserUpdate", () => {
     expect(
       sanitizeUserUpdate({
         app_metadata: {
+          alertRules: [
+            {
+              channels: ["service-alerts"],
+              daysOfWeek: [1, 2, 3, 4, 5],
+              endTime: "17:00",
+              id: "afternoon",
+              routeKey: "bre:sea",
+              startTime: "15:30",
+              terminalIds: ["sea"],
+            },
+          ],
           alertSubscriptions: { "sea:bre": ["service-alerts"] },
           subscribedTerminals: ["sea"],
         },
@@ -179,8 +292,40 @@ describe("sanitizeUserUpdate", () => {
       })
     ).toEqual({
       app_metadata: {
-        alertSubscriptions: { "sea:bre": ["service-alerts"] },
-        subscribedTerminals: ["sea"],
+        alertRules: [
+          {
+            channels: ["service-alerts"],
+            daysOfWeek: [1, 2, 3, 4, 5],
+            endTime: "17:00",
+            id: "afternoon",
+            routeKey: "bre:sea",
+            startTime: "15:30",
+            terminalIds: ["sea"],
+          },
+          {
+            channels: ["service-alerts"],
+            daysOfWeek: [1, 2, 3, 4, 5, 6, 7],
+            endTime: "24:00",
+            id: "route-alert:bre:sea",
+            routeKey: "bre:sea",
+            startTime: "00:00",
+            terminalIds: ["sea", "bre"],
+          },
+          {
+            channels: [
+              "delays",
+              "cancellations",
+              "wait-times",
+              "service-alerts",
+            ],
+            daysOfWeek: [1, 2, 3, 4, 5, 6, 7],
+            endTime: "24:00",
+            id: "terminal-alert:sea:sea",
+            routeKey: "sea",
+            startTime: "00:00",
+            terminalIds: ["sea"],
+          },
+        ],
       },
     });
   });
