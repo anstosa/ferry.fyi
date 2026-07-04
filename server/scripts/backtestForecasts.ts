@@ -1,14 +1,16 @@
 import { DateTime } from "luxon";
+import { createRequire } from "module";
 import { Op } from "sequelize";
 import { round } from "shared/lib/math";
 
-import type { HolidayDateMap } from "~/lib/forecast";
+import type { HolidayDateMap } from "../lib/forecast";
 
 const DEFAULT_YEAR = 2025;
 const HISTORY_YEARS = 2;
 const FULL_AVAILABLE_THRESHOLD = 0.02;
 const LOW_MISS_THRESHOLD = 20;
 const HIGH_MISS_THRESHOLD = 50;
+const runtimeRequire = createRequire(__filename);
 
 interface BacktestOptions {
   from: DateTime;
@@ -298,19 +300,19 @@ const run = async (): Promise<void> => {
     printHelp();
     return;
   }
-  const [
-    { dbInit },
-    { getHistoricalEstimate },
-    holidayModule,
-    crossingModule,
-    terminalModule,
-  ] = await Promise.all([
-    import("~/lib/db"),
-    import("~/lib/forecast"),
-    import("~/lib/holidays"),
-    import("~/models/Crossing"),
-    import("~/models/Terminal"),
-  ]);
+  const { dbInit } = runtimeRequire("../lib/db") as typeof import("../lib/db");
+  const { getHistoricalEstimate } = runtimeRequire(
+    "../lib/forecast"
+  ) as typeof import("../lib/forecast");
+  const holidayModule = runtimeRequire(
+    "../lib/holidays"
+  ) as typeof import("../lib/holidays");
+  const crossingModule = runtimeRequire(
+    "../models/Crossing"
+  ) as typeof import("../models/Crossing");
+  const terminalModule = runtimeRequire(
+    "../models/Terminal"
+  ) as typeof import("../models/Terminal");
   const Crossing = crossingModule.default;
   const { Terminal } = terminalModule;
   const options = parseOptions();
@@ -432,6 +434,6 @@ run()
     if (helpRequested) {
       return;
     }
-    const { db } = await import("~/lib/db");
+    const { db } = runtimeRequire("../lib/db") as typeof import("../lib/db");
     await db.close();
   });
