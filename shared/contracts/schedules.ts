@@ -6,6 +6,7 @@ export interface Crossing {
   departureId: string;
   departureTime: number;
   driveUpCapacity: number;
+  capacityReportUpdatedAt?: number | null;
   hasDriveUp: boolean;
   hasReservations: boolean;
   isCancelled: boolean;
@@ -18,7 +19,10 @@ export interface Crossing {
 export interface CrossingEstimate {
   confidence?: ForecastConfidence;
   driveUpCapacity: number;
+  fullProbability?: number;
+  fullRisk?: ForecastFullRisk;
   reservableCapacity: number | null;
+  routeClass?: ForecastRouteClass;
   sampleSize?: number;
   source?: ForecastSource;
 }
@@ -37,6 +41,10 @@ export interface SlotTide {
 }
 
 export type ForecastConfidence = "low" | "medium" | "high";
+
+export type ForecastFullRisk = "low" | "maybe" | "likely";
+
+export type ForecastRouteClass = "high-variance" | "reservation" | "standard";
 
 export type ForecastSource = "blended" | "disruption" | "historical" | "live";
 

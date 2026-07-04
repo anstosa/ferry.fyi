@@ -4,6 +4,8 @@ import { Op } from "sequelize";
 import {
   CrossingEstimate,
   ForecastConfidence,
+  type ForecastFullRisk,
+  type ForecastRouteClass,
   Slot,
   type SlotTide,
   type SlotWeather,
@@ -31,11 +33,10 @@ const DELAY_DISRUPTION_SECONDS = 15 * 60;
 const CANCELLED_CAPACITY_ROLLOVER_SHARE = 0.6;
 const HOLIDAY_WINDOW_DAYS = 2;
 const MIN_WEIGHT = 0.1;
-const PEAK_FULLISH_SHARE_THRESHOLD = 0.45;
-const PEAK_FULL_SHARE_THRESHOLD = 0.25;
+const CAPACITY_REPORT_STALE_SECONDS = 30 * 60;
 const ZENITH = 90.833;
 
-type HolidayDateMap = Record<number, Set<string>>;
+export type HolidayDateMap = Record<number, Set<string>>;
 
 interface CapacityPair {
   driveUpCapacity: number;
@@ -47,18 +48,33 @@ interface HistoricalSample extends CapacityPair {
   weight: number;
 }
 
-interface HistoricalEstimate extends CapacityPair {
+export interface HistoricalEstimate extends CapacityPair {
+  fullProbability: number;
+  fullRisk: ForecastFullRisk;
+  routeClass: ForecastRouteClass;
   sampleSize: number;
   weight: number;
 }
 
+interface PeakCalibration {
+  fullProbability: number;
+  fullRisk: ForecastFullRisk;
+  routeClass: ForecastRouteClass;
+  shouldUsePeakCapacity: boolean;
+  weightedFullShare: number;
+  weightedFullishShare: number;
+  weightedQuantile: number;
+}
+
 interface NormalizedCapacitySample extends CapacityPair {
+  hasReservations: boolean;
   weight: number;
 }
 
 interface DemandProfile {
   daysUntilHoliday: number | null;
   isHolidayDate: boolean;
+  isHolidayWindow: boolean;
 }
 
 // normalize degrees
@@ -193,6 +209,7 @@ const getDemandProfile = (
 ): DemandProfile => ({
   daysUntilHoliday: getDaysUntilHoliday(slotTime, holidays),
   isHolidayDate: isHolidayDate(slotTime, holidays),
+  isHolidayWindow: isHolidayWindowDate(slotTime, holidays),
 });
 
 // holiday match multiplier
@@ -356,19 +373,11 @@ const normalizeHistoricalSample = (
   const normalizedReservableCapacity = round(targetAvailable * reservableShare);
   return {
     driveUpCapacity: targetAvailable - normalizedReservableCapacity,
+    hasReservations: crossing.hasReservations,
     reservableCapacity: normalizedReservableCapacity,
     weight,
   };
 };
-
-// peak demand check
-const isPeakDemandProfile = (
-  profile: DemandProfile,
-  fullishShare: number
-): boolean =>
-  profile.isHolidayDate ||
-  profile.daysUntilHoliday === 1 ||
-  fullishShare >= PEAK_FULLISH_SHARE_THRESHOLD;
 
 // weighted share
 const getWeightedShare = (
@@ -386,6 +395,111 @@ const getWeightedShare = (
     }
   });
   return totalWeight ? matchingWeight / totalWeight : 0;
+};
+
+// route class inference
+const getRouteClass = (
+  samples: NormalizedCapacitySample[],
+  scarceShare: number
+): ForecastRouteClass => {
+  const reservationShare = getWeightedShare(samples, (sample) => {
+    return sample.hasReservations;
+  });
+  // reservation route guard
+  if (reservationShare >= 0.25) {
+    return "reservation";
+  }
+  // scarce route guard
+  if (scarceShare >= 0.25) {
+    return "high-variance";
+  }
+  return "standard";
+};
+
+// full risk band
+const getFullRisk = (fullProbability: number): ForecastFullRisk => {
+  // likely full guard
+  if (fullProbability >= 0.5) {
+    return "likely";
+  }
+  // maybe full guard
+  if (fullProbability >= 0.2) {
+    return "maybe";
+  }
+  return "low";
+};
+
+// route calibration
+const getPeakCalibration = (
+  samples: NormalizedCapacitySample[],
+  profile: DemandProfile,
+  targetTotalCapacity: number
+): PeakCalibration => {
+  const fullThreshold = Math.max(1, round(targetTotalCapacity * 0.02));
+  const fullishThreshold = Math.max(4, round(targetTotalCapacity * 0.1));
+  const scarceThreshold = Math.max(8, round(targetTotalCapacity * 0.2));
+  const busyThreshold = Math.max(12, round(targetTotalCapacity * 0.35));
+  const weightedFullShare = getWeightedShare(samples, (sample) => {
+    return getAvailableCapacity(sample) <= fullThreshold;
+  });
+  const weightedFullishShare = getWeightedShare(samples, (sample) => {
+    return getAvailableCapacity(sample) <= fullishThreshold;
+  });
+  const weightedScarceShare = getWeightedShare(samples, (sample) => {
+    return getAvailableCapacity(sample) <= scarceThreshold;
+  });
+  const weightedBusyShare = getWeightedShare(samples, (sample) => {
+    return getAvailableCapacity(sample) <= busyThreshold;
+  });
+  const routeClass = getRouteClass(samples, weightedScarceShare);
+  let holidayPressure = 0;
+  // holiday date pressure
+  if (profile.isHolidayDate) {
+    holidayPressure = 0.18;
+  } else if (profile.daysUntilHoliday === 1) {
+    // pre-holiday pressure
+    holidayPressure = 0.12;
+  } else if (profile.isHolidayWindow) {
+    // nearby holiday pressure
+    holidayPressure = 0.07;
+  }
+  const reservationPressure = routeClass === "reservation" ? 0.06 : 0;
+  const variancePressure = routeClass === "high-variance" ? 0.08 : 0;
+  const demandPressure = constrain(
+    weightedFullShare * 1.4 +
+      weightedFullishShare * 0.6 +
+      weightedScarceShare * 0.25 +
+      weightedBusyShare * 0.1 +
+      holidayPressure +
+      reservationPressure +
+      variancePressure,
+    0,
+    1
+  );
+  const fullProbability = round(
+    constrain(
+      weightedFullShare +
+        weightedFullishShare * 0.35 +
+        holidayPressure * weightedScarceShare +
+        variancePressure,
+      0,
+      1
+    ),
+    2
+  );
+  const weightedQuantile = constrain(0.5 - demandPressure * 0.35, 0.15, 0.5);
+  return {
+    fullProbability,
+    fullRisk: getFullRisk(fullProbability),
+    routeClass,
+    shouldUsePeakCapacity:
+      profile.isHolidayDate ||
+      profile.daysUntilHoliday === 1 ||
+      demandPressure >= 0.35,
+    weightedFullShare,
+    weightedFullishShare,
+    weightedQuantile,
+  };
 };
 
 // availability split
@@ -417,36 +531,34 @@ const getPeakDemandCapacity = (
   meanCapacity: CapacityPair,
   profile: DemandProfile,
   targetTotalCapacity: number
-): CapacityPair => {
-  const fullThreshold = Math.max(1, round(targetTotalCapacity * 0.02));
-  const fullishThreshold = Math.max(4, round(targetTotalCapacity * 0.1));
-  const fullShare = getWeightedShare(samples, (sample) => {
-    return getAvailableCapacity(sample) <= fullThreshold;
-  });
-  const fullishShare = getWeightedShare(samples, (sample) => {
-    return getAvailableCapacity(sample) <= fullishThreshold;
-  });
+): CapacityPair & { calibration: PeakCalibration } => {
+  const calibration = getPeakCalibration(samples, profile, targetTotalCapacity);
   // non-peak guard
-  if (!isPeakDemandProfile(profile, fullishShare)) {
-    return meanCapacity;
+  if (!calibration.shouldUsePeakCapacity) {
+    return { ...meanCapacity, calibration };
   }
   const availableSamples = samples.map((sample) => ({
     value: getAvailableCapacity(sample),
     weight: sample.weight,
   }));
-  const quantile =
-    profile.isHolidayDate || profile.daysUntilHoliday === 1 ? 0.3 : 0.45;
-  const quantileAvailable = weightedQuantile(availableSamples, quantile);
+  const quantileAvailable = weightedQuantile(
+    availableSamples,
+    calibration.weightedQuantile
+  );
   const meanAvailable = getAvailableCapacity(meanCapacity);
   let selectedAvailable = Math.min(meanAvailable, quantileAvailable);
   // full risk guard
   if (
-    fullShare >= PEAK_FULL_SHARE_THRESHOLD &&
-    fullishShare >= PEAK_FULLISH_SHARE_THRESHOLD
+    calibration.fullRisk === "likely" &&
+    calibration.weightedFullShare > 0 &&
+    calibration.weightedFullishShare >= calibration.weightedFullShare
   ) {
     selectedAvailable = 0;
   }
-  return splitAvailableCapacity(round(selectedAvailable), samples);
+  return {
+    ...splitAvailableCapacity(round(selectedAvailable), samples),
+    calibration,
+  };
 };
 
 // constrain total capacity
@@ -498,7 +610,7 @@ const addCancelledRolloverDemand = (
 };
 
 // historical estimate
-const getHistoricalEstimate = (
+export const getHistoricalEstimate = (
   slotTime: DateTime,
   crossings: Crossing[],
   terminal: Terminal | null,
@@ -553,7 +665,10 @@ const getHistoricalEstimate = (
 
   return {
     driveUpCapacity: demandCapacity.driveUpCapacity,
+    fullProbability: demandCapacity.calibration.fullProbability,
+    fullRisk: demandCapacity.calibration.fullRisk,
     reservableCapacity: demandCapacity.reservableCapacity,
+    routeClass: demandCapacity.calibration.routeClass,
     sampleSize: samples.length,
     weight: round(
       samples.reduce((total, { weight }) => total + weight, 0),
@@ -576,6 +691,16 @@ const getLiveWeight = (slotTime: DateTime, now: DateTime): number => {
   return 0.45;
 };
 
+// stale capacity check
+const hasStaleCapacityReport = (crossing: Crossing, now: DateTime): boolean => {
+  // missing timestamp guard
+  if (!crossing.capacityReportUpdatedAt) {
+    return true;
+  }
+  const reportAgeSeconds = now.toSeconds() - crossing.capacityReportUpdatedAt;
+  return reportAgeSeconds > CAPACITY_REPORT_STALE_SECONDS;
+};
+
 // uninformative live capacity check
 const isUninformativeFullLiveCapacity = (
   crossing: Crossing | undefined,
@@ -595,7 +720,10 @@ const isUninformativeFullLiveCapacity = (
   if (crossing.isCancelled) {
     return false;
   }
-  return getAvailableCapacity(crossing) >= totalCapacity;
+  return (
+    getAvailableCapacity(crossing) >= totalCapacity &&
+    hasStaleCapacityReport(crossing, now)
+  );
 };
 
 // blend capacities
@@ -918,7 +1046,10 @@ export const updateEstimates = async (): Promise<void> => {
         const estimate: CrossingEstimate = {
           confidence: getConfidence(historical, forecastCrossing, disrupted),
           driveUpCapacity: rolloverAdjusted.driveUpCapacity,
+          fullProbability: historical?.fullProbability ?? 0,
+          fullRisk: historical?.fullRisk ?? "low",
           reservableCapacity: rolloverAdjusted.reservableCapacity,
+          routeClass: historical?.routeClass ?? "standard",
           sampleSize: historical?.sampleSize ?? 0,
           source: getSource(historical, forecastCrossing, disrupted),
         };

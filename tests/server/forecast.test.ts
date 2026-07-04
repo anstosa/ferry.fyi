@@ -62,6 +62,7 @@ const createCrossing = (input: Record<string, unknown>) => ({
   departureDelta: null,
   departureId: "1",
   departureTime: toSeconds("2026-06-21T12:00:00"),
+  capacityReportUpdatedAt: toSeconds("2026-06-21T09:45:00"),
   driveUpCapacity: 80,
   hasDriveUp: true,
   hasReservations: true,
@@ -183,6 +184,7 @@ describe("forecast estimates", () => {
   // stale live behavior
   it("uses history when a future live row still reports every space open", async () => {
     const liveCrossing = createCrossing({
+      capacityReportUpdatedAt: null,
       driveUpCapacity: 100,
       reservableCapacity: 0,
     });
@@ -203,6 +205,32 @@ describe("forecast estimates", () => {
       reservableCapacity: 0,
       source: "historical",
     });
+  });
+
+  // fresh live behavior
+  it("trusts a fresh all-open capacity report", async () => {
+    const liveCrossing = createCrossing({
+      capacityReportUpdatedAt: toSeconds("2026-06-21T09:50:00"),
+      driveUpCapacity: 100,
+      reservableCapacity: 0,
+    });
+    const schedule = createSchedule({ crossing: liveCrossing });
+    scheduleModel.getAll.mockReturnValue({ [schedule.key]: schedule });
+    crossingModel.findAll.mockResolvedValue([
+      createCrossing({
+        departureTime: toSeconds("2026-06-14T12:00:00"),
+        driveUpCapacity: 10,
+        reservableCapacity: 0,
+      }),
+    ]);
+
+    await updateEstimates();
+
+    expect(schedule.slots[0].estimate).toMatchObject({
+      driveUpCapacity: expect.any(Number),
+      source: "blended",
+    });
+    expect(schedule.slots[0].estimate.driveUpCapacity).toBeGreaterThan(10);
   });
 
   // vessel capacity normalization
@@ -302,7 +330,9 @@ describe("forecast estimates", () => {
 
     expect(schedule.slots[0].estimate).toMatchObject({
       driveUpCapacity: 0,
+      fullRisk: "likely",
       reservableCapacity: 0,
+      routeClass: "reservation",
       source: "historical",
     });
   });

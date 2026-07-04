@@ -10,6 +10,7 @@ class Crossing extends Model implements CrossingType {
   departureId!: string;
   departureTime!: number;
   driveUpCapacity!: number;
+  capacityReportUpdatedAt!: number | null;
   hasDriveUp!: boolean;
   hasReservations!: boolean;
   isCancelled!: boolean;
@@ -43,6 +44,7 @@ Crossing.init(
     departureId: DataTypes.INTEGER,
     departureTime: DataTypes.INTEGER,
     driveUpCapacity: DataTypes.INTEGER,
+    capacityReportUpdatedAt: DataTypes.INTEGER,
     hasDriveUp: DataTypes.BOOLEAN,
     hasReservations: DataTypes.BOOLEAN,
     isCancelled: DataTypes.BOOLEAN,

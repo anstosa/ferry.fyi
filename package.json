@@ -149,6 +149,7 @@
     "generate:icons": "yarn generate:icons:android && yarn generate:icons:ios",
     "generate:icons:android": "npx cordova-res android --icon-background-source '#016f52' --skip-config --copy",
     "generate:icons:ios": "npx cordova-res ios --skip-config --copy",
+    "forecast:backtest": "cd server && node ../scripts/register-esbuild.js scripts/backtestForecasts.ts",
     "heroku": "cd dist/server && node server.js",
     "heroku-postbuild": "yarn build",
     "heroku:shell": "heroku ps:exec -a ferry-fyi",

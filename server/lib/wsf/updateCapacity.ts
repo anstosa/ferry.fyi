@@ -21,6 +21,7 @@ export const updateCapacity = async (): Promise<void> => {
     logger.info("Skipped capacity update; WSF returned no terminal space data");
     return;
   }
+  const capacityReportUpdatedAt = Math.floor(Date.now() / 1000);
   let createdCrossings = 0;
   let updatedCrossings = 0;
   let linkedSlots = 0;
@@ -44,6 +45,7 @@ export const updateCapacity = async (): Promise<void> => {
             departureId,
             departureDelta: vessel?.departureDelta ?? null,
             departureTime,
+            capacityReportUpdatedAt,
             driveUpCapacity: spaceData.DriveUpSpaceCount,
             hasDriveUp: spaceData.DisplayDriveUpSpace,
             hasReservations: spaceData.DisplayReservableSpace,
