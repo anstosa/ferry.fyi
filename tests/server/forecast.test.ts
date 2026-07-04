@@ -135,7 +135,10 @@ describe("forecast estimates", () => {
 
   // blend behavior
   it("blends live capacity with recency-weighted historical outcomes", async () => {
-    const liveCrossing = createCrossing({});
+    const liveCrossing = createCrossing({
+      driveUpCapacity: 60,
+      reservableCapacity: 20,
+    });
     const schedule = createSchedule({ crossing: liveCrossing });
     scheduleModel.getAll.mockReturnValue({ [schedule.key]: schedule });
     crossingModel.findAll.mockResolvedValue([
@@ -175,6 +178,31 @@ describe("forecast estimates", () => {
     });
     expect(schedule.slots[0].estimate.driveUpCapacity).toBeLessThan(80);
     expect(schedule.slots[0].estimate.driveUpCapacity).toBeGreaterThan(20);
+  });
+
+  // stale live behavior
+  it("uses history when a future live row still reports every space open", async () => {
+    const liveCrossing = createCrossing({
+      driveUpCapacity: 100,
+      reservableCapacity: 0,
+    });
+    const schedule = createSchedule({ crossing: liveCrossing });
+    scheduleModel.getAll.mockReturnValue({ [schedule.key]: schedule });
+    crossingModel.findAll.mockResolvedValue([
+      createCrossing({
+        departureTime: toSeconds("2026-06-14T12:00:00"),
+        driveUpCapacity: 10,
+        reservableCapacity: 0,
+      }),
+    ]);
+
+    await updateEstimates();
+
+    expect(schedule.slots[0].estimate).toMatchObject({
+      driveUpCapacity: 10,
+      reservableCapacity: 0,
+      source: "historical",
+    });
   });
 
   // vessel capacity normalization
@@ -235,6 +263,48 @@ describe("forecast estimates", () => {
       source: "historical",
     });
     expect(schedule.slots[0].estimate.driveUpCapacity).toBeLessThan(50);
+  });
+
+  // holiday surge behavior
+  it("uses holiday-window tail risk instead of averaging away full sailings", async () => {
+    const schedule = createSchedule({
+      time: toSeconds("2026-07-04T10:00:00"),
+    });
+    scheduleModel.getAll.mockReturnValue({ [schedule.key]: schedule });
+    holidayModel.getWashingtonHolidayDates.mockImplementation(
+      async (year: number) =>
+        new Set(year === 2026 ? ["2026-07-04"] : ["2025-07-04"])
+    );
+    crossingModel.findAll.mockResolvedValue([
+      createCrossing({
+        departureTime: toSeconds("2025-07-03T10:00:00"),
+        driveUpCapacity: 0,
+        reservableCapacity: 0,
+      }),
+      createCrossing({
+        departureTime: toSeconds("2025-07-04T10:00:00"),
+        driveUpCapacity: 0,
+        reservableCapacity: 0,
+      }),
+      createCrossing({
+        departureTime: toSeconds("2025-07-05T10:00:00"),
+        driveUpCapacity: 0,
+        reservableCapacity: 0,
+      }),
+      createCrossing({
+        departureTime: toSeconds("2025-07-06T10:00:00"),
+        driveUpCapacity: 80,
+        reservableCapacity: 0,
+      }),
+    ]);
+
+    await updateEstimates();
+
+    expect(schedule.slots[0].estimate).toMatchObject({
+      driveUpCapacity: 0,
+      reservableCapacity: 0,
+      source: "historical",
+    });
   });
 
   // weather adjustment behavior

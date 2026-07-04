@@ -9,7 +9,7 @@ describe("vessel profile stats", () => {
     const stats = getVesselProfileStats({
       abbreviation: "Hist",
       id: "historical",
-      name: "Historical sailing",
+      name: "Unknown vessel",
       speed: 0,
       tallVehicleCapacity: 0,
       vehicleCapacity: 139,

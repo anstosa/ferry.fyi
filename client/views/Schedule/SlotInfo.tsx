@@ -224,11 +224,11 @@ export const SlotInfo = (props: Props): ReactElement => {
     hasConfirmedCapacity: false,
     isFull,
   });
+  const isHistoricalFallbackVessel = slot.vessel.id === "historical";
   // small boat status
-  const isSmallBoat = isSmallBoatCapacity(
-    slot.vessel.vehicleCapacity,
-    routeMaxVehicleCapacity
-  );
+  const isSmallBoat =
+    !isHistoricalFallbackVessel &&
+    isSmallBoatCapacity(slot.vessel.vehicleCapacity, routeMaxVehicleCapacity);
 
   const wrapper = useRef<HTMLDivElement>(null);
 
@@ -725,6 +725,44 @@ export const SlotInfo = (props: Props): ReactElement => {
       delayMins: timing.delayMins,
       slot,
     });
+    // historical fallback card
+    if (isHistoricalFallbackVessel) {
+      return (
+        <div
+          className={clsx(
+            "p-3 sm:p-4",
+            "text-sm",
+            "shadow-inset bg-darken-lowest",
+            className
+          )}
+        >
+          {renderSailingCard(delayCard)}
+          <article
+            className={clsx(
+              "overflow-hidden rounded-xl border",
+              "border-gray-medium dark:border-gray-dark",
+              "bg-white text-black shadow-sm",
+              "dark:bg-gray-darkest dark:text-white"
+            )}
+          >
+            <header
+              className={clsx(
+                "relative overflow-hidden p-4",
+                "bg-gradient-to-br from-blue-lightest via-white to-yellow-lightest",
+                "dark:from-blue-darkest dark:via-gray-darkest dark:to-yellow-dark"
+              )}
+            >
+              <p className="text-2xs font-bold uppercase tracking-wide text-gray-dark dark:text-gray-light">
+                Vessel
+              </p>
+              <h3 className="mt-1 text-2xl font-bold leading-tight">
+                Unknown vessel
+              </h3>
+            </header>
+          </article>
+        </div>
+      );
+    }
     const galleyStatus = getGalleyStatus({
       currentTime: time,
       route,

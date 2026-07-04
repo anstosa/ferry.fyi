@@ -32,6 +32,7 @@ export const updateCapacity = async (): Promise<void> => {
     // departure space records
     for (const departure of terminal.DepartingSpaces) {
       const vessel = Vessel.getByIndex(String(departure.VesselID));
+      const vesselId = departure.VesselID ? String(departure.VesselID) : null;
       const departureTime = wsfDateToTimestamp(departure.Departure);
       // arrival space groups
       for (const spaceData of departure.SpaceForArrivalTerminals) {
@@ -49,6 +50,8 @@ export const updateCapacity = async (): Promise<void> => {
             isCancelled: departure.IsCancelled,
             reservableCapacity: spaceData.ReservableSpaceCount,
             totalCapacity: spaceData.MaxSpaceCount,
+            vesselId,
+            vesselName: vessel?.name ?? null,
           };
           const where = {
             arrivalId: arrivalTerminalId,

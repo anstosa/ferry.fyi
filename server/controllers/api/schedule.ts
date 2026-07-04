@@ -13,6 +13,7 @@ import { toWsfDate } from "~/lib/wsf/date";
 import { updateSchedules } from "~/lib/wsf/updateSchedules";
 import Crossing from "~/models/Crossing";
 import { Schedule } from "~/models/Schedule";
+import { Vessel as VesselModel } from "~/models/Vessel";
 
 const scheduleRouter = Router();
 const schedulePaths = [
@@ -32,16 +33,29 @@ const getHistoricalDayBounds = (date: string): { from: number; to: number } => {
 };
 
 // placeholder vessel
-const getHistoricalVessel = (totalCapacity: number): Vessel =>
+const getUnknownHistoricalVessel = (totalCapacity: number): Vessel =>
   ({
-    abbreviation: "Hist",
+    abbreviation: "Unknown",
     id: "historical",
-    name: "Historical sailing",
+    name: "Unknown vessel",
     speed: 0,
     tallVehicleCapacity: 0,
     vehicleCapacity: totalCapacity,
     vesselWatchUrl: "",
   }) as Vessel;
+
+// historical vessel lookup
+const getHistoricalVessel = (crossing: Crossing): Vessel => {
+  // stored vessel guard
+  if (crossing.vesselId) {
+    const vessel = VesselModel.getByIndex(crossing.vesselId);
+    // cached vessel guard
+    if (vessel) {
+      return vessel.serialize();
+    }
+  }
+  return getUnknownHistoricalVessel(crossing.totalCapacity);
+};
 
 // historical date check
 const isHistoricalDate = (date: string): boolean => {
@@ -84,7 +98,7 @@ const getHistoricalSchedule = async (
     hasPassed: true,
     mateId: arrivingId,
     time: crossing.departureTime,
-    vessel: getHistoricalVessel(crossing.totalCapacity),
+    vessel: getHistoricalVessel(crossing),
     wuid: DateTime.fromSeconds(crossing.departureTime).toFormat("CCC-HH-mm"),
   }));
   return {

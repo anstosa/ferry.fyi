@@ -1,8 +1,17 @@
 import logger from "heroku-logger";
+import { DateTime } from "luxon";
 
 const HOLIDAY_API_BASE = "https://date.nager.at/api/v3/PublicHolidays";
 const HOLIDAY_COUNTRY = "US";
 const WASHINGTON_SUBDIVISION = "US-WA";
+
+const FIXED_HOLIDAY_DATES: Record<string, { day: number; month: number }> = {
+  Christmas: { day: 25, month: 12 },
+  "Independence Day": { day: 4, month: 7 },
+  Juneteenth: { day: 19, month: 6 },
+  "New Year's Day": { day: 1, month: 1 },
+  "Veterans Day": { day: 11, month: 11 },
+};
 
 interface NagerHoliday {
   counties: string[] | null;
@@ -30,6 +39,34 @@ const isWashingtonHoliday = (holiday: NagerHoliday): boolean => {
     return true;
   }
   return Boolean(holiday.counties?.includes(WASHINGTON_SUBDIVISION));
+};
+
+// fixed holiday aliases
+const getFixedHolidayDate = (
+  holiday: NagerHoliday,
+  year: number
+): string | null => {
+  const holidayName = holiday.name || "";
+  // fixed holiday search
+  for (const [name, date] of Object.entries(FIXED_HOLIDAY_DATES)) {
+    // name match guard
+    if (!holidayName.includes(name)) {
+      continue;
+    }
+    return DateTime.fromObject({ year, ...date }).toISODate();
+  }
+  return null;
+};
+
+// observed date expansion
+const getHolidayDates = (holiday: NagerHoliday, year: number): string[] => {
+  const dates = new Set([holiday.date]);
+  const fixedDate = getFixedHolidayDate(holiday, year);
+  // fixed date guard
+  if (fixedDate) {
+    dates.add(fixedDate);
+  }
+  return [...dates];
 };
 
 // test cache reset
@@ -67,7 +104,10 @@ const fetchWashingtonHolidayDates = async (
     }
 
     const holidayDates = new Set(
-      holidays.filter(isWashingtonHoliday).map(({ date }) => date)
+      holidays.filter(isWashingtonHoliday).flatMap((holiday) => {
+        // observed holiday expansion
+        return getHolidayDates(holiday, year);
+      })
     );
     holidayCache.set(year, holidayDates);
     return holidayDates;

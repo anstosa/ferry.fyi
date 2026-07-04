@@ -15,6 +15,8 @@ class Crossing extends Model implements CrossingType {
   isCancelled!: boolean;
   reservableCapacity!: number;
   totalCapacity!: number;
+  vesselId!: string | null;
+  vesselName!: string | null;
 
   isEmpty = (): boolean =>
     this.driveUpCapacity + this.reservableCapacity === this.totalCapacity;
@@ -46,6 +48,8 @@ Crossing.init(
     isCancelled: DataTypes.BOOLEAN,
     reservableCapacity: DataTypes.INTEGER,
     totalCapacity: DataTypes.INTEGER,
+    vesselId: DataTypes.STRING,
+    vesselName: DataTypes.STRING,
   },
   { sequelize: db, modelName: "Crossing" }
 );

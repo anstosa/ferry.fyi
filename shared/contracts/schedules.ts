@@ -11,6 +11,8 @@ export interface Crossing {
   isCancelled: boolean;
   reservableCapacity: number;
   totalCapacity: number;
+  vesselId?: string | null;
+  vesselName?: string | null;
 }
 
 export interface CrossingEstimate {

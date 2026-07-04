@@ -64,6 +64,29 @@ describe("Washington holiday lookup", () => {
     );
   });
 
+  // observed holiday behavior
+  it("adds the calendar date for observed fixed-date holidays", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify([
+          {
+            counties: null,
+            date: "2026-07-03",
+            global: true,
+            name: "Independence Day",
+            types: ["Public"],
+          },
+        ]),
+        { status: 200 }
+      )
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const holidays = await getWashingtonHolidayDates(2026);
+
+    expect([...holidays].sort()).toEqual(["2026-07-03", "2026-07-04"]);
+  });
+
   // cache behavior
   it("caches holiday responses by year", async () => {
     const fetchMock = vi.fn().mockResolvedValue(

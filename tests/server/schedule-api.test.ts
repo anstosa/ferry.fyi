@@ -15,6 +15,9 @@ const updateEstimates = vi.hoisted(() => vi.fn());
 const crossingModel = vi.hoisted(() => ({
   findAll: vi.fn(),
 }));
+const vesselModel = vi.hoisted(() => ({
+  getByIndex: vi.fn(),
+}));
 
 vi.mock("~/models/Schedule", () => ({
   Schedule: scheduleModel,
@@ -22,6 +25,10 @@ vi.mock("~/models/Schedule", () => ({
 
 vi.mock("~/models/Crossing", () => ({
   default: crossingModel,
+}));
+
+vi.mock("~/models/Vessel", () => ({
+  Vessel: vesselModel,
 }));
 
 vi.mock("~/lib/wsf/updateSchedules", () => ({
@@ -54,6 +61,8 @@ describe("schedule API", () => {
     updateEstimates.mockReset();
     crossingModel.findAll.mockReset();
     crossingModel.findAll.mockResolvedValue([]);
+    vesselModel.getByIndex.mockReset();
+    vesselModel.getByIndex.mockReturnValue(null);
   });
 
   // restore clock
@@ -198,9 +207,68 @@ describe("schedule API", () => {
       mateId: "2",
       time: 1577890800,
       vessel: {
-        name: "Historical sailing",
+        name: "Unknown vessel",
         vehicleCapacity: 100,
       },
+    });
+  });
+
+  // historical vessel lookup case
+  it("returns stored historical vessel assignments when the vessel is cached", async () => {
+    const vessel = {
+      id: "66",
+      name: "Salish",
+      // serialize vessel fixture
+      serialize: () => ({
+        abbreviation: "Sal",
+        id: "66",
+        name: "Salish",
+        tallVehicleCapacity: 0,
+        vehicleCapacity: 64,
+        vesselWatchUrl: "https://example.com/salish",
+      }),
+    };
+    const crossing = {
+      arrivalId: "2",
+      departureId: "1",
+      departureTime: 1577890800,
+      driveUpCapacity: 42,
+      hasDriveUp: true,
+      hasReservations: false,
+      isCancelled: false,
+      reservableCapacity: 0,
+      toJSON: () => ({
+        arrivalId: "2",
+        departureId: "1",
+        departureTime: 1577890800,
+        driveUpCapacity: 42,
+        hasDriveUp: true,
+        hasReservations: false,
+        isCancelled: false,
+        reservableCapacity: 0,
+        totalCapacity: 64,
+        vesselId: "66",
+        vesselName: "Salish",
+      }),
+      totalCapacity: 64,
+      vesselId: "66",
+      vesselName: "Salish",
+    };
+    scheduleModel.hasFetchedDate.mockReturnValue(true);
+    scheduleModel.getByIndex.mockReturnValue(null);
+    crossingModel.findAll.mockResolvedValue([crossing]);
+    vesselModel.getByIndex.mockReturnValue(vessel);
+    const app = createApp();
+
+    const response = await request(app)
+      .get("/api/schedule/1/2/2020-01-01")
+      .expect(200);
+
+    expect(vesselModel.getByIndex).toHaveBeenCalledWith("66");
+    expect(response.body.schedule.slots[0].vessel).toMatchObject({
+      id: "66",
+      name: "Salish",
+      vehicleCapacity: 64,
     });
   });
 });

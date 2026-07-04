@@ -29,7 +29,10 @@ import { Terminal } from "~/models/Terminal";
 const ESTIMATE_COMPOSITE_YEARS = 2;
 const DELAY_DISRUPTION_SECONDS = 15 * 60;
 const CANCELLED_CAPACITY_ROLLOVER_SHARE = 0.6;
+const HOLIDAY_WINDOW_DAYS = 2;
 const MIN_WEIGHT = 0.1;
+const PEAK_FULLISH_SHARE_THRESHOLD = 0.45;
+const PEAK_FULL_SHARE_THRESHOLD = 0.25;
 const ZENITH = 90.833;
 
 type HolidayDateMap = Record<number, Set<string>>;
@@ -51,6 +54,11 @@ interface HistoricalEstimate extends CapacityPair {
 
 interface NormalizedCapacitySample extends CapacityPair {
   weight: number;
+}
+
+interface DemandProfile {
+  daysUntilHoliday: number | null;
+  isHolidayDate: boolean;
 }
 
 // normalize degrees
@@ -130,6 +138,63 @@ const isHolidayDate = (time: DateTime, holidays: HolidayDateMap): boolean => {
   return holidays[time.year]?.has(date) ?? false;
 };
 
+// holiday travel window check
+const isHolidayWindowDate = (
+  time: DateTime,
+  holidays: HolidayDateMap
+): boolean => {
+  // nearby holiday scan
+  for (
+    let offset = -HOLIDAY_WINDOW_DAYS;
+    offset <= HOLIDAY_WINDOW_DAYS;
+    offset++
+  ) {
+    const windowTime = time.plus({ days: offset });
+    const windowDate = windowTime.toISODate();
+    // date format guard
+    if (!windowDate) {
+      continue;
+    }
+    // window match guard
+    if (holidays[windowTime.year]?.has(windowDate)) {
+      return true;
+    }
+  }
+  return false;
+};
+
+// nearest holiday offset
+const getDaysUntilHoliday = (
+  time: DateTime,
+  holidays: HolidayDateMap
+): number | null => {
+  // nearby holiday scan
+  for (let offset = 0; offset <= HOLIDAY_WINDOW_DAYS; offset++) {
+    const futureTime = time.plus({ days: offset });
+    const futureDate = futureTime.toISODate();
+    // future date guard
+    if (futureDate && holidays[futureTime.year]?.has(futureDate)) {
+      return offset;
+    }
+    const pastTime = time.minus({ days: offset });
+    const pastDate = pastTime.toISODate();
+    // past date guard
+    if (pastDate && holidays[pastTime.year]?.has(pastDate)) {
+      return -offset;
+    }
+  }
+  return null;
+};
+
+// demand profile
+const getDemandProfile = (
+  slotTime: DateTime,
+  holidays: HolidayDateMap
+): DemandProfile => ({
+  daysUntilHoliday: getDaysUntilHoliday(slotTime, holidays),
+  isHolidayDate: isHolidayDate(slotTime, holidays),
+});
+
 // holiday match multiplier
 const getHolidayWeight = (
   target: DateTime,
@@ -142,12 +207,18 @@ const getHolidayWeight = (
   if (targetIsHoliday && crossingIsHoliday) {
     return 8;
   }
+  const targetIsHolidayWindow = isHolidayWindowDate(target, holidays);
+  const crossingIsHolidayWindow = isHolidayWindowDate(crossingTime, holidays);
+  // holiday window match
+  if (targetIsHolidayWindow && crossingIsHolidayWindow) {
+    return 4;
+  }
   // holiday target mismatch
-  if (targetIsHoliday) {
+  if (targetIsHoliday || targetIsHolidayWindow) {
     return 0.25;
   }
   // historical holiday mismatch
-  if (crossingIsHoliday) {
+  if (crossingIsHoliday || crossingIsHolidayWindow) {
     return 0.5;
   }
   return 1.1;
@@ -178,6 +249,12 @@ const isComparableCrossing = (
   const crossingIsHoliday = isHolidayDate(crossingTime, holidays);
   // annual holiday match
   if (targetIsHoliday && crossingIsHoliday) {
+    return true;
+  }
+  const targetIsHolidayWindow = isHolidayWindowDate(target, holidays);
+  const crossingIsHolidayWindow = isHolidayWindowDate(crossingTime, holidays);
+  // holiday window match
+  if (targetIsHolidayWindow && crossingIsHolidayWindow) {
     return true;
   }
   return crossingTime.weekday === target.weekday;
@@ -222,6 +299,34 @@ const weightedMean = (
   return totalWeight ? weightedTotal / totalWeight : 0;
 };
 
+// weighted quantile
+const weightedQuantile = (
+  values: Array<{ value: number; weight: number }>,
+  quantile: number
+): number => {
+  const sortedValues = [...values].sort((left, right) => {
+    return left.value - right.value;
+  });
+  const totalWeight = sortedValues.reduce((total, { weight }) => {
+    return total + weight;
+  }, 0);
+  const threshold = totalWeight * quantile;
+  let accumulatedWeight = 0;
+  // quantile accumulation
+  for (const { value, weight } of sortedValues) {
+    accumulatedWeight += weight;
+    // threshold guard
+    if (accumulatedWeight >= threshold) {
+      return value;
+    }
+  }
+  return sortedValues[sortedValues.length - 1]?.value ?? 0;
+};
+
+// total available capacity
+const getAvailableCapacity = (capacity: CapacityPair): number =>
+  capacity.driveUpCapacity + (capacity.reservableCapacity ?? 0);
+
 // slot vehicle capacity
 const getSlotVehicleCapacity = (slot: Slot): number => {
   const { tallVehicleCapacity, vehicleCapacity } = slot.vessel;
@@ -254,6 +359,94 @@ const normalizeHistoricalSample = (
     reservableCapacity: normalizedReservableCapacity,
     weight,
   };
+};
+
+// peak demand check
+const isPeakDemandProfile = (
+  profile: DemandProfile,
+  fullishShare: number
+): boolean =>
+  profile.isHolidayDate ||
+  profile.daysUntilHoliday === 1 ||
+  fullishShare >= PEAK_FULLISH_SHARE_THRESHOLD;
+
+// weighted share
+const getWeightedShare = (
+  samples: NormalizedCapacitySample[],
+  predicate: (sample: NormalizedCapacitySample) => boolean
+): number => {
+  let matchingWeight = 0;
+  let totalWeight = 0;
+  // sample share accumulation
+  samples.forEach((sample) => {
+    totalWeight += sample.weight;
+    // predicate guard
+    if (predicate(sample)) {
+      matchingWeight += sample.weight;
+    }
+  });
+  return totalWeight ? matchingWeight / totalWeight : 0;
+};
+
+// availability split
+const splitAvailableCapacity = (
+  totalAvailable: number,
+  samples: NormalizedCapacitySample[]
+): CapacityPair => {
+  const reservableShare = weightedMean(
+    samples.map((sample) => {
+      const availableCapacity = getAvailableCapacity(sample);
+      return {
+        value: availableCapacity
+          ? (sample.reservableCapacity ?? 0) / availableCapacity
+          : 0,
+        weight: sample.weight,
+      };
+    })
+  );
+  const reservableCapacity = round(totalAvailable * reservableShare);
+  return {
+    driveUpCapacity: totalAvailable - reservableCapacity,
+    reservableCapacity,
+  };
+};
+
+// peak demand capacity
+const getPeakDemandCapacity = (
+  samples: NormalizedCapacitySample[],
+  meanCapacity: CapacityPair,
+  profile: DemandProfile,
+  targetTotalCapacity: number
+): CapacityPair => {
+  const fullThreshold = Math.max(1, round(targetTotalCapacity * 0.02));
+  const fullishThreshold = Math.max(4, round(targetTotalCapacity * 0.1));
+  const fullShare = getWeightedShare(samples, (sample) => {
+    return getAvailableCapacity(sample) <= fullThreshold;
+  });
+  const fullishShare = getWeightedShare(samples, (sample) => {
+    return getAvailableCapacity(sample) <= fullishThreshold;
+  });
+  // non-peak guard
+  if (!isPeakDemandProfile(profile, fullishShare)) {
+    return meanCapacity;
+  }
+  const availableSamples = samples.map((sample) => ({
+    value: getAvailableCapacity(sample),
+    weight: sample.weight,
+  }));
+  const quantile =
+    profile.isHolidayDate || profile.daysUntilHoliday === 1 ? 0.3 : 0.45;
+  const quantileAvailable = weightedQuantile(availableSamples, quantile);
+  const meanAvailable = getAvailableCapacity(meanCapacity);
+  let selectedAvailable = Math.min(meanAvailable, quantileAvailable);
+  // full risk guard
+  if (
+    fullShare >= PEAK_FULL_SHARE_THRESHOLD &&
+    fullishShare >= PEAK_FULLISH_SHARE_THRESHOLD
+  ) {
+    selectedAvailable = 0;
+  }
+  return splitAvailableCapacity(round(selectedAvailable), samples);
 };
 
 // constrain total capacity
@@ -333,8 +526,7 @@ const getHistoricalEstimate = (
     // normalize boat size
     return normalizeHistoricalSample(sample, targetTotalCapacity);
   });
-
-  return {
+  const meanCapacity = {
     driveUpCapacity: round(
       weightedMean(
         normalizedSamples.map(({ driveUpCapacity, weight }) => ({
@@ -351,6 +543,17 @@ const getHistoricalEstimate = (
         }))
       )
     ),
+  };
+  const demandCapacity = getPeakDemandCapacity(
+    normalizedSamples,
+    meanCapacity,
+    getDemandProfile(slotTime, holidays),
+    targetTotalCapacity
+  );
+
+  return {
+    driveUpCapacity: demandCapacity.driveUpCapacity,
+    reservableCapacity: demandCapacity.reservableCapacity,
     sampleSize: samples.length,
     weight: round(
       samples.reduce((total, { weight }) => total + weight, 0),
@@ -373,13 +576,43 @@ const getLiveWeight = (slotTime: DateTime, now: DateTime): number => {
   return 0.45;
 };
 
+// uninformative live capacity check
+const isUninformativeFullLiveCapacity = (
+  crossing: Crossing | undefined,
+  slotTime: DateTime,
+  now: DateTime,
+  totalCapacity: number
+): boolean => {
+  // missing crossing guard
+  if (!crossing) {
+    return false;
+  }
+  // passed sailing guard
+  if (slotTime <= now) {
+    return false;
+  }
+  // disruption guard
+  if (crossing.isCancelled) {
+    return false;
+  }
+  return getAvailableCapacity(crossing) >= totalCapacity;
+};
+
 // blend capacities
 const blendCapacity = (
   historical: HistoricalEstimate | null,
   crossing: Crossing | undefined,
   slotTime: DateTime,
-  now: DateTime
+  now: DateTime,
+  totalCapacity: number
 ): CapacityPair | null => {
+  // stale live guard
+  if (
+    historical &&
+    isUninformativeFullLiveCapacity(crossing, slotTime, now, totalCapacity)
+  ) {
+    return historical;
+  }
   // historical fallback
   if (!crossing) {
     return historical;
@@ -620,6 +853,12 @@ export const updateEstimates = async (): Promise<void> => {
         slot.tide = getSlotTide(departureTide, arrivalTide);
         const totalCapacity =
           slot.crossing?.totalCapacity ?? getSlotVehicleCapacity(slot);
+        const liveIsUninformative = isUninformativeFullLiveCapacity(
+          slot.crossing,
+          slotTime,
+          now,
+          totalCapacity
+        );
         const historical = getHistoricalEstimate(
           slotTime,
           crossings,
@@ -628,8 +867,16 @@ export const updateEstimates = async (): Promise<void> => {
           holidays,
           totalCapacity
         );
+        const forecastCrossing =
+          historical && liveIsUninformative ? undefined : slot.crossing;
         const disrupted = isDisrupted(slot.crossing);
-        const blended = blendCapacity(historical, slot.crossing, slotTime, now);
+        const blended = blendCapacity(
+          historical,
+          forecastCrossing,
+          slotTime,
+          now,
+          totalCapacity
+        );
         // capacity already resolved
         const liveDriveCapacity =
           slot.crossing?.driveUpCapacity ?? totalCapacity;
@@ -669,11 +916,11 @@ export const updateEstimates = async (): Promise<void> => {
           rolloverDemand = 0;
         }
         const estimate: CrossingEstimate = {
-          confidence: getConfidence(historical, slot.crossing, disrupted),
+          confidence: getConfidence(historical, forecastCrossing, disrupted),
           driveUpCapacity: rolloverAdjusted.driveUpCapacity,
           reservableCapacity: rolloverAdjusted.reservableCapacity,
           sampleSize: historical?.sampleSize ?? 0,
-          source: getSource(historical, slot.crossing, disrupted),
+          source: getSource(historical, forecastCrossing, disrupted),
         };
         // cancelled sailings are treated as low-confidence live estimates
         if (slot.crossing?.isCancelled) {
