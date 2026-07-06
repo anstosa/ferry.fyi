@@ -1,7 +1,7 @@
 import { DateTime, Interval } from "luxon";
 import { constrain, round } from "shared/lib/math";
 
-import type { DemandEvent } from "~/models/DemandEvent";
+import type { DemandEventType } from "~/models/DemandEvent";
 
 const SCHOOL_BREAK_PRESSURE = 0.08;
 const SPORTS_EVENT_PRESSURE = 0.1;
@@ -29,10 +29,19 @@ export interface DemandCalendarProfile {
   totalPressure: number;
 }
 
+// demand event shape
+export interface DemandCalendarEvent {
+  endsAt: number;
+  eventType: DemandEventType;
+  pressure: number;
+  startsAt: number;
+  title: string;
+}
+
 interface DemandCalendarInput {
   arrivalId: string;
   departureId: string;
-  events?: DemandEvent[];
+  events?: DemandCalendarEvent[];
   time: DateTime;
 }
 

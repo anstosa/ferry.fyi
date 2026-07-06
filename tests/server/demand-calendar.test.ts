@@ -29,13 +29,10 @@ describe("demand calendar", () => {
         {
           endsAt: at("2026-03-14T23:59:59").toSeconds(),
           eventType: "school-break",
-          location: "washington-state",
           pressure: 0.12,
-          source: "test",
-          sourceId: "break",
           startsAt: at("2026-03-10T00:00:00").toSeconds(),
           title: "Washington school break",
-        } as any,
+        },
       ],
       time: at("2026-03-12T09:00:00"),
     });
@@ -91,13 +88,10 @@ describe("demand calendar", () => {
         {
           endsAt: at("2026-07-10T23:00:00").toSeconds(),
           eventType: "sports",
-          location: "seattle-stadium",
           pressure: 0.1,
-          source: "test",
-          sourceId: "game",
           startsAt,
           title: "Seattle home game",
-        } as any,
+        },
       ],
       time: at("2026-07-10T17:00:00"),
     });
