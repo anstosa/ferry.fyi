@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const forecastModel = vi.hoisted(() => ({
   updateEstimates: vi.fn(),
@@ -66,13 +66,20 @@ vi.mock("~/lib/wsf/updateTerminals", () => terminalModel);
 
 vi.mock("~/lib/wsf/updateVessels", () => vesselModel);
 
-const { updateDaily, updateShort } = await import("../../server/lib/wsf");
+const { updateDaily, updateLong, updateShort } = await import(
+  "../../server/lib/wsf"
+);
 
 describe("WSF refresh", () => {
+  // reset mocks
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   // failure isolation
   it("starts best-effort weather refresh when estimate refresh fails", async () => {
     vesselModel.updateVesselStatus.mockResolvedValue(undefined);
-    capacityModel.updateCapacity.mockResolvedValue(undefined);
+    capacityModel.updateCapacity.mockResolvedValue([]);
     forecastModel.updateEstimates.mockRejectedValue(new Error("estimate failed"));
     weatherRefreshModel.updateWeatherForecasts.mockResolvedValue({
       recordsWritten: 0,
@@ -82,6 +89,7 @@ describe("WSF refresh", () => {
     await expect(updateShort()).rejects.toThrow(Error);
 
     expect(weatherRefreshModel.updateWeatherForecasts).toHaveBeenCalled();
+    expect(forecastModel.updateEstimates).toHaveBeenCalledWith([]);
   });
 
   // daily inference
@@ -93,5 +101,16 @@ describe("WSF refresh", () => {
     expect(
       normalRouteVesselModel.updateNormalRouteVessels
     ).toHaveBeenCalledOnce();
+  });
+
+  // warming cleanup
+  it("clears warming state when long refresh fails", async () => {
+    cameraModel.updateCameras.mockRejectedValue(new Error("db disconnected"));
+    vesselModel.updateVessels.mockResolvedValue(undefined);
+
+    await expect(updateLong()).rejects.toThrow(Error);
+
+    expect(wsfApiModel.setWsfWarming).toHaveBeenNthCalledWith(1, true);
+    expect(wsfApiModel.setWsfWarming).toHaveBeenLastCalledWith(false);
   });
 });

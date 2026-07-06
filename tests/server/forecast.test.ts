@@ -7,7 +7,10 @@ const scheduleModel = vi.hoisted(() => ({
 }));
 
 const crossingModel = vi.hoisted(() => ({
+  count: vi.fn(),
   findAll: vi.fn(),
+  max: vi.fn(),
+  min: vi.fn(),
 }));
 
 const terminalModel = vi.hoisted(() => ({
@@ -97,9 +100,15 @@ describe("forecast estimates", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-21T17:00:00.000Z"));
     scheduleModel.getAll.mockReset();
+    crossingModel.count.mockReset();
     crossingModel.findAll.mockReset();
+    crossingModel.max.mockReset();
+    crossingModel.min.mockReset();
     terminalModel.getByIndex.mockReset();
     holidayModel.getWashingtonHolidayDates.mockReset();
+    crossingModel.count.mockResolvedValue(0);
+    crossingModel.max.mockResolvedValue(null);
+    crossingModel.min.mockResolvedValue(null);
     terminalModel.getByIndex.mockReturnValue(terminal);
     holidayModel.getWashingtonHolidayDates.mockResolvedValue(new Set());
     weatherAdjustmentModel.getWeatherAdjustedCapacity.mockReset();
@@ -174,11 +183,140 @@ describe("forecast estimates", () => {
     );
     expect(schedule.slots[0].estimate).toMatchObject({
       confidence: "medium",
+      factors: expect.arrayContaining([
+        expect.objectContaining({ label: "Historical pattern" }),
+        expect.objectContaining({ label: "Current WSF vehicle-space report data included" }),
+      ]),
       sampleSize: 2,
       source: "blended",
     });
     expect(schedule.slots[0].estimate.driveUpCapacity).toBeLessThan(80);
     expect(schedule.slots[0].estimate.driveUpCapacity).toBeGreaterThan(20);
+  });
+
+  // historical copy behavior
+  it("formats historical pattern volume and database history", async () => {
+    const schedule = createSchedule({});
+    scheduleModel.getAll.mockReturnValue({ [schedule.key]: schedule });
+    const baseTime = DateTime.fromISO("2026-06-14T12:00:00", {
+      zone: "America/Los_Angeles",
+    });
+    crossingModel.findAll.mockResolvedValue(
+      // comparable records
+      Array.from({ length: 1234 }, (_, index) =>
+        createCrossing({
+          departureTime: baseTime.minus({ weeks: index }).toSeconds(),
+          driveUpCapacity: 40,
+          reservableCapacity: 0,
+        })
+      )
+    );
+    crossingModel.count.mockResolvedValue(4567);
+    crossingModel.min.mockResolvedValue(toSeconds("2019-06-28T15:35:00"));
+    crossingModel.max.mockResolvedValue(toSeconds("2026-07-05T23:45:00"));
+
+    await updateEstimates();
+
+    const historicalPattern = schedule.slots[0].estimate?.factors?.find(
+      (factor) => {
+        // historical factor match
+        return factor.label === "Historical pattern";
+      }
+    );
+    expect(historicalPattern?.detail).toBe(
+      "1,234 comparable past sailings are weighted by date, time, route, and vessel capacity. 4,567 total sailings over 8 years recorded for this route."
+    );
+  }, 10_000);
+
+  // weather detail copy
+  it("includes concise weather details in weather factors", async () => {
+    const schedule = createSchedule({});
+    scheduleModel.getAll.mockReturnValue({ [schedule.key]: schedule });
+    crossingModel.findAll.mockResolvedValue([
+      createCrossing({
+        departureTime: toSeconds("2026-06-14T12:00:00"),
+        driveUpCapacity: 20,
+        reservableCapacity: 0,
+      }),
+    ]);
+    weatherAdjustmentModel.createWeatherAdjustmentContext.mockResolvedValue({
+      adjustmentsByBucket: new Map(),
+      forecastsByHour: new Map([
+        [
+          toSeconds("2026-06-21T12:00:00"),
+          {
+            cloudCoverPercent: 63,
+            precipitationMm: 1,
+            temperatureC: 15,
+            windGustKmh: 30,
+            windSpeedKmh: 12,
+          },
+        ],
+        [
+          toSeconds("2026-06-21T15:00:00"),
+          {
+            cloudCoverPercent: 20,
+            precipitationMm: 0,
+            temperatureC: 25,
+            windGustKmh: 20,
+            windSpeedKmh: 8,
+          },
+        ],
+      ]),
+    });
+
+    await updateEstimates();
+
+    const weatherFactor = schedule.slots[0].estimate?.factors?.find(
+      (factor) => {
+        // weather factor match
+        return factor.label === "No weather impact";
+      }
+    );
+    expect(weatherFactor?.detail).toBe(
+      "77°F high, 63% cover, 0.04 in, 7-19 mph wind"
+    );
+  });
+
+
+  // dry weather detail copy
+  it("uses clear and none for dry weather details", async () => {
+    const schedule = createSchedule({});
+    scheduleModel.getAll.mockReturnValue({ [schedule.key]: schedule });
+    crossingModel.findAll.mockResolvedValue([
+      createCrossing({
+        departureTime: toSeconds("2026-06-14T12:00:00"),
+        driveUpCapacity: 20,
+        reservableCapacity: 0,
+      }),
+    ]);
+    weatherAdjustmentModel.createWeatherAdjustmentContext.mockResolvedValue({
+      adjustmentsByBucket: new Map(),
+      forecastsByHour: new Map([
+        [
+          toSeconds("2026-06-21T12:00:00"),
+          {
+            cloudCoverPercent: 0,
+            precipitationMm: 0,
+            temperatureC: 20,
+            windGustKmh: 8,
+            windSpeedKmh: 8,
+          },
+        ],
+      ]),
+    });
+
+    await updateEstimates();
+
+    const weatherFactor = schedule.slots[0].estimate?.factors?.find(
+      (factor) => {
+        // weather factor match
+        return factor.label === "No weather impact";
+      }
+    );
+    expect(weatherFactor?.detail).toBe(
+      "68°F high, clear, None, 5 mph wind"
+    );
   });
 
   // stale live behavior
@@ -202,6 +340,12 @@ describe("forecast estimates", () => {
 
     expect(schedule.slots[0].estimate).toMatchObject({
       driveUpCapacity: 10,
+      factors: expect.arrayContaining([
+        expect.objectContaining({
+          impact: "neutral",
+          label: "No reported capacity data yet",
+        }),
+      ]),
       reservableCapacity: 0,
       source: "historical",
     });
@@ -330,7 +474,7 @@ describe("forecast estimates", () => {
 
     expect(schedule.slots[0].estimate).toMatchObject({
       driveUpCapacity: 0,
-      fullRisk: "likely",
+      fullRisk: "high",
       reservableCapacity: 0,
       routeClass: "reservation",
       source: "historical",

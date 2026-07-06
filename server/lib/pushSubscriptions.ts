@@ -18,6 +18,7 @@ interface SubscribedTerminalPushInput {
   data: Record<string, string>;
   departureTerminalId?: string;
   departureTimes?: number[];
+  oneTimeOnly?: boolean;
   terminalIds: string[];
 }
 
@@ -28,6 +29,7 @@ const hasScheduledRuleSubscription = ({
   currentTime,
   departureTerminalId,
   departureTimes,
+  oneTimeOnly,
   terminalIds,
 }: {
   alertRules: AlertRule[] | undefined;
@@ -35,6 +37,7 @@ const hasScheduledRuleSubscription = ({
   currentTime?: DateTime;
   departureTerminalId?: string;
   departureTimes?: number[];
+  oneTimeOnly?: boolean;
   terminalIds: string[];
 }): boolean => {
   return hasAlertRuleSubscription(alertRules, {
@@ -42,6 +45,7 @@ const hasScheduledRuleSubscription = ({
     currentTime,
     departureTerminalId,
     departureTimes,
+    oneTimeOnly,
     terminalIds,
   });
 };
@@ -66,6 +70,7 @@ export const getSubscribedTerminalPushMessages = async ({
   data,
   departureTerminalId,
   departureTimes,
+  oneTimeOnly,
   terminalIds,
 }: SubscribedTerminalPushInput): Promise<Message[]> => {
   const users = await UserSettings.findAll();
@@ -80,6 +85,7 @@ export const getSubscribedTerminalPushMessages = async ({
       currentTime,
       departureTerminalId,
       departureTimes,
+      oneTimeOnly,
       terminalIds,
     });
     // route subscription guard

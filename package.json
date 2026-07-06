@@ -150,6 +150,9 @@
     "generate:icons:android": "npx cordova-res android --icon-background-source '#016f52' --skip-config --copy",
     "generate:icons:ios": "npx cordova-res ios --skip-config --copy",
     "forecast:backtest": "cd server && node ../scripts/register-esbuild.js scripts/backtestForecasts.ts",
+    "forecast:backtest:assert": "yarn forecast:backtest --assert",
+    "forecast:calibrate": "yarn forecast:backtest --persist-calibration",
+    "sports:update-events": "cd server && node ../scripts/register-esbuild.js scripts/updateMajorSportsEvents.ts",
     "heroku": "cd dist/server && node server.js",
     "heroku-postbuild": "yarn build",
     "heroku:shell": "heroku ps:exec -a ferry-fyi",
@@ -185,7 +188,9 @@
     "weather:calculate-adjustments": "cd server && node ../scripts/register-esbuild.js scripts/calculateWeatherAdjustments.ts",
     "tides:backfill": "cd server && node ../scripts/register-esbuild.js scripts/backfillTides.ts",
     "tides:update-forecasts": "cd server && node ../scripts/register-esbuild.js scripts/updateTideForecasts.ts",
-    "user-settings:migrate-auth0": "cd server && node ../scripts/register-esbuild.js scripts/migrateAuth0UserSettings.ts"
+    "user-settings:migrate-auth0": "cd server && node ../scripts/register-esbuild.js scripts/migrateAuth0UserSettings.ts",
+    "school-breaks:update-events": "cd server && node ../scripts/register-esbuild.js scripts/updateSchoolBreakEvents.ts",
+    "demand:update-events": "yarn school-breaks:update-events && yarn sports:update-events"
   },
   "resolutions": {
     "@babel/helper-remap-async-to-generator": "7.29.7",

@@ -19,6 +19,7 @@ export interface Crossing {
 export interface CrossingEstimate {
   confidence?: ForecastConfidence;
   driveUpCapacity: number;
+  factors?: ForecastFactor[];
   fullProbability?: number;
   fullRisk?: ForecastFullRisk;
   reservableCapacity: number | null;
@@ -28,6 +29,10 @@ export interface CrossingEstimate {
 }
 
 export interface SlotWeather {
+  cloudCoverPercent: number | null;
+  highTemperatureC: number | null;
+  precipitationMm: number | null;
+  temperatureC: number | null;
   windGustKmh: number | null;
   windSpeedKmh: number | null;
 }
@@ -42,7 +47,15 @@ export interface SlotTide {
 
 export type ForecastConfidence = "low" | "medium" | "high";
 
-export type ForecastFullRisk = "low" | "maybe" | "likely";
+export type ForecastFullRisk = "low" | "unlikely" | "likely" | "high";
+
+export interface ForecastFactor {
+  detail: string;
+  impact: ForecastFactorImpact;
+  label: string;
+}
+
+export type ForecastFactorImpact = "higher" | "lower" | "neutral";
 
 export type ForecastRouteClass = "high-variance" | "reservation" | "standard";
 

@@ -106,6 +106,56 @@ describe("push subscriptions", () => {
     ]);
   });
 
+  it("matches sailing update messages only for one-time sailing rules", async () => {
+    userSettings.findAll.mockResolvedValueOnce([
+      makeSettings("single-sailing", {
+        alertRules: [
+          {
+            channels: ["delays"],
+            date: "2026-07-06",
+            daysOfWeek: [1],
+            endTime: "06:45",
+            id: "single",
+            routeKey: "14:5",
+            startTime: "06:45",
+            terminalIds: ["14"],
+          },
+        ],
+        fcmToken: "single-token",
+      }),
+      makeSettings("recurring-route", {
+        alertRules: [
+          {
+            channels: ["sailing-updates"],
+            daysOfWeek: [1, 2, 3, 4, 5],
+            endTime: "24:00",
+            id: "recurring",
+            routeKey: "14:5",
+            startTime: "00:00",
+            terminalIds: ["14"],
+          },
+        ],
+        fcmToken: "recurring-token",
+      }),
+    ]);
+
+    const messages = await getSubscribedTerminalPushMessages({
+      channel: "sailing-updates",
+      data: { title: "Boarding" },
+      departureTerminalId: "14",
+      departureTimes: [DateTime.fromISO("2026-07-06T06:45:00").toSeconds()],
+      oneTimeOnly: true,
+      terminalIds: ["14", "5"],
+    });
+
+    expect(messages).toEqual([
+      {
+        data: { title: "Boarding", userId: "single-sailing" },
+        token: "single-token",
+      },
+    ]);
+  });
+
   it("matches a one-sailing alert rule when start and end are the same", async () => {
     userSettings.findAll.mockResolvedValueOnce([
       makeSettings("single-sailing", {

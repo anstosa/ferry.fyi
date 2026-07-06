@@ -12,6 +12,8 @@ import { DateButton } from "~/components/DateButton";
 import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { Footer } from "~/components/Footer";
 import { InstallPromptToast } from "~/components/InstallPromptToast";
+import { Page } from "~/components/Page";
+import { PageLoadError } from "~/components/PageLoadError";
 import { RouteSelector } from "~/components/RouteSelector";
 import { Splash } from "~/components/Splash";
 import { useQuery } from "~/lib/browser";
@@ -113,6 +115,8 @@ export const Route = ({
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const [schedule, setSchedule] = useState<ScheduleClass | null>(null);
+  const [scheduleError, setScheduleError] = useState<Error | null>(null);
+  const [routeError, setRouteError] = useState<Error | null>(null);
   const [isUpdating, setUpdating] = useState<boolean>(false);
   const [[terminal, mate], setTerminals] = useState<Array<Terminal | null>>([
     null,
@@ -210,27 +214,53 @@ export const Route = ({
     return `${terminalPath}${subviewPath}${query}`;
   };
 
+  // route parameter sync
   const setRoute = async (
     terminalSlug: string,
     mateSlug?: string
   ): Promise<void> => {
-    const terminal = await getTerminal(terminalSlug);
-    let mate: Terminal | null = null;
-    if (mateSlug) {
-      mate = await getTerminal(mateSlug);
-    }
-    if (!mate || !findWhere(terminal.mates, { id: mate.id })) {
-      mate = terminal?.mates?.[0] ?? null;
-    }
-    // invalidate stale schedule
-    scheduleRequestRef.current += 1;
-    setTerminals([terminal, mate]);
+    try {
+      const terminal = await getTerminal(terminalSlug);
+      let mate: Terminal | null = null;
+      // mate slug guard
+      if (mateSlug) {
+        mate = await getTerminal(mateSlug);
+      }
+      // valid mate guard
+      if (!mate || !findWhere(terminal.mates, { id: mate.id })) {
+        mate = terminal?.mates?.[0] ?? null;
+      }
+      // invalidate stale schedule
+      scheduleRequestRef.current += 1;
+      setRouteError(null);
+      setTerminals([terminal, mate]);
 
-    const path = getPath({ terminal, mate: mate ?? undefined });
-    setSchedule(null);
-    if (pathname !== path) {
-      navigate(path);
+      const path = getPath({ terminal, mate: mate ?? undefined });
+      setScheduleError(null);
+      setSchedule(null);
+      // route sync guard
+      if (pathname !== path) {
+        navigate(path);
+      }
+    } catch (error) {
+      const nextError =
+        error instanceof Error ? error : new Error(String(error));
+      console.error(nextError);
+      setRouteError(nextError);
     }
+  };
+
+  // route sync retry
+  const retryRouteLoad = (): void => {
+    // route parameter guard
+    if (!terminalSlug) {
+      window.location.reload();
+      return;
+    }
+    setRoute(terminalSlug, mateSlug).catch((error) => {
+      // retry failure
+      console.error(error);
+    });
   };
 
   // reset selected date
@@ -245,7 +275,16 @@ export const Route = ({
     }
     const requestId = scheduleRequestRef.current + 1;
     scheduleRequestRef.current = requestId;
+    const isScheduleForRequest =
+      schedule?.terminalId === terminal.id &&
+      schedule?.mateId === mate.id &&
+      schedule?.date === date.toISODate();
+    // mismatched schedule guard
+    if (!isScheduleForRequest) {
+      setSchedule(null);
+    }
     setUpdating(true);
+    setScheduleError(null);
     try {
       const { schedule, timestamp } = await getSchedule(terminal, mate, date);
       // stale response guard
@@ -255,6 +294,15 @@ export const Route = ({
       setSchedule(schedule);
       const time = DateTime.fromSeconds(timestamp);
       setTime(time);
+    } catch (error) {
+      // stale error guard
+      if (requestId !== scheduleRequestRef.current) {
+        return;
+      }
+      const nextError =
+        error instanceof Error ? error : new Error(String(error));
+      console.error(nextError);
+      setScheduleError(nextError);
     } finally {
       // latest request guard
       if (requestId === scheduleRequestRef.current) {
@@ -330,7 +378,13 @@ export const Route = ({
             />
           </Header>
         )}
-        <Schedule route={selectedRoute} time={time} schedule={schedule} />
+        <Schedule
+          loadError={scheduleError}
+          onReload={updateSchedule}
+          route={selectedRoute}
+          time={time}
+          schedule={schedule}
+        />
       </>
     );
   } else if (view === "cameras") {
@@ -376,6 +430,19 @@ export const Route = ({
 
   // initial route guard
   if (!terminal || !mate) {
+    // failed route load guard
+    if (routeError) {
+      return (
+        <Page title="Route unavailable">
+          <PageLoadError
+            error={routeError}
+            message="Ferry FYI could not reach the route API. Reload and try again, or contact the developer if it keeps happening."
+            onReload={retryRouteLoad}
+            title="Route could not load"
+          />
+        </Page>
+      );
+    }
     return <Splash />;
   }
 

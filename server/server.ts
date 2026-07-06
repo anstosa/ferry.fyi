@@ -6,6 +6,9 @@ import { scheduleJob } from "node-schedule";
 import { apiRouter } from "~/controllers/api";
 import { staticRouter } from "~/controllers/static";
 import { dbInit } from "~/lib/db";
+import { updateMajorSportsEvents } from "~/lib/demandEvents/updateMajorSportsEvents";
+import { updateSchoolBreakEvents } from "~/lib/demandEvents/updateSchoolBreakEvents";
+import { safeScheduledTask } from "~/lib/safeScheduledJob";
 import { backfillTideObservations } from "~/lib/tides/backfill";
 import { backfillWeatherObservations } from "~/lib/weather/backfill";
 import { calculateAndPersistWeatherAdjustments } from "~/lib/weather/calculateCapacityAdjustments";
@@ -96,6 +99,16 @@ const refreshTideModelInBackground = (): void => {
     });
 };
 
+// run demand event maintenance
+const refreshDemandEventsInBackground = (): void => {
+  Promise.all([updateMajorSportsEvents(), updateSchoolBreakEvents()]).catch(
+    (error: Error) => {
+      // log event failure
+      logger.error(`Demand event refresh failed: ${error.message}`, error);
+    }
+  );
+};
+
 // start server
 (async () => {
   await dbInit;
@@ -118,18 +131,38 @@ const refreshTideModelInBackground = (): void => {
   refreshWeatherModelInBackground();
   // refresh tide model asynchronously
   refreshTideModelInBackground();
+  // refresh demand events asynchronously
+  refreshDemandEventsInBackground();
   // run daily inference after overnight cache reset
-  scheduleJob({ hour: 4, minute: 10, second: 0 }, updateDaily);
+  scheduleJob(
+    { hour: 4, minute: 10, second: 0 },
+    safeScheduledTask("daily WSF route-vessel inference", updateDaily)
+  );
   // run slow updates every minute
-  scheduleJob({ second: 0 }, updateLong);
+  scheduleJob({ second: 0 }, safeScheduledTask("long WSF refresh", updateLong));
   // run fast updates every 30 seconds
-  scheduleJob({ second: [0, 30] }, updateShort);
+  scheduleJob(
+    { second: [0, 30] },
+    safeScheduledTask("short WSF refresh", updateShort)
+  );
   // clear cache at 4am
-  scheduleJob({ hour: 4, minute: 0, second: 0 }, () => {
-    Schedule.purge();
-    Route.purge();
-  });
+  scheduleJob(
+    { hour: 4, minute: 0, second: 0 },
+    safeScheduledTask("daily in-memory cache purge", () => {
+      Schedule.purge();
+      Route.purge();
+    })
+  );
+  // refresh demand events daily
+  scheduleJob(
+    { hour: 4, minute: 20, second: 0 },
+    safeScheduledTask(
+      "daily demand event refresh",
+      refreshDemandEventsInBackground
+    )
+  );
   logger.info(
-    "WSF refresh jobs scheduled: daily 04:10, long every minute, short every 30 seconds"
+    "WSF refresh jobs scheduled: daily 04:10, demand events daily 04:20, " +
+      "long every minute, short every 30 seconds"
   );
 })();

@@ -21,6 +21,7 @@ import {
 import { pluralize } from "shared/lib/strings";
 
 import { Page } from "~/components/Page";
+import { PageLoadError } from "~/components/PageLoadError";
 import { Splash } from "~/components/Splash";
 import { useDevice } from "~/lib/device";
 import { getSlug, useTerminals } from "~/lib/terminals";
@@ -250,7 +251,8 @@ const getTicketSummary = ({
 export const Account = withAuthenticationRequired(
   (): ReactElement => {
     const { user, logout } = useAuth0();
-    const [{ alertRules, tickets }] = useUser();
+    const [{ alertRules, isUserLoading, tickets, userError }, { refreshUser }] =
+      useUser();
     const device = useDevice();
     const { terminals } = useTerminals();
     const storedTickets = useAtomValue(ticketsAtom);
@@ -290,6 +292,33 @@ export const Account = withAuthenticationRequired(
         });
       }
     };
+
+    // account sync retry
+    const retryAccountSync = (): void => {
+      refreshUser().catch((error) => {
+        // retry failure
+        console.error(error);
+      });
+    };
+
+    // account metadata loading
+    if (isUserLoading) {
+      return <Splash />;
+    }
+
+    // account metadata error
+    if (userError) {
+      return (
+        <Page title="Account">
+          <PageLoadError
+            error={userError}
+            message="Ferry FYI could not reach the account API. Reload and try again, or contact the developer if it keeps happening."
+            onReload={retryAccountSync}
+            title="Account could not load"
+          />
+        </Page>
+      );
+    }
 
     return (
       <Page title="Account">

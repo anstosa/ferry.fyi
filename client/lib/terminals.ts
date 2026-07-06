@@ -75,8 +75,15 @@ export const useTerminals = (): TerminalState => {
   const [closestTerminal, setClosestTerminal] =
     useState<TerminalState["closestTerminal"]>(null);
 
+  // terminal list fetch
   const fetchTerminals = async (): Promise<void> => {
-    setTerminals(await getTerminals());
+    try {
+      setTerminals(await getTerminals());
+    } catch (error) {
+      // terminal fetch failure
+      console.error(error);
+      setTerminals([]);
+    }
   };
 
   useEffect(() => {

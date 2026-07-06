@@ -13,15 +13,16 @@ import { API_TERMINALS } from "./updateTerminals";
 
 const API_SPACE = `${API_TERMINALS}/terminalsailingspace`;
 
-export const updateCapacity = async (): Promise<void> => {
+export const updateCapacity = async (): Promise<Schedule[]> => {
   logger.info("Started capacity update");
   const terminals = await wsfRequest<WSF.SpaceResponse[]>(API_SPACE);
   // missing capacity guard
   if (!terminals) {
     logger.info("Skipped capacity update; WSF returned no terminal space data");
-    return;
+    return [];
   }
   const capacityReportUpdatedAt = Math.floor(Date.now() / 1000);
+  const affectedSchedules = new Map<string, Schedule>();
   let createdCrossings = 0;
   let updatedCrossings = 0;
   let linkedSlots = 0;
@@ -83,6 +84,7 @@ export const updateCapacity = async (): Promise<void> => {
             missingScheduleLinks += 1;
             continue;
           }
+          affectedSchedules.set(schedule.key, schedule);
 
           const slot = schedule.getSlot(departureTime);
           // schedule slot guard
@@ -134,4 +136,5 @@ export const updateCapacity = async (): Promise<void> => {
       },
     ])
   );
+  return Array.from(affectedSchedules.values());
 };

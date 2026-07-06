@@ -12,8 +12,15 @@ import { isEmpty } from "shared/lib/arrays";
 
 import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { InlineLoader } from "~/components/InlineLoader";
+import { PageLoadError } from "~/components/PageLoadError";
 import { Toast } from "~/components/Toast";
+import { useQuery } from "~/lib/browser";
 import { isWSFToday } from "~/lib/date";
+import {
+  type DetailTab,
+  getSailingDeepLink,
+  isDetailTab,
+} from "~/lib/sailingDeepLink";
 import { useTerminals } from "~/lib/terminals";
 import IslandIcon from "~/static/images/icons/solid/island-tropical.svg";
 
@@ -26,12 +33,31 @@ import {
 } from "./smallBoat";
 
 interface Props {
+  loadError?: Error | null;
+  onReload?: () => void;
   route?: Route;
   schedule: ScheduleClass | null;
   time: DateTime;
 }
 
-export const Schedule = ({ route, schedule, time }: Props): ReactElement => {
+// sailing query parser
+const getLinkedSailingTime = (input?: string): number | null => {
+  const sailingTime = Number(input);
+  // valid timestamp guard
+  if (!Number.isFinite(sailingTime) || sailingTime <= 0) {
+    return null;
+  }
+  return sailingTime;
+};
+
+export const Schedule = ({
+  loadError,
+  onReload,
+  route,
+  schedule,
+  time,
+}: Props): ReactElement => {
+  const { sailing: sailingInput, tab: tabInput } = useQuery();
   const { terminals } = useTerminals();
   const [currentElement, setCurrentElement] = useState<HTMLDivElement | null>(
     null
@@ -39,6 +65,8 @@ export const Schedule = ({ route, schedule, time }: Props): ReactElement => {
   const [capacityWarningDismissed, setCapacityWarningDismissed] =
     useState<boolean>(false);
   const [expanded, setExpanded] = useState<Slot | null>(null);
+  const linkedSailingTime = getLinkedSailingTime(sailingInput);
+  const linkedDetailTab = isDetailTab(tabInput) ? tabInput : undefined;
 
   // update schedule on parameter change
   // useEffect(() => {
@@ -46,12 +74,30 @@ export const Schedule = ({ route, schedule, time }: Props): ReactElement => {
   // }, [schedule]);
 
   useEffect(() => {
+    // current row scroll guard
     if (currentElement) {
       scrollIntoView(currentElement, { align: { top: 0.3 } });
     }
   }, [currentElement, schedule]);
 
+  // expand deep-linked sailing
+  useEffect(() => {
+    // schedule readiness guard
+    if (!schedule?.slots || !linkedSailingTime) {
+      return;
+    }
+    const linkedSlot = schedule.slots.find((slot) => {
+      // linked sailing match
+      return slot.time === linkedSailingTime;
+    });
+    // linked slot guard
+    if (linkedSlot) {
+      setExpanded(linkedSlot);
+    }
+  }, [linkedSailingTime, schedule]);
+
   const toggleExpand = (slot: Slot): void => {
+    // collapse active row
     if (slot === expanded) {
       setExpanded(null);
     } else {
@@ -59,7 +105,35 @@ export const Schedule = ({ route, schedule, time }: Props): ReactElement => {
     }
   };
 
+  // sailing tab share url
+  const getSailingShareUrl = (slot: Slot, tab: DetailTab): string => {
+    return getSailingDeepLink({
+      currentUrl: window.location.href,
+      date: schedule?.date ?? DateTime.fromSeconds(slot.time).toISODate() ?? "",
+      sailingTime: slot.time,
+      tab,
+    });
+  };
+
   const renderSchedule = (): ReactElement | null => {
+    // failed initial load guard
+    if (loadError && !schedule?.slots) {
+      return (
+        <PageLoadError
+          error={loadError}
+          message="Ferry FYI could not reach the schedule API. Reload and try again, or contact the developer if it keeps happening."
+          onReload={() => {
+            // fallback reload
+            if (!onReload) {
+              window.location.reload();
+              return;
+            }
+            onReload();
+          }}
+          title="Schedule could not load"
+        />
+      );
+    }
     // schedule loading guard
     if (!schedule?.slots) {
       return <InlineLoader>Loading schedule...</InlineLoader>;
@@ -120,7 +194,13 @@ export const Schedule = ({ route, schedule, time }: Props): ReactElement => {
             resetKey={slotTime}
           >
             <SlotInfo
-              slot={slot}
+              getSailingShareUrl={(tab) => {
+                // sailing link
+                return getSailingShareUrl(slot, tab);
+              }}
+              initialDetailTab={
+                linkedSailingTime === slotTime ? linkedDetailTab : undefined
+              }
               isExpanded={slotTime === expanded?.time}
               location={terminal.location}
               onClick={() => toggleExpand(slot)}
@@ -134,6 +214,7 @@ export const Schedule = ({ route, schedule, time }: Props): ReactElement => {
                   setCurrentElement(element);
                 }
               }}
+              slot={slot}
               time={time}
             />
           </ErrorBoundary>

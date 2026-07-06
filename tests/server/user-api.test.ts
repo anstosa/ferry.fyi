@@ -148,6 +148,7 @@ describe("user API", () => {
             channels: [
               "delays",
               "cancellations",
+              "sailing-updates",
               "wait-times",
               "service-alerts",
             ],
@@ -315,6 +316,7 @@ describe("sanitizeUserUpdate", () => {
             channels: [
               "delays",
               "cancellations",
+              "sailing-updates",
               "wait-times",
               "service-alerts",
             ],

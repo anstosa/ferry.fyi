@@ -1,6 +1,7 @@
 export type AlertSubscriptionChannel =
   | "cancellations"
   | "delays"
+  | "sailing-updates"
   | "service-alerts"
   | "wait-times";
 

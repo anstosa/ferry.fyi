@@ -40,6 +40,7 @@ const DEFAULT_LEFT = -121;
 const DEFAULT_BOTTOM = 49;
 const DEFAULT_RIGHT = -123;
 const ABBREVIATION_BREAKPOINT = 350;
+const MARKER_LABEL_FIT_PADDING = { bottom: 112, left: 96, right: 96, top: 112 };
 const LABEL_PLACEMENTS = [
   "top-full left-1/2 mt-1 -translate-x-1/2",
   "bottom-full left-1/2 mb-1 -translate-x-1/2",
@@ -460,7 +461,7 @@ export const Map = ({
     // fit map to route markers
     map.fitBounds(
       new LngLatBounds({ lat: bottom, lon: left }, { lat: top, lon: right }),
-      { padding: 40 }
+      { padding: MARKER_LABEL_FIT_PADDING }
     );
   };
 

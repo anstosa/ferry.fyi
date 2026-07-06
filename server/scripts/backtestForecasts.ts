@@ -1,22 +1,42 @@
 import { DateTime } from "luxon";
 import { createRequire } from "module";
 import { Op } from "sequelize";
-import { round } from "shared/lib/math";
+import { constrain, round } from "shared/lib/math";
 
 import type { HolidayDateMap } from "../lib/forecast";
+import {
+  type ForecastDaypart,
+  getForecastDaypart,
+} from "../lib/forecastDaypart";
+import { FORECAST_REGRESSION_THRESHOLDS } from "../lib/forecastRegressionThresholds";
 
 const DEFAULT_YEAR = 2025;
 const HISTORY_YEARS = 2;
 const FULL_AVAILABLE_THRESHOLD = 0.02;
 const LOW_MISS_THRESHOLD = 20;
 const HIGH_MISS_THRESHOLD = 50;
+const DEFAULT_MAX_CANDIDATES = 5;
 const runtimeRequire = createRequire(__filename);
+const CROSSING_ATTRIBUTES = [
+  "arrivalId",
+  "departureId",
+  "departureTime",
+  "driveUpCapacity",
+  "hasReservations",
+  "isCancelled",
+  "reservableCapacity",
+  "totalCapacity",
+];
 
 interface BacktestOptions {
   from: DateTime;
+  assertThresholds: boolean;
   json: boolean;
   limit: number | null;
+  maxCandidates: number;
+  persistCalibration: boolean;
   pair: string | null;
+  useCalibration: boolean;
   to: DateTime;
 }
 
@@ -36,9 +56,10 @@ interface RouteStats {
   count: number;
   forecastFull: number;
   highMisses: number;
+  highFull: number;
   likelyFull: number;
   lowMisses: number;
-  maybeFull: number;
+  unlikelyFull: number;
   p90Errors: number[];
   routeClassCounts: Record<string, number>;
   skipped: number;
@@ -46,6 +67,8 @@ interface RouteStats {
 }
 
 interface BacktestSummary {
+  adjustmentMode: string;
+  dayparts: RouteReport[];
   from: string;
   overall: RouteReport;
   routes: RouteReport[];
@@ -55,17 +78,25 @@ interface BacktestSummary {
 interface RouteReport {
   actualFull: number;
   count: number;
+  daypart: ForecastDaypart;
+  fullBias: number;
   forecastFull: number;
   highMisses: number;
+  highMissRate: number;
+  highFull: number;
   likelyFull: number;
   lowMisses: number;
+  lowMissRate: number;
   mae: number;
-  maybeFull: number;
+  unlikelyFull: number;
   p90: number;
   pair: string;
   routeClass: string;
   skipped: number;
+  year: number;
 }
+
+type HistoryIndex = Map<string, Map<number, BacktestCrossing[]>>;
 
 // argument lookup
 const getArgValue = (args: string[], name: string): string | null => {
@@ -97,6 +128,7 @@ const parseOptions = (): BacktestOptions => {
   );
   const defaultTo = defaultFrom.plus({ years: 1 });
   return {
+    assertThresholds: args.includes("--assert"),
     from: getArgValue(args, "--from")
       ? parseDate(getArgValue(args, "--from") ?? "", defaultFrom)
       : defaultFrom,
@@ -104,17 +136,22 @@ const parseOptions = (): BacktestOptions => {
     limit: getArgValue(args, "--limit")
       ? Number(getArgValue(args, "--limit"))
       : null,
+    maxCandidates: getArgValue(args, "--max-candidates")
+      ? Number(getArgValue(args, "--max-candidates"))
+      : DEFAULT_MAX_CANDIDATES,
     pair: getArgValue(args, "--pair"),
+    persistCalibration: args.includes("--persist-calibration"),
     to: getArgValue(args, "--to")
       ? parseDate(getArgValue(args, "--to") ?? "", defaultTo).plus({ days: 1 })
       : defaultTo,
+    useCalibration: args.includes("--use-calibration"),
   };
 };
 
 // help output
 const printHelp = (): void => {
   console.log(
-    `Usage: yarn forecast:backtest [--year 2025] [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--pair departure-arrival] [--limit N] [--json]\n\nRuns the committed forecast estimator against confirmed DB crossings and summarizes all terminal-pair directions.`
+    `Usage: yarn forecast:backtest [--year 2025] [--from YYYY-MM-DD] [--to YYYY-MM-DD] [--pair departure-arrival] [--limit N] [--max-candidates N] [--json] [--assert] [--persist-calibration] [--use-calibration]\n\nRuns the committed historical/calendar forecast estimator against confirmed DB crossings and summarizes all terminal-pair directions. Weather and tide presentation are intentionally outside this baseline mode.`
   );
 };
 
@@ -132,9 +169,10 @@ const createRouteStats = (): RouteStats => ({
   count: 0,
   forecastFull: 0,
   highMisses: 0,
+  highFull: 0,
   likelyFull: 0,
   lowMisses: 0,
-  maybeFull: 0,
+  unlikelyFull: 0,
   p90Errors: [],
   routeClassCounts: {},
   skipped: 0,
@@ -178,13 +216,17 @@ const addSample = (
   ) {
     stats.highMisses += 1;
   }
-  // maybe full guard
-  if (fullRisk === "maybe") {
-    stats.maybeFull += 1;
+  // unlikely full guard
+  if (fullRisk === "unlikely") {
+    stats.unlikelyFull += 1;
   }
   // likely full guard
   if (fullRisk === "likely") {
     stats.likelyFull += 1;
+  }
+  // high full guard
+  if (fullRisk === "high") {
+    stats.highFull += 1;
   }
 };
 
@@ -211,20 +253,44 @@ const getDominantRouteClass = (stats: RouteStats): string => {
 };
 
 // report serialization
-const toRouteReport = (pair: string, stats: RouteStats): RouteReport => ({
-  actualFull: stats.actualFull,
-  count: stats.count,
-  forecastFull: stats.forecastFull,
-  highMisses: stats.highMisses,
-  likelyFull: stats.likelyFull,
-  lowMisses: stats.lowMisses,
-  mae: stats.count ? round(stats.totalAbsoluteError / stats.count, 1) : 0,
-  maybeFull: stats.maybeFull,
-  p90: round(getP90(stats.p90Errors), 1),
-  pair,
-  routeClass: getDominantRouteClass(stats),
-  skipped: stats.skipped,
-});
+const toRouteReport = (
+  pair: string,
+  stats: RouteStats,
+  year: number,
+  daypart: ForecastDaypart = "all"
+): RouteReport => {
+  const lowMissRate = stats.count ? stats.lowMisses / stats.count : 0;
+  const highMissRate = stats.count ? stats.highMisses / stats.count : 0;
+  const forecastFullRate = stats.count ? stats.forecastFull / stats.count : 0;
+  const fullBias = constrain(
+    round(
+      1 + highMissRate * 1.8 + lowMissRate * 0.8 - forecastFullRate * 0.25,
+      2
+    ),
+    0.85,
+    1.45
+  );
+  return {
+    actualFull: stats.actualFull,
+    count: stats.count,
+    daypart,
+    forecastFull: stats.forecastFull,
+    fullBias,
+    highMisses: stats.highMisses,
+    highMissRate: round(highMissRate, 3),
+    highFull: stats.highFull,
+    likelyFull: stats.likelyFull,
+    lowMisses: stats.lowMisses,
+    lowMissRate: round(lowMissRate, 3),
+    mae: stats.count ? round(stats.totalAbsoluteError / stats.count, 1) : 0,
+    unlikelyFull: stats.unlikelyFull,
+    p90: round(getP90(stats.p90Errors), 1),
+    pair,
+    routeClass: getDominantRouteClass(stats),
+    skipped: stats.skipped,
+    year,
+  };
+};
 
 // holiday map loading
 const loadHolidayMap = async (
@@ -250,47 +316,199 @@ const loadHolidayMap = async (
   return Object.fromEntries(entries) as HolidayDateMap;
 };
 
-// route grouping
-const groupByPair = (
-  crossings: BacktestCrossing[]
-): Map<string, BacktestCrossing[]> => {
-  const grouped = new Map<string, BacktestCrossing[]>();
-  // crossing grouping
+// history index build
+const buildHistoryIndex = (crossings: BacktestCrossing[]): HistoryIndex => {
+  const index: HistoryIndex = new Map();
+  // crossing index loop
   crossings.forEach((crossing) => {
-    const key = getPairKey(crossing);
-    grouped.set(key, [...(grouped.get(key) ?? []), crossing]);
+    const pair = getPairKey(crossing);
+    const { hour } = DateTime.fromSeconds(crossing.departureTime);
+    const hourIndex = index.get(pair) ?? new Map<number, BacktestCrossing[]>();
+    hourIndex.set(hour, [...(hourIndex.get(hour) ?? []), crossing]);
+    index.set(pair, hourIndex);
   });
-  return grouped;
+  // bucket sort loop
+  index.forEach((hourIndex) => {
+    hourIndex.forEach((bucket, hour) => {
+      hourIndex.set(
+        hour,
+        bucket.sort((left, right) => left.departureTime - right.departureTime)
+      );
+    });
+  });
+  return index;
+};
+
+// prior index lookup
+const getPriorIndex = (
+  crossings: BacktestCrossing[],
+  departureTime: number
+): number => {
+  let low = 0;
+  let high = crossings.length;
+  // binary search loop
+  while (low < high) {
+    const middle = Math.floor((low + high) / 2);
+    // upper half guard
+    if (crossings[middle].departureTime < departureTime) {
+      low = middle + 1;
+    } else {
+      high = middle;
+    }
+  }
+  return low;
+};
+
+// estimator candidate filter
+const getBacktestCandidates = (
+  target: BacktestCrossing,
+  historyIndex: HistoryIndex,
+  maxCandidates: number
+): BacktestCrossing[] => {
+  const targetTime = DateTime.fromSeconds(target.departureTime);
+  const pairIndex = historyIndex.get(getPairKey(target));
+  // missing pair guard
+  if (!pairIndex) {
+    return [];
+  }
+  const candidates: BacktestCrossing[] = [];
+  // nearby hour scan
+  for (let hourOffset = -2; hourOffset <= 2; hourOffset++) {
+    const hour = (targetTime.hour + hourOffset + 24) % 24;
+    const bucket = pairIndex.get(hour) ?? [];
+    const priorIndex = getPriorIndex(bucket, target.departureTime);
+    candidates.push(
+      ...bucket.slice(Math.max(0, priorIndex - maxCandidates), priorIndex)
+    );
+  }
+  return candidates;
 };
 
 // summary rendering
 const printSummary = (summary: BacktestSummary): void => {
   console.log(`Forecast backtest ${summary.from} through ${summary.to}`);
   console.log(
-    "pair,count,mae,p90,actualFull,forecastFull,maybeFull,likelyFull,lowMisses,highMisses,routeClass,skipped"
+    "pair,daypart,count,mae,p90,actualFull,forecastFull,unlikelyFull,likelyFull,highFull,lowMisses,highMisses,lowMissRate,highMissRate,fullBias,routeClass,skipped"
   );
   // route output
   summary.routes.forEach((route) => {
     console.log(
       [
         route.pair,
+        route.daypart,
         route.count,
         route.mae,
         route.p90,
         route.actualFull,
         route.forecastFull,
-        route.maybeFull,
+        route.unlikelyFull,
         route.likelyFull,
+        route.highFull,
         route.lowMisses,
         route.highMisses,
+        route.lowMissRate,
+        route.highMissRate,
+        route.fullBias,
+        route.routeClass,
+        route.skipped,
+      ].join(",")
+    );
+  });
+  // daypart output
+  summary.dayparts.forEach((route) => {
+    console.log(
+      [
+        route.pair,
+        route.daypart,
+        route.count,
+        route.mae,
+        route.p90,
+        route.actualFull,
+        route.forecastFull,
+        route.unlikelyFull,
+        route.likelyFull,
+        route.highFull,
+        route.lowMisses,
+        route.highMisses,
+        route.lowMissRate,
+        route.highMissRate,
+        route.fullBias,
         route.routeClass,
         route.skipped,
       ].join(",")
     );
   });
   console.log(
-    `overall,count=${summary.overall.count},mae=${summary.overall.mae},p90=${summary.overall.p90},actualFull=${summary.overall.actualFull},forecastFull=${summary.overall.forecastFull},maybeFull=${summary.overall.maybeFull},likelyFull=${summary.overall.likelyFull},lowMisses=${summary.overall.lowMisses},highMisses=${summary.overall.highMisses},skipped=${summary.overall.skipped}`
+    `overall,count=${summary.overall.count},mae=${summary.overall.mae},p90=${summary.overall.p90},actualFull=${summary.overall.actualFull},forecastFull=${summary.overall.forecastFull},unlikelyFull=${summary.overall.unlikelyFull},likelyFull=${summary.overall.likelyFull},highFull=${summary.overall.highFull},lowMisses=${summary.overall.lowMisses},highMisses=${summary.overall.highMisses},lowMissRate=${summary.overall.lowMissRate},highMissRate=${summary.overall.highMissRate},fullBias=${summary.overall.fullBias},skipped=${summary.overall.skipped}`
   );
+};
+
+// threshold assertion
+const assertThresholds = (summary: BacktestSummary): void => {
+  const failures = [
+    summary.overall.mae > FORECAST_REGRESSION_THRESHOLDS.mae
+      ? `mae ${summary.overall.mae} > ${FORECAST_REGRESSION_THRESHOLDS.mae}`
+      : null,
+    summary.overall.p90 > FORECAST_REGRESSION_THRESHOLDS.p90
+      ? `p90 ${summary.overall.p90} > ${FORECAST_REGRESSION_THRESHOLDS.p90}`
+      : null,
+    summary.overall.lowMissRate > FORECAST_REGRESSION_THRESHOLDS.lowMissRate
+      ? `lowMissRate ${summary.overall.lowMissRate} > ${FORECAST_REGRESSION_THRESHOLDS.lowMissRate}`
+      : null,
+    summary.overall.highMissRate > FORECAST_REGRESSION_THRESHOLDS.highMissRate
+      ? `highMissRate ${summary.overall.highMissRate} > ${FORECAST_REGRESSION_THRESHOLDS.highMissRate}`
+      : null,
+  ].filter((failure): failure is string => Boolean(failure));
+  // failure guard
+  if (failures.length > 0) {
+    throw new Error(
+      `Forecast regression thresholds failed: ${failures.join("; ")}`
+    );
+  }
+};
+
+// calibration persistence
+const persistCalibration = async (
+  reports: RouteReport[],
+  ForecastCalibration: typeof import("../models/ForecastCalibration").ForecastCalibration
+): Promise<void> => {
+  const calculatedAt = Math.floor(Date.now() / 1000);
+  // route report loop
+  for (const report of reports) {
+    const [departureId, arrivalId] = report.pair.split("-");
+    // malformed pair guard
+    if (!departureId || !arrivalId || report.count === 0) {
+      continue;
+    }
+    const payload = {
+      arrivalId,
+      calculatedAt,
+      daypart: report.daypart,
+      departureId,
+      fullBias: report.fullBias,
+      highMissRate: report.highMissRate,
+      lowMissRate: report.lowMissRate,
+      mae: report.mae,
+      p90: report.p90,
+      routeClass: report.routeClass,
+      sampleSize: report.count,
+      year: report.year,
+    };
+    const existingCalibration = await ForecastCalibration.findOne({
+      where: {
+        arrivalId,
+        daypart: report.daypart,
+        departureId,
+        year: report.year,
+      },
+    });
+    // existing calibration guard
+    if (existingCalibration) {
+      await existingCalibration.update(payload);
+    } else {
+      await ForecastCalibration.create(payload);
+    }
+  }
 };
 
 // backtest runner
@@ -310,12 +528,21 @@ const run = async (): Promise<void> => {
   const crossingModule = runtimeRequire(
     "../models/Crossing"
   ) as typeof import("../models/Crossing");
+  const demandEventModule = runtimeRequire(
+    "../models/DemandEvent"
+  ) as typeof import("../models/DemandEvent");
+  const forecastCalibrationModule = runtimeRequire(
+    "../models/ForecastCalibration"
+  ) as typeof import("../models/ForecastCalibration");
   const terminalModule = runtimeRequire(
     "../models/Terminal"
   ) as typeof import("../models/Terminal");
   const Crossing = crossingModule.default;
+  const { DemandEvent } = demandEventModule;
+  const { ForecastCalibration } = forecastCalibrationModule;
   const { Terminal } = terminalModule;
   const options = parseOptions();
+  const { year } = options.from;
   await dbInit;
   const where = {
     departureTime: {
@@ -339,47 +566,102 @@ const run = async (): Promise<void> => {
     isCancelled: false,
     totalCapacity: { [Op.gt]: 0 },
   };
-  const [targets, history, holidays] = await Promise.all([
-    Crossing.findAll({ order: [["departureTime", "ASC"]], where }),
-    Crossing.findAll({
-      order: [["departureTime", "ASC"]],
-      where: historyWhere,
-    }),
-    loadHolidayMap(
-      options.from,
-      options.to,
-      holidayModule.getWashingtonHolidayDates
-    ),
-  ]);
-  const routeHistory = groupByPair(history as BacktestCrossing[]);
+  const [targets, history, holidays, demandEvents, persistedCalibrations] =
+    await Promise.all([
+      Crossing.findAll({
+        attributes: CROSSING_ATTRIBUTES,
+        limit: options.limit ?? undefined,
+        order: [["departureTime", "ASC"]],
+        raw: true,
+        where,
+      }),
+      Crossing.findAll({
+        attributes: CROSSING_ATTRIBUTES,
+        order: [["departureTime", "ASC"]],
+        raw: true,
+        where: historyWhere,
+      }),
+      loadHolidayMap(
+        options.from,
+        options.to,
+        holidayModule.getWashingtonHolidayDates
+      ),
+      DemandEvent.findAll({
+        raw: true,
+        where: {
+          startsAt: {
+            [Op.gte]: options.from.minus({ years: HISTORY_YEARS }).toSeconds(),
+            [Op.lte]: options.to.plus({ days: 1 }).toSeconds(),
+          },
+        },
+      }),
+      options.useCalibration
+        ? ForecastCalibration.findAll({
+            raw: true,
+            where: { year: { [Op.lte]: options.from.year } },
+          })
+        : Promise.resolve([]),
+    ]);
+  const historyIndex = buildHistoryIndex(history as BacktestCrossing[]);
+  const calibrationByPair = new Map(
+    persistedCalibrations.map((calibration) => {
+      return [
+        `${calibration.departureId}-${calibration.arrivalId}::${calibration.daypart}`,
+        calibration,
+      ];
+    })
+  );
   const routeStats = new Map<string, RouteStats>();
-  const limitedTargets = options.limit
-    ? targets.slice(0, options.limit)
-    : targets;
+  const daypartStats = new Map<string, RouteStats>();
   // target sweep
-  for (const target of limitedTargets as BacktestCrossing[]) {
+  for (const target of targets as BacktestCrossing[]) {
     const pair = getPairKey(target);
+    const targetTime = DateTime.fromSeconds(target.departureTime);
+    const daypart = getForecastDaypart(targetTime);
+    const daypartKey = `${pair}::${daypart}`;
     const stats = routeStats.get(pair) ?? createRouteStats();
+    const daypartRouteStats =
+      daypartStats.get(daypartKey) ?? createRouteStats();
     routeStats.set(pair, stats);
+    daypartStats.set(daypartKey, daypartRouteStats);
     const terminal = Terminal.getByIndex(target.departureId);
-    const pairHistory = (routeHistory.get(pair) ?? []) as Parameters<
-      typeof getHistoricalEstimate
-    >[1];
+    const pairHistory = getBacktestCandidates(
+      target,
+      historyIndex,
+      options.maxCandidates
+    ) as Parameters<typeof getHistoricalEstimate>[1];
     const estimate = getHistoricalEstimate(
-      DateTime.fromSeconds(target.departureTime),
+      targetTime,
       pairHistory,
       terminal,
       DateTime.fromSeconds(target.departureTime),
       holidays,
-      target.totalCapacity
+      target.totalCapacity,
+      {
+        arrivalId: target.arrivalId,
+        calibration:
+          calibrationByPair.get(daypartKey) ??
+          calibrationByPair.get(`${pair}::all`),
+        departureId: target.departureId,
+        events: demandEvents,
+      }
     );
     // missing estimate guard
     if (!estimate) {
       stats.skipped += 1;
+      daypartRouteStats.skipped += 1;
       continue;
     }
     addSample(
       stats,
+      getAvailableCapacity(target),
+      estimate.driveUpCapacity + (estimate.reservableCapacity ?? 0),
+      target.totalCapacity,
+      estimate.fullRisk,
+      estimate.routeClass
+    );
+    addSample(
+      daypartRouteStats,
       getAvailableCapacity(target),
       estimate.driveUpCapacity + (estimate.reservableCapacity ?? 0),
       target.totalCapacity,
@@ -394,9 +676,10 @@ const run = async (): Promise<void> => {
     overallStats.count += stats.count;
     overallStats.forecastFull += stats.forecastFull;
     overallStats.highMisses += stats.highMisses;
+    overallStats.highFull += stats.highFull;
     overallStats.likelyFull += stats.likelyFull;
     overallStats.lowMisses += stats.lowMisses;
-    overallStats.maybeFull += stats.maybeFull;
+    overallStats.unlikelyFull += stats.unlikelyFull;
     overallStats.p90Errors.push(...stats.p90Errors);
     // route class merge
     Object.entries(stats.routeClassCounts).forEach(([routeClass, count]) => {
@@ -407,13 +690,31 @@ const run = async (): Promise<void> => {
     overallStats.totalAbsoluteError += stats.totalAbsoluteError;
   });
   const summary = {
+    adjustmentMode: "historical-calendar-baseline",
+    dayparts: Array.from(daypartStats.entries())
+      .map(([key, stats]) => {
+        const [pair, daypart] = key.split("::");
+        return toRouteReport(pair, stats, year, daypart as ForecastDaypart);
+      })
+      .sort((left, right) => right.count - left.count),
     from: options.from.toISODate() ?? "",
-    overall: toRouteReport("overall", overallStats),
+    overall: toRouteReport("overall", overallStats, year),
     routes: Array.from(routeStats.entries())
-      .map(([pair, stats]) => toRouteReport(pair, stats))
+      .map(([pair, stats]) => toRouteReport(pair, stats, year))
       .sort((left, right) => right.count - left.count),
     to: options.to.minus({ days: 1 }).toISODate() ?? "",
   };
+  // persist calibration guard
+  if (options.persistCalibration) {
+    await persistCalibration(
+      [...summary.routes, ...summary.dayparts],
+      ForecastCalibration
+    );
+  }
+  // assertion guard
+  if (options.assertThresholds) {
+    assertThresholds(summary);
+  }
   // json output guard
   if (options.json) {
     console.log(JSON.stringify(summary, null, 2));

@@ -13,6 +13,7 @@ export interface AlertRuleMatchInput {
   currentTime?: DateTime;
   departureTerminalId?: string;
   departureTimes?: number[];
+  oneTimeOnly?: boolean;
   terminalIds: string[];
 }
 
@@ -35,6 +36,7 @@ export const EVERY_DAY_DAYS = [1, 2, 3, 4, 5, 6, 7];
 export const ONE_TIME_SAILING_ALERT_CHANNELS: AlertSubscriptionChannel[] = [
   "delays",
   "cancellations",
+  "sailing-updates",
 ];
 
 export const ALERT_SUBSCRIPTION_CHANNELS: AlertSubscriptionChannelOption[] = [
@@ -47,6 +49,12 @@ export const ALERT_SUBSCRIPTION_CHANNELS: AlertSubscriptionChannelOption[] = [
     description: "Confirmed cancellations and tidal cancellation risks.",
     id: "cancellations",
     label: "Cancellations",
+  },
+  {
+    description:
+      "Boarding, departure, disembark, and arrival alerts for one sailing.",
+    id: "sailing-updates",
+    label: "Sailing updates",
   },
   {
     description: "WSF wait time posts for heavy terminal traffic.",
@@ -208,11 +216,21 @@ export const normalizeAlertRuleDays = (daysOfWeek: number[]): number[] => {
 export const normalizeAlertRule = (rule: AlertRule): AlertRule => {
   const routeTerminalIds = rule.routeKey.split(":");
   const date = isAlertRuleDate(rule.date) ? rule.date : undefined;
+  const channels = Array.from(new Set(rule.channels)).filter(
+    isAlertSubscriptionChannel
+  );
+  // one-time sailing compatibility
+  if (date && rule.startTime === rule.endTime) {
+    ONE_TIME_SAILING_ALERT_CHANNELS.forEach((channel) => {
+      // missing channel guard
+      if (!channels.includes(channel)) {
+        channels.push(channel);
+      }
+    });
+  }
   return {
     ...rule,
-    channels: Array.from(new Set(rule.channels)).filter(
-      isAlertSubscriptionChannel
-    ),
+    channels,
     ...(date ? { date } : {}),
     daysOfWeek: normalizeAlertRuleDays(rule.daysOfWeek),
     routeKey: getRouteSubscriptionKey(routeTerminalIds),
@@ -257,6 +275,10 @@ const isMatchingAlertRule = (
 ): boolean => {
   // channel guard
   if (!input.channel || !rule.channels.includes(input.channel)) {
+    return false;
+  }
+  // one-time guard
+  if (input.oneTimeOnly && !isOneTimeAlertRule(rule)) {
     return false;
   }
   const inputRouteKey = getRouteSubscriptionKey(input.terminalIds);

@@ -123,8 +123,8 @@ scheduleRouter.get(schedulePaths, async (request, response) => {
   // requested pair guard
   if (!historicalSchedule && (!hasFetchedDate || !cachedSchedule)) {
     await updateSchedules(date, departingId, arrivingId);
-    await updateEstimates();
     cachedSchedule = await Schedule.getByIndex(scheduleKey);
+    await updateEstimates(cachedSchedule ? [cachedSchedule] : []);
   }
   const schedule = cachedSchedule?.serialize() ?? historicalSchedule;
   // schedule found guard

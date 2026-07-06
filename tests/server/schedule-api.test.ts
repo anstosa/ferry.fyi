@@ -81,10 +81,11 @@ describe("schedule API", () => {
       validRange: null,
     };
     scheduleModel.hasFetchedDate.mockReturnValue(false);
-    scheduleModel.getByIndex.mockReturnValue({
+    const scheduleRecord = {
       // serialize fixture
       serialize: () => historicalSchedule,
-    });
+    };
+    scheduleModel.getByIndex.mockReturnValue(scheduleRecord);
     const app = createApp();
 
     const response = await request(app)
@@ -92,7 +93,7 @@ describe("schedule API", () => {
       .expect(200);
 
     expect(updateSchedules).toHaveBeenCalledWith("2020-01-01", "1", "2");
-    expect(updateEstimates).toHaveBeenCalledOnce();
+    expect(updateEstimates).toHaveBeenCalledWith([scheduleRecord]);
     expect(scheduleModel.generateKey).toHaveBeenCalledWith(
       "1",
       "2",
@@ -118,10 +119,11 @@ describe("schedule API", () => {
     };
     scheduleModel.generateKey.mockReturnValue("1-2-2026-06-21");
     scheduleModel.hasFetchedDate.mockReturnValue(false);
-    scheduleModel.getByIndex.mockReturnValue({
+    const scheduleRecord = {
       // serialize fixture
       serialize: () => liveSchedule,
-    });
+    };
+    scheduleModel.getByIndex.mockReturnValue(scheduleRecord);
     const app = createApp();
 
     const response = await request(app)
@@ -130,7 +132,7 @@ describe("schedule API", () => {
 
     expect(crossingModel.findAll).not.toHaveBeenCalled();
     expect(updateSchedules).toHaveBeenCalledWith("2026-06-21", "1", "2");
-    expect(updateEstimates).toHaveBeenCalledOnce();
+    expect(updateEstimates).toHaveBeenCalledWith([scheduleRecord]);
     expect(response.body.schedule).toEqual(liveSchedule);
   });
 
@@ -148,12 +150,13 @@ describe("schedule API", () => {
     };
     scheduleModel.generateKey.mockReturnValue("1-10-2026-06-21");
     scheduleModel.hasFetchedDate.mockReturnValue(true);
+    const scheduleRecord = {
+      // serialize fixture
+      serialize: () => liveSchedule,
+    };
     scheduleModel.getByIndex
       .mockReturnValueOnce(null)
-      .mockReturnValueOnce({
-        // serialize fixture
-        serialize: () => liveSchedule,
-      });
+      .mockReturnValueOnce(scheduleRecord);
     const app = createApp();
 
     const response = await request(app)
@@ -161,7 +164,7 @@ describe("schedule API", () => {
       .expect(200);
 
     expect(updateSchedules).toHaveBeenCalledWith("2026-06-21", "1", "10");
-    expect(updateEstimates).toHaveBeenCalledOnce();
+    expect(updateEstimates).toHaveBeenCalledWith([scheduleRecord]);
     expect(response.body.schedule).toEqual(liveSchedule);
   });
 
