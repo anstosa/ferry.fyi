@@ -1,6 +1,8 @@
 import logger from "heroku-logger";
 import { DateTime } from "luxon";
 
+import { getErrorMessage } from "./errors";
+
 const HOLIDAY_API_BASE = "https://date.nager.at/api/v3/PublicHolidays";
 const HOLIDAY_COUNTRY = "US";
 const WASHINGTON_SUBDIVISION = "US-WA";
@@ -73,15 +75,6 @@ const getHolidayDates = (holiday: NagerHoliday, year: number): string[] => {
 export const clearWashingtonHolidayCache = (): void => {
   holidayCache.clear();
   holidayRequests.clear();
-};
-
-// error message extraction
-const getErrorMessage = (error: unknown): string => {
-  // error object guard
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return String(error);
 };
 
 // washington holiday request

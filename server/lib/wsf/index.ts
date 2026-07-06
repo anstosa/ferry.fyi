@@ -1,5 +1,6 @@
 import logger from "heroku-logger";
 
+import { getErrorMessage, getLogError } from "~/lib/errors";
 import type { Schedule } from "~/models/Schedule";
 
 import { sendCancellationNotifications } from "../cancellationNotifications";
@@ -29,15 +30,6 @@ let shortRefreshPromise: Promise<void> | null = null;
 let tideForecastRefreshPromise: Promise<void> | null = null;
 let weatherForecastRefreshPromise: Promise<void> | null = null;
 
-// refresh error text
-const getErrorMessage = (error: unknown): string => {
-  // error object guard
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return String(error);
-};
-
 // refresh estimates without blocking short refresh
 const refreshEstimatesBestEffort = (schedules: Schedule[]): void => {
   // empty estimate guard
@@ -61,7 +53,7 @@ const refreshEstimatesBestEffort = (schedules: Schedule[]): void => {
       // estimate failure log
       logger.error(
         `Estimate refresh failed: ${getErrorMessage(error)}`,
-        error instanceof Error ? error : undefined
+        getLogError(error)
       );
     })
     .finally(() => {
@@ -95,7 +87,7 @@ const refreshTideForecastsBestEffort = (): void => {
       // tide failure log
       logger.error(
         `Tide forecast refresh failed: ${getErrorMessage(error)}`,
-        error instanceof Error ? error : undefined
+        getLogError(error)
       );
     })
     .finally(() => {
@@ -129,7 +121,7 @@ const refreshWeatherForecastsBestEffort = (): void => {
       // weather failure log
       logger.error(
         `Weather forecast refresh failed: ${getErrorMessage(error)}`,
-        error instanceof Error ? error : undefined
+        getLogError(error)
       );
     })
     .finally(() => {

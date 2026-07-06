@@ -1,24 +1,8 @@
 import logger from "heroku-logger";
 
+import { getErrorMessage, getLogError } from "./errors";
+
 export type ScheduledTask = () => Promise<void> | void;
-
-// readable error message
-const getErrorMessage = (error: unknown): string => {
-  // error object guard
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return String(error);
-};
-
-// structured log error
-const getLogError = (error: unknown): Error | undefined => {
-  // error object guard
-  if (error instanceof Error) {
-    return error;
-  }
-  return undefined;
-};
 
 // nested db error text
 const getNestedErrorText = (error: unknown): string => {

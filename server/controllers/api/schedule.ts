@@ -8,6 +8,7 @@ import type {
 } from "shared/contracts/schedules";
 import type { Vessel } from "shared/contracts/vessels";
 
+import { getErrorMessage, getLogError } from "~/lib/errors";
 import { updateEstimates } from "~/lib/forecast";
 import { getWsfStatus } from "~/lib/wsf/api";
 import { toWsfDate } from "~/lib/wsf/date";
@@ -30,15 +31,6 @@ const wait = (milliseconds: number): Promise<void> =>
     setTimeout(resolve, milliseconds);
   });
 
-// refresh error text
-const getErrorMessage = (error: unknown): string => {
-  // error object guard
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return String(error);
-};
-
 // estimate refresh
 const refreshEstimatesInBackground = (scheduleKey: string): void => {
   const schedule = Schedule.getByIndex(scheduleKey);
@@ -52,7 +44,7 @@ const refreshEstimatesInBackground = (scheduleKey: string): void => {
       `Schedule estimate refresh failed for ${scheduleKey}: ${getErrorMessage(
         error
       )}`,
-      error instanceof Error ? error : undefined
+      getLogError(error)
     );
   });
 };
@@ -82,7 +74,7 @@ const refreshScheduleInBackground = ({
     } catch (error: unknown) {
       logger.error(
         `Schedule refresh failed for ${refreshKey}: ${getErrorMessage(error)}`,
-        error instanceof Error ? error : undefined
+        getLogError(error)
       );
     } finally {
       // cleanup in-flight state

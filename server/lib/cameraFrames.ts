@@ -4,6 +4,8 @@ import type {
 } from "shared/contracts/cameraFrames";
 import type { CameraImage } from "shared/contracts/cameras";
 
+import { getErrorMessage } from "./errors";
+
 interface CameraFrameSource {
   id: string;
   image: Pick<CameraImage, "url">;
@@ -92,15 +94,6 @@ const isFrameStale = (
     return false;
   }
   return checkedAt * 1000 - frameUpdatedAt * 1000 > staleThresholdMs;
-};
-
-// describe fetch failure
-const getErrorMessage = (error: unknown): string => {
-  // error object guard
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return String(error);
 };
 
 export class CameraFrameTracker {
