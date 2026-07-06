@@ -17,3 +17,14 @@ export const getSchedule = (
 ): Promise<GetScheduleResponse> => {
   return get<GetScheduleResponse>(getApiSchedule(terminal.id, mate.id, date));
 };
+
+// schedule response guard
+export const requireScheduleResponse = (
+  response: GetScheduleResponse | undefined
+): GetScheduleResponse => {
+  // empty response guard
+  if (!response) {
+    throw new Error("Schedule response was empty");
+  }
+  return response;
+};

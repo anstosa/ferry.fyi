@@ -1,6 +1,7 @@
 import {
   getMessaging,
   getToken,
+  isSupported,
   MessagePayload,
   onMessage,
 } from "firebase/messaging";
@@ -11,7 +12,6 @@ import { firebaseApp } from "./firebase";
 import { useUser } from "./user";
 import { getRegistration } from "./worker";
 
-const messaging = getMessaging(firebaseApp);
 interface Notification extends MessagePayload {
   data: {
     title: string;
@@ -29,6 +29,15 @@ const isNotification = (payload: MessagePayload): payload is Notification =>
   );
 
 type InitializePush = () => void;
+
+// supported messaging loader
+const getSupportedMessaging = async () => {
+  // browser support guard
+  if (!(await isSupported())) {
+    return null;
+  }
+  return getMessaging(firebaseApp);
+};
 
 export const usePush = (requestPermission: boolean): InitializePush => {
   const [{ user, isAuthenticated, fcmToken: savedFcmToken }, { updateUser }] =
@@ -61,8 +70,16 @@ export const usePush = (requestPermission: boolean): InitializePush => {
   ]);
 
   useEffect(() => {
+    // push initializer
     const initialize = async () => {
       try {
+        const messaging = await getSupportedMessaging();
+
+        // unsupported browser guard
+        if (!messaging) {
+          return;
+        }
+
         const serviceWorkerRegistration = await getRegistration();
 
         // registration guard

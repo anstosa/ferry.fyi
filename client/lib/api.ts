@@ -5,7 +5,18 @@ import { isEqual } from "shared/lib/objects";
 
 const API_BASE_URL = `${process.env.BASE_URL}/api`;
 
-let wsfStatus: WSFStatus = { offline: false };
+const defaultWsfStatus: WSFStatus = { offline: false };
+
+let wsfStatus: WSFStatus = defaultWsfStatus;
+
+// wsf status validator
+const isWSFStatus = (value: unknown): value is WSFStatus =>
+  Boolean(
+    value &&
+    typeof value === "object" &&
+    "offline" in value &&
+    typeof value.offline === "boolean"
+  );
 
 export const useWSF = (): WSFStatus => {
   const [status, setStatus] = useState<WSFStatus>(wsfStatus);
@@ -55,13 +66,13 @@ export const processResponse = (response: HttpResponse): any => {
     throw new ApiError(response.status, responseData);
   }
   // api envelope guard
-  if (
-    responseData &&
-    typeof responseData === "object" &&
-    "wsfStatus" in responseData &&
-    !isEqual(responseData.wsfStatus, wsfStatus)
-  ) {
-    ({ wsfStatus } = responseData as { wsfStatus: WSFStatus });
+  // object response guard
+  if (responseData && typeof responseData === "object") {
+    const nextWsfStatus = (responseData as { wsfStatus?: unknown }).wsfStatus;
+    // status envelope guard
+    if (isWSFStatus(nextWsfStatus) && !isEqual(nextWsfStatus, wsfStatus)) {
+      wsfStatus = nextWsfStatus;
+    }
   }
   // legacy body guard
   if (

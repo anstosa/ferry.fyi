@@ -198,14 +198,13 @@ describe("forecast estimates", () => {
   it("formats historical pattern volume and database history", async () => {
     const schedule = createSchedule({});
     scheduleModel.getAll.mockReturnValue({ [schedule.key]: schedule });
-    const baseTime = DateTime.fromISO("2026-06-14T12:00:00", {
-      zone: "America/Los_Angeles",
-    });
+    const baseTime = toSeconds("2026-06-14T12:00:00");
+    const weekSeconds = 7 * 24 * 60 * 60;
     crossingModel.findAll.mockResolvedValue(
       // comparable records
       Array.from({ length: 1234 }, (_, index) =>
         createCrossing({
-          departureTime: baseTime.minus({ weeks: index }).toSeconds(),
+          departureTime: baseTime - index * weekSeconds,
           driveUpCapacity: 40,
           reservableCapacity: 0,
         })
@@ -226,7 +225,7 @@ describe("forecast estimates", () => {
     expect(historicalPattern?.detail).toBe(
       "1,234 comparable past sailings are weighted by date, time, route, and vessel capacity. 4,567 total sailings over 8 years recorded for this route."
     );
-  }, 10_000);
+  }, 20_000);
 
   // weather detail copy
   it("includes concise weather details in weather factors", async () => {

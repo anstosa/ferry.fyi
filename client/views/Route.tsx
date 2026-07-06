@@ -18,7 +18,7 @@ import { RouteSelector } from "~/components/RouteSelector";
 import { Splash } from "~/components/Splash";
 import { useQuery } from "~/lib/browser";
 import { toShortDateString } from "~/lib/date";
-import { getSchedule } from "~/lib/schedule";
+import { getSchedule, requireScheduleResponse } from "~/lib/schedule";
 import { getSlug, getTerminal } from "~/lib/terminals";
 import WSDOTIcon from "~/static/images/icons/wsdot.svg";
 import { Header } from "~/views/Header";
@@ -286,7 +286,9 @@ export const Route = ({
     setUpdating(true);
     setScheduleError(null);
     try {
-      const { schedule, timestamp } = await getSchedule(terminal, mate, date);
+      const { schedule, timestamp } = requireScheduleResponse(
+        await getSchedule(terminal, mate, date)
+      );
       // stale response guard
       if (requestId !== scheduleRequestRef.current) {
         return;

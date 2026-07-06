@@ -12,6 +12,9 @@ const scheduleModel = vi.hoisted(() => ({
 
 const updateSchedules = vi.hoisted(() => vi.fn());
 const updateEstimates = vi.hoisted(() => vi.fn());
+const wsfApi = vi.hoisted(() => ({
+  getWsfStatus: vi.fn(),
+}));
 const crossingModel = vi.hoisted(() => ({
   findAll: vi.fn(),
 }));
@@ -39,6 +42,8 @@ vi.mock("~/lib/forecast", () => ({
   updateEstimates,
 }));
 
+vi.mock("~/lib/wsf/api", () => wsfApi);
+
 vi.mock("~/lib/wsf/date", () => ({
   toWsfDate: () => "2026-06-20",
 }));
@@ -58,7 +63,11 @@ describe("schedule API", () => {
     scheduleModel.getByIndex.mockReset();
     scheduleModel.hasFetchedDate.mockReset();
     updateSchedules.mockReset();
+    updateSchedules.mockResolvedValue(undefined);
     updateEstimates.mockReset();
+    updateEstimates.mockResolvedValue(undefined);
+    wsfApi.getWsfStatus.mockReset();
+    wsfApi.getWsfStatus.mockReturnValue({ coreReady: true });
     crossingModel.findAll.mockReset();
     crossingModel.findAll.mockResolvedValue([]);
     vesselModel.getByIndex.mockReset();
@@ -70,8 +79,8 @@ describe("schedule API", () => {
     vi.useRealTimers();
   });
 
-  // historical schedule case
-  it("fills and returns schedules for past dates", async () => {
+  // cached schedule case
+  it("returns cached schedules without blocking on WSDOT or estimates", async () => {
     const historicalSchedule = {
       date: "2020-01-01",
       key: "1-2-2020-01-01",
@@ -92,8 +101,9 @@ describe("schedule API", () => {
       .get("/api/schedule/1/2/2020-01-01")
       .expect(200);
 
-    expect(updateSchedules).toHaveBeenCalledWith("2020-01-01", "1", "2");
-    expect(updateEstimates).toHaveBeenCalledWith([scheduleRecord]);
+    expect(crossingModel.findAll).not.toHaveBeenCalled();
+    expect(updateSchedules).not.toHaveBeenCalled();
+    expect(updateEstimates).not.toHaveBeenCalled();
     expect(scheduleModel.generateKey).toHaveBeenCalledWith(
       "1",
       "2",
@@ -105,8 +115,8 @@ describe("schedule API", () => {
     });
   });
 
-  // current service day case
-  it("fetches live schedules for the current WSF service day after 3am", async () => {
+  // current service day cache case
+  it("returns cached live schedules for the current WSF service day", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-21T18:30:00.000Z"));
     const liveSchedule = {
@@ -131,8 +141,8 @@ describe("schedule API", () => {
       .expect(200);
 
     expect(crossingModel.findAll).not.toHaveBeenCalled();
-    expect(updateSchedules).toHaveBeenCalledWith("2026-06-21", "1", "2");
-    expect(updateEstimates).toHaveBeenCalledWith([scheduleRecord]);
+    expect(updateSchedules).not.toHaveBeenCalled();
+    expect(updateEstimates).not.toHaveBeenCalled();
     expect(response.body.schedule).toEqual(liveSchedule);
   });
 
@@ -154,9 +164,17 @@ describe("schedule API", () => {
       // serialize fixture
       serialize: () => liveSchedule,
     };
-    scheduleModel.getByIndex
-      .mockReturnValueOnce(null)
-      .mockReturnValueOnce(scheduleRecord);
+    let scheduleIsLoaded = false;
+    scheduleModel.getByIndex.mockImplementation(() => {
+      // refreshed schedule guard
+      if (scheduleIsLoaded) {
+        return scheduleRecord;
+      }
+      return null;
+    });
+    updateSchedules.mockImplementation(async () => {
+      scheduleIsLoaded = true;
+    });
     const app = createApp();
 
     const response = await request(app)
@@ -166,6 +184,22 @@ describe("schedule API", () => {
     expect(updateSchedules).toHaveBeenCalledWith("2026-06-21", "1", "10");
     expect(updateEstimates).toHaveBeenCalledWith([scheduleRecord]);
     expect(response.body.schedule).toEqual(liveSchedule);
+  });
+
+  // slow live refresh case
+  it("returns quickly while a missing live schedule refresh continues", async () => {
+    scheduleModel.generateKey.mockReturnValue("1-11-2099-06-21");
+    scheduleModel.getByIndex.mockReturnValue(null);
+    updateSchedules.mockReturnValue(new Promise(() => {}));
+    const app = createApp();
+
+    const response = await request(app)
+      .get("/api/schedule/1/11/2099-06-21")
+      .expect(503);
+
+    expect(updateSchedules).toHaveBeenCalledWith("2099-06-21", "1", "11");
+    expect(updateEstimates).not.toHaveBeenCalled();
+    expect(response.body).toEqual({ status: "refreshing" });
   });
 
   // crossing fallback case

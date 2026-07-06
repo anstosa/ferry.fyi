@@ -9,7 +9,7 @@ import { findWhere } from "shared/lib/arrays";
 import { isNull } from "shared/lib/identity";
 
 import { Splash } from "~/components/Splash";
-import { getSchedule } from "~/lib/schedule";
+import { getSchedule, requireScheduleResponse } from "~/lib/schedule";
 import { getTerminal } from "~/lib/terminals";
 
 export const Today = (): ReactElement => {
@@ -41,20 +41,30 @@ export const Today = (): ReactElement => {
 
   const now = DateTime.local();
 
+  // schedule updater
   const updateSchedule = async (): Promise<void> => {
+    // update state guard
     if (isUpdating || !terminal || !mate) {
       return;
     }
     setUpdating(true);
-    const { schedule } = await getSchedule(terminal, mate, now);
-    setSchedule(schedule);
-    setUpdating(false);
-    const { schedule: nextSchedule } = await getSchedule(
-      terminal,
-      mate,
-      now.plus({ days: 1 })
-    );
-    setNextSchedule(nextSchedule);
+    // schedule request guard
+    try {
+      const { schedule } = requireScheduleResponse(
+        await getSchedule(terminal, mate, now)
+      );
+      setSchedule(schedule);
+      const { schedule: nextSchedule } = requireScheduleResponse(
+        await getSchedule(terminal, mate, now.plus({ days: 1 }))
+      );
+      setNextSchedule(nextSchedule);
+    } catch (error) {
+      // schedule failure logging
+      console.error(error);
+    } finally {
+      // update completion
+      setUpdating(false);
+    }
   };
 
   useEffect(() => {

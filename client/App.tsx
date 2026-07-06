@@ -51,7 +51,7 @@ export const App = (): ReactElement => {
     }
   }, []);
   const isOnline = useOnline();
-  const isWsfOffline = useWSF().offline;
+  const isWsfOffline = useWSF()?.offline ?? false;
   const [offlineDismissed, setOfflineDismissed] = React.useState(false);
   const [wsfDismissed, setWsfDismissed] = React.useState(false);
   const device = useDevice();

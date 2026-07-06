@@ -9,19 +9,19 @@ import { dbInit } from "~/lib/db";
 import { updateMajorSportsEvents } from "~/lib/demandEvents/updateMajorSportsEvents";
 import { updateSchoolBreakEvents } from "~/lib/demandEvents/updateSchoolBreakEvents";
 import { safeScheduledTask } from "~/lib/safeScheduledJob";
-import { backfillTideObservations } from "~/lib/tides/backfill";
-import { backfillWeatherObservations } from "~/lib/weather/backfill";
-import { calculateAndPersistWeatherAdjustments } from "~/lib/weather/calculateCapacityAdjustments";
 import {
   initializeWsfSeed,
   refreshWsfInBackground,
   updateDaily,
   updateLong,
+  updateScheduleCache,
   updateShort,
 } from "~/lib/wsf";
 import { Schedule } from "~/models/Schedule";
 
 import { Route } from "./models/Route";
+
+const STARTUP_MAINTENANCE_DELAY_MS = 60_000;
 
 const forceHttps = (
   request: Request,
@@ -52,53 +52,6 @@ app.use(cors());
 app.use("/api", apiRouter);
 app.use("/", staticRouter);
 
-// run startup weather maintenance
-const refreshWeatherModelInBackground = (): void => {
-  backfillWeatherObservations({ chunkDays: 90 })
-    .then((backfillReport) => {
-      // report backfill result
-      logger.info(
-        `Weather backfill complete: ${backfillReport.recordsWritten} records written, ` +
-          `${backfillReport.skippedChunks} chunks skipped`
-      );
-    })
-    .catch((error: Error) => {
-      // log backfill failure
-      logger.error(`Weather startup backfill failed: ${error.message}`, error);
-    })
-    .then(() => calculateAndPersistWeatherAdjustments())
-    .then((calculationReport) => {
-      // report calculation result
-      logger.info(
-        `Weather adjustment calculation complete: ${calculationReport.rowsWritten} ` +
-          `rows written from ${calculationReport.rowsCalculated} calculated rows`
-      );
-    })
-    .catch((error: Error) => {
-      // log calculation failure
-      logger.error(
-        `Weather startup calculation failed: ${error.message}`,
-        error
-      );
-    });
-};
-
-// run startup tide maintenance
-const refreshTideModelInBackground = (): void => {
-  backfillTideObservations()
-    .then((backfillReport) => {
-      // report backfill result
-      logger.info(
-        `Tide backfill complete: ${backfillReport.recordsWritten} records written, ` +
-          `${backfillReport.skippedChunks} chunks skipped`
-      );
-    })
-    .catch((error: Error) => {
-      // log backfill failure
-      logger.error(`Tide startup backfill failed: ${error.message}`, error);
-    });
-};
-
 // run demand event maintenance
 const refreshDemandEventsInBackground = (): void => {
   Promise.all([updateMajorSportsEvents(), updateSchoolBreakEvents()]).catch(
@@ -107,6 +60,15 @@ const refreshDemandEventsInBackground = (): void => {
       logger.error(`Demand event refresh failed: ${error.message}`, error);
     }
   );
+};
+
+// defer noncritical startup work
+const deferStartupMaintenance = (name: string, task: () => void): void => {
+  const timeout = setTimeout(() => {
+    logger.info(`Starting deferred startup maintenance: ${name}`);
+    task();
+  }, STARTUP_MAINTENANCE_DELAY_MS);
+  timeout.unref();
 };
 
 // start server
@@ -127,22 +89,26 @@ const refreshDemandEventsInBackground = (): void => {
   logger.info("Initializing WSF cache and background refresh jobs");
   // refresh WSF cache asynchronously
   refreshWsfInBackground();
-  // refresh weather model asynchronously
-  refreshWeatherModelInBackground();
-  // refresh tide model asynchronously
-  refreshTideModelInBackground();
-  // refresh demand events asynchronously
-  refreshDemandEventsInBackground();
+  // defer demand event maintenance
+  deferStartupMaintenance("demand events", refreshDemandEventsInBackground);
   // run daily inference after overnight cache reset
   scheduleJob(
     { hour: 4, minute: 10, second: 0 },
     safeScheduledTask("daily WSF route-vessel inference", updateDaily)
   );
-  // run slow updates every minute
-  scheduleJob({ second: 0 }, safeScheduledTask("long WSF refresh", updateLong));
-  // run fast updates every 30 seconds
+  // refresh schedules after cache purge
   scheduleJob(
-    { second: [0, 30] },
+    { hour: 4, minute: 5, second: 0 },
+    safeScheduledTask("daily WSF schedule refresh", updateScheduleCache)
+  );
+  // run slow updates every 5 minutes
+  scheduleJob(
+    { minute: [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55], second: 0 },
+    safeScheduledTask("long WSF refresh", updateLong)
+  );
+  // run fast updates every minute
+  scheduleJob(
+    { second: 0 },
     safeScheduledTask("short WSF refresh", updateShort)
   );
   // clear cache at 4am
@@ -162,7 +128,7 @@ const refreshDemandEventsInBackground = (): void => {
     )
   );
   logger.info(
-    "WSF refresh jobs scheduled: daily 04:10, demand events daily 04:20, " +
-      "long every minute, short every 30 seconds"
+    "WSF refresh jobs scheduled: schedules daily 04:05, daily 04:10, " +
+      "demand events daily 04:20, long every 5 minutes, short every minute"
   );
 })();

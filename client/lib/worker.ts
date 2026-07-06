@@ -1,3 +1,4 @@
+import { Capacitor } from "@capacitor/core";
 import { Workbox } from "workbox-window";
 
 let registration: ServiceWorkerRegistration | undefined;
@@ -9,8 +10,14 @@ let registrationPromise = Promise.resolve<
 export const getRegistration = () =>
   registration ? Promise.resolve(registration) : registrationPromise;
 
+// service worker support guard
+const canRegisterServiceWorker =
+  "serviceWorker" in navigator &&
+  process.env.NODE_ENV === "production" &&
+  !Capacitor.isNativePlatform();
+
 // production worker guard
-if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") {
+if (canRegisterServiceWorker) {
   registrationPromise = new Promise((resolve) => {
     window.addEventListener("load", async () => {
       const workbox = new Workbox("/service-worker.js");

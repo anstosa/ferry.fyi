@@ -41,4 +41,19 @@ describe("API client response processing", () => {
       } as Parameters<typeof processResponse>[0])
     ).toThrow(ApiError);
   });
+
+  // malformed status envelope
+  it("ignores API envelopes with invalid WSF status", () => {
+    const response = processResponse({
+      data: JSON.stringify({
+        body: { route: "edmonds-kingston" },
+        wsfStatus: undefined,
+      }),
+      headers: {},
+      status: 200,
+      url: "http://localhost/api/schedule/1/2",
+    } as Parameters<typeof processResponse>[0]);
+
+    expect(response).toEqual({ route: "edmonds-kingston" });
+  });
 });

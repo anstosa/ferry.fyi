@@ -1,4 +1,5 @@
 import { Router } from "express";
+import logger from "heroku-logger";
 import { DateTime } from "luxon";
 import { Op } from "sequelize";
 import type {
@@ -20,6 +21,92 @@ const schedulePaths = [
   "/:departingId/:arrivingId",
   "/:departingId/:arrivingId/:date",
 ];
+const SCHEDULE_REFRESH_WAIT_MS = 800;
+const backgroundScheduleRefreshes = new Map<string, Promise<void>>();
+
+// wait helper
+const wait = (milliseconds: number): Promise<void> =>
+  new Promise((resolve) => {
+    setTimeout(resolve, milliseconds);
+  });
+
+// refresh error text
+const getErrorMessage = (error: unknown): string => {
+  // error object guard
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
+};
+
+// estimate refresh
+const refreshEstimatesInBackground = (scheduleKey: string): void => {
+  const schedule = Schedule.getByIndex(scheduleKey);
+  // schedule guard
+  if (!schedule) {
+    return;
+  }
+  updateEstimates([schedule]).catch((error: unknown) => {
+    // background estimate failure
+    logger.error(
+      `Schedule estimate refresh failed for ${scheduleKey}: ${getErrorMessage(
+        error
+      )}`,
+      error instanceof Error ? error : undefined
+    );
+  });
+};
+
+// schedule refresh
+const refreshScheduleInBackground = ({
+  arrivingId,
+  date,
+  departingId,
+  scheduleKey,
+}: {
+  arrivingId: string;
+  date: string;
+  departingId: string;
+  scheduleKey: string;
+}): Promise<void> => {
+  const refreshKey = `${date}:${departingId}:${arrivingId}`;
+  const activeRefresh = backgroundScheduleRefreshes.get(refreshKey);
+  // single-flight guard
+  if (activeRefresh) {
+    return activeRefresh;
+  }
+  const refreshPromise = (async (): Promise<void> => {
+    try {
+      await updateSchedules(date, departingId, arrivingId);
+      refreshEstimatesInBackground(scheduleKey);
+    } catch (error: unknown) {
+      logger.error(
+        `Schedule refresh failed for ${refreshKey}: ${getErrorMessage(error)}`,
+        error instanceof Error ? error : undefined
+      );
+    } finally {
+      // cleanup in-flight state
+      backgroundScheduleRefreshes.delete(refreshKey);
+    }
+  })();
+  backgroundScheduleRefreshes.set(refreshKey, refreshPromise);
+  return refreshPromise;
+};
+
+// bounded refresh wait
+const waitForScheduleRefresh = async (
+  refreshPromise: Promise<void>,
+  scheduleKey: string
+): Promise<{ didRefreshFinish: boolean; schedule: Schedule | null }> => {
+  const didRefreshFinish = await Promise.race([
+    refreshPromise.then(() => true),
+    wait(SCHEDULE_REFRESH_WAIT_MS).then(() => false),
+  ]);
+  return {
+    didRefreshFinish,
+    schedule: Schedule.getByIndex(scheduleKey) ?? null,
+  };
+};
 
 // service day bounds
 const getHistoricalDayBounds = (date: string): { from: number; to: number } => {
@@ -115,24 +202,48 @@ scheduleRouter.get(schedulePaths, async (request, response) => {
   const { departingId, arrivingId, date: dateInput } = request.params;
   const date = dateInput || toWsfDate();
   const scheduleKey = Schedule.generateKey(departingId, arrivingId, date);
-  const historicalSchedule = isHistoricalDate(date)
-    ? await getHistoricalSchedule(departingId, arrivingId, date)
-    : null;
-  const hasFetchedDate = Schedule.hasFetchedDate(date);
-  let cachedSchedule = await Schedule.getByIndex(scheduleKey);
-  // requested pair guard
-  if (!historicalSchedule && (!hasFetchedDate || !cachedSchedule)) {
-    await updateSchedules(date, departingId, arrivingId);
-    cachedSchedule = await Schedule.getByIndex(scheduleKey);
-    await updateEstimates(cachedSchedule ? [cachedSchedule] : []);
-  }
-  const schedule = cachedSchedule?.serialize() ?? historicalSchedule;
-  // schedule found guard
-  if (schedule) {
+  const cachedSchedule = Schedule.getByIndex(scheduleKey);
+  // cached schedule guard
+  if (cachedSchedule) {
     return response.send({
-      schedule,
+      schedule: cachedSchedule.serialize(),
       timestamp: DateTime.local().toSeconds(),
     });
+  }
+  // historical fallback guard
+  if (isHistoricalDate(date)) {
+    const historicalSchedule = await getHistoricalSchedule(
+      departingId,
+      arrivingId,
+      date
+    );
+    // historical schedule guard
+    if (historicalSchedule) {
+      return response.send({
+        schedule: historicalSchedule,
+        timestamp: DateTime.local().toSeconds(),
+      });
+    }
+  } else {
+    const refreshPromise = refreshScheduleInBackground({
+      arrivingId,
+      date,
+      departingId,
+      scheduleKey,
+    });
+    const { didRefreshFinish, schedule: refreshedSchedule } =
+      await waitForScheduleRefresh(refreshPromise, scheduleKey);
+    // refreshed schedule guard
+    if (refreshedSchedule) {
+      return response.send({
+        schedule: refreshedSchedule.serialize(),
+        timestamp: DateTime.local().toSeconds(),
+      });
+    }
+    // active refresh guard
+    if (!didRefreshFinish) {
+      return response.status(503).send({ status: "refreshing" });
+    }
   }
   // warming guard
   if (!getWsfStatus().coreReady) {

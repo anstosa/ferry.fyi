@@ -1,5 +1,7 @@
 import logger from "heroku-logger";
 
+import type { Schedule } from "~/models/Schedule";
+
 import { sendCancellationNotifications } from "../cancellationNotifications";
 import { sendDelayNotifications } from "../delayNotifications";
 import { updateEstimates } from "../forecast";
@@ -12,8 +14,129 @@ import { updateCameras } from "./updateCameras";
 import { updateCapacity } from "./updateCapacity";
 import { updateNormalRouteVessels } from "./updateNormalRouteVessels";
 import { updateRoutes } from "./updateRoutes";
+import { updateSchedules } from "./updateSchedules";
 import { updateTerminals } from "./updateTerminals";
 import { updateVessels, updateVesselStatus } from "./updateVessels";
+
+const ESTIMATE_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+const ENVIRONMENT_REFRESH_INTERVAL_MS = 60 * 60 * 1000;
+let estimateRefreshPromise: Promise<void> | null = null;
+let lastEstimateRefreshStartedAt = 0;
+let lastTideForecastRefreshStartedAt = 0;
+let lastWeatherForecastRefreshStartedAt = 0;
+let longRefreshPromise: Promise<void> | null = null;
+let shortRefreshPromise: Promise<void> | null = null;
+let tideForecastRefreshPromise: Promise<void> | null = null;
+let weatherForecastRefreshPromise: Promise<void> | null = null;
+
+// refresh error text
+const getErrorMessage = (error: unknown): string => {
+  // error object guard
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
+};
+
+// refresh estimates without blocking short refresh
+const refreshEstimatesBestEffort = (schedules: Schedule[]): void => {
+  // empty estimate guard
+  if (!schedules.length) {
+    return;
+  }
+  // overlap guard
+  if (estimateRefreshPromise) {
+    logger.info("Skipped estimate refresh; previous refresh is still running");
+    return;
+  }
+  const now = Date.now();
+  // rate limit guard
+  if (now - lastEstimateRefreshStartedAt < ESTIMATE_REFRESH_INTERVAL_MS) {
+    logger.info("Skipped estimate refresh; recent refresh already ran");
+    return;
+  }
+  lastEstimateRefreshStartedAt = now;
+  estimateRefreshPromise = updateEstimates(schedules)
+    .catch((error: unknown) => {
+      // estimate failure log
+      logger.error(
+        `Estimate refresh failed: ${getErrorMessage(error)}`,
+        error instanceof Error ? error : undefined
+      );
+    })
+    .finally(() => {
+      // clear in-flight estimate guard
+      estimateRefreshPromise = null;
+    });
+};
+
+// refresh tide forecasts without blocking short refresh
+const refreshTideForecastsBestEffort = (): void => {
+  // overlap guard
+  if (tideForecastRefreshPromise) {
+    logger.info(
+      "Skipped tide forecast refresh; previous refresh is still running"
+    );
+    return;
+  }
+  const now = Date.now();
+  // rate limit guard
+  if (
+    now - lastTideForecastRefreshStartedAt <
+    ENVIRONMENT_REFRESH_INTERVAL_MS
+  ) {
+    logger.info("Skipped tide forecast refresh; recent refresh already ran");
+    return;
+  }
+  lastTideForecastRefreshStartedAt = now;
+  tideForecastRefreshPromise = updateTideForecasts()
+    .then(() => undefined)
+    .catch((error: unknown) => {
+      // tide failure log
+      logger.error(
+        `Tide forecast refresh failed: ${getErrorMessage(error)}`,
+        error instanceof Error ? error : undefined
+      );
+    })
+    .finally(() => {
+      // clear in-flight tide guard
+      tideForecastRefreshPromise = null;
+    });
+};
+
+// refresh weather forecasts without blocking short refresh
+const refreshWeatherForecastsBestEffort = (): void => {
+  // overlap guard
+  if (weatherForecastRefreshPromise) {
+    logger.info(
+      "Skipped weather forecast refresh; previous refresh is still running"
+    );
+    return;
+  }
+  const now = Date.now();
+  // rate limit guard
+  if (
+    now - lastWeatherForecastRefreshStartedAt <
+    ENVIRONMENT_REFRESH_INTERVAL_MS
+  ) {
+    logger.info("Skipped weather forecast refresh; recent refresh already ran");
+    return;
+  }
+  lastWeatherForecastRefreshStartedAt = now;
+  weatherForecastRefreshPromise = updateWeatherForecasts()
+    .then(() => undefined)
+    .catch((error: unknown) => {
+      // weather failure log
+      logger.error(
+        `Weather forecast refresh failed: ${getErrorMessage(error)}`,
+        error instanceof Error ? error : undefined
+      );
+    })
+    .finally(() => {
+      // clear in-flight weather guard
+      weatherForecastRefreshPromise = null;
+    });
+};
 
 // load instant seed
 export const initializeWsfSeed = (): void => {
@@ -21,7 +144,8 @@ export const initializeWsfSeed = (): void => {
   setWsfCoreReady(true);
 };
 
-export const updateLong = async (): Promise<void> => {
+// run long refresh work
+const runLongRefresh = async (): Promise<void> => {
   setWsfWarming(true);
   try {
     await Promise.all([updateCameras(), updateVessels()]);
@@ -36,47 +160,66 @@ export const updateLong = async (): Promise<void> => {
   }
 };
 
+export const updateLong = async (): Promise<void> => {
+  // overlap guard
+  if (longRefreshPromise) {
+    logger.info("Skipped long WSF refresh; previous refresh is still running");
+    return;
+  }
+  longRefreshPromise = runLongRefresh().finally(() => {
+    // clear in-flight guard
+    longRefreshPromise = null;
+  });
+  await longRefreshPromise;
+};
+
 // run daily route-vessel inference
 export const updateDaily = async (): Promise<void> => {
   await updateNormalRouteVessels();
 };
 
-export const updateShort = async (): Promise<void> => {
+// run schedule cache refresh
+export const updateScheduleCache = async (): Promise<void> => {
+  await updateSchedules();
+};
+
+// run short refresh work
+const runShortRefresh = async (): Promise<void> => {
   // short refresh
   try {
     await updateVesselStatus();
     const updatedSchedules = await updateCapacity();
-    await updateEstimates(updatedSchedules);
+    refreshEstimatesBestEffort(updatedSchedules);
     await sendCancellationNotifications();
     await sendDelayNotifications();
     await sendSailingLifecycleNotifications();
   } finally {
     // tide best-effort
-    updateTideForecasts().catch((error) => {
-      // preserve estimate refresh
-      logger.error(
-        `Tide forecast refresh failed: ${
-          error instanceof Error ? error.message : String(error)
-        }`
-      );
-    });
+    refreshTideForecastsBestEffort();
     // weather best-effort
-    updateWeatherForecasts().catch((error) => {
-      // preserve estimate refresh
-      logger.error(
-        `Weather forecast refresh failed: ${
-          error instanceof Error ? error.message : String(error)
-        }`
-      );
-    });
+    refreshWeatherForecastsBestEffort();
   }
+};
+
+export const updateShort = async (): Promise<void> => {
+  // overlap guard
+  if (shortRefreshPromise) {
+    logger.info("Skipped short WSF refresh; previous refresh is still running");
+    return;
+  }
+  shortRefreshPromise = runShortRefresh().finally(() => {
+    // clear in-flight guard
+    shortRefreshPromise = null;
+  });
+  await shortRefreshPromise;
 };
 
 // run background refresh
 export const refreshWsfInBackground = (): void => {
+  // warm user-facing caches
   updateLong()
     .then(updateShort)
-    .then(updateDaily)
+    .then(updateScheduleCache)
     .catch((error: Error) => {
       logger.error(`WSF background refresh failed: ${error.message}`, error);
       setWsfWarming(false);

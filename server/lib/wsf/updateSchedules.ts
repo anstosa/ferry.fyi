@@ -36,6 +36,7 @@ const getScheduleApi = (
 
 // local state
 
+const SCHEDULE_REFRESH_CONCURRENCY = 4;
 let lastFlushDate: number | null = null;
 const inProgressSchedules = new Map<string, Promise<void>>();
 
@@ -390,6 +391,44 @@ const updateSchedulePair = async (
   return mergedSlots.length;
 };
 
+// update schedule pairs with bounded concurrency
+const updateSchedulePairs = async (
+  schedulesToUpdate: Array<[string, string]>,
+  date: string,
+  validRange: ValidRange | null
+): Promise<number[]> => {
+  const slotCounts: number[] = [];
+  let nextPairIndex = 0;
+  const workerCount = Math.min(
+    SCHEDULE_REFRESH_CONCURRENCY,
+    schedulesToUpdate.length
+  );
+  // bounded worker pool
+  const workers = Array.from({ length: workerCount }, async () => {
+    // schedule pair queue
+    while (nextPairIndex < schedulesToUpdate.length) {
+      const pairIndex = nextPairIndex;
+      nextPairIndex += 1;
+      const [targetTerminalId, targetMateId] = schedulesToUpdate[pairIndex];
+      const slotCount = await updateSchedulePair(
+        targetTerminalId,
+        targetMateId,
+        date,
+        validRange
+      );
+      logger.info(
+        `Updated schedule pair ${formatRouteLegName(
+          targetTerminalId,
+          targetMateId
+        )} for ${date}: ${slotCount} sailings`
+      );
+      slotCounts[pairIndex] = slotCount;
+    }
+  });
+  await Promise.all(workers);
+  return slotCounts;
+};
+
 export const updateSchedules = async (
   date: string = toWsfDate(),
   terminalId?: string,
@@ -430,22 +469,10 @@ export const updateSchedules = async (
     );
     const validRange = await getValidRange();
     const schedulesToUpdate = getSchedulePairs(terminalId, mateId);
-    const slotCounts = await Promise.all(
-      schedulesToUpdate.map(async ([targetTerminalId, targetMateId]) => {
-        const slotCount = await updateSchedulePair(
-          targetTerminalId,
-          targetMateId,
-          date,
-          validRange
-        );
-        logger.info(
-          `Updated schedule pair ${formatRouteLegName(
-            targetTerminalId,
-            targetMateId
-          )} for ${date}: ${slotCount} sailings`
-        );
-        return slotCount;
-      })
+    const slotCounts = await updateSchedulePairs(
+      schedulesToUpdate,
+      date,
+      validRange
     );
     const totalSlots = slotCounts.reduce((total, slotCount) => {
       // total sailings

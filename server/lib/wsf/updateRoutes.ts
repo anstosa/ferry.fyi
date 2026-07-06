@@ -26,11 +26,78 @@ const getRouteApi = (
   date: string = toWsfDate()
 ): string =>
   `${API_SCHEDULE}/routedetails/${date}/${departingId}/${arrivingId}`;
+const ROUTE_REFRESH_CONCURRENCY = 4;
 const staticRoutes = wsfCore.routes as Record<string, Partial<RouteClass>>;
 
 // merge static route metadata
 const getStaticRouteData = (routeId: string): Partial<RouteClass> => {
   return staticRoutes[routeId] ?? {};
+};
+
+// update one route pair
+const updateRoutePair = async ({
+  ArrivingTerminalID,
+  DepartingTerminalID,
+}: WSF.MatesResponse): Promise<Route | null> => {
+  const departingId = String(DepartingTerminalID);
+  const arrivingId = String(ArrivingTerminalID);
+  const [routeData] =
+    (await wsfRequest<WSF.RoutesResponse>(
+      getRouteApi(departingId, arrivingId)
+    )) ?? [];
+  // route missing guard
+  if (!routeData) {
+    logger.info(
+      `Skipped route pair ${formatRouteLegName(
+        departingId,
+        arrivingId
+      )}; WSF returned no route data`
+    );
+    return null;
+  }
+  const routeId = String(routeData.RouteID);
+  const data = {
+    ...getStaticRouteData(routeId),
+    id: routeId,
+    abbreviation: routeData.RouteAbbrev,
+    description: routeData.Description,
+    crossingTime: Number(routeData.CrossingTime),
+  };
+  const [route, wasCreated] = Route.getOrCreate(routeId, {
+    ...data,
+    terminalIds: [departingId, arrivingId],
+  });
+  // existing route guard
+  if (!wasCreated) {
+    route.update({
+      ...data,
+      terminalIds: Array.from(
+        new Set([...route.terminalIds, departingId, arrivingId])
+      ),
+    });
+  }
+  route.save();
+  return route;
+};
+
+// update route pairs with bounded concurrency
+const updateRoutePairs = async (
+  mates: WSF.MatesResponse[]
+): Promise<Array<Route | null>> => {
+  const updatedRoutes: Array<Route | null> = [];
+  let nextPairIndex = 0;
+  const workerCount = Math.min(ROUTE_REFRESH_CONCURRENCY, mates.length);
+  // bounded worker pool
+  const workers = Array.from({ length: workerCount }, async () => {
+    // route pair queue
+    while (nextPairIndex < mates.length) {
+      const pairIndex = nextPairIndex;
+      nextPairIndex += 1;
+      updatedRoutes[pairIndex] = await updateRoutePair(mates[pairIndex]);
+    }
+  });
+  await Promise.all(workers);
+  return updatedRoutes;
 };
 
 export const updateRoutes = async (
@@ -43,57 +110,14 @@ export const updateRoutes = async (
     logger.info(`Skipped route update for ${date}; WSF returned no mates`);
     return;
   }
-  const updatedRoutes = await Promise.all(
-    mates
-      // skip retired terminals
-      .filter(
-        ({ DepartingTerminalID, ArrivingTerminalID }) =>
-          ![DepartingTerminalID, ArrivingTerminalID]
-            .map(String)
-            .some(isRemovedTerminalId)
-      )
-      .map(async ({ DepartingTerminalID, ArrivingTerminalID }) => {
-        const departingId = String(DepartingTerminalID);
-        const arrivingId = String(ArrivingTerminalID);
-        const [routeData] =
-          (await wsfRequest<WSF.RoutesResponse>(
-            getRouteApi(departingId, arrivingId)
-          )) ?? [];
-        // route missing guard
-        if (!routeData) {
-          logger.info(
-            `Skipped route pair ${formatRouteLegName(
-              departingId,
-              arrivingId
-            )}; WSF returned no route data`
-          );
-          return null;
-        }
-        const routeId = String(routeData.RouteID);
-        const data = {
-          ...getStaticRouteData(routeId),
-          id: routeId,
-          abbreviation: routeData.RouteAbbrev,
-          description: routeData.Description,
-          crossingTime: Number(routeData.CrossingTime),
-        };
-        const [route, wasCreated] = Route.getOrCreate(routeId, {
-          ...data,
-          terminalIds: [departingId, arrivingId],
-        });
-        // existing route guard
-        if (!wasCreated) {
-          route.update({
-            ...data,
-            terminalIds: Array.from(
-              new Set([...route.terminalIds, departingId, arrivingId])
-            ),
-          });
-        }
-        route.save();
-        return route;
-      })
+  const activeMates = mates.filter(
+    // skip retired terminals
+    ({ DepartingTerminalID, ArrivingTerminalID }) =>
+      ![DepartingTerminalID, ArrivingTerminalID]
+        .map(String)
+        .some(isRemovedTerminalId)
   );
+  const updatedRoutes = await updateRoutePairs(activeMates);
   purgeRemovedTerminalData();
   const updatedRouteIds = updatedRoutes
     .filter((route): route is Route => {
