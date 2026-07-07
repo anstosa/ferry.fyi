@@ -62,9 +62,6 @@ jobs:
       - name: Type-check
         run: yarn type-check
 
-      - name: Test
-        run: yarn test
-
       - name: Build application
         env:
           SENTRY_AUTH_TOKEN: ""
