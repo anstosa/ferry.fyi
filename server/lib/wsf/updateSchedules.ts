@@ -40,6 +40,27 @@ const SCHEDULE_REFRESH_CONCURRENCY = 4;
 let lastFlushDate: number | null = null;
 const inProgressSchedules = new Map<string, Promise<void>>();
 
+// schedule vessel fallback
+const getScheduleVessel = (
+  vesselId: number,
+  vesselName: string | undefined
+): Vessel => {
+  const vessel = Vessel.getByIndex(String(vesselId));
+  // cached vessel guard
+  if (vessel) {
+    return vessel;
+  }
+  return {
+    abbreviation: vesselName ?? `Vessel ${vesselId}`,
+    id: String(vesselId),
+    name: vesselName ?? `Vessel ${vesselId}`,
+    speed: 0,
+    tallVehicleCapacity: 0,
+    vehicleCapacity: 0,
+    vesselWatchUrl: "",
+  } as Vessel;
+};
+
 // scheduled arrival fallback
 const getEstimatedScheduledArrivalTime = (
   departureTime: number,
@@ -316,6 +337,7 @@ const updateSchedulePair = async (
         ArrivingTime,
         DepartingTime,
         VesselID,
+        VesselName,
         LoadingRule,
         VesselPositionNum,
       }) => {
@@ -325,11 +347,7 @@ const updateSchedulePair = async (
           return null;
         }
         const departureTime = DateTime.fromSeconds(time);
-        const vessel = Vessel.getByIndex(String(VesselID));
-        // missing vessel guard
-        if (!vessel) {
-          return null;
-        }
+        const vessel = getScheduleVessel(VesselID, VesselName);
         const crossing = await Crossing.findOne({
           where: {
             departureId: terminalId,

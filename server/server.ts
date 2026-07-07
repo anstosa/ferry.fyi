@@ -21,6 +21,7 @@ import {
   updateLong,
   updateScheduleCache,
   updateShort,
+  updateUserFacingStatus,
 } from "~/lib/wsf";
 import { Schedule } from "~/models/Schedule";
 
@@ -63,11 +64,45 @@ function deferStartupMaintenance(name: string, task: () => void): void {
   timeout.unref();
 }
 
+// start web-safe WSF cache work
+export function startWsfCacheRefreshJobs(): void {
+  logger.info("Initializing WSF cache refresh jobs");
+  // warm web caches
+  refreshWsfInBackground({ sendNotifications: false });
+  // refresh schedules after cache purge
+  scheduleJob(
+    { hour: 4, minute: 5, second: 0 },
+    safeScheduledTask("daily WSF schedule refresh", updateScheduleCache)
+  );
+  // run slow updates every 5 minutes
+  scheduleJob(
+    { minute: [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55], second: 0 },
+    safeScheduledTask("long WSF refresh", updateLong)
+  );
+  // run fast cache updates every minute
+  scheduleJob(
+    { second: 0 },
+    safeScheduledTask("short WSF cache refresh", updateUserFacingStatus)
+  );
+  // clear cache at 4am
+  scheduleJob(
+    { hour: 4, minute: 0, second: 0 },
+    safeScheduledTask("daily in-memory cache purge", () => {
+      Schedule.purge();
+      Route.purge();
+    })
+  );
+  logger.info(
+    "WSF cache refresh jobs scheduled: schedules daily 04:05, " +
+      "long every 5 minutes, short every minute"
+  );
+}
+
 // start scheduler work
 export function startScheduler(): void {
-  logger.info("Initializing WSF cache and background refresh jobs");
-  // refresh WSF cache asynchronously
-  refreshWsfInBackground();
+  logger.info("Initializing WSF scheduler jobs");
+  // warm scheduler caches
+  refreshWsfInBackground({ sendNotifications: true });
   // defer demand event maintenance
   deferStartupMaintenance("demand events", refreshDemandEventsInBackground);
   // run daily inference after overnight cache reset
@@ -133,7 +168,8 @@ export async function startServer(): Promise<void> {
     startScheduler();
     return;
   }
-  logger.info("WSF refresh jobs disabled for this process");
+  startWsfCacheRefreshJobs();
+  logger.info("Scheduler-only WSF jobs disabled for this process");
 }
 
 // test import guard

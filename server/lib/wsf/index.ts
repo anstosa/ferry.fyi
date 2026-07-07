@@ -21,6 +21,12 @@ import { updateVessels, updateVesselStatus } from "./updateVessels";
 
 const ESTIMATE_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const ENVIRONMENT_REFRESH_INTERVAL_MS = 60 * 60 * 1000;
+
+interface ShortRefreshOptions {
+  sendNotifications?: boolean;
+}
+
+interface BackgroundRefreshOptions extends ShortRefreshOptions {}
 let estimateRefreshPromise: Promise<void> | null = null;
 let lastEstimateRefreshStartedAt = 0;
 let lastTideForecastRefreshStartedAt = 0;
@@ -176,15 +182,20 @@ export const updateScheduleCache = async (): Promise<void> => {
 };
 
 // run short refresh work
-const runShortRefresh = async (): Promise<void> => {
+const runShortRefresh = async (
+  options: ShortRefreshOptions = {}
+): Promise<void> => {
   // short refresh
   try {
     await updateVesselStatus();
     const updatedSchedules = await updateCapacity();
     refreshEstimatesBestEffort(updatedSchedules);
-    await sendCancellationNotifications();
-    await sendDelayNotifications();
-    await sendSailingLifecycleNotifications();
+    // notification guard
+    if (options.sendNotifications !== false) {
+      await sendCancellationNotifications();
+      await sendDelayNotifications();
+      await sendSailingLifecycleNotifications();
+    }
   } finally {
     // tide best-effort
     refreshTideForecastsBestEffort();
@@ -193,24 +204,40 @@ const runShortRefresh = async (): Promise<void> => {
   }
 };
 
-export const updateShort = async (): Promise<void> => {
+const runShortRefreshWithOverlapGuard = async (
+  options: ShortRefreshOptions = {}
+): Promise<void> => {
   // overlap guard
   if (shortRefreshPromise) {
     logger.info("Skipped short WSF refresh; previous refresh is still running");
     return;
   }
-  shortRefreshPromise = runShortRefresh().finally(() => {
+  shortRefreshPromise = runShortRefresh(options).finally(() => {
     // clear in-flight guard
     shortRefreshPromise = null;
   });
   await shortRefreshPromise;
 };
 
+// refresh user caches
+export const updateUserFacingStatus = async (): Promise<void> => {
+  await runShortRefreshWithOverlapGuard({ sendNotifications: false });
+};
+
+// refresh scheduler jobs
+export const updateShort = async (): Promise<void> => {
+  await runShortRefreshWithOverlapGuard({ sendNotifications: true });
+};
+
 // run background refresh
-export const refreshWsfInBackground = (): void => {
+export const refreshWsfInBackground = (
+  options: BackgroundRefreshOptions = {}
+): void => {
+  const shortRefresh =
+    options.sendNotifications === false ? updateUserFacingStatus : updateShort;
   // warm user-facing caches
   updateLong()
-    .then(updateShort)
+    .then(shortRefresh)
     .then(updateScheduleCache)
     .catch((error: Error) => {
       logger.error(`WSF background refresh failed: ${error.message}`, error);

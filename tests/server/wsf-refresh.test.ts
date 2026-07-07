@@ -1,7 +1,23 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const cancellationNotificationModel = vi.hoisted(() => ({
+  sendCancellationNotifications: vi.fn(),
+}));
+
+const delayNotificationModel = vi.hoisted(() => ({
+  sendDelayNotifications: vi.fn(),
+}));
+
 const forecastModel = vi.hoisted(() => ({
   updateEstimates: vi.fn(),
+}));
+
+const lifecycleNotificationModel = vi.hoisted(() => ({
+  sendSailingLifecycleNotifications: vi.fn(),
+}));
+
+const tideRefreshModel = vi.hoisted(() => ({
+  updateTideForecasts: vi.fn(),
 }));
 
 const weatherRefreshModel = vi.hoisted(() => ({
@@ -55,7 +71,18 @@ vi.mock("heroku-logger", () => ({
   default: loggerModel,
 }));
 
+vi.mock("~/lib/cancellationNotifications", () => cancellationNotificationModel);
+
+vi.mock("~/lib/delayNotifications", () => delayNotificationModel);
+
 vi.mock("~/lib/forecast", () => forecastModel);
+
+vi.mock(
+  "~/lib/sailingLifecycleNotifications",
+  () => lifecycleNotificationModel
+);
+
+vi.mock("~/lib/tides/updateForecasts", () => tideRefreshModel);
 
 vi.mock("~/lib/weather/updateForecasts", () => weatherRefreshModel);
 
@@ -77,14 +104,30 @@ vi.mock("~/lib/wsf/updateTerminals", () => terminalModel);
 
 vi.mock("~/lib/wsf/updateVessels", () => vesselModel);
 
-const { updateDaily, updateLong, updateScheduleCache, updateShort } =
-  await import("../../server/lib/wsf");
+const {
+  updateDaily,
+  updateLong,
+  updateScheduleCache,
+  updateShort,
+  updateUserFacingStatus,
+} = await import("../../server/lib/wsf");
 
 describe("WSF refresh", () => {
   // reset mocks
   beforeEach(() => {
     vi.clearAllMocks();
+    cancellationNotificationModel.sendCancellationNotifications.mockResolvedValue(
+      undefined
+    );
+    delayNotificationModel.sendDelayNotifications.mockResolvedValue(undefined);
+    lifecycleNotificationModel.sendSailingLifecycleNotifications.mockResolvedValue(
+      undefined
+    );
     scheduleRefreshModel.updateSchedules.mockResolvedValue(undefined);
+    tideRefreshModel.updateTideForecasts.mockResolvedValue({
+      recordsWritten: 0,
+      skipped: false,
+    });
   });
 
   // failure isolation
@@ -130,6 +173,26 @@ describe("WSF refresh", () => {
     );
   });
 
+  // web cache refresh
+  it("refreshes user-facing status without sending notifications", async () => {
+    vesselModel.updateVesselStatus.mockResolvedValue(undefined);
+    capacityModel.updateCapacity.mockResolvedValue([]);
+
+    await updateUserFacingStatus();
+
+    expect(vesselModel.updateVesselStatus).toHaveBeenCalledOnce();
+    expect(capacityModel.updateCapacity).toHaveBeenCalledOnce();
+    expect(
+      cancellationNotificationModel.sendCancellationNotifications
+    ).not.toHaveBeenCalled();
+    expect(
+      delayNotificationModel.sendDelayNotifications
+    ).not.toHaveBeenCalled();
+    expect(
+      lifecycleNotificationModel.sendSailingLifecycleNotifications
+    ).not.toHaveBeenCalled();
+  });
+
   // schedule cache warmup
   it("refreshes schedules as a background cache warmup", async () => {
     await updateScheduleCache();
@@ -139,7 +202,9 @@ describe("WSF refresh", () => {
 
   // daily inference
   it("updates normal route vessel assignments during daily refresh", async () => {
-    normalRouteVesselModel.updateNormalRouteVessels.mockResolvedValue(undefined);
+    normalRouteVesselModel.updateNormalRouteVessels.mockResolvedValue(
+      undefined
+    );
 
     await updateDaily();
 

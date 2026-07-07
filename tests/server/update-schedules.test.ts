@@ -183,6 +183,55 @@ describe("schedule update helpers", () => {
     expect(vessel.departureDelta).toBe(12 * 60);
   });
 
+  // missing vessel fallback
+  it("keeps scheduled sailings when vessel metadata is still warming", async () => {
+    const schedule = {
+      key: "1-2-2026-06-21",
+      save: vi.fn(),
+      slots: [],
+      update: vi.fn(),
+    };
+    wsfApi.wsfRequest
+      .mockResolvedValueOnce("/Date(1782068400000-0700)/")
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        TerminalCombos: [
+          {
+            Times: [
+              {
+                DepartingTime: "/Date(1782072000000-0700)/",
+                LoadingRule: 3,
+                VesselID: 123,
+                VesselName: "Tokitae",
+                VesselPositionNum: 1,
+              },
+            ],
+          },
+        ],
+      });
+    scheduleModel.getByIndex.mockReturnValue(null);
+    crossingModel.findOne.mockResolvedValue(null);
+    vesselModel.getByIndex.mockReturnValue(null);
+    scheduleModel.getOrCreate.mockReturnValue([schedule, true]);
+    scheduleModel.getAll.mockReturnValue({ [schedule.key]: schedule });
+
+    await updateSchedules("2026-06-21", "1", "2");
+
+    expect(scheduleModel.getOrCreate).toHaveBeenCalledWith(
+      "1-2-2026-06-21",
+      expect.objectContaining({
+        slots: [
+          expect.objectContaining({
+            vessel: expect.objectContaining({
+              id: "123",
+              name: "Tokitae",
+            }),
+          }),
+        ],
+      })
+    );
+  });
+
   // tidal cancellation merge
   it("adds tidal cancellations that are missing from the WSF schedule", async () => {
     const salish = {
