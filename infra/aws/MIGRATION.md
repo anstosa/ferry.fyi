@@ -78,7 +78,9 @@ printf 'app config secret: %s\n' "${APP_CONFIG_SECRET_ARN}"
 printf 'database url secret: %s\n' "${DATABASE_URL_SECRET_ARN}"
 ```
 
-Dry-review the exact app-config keys that would be imported from the ignored Heroku export:
+Dry-review the app-config keys that will be present after import. Missing optional
+Heroku keys are imported as empty strings so ECS JSON-key secret references still
+resolve at task start:
 
 ```sh
 jq '{
@@ -104,7 +106,7 @@ jq '{
   MAPBOX_ACCESS_TOKEN,
   SENTRY_DSN,
   WSDOT_API_KEY
-} | with_entries(select(.value != null)) | keys' \
+} | keys' \
   infra/aws/local/ferry-fyi-heroku-config.raw.secret.json
 ```
 
