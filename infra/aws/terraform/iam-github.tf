@@ -66,6 +66,17 @@ resource "aws_iam_role_policy" "github_deploy" {
         Resource = "*"
       },
       {
+        Sid    = "TagRegisteredTaskDefinitions"
+        Effect = "Allow"
+        Action = [
+          "ecs:TagResource"
+        ]
+        Resource = [
+          "${aws_ecs_task_definition.web.arn_without_revision}:*",
+          "${aws_ecs_task_definition.scheduler.arn_without_revision}:*"
+        ]
+      },
+      {
         Sid    = "UpdateProductionServices"
         Effect = "Allow"
         Action = [
