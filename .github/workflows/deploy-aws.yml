@@ -1,0 +1,190 @@
+name: Deploy AWS Production
+
+on:
+  push:
+    branches:
+      - production
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  validate-build-deploy:
+    name: Validate, build, and deploy
+    runs-on: ubuntu-latest
+    # keep branch-scoped oidc subject
+    if: github.ref == 'refs/heads/production'
+    env:
+      AUTH0_CLIENT_AUDIENCE: ${{ vars.AUTH0_CLIENT_AUDIENCE }}
+      AUTH0_CLIENT_ID: ${{ vars.AUTH0_CLIENT_ID }}
+      AUTH0_CLIENT_REDIRECT: ${{ vars.AUTH0_CLIENT_REDIRECT }}
+      AUTH0_DOMAIN: ${{ vars.AUTH0_DOMAIN }}
+      AW_TAG_ID: ${{ vars.AW_TAG_ID }}
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      BASE_URL: ${{ vars.BASE_URL }}
+      ECR_REPOSITORY_URL: ${{ vars.ECR_REPOSITORY_URL }}
+      ECS_CLUSTER: ${{ vars.ECS_CLUSTER }}
+      FIREBASE_API_KEY: ${{ vars.FIREBASE_API_KEY }}
+      FIREBASE_APP_ID: ${{ vars.FIREBASE_APP_ID }}
+      FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+      FIREBASE_SENDER_ID: ${{ vars.FIREBASE_SENDER_ID }}
+      FIREBASE_VAPID_KEY: ${{ vars.FIREBASE_VAPID_KEY }}
+      GOOGLE_ANALYTICS: ${{ vars.GOOGLE_ANALYTICS }}
+      GTM_CONTAINER_ID: ${{ vars.GTM_CONTAINER_ID }}
+      HEROKU_RELEASE_VERSION: ${{ github.sha }}
+      LOG_LEVEL: ${{ vars.LOG_LEVEL }}
+      MAPBOX_ACCESS_TOKEN: ${{ vars.MAPBOX_ACCESS_TOKEN }}
+      SENTRY_DSN: ${{ vars.SENTRY_DSN }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Use Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+          cache-dependency-path: yarn.lock
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Lint
+        run: yarn lint
+
+      - name: Type-check
+        run: yarn type-check
+
+      - name: Test
+        run: yarn test
+
+      - name: Build application
+        env:
+          SENTRY_AUTH_TOKEN: ""
+        run: yarn build
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+
+      - name: Log in to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push Docker image
+        id: image
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+          SENTRY_AUTH_TOKEN: ""
+        run: |
+          # fail on shell mistakes
+          set -euo pipefail
+          # derive immutable image tags
+          IMAGE_URI="${ECR_REPOSITORY_URL}:${IMAGE_TAG}"
+          LATEST_IMAGE_URI="${ECR_REPOSITORY_URL}:latest"
+          # build production image
+          docker build \
+            --build-arg AUTH0_CLIENT_AUDIENCE="${AUTH0_CLIENT_AUDIENCE}" \
+            --build-arg AUTH0_CLIENT_ID="${AUTH0_CLIENT_ID}" \
+            --build-arg AUTH0_CLIENT_REDIRECT="${AUTH0_CLIENT_REDIRECT}" \
+            --build-arg AUTH0_DOMAIN="${AUTH0_DOMAIN}" \
+            --build-arg AW_TAG_ID="${AW_TAG_ID}" \
+            --build-arg BASE_URL="${BASE_URL}" \
+            --build-arg FIREBASE_API_KEY="${FIREBASE_API_KEY}" \
+            --build-arg FIREBASE_APP_ID="${FIREBASE_APP_ID}" \
+            --build-arg FIREBASE_PROJECT_ID="${FIREBASE_PROJECT_ID}" \
+            --build-arg FIREBASE_SENDER_ID="${FIREBASE_SENDER_ID}" \
+            --build-arg FIREBASE_VAPID_KEY="${FIREBASE_VAPID_KEY}" \
+            --build-arg GOOGLE_ANALYTICS="${GOOGLE_ANALYTICS}" \
+            --build-arg GTM_CONTAINER_ID="${GTM_CONTAINER_ID}" \
+            --build-arg HEROKU_RELEASE_VERSION="${HEROKU_RELEASE_VERSION}" \
+            --build-arg LOG_LEVEL="${LOG_LEVEL}" \
+            --build-arg MAPBOX_ACCESS_TOKEN="${MAPBOX_ACCESS_TOKEN}" \
+            --build-arg NODE_ENV="production" \
+            --build-arg SENTRY_DSN="${SENTRY_DSN}" \
+            -t "${IMAGE_URI}" \
+            -t "${LATEST_IMAGE_URI}" \
+            .
+          # push rollbackable image
+          docker push "${IMAGE_URI}"
+          # push convenience tag
+          docker push "${LATEST_IMAGE_URI}"
+          # expose immutable image
+          echo "image=${IMAGE_URI}" >> "${GITHUB_OUTPUT}"
+
+      - name: Render web task definition
+        id: render-web
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition-family: ${{ vars.ECS_WEB_TASK_DEFINITION_FAMILY }}
+          container-name: web
+          image: ${{ steps.image.outputs.image }}
+
+      - name: Run database migrations
+        id: migrate
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render-web.outputs.task-definition }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          run-task: true
+          wait-for-task-stopped: true
+          wait-max-delay-seconds: 15
+          run-task-launch-type: FARGATE
+          run-task-subnets: ${{ vars.ECS_TASK_SUBNETS }}
+          run-task-security-groups: ${{ vars.ECS_TASK_SECURITY_GROUPS }}
+          run-task-assign-public-IP: ENABLED
+          run-task-started-by: github-actions-migrate-${{ github.run_id }}
+          run-task-container-overrides: >-
+            [{"name":"web","command":["yarn","db:migrate"]}]
+
+      - name: Verify migration exit code
+        env:
+          MIGRATION_TASK_ARNS: ${{ steps.migrate.outputs.run-task-arn }}
+        run: |
+          # fail on shell mistakes
+          set -euo pipefail
+          # select migration task
+          MIGRATION_TASK_ARN="$(jq -r '.[0]' <<< "${MIGRATION_TASK_ARNS}")"
+          # require task output
+          if [[ -z "${MIGRATION_TASK_ARN}" || "${MIGRATION_TASK_ARN}" == "null" ]]; then
+            echo "Migration task ARN output was empty" >&2
+            exit 1
+          fi
+          # fetch stopped task details
+          aws ecs describe-tasks --cluster "${ECS_CLUSTER}" --tasks "${MIGRATION_TASK_ARN}" > migration-task.json
+          # require successful migration container
+          jq -e '.tasks[0].containers[] | select(.name == "web") | .exitCode == 0' migration-task.json
+
+      - name: Deploy web service
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render-web.outputs.task-definition }}
+          service: ${{ vars.ECS_WEB_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
+          wait-max-delay-seconds: 15
+
+      - name: Render scheduler task definition
+        id: render-scheduler
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition-family: ${{ vars.ECS_SCHEDULER_TASK_DEFINITION_FAMILY }}
+          container-name: scheduler
+          image: ${{ steps.image.outputs.image }}
+
+      - name: Deploy scheduler service
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render-scheduler.outputs.task-definition }}
+          service: ${{ vars.ECS_SCHEDULER_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
+          wait-max-delay-seconds: 15

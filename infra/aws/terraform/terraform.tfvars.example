@@ -1,0 +1,29 @@
+# Production account/region approved for G003.
+aws_account_id = "333401878534"
+aws_region     = "us-west-2"
+
+# Start with staging.ferry.fyi pointing at the production ALB; add ferry.fyi/www later.
+app_domains = ["staging.ferry.fyi"]
+base_url    = "https://staging.ferry.fyi"
+
+# Enable only after Cloudflare has the ACM validation CNAME and ACM is issued.
+enable_https_listener = false
+
+# PostgreSQL 17.9 is available in us-west-2 per G003 read-only evidence.
+rds_engine_version       = "17.9"
+rds_instance_class       = "db.t4g.small"
+rds_allocated_storage    = 20
+rds_max_allocated_storage = 100
+
+# Keep false for first-create iteration if needed; set true before production cutover.
+rds_deletion_protection = false
+
+# CI image tag to deploy from ECR.
+image_tag = "latest"
+
+# The GitHub Actions OIDC role is limited to this repo and branch.
+github_repository        = "anstosa/ferry.fyi"
+github_production_branch = "production"
+
+# Leave false to avoid putting placeholder secret values into Terraform state.
+create_app_secret_placeholder_version = false

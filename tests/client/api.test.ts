@@ -1,6 +1,30 @@
-import { describe, expect, it } from "vitest";
+import { Capacitor } from "@capacitor/core";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { ApiError, processResponse } from "../../client/lib/api";
+import { ApiError, getApiBaseUrl, processResponse } from "../../client/lib/api";
+
+describe("API client base URL", () => {
+  // restore native mock
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllEnvs();
+  });
+
+  // browser same-origin case
+  it("uses same-origin API paths in browsers", () => {
+    vi.spyOn(Capacitor, "isNativePlatform").mockReturnValue(false);
+
+    expect(getApiBaseUrl()).toBe("/api");
+  });
+
+  // native absolute-origin case
+  it("preserves absolute API paths for native shells", () => {
+    vi.spyOn(Capacitor, "isNativePlatform").mockReturnValue(true);
+    vi.stubEnv("BASE_URL", "https://ferry.fyi");
+
+    expect(getApiBaseUrl()).toBe("https://ferry.fyi/api");
+  });
+});
 
 describe("API client response processing", () => {
   // json string envelope

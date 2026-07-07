@@ -1,9 +1,16 @@
-import { CapacitorHttp, HttpResponse } from "@capacitor/core";
+import { Capacitor, CapacitorHttp, HttpResponse } from "@capacitor/core";
 import { useEffect, useState } from "react";
 import type { WSFStatus } from "shared/contracts/api";
 import { isEqual } from "shared/lib/objects";
 
-const API_BASE_URL = `${process.env.BASE_URL}/api`;
+// resolve api origin
+export function getApiBaseUrl(): string {
+  // native bridge guard
+  if (Capacitor.isNativePlatform()) {
+    return `${process.env.BASE_URL}/api`;
+  }
+  return "/api";
+}
 
 const defaultWsfStatus: WSFStatus = { offline: false };
 
@@ -103,7 +110,7 @@ export const get = async <T = Record<string, unknown>>(
       ...getAuthHeader(accessToken),
     },
     method: "GET",
-    url: `${API_BASE_URL}${path}`,
+    url: `${getApiBaseUrl()}${path}`,
   }).then(processResponse);
   // eslint-disable-next-line require-atomic-updates
   inProgress[requestKey] = promise;
@@ -121,7 +128,7 @@ export const post = async <T = Record<string, unknown>>(
 ): Promise<T> => {
   const response = await CapacitorHttp.request({
     method: "POST",
-    url: `${API_BASE_URL}${path}`,
+    url: `${getApiBaseUrl()}${path}`,
     headers: {
       "Content-Type": "application/json",
       ...getAuthHeader(accessToken),

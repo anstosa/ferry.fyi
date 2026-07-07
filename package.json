@@ -190,7 +190,8 @@
     "tides:update-forecasts": "cd server && node ../scripts/register-esbuild.js scripts/updateTideForecasts.ts",
     "user-settings:migrate-auth0": "cd server && node ../scripts/register-esbuild.js scripts/migrateAuth0UserSettings.ts",
     "school-breaks:update-events": "cd server && node ../scripts/register-esbuild.js scripts/updateSchoolBreakEvents.ts",
-    "demand:update-events": "yarn school-breaks:update-events && yarn sports:update-events"
+    "demand:update-events": "yarn school-breaks:update-events && yarn sports:update-events",
+    "start:prod": "cd dist/server && node server.js"
   },
   "resolutions": {
     "@babel/helper-remap-async-to-generator": "7.29.7",

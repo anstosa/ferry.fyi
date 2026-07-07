@@ -25,3 +25,17 @@ resources/ios/icon
 resources/ios/splash
 resources/windows/icon
 resources/windows/splash
+
+# AWS migration local secrets and dumps
+infra/aws/local/
+infra/aws/**/*.secret.*
+infra/aws/**/*.dump
+
+# Terraform local state and caches
+infra/aws/terraform/.terraform/
+infra/aws/terraform/*.tfstate
+infra/aws/terraform/*.tfstate.*
+infra/aws/terraform/*.tfplan
+infra/aws/terraform/tfplan
+infra/aws/terraform/crash.log
+infra/aws/terraform/crash.*.log

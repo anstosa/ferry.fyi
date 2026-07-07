@@ -1,0 +1,60 @@
+# dependencies
+node_modules
+client/node_modules
+server/node_modules
+shared/node_modules
+
+# build outputs
+dist
+build
+coverage
+.vite
+.cache
+
+# git and local env
+.git
+.gitignore
+.env
+.env.*
+.envrc
+.envrc.*
+!.envrc.sample
+*.pem
+*.key
+*.keystore
+
+# Android and Gradle outputs
+android/.gradle
+android/build
+android/app/build
+android/local.properties
+*.apk
+*.aab
+app-release-*
+private_key.pepk
+
+# logs and caches
+*.log
+yarn-error.log
+npm-debug.log*
+.pnpm-store
+.yarn/cache
+.yarn/unplugged
+
+# AWS migration local secrets and Terraform caches
+infra/aws/local
+infra/aws/**/*.secret.*
+infra/aws/**/*.dump
+infra/aws/terraform/.terraform
+infra/aws/terraform/*.tfstate
+infra/aws/terraform/*.tfstate.*
+infra/aws/terraform/*.tfplan
+infra/aws/terraform/tfplan
+infra/aws/terraform/crash.log
+infra/aws/terraform/crash.*.log
+
+# editor and OS noise
+.vscode
+.idea
+.DS_Store
+*.swp

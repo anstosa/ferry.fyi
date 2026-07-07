@@ -1,0 +1,30 @@
+key	category	destination	notes
+ANDROID_CERT_FINGERPRINT	runtime server secret/config	AWS Secrets Manager app config JSON	value redacted
+AUTH0_CLIENT_AUDIENCE	build-time public	GitHub variable / Docker build arg and AWS Secrets Manager app config JSON if server runtime requires it	value comes from Heroku classification or provider public config; do not commit
+AUTH0_CLIENT_ID	build-time public	GitHub variable / Docker build arg and AWS Secrets Manager app config JSON if server runtime requires it	value comes from Heroku classification or provider public config; do not commit
+AUTH0_CLIENT_REDIRECT	build-time public	GitHub variable / Docker build arg and AWS Secrets Manager app config JSON if server runtime requires it	value comes from Heroku classification or provider public config; do not commit
+AUTH0_DOMAIN	build-time public	GitHub variable / Docker build arg and AWS Secrets Manager app config JSON if server runtime requires it	value comes from Heroku classification or provider public config; do not commit
+AUTH0_SERVER_AUDIENCE	runtime server secret/config	AWS Secrets Manager app config JSON	value redacted
+AUTH0_SERVER_ID	runtime server secret/config	AWS Secrets Manager app config JSON	value redacted
+AUTH0_SERVER_SECRET	runtime server secret/config	AWS Secrets Manager app config JSON	value redacted
+AW_TAG_ID	build-time public	GitHub variable / Docker build arg	value comes from Heroku classification or provider public config; do not commit
+BASE_URL	AWS/ECS platform config	Terraform task environment, SSM, GitHub deployment variable	set to https://staging.ferry.fyi before production cutover
+DATABASE_URL	migration-only	Terraform-generated RDS DATABASE_URL secret	never import Heroku DATABASE_URL as AWS runtime config
+FCM_PUBLIC_KEY	runtime server secret/config	AWS Secrets Manager app config JSON	value redacted
+FIREBASE_API_KEY	build-time public	GitHub variable / Docker build arg	value comes from Heroku classification or provider public config; do not commit
+FIREBASE_APP_ID	build-time public	GitHub variable / Docker build arg	value comes from Heroku classification or provider public config; do not commit
+FIREBASE_PROJECT_ID	build-time public	GitHub variable / Docker build arg	value comes from Heroku classification or provider public config; do not commit
+FIREBASE_SENDER_ID	build-time public	GitHub variable / Docker build arg	value comes from Heroku classification or provider public config; do not commit
+FIREBASE_SERVICE_ACCOUNT	runtime server secret/config	AWS Secrets Manager app config JSON	value redacted
+FIREBASE_VAPID_KEY	build-time public	GitHub variable / Docker build arg	value comes from Heroku classification or provider public config; do not commit
+GCM_SENDER_ID	runtime server secret/config	AWS Secrets Manager app config JSON	value redacted
+GOOGLE_ANALYTICS	build-time public	GitHub variable / Docker build arg	value comes from Heroku classification or provider public config; do not commit
+GTM_CONTAINER_ID	build-time public	GitHub variable / Docker build arg	value comes from Heroku classification or provider public config; do not commit
+MAPBOX_ACCESS_TOKEN	build-time public	GitHub variable / Docker build arg	value comes from Heroku classification or provider public config; do not commit
+NODE_ENV	AWS/ECS platform config	Terraform task environment	production
+PORT	AWS/ECS platform config	Terraform task environment	4040
+PROCESS_ROLE	AWS/ECS platform config	Terraform task environment	web or scheduler
+RUN_SCHEDULER	AWS/ECS platform config	Terraform task environment	false for web, true for scheduler
+SENTRY_AUTH_TOKEN	build-time secret	GitHub secret or build-only secret if sourcemaps are uploaded	do not expose to ECS runtime
+SENTRY_DSN	build-time public	GitHub variable / Docker build arg and AWS Secrets Manager app config JSON if server runtime requires it	value comes from Heroku classification or provider public config; do not commit
+WSDOT_API_KEY	runtime server secret/config	AWS Secrets Manager app config JSON	value redacted

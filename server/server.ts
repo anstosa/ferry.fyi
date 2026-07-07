@@ -1,5 +1,5 @@
 import cors from "cors";
-import express, { NextFunction, Request, Response } from "express";
+import express from "express";
 import logger from "heroku-logger";
 import { scheduleJob } from "node-schedule";
 
@@ -9,6 +9,11 @@ import { dbInit } from "~/lib/db";
 import { updateMajorSportsEvents } from "~/lib/demandEvents/updateMajorSportsEvents";
 import { updateSchoolBreakEvents } from "~/lib/demandEvents/updateSchoolBreakEvents";
 import { safeScheduledTask } from "~/lib/safeScheduledJob";
+import {
+  forceHttps,
+  healthRouter,
+  shouldRunScheduler,
+} from "~/lib/serverRuntime";
 import {
   initializeWsfSeed,
   refreshWsfInBackground,
@@ -23,69 +28,43 @@ import { Route } from "./models/Route";
 
 const STARTUP_MAINTENANCE_DELAY_MS = 60_000;
 
-const forceHttps = (
-  request: Request,
-  response: Response,
-  next: NextFunction
-): void => {
-  const protocol = request.get("x-forwarded-proto") || request.protocol;
-  // https redirect guard
-  if (protocol !== "https") {
-    response.redirect(
-      301,
-      `https://${request.get("host")}${request.originalUrl}`
-    );
-    return;
+// create main app
+export function createApp(): express.Express {
+  const app = express();
+  app.use(healthRouter);
+  // use SSL in production
+  if (process.env.NODE_ENV === "production") {
+    app.use(forceHttps);
   }
-  next();
-};
-
-// start main app
-const app = express();
-// use SSL in production
-if (process.env.NODE_ENV === "production") {
-  app.use(forceHttps);
+  app.use(express.json());
+  app.use(cors());
+  // mount routes
+  app.use("/api", apiRouter);
+  app.use("/", staticRouter);
+  return app;
 }
-app.use(express.json());
-app.use(cors());
-// mount routes
-app.use("/api", apiRouter);
-app.use("/", staticRouter);
 
 // run demand event maintenance
-const refreshDemandEventsInBackground = (): void => {
+function refreshDemandEventsInBackground(): void {
   Promise.all([updateMajorSportsEvents(), updateSchoolBreakEvents()]).catch(
     (error: Error) => {
       // log event failure
       logger.error(`Demand event refresh failed: ${error.message}`, error);
     }
   );
-};
+}
 
 // defer noncritical startup work
-const deferStartupMaintenance = (name: string, task: () => void): void => {
+function deferStartupMaintenance(name: string, task: () => void): void {
   const timeout = setTimeout(() => {
     logger.info(`Starting deferred startup maintenance: ${name}`);
     task();
   }, STARTUP_MAINTENANCE_DELAY_MS);
   timeout.unref();
-};
+}
 
-// start server
-(async () => {
-  await dbInit;
-  initializeWsfSeed();
-  // start server before initializing WSF since that can take a couple minutes
-  const server = app.listen(process.env.PORT, () =>
-    logger.info(`Server started on port ${process.env.PORT ?? "default"}`)
-  );
-  process.once("SIGUSR2", () => {
-    logger.info("Gracefully shutting down server...");
-    server.close(() => {
-      logger.info("Done.");
-      process.kill(process.pid, "SIGUSR2");
-    });
-  });
+// start scheduler work
+export function startScheduler(): void {
   logger.info("Initializing WSF cache and background refresh jobs");
   // refresh WSF cache asynchronously
   refreshWsfInBackground();
@@ -131,4 +110,36 @@ const deferStartupMaintenance = (name: string, task: () => void): void => {
     "WSF refresh jobs scheduled: schedules daily 04:05, daily 04:10, " +
       "demand events daily 04:20, long every 5 minutes, short every minute"
   );
-})();
+}
+
+// start server
+export async function startServer(): Promise<void> {
+  await dbInit;
+  initializeWsfSeed();
+  const app = createApp();
+  // start server before initializing WSF since that can take a couple minutes
+  const server = app.listen(process.env.PORT, () =>
+    logger.info(`Server started on port ${process.env.PORT ?? "default"}`)
+  );
+  process.once("SIGUSR2", () => {
+    logger.info("Gracefully shutting down server...");
+    server.close(() => {
+      logger.info("Done.");
+      process.kill(process.pid, "SIGUSR2");
+    });
+  });
+  // scheduler ownership guard
+  if (shouldRunScheduler()) {
+    startScheduler();
+    return;
+  }
+  logger.info("WSF refresh jobs disabled for this process");
+}
+
+// test import guard
+if (process.env.NODE_ENV !== "test") {
+  startServer().catch((error: Error) => {
+    logger.error(`Server startup failed: ${error.message}`, error);
+    process.exit(1);
+  });
+}
