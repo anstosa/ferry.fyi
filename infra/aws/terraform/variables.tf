@@ -31,7 +31,8 @@ variable "app_domains" {
 variable "enable_https_listener" {
   description = "Enable after ACM DNS validation is complete in Cloudflare."
   type        = bool
-  default     = false
+  # cert issued
+  default = true
 }
 
 variable "base_url" {
@@ -55,7 +56,8 @@ variable "web_desired_count" {
 variable "scheduler_desired_count" {
   description = "Desired singleton scheduler task count. Set to 0 to pause jobs."
   type        = number
-  default     = 1
+  # pre-cutover paused
+  default = 0
 }
 
 variable "web_cpu" {
