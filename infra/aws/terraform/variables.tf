@@ -25,7 +25,7 @@ variable "environment" {
 variable "app_domains" {
   description = "DNS names requested on the ACM certificate. Cloudflare records remain manual."
   type        = list(string)
-  default     = ["staging.ferry.fyi"]
+  default     = ["ferry.fyi", "staging.ferry.fyi"]
 }
 
 variable "enable_https_listener" {
@@ -38,7 +38,7 @@ variable "enable_https_listener" {
 variable "base_url" {
   description = "Canonical app URL injected into the web and scheduler containers."
   type        = string
-  default     = "https://staging.ferry.fyi"
+  default     = "https://ferry.fyi"
 }
 
 variable "container_port" {
