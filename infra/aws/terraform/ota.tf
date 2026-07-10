@@ -156,8 +156,8 @@ resource "aws_cloudfront_distribution" "ota" {
   }
 
   viewer_certificate {
+    # CloudFront default certificate fixes the policy at TLSv1
     cloudfront_default_certificate = true
-    minimum_protocol_version       = "TLSv1.2_2021"
   }
 }
 

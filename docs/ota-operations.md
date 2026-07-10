@@ -89,6 +89,8 @@ Use the outputs as follows:
 
 The OTA bucket is private. Publish through S3 using the GitHub OIDC deployment role or an explicitly authorized AWS identity, but put only CloudFront HTTPS URLs in release JSON. Never publish S3 website URLs or make the bucket public.
 
+The generated CloudFront hostname uses AWS's default certificate, which AWS fixes at a TLSv1 minimum. Android clients negotiate modern TLS, but this does not enforce a TLS 1.2 minimum. Before a broad production rollout, move OTA delivery to a dedicated hostname backed by a DNS-validated ACM certificate in `us-east-1` and configure that hostname as the CloudFront alias.
+
 ## Publishing workflow
 
 1. Build the Android-targeted web assets and inspect `dist/client`:

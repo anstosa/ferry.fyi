@@ -19,7 +19,7 @@ It is intentionally small and reviewable: no third-party Terraform modules, no N
 - SSM String parameters for non-secret deployment metadata such as base URL, ECR URL, and ECS service names.
 - Least-privilege GitHub OIDC deploy role for `anstosa/ferry.fyi` `production` branch only.
 - Private, versioned, AES-256 encrypted S3 storage for OTA bundles and release JSON, with all public S3 access blocked.
-- CloudFront OTA delivery with SigV4 Origin Access Control, HTTPS redirects, TLS 1.2_2021 minimum, a one-year immutable bundle cache, and a short release-JSON cache.
+- CloudFront OTA delivery with SigV4 Origin Access Control, HTTPS redirects, a one-year immutable bundle cache, and a short release-JSON cache.
 
 ## First apply sequence
 
@@ -101,6 +101,8 @@ It also permits the production branch to publish, inspect, and multipart-upload 
 ## OTA publishing
 
 The OTA bucket is private: CloudFront is the only principal granted `s3:GetObject` by its bucket policy, and it must originate from the generated distribution. Do not grant public bucket access or use the S3 website endpoint.
+
+The generated `*.cloudfront.net` hostname uses CloudFront's default certificate. AWS fixes that certificate's minimum viewer policy at TLSv1, even when Terraform requests a newer policy. To require TLS 1.2 or later, use a dedicated OTA hostname with a DNS-validated ACM certificate in `us-east-1`, then configure that hostname as a CloudFront alias. Do not claim a stricter policy while publishing through the default hostname.
 
 Publish immutable ZIP bundles below `bundles/`, per-channel mutable JSON below `channels/`, and the aggregate mutable release index at `releases.json`. For example:
 
