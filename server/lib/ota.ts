@@ -1,3 +1,4 @@
+import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import {
   OTA_CHANNELS,
   OtaChannel,
@@ -20,8 +21,10 @@ interface OtaManifestRequest extends OtaUpdateRequest {
 }
 
 let cachedReleases: OtaRelease[] | undefined;
-let cachedReleasesUrl: string | undefined;
+let cachedReleasesSource: string | undefined;
 let cachedUntil = 0;
+
+const s3Client = new S3Client({});
 
 const noUpdateManifest: OtaUpdateManifest = {
   error: "no_new_version_available",
@@ -41,11 +44,11 @@ const REQUIRED_REQUEST_STRING_FIELDS = [
 // update all cache values synchronously
 const cacheOtaReleases = (
   releases: OtaRelease[],
-  releasesUrl: string,
+  releasesSource: string,
   expiresAt: number
 ): void => {
   cachedReleases = releases;
-  cachedReleasesUrl = releasesUrl;
+  cachedReleasesSource = releasesSource;
   cachedUntil = expiresAt;
 };
 
@@ -261,22 +264,20 @@ const getOtaChannel = (request: OtaManifestRequest): OtaChannel | undefined => {
   );
 };
 
-// fetch and cache the unsigned public release index
-export const getCachedOtaReleases = async (): Promise<OtaRelease[]> => {
-  const releasesUrl = process.env.OTA_RELEASES_URL;
-  const now = Date.now();
-  // fresh cache guard
-  if (
-    cachedReleases &&
-    cachedReleasesUrl === releasesUrl &&
-    cachedUntil > now
-  ) {
-    return cachedReleases;
+// fetch the release index through the private S3 gateway
+const getOtaReleasesFromS3 = async (bucket: string): Promise<unknown> => {
+  const response = await s3Client.send(
+    new GetObjectCommand({ Bucket: bucket, Key: "releases.json" })
+  );
+  // require a readable release index
+  if (!response.Body) {
+    throw new Error("OTA release index body is empty");
   }
-  // configuration guard
-  if (!releasesUrl) {
-    throw new Error("OTA releases URL is not configured");
-  }
+  return JSON.parse(await response.Body.transformToString());
+};
+
+// fetch the release index through the public URL outside AWS
+const getOtaReleasesFromUrl = async (releasesUrl: string): Promise<unknown> => {
   const response = await fetch(releasesUrl, {
     headers: { Accept: "application/json" },
   });
@@ -284,12 +285,38 @@ export const getCachedOtaReleases = async (): Promise<OtaRelease[]> => {
   if (!response.ok) {
     throw new Error("OTA release index request failed");
   }
-  const releases = parseOtaReleaseIndex(await response.json());
+  return response.json();
+};
+
+// fetch and cache the private release index
+export const getCachedOtaReleases = async (): Promise<OtaRelease[]> => {
+  const releasesBucket = process.env.OTA_RELEASES_BUCKET;
+  const releasesUrl = process.env.OTA_RELEASES_URL;
+  const releasesSource = releasesBucket
+    ? `s3://${releasesBucket}/releases.json`
+    : releasesUrl;
+  const now = Date.now();
+  // fresh cache guard
+  if (
+    cachedReleases &&
+    cachedReleasesSource === releasesSource &&
+    cachedUntil > now
+  ) {
+    return cachedReleases;
+  }
+  // configuration guard
+  if (!releasesSource) {
+    throw new Error("OTA releases URL is not configured");
+  }
+  const index = releasesBucket
+    ? await getOtaReleasesFromS3(releasesBucket)
+    : await getOtaReleasesFromUrl(releasesUrl!);
+  const releases = parseOtaReleaseIndex(index);
   // index data guard
   if (!releases) {
     throw new Error("OTA release index is invalid");
   }
-  cacheOtaReleases(releases, releasesUrl, now + OTA_RELEASE_CACHE_TTL_MS);
+  cacheOtaReleases(releases, releasesSource, now + OTA_RELEASE_CACHE_TTL_MS);
   return releases;
 };
 

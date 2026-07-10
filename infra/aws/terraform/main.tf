@@ -30,6 +30,8 @@ locals {
     { name = "NODE_ENV", value = "production" },
     # provide the server-side OTA release index
     { name = "OTA_RELEASES_URL", value = "https://${aws_cloudfront_distribution.ota.domain_name}/releases.json" },
+    # read the index privately from the S3 gateway
+    { name = "OTA_RELEASES_BUCKET", value = aws_s3_bucket.ota_artifacts.id },
     # select the channel for manifest fallback
     { name = "OTA_DEFAULT_CHANNEL", value = var.ota_default_channel },
     { name = "PORT", value = tostring(var.container_port) },
@@ -789,6 +791,23 @@ resource "aws_iam_role" "ecs_task" {
           Service = "ecs-tasks.amazonaws.com"
         }
         Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
+# allow app tasks to read only the private OTA release pointer
+resource "aws_iam_role_policy" "ecs_task_ota_release_index" {
+  name = "${local.name_prefix}-ecs-task-ota-release-index"
+  role = aws_iam_role.ecs_task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["s3:GetObject"]
+        Resource = "${aws_s3_bucket.ota_artifacts.arn}/releases.json"
       }
     ]
   })

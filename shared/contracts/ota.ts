@@ -65,7 +65,10 @@ export type OtaClientEnvironment = Partial<
   Record<OtaClientEnvKey, string | undefined>
 >;
 
-export const OTA_SERVER_ENV_KEYS = ["OTA_DEFAULT_CHANNEL"] as const;
+export const OTA_SERVER_ENV_KEYS = [
+  "OTA_DEFAULT_CHANNEL",
+  "OTA_RELEASES_BUCKET",
+] as const;
 
 export const OTA_PUBLISH_ENV_KEYS = [
   "OTA_CHANNEL",

@@ -2,6 +2,25 @@ import express from "express";
 import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+const { sendMock } = vi.hoisted(() => ({ sendMock: vi.fn() }));
+
+vi.mock("@aws-sdk/client-s3", () => ({
+  // retain command inputs for assertions
+  GetObjectCommand: class {
+    input: unknown;
+
+    // retain the S3 request
+    constructor(input: unknown) {
+      this.input = input;
+    }
+  },
+  // provide a stable client mock
+  S3Client: class {
+    // forward reads to the test mock
+    send = sendMock;
+  },
+}));
+
 import { apiRouter } from "../../server/controllers/api";
 import { getCachedOtaReleases } from "../../server/lib/ota";
 
@@ -53,13 +72,16 @@ describe("OTA release index", () => {
   beforeEach(() => {
     vi.stubGlobal("fetch", vi.fn());
     delete process.env.OTA_DEFAULT_CHANNEL;
+    delete process.env.OTA_RELEASES_BUCKET;
     delete process.env.OTA_RELEASES_URL;
+    sendMock.mockReset();
   });
 
   // restore process state
   afterEach(() => {
     vi.unstubAllGlobals();
     delete process.env.OTA_DEFAULT_CHANNEL;
+    delete process.env.OTA_RELEASES_BUCKET;
     delete process.env.OTA_RELEASES_URL;
   });
 
@@ -76,6 +98,24 @@ describe("OTA release index", () => {
     expect(fetchMock).toHaveBeenCalledWith(releasesUrl, {
       headers: { Accept: "application/json" },
     });
+  });
+
+  // load the private index through the task role when configured
+  it("loads the release index from the configured private S3 bucket", async () => {
+    process.env.OTA_RELEASES_BUCKET = "private-ota-bucket";
+    const transformToString = vi
+      .fn()
+      .mockResolvedValue(JSON.stringify({ releases: [RELEASE] }));
+    sendMock.mockResolvedValue({ Body: { transformToString } });
+
+    await expect(getCachedOtaReleases()).resolves.toEqual([RELEASE]);
+
+    expect(sendMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: { Bucket: "private-ota-bucket", Key: "releases.json" },
+      })
+    );
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   // reject malformed index records before caching
