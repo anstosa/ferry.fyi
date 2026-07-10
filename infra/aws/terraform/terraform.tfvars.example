@@ -34,5 +34,13 @@ detector_container_port = 8000
 github_repository        = "anstosa/ferry.fyi"
 github_production_branch = "production"
 
+# OTA artifacts stay private in S3 and are served through CloudFront only.
+# Leave the bucket name null to use ferry-fyi-prod-ota-333401878534.
+ota_artifact_bucket_name                 = null
+ota_immutable_bundle_cache_ttl_seconds   = 31536000
+ota_release_cache_ttl_seconds            = 300
+
 # Leave false to avoid putting placeholder secret values into Terraform state.
 create_app_secret_placeholder_version = false
+# Serve production OTA releases when a client does not name a channel.
+ota_default_channel = "production"

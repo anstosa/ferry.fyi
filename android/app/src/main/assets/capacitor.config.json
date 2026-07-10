@@ -3,5 +3,11 @@
 	"appName": "Ferry FYI",
 	"webDir": "dist/client",
 	"bundledWebRuntime": false,
-	"backgroundColor": "#016f52"
+	"backgroundColor": "#016f52",
+	"plugins": {
+		"CapacitorUpdater": {
+			"autoUpdate": false,
+			"allowModifyUrl": true
+		}
+	}
 }

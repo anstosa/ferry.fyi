@@ -280,3 +280,44 @@ variable "github_oidc_thumbprints" {
   type        = list(string)
   default     = ["6938fd4d98bab03faadb97b34396831e3780aea1"]
 }
+
+variable "ota_artifact_bucket_name" {
+  description = "Optional globally unique S3 bucket name for private OTA artifacts. Defaults to the project, environment, and AWS account ID."
+  type        = string
+  default     = null
+  nullable    = true
+}
+
+variable "ota_immutable_bundle_cache_ttl_seconds" {
+  description = "CloudFront cache lifetime for immutable OTA bundles."
+  type        = number
+  default     = 31536000
+
+  validation {
+    condition     = var.ota_immutable_bundle_cache_ttl_seconds >= 86400
+    error_message = "OTA immutable bundle cache TTL must be at least one day."
+  }
+}
+
+variable "ota_release_cache_ttl_seconds" {
+  description = "CloudFront cache lifetime for mutable OTA channel and release JSON."
+  type        = number
+  default     = 300
+
+  validation {
+    condition     = var.ota_release_cache_ttl_seconds >= 0 && var.ota_release_cache_ttl_seconds <= 3600
+    error_message = "OTA release cache TTL must be between zero and one hour."
+  }
+}
+
+variable "ota_default_channel" {
+  description = "OTA channel returned when an Android manifest request omits its channel."
+  type        = string
+  default     = "production"
+
+  validation {
+    # restrict the fallback to supported channels
+    condition     = contains(["development", "staging", "production"], var.ota_default_channel)
+    error_message = "OTA default channel must be development, staging, or production."
+  }
+}

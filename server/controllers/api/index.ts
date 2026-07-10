@@ -5,6 +5,7 @@ import { getWsfStatus } from "~/lib/wsf/api";
 import { assignAuthUser, requireAuth } from "./auth";
 import { cameraRouter } from "./cameras";
 import { debugRouter } from "./debug";
+import { otaRouter } from "./ota";
 import { scheduleRouter } from "./schedule";
 import { terminalRouter } from "./terminals";
 import { ticketRouter } from "./tickets";
@@ -12,6 +13,9 @@ import { userRouter } from "./user";
 import { vesselRouter } from "./vessels";
 
 const apiRouter = Router();
+
+// preserve the external updater response protocol
+apiRouter.use("/ota", otaRouter);
 
 const isWrappedApiBody = (body: unknown): boolean => {
   // envelope guard

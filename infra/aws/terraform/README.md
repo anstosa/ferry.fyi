@@ -18,6 +18,8 @@ It is intentionally small and reviewable: no third-party Terraform modules, no N
 - Secrets Manager plumbing for generated `DATABASE_URL` and manual app config keys.
 - SSM String parameters for non-secret deployment metadata such as base URL, ECR URL, and ECS service names.
 - Least-privilege GitHub OIDC deploy role for `anstosa/ferry.fyi` `production` branch only.
+- Private, versioned, AES-256 encrypted S3 storage for OTA bundles and release JSON, with all public S3 access blocked.
+- CloudFront OTA delivery with SigV4 Origin Access Control, HTTPS redirects, TLS 1.2_2021 minimum, a one-year immutable bundle cache, and a short release-JSON cache.
 
 ## First apply sequence
 
@@ -93,6 +95,33 @@ The trust policy uses `StringEquals` for both:
 - `token.actions.githubusercontent.com:sub = repo:anstosa/ferry.fyi:ref:refs/heads/production`
 
 The identity policy has no `Principal` and is scoped to the ECR repository, ECS services, and ECS task roles except for AWS-required wildcard actions such as ECR auth token and ECS task-definition registration.
+
+It also permits the production branch to publish, inspect, and multipart-upload only OTA objects under `bundles/*`, `channels/*`, and `releases.json`. It does not permit deletion. `cloudfront:CreateInvalidation` is scoped to the OTA distribution only.
+
+## OTA publishing
+
+The OTA bucket is private: CloudFront is the only principal granted `s3:GetObject` by its bucket policy, and it must originate from the generated distribution. Do not grant public bucket access or use the S3 website endpoint.
+
+Publish immutable ZIP bundles below `bundles/`, per-channel mutable JSON below `channels/`, and the aggregate mutable release index at `releases.json`. For example:
+
+```text
+bundles/1.2.3/ferry-fyi-1.2.3.zip
+channels/production.json
+releases.json
+```
+
+After an apply, configure OTA publishing with these Terraform outputs:
+
+| Publisher value | Terraform output |
+| --- | --- |
+| `OTA_BUCKET_NAME` | `ota_bucket_name` |
+| `OTA_DISTRIBUTION_DOMAIN` | `ota_distribution_domain` |
+| CloudFront invalidation target | `ota_distribution_id` |
+| Immutable bundle URL prefix | `ota_bundle_base_url` |
+| Channel JSON URL prefix | `ota_channel_release_base_url` |
+| Application `OTA_RELEASES_URL` | `ota_releases_url` |
+
+Use the CloudFront HTTPS URLs in release JSON; do not expose S3 object URLs. Bundles have a one-year CloudFront TTL because their object keys must be immutable. `channels/*.json` and `releases.json` use `ota_release_cache_ttl_seconds`, which defaults to five minutes; invalidate the affected paths after a channel promotion when an immediate rollout is required.
 
 ## GitHub Actions deployment variables
 

@@ -28,6 +28,10 @@ locals {
     { name = "BASE_URL", value = var.base_url },
     { name = "CAR_DETECTION_ENDPOINT", value = local.detector_endpoint },
     { name = "NODE_ENV", value = "production" },
+    # provide the server-side OTA release index
+    { name = "OTA_RELEASES_URL", value = "https://${aws_cloudfront_distribution.ota.domain_name}/releases.json" },
+    # select the channel for manifest fallback
+    { name = "OTA_DEFAULT_CHANNEL", value = var.ota_default_channel },
     { name = "PORT", value = tostring(var.container_port) },
     { name = "PROCESS_ROLE", value = "web" },
     { name = "RUN_SCHEDULER", value = "false" }
@@ -119,6 +123,9 @@ locals {
   cloudflare_tunnel_container_definitions = var.enable_cloudflare_tunnel ? [local.cloudflare_tunnel_container_definition] : []
 
   github_oidc_sub = "repo:${var.github_repository}:ref:refs/heads/${var.github_production_branch}"
+
+  # keep OTA artifacts in a globally unique bucket
+  ota_artifact_bucket_name = coalesce(var.ota_artifact_bucket_name, "${local.name_prefix}-ota-${var.aws_account_id}")
 }
 
 # preserve alb state

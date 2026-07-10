@@ -1,0 +1,224 @@
+name: Publish OTA bundle
+
+on:
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: OTA channel to update
+        required: true
+        type: choice
+        options:
+          - staging
+          - production
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  # serialize read-modify-write updates to the release index
+  group: ota-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Build and publish OTA bundle
+    runs-on: ubuntu-latest
+    # retain the branch-scoped OIDC subject used by Terraform
+    if: github.ref == 'refs/heads/production'
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      BASE_URL: ${{ vars.BASE_URL }}
+      OTA_BUCKET_NAME: ${{ vars.OTA_BUCKET_NAME }}
+      OTA_BUNDLE_BASE_URL: ${{ vars.OTA_BUNDLE_BASE_URL }}
+      OTA_DISTRIBUTION_ID: ${{ vars.OTA_DISTRIBUTION_ID }}
+      OTA_RELEASES_URL: ${{ vars.OTA_RELEASES_URL }}
+      OTA_CHANNEL: ${{ inputs.channel }}
+      VITE_OTA_CHANNEL: ${{ inputs.channel }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          # do not retain the checkout token after source retrieval
+          persist-credentials: false
+
+      - name: Use Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+          cache-dependency-path: yarn.lock
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Validate publisher configuration
+        env:
+          AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
+        run: |
+          # fail on shell mistakes
+          set -euo pipefail
+          # require Terraform-derived GitHub variables
+          for value in AWS_REGION AWS_ROLE_ARN BASE_URL OTA_BUCKET_NAME OTA_BUNDLE_BASE_URL OTA_DISTRIBUTION_ID OTA_RELEASES_URL; do
+            # reject missing Terraform outputs
+            if [[ -z "${!value}" ]]; then
+              echo "${value} GitHub variable is required" >&2
+              exit 1
+            fi
+          done
+          # require an explicitly supported channel
+          if [[ "${OTA_CHANNEL}" != "staging" && "${OTA_CHANNEL}" != "production" ]]; then
+            echo "OTA channel must be staging or production" >&2
+            exit 1
+          fi
+          # reject malformed S3 bucket output
+          if ! [[ "${OTA_BUCKET_NAME}" =~ ^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$ ]]; then
+            echo "OTA_BUCKET_NAME must be a valid S3 bucket name" >&2
+            exit 1
+          fi
+          # require the Terraform HTTPS bundle base URL
+          if ! [[ "${OTA_BUNDLE_BASE_URL}" =~ ^https://[^/[:space:]]+/bundles$ ]]; then
+            echo "OTA_BUNDLE_BASE_URL must be the Terraform ota_bundle_base_url output" >&2
+            exit 1
+          fi
+          # require the Terraform HTTPS release-index URL
+          if ! [[ "${OTA_RELEASES_URL}" =~ ^https://[^/[:space:]]+/releases\.json$ ]]; then
+            echo "OTA_RELEASES_URL must be the Terraform ota_releases_url output" >&2
+            exit 1
+          fi
+          # require the public app origin without a trailing slash
+          if ! [[ "${BASE_URL}" =~ ^https://[^/[:space:]]+$ ]]; then
+            echo "BASE_URL must be the public HTTPS app origin" >&2
+            exit 1
+          fi
+          # require output URLs from one CloudFront distribution
+          BUNDLE_DOMAIN="${OTA_BUNDLE_BASE_URL#https://}"
+          BUNDLE_DOMAIN="${BUNDLE_DOMAIN%%/*}"
+          RELEASES_DOMAIN="${OTA_RELEASES_URL#https://}"
+          RELEASES_DOMAIN="${RELEASES_DOMAIN%%/*}"
+          if [[ "${BUNDLE_DOMAIN}" != "${RELEASES_DOMAIN}" ]]; then
+            echo "OTA bundle and release URLs must use the same CloudFront domain" >&2
+            exit 1
+          fi
+
+      - name: Build client assets
+        env:
+          # provide the public app origin to the client build
+          BASE_URL: ${{ env.BASE_URL }}
+          # use the API manifest instead of the release index
+          VITE_OTA_MANIFEST_URL: ${{ env.BASE_URL }}/api/ota/manifest
+        run: yarn build:client
+
+      - name: Create and validate OTA bundle
+        id: bundle
+        run: |
+          # fail on shell mistakes
+          set -euo pipefail
+          # create the full bundle with Capgo's canonical checksum
+          ZIP_RESULT="$(npx @capgo/cli bundle zip --path dist/client --json)"
+          printf '%s\n' "${ZIP_RESULT}" > ota-bundle.json
+          # require the CLI's expected machine-readable result
+          jq -e '
+            type == "object" and
+            (.bundle | type == "string" and test("^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$")) and
+            (.filename | type == "string" and length > 0) and
+            (.checksum | type == "string" and test("^[A-Fa-f0-9]{64}$"))
+          ' ota-bundle.json > /dev/null
+          # normalize and require the generated ZIP path
+          ZIP_PATH="$(jq -r '.filename' ota-bundle.json)"
+          if [[ ! -f "${ZIP_PATH}" ]]; then
+            echo "Capgo ZIP output was not created at ${ZIP_PATH}" >&2
+            exit 1
+          fi
+          # retain only lower-case SHA-256 in release metadata
+          CHECKSUM="$(jq -r '.checksum | ascii_downcase' ota-bundle.json)"
+          RELEASE_VERSION="$(jq -r '.bundle' ota-bundle.json)"
+          # bind the immutable object key to the release and source revision
+          BUNDLE_KEY="bundles/${RELEASE_VERSION}/ferry-fyi-${RELEASE_VERSION}-${GITHUB_SHA}.zip"
+          BUNDLE_URL="${OTA_BUNDLE_BASE_URL}/${RELEASE_VERSION}/ferry-fyi-${RELEASE_VERSION}-${GITHUB_SHA}.zip"
+          # expose only non-secret release metadata to later steps
+          {
+            echo "checksum=${CHECKSUM}"
+            echo "key=${BUNDLE_KEY}"
+            echo "url=${BUNDLE_URL}"
+            echo "version=${RELEASE_VERSION}"
+            echo "zip_path=${ZIP_PATH}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+
+      - name: Publish immutable bundle
+        env:
+          BUNDLE_KEY: ${{ steps.bundle.outputs.key }}
+          BUNDLE_PATH: ${{ steps.bundle.outputs.zip_path }}
+        run: |
+          # fail on shell mistakes
+          set -euo pipefail
+          # refuse to overwrite an immutable release key
+          if aws s3api head-object --bucket "${OTA_BUCKET_NAME}" --key "${BUNDLE_KEY}" >/dev/null 2>&1; then
+            echo "Immutable OTA bundle already exists: ${BUNDLE_KEY}" >&2
+            exit 1
+          fi
+          # upload the complete ZIP with immutable cache semantics
+          aws s3 cp "${BUNDLE_PATH}" "s3://${OTA_BUCKET_NAME}/${BUNDLE_KEY}" \
+            --content-type application/zip \
+            --cache-control 'public, max-age=31536000, immutable'
+
+      - name: Write validated release index
+        env:
+          BUNDLE_CHECKSUM: ${{ steps.bundle.outputs.checksum }}
+          BUNDLE_URL: ${{ steps.bundle.outputs.url }}
+          RELEASE_VERSION: ${{ steps.bundle.outputs.version }}
+        run: |
+          # fail on shell mistakes
+          set -euo pipefail
+          # start with an empty channel index on the first release
+          printf '%s\n' '{"releases":[]}' > releases.json
+          # preserve other channels when an existing index is available
+          if aws s3api get-object --bucket "${OTA_BUCKET_NAME}" --key releases.json releases-current.json >/dev/null 2>&1; then
+            mv releases-current.json releases.json
+          fi
+          # reject malformed existing indexes instead of replacing them
+          jq -e '
+            type == "object" and
+            (.releases | type == "array") and
+            ([.releases[] | select(
+              type != "object" or
+              (.channel != "development" and .channel != "staging" and .channel != "production") or
+              (.version | type != "string" or test("^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$") | not) or
+              (.checksum | type != "string" or test("^[a-fA-F0-9]{64}$") | not) or
+              (.url | type != "string" or test("^https://[^/[:space:]]+/bundles/[^?#[:space:]]+\\.zip$") | not)
+            )] | length == 0) and
+            ([.releases[].channel] | unique | length == length)
+          ' releases.json > /dev/null
+          # replace only the selected channel with the new immutable release
+          jq --arg channel "${OTA_CHANNEL}" \
+            --arg checksum "${BUNDLE_CHECKSUM}" \
+            --arg url "${BUNDLE_URL}" \
+            --arg version "${RELEASE_VERSION}" \
+            '{releases: ((.releases | map(select(.channel != $channel))) + [{channel: $channel, checksum: $checksum, url: $url, version: $version}])}' \
+            releases.json > releases-next.json
+          # validate the generated index before publishing it
+          jq -e --arg channel "${OTA_CHANNEL}" --arg checksum "${BUNDLE_CHECKSUM}" --arg url "${BUNDLE_URL}" --arg version "${RELEASE_VERSION}" '
+            (.releases | length > 0) and
+            ([.releases[].channel] | unique | length == length) and
+            any(.releases[]; .channel == $channel and .checksum == $checksum and .url == $url and .version == $version)
+          ' releases-next.json > /dev/null
+          # publish the mutable aggregate index without retaining credentials
+          aws s3 cp releases-next.json "s3://${OTA_BUCKET_NAME}/releases.json" \
+            --content-type application/json \
+            --cache-control 'no-cache, max-age=0'
+
+      - name: Invalidate release index
+        run: |
+          # fail on shell mistakes
+          set -euo pipefail
+          # make the selected channel available without waiting for cache expiry
+          aws cloudfront create-invalidation \
+            --distribution-id "${OTA_DISTRIBUTION_ID}" \
+            --paths /releases.json

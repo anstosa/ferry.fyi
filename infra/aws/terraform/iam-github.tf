@@ -129,6 +129,30 @@ resource "aws_iam_role_policy" "github_deploy" {
             "iam:PassedToService" = "ecs-tasks.amazonaws.com"
           }
         }
+      },
+      {
+        Sid    = "PublishVersionedOtaArtifacts"
+        Effect = "Allow"
+        Action = [
+          "s3:AbortMultipartUpload",
+          "s3:GetObject",
+          "s3:GetObjectVersion",
+          "s3:ListMultipartUploadParts",
+          "s3:PutObject"
+        ]
+        Resource = [
+          "${aws_s3_bucket.ota_artifacts.arn}/bundles/*",
+          "${aws_s3_bucket.ota_artifacts.arn}/channels/*",
+          "${aws_s3_bucket.ota_artifacts.arn}/releases.json"
+        ]
+      },
+      {
+        Sid    = "InvalidateOtaDistribution"
+        Effect = "Allow"
+        Action = [
+          "cloudfront:CreateInvalidation"
+        ]
+        Resource = aws_cloudfront_distribution.ota.arn
       }
     ]
   })

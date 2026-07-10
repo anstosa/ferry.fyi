@@ -9,6 +9,7 @@ import { defineConfig, Plugin } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 import svgr from "vite-plugin-svgr";
 
+import { OTA_CLIENT_ENV_KEYS } from "../shared/contracts/ota";
 import tailwindConfig from "../tailwind.config.js";
 
 const configDir = path.dirname(fileURLToPath(import.meta.url));
@@ -34,6 +35,7 @@ const envKeys = [
   "MAPBOX_ACCESS_TOKEN",
   "NODE_ENV",
   "SENTRY_DSN",
+  ...OTA_CLIENT_ENV_KEYS,
 ];
 const { theme } = resolveConfig(tailwindConfig as never);
 const colors = theme.colors as Record<string, Record<string, string>>;

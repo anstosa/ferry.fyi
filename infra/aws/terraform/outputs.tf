@@ -128,3 +128,38 @@ output "github_deploy_role_arn" {
   description = "IAM role ARN for GitHub Actions OIDC deployments from the production branch."
   value       = aws_iam_role.github_deploy.arn
 }
+
+output "ota_bucket_name" {
+  description = "Private versioned S3 bucket used by the OTA publisher."
+  value       = aws_s3_bucket.ota_artifacts.bucket
+}
+
+output "ota_distribution_id" {
+  description = "CloudFront distribution ID for OTA cache invalidations."
+  value       = aws_cloudfront_distribution.ota.id
+}
+
+output "ota_distribution_domain" {
+  description = "CloudFront hostname serving OTA artifacts over HTTPS."
+  value       = aws_cloudfront_distribution.ota.domain_name
+}
+
+output "ota_distribution_url" {
+  description = "HTTPS base URL for OTA artifacts."
+  value       = "https://${aws_cloudfront_distribution.ota.domain_name}"
+}
+
+output "ota_bundle_base_url" {
+  description = "HTTPS base URL for immutable OTA bundles."
+  value       = "https://${aws_cloudfront_distribution.ota.domain_name}/bundles"
+}
+
+output "ota_channel_release_base_url" {
+  description = "HTTPS base URL for mutable per-channel OTA release JSON."
+  value       = "https://${aws_cloudfront_distribution.ota.domain_name}/channels"
+}
+
+output "ota_releases_url" {
+  description = "HTTPS URL for the mutable OTA release index consumed by the application API."
+  value       = "https://${aws_cloudfront_distribution.ota.domain_name}/releases.json"
+}
