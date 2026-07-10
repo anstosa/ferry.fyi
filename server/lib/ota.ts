@@ -38,6 +38,17 @@ const REQUIRED_REQUEST_STRING_FIELDS = [
   "version_os",
 ] as const;
 
+// update all cache values synchronously
+const cacheOtaReleases = (
+  releases: OtaRelease[],
+  releasesUrl: string,
+  expiresAt: number
+): void => {
+  cachedReleases = releases;
+  cachedReleasesUrl = releasesUrl;
+  cachedUntil = expiresAt;
+};
+
 // validate configured rollout channels
 const isOtaChannel = (value: unknown): value is OtaChannel => {
   return (
@@ -278,9 +289,7 @@ export const getCachedOtaReleases = async (): Promise<OtaRelease[]> => {
   if (!releases) {
     throw new Error("OTA release index is invalid");
   }
-  cachedReleases = releases;
-  cachedReleasesUrl = releasesUrl;
-  cachedUntil = now + OTA_RELEASE_CACHE_TTL_MS;
+  cacheOtaReleases(releases, releasesUrl, now + OTA_RELEASE_CACHE_TTL_MS);
   return releases;
 };
 
