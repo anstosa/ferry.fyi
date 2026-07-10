@@ -198,6 +198,32 @@ describe("CameraLineDetectionService", () => {
     ]);
   });
 
+  // detector burst guard
+  it("refreshes configured cameras serially", async () => {
+    let activeDetections = 0;
+    let maximumActiveDetections = 0;
+    const service = new CameraLineDetectionService({
+      detector: async () => {
+        activeDetections += 1;
+        maximumActiveDetections = Math.max(
+          maximumActiveDetections,
+          activeDetections
+        );
+        await Promise.resolve();
+        activeDetections -= 1;
+        return [];
+      },
+      fetchImpl: vi
+        .fn()
+        .mockResolvedValue(imageResponse()) as unknown as typeof fetch,
+      getNowMs: () => 1600,
+    });
+
+    await service.refreshDetections(["9164", "9166"]);
+
+    expect(maximumActiveDetections).toBe(1);
+  });
+
   // configured endpoint post path
   it("posts camera bytes to the configured detector URL", async () => {
     const config = getLineDetectionCameraConfig("9164");

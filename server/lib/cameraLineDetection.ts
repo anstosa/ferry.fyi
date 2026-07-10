@@ -182,6 +182,15 @@ export class CameraLineDetectionService {
     );
   }
 
+  // refresh configured cameras one at a time
+  async refreshDetections(
+    cameraIds = getLineDetectionCameraIds()
+  ): Promise<void> {
+    for (const cameraId of cameraIds) {
+      await this.getDetection(cameraId, {});
+    }
+  }
+
   // get one line detection
   private async getDetection(
     cameraId: string,
@@ -405,3 +414,7 @@ export const getCameraLineDetections = (
   options?: CameraLineDetectionRequestOptions
 ): Promise<CameraLineDetectionResponse> =>
   cameraLineDetectionService.getDetections(cameraIds, options);
+
+// warm the public cache without detector bursts
+export const refreshCameraLineDetectionCache = (): Promise<void> =>
+  cameraLineDetectionService.refreshDetections();

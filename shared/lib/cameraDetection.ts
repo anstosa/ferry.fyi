@@ -15,6 +15,10 @@ const VEHICLE_LABELS = new Set(["bus", "car", "motorcycle", "truck", "van"]);
 const clamp = (value: number, min: number, max: number): number =>
   Math.max(min, Math.min(max, value));
 
+// cap a filled-space percentage
+const getOccupancyPercent = (vehicleCount: number, capacity: number): number =>
+  Math.min(100, (vehicleCount / capacity) * 100);
+
 // normalize detection center
 export const getDetectionCenter = (
   box: VehicleDetectionBox
@@ -140,13 +144,22 @@ export const countCameraDetections = (
         isDetectionInArea(detection, area)
       ).length;
       const { vehicleCapacity } = area;
+      const hasVehicleCapacity =
+        typeof vehicleCapacity === "number" &&
+        Number.isFinite(vehicleCapacity) &&
+        vehicleCapacity > 0;
       return {
         areaId: area.id,
         label: area.label,
-        ...(vehicleCapacity === undefined ? {} : { vehicleCapacity }),
-        ...(vehicleCapacity === undefined
-          ? {}
-          : { occupancyPercent: (vehicleCount / vehicleCapacity) * 100 }),
+        ...(hasVehicleCapacity ? { vehicleCapacity } : {}),
+        ...(hasVehicleCapacity
+          ? {
+              occupancyPercent: getOccupancyPercent(
+                vehicleCount,
+                vehicleCapacity!
+              ),
+            }
+          : {}),
         type: area.type,
         vehicleCount,
       };
@@ -172,7 +185,7 @@ export const countCameraDetections = (
     occupancyPercent:
       vehicleCapacity === null
         ? null
-        : (includedDetections.length / vehicleCapacity) * 100,
+        : getOccupancyPercent(includedDetections.length, vehicleCapacity),
     reviewed: config.reviewed,
     vehicleCapacity,
   };

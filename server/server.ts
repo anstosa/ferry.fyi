@@ -5,6 +5,7 @@ import { scheduleJob } from "node-schedule";
 
 import { apiRouter } from "~/controllers/api";
 import { staticRouter } from "~/controllers/static";
+import { refreshCameraLineDetectionCache } from "~/lib/cameraLineDetection";
 import { dbInit } from "~/lib/db";
 import { updateMajorSportsEvents } from "~/lib/demandEvents/updateMajorSportsEvents";
 import { updateSchoolBreakEvents } from "~/lib/demandEvents/updateSchoolBreakEvents";
@@ -53,6 +54,17 @@ function refreshDemandEventsInBackground(): void {
       logger.error(`Demand event refresh failed: ${error.message}`, error);
     }
   );
+}
+
+// warm public line-detection cache
+function refreshCameraLineDetectionsInBackground(): void {
+  refreshCameraLineDetectionCache().catch((error: Error) => {
+    // log cache refresh failure
+    logger.error(
+      `Camera line detection refresh failed: ${error.message}`,
+      error
+    );
+  });
 }
 
 // defer noncritical startup work
@@ -105,6 +117,11 @@ export function startScheduler(): void {
   refreshWsfInBackground({ sendNotifications: true });
   // defer demand event maintenance
   deferStartupMaintenance("demand events", refreshDemandEventsInBackground);
+  // defer detector warmup
+  deferStartupMaintenance(
+    "camera line detection",
+    refreshCameraLineDetectionsInBackground
+  );
   // run daily inference after overnight cache reset
   scheduleJob(
     { hour: 4, minute: 10, second: 0 },
@@ -125,6 +142,14 @@ export function startScheduler(): void {
     { second: 0 },
     safeScheduledTask("short WSF refresh", updateShort)
   );
+  // refresh line detection cache every minute
+  scheduleJob(
+    { second: 30 },
+    safeScheduledTask(
+      "camera line detection refresh",
+      refreshCameraLineDetectionCache
+    )
+  );
   // clear cache at 4am
   scheduleJob(
     { hour: 4, minute: 0, second: 0 },
@@ -143,7 +168,8 @@ export function startScheduler(): void {
   );
   logger.info(
     "WSF refresh jobs scheduled: schedules daily 04:05, daily 04:10, " +
-      "demand events daily 04:20, long every 5 minutes, short every minute"
+      "demand events daily 04:20, long every 5 minutes, short every minute, " +
+      "camera detection every minute"
   );
 }
 

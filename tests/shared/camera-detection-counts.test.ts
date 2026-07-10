@@ -174,4 +174,52 @@ describe("camera detection counting", () => {
       ])
     );
   });
+
+  // full capacity guard
+  it("caps occupancy at the available countable capacity", () => {
+    const configWithCapacity: CameraDetectionCameraConfig = {
+      ...cameraConfig,
+      allowedAreas: cameraConfig.allowedAreas.map((area) => ({
+        ...area,
+        vehicleCapacity: 10,
+      })),
+    };
+    const detections = Array.from({ length: 21 }, (_, index) => ({
+      box: { height: 0.01, width: 0.01, x: 0.1, y: index / 25 },
+      confidence: 0.9,
+      label: "car",
+    }));
+
+    const result = countCameraDetections(
+      "test-camera",
+      configWithCapacity,
+      detections
+    );
+
+    expect(result.occupancyPercent).toBe(100);
+    expect(result.areaCounts[0]).toEqual(
+      expect.objectContaining({ occupancyPercent: 100, vehicleCount: 21 })
+    );
+  });
+
+  // invalid capacity guard
+  it("withholds occupancy when a countable area has no positive capacity", () => {
+    const configWithZeroCapacity: CameraDetectionCameraConfig = {
+      ...cameraConfig,
+      allowedAreas: cameraConfig.allowedAreas.map((area, index) => ({
+        ...area,
+        vehicleCapacity: index === 0 ? 0 : 10,
+      })),
+    };
+
+    const result = countCameraDetections(
+      "test-camera",
+      configWithZeroCapacity,
+      []
+    );
+
+    expect(result.vehicleCapacity).toBeNull();
+    expect(result.occupancyPercent).toBeNull();
+    expect(result.areaCounts[0]).not.toHaveProperty("occupancyPercent");
+  });
 });
