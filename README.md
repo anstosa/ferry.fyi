@@ -35,6 +35,10 @@ An alternative to the WSDOT mobile app. With Ferry FYI, you get:
 5. `cp .envrc.sample .envrc` and fill out `.envrc` file (use [`direnv`](https://direnv.net/) or similar to populate variables)
 6. `yarn db:migrate` to initialize database
 
+## Local container stack
+
+For a prod-like local Docker Compose setup with the app, detector runtime, and Postgres, see [Local container development](docs/local-container-development.md).
+
 ## Running locally
 
 1. Run `yarn client`

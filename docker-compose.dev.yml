@@ -1,0 +1,97 @@
+x-app-build: &app-build
+  context: .
+  args:
+    AUTH0_CLIENT_AUDIENCE: ${AUTH0_CLIENT_AUDIENCE:-http://localhost:4041/api}
+    AUTH0_CLIENT_ID: ${AUTH0_CLIENT_ID:-local-container-client}
+    AUTH0_CLIENT_REDIRECT: ${AUTH0_CLIENT_REDIRECT:-http://localhost:4041}
+    AUTH0_DOMAIN: ${AUTH0_DOMAIN:-local-container.invalid}
+    BASE_URL: ${BASE_URL:-http://localhost:4041}
+    FIREBASE_API_KEY: ${FIREBASE_API_KEY:-local-container-api-key}
+    FIREBASE_APP_ID: ${FIREBASE_APP_ID:-local-container-app-id}
+    FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-local-container-project}
+    FIREBASE_SENDER_ID: ${FIREBASE_SENDER_ID:-local-container-sender}
+    FIREBASE_VAPID_KEY: ${FIREBASE_VAPID_KEY:-local-container-vapid-key}
+    GOOGLE_ANALYTICS: ${GOOGLE_ANALYTICS:-}
+    GTM_CONTAINER_ID: ${GTM_CONTAINER_ID:-}
+    HEROKU_RELEASE_VERSION: ${HEROKU_RELEASE_VERSION:-LOCAL-CONTAINER}
+    LOG_LEVEL: ${LOG_LEVEL:-info}
+    MAPBOX_ACCESS_TOKEN: ${MAPBOX_ACCESS_TOKEN:-local-container-mapbox-token}
+    NODE_ENV: ${BUILD_NODE_ENV:-production}
+    SENTRY_DSN: ${SENTRY_DSN:-}
+
+services:
+  app:
+    image: ferry-fyi-local-app
+    build: *app-build
+    environment:
+      ANDROID_CERT_FINGERPRINT: local-container-fingerprint
+      AUTH0_CLIENT_AUDIENCE: http://localhost:${APP_PORT:-4041}/api
+      AUTH0_DOMAIN: local-container.invalid
+      BASE_URL: http://localhost:${APP_PORT:-4041}
+      CAR_DETECTION_ENDPOINT: http://detector:8000/detect
+      DATABASE_URL: postgres://test:testing@postgres:5432/ferryfyi
+      NODE_ENV: development
+      PGSSLMODE: disable
+      PORT: 4040
+      PROCESS_ROLE: web
+      RUN_SCHEDULER: false
+    depends_on:
+      postgres:
+        condition: service_healthy
+      detector:
+        condition: service_healthy
+    ports:
+      - "${APP_PORT:-4041}:4040"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:4040/healthz').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  detector:
+    build:
+      context: detector-runtime
+    environment:
+      PORT: 8000
+    ports:
+      - "${DETECTOR_PORT:-8001}:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import sys, urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).status == 200 else 1)\""]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  postgres:
+    image: postgres:16-bookworm
+    environment:
+      POSTGRES_DB: ferryfyi
+      POSTGRES_PASSWORD: testing
+      POSTGRES_USER: test
+    ports:
+      - "${POSTGRES_PORT:-5434}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test -d ferryfyi"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  migrate:
+    profiles:
+      - tools
+    image: ferry-fyi-local-app
+    build: *app-build
+    command: yarn db:migrate
+    environment:
+      DATABASE_URL: postgres://test:testing@postgres:5432/ferryfyi
+      NODE_ENV: development
+      PGSSLMODE: disable
+    depends_on:
+      postgres:
+        condition: service_healthy
+volumes:
+  postgres-data:

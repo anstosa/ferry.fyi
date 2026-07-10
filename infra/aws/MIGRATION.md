@@ -333,6 +333,28 @@ Cloudflare remains manual.
 8. Re-run `/healthz`, terminal API, schedule API, browser same-origin checks, and ECS scheduler singleton log checks.
 9. Keep Heroku app and database intact until the rollback window has passed.
 
+## Cloudflare Tunnel ALB cost reduction
+
+After `ferry.fyi` is stable on AWS, Cloudflare Tunnel can replace the public ALB ingress path.
+Use a remotely-managed tunnel so the ECS web task only needs the tunnel token, and Cloudflare owns the public hostname routing.
+
+1. In Cloudflare, create a tunnel for Ferry FYI and set the public hostname `ferry.fyi` to `http://localhost:4040`.
+2. Copy the tunnel token and store it in AWS Secrets Manager:
+
+   ```sh
+   aws secretsmanager put-secret-value \
+     --region us-west-2 \
+     --secret-id /ferry-fyi/prod/CLOUDFLARE_TUNNEL_TOKEN \
+     --secret-string '<TUNNEL_TOKEN>'
+   ```
+
+3. Set `enable_cloudflare_tunnel = true` and keep `enable_public_alb = true`.
+4. Apply Terraform, deploy the web service, and confirm Cloudflare shows the tunnel connector as healthy.
+5. Verify `https://ferry.fyi/healthz`, route pages, and schedule APIs through Cloudflare.
+6. Set `enable_public_alb = false` and apply Terraform to remove the ALB, ALB listeners, target group attachment, and ALB public IPv4 charges.
+
+Keep the ALB on until the tunnel is healthy. Roll back by setting `enable_public_alb = true` and pointing Cloudflare DNS back to the ALB target.
+
 ## Rollback
 
 Rollback is DNS-first while Heroku remains intact:

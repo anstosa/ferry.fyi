@@ -47,6 +47,30 @@ variable "container_port" {
   default     = 4040
 }
 
+variable "enable_public_alb" {
+  description = "Keep the public ALB path enabled. Enable only as a rollback path after Cloudflare Tunnel cutover."
+  type        = bool
+  default     = false
+}
+
+variable "enable_cloudflare_tunnel" {
+  description = "Run a cloudflared sidecar in the web task using the managed tunnel token secret."
+  type        = bool
+  default     = true
+}
+
+variable "cloudflare_tunnel_image" {
+  description = "cloudflared container image used by the optional web task sidecar."
+  type        = string
+  default     = "cloudflare/cloudflared:latest"
+}
+
+variable "cloudflare_tunnel_metrics_port" {
+  description = "Internal cloudflared metrics port exposed inside the ECS task."
+  type        = number
+  default     = 2000
+}
+
 variable "web_desired_count" {
   description = "Desired production web task count."
   type        = number
@@ -58,6 +82,12 @@ variable "scheduler_desired_count" {
   type        = number
   # pre-cutover paused
   default = 0
+}
+
+variable "detector_desired_count" {
+  description = "Desired singleton detector task count. Keep at 1 for the always-on private detector."
+  type        = number
+  default     = 1
 }
 
 variable "web_cpu" {
@@ -84,8 +114,32 @@ variable "scheduler_memory" {
   default     = 1024
 }
 
+variable "detector_cpu" {
+  description = "Fargate CPU units for the CPU-only detector task."
+  type        = number
+  default     = 1024
+}
+
+variable "detector_memory" {
+  description = "Fargate memory MiB for the CPU-only detector task."
+  type        = number
+  default     = 2048
+}
+
+variable "detector_container_port" {
+  description = "Private detector HTTP port for internal ECS service discovery."
+  type        = number
+  default     = 8000
+}
+
 variable "image_tag" {
   description = "Docker image tag in the managed ECR repository."
+  type        = string
+  default     = "latest"
+}
+
+variable "detector_image_tag" {
+  description = "Docker image tag in the managed detector ECR repository."
   type        = string
   default     = "latest"
 }
@@ -100,6 +154,12 @@ variable "public_subnet_cidrs" {
   description = "Public subnet CIDRs for ALB and public-IP ECS tasks."
   type        = list(string)
   default     = ["10.42.0.0/24", "10.42.1.0/24"]
+}
+
+variable "private_app_subnet_cidrs" {
+  description = "Private subnet CIDRs for internal ECS tasks. No NAT route is created."
+  type        = list(string)
+  default     = ["10.42.20.0/24", "10.42.21.0/24"]
 }
 
 variable "private_db_subnet_cidrs" {

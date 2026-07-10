@@ -1,0 +1,1109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ferry FYI camera polygon annotator</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif; }
+    body { margin: 0; background: #111827; color: #f9fafb; }
+    header { padding: 16px 20px; border-bottom: 1px solid #374151; background: #0f172a; }
+    h1 { margin: 0 0 6px; font-size: 20px; }
+    p { margin: 0; color: #cbd5e1; line-height: 1.4; }
+    main { display: grid; grid-template-columns: 360px 1fr; min-height: calc(100vh - 78px); }
+    aside { padding: 16px; border-right: 1px solid #374151; background: #111827; overflow: auto; }
+    section { padding: 16px; overflow: auto; }
+    label { display: block; margin: 12px 0 6px; font-size: 13px; color: #d1d5db; }
+    select, input, textarea, button { box-sizing: border-box; width: 100%; border: 1px solid #4b5563; border-radius: 8px; background: #1f2937; color: #f9fafb; padding: 9px 10px; font: inherit; }
+    input[type="file"] { padding: 7px; }
+    input[type="checkbox"] { width: auto; }
+    .checkline { display: flex; align-items: center; gap: 8px; margin: 12px 0 4px; color: #d1d5db; }
+    button { cursor: pointer; background: #2563eb; border-color: #2563eb; font-weight: 700; margin-top: 8px; }
+    button.secondary { background: #374151; border-color: #4b5563; }
+    button.danger { background: #991b1b; border-color: #b91c1c; }
+    button.good { background: #047857; border-color: #059669; }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
+    .hint { font-size: 12px; color: #94a3b8; margin-top: 8px; line-height: 1.45; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .canvas-wrap { display: inline-block; position: relative; border: 1px solid #475569; background: #020617; max-width: 100%; }
+    canvas { display: block; image-rendering: auto; cursor: crosshair; transform-origin: top left; }
+    .zoom-controls { align-items: center; }
+    .zoom-controls button, .zoom-controls select { width: auto; margin: 0; }
+    .zoom-controls select { min-width: 96px; }
+    #zoomStatus { color: #cbd5e1; padding: 9px 0; }
+    .current { margin: 12px 0; padding: 10px; background: #172554; border: 1px solid #1d4ed8; border-radius: 8px; color: #bfdbfe; }
+    .poly-list { margin-top: 12px; display: grid; gap: 8px; }
+    .poly { border: 1px solid #374151; border-radius: 8px; padding: 8px; background: #0f172a; font-size: 13px; }
+    .poly b { color: #93c5fd; }
+    .poly.exclusion b { color: #fca5a5; }
+    textarea { min-height: 260px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; white-space: pre; }
+    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 14px; }
+    .toolbar button { width: auto; margin: 0; }
+    .small { font-size: 12px; }
+    .summary { display: grid; gap: 4px; margin: 10px 0; padding: 10px; border: 1px solid #334155; border-radius: 8px; background: #0f172a; color: #cbd5e1; font-size: 13px; }
+    .camera-title { font-size: 18px; font-weight: 800; margin-bottom: 4px; }
+    .camera-meta { color: #cbd5e1; margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Ferry FYI camera polygon annotator</h1>
+    <p>All system cameras are included. Draw include polygons for queue/holding lanes and exclusion polygons for intersections or breaks inside those lanes. It reads and writes shared/data/camera-detection-areas.json through the local server.</p>
+  </header>
+  <main>
+    <aside>
+      <div class="summary" id="summary"></div>
+
+      <button id="saveBtn" class="good">Save app data JSON</button>
+      <div class="hint" id="saveStatus">Loading shared/data/camera-detection-areas.json...</div>
+      <label for="loadFile">Load different JSON</label>
+      <input id="loadFile" type="file" accept="application/json,.json" />
+      <div class="hint">Normal flow: run the local server, edit polygons, then click Save app data JSON to overwrite shared/data/camera-detection-areas.json. Loading a different file is only for recovery/import.</div>
+
+      <label for="filter">Camera filter</label>
+      <select id="filter">
+        <option value="all">All cameras</option>
+        <option value="todo">No polygons yet</option>
+        <option value="hasAny">Has any polygon</option>
+        <option value="hasIncludes">Has includes</option>
+        <option value="hasExclusions">Has exclusions</option>
+        <option value="reviewed">Reviewed</option>
+        <option value="unreviewed">Unreviewed</option>
+      </select>
+
+      <label for="camera">Camera</label>
+      <select id="camera"></select>
+
+      <label for="polygonRole">Polygon role</label>
+      <select id="polygonRole">
+        <option value="include">Include: count cars in this area</option>
+        <option value="exclude">Exclude: ignore / break queue here</option>
+      </select>
+
+      <label for="areaType">Polygon type</label>
+      <select id="areaType"></select>
+
+      <label for="areaId">Area id</label>
+      <input id="areaId" placeholder="example: clinton_food_mart_queue_lane" />
+
+      <label for="areaLabel">Label</label>
+      <input id="areaLabel" placeholder="example: ferry-bound SR 525 lane" />
+
+      <label for="vehicleCapacity">Vehicle capacity</label>
+      <input id="vehicleCapacity" type="number" min="1" step="1" placeholder="cars when this zone is full" />
+
+      <label class="checkline" for="reviewedInput"><input id="reviewedInput" type="checkbox" /> Reviewed</label>
+      <div class="hint">Check Reviewed after you inspect a camera, including cameras with no relevant ferry polygons.</div>
+
+      <button id="startBtn">Start polygon</button>
+      <div class="row">
+        <button id="undoBtn" class="secondary" disabled>Undo point</button>
+        <button id="finishBtn" class="good" disabled>Finish polygon</button>
+      </div>
+      <button id="cancelBtn" class="secondary" disabled>Cancel current polygon</button>
+      <button id="updateDetailsBtn" class="good" disabled>Update selected details</button>
+      <div class="row">
+        <button id="doneEditBtn" class="secondary" disabled>Done editing</button>
+        <button id="deleteVertexBtn" class="danger" disabled>Delete selected point</button>
+      </div>
+
+      <div class="current" id="currentBox">No polygon in progress.</div>
+
+      <button id="clearCameraBtn" class="danger">Clear this camera</button>
+      <button id="clearAllBtn" class="danger">Clear all annotations</button>
+      <button id="downloadBtn" class="secondary">Download backup JSON</button>
+      <button id="copyBtn" class="secondary">Copy JSON</button>
+
+      <div class="hint">
+        Tips:<br />
+        • Single click adds a point.<br />
+        • Finish needs at least 3 points.<br />
+        • Use multiple include polygons for separate holding lanes.<br />
+        • Use exclusion polygons for intersections, driveways, crosswalks, or any break that should split/ignore queue detection.<br />
+        • To edit: click a polygon in the image or click Edit in the list, then drag points, click an edge to add a point, or update id/type/label above.<br />
+        • Exclude parked cars, opposing traffic, shoulders, side streets, sidewalks, and through lanes.
+      </div>
+
+      <label for="jsonOut">Export preview</label>
+      <textarea id="jsonOut" spellcheck="false"></textarea>
+    </aside>
+    <section>
+      <div class="camera-title" id="cameraTitle"></div>
+      <div class="camera-meta" id="cameraMeta"></div>
+      <div class="toolbar">
+        <button id="prevBtn" class="secondary">← Previous camera</button>
+        <button id="nextBtn" class="secondary">Next camera →</button>
+        <button id="refreshImageBtn" class="secondary">Refresh image</button>
+        <button id="detectImageBtn" class="secondary">Detect vehicles</button>
+        <button id="clearDetectionsBtn" class="secondary" disabled>Clear detections</button>
+      </div>
+      <div class="hint" id="detectionStatus">Load a camera image, then detect vehicles with the local container.</div>
+      <div class="toolbar zoom-controls">
+        <button id="zoomOutBtn" class="secondary">− Zoom out</button>
+        <button id="zoomFitBtn" class="secondary">Fit width</button>
+        <button id="zoomActualBtn" class="secondary">100%</button>
+        <button id="zoomInBtn" class="secondary">+ Zoom in</button>
+        <select id="zoomSelect" aria-label="Zoom level">
+          <option value="0.5">50%</option>
+          <option value="0.75">75%</option>
+          <option value="1">100%</option>
+          <option value="1.25">125%</option>
+          <option value="1.5">150%</option>
+          <option value="2">200%</option>
+          <option value="3">300%</option>
+          <option value="4">400%</option>
+          <option value="custom" disabled>Custom</option>
+        </select>
+        <span id="zoomStatus" class="small"></span>
+      </div>
+      <div class="canvas-wrap">
+        <canvas id="canvas"></canvas>
+      </div>
+      <div class="poly-list" id="polyList"></div>
+    </section>
+  </main>
+
+  <script>
+    const catalog = [{"id":"9048","terminalId":"1","terminal":"Anacortes","title":"WSF Anacortes Ferry Holding","displayName":"Anacortes Ferry Holding","image":{"url":"https://images.wsdot.wa.gov/wsf/anacortes/holding/anahold.jpg","width":400,"height":245},"location":{"latitude":48.503437,"longitude":-122.679509},"owner":null,"isActive":true},{"id":"9047","terminalId":"1","terminal":"Anacortes","title":"WSF Anacortes Ferry Terminal","displayName":"Anacortes Ferry Terminal","image":{"url":"https://images.wsdot.wa.gov/wsf/anacortes/terminal/anaterm.jpg","width":400,"height":245},"location":{"latitude":48.505975,"longitude":-122.679048},"owner":null,"isActive":true},{"id":"9049","terminalId":"1","terminal":"Anacortes","title":"WSF Anacortes Ferry Terminal Rd","displayName":"Anacortes Ferry Terminal Rd","image":{"url":"https://images.wsdot.wa.gov/wsf/anacortes/road/anaroad.jpg","width":400,"height":245},"location":{"latitude":48.501976,"longitude":-122.679337},"owner":null,"isActive":true},{"id":"9478","terminalId":"3","terminal":"Bainbridge Island","title":"SR 305 at MP 0.2: High School Rd North","displayName":"SR 305 at MP 0.2: High School Rd North","image":{"url":"https://images.wsdot.wa.gov/orflow/305vc00028.jpg","width":335,"height":249},"location":{"latitude":47.635773,"longitude":-122.515529},"owner":null,"isActive":true},{"id":"9479","terminalId":"3","terminal":"Bainbridge Island","title":"SR 305 at MP 0.2: High School Rd South","displayName":"SR 305 at MP 0.2: High School Rd South","image":{"url":"https://images.wsdot.wa.gov/orflow/305vc00029.jpg","width":335,"height":249},"location":{"latitude":47.635773,"longitude":-122.515529},"owner":null,"isActive":true},{"id":"9477","terminalId":"3","terminal":"Bainbridge Island","title":"SR 305 at MP 0.2: Winslow Way North","displayName":"SR 305 at MP 0.2: Winslow Way North","image":{"url":"https://images.wsdot.wa.gov/orflow/305vc00023.jpg","width":335,"height":209},"location":{"latitude":47.624849,"longitude":-122.514133},"owner":null,"isActive":true},{"id":"9476","terminalId":"3","terminal":"Bainbridge Island","title":"SR 305 at MP 0.2: Winslow Way South","displayName":"SR 305 at MP 0.2: Winslow Way South","image":{"url":"https://images.wsdot.wa.gov/orflow/305vc00022.jpg","width":335,"height":209},"location":{"latitude":47.624849,"longitude":-122.514133},"owner":null,"isActive":true},{"id":"9040","terminalId":"3","terminal":"Bainbridge Island","title":"WSF Bainbridge Ferry Holding","displayName":"Bainbridge Ferry Holding","image":{"url":"https://images.wsdot.wa.gov/wsf/Bainbridge/Bainbridge.jpg","width":400,"height":421},"location":{"latitude":47.62314,"longitude":-122.5112},"owner":null,"isActive":true},{"id":"9037","terminalId":"4","terminal":"Bremerton","title":"WSF Bremerton Ferry Holding","displayName":"Bremerton Ferry Holding","image":{"url":"https://images.wsdot.wa.gov/wsf/bremerton/holding/holding.jpg","width":400,"height":246},"location":{"latitude":47.56265,"longitude":-122.62535},"owner":null,"isActive":true},{"id":"9173","terminalId":"5","terminal":"Clinton","title":"WSF Clinton Dock","displayName":"Clinton Dock","image":{"url":"https://images.wsdot.wa.gov/wsf/clinton/boothdock.jpg","width":400,"height":137},"location":{"latitude":47.974813,"longitude":-122.351516},"owner":{"name":"Whidbeytel.com ","url":"https://www.whidbeytel.com/cams/clinton/"},"isActive":true},{"id":"9174","terminalId":"5","terminal":"Clinton","title":"WSF Clinton E SR 525","displayName":"Clinton E SR 525","image":{"url":"https://images.wsdot.wa.gov/wsf/clinton/clinteast.jpg","width":400,"height":140},"location":{"latitude":47.97919,"longitude":-122.356762},"owner":{"name":"Whidbeytel.com ","url":"https://www.whidbeytel.com/cams/clinton/"},"isActive":true},{"id":"9166","terminalId":"5","terminal":"Clinton","title":"WSF Clinton Terminal","displayName":"Clinton Terminal","image":{"url":"https://images.wsdot.wa.gov/wsf/clinton/terminal/clinton.jpg","width":400,"height":421},"location":{"latitude":47.974718,"longitude":-122.352079},"owner":null,"isActive":true},{"id":"9172","terminalId":"5","terminal":"Clinton","title":"WSF Clinton Uphill","displayName":"Clinton Uphill","image":{"url":"https://images.wsdot.wa.gov/wsf/clinton/boothhill.jpg","width":400,"height":137},"location":{"latitude":47.974718,"longitude":-122.352079},"owner":{"name":"Whidbeytel.com","url":"https://www.whidbeytel.com/cams/clinton/"},"isActive":true},{"id":"9175","terminalId":"5","terminal":"Clinton","title":"WSF Clinton W SR 525","displayName":"Clinton W SR 525","image":{"url":"https://images.wsdot.wa.gov/wsf/clinton/clintwest.jpg","width":400,"height":140},"location":{"latitude":47.979638,"longitude":-122.359076},"owner":{"name":"Whidbeytel.com","url":"https://www.whidbeytel.com/cams/clinton/"},"isActive":true},{"id":"9170","terminalId":"11","terminal":"Coupeville ","title":"WSF Coupeville Street","displayName":"Coupeville Street","image":{"url":"https://images.wsdot.wa.gov/wsf/Keystone/Street/keyStreet.jpg","width":400,"height":245},"location":{"latitude":48.159349,"longitude":-122.672701},"owner":null,"isActive":true},{"id":"9169","terminalId":"11","terminal":"Coupeville ","title":"WSF Coupeville Terminal","displayName":"Coupeville Terminal","image":{"url":"https://images.wsdot.wa.gov/wsf/Keystone/terminal/keyterm.jpg","width":400,"height":245},"location":{"latitude":48.159349,"longitude":-122.672701},"owner":null,"isActive":true},{"id":"9157","terminalId":"8","terminal":"Edmonds","title":"WSF Edmonds Holding","displayName":"Edmonds Holding","image":{"url":"https://images.wsdot.wa.gov/wsf/edmonds/holding.jpg","width":400,"height":421},"location":{"latitude":47.809746,"longitude":-122.383209},"owner":null,"isActive":true},{"id":"9160","terminalId":"8","terminal":"Edmonds","title":"WSF Edmonds Pine","displayName":"Edmonds Pine","image":{"url":"https://images.wsdot.wa.gov/wsf/edmonds/104pine.jpg","width":400,"height":246},"location":{"latitude":47.802181,"longitude":-122.382463},"owner":null,"isActive":true},{"id":"9159","terminalId":"8","terminal":"Edmonds","title":"WSF Edmonds Underpass","displayName":"Edmonds Underpass","image":{"url":"https://images.wsdot.wa.gov/wsf/edmonds/104underpass.jpg","width":400,"height":246},"location":{"latitude":47.802073,"longitude":-122.382307},"owner":null,"isActive":true},{"id":"9156","terminalId":"8","terminal":"Edmonds","title":"WSF Edmonds VMS Sign","displayName":"Edmonds VMS Sign","image":{"url":"https://images.wsdot.wa.gov/wsf/edmonds/104vms_wts.jpg","width":400,"height":294},"location":{"latitude":47.790573,"longitude":-122.366986},"owner":null,"isActive":true},{"id":"9155","terminalId":"8","terminal":"Edmonds","title":"WSF Edmonds W Dayton St","displayName":"Edmonds W Dayton St","image":{"url":"https://images.wsdot.wa.gov/wsf/edmonds/104dayton.jpg","width":400,"height":294},"location":{"latitude":47.809182,"longitude":-122.383213},"owner":null,"isActive":true},{"id":"9038","terminalId":"9","terminal":"Fauntleroy","title":"WSF Fauntleroy Ferry Holding","displayName":"Fauntleroy Ferry Holding","image":{"url":"https://images.wsdot.wa.gov/wsf/fauntleroy/terminal/fauntleroy.jpg","width":400,"height":245},"location":{"latitude":47.5232,"longitude":-122.39359},"owner":null,"isActive":true},{"id":"9404","terminalId":"9","terminal":"Fauntleroy","title":"WSF Fauntleroy Lincoln Park looking North","displayName":"Fauntleroy Lincoln Park looking North","image":{"url":"https://images.wsdot.wa.gov/wsf/fauntleroy/terminal/fauntlincoln.jpg","width":400,"height":294},"location":{"latitude":47.530459,"longitude":-122.392633},"owner":null,"isActive":true},{"id":"9403","terminalId":"9","terminal":"Fauntleroy","title":"WSF Fauntleroy Trenton St looking North","displayName":"Fauntleroy Trenton St looking North","image":{"url":"https://images.wsdot.wa.gov/wsf/fauntleroy/terminal/faunttrenton.jpg","width":400,"height":294},"location":{"latitude":47.524794,"longitude":-122.392652},"owner":null,"isActive":true},{"id":"9377","terminalId":"9","terminal":"Fauntleroy","title":"WSF Fauntleroy Way and Cloverdale St.","displayName":"Fauntleroy Way and Cloverdale St.","image":{"url":"https://www.seattle.gov/trafficcams/images/Fauntleroy_SW_Cloverdale_NS.jpg","width":400,"height":246},"location":{"latitude":47.526718,"longitude":-122.392883},"owner":{"name":"City of Seattle","url":"http://web6.seattle.gov/travelers/"},"isActive":true},{"id":"9402","terminalId":"9","terminal":"Fauntleroy","title":"WSF Fauntleroy Way looking North","displayName":"Fauntleroy Way looking North","image":{"url":"https://images.wsdot.wa.gov/wsf/fauntleroy/terminal/fauntterminal.jpg","width":400,"height":294},"location":{"latitude":47.52263,"longitude":-122.392938},"owner":null,"isActive":true},{"id":"1233","terminalId":"10","terminal":"Friday Harbor","title":"WSF Friday Harbor Ferry Holding","displayName":"Friday Harbor Ferry Holding","image":{"url":"https://images.wsdot.wa.gov/wsf/fridayharbor/friholding.jpg","width":400,"height":245},"location":{"latitude":48.5351,"longitude":-123.0066},"owner":null,"isActive":true},{"id":"9502","terminalId":"10","terminal":"Friday Harbor","title":"WSF Friday Harbor Upper Holding","displayName":"Friday Harbor Upper Holding","image":{"url":"https://images.wsdot.wa.gov/wsf/fridayharbor/upperholding.jpg","width":400,"height":245},"location":{"latitude":48.533251,"longitude":-123.014861},"owner":null,"isActive":true},{"id":"9154","terminalId":"12","terminal":"Kingston","title":"WSF Kingston Barber","displayName":"Kingston Barber","image":{"url":"https://images.wsdot.wa.gov/orflow/104vc02314.jpg","width":335,"height":244},"location":{"latitude":47.808285,"longitude":-122.517503},"owner":null,"isActive":true},{"id":"9152","terminalId":"12","terminal":"Kingston","title":"WSF Kingston Ferry Sign East","displayName":"Kingston Ferry Sign East","image":{"url":"https://images.wsdot.wa.gov/wsf/kingston/fse/fse.jpg","width":400,"height":294},"location":{"latitude":47.80941,"longitude":-122.52564},"owner":null,"isActive":true},{"id":"9153","terminalId":"12","terminal":"Kingston","title":"WSF Kingston Ferry Sign West","displayName":"Kingston Ferry Sign West","image":{"url":"https://images.wsdot.wa.gov/wsf/kingston/fsw/fsw.jpg","width":400,"height":294},"location":{"latitude":47.80941,"longitude":-122.52564},"owner":null,"isActive":true},{"id":"10266","terminalId":"12","terminal":"Kingston","title":"WSF Kingston Lindvog Rd","displayName":"Kingston Lindvog Rd","image":{"url":"https://images.wsdot.wa.gov/orflow/104vc02390.jpg","width":335,"height":244},"location":{"latitude":47.802667,"longitude":-122.503472},"owner":null,"isActive":true},{"id":"9813","terminalId":"12","terminal":"Kingston","title":"WSF Kingston SR 104 at Toll Booths","displayName":"Kingston SR 104 at Toll Booths","image":{"url":"https://images.wsdot.wa.gov/orflow/104vc02466.jpg","width":335,"height":244},"location":{"latitude":47.797035,"longitude":-122.496861},"owner":null,"isActive":true},{"id":"9151","terminalId":"12","terminal":"Kingston","title":"WSF Kingston Terminal","displayName":"Kingston Terminal","image":{"url":"https://images.wsdot.wa.gov/orflow/104vc02465.jpg","width":335,"height":209},"location":{"latitude":47.797124,"longitude":-122.495519},"owner":null,"isActive":true},{"id":"9692","terminalId":"13","terminal":"Lopez Island","title":"WSF Lopez Ferry Approach","displayName":"Lopez Ferry Approach","image":{"url":"https://images.wsdot.wa.gov/wsf/lopez/approach.jpg","width":400,"height":246},"location":{"latitude":48.56895,"longitude":-122.884565},"owner":null,"isActive":true},{"id":"10113","terminalId":"13","terminal":"Lopez Island","title":"WSF Lopez Ferry Holding Looking North","displayName":"Lopez Ferry Holding Looking North","image":{"url":"https://images.wsdot.wa.gov/wsf/lopez/holding3.jpg","width":400,"height":321},"location":{"latitude":48.569207,"longitude":-122.883996},"owner":null,"isActive":true},{"id":"9693","terminalId":"13","terminal":"Lopez Island","title":"WSF Lopez Ferry Holding Looking South","displayName":"Lopez Ferry Holding Looking South","image":{"url":"https://images.wsdot.wa.gov/wsf/lopez/holding.jpg","width":400,"height":321},"location":{"latitude":48.569207,"longitude":-122.883996},"owner":null,"isActive":true},{"id":"10112","terminalId":"13","terminal":"Lopez Island","title":"WSF Lopez Ferry Holding Middle","displayName":"Lopez Ferry Holding Middle","image":{"url":"https://images.wsdot.wa.gov/wsf/lopez/holding2.jpg","width":400,"height":321},"location":{"latitude":48.569207,"longitude":-122.883996},"owner":null,"isActive":true},{"id":"9162","terminalId":"14","terminal":"Mukilteo","title":"SR 525 at MP 6.9: 76th St SW North - WSF Mukilteo","displayName":"SR 525 at MP 6.9: 76th St SW North - WSF Mukilteo","image":{"url":"https://images.wsdot.wa.gov/nw/525vc00695.jpg","width":335,"height":249},"location":{"latitude":47.928385,"longitude":-122.300644},"owner":null,"isActive":true},{"id":"9163","terminalId":"14","terminal":"Mukilteo","title":"SR 525 at MP 6.9: 76th St SW South - WSF Mukilteo","displayName":"SR 525 at MP 6.9: 76th St SW South - WSF Mukilteo","image":{"url":"https://images.wsdot.wa.gov/nw/525vc00694.jpg","width":335,"height":249},"location":{"latitude":47.92825,"longitude":-122.300562},"owner":null,"isActive":true},{"id":"9161","terminalId":"14","terminal":"Mukilteo","title":"SR 525 at MP 7.4: Clover Ln - WSF Mukilteo","displayName":"SR 525 at MP 7.4: Clover Ln - WSF Mukilteo","image":{"url":"https://images.wsdot.wa.gov/nw/525vc00740.jpg","width":335,"height":249},"location":{"latitude":47.933469,"longitude":-122.306348},"owner":null,"isActive":true},{"id":"9728","terminalId":"14","terminal":"Mukilteo","title":"SR 525 at MP 8.1: 5th St South - WSF Mukilteo","displayName":"SR 525 at MP 8.1: 5th St South - WSF Mukilteo","image":{"url":"https://images.wsdot.wa.gov/nw/525vc00819.jpg","width":335,"height":249},"location":{"latitude":47.944755,"longitude":-122.304359},"owner":null,"isActive":true},{"id":"9394","terminalId":"14","terminal":"Mukilteo","title":"SR 525 at MP 8.2: 5th St North - WSF Mukilteo","displayName":"SR 525 at MP 8.2: 5th St North - WSF Mukilteo","image":{"url":"https://images.wsdot.wa.gov/nw/525vc00820.jpg","width":335,"height":249},"location":{"latitude":47.944899,"longitude":-122.304287},"owner":null,"isActive":true},{"id":"9944","terminalId":"14","terminal":"Mukilteo","title":"SR 525 at MP 8.4: 1st Street","displayName":"SR 525 at MP 8.4: 1st Street","image":{"url":"https://images.wsdot.wa.gov/nw/525vc00858.jpg","width":335,"height":209},"location":{"latitude":47.948838,"longitude":-122.301103},"owner":null,"isActive":true},{"id":"9164","terminalId":"14","terminal":"Mukilteo","title":"WSF Mukilteo Holding","displayName":"Mukilteo Holding","image":{"url":"https://images.wsdot.wa.gov/wsf/Mukilteo/Terminal/mukterm.jpg","width":400,"height":246},"location":{"latitude":47.948756,"longitude":-122.302007},"owner":null,"isActive":true},{"id":"9689","terminalId":"15","terminal":"Orcas Island","title":"WSF Orcas Ferry Booth","displayName":"Orcas Ferry Booth","image":{"url":"https://images.wsdot.wa.gov/wsf/orcas/booth.jpg","width":400,"height":288},"location":{"latitude":48.598694,"longitude":-122.945556},"owner":null,"isActive":true},{"id":"9688","terminalId":"15","terminal":"Orcas Island","title":"WSF Orcas Ferry Holding","displayName":"Orcas Ferry Holding","image":{"url":"https://images.wsdot.wa.gov/wsf/orcas/holding.jpg","width":400,"height":288},"location":{"latitude":48.598694,"longitude":-122.945556},"owner":null,"isActive":true},{"id":"9742","terminalId":"16","terminal":"Point Defiance","title":"WSF Point Defiance Booth","displayName":"Point Defiance Booth","image":{"url":"https://images.wsdot.wa.gov/wsf/PointDefiance/PtDefBooth.jpg","width":400,"height":245},"location":{"latitude":47.30365,"longitude":-122.514751},"owner":null,"isActive":true},{"id":"9741","terminalId":"16","terminal":"Point Defiance","title":"WSF Point Defiance Holding","displayName":"Point Defiance Holding","image":{"url":"https://images.wsdot.wa.gov/wsf/PointDefiance/PtDefHolding.jpg","width":400,"height":245},"location":{"latitude":47.303365,"longitude":-122.514782},"owner":null,"isActive":true},{"id":"9168","terminalId":"17","terminal":"Port Townsend","title":"WSF Port Townsend Street","displayName":"Port Townsend Street","image":{"url":"https://images.wsdot.wa.gov/wsf/PortTownsend/Street/ptStreet.jpg","width":400,"height":245},"location":{"latitude":48.112086,"longitude":-122.760466},"owner":null,"isActive":true},{"id":"9167","terminalId":"17","terminal":"Port Townsend","title":"WSF Port Townsend Terminal","displayName":"Port Townsend Terminal","image":{"url":"https://images.wsdot.wa.gov/wsf/PortTownsend/terminal/ptterm.jpg","width":400,"height":246},"location":{"latitude":48.112086,"longitude":-122.760466},"owner":null,"isActive":true},{"id":"9035","terminalId":"7","terminal":"Seattle","title":"WSF Seattle Ferry Main Vehicle Holding","displayName":"Seattle Ferry Main Vehicle Holding","image":{"url":"https://images.wsdot.wa.gov/wsf/colman/seattlemain.jpg","width":400,"height":246},"location":{"latitude":47.60285,"longitude":-122.3382},"owner":null,"isActive":true},{"id":"9039","terminalId":"20","terminal":"Southworth","title":"WSF Southworth Ferry Holding","displayName":"Southworth Ferry Holding","image":{"url":"https://images.wsdot.wa.gov/wsf/southworth/holding.jpg","width":400,"height":245},"location":{"latitude":47.51189,"longitude":-122.4973},"owner":null,"isActive":true},{"id":"9391","terminalId":"20","terminal":"Southworth","title":"WSF Southworth Ferry Terminal","displayName":"Southworth Ferry Terminal","image":{"url":"https://images.wsdot.wa.gov/wsf/southworth/terminal.jpg","width":400,"height":245},"location":{"latitude":47.51189,"longitude":-122.4973},"owner":null,"isActive":true},{"id":"9046","terminalId":"21","terminal":"Tahlequah","title":"WSF Tahlequah @ SW Tahlequah Rd","displayName":"Tahlequah @ SW Tahlequah Rd","image":{"url":"https://images.wsdot.wa.gov/wsf/Tahlequah/VMSSign/VMSSign.jpg","width":400,"height":245},"location":{"latitude":47.333079,"longitude":-122.506957},"owner":null,"isActive":true},{"id":"9045","terminalId":"21","terminal":"Tahlequah","title":"WSF Tahlequah Ferry Holding","displayName":"Tahlequah Ferry Holding","image":{"url":"https://images.wsdot.wa.gov/wsf/Tahlequah/holding/holding.jpg","width":400,"height":245},"location":{"latitude":47.332941,"longitude":-122.506968},"owner":null,"isActive":true},{"id":"9717","terminalId":"22","terminal":"Vashon Island","title":"WSF Vashon Ferry Holding (South)","displayName":"Vashon Ferry Holding (South)","image":{"url":"https://images.wsdot.wa.gov/wsf/vashon/HoldingSouth.jpg","width":400,"height":245},"location":{"latitude":47.510459,"longitude":-122.463852},"owner":null,"isActive":true},{"id":"9043","terminalId":"22","terminal":"Vashon Island","title":"WSF Vashon Hwy & 112th (North)","displayName":"Vashon Hwy & 112th (North)","image":{"url":"https://images.wsdot.wa.gov/wsf/vashon/VSHvc00004.jpg","width":400,"height":294},"location":{"latitude":47.505682,"longitude":-122.46173},"owner":null,"isActive":true},{"id":"9044","terminalId":"22","terminal":"Vashon Island","title":"WSF Vashon Hwy & 112th (South)","displayName":"Vashon Hwy & 112th (South)","image":{"url":"https://images.wsdot.wa.gov/wsf/vashon/VSHvc00003.jpg","width":400,"height":294},"location":{"latitude":47.505512,"longitude":-122.461681},"owner":null,"isActive":true},{"id":"9041","terminalId":"22","terminal":"Vashon Island","title":"WSF Vashon Hwy & Bunker (North)","displayName":"Vashon Hwy & Bunker (North)","image":{"url":"https://images.wsdot.wa.gov/wsf/vashon/VSHvc00001.jpg","width":400,"height":294},"location":{"latitude":47.507541,"longitude":-122.46291},"owner":null,"isActive":true},{"id":"9042","terminalId":"22","terminal":"Vashon Island","title":"WSF Vashon Hwy & Bunker (South)","displayName":"Vashon Hwy & Bunker (South)","image":{"url":"https://images.wsdot.wa.gov/wsf/vashon/VSHvc00002.jpg","width":400,"height":294},"location":{"latitude":47.507367,"longitude":-122.46284},"owner":null,"isActive":true}];
+    const includeTypes = [
+      ["queue_lane", "queue_lane"],
+      ["holding_lane", "holding_lane"],
+      ["holding_lot", "holding_lot"],
+      ["ferry_slip", "ferry_slip"]
+    ];
+    const excludeTypes = [
+      ["intersection_break", "intersection_break"],
+      ["driveway_break", "driveway_break"],
+      ["crosswalk_break", "crosswalk_break"],
+      ["parking_exclusion", "parking_exclusion"],
+      ["opposing_lane_exclusion", "opposing_lane_exclusion"],
+      ["other_exclusion", "other_exclusion"]
+    ];
+    const colors = { include: ["#22c55e", "#38bdf8", "#f97316", "#e879f9", "#facc15"], exclude: ["#ef4444", "#fb7185", "#f43f5e", "#dc2626", "#f87171"] };
+    const storageKey = "ferry-fyi-manual-camera-polygons-v2";
+    const state = loadInitialState();
+    const cameraSelect = document.getElementById("camera");
+    const filterSelect = document.getElementById("filter");
+    const polygonRole = document.getElementById("polygonRole");
+    const areaType = document.getElementById("areaType");
+    const areaId = document.getElementById("areaId");
+    const areaLabel = document.getElementById("areaLabel");
+    const vehicleCapacity = document.getElementById("vehicleCapacity");
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const img = new Image();
+    const currentBox = document.getElementById("currentBox");
+    const polyList = document.getElementById("polyList");
+    const jsonOut = document.getElementById("jsonOut");
+    const cameraTitle = document.getElementById("cameraTitle");
+    const cameraMeta = document.getElementById("cameraMeta");
+    const summary = document.getElementById("summary");
+    const zoomSelect = document.getElementById("zoomSelect");
+    const zoomStatus = document.getElementById("zoomStatus");
+    const saveStatus = document.getElementById("saveStatus");
+    const detectionStatus = document.getElementById("detectionStatus");
+    const detectImageBtn = document.getElementById("detectImageBtn");
+    const clearDetectionsBtn = document.getElementById("clearDetectionsBtn");
+    const reviewedInput = document.getElementById("reviewedInput");
+    const annotationFileName = "/camera-detection-areas.json";
+    const annotationDisplayName = "shared/data/camera-detection-areas.json";
+    let currentPoints = [];
+    let drawing = false;
+    let editing = null;
+    let selectedVertex = null;
+    let draggingVertex = null;
+    let movedDuringDrag = false;
+    let suppressNextClick = false;
+    let filteredCameras = [...catalog];
+    let zoom = Number(localStorage.getItem(`${storageKey}-zoom`) || "1");
+    let placedLabelBoxes = [];
+    let detectionCameraId = null;
+    let detectionImageUrl = null;
+    let detections = [];
+
+    function loadInitialState() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(storageKey) || "{}");
+        return normalizeImport(saved);
+      } catch (_) {
+        return { annotations: {} };
+      }
+    }
+
+    function normalizeImport(input) {
+      const annotations = {};
+      const source = input && input.cameras ? input.cameras : input && input.annotations ? input.annotations : {};
+      Object.entries(source || {}).forEach(([cameraId, cameraData]) => {
+        annotations[cameraId] = {
+          allowedAreas: Array.isArray(cameraData.allowedAreas) ? cameraData.allowedAreas : [],
+          excludedAreas: Array.isArray(cameraData.excludedAreas) ? cameraData.excludedAreas : Array.isArray(cameraData.exclusionAreas) ? cameraData.exclusionAreas : [],
+          reviewed: Boolean(cameraData.reviewed)
+        };
+      });
+      return { annotations };
+    }
+
+    function selectedCamera() {
+      return catalog.find((camera) => camera.id === cameraSelect.value) || filteredCameras[0] || catalog[0];
+    }
+
+    function cameraAnnotation(cameraId) {
+      state.annotations[cameraId] ||= { allowedAreas: [], excludedAreas: [], reviewed: false };
+      state.annotations[cameraId].allowedAreas ||= [];
+      state.annotations[cameraId].excludedAreas ||= [];
+      state.annotations[cameraId].reviewed = Boolean(state.annotations[cameraId].reviewed);
+      return state.annotations[cameraId];
+    }
+
+    function editingArea() {
+      if (!editing) return null;
+      return cameraAnnotation(selectedCamera().id)[editing.collection]?.[editing.index] || null;
+    }
+
+    function clearEditing() {
+      editing = null;
+      selectedVertex = null;
+      draggingVertex = null;
+      movedDuringDrag = false;
+      suppressNextClick = false;
+    }
+
+    function populateDetailFields(area, collection) {
+      polygonRole.value = collection === "allowedAreas" ? "include" : "exclude";
+      updateTypeOptions(false);
+      areaType.value = [...areaType.options].some((option) => option.value === area.type) ? area.type : areaType.value;
+      areaId.value = area.id || "";
+      areaLabel.value = area.label || "";
+      vehicleCapacity.value = area.vehicleCapacity || "";
+    }
+
+    function beginEditing(collection, index) {
+      const area = cameraAnnotation(selectedCamera().id)[collection]?.[index];
+      if (!area) return;
+      drawing = false;
+      currentPoints = [];
+      editing = { collection, index };
+      selectedVertex = null;
+      populateDetailFields(area, collection);
+    }
+
+    function persistAnnotations() {
+      localStorage.setItem(storageKey, JSON.stringify(state));
+      renderExport();
+      renderSummary();
+    }
+
+    function slug(value) {
+      return String(value).toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+    }
+
+    function currentCollection() {
+      return polygonRole.value === "include" ? "allowedAreas" : "excludedAreas";
+    }
+
+    function updateTypeOptions(resetDetails = true) {
+      const previousType = areaType.value;
+      const types = polygonRole.value === "include" ? includeTypes : excludeTypes;
+      areaType.innerHTML = "";
+      types.forEach(([value, label]) => {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = label;
+        areaType.appendChild(option);
+      });
+      if ([...areaType.options].some((option) => option.value === previousType)) areaType.value = previousType;
+      if (resetDetails && !editing) defaultsFor(selectedCamera());
+    }
+
+    function defaultsFor(camera) {
+      const role = polygonRole.value;
+      const prefix = slug(`${camera.terminal}_${camera.displayName || camera.title}`);
+      const count = cameraAnnotation(camera.id)[currentCollection()].length + 1;
+      areaId.value = `${prefix}_${areaType.value}_${count}`;
+      areaLabel.value = `${role === "include" ? "Include" : "Exclude"}: ${camera.terminal} ${camera.displayName || camera.title} ${areaType.value.replaceAll("_", " ")}`;
+      vehicleCapacity.value = "";
+    }
+
+    function save() {
+      localStorage.setItem(storageKey, JSON.stringify(state));
+      renderExport();
+      renderSummary();
+      populateCameras(cameraSelect.value);
+    }
+
+    function frameWidth(camera) {
+      return camera.actualWidth || camera.image.width;
+    }
+
+    function frameHeight(camera) {
+      return camera.actualHeight || camera.image.height;
+    }
+
+    function setActualFrameSize(camera) {
+      if (!img.naturalWidth || !img.naturalHeight) return;
+      camera.actualWidth = img.naturalWidth;
+      camera.actualHeight = img.naturalHeight;
+    }
+
+    function normalized(points, camera) {
+      return points.map(([x, y]) => [
+        Number((x / frameWidth(camera)).toFixed(4)),
+        Number((y / frameHeight(camera)).toFixed(4))
+      ]);
+    }
+
+    function denormalized(points, camera) {
+      return points.map(([x, y]) => [x * frameWidth(camera), y * frameHeight(camera)]);
+    }
+
+    function clampZoom(value) {
+      return Math.max(0.25, Math.min(4, Number(value) || 1));
+    }
+
+    function applyZoom() {
+      const camera = selectedCamera();
+      zoom = clampZoom(zoom);
+      canvas.style.width = `${frameWidth(camera) * zoom}px`;
+      canvas.style.height = `${frameHeight(camera) * zoom}px`;
+      zoomSelect.value = [...zoomSelect.options].some((option) => Number(option.value) === zoom) ? String(zoom) : "custom";
+      zoomStatus.textContent = `${Math.round(zoom * 100)}%`;
+      localStorage.setItem(`${storageKey}-zoom`, String(zoom));
+    }
+
+    function setZoom(value) {
+      zoom = clampZoom(value);
+      applyZoom();
+    }
+
+    function fitZoomToWidth() {
+      const camera = selectedCamera();
+      const availableWidth = Math.max(240, document.querySelector("section").clientWidth - 36);
+      setZoom(availableWidth / frameWidth(camera));
+    }
+
+    function stepZoom(direction) {
+      const steps = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4];
+      const next = direction > 0 ? steps.find((step) => step > zoom + 0.001) : [...steps].reverse().find((step) => step < zoom - 0.001);
+      setZoom(next || zoom);
+    }
+
+    function distance(a, b) {
+      return Math.hypot(a[0] - b[0], a[1] - b[1]);
+    }
+
+    function nearestVertex(points, point, threshold) {
+      let best = { index: -1, distance: Infinity };
+      points.forEach((candidate, index) => {
+        const candidateDistance = distance(candidate, point);
+        if (candidateDistance < best.distance) best = { index, distance: candidateDistance };
+      });
+      return best.distance <= threshold ? best : null;
+    }
+
+    function distanceToSegment(point, start, end) {
+      const dx = end[0] - start[0];
+      const dy = end[1] - start[1];
+      if (dx === 0 && dy === 0) return distance(point, start);
+      const t = Math.max(0, Math.min(1, ((point[0] - start[0]) * dx + (point[1] - start[1]) * dy) / (dx * dx + dy * dy)));
+      return distance(point, [start[0] + t * dx, start[1] + t * dy]);
+    }
+
+    function nearestEdge(points, point, threshold) {
+      let best = { index: -1, distance: Infinity };
+      points.forEach((start, index) => {
+        const end = points[(index + 1) % points.length];
+        const candidateDistance = distanceToSegment(point, start, end);
+        if (candidateDistance < best.distance) best = { index: index + 1, distance: candidateDistance };
+      });
+      return best.distance <= threshold ? best : null;
+    }
+
+    function pointInPolygon(point, polygon) {
+      let inside = false;
+      for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+        const xi = polygon[i][0];
+        const yi = polygon[i][1];
+        const xj = polygon[j][0];
+        const yj = polygon[j][1];
+        const intersects = ((yi > point[1]) !== (yj > point[1])) && (point[0] < ((xj - xi) * (point[1] - yi)) / (yj - yi || Number.EPSILON) + xi);
+        if (intersects) inside = !inside;
+      }
+      return inside;
+    }
+
+    function polygonHit(point) {
+      const camera = selectedCamera();
+      const annotation = cameraAnnotation(camera.id);
+      const rows = [
+        ...annotation.allowedAreas.map((area, index) => ({ area, index, collection: "allowedAreas" })),
+        ...annotation.excludedAreas.map((area, index) => ({ area, index, collection: "excludedAreas" }))
+      ];
+      for (const row of rows.reverse()) {
+        if (pointInPolygon(point, denormalized(row.area.polygon, camera))) return row;
+      }
+      return null;
+    }
+
+    function updateEditingPolygon(points) {
+      const area = editingArea();
+      if (!area) return;
+      area.polygon = normalized(points, selectedCamera());
+      persistAnnotations();
+    }
+
+    function drawEditHandles(camera) {
+      const area = editingArea();
+      if (!area) return;
+      const points = denormalized(area.polygon, camera);
+      drawPolygon(points, "#ffffff", area.label || area.id, true);
+      points.forEach(([x, y], index) => {
+        ctx.beginPath();
+        ctx.arc(x, y, index === selectedVertex ? 4.5 : 3, 0, Math.PI * 2);
+        ctx.fillStyle = index === selectedVertex ? "#facc15" : "#ffffff";
+        ctx.fill();
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = "#020617";
+        ctx.stroke();
+        ctx.font = "bold 8px system-ui";
+        ctx.lineWidth = 1.5;
+        ctx.strokeText(String(index + 1), x + 5, y + 3);
+        ctx.fillStyle = "#facc15";
+        ctx.fillText(String(index + 1), x + 5, y + 3);
+      });
+    }
+
+    function polygonBounds(points) {
+      const xs = points.map(([x]) => x);
+      const ys = points.map(([, y]) => y);
+      const minX = Math.min(...xs);
+      const maxX = Math.max(...xs);
+      const minY = Math.min(...ys);
+      const maxY = Math.max(...ys);
+      return { minX, maxX, minY, maxY, center: [(minX + maxX) / 2, (minY + maxY) / 2] };
+    }
+
+    function polygonCentroid(points) {
+      let area = 0;
+      let cx = 0;
+      let cy = 0;
+      for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+        const cross = points[j][0] * points[i][1] - points[i][0] * points[j][1];
+        area += cross;
+        cx += (points[j][0] + points[i][0]) * cross;
+        cy += (points[j][1] + points[i][1]) * cross;
+      }
+      if (Math.abs(area) < 0.001) return polygonBounds(points).center;
+      return [cx / (3 * area), cy / (3 * area)];
+    }
+
+    function boxesOverlap(a, b, padding = 3) {
+      return !(a.right + padding < b.left || a.left - padding > b.right || a.bottom + padding < b.top || a.top - padding > b.bottom);
+    }
+
+    function labelBox(center, width, height) {
+      return {
+        left: center[0] - width / 2,
+        right: center[0] + width / 2,
+        top: center[1] - height / 2,
+        bottom: center[1] + height / 2
+      };
+    }
+
+    function labelCandidates(points) {
+      const bounds = polygonBounds(points);
+      const centroid = polygonCentroid(points);
+      const candidates = [centroid, bounds.center];
+      const columns = 5;
+      const rows = 5;
+      for (let row = 1; row < rows; row++) {
+        for (let column = 1; column < columns; column++) {
+          candidates.push([
+            bounds.minX + ((bounds.maxX - bounds.minX) * column) / columns,
+            bounds.minY + ((bounds.maxY - bounds.minY) * row) / rows
+          ]);
+        }
+      }
+      return candidates
+        .filter(([x, y], index, all) => all.findIndex(([otherX, otherY]) => Math.abs(otherX - x) < 0.5 && Math.abs(otherY - y) < 0.5) === index)
+        .sort((a, b) => distance(a, centroid) - distance(b, centroid));
+    }
+
+    function drawPlacedLabel(points, color, label, closed) {
+      ctx.font = "bold 10px system-ui";
+      const width = ctx.measureText(label).width;
+      const height = 12;
+      const candidates = closed ? labelCandidates(points).filter((candidate) => pointInPolygon(candidate, points)) : [points[Math.max(0, points.length - 1)]];
+      const fallback = candidates[0] || polygonBounds(points).center;
+      const center = candidates.find((candidate) => !placedLabelBoxes.some((box) => boxesOverlap(labelBox(candidate, width, height), box))) || fallback;
+      const box = labelBox(center, width, height);
+      placedLabelBoxes.push(box);
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = "#020617";
+      ctx.strokeText(label, box.left, center[1] + height / 3);
+      ctx.fillStyle = color;
+      ctx.fillText(label, box.left, center[1] + height / 3);
+    }
+
+    function drawPolygon(points, color, label, closed) {
+      if (!points.length) return;
+      ctx.beginPath();
+      points.forEach(([x, y], index) => {
+        if (index === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      if (closed) ctx.closePath();
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = color;
+      ctx.stroke();
+      if (closed) {
+        ctx.fillStyle = `${color}40`;
+        ctx.fill();
+      }
+      points.forEach(([x, y]) => {
+        ctx.beginPath();
+        ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = "#020617";
+        ctx.stroke();
+      });
+      if (label) drawPlacedLabel(points, color, label, closed);
+    }
+
+    // draw detector response boxes
+    function drawDetections(camera) {
+      // camera-scoped overlay guard
+      if (detectionCameraId !== camera.id || detectionImageUrl !== img.src || !detections.length) return;
+      ctx.font = "bold 10px system-ui";
+      detections.filter((detection) => isDetectionCountable(detection, camera)).forEach((detection) => {
+        const box = detection.box;
+        // response box guard
+        if (!box) return;
+        const x = box.x * frameWidth(camera);
+        const y = box.y * frameHeight(camera);
+        const width = box.width * frameWidth(camera);
+        const height = box.height * frameHeight(camera);
+        const label = `${detection.label || "vehicle"} ${Math.round((detection.confidence || 0) * 100)}%`;
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = "#facc15";
+        ctx.strokeRect(x, y, width, height);
+        const labelWidth = ctx.measureText(label).width + 6;
+        ctx.fillStyle = "#020617";
+        ctx.fillRect(x, Math.max(0, y - 14), labelWidth, 14);
+        ctx.fillStyle = "#facc15";
+        ctx.fillText(label, x + 3, Math.max(10, y - 3));
+      });
+    }
+
+    // keep detector overlays countable
+    function isDetectionCountable(detection, camera) {
+      // response box guard
+      if (!detection.box) return false;
+      const annotation = cameraAnnotation(camera.id);
+      const center = [
+        detection.box.x + detection.box.width / 2,
+        detection.box.y + detection.box.height / 2
+      ];
+      // inclusion guard
+      if (!annotation.allowedAreas.some((area) => pointInPolygon(center, area.polygon))) return false;
+      return !annotation.excludedAreas.some((area) => pointInPolygon(center, area.polygon));
+    }
+
+    function render() {
+      const camera = selectedCamera();
+      setActualFrameSize(camera);
+      canvas.width = frameWidth(camera);
+      canvas.height = frameHeight(camera);
+      applyZoom();
+      cameraTitle.textContent = `${camera.id} — ${camera.terminal}: ${camera.displayName || camera.title}`;
+      cameraMeta.textContent = `${frameWidth(camera)}×${frameHeight(camera)} actual; ${camera.image.url}`;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (img.complete && img.naturalWidth) ctx.drawImage(img, 0, 0, frameWidth(camera), frameHeight(camera));
+      placedLabelBoxes = [];
+      const annotation = cameraAnnotation(camera.id);
+      reviewedInput.checked = annotation.reviewed;
+      annotation.allowedAreas.forEach((area, index) => drawPolygon(denormalized(area.polygon, camera), colors.include[index % colors.include.length], area.label || area.id, true));
+      annotation.excludedAreas.forEach((area, index) => drawPolygon(denormalized(area.polygon, camera), colors.exclude[index % colors.exclude.length], area.label || area.id, true));
+      drawDetections(camera);
+      drawEditHandles(camera);
+      drawPolygon(currentPoints, "#ffffff", "current", false);
+      const area = editingArea();
+      currentBox.textContent = drawing ? `${currentPoints.length} point(s) in current polygon.` : area ? `Editing ${area.label || area.id}. Drag points; click an edge to add a point; update details above.` : "No polygon in progress.";
+      document.getElementById("undoBtn").disabled = !drawing || currentPoints.length === 0;
+      document.getElementById("finishBtn").disabled = !drawing || currentPoints.length < 3;
+      document.getElementById("cancelBtn").disabled = !drawing;
+      document.getElementById("doneEditBtn").disabled = !editing;
+      document.getElementById("deleteVertexBtn").disabled = !editing || selectedVertex === null || (area?.polygon.length || 0) <= 3;
+      document.getElementById("updateDetailsBtn").disabled = !editing;
+      renderList();
+      renderSummary();
+    }
+
+    function renderList() {
+      const camera = selectedCamera();
+      const annotation = cameraAnnotation(camera.id);
+      polyList.innerHTML = "";
+      const rows = [
+        ...annotation.allowedAreas.map((area, index) => ({ area, index, role: "include", collection: "allowedAreas" })),
+        ...annotation.excludedAreas.map((area, index) => ({ area, index, role: "exclude", collection: "excludedAreas" }))
+      ];
+      if (!rows.length) {
+        polyList.innerHTML = `<div class="hint">No polygons saved for ${camera.id} yet.</div>`;
+        return;
+      }
+      rows.forEach(({ area, index, role, collection }) => {
+        const div = document.createElement("div");
+        div.className = `poly ${role === "exclude" ? "exclusion" : ""}`;
+        const isEditing = editing?.collection === collection && editing?.index === index;
+        div.innerHTML = `<b>${role}: ${area.id}</b><br>${area.type}; ${area.polygon.length} points<br>${area.label}<br><button class="secondary small" data-collection="${collection}" data-edit="${index}">${isEditing ? "Done" : "Edit"}</button> <button class="danger small" data-collection="${collection}" data-delete="${index}">Delete</button>`;
+        polyList.appendChild(div);
+      });
+      polyList.querySelectorAll("[data-edit]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const index = Number(button.dataset.edit);
+          if (editing?.collection === button.dataset.collection && editing?.index === index) clearEditing();
+          else beginEditing(button.dataset.collection, index);
+          render();
+        });
+      });
+      polyList.querySelectorAll("[data-delete]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const index = Number(button.dataset.delete);
+          cameraAnnotation(camera.id)[button.dataset.collection].splice(index, 1);
+          if (editing?.collection === button.dataset.collection && editing?.index === index) clearEditing();
+          save();
+          render();
+        });
+      });
+    }
+
+    function cameraHas(camera, kind) {
+      const annotation = cameraAnnotation(camera.id);
+      const includes = annotation.allowedAreas.length;
+      const exclusions = annotation.excludedAreas.length;
+      if (kind === "todo") return includes + exclusions === 0;
+      if (kind === "hasAny") return includes + exclusions > 0;
+      if (kind === "hasIncludes") return includes > 0;
+      if (kind === "hasExclusions") return exclusions > 0;
+      if (kind === "reviewed") return annotation.reviewed;
+      if (kind === "unreviewed") return !annotation.reviewed;
+      return true;
+    }
+
+    function populateCameras(preferredId) {
+      filteredCameras = catalog.filter((camera) => cameraHas(camera, filterSelect.value));
+      if (!filteredCameras.length) filteredCameras = [...catalog];
+      cameraSelect.innerHTML = "";
+      filteredCameras.forEach((camera) => {
+        const annotation = cameraAnnotation(camera.id);
+        const option = document.createElement("option");
+        option.value = camera.id;
+        option.textContent = `${camera.id} — ${camera.terminal}: ${camera.displayName || camera.title} (${annotation.allowedAreas.length} in / ${annotation.excludedAreas.length} ex / ${annotation.reviewed ? "reviewed" : "unreviewed"})`;
+        cameraSelect.appendChild(option);
+      });
+      const stillVisible = filteredCameras.some((camera) => camera.id === preferredId);
+      cameraSelect.value = stillVisible ? preferredId : filteredCameras[0].id;
+    }
+
+    function renderSummary() {
+      const annotated = catalog.filter((camera) => cameraHas(camera, "hasAny")).length;
+      const includeCount = catalog.reduce((sum, camera) => sum + cameraAnnotation(camera.id).allowedAreas.length, 0);
+      const excludeCount = catalog.reduce((sum, camera) => sum + cameraAnnotation(camera.id).excludedAreas.length, 0);
+      const reviewedCount = catalog.filter((camera) => cameraAnnotation(camera.id).reviewed).length;
+      summary.innerHTML = `<b>${annotated}/${catalog.length}</b> cameras annotated<br><b>${reviewedCount}/${catalog.length}</b> cameras reviewed<br><b>${includeCount}</b> include polygons<br><b>${excludeCount}</b> exclusion polygons`;
+    }
+
+    function setSaveStatus(message) {
+      saveStatus.textContent = message;
+    }
+
+    async function loadDefaultAnnotations() {
+      try {
+        const response = await fetch(`${annotationFileName}?_=${Date.now()}`, { cache: "no-store" });
+        if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+        const imported = normalizeImport(await response.json());
+        state.annotations = imported.annotations;
+        localStorage.setItem(storageKey, JSON.stringify(state));
+        setSaveStatus(`Loaded ${annotationDisplayName}.`);
+      } catch (error) {
+        setSaveStatus(`Could not auto-load ${annotationDisplayName}. If you opened the HTML directly, run run-annotator.sh so Save can overwrite the app data file.`);
+      }
+    }
+
+    async function saveDefaultAnnotations() {
+      renderExport();
+      try {
+        const response = await fetch("/save-annotations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: jsonOut.value
+        });
+        if (!response.ok) throw new Error(await response.text());
+        setSaveStatus(`Saved ${annotationDisplayName}.`);
+      } catch (error) {
+        setSaveStatus(`Save needs the local server. Run run-annotator.sh, then open http://127.0.0.1:8787/. Backup download still works.`);
+      }
+    }
+
+    function exportPayload() {
+      const cameras = {};
+      catalog.forEach((camera) => {
+        const annotation = cameraAnnotation(camera.id);
+        cameras[camera.id] = {
+          terminal: camera.terminal,
+          terminalId: camera.terminalId,
+          displayName: camera.displayName || camera.title,
+          title: camera.title,
+          frameSize: { width: frameWidth(camera), height: frameHeight(camera) },
+          imageUrl: camera.image.url,
+          reviewed: annotation.reviewed,
+          requiresDaylightReview: false,
+          allowedAreas: annotation.allowedAreas,
+          excludedAreas: annotation.excludedAreas,
+          excludedAreaNotes: ["Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."]
+        };
+      });
+      return {
+        schemaVersion: 2,
+        coordinateSpace: "normalized-image",
+        pointFormat: ["x", "y"],
+        origin: "top-left",
+        status: "manual-partial-review",
+        source: {
+          annotatedAt: new Date().toISOString(),
+          notes: "Manual polygons drawn in ferry-fyi-camera-polygon-annotator. allowedAreas are countable queue/holding regions. excludedAreas are holes/breaks/ignore regions that split or suppress detection."
+        },
+        reviewedCameraIds: catalog.filter((camera) => cameraAnnotation(camera.id).reviewed).map((camera) => camera.id),
+        cameraIds: catalog.map((camera) => camera.id),
+        cameras
+      };
+    }
+
+    function renderExport() {
+      jsonOut.value = JSON.stringify(exportPayload(), null, 2);
+    }
+
+    function loadCamera(refresh = false) {
+      const camera = selectedCamera();
+      // clear stale detector response
+      detections = [];
+      detectionCameraId = null;
+      detectionImageUrl = null;
+      clearDetectionsBtn.disabled = true;
+      detectionStatus.textContent = "Load a camera image, then detect vehicles with the local container.";
+      currentPoints = [];
+      drawing = false;
+      clearEditing();
+      defaultsFor(camera);
+      img.onload = render;
+      img.onerror = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        currentBox.textContent = "Image failed to load. Try Refresh image.";
+        renderList();
+      };
+      img.src = camera.image.url + (camera.image.url.includes("?") ? "&" : "?") + `_=${refresh ? Date.now() : Math.floor(Date.now() / 60000)}`;
+      renderExport();
+    }
+
+    // request detections for displayed image
+    async function detectCurrentImage() {
+      const camera = selectedCamera();
+      const imageUrl = img.src;
+      // loaded image guard
+      if (!img.src) return;
+      detectImageBtn.disabled = true;
+      detectionStatus.textContent = "Sending current image to local detector...";
+      try {
+        const response = await fetch("/detect-current-image", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            imageUrl,
+            allowedAreas: cameraAnnotation(camera.id).allowedAreas,
+            excludedAreas: cameraAnnotation(camera.id).excludedAreas
+          })
+        });
+        const payload = await response.json();
+        // detector payload guard
+        if (!response.ok || !Array.isArray(payload.detections)) throw new Error(payload.error || "Detector response did not include detections.");
+        // ignore stale camera response
+        if (selectedCamera().id !== camera.id || img.src !== imageUrl) return;
+        // retain response for active camera
+        detections = payload.detections;
+        detectionCameraId = camera.id;
+        detectionImageUrl = imageUrl;
+        clearDetectionsBtn.disabled = false;
+        const countableDetections = detections.filter((detection) => isDetectionCountable(detection, camera));
+        detectionStatus.textContent = `${countableDetections.length} countable detection${countableDetections.length === 1 ? "" : "s"} overlaid for camera ${camera.id}.`;
+        render();
+      } catch (error) {
+        detectionStatus.textContent = `Could not reach the local detector. Run yarn container:up, then try again. ${error.message || ""}`;
+      } finally {
+        detectImageBtn.disabled = false;
+      }
+    }
+
+    // remove active detector overlay
+    function clearDetections() {
+      detections = [];
+      detectionCameraId = null;
+      detectionImageUrl = null;
+      clearDetectionsBtn.disabled = true;
+      detectionStatus.textContent = "Detection overlay cleared.";
+      render();
+    }
+
+    function canvasPoint(event) {
+      const camera = selectedCamera();
+      const rect = canvas.getBoundingClientRect();
+      return [
+        Math.max(0, Math.min(frameWidth(camera), ((event.clientX - rect.left) / rect.width) * frameWidth(camera))),
+        Math.max(0, Math.min(frameHeight(camera), ((event.clientY - rect.top) / rect.height) * frameHeight(camera)))
+      ];
+    }
+
+    document.getElementById("startBtn").addEventListener("click", () => {
+      clearEditing();
+      drawing = true;
+      currentPoints = [];
+      render();
+    });
+
+    canvas.addEventListener("mousedown", (event) => {
+      if (drawing || !editing) return;
+      const area = editingArea();
+      if (!area) return;
+      const point = canvasPoint(event);
+      const points = denormalized(area.polygon, selectedCamera());
+      const nearest = nearestVertex(points, point, 10 / zoom);
+      if (!nearest) return;
+      selectedVertex = nearest.index;
+      draggingVertex = nearest.index;
+      movedDuringDrag = false;
+      suppressNextClick = true;
+      render();
+    });
+
+    canvas.addEventListener("mousemove", (event) => {
+      if (draggingVertex === null || !editing) return;
+      const area = editingArea();
+      if (!area) return;
+      const points = denormalized(area.polygon, selectedCamera());
+      points[draggingVertex] = canvasPoint(event);
+      movedDuringDrag = true;
+      updateEditingPolygon(points);
+      render();
+    });
+
+    window.addEventListener("mouseup", () => {
+      if (draggingVertex === null) return;
+      draggingVertex = null;
+      suppressNextClick = movedDuringDrag;
+      movedDuringDrag = false;
+    });
+
+    canvas.addEventListener("click", (event) => {
+      if (suppressNextClick) {
+        suppressNextClick = false;
+        return;
+      }
+      if (drawing) {
+        currentPoints.push(canvasPoint(event));
+        render();
+        return;
+      }
+      const point = canvasPoint(event);
+      if (!editing) {
+        const hit = polygonHit(point);
+        if (!hit) return;
+        beginEditing(hit.collection, hit.index);
+        render();
+        return;
+      }
+      const area = editingArea();
+      if (!area) return;
+      const points = denormalized(area.polygon, selectedCamera());
+      const vertex = nearestVertex(points, point, 10 / zoom);
+      if (vertex) {
+        if (event.shiftKey && points.length > 3) {
+          points.splice(vertex.index, 1);
+          selectedVertex = null;
+          updateEditingPolygon(points);
+        } else selectedVertex = vertex.index;
+        render();
+        return;
+      }
+      const edge = nearestEdge(points, point, 10 / zoom);
+      if (edge) {
+        points.splice(edge.index, 0, point);
+        selectedVertex = edge.index;
+        updateEditingPolygon(points);
+        render();
+        return;
+      }
+      const hit = polygonHit(point);
+      if (!hit) return;
+      beginEditing(hit.collection, hit.index);
+      render();
+    });
+
+    document.getElementById("undoBtn").addEventListener("click", () => {
+      currentPoints.pop();
+      render();
+    });
+
+    document.getElementById("cancelBtn").addEventListener("click", () => {
+      drawing = false;
+      currentPoints = [];
+      render();
+    });
+
+    document.getElementById("updateDetailsBtn").addEventListener("click", () => {
+      const area = editingArea();
+      if (!area || !editing) return;
+      const nextCollection = currentCollection();
+      area.id = areaId.value.trim() || area.id;
+      area.type = areaType.value;
+      area.label = areaLabel.value.trim() || area.id;
+      const capacity = Number(vehicleCapacity.value);
+      // capacity field guard
+      if (Number.isFinite(capacity) && capacity > 0 && nextCollection === "allowedAreas") area.vehicleCapacity = capacity;
+      else delete area.vehicleCapacity;
+      if (nextCollection !== editing.collection) {
+        cameraAnnotation(selectedCamera().id)[editing.collection].splice(editing.index, 1);
+        cameraAnnotation(selectedCamera().id)[nextCollection].push(area);
+        editing = { collection: nextCollection, index: cameraAnnotation(selectedCamera().id)[nextCollection].length - 1 };
+      }
+      save();
+      populateDetailFields(area, editing.collection);
+      render();
+    });
+
+    document.getElementById("doneEditBtn").addEventListener("click", () => {
+      clearEditing();
+      render();
+    });
+
+    document.getElementById("deleteVertexBtn").addEventListener("click", () => {
+      const area = editingArea();
+      if (!area || selectedVertex === null || area.polygon.length <= 3) return;
+      const points = denormalized(area.polygon, selectedCamera());
+      points.splice(selectedVertex, 1);
+      selectedVertex = null;
+      updateEditingPolygon(points);
+      render();
+    });
+
+    document.getElementById("finishBtn").addEventListener("click", () => {
+      const camera = selectedCamera();
+      const collection = currentCollection();
+      const annotation = cameraAnnotation(camera.id);
+      annotation[collection].push({
+        id: areaId.value.trim() || `manual_${camera.id}_${collection}_${annotation[collection].length + 1}`,
+        type: areaType.value,
+        label: areaLabel.value.trim() || areaId.value.trim(),
+        polygon: normalized(currentPoints, camera),
+        ...(collection === "allowedAreas" && Number(vehicleCapacity.value) > 0 ? { vehicleCapacity: Number(vehicleCapacity.value) } : {})
+      });
+      annotation.reviewed = true;
+      drawing = false;
+      currentPoints = [];
+      clearEditing();
+      save();
+      defaultsFor(camera);
+      render();
+    });
+
+    document.getElementById("clearCameraBtn").addEventListener("click", () => {
+      if (!confirm(`Clear all polygons for ${selectedCamera().id}?`)) return;
+      state.annotations[selectedCamera().id] = { allowedAreas: [], excludedAreas: [], reviewed: false };
+      clearEditing();
+      save();
+      render();
+    });
+
+    document.getElementById("clearAllBtn").addEventListener("click", () => {
+      if (!confirm("Clear all annotations in browser autosave? Only do this after saving a JSON backup.")) return;
+      state.annotations = {};
+      clearEditing();
+      save();
+      render();
+    });
+
+    reviewedInput.addEventListener("change", () => {
+      cameraAnnotation(selectedCamera().id).reviewed = reviewedInput.checked;
+      save();
+      render();
+    });
+
+    document.getElementById("saveBtn").addEventListener("click", saveDefaultAnnotations);
+
+    document.getElementById("copyBtn").addEventListener("click", async () => {
+      renderExport();
+      await navigator.clipboard.writeText(jsonOut.value);
+      alert("Copied JSON to clipboard.");
+    });
+
+    document.getElementById("downloadBtn").addEventListener("click", () => {
+      renderExport();
+      const blob = new Blob([jsonOut.value], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "camera-detection-areas.backup.json";
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    document.getElementById("loadFile").addEventListener("change", async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      const imported = normalizeImport(JSON.parse(await file.text()));
+      state.annotations = imported.annotations;
+      clearEditing();
+      save();
+      setSaveStatus(`Loaded ${file.name}. Click Save app data JSON to overwrite ${annotationDisplayName}.`);
+      populateCameras(selectedCamera().id);
+      loadCamera(true);
+    });
+
+    document.getElementById("prevBtn").addEventListener("click", () => {
+      const index = filteredCameras.findIndex((camera) => camera.id === cameraSelect.value);
+      cameraSelect.value = filteredCameras[(index - 1 + filteredCameras.length) % filteredCameras.length].id;
+      loadCamera();
+    });
+    document.getElementById("nextBtn").addEventListener("click", () => {
+      const index = filteredCameras.findIndex((camera) => camera.id === cameraSelect.value);
+      cameraSelect.value = filteredCameras[(index + 1) % filteredCameras.length].id;
+      loadCamera();
+    });
+    document.getElementById("refreshImageBtn").addEventListener("click", () => loadCamera(true));
+    detectImageBtn.addEventListener("click", detectCurrentImage);
+    clearDetectionsBtn.addEventListener("click", clearDetections);
+    document.getElementById("zoomOutBtn").addEventListener("click", () => stepZoom(-1));
+    document.getElementById("zoomFitBtn").addEventListener("click", fitZoomToWidth);
+    document.getElementById("zoomActualBtn").addEventListener("click", () => setZoom(1));
+    document.getElementById("zoomInBtn").addEventListener("click", () => stepZoom(1));
+    zoomSelect.addEventListener("change", () => setZoom(zoomSelect.value));
+    cameraSelect.addEventListener("change", () => loadCamera());
+    filterSelect.addEventListener("change", () => {
+      populateCameras(cameraSelect.value);
+      loadCamera();
+    });
+    polygonRole.addEventListener("change", () => updateTypeOptions(!editing));
+    areaType.addEventListener("change", () => {
+      if (!editing) defaultsFor(selectedCamera());
+    });
+
+    async function initialize() {
+      updateTypeOptions();
+      await loadDefaultAnnotations();
+      populateCameras(catalog[0].id);
+      loadCamera();
+    }
+
+    initialize();
+  </script>
+</body>
+</html>

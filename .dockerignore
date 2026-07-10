@@ -58,3 +58,6 @@ infra/aws/terraform/crash.*.log
 .idea
 .DS_Store
 *.swp
+
+# local container env overrides
+local-container.env

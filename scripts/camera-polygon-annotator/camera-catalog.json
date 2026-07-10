@@ -1,0 +1,1120 @@
+{
+  "generatedFrom": "shared/data/wsf-core.json",
+  "generatedAt": "2026-06-21T06:25:48.518Z",
+  "cameraCount": 61,
+  "cameras": [
+    {
+      "id": "9048",
+      "terminalId": "1",
+      "terminal": "Anacortes",
+      "title": "WSF Anacortes Ferry Holding",
+      "displayName": "Anacortes Ferry Holding",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/anacortes/holding/anahold.jpg",
+        "width": 400,
+        "height": 245
+      },
+      "location": {
+        "latitude": 48.503437,
+        "longitude": -122.679509
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9047",
+      "terminalId": "1",
+      "terminal": "Anacortes",
+      "title": "WSF Anacortes Ferry Terminal",
+      "displayName": "Anacortes Ferry Terminal",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/anacortes/terminal/anaterm.jpg",
+        "width": 400,
+        "height": 245
+      },
+      "location": {
+        "latitude": 48.505975,
+        "longitude": -122.679048
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9049",
+      "terminalId": "1",
+      "terminal": "Anacortes",
+      "title": "WSF Anacortes Ferry Terminal Rd",
+      "displayName": "Anacortes Ferry Terminal Rd",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/anacortes/road/anaroad.jpg",
+        "width": 400,
+        "height": 245
+      },
+      "location": {
+        "latitude": 48.501976,
+        "longitude": -122.679337
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9478",
+      "terminalId": "3",
+      "terminal": "Bainbridge Island",
+      "title": "SR 305 at MP 0.2: High School Rd North",
+      "displayName": "SR 305 at MP 0.2: High School Rd North",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/orflow/305vc00028.jpg",
+        "width": 335,
+        "height": 249
+      },
+      "location": {
+        "latitude": 47.635773,
+        "longitude": -122.515529
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9479",
+      "terminalId": "3",
+      "terminal": "Bainbridge Island",
+      "title": "SR 305 at MP 0.2: High School Rd South",
+      "displayName": "SR 305 at MP 0.2: High School Rd South",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/orflow/305vc00029.jpg",
+        "width": 335,
+        "height": 249
+      },
+      "location": {
+        "latitude": 47.635773,
+        "longitude": -122.515529
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9477",
+      "terminalId": "3",
+      "terminal": "Bainbridge Island",
+      "title": "SR 305 at MP 0.2: Winslow Way North",
+      "displayName": "SR 305 at MP 0.2: Winslow Way North",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/orflow/305vc00023.jpg",
+        "width": 335,
+        "height": 209
+      },
+      "location": {
+        "latitude": 47.624849,
+        "longitude": -122.514133
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9476",
+      "terminalId": "3",
+      "terminal": "Bainbridge Island",
+      "title": "SR 305 at MP 0.2: Winslow Way South",
+      "displayName": "SR 305 at MP 0.2: Winslow Way South",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/orflow/305vc00022.jpg",
+        "width": 335,
+        "height": 209
+      },
+      "location": {
+        "latitude": 47.624849,
+        "longitude": -122.514133
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9040",
+      "terminalId": "3",
+      "terminal": "Bainbridge Island",
+      "title": "WSF Bainbridge Ferry Holding",
+      "displayName": "Bainbridge Ferry Holding",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/Bainbridge/Bainbridge.jpg",
+        "width": 400,
+        "height": 421
+      },
+      "location": {
+        "latitude": 47.62314,
+        "longitude": -122.5112
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9037",
+      "terminalId": "4",
+      "terminal": "Bremerton",
+      "title": "WSF Bremerton Ferry Holding",
+      "displayName": "Bremerton Ferry Holding",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/bremerton/holding/holding.jpg",
+        "width": 400,
+        "height": 246
+      },
+      "location": {
+        "latitude": 47.56265,
+        "longitude": -122.62535
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9173",
+      "terminalId": "5",
+      "terminal": "Clinton",
+      "title": "WSF Clinton Dock",
+      "displayName": "Clinton Dock",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/clinton/boothdock.jpg",
+        "width": 400,
+        "height": 137
+      },
+      "location": {
+        "latitude": 47.974813,
+        "longitude": -122.351516
+      },
+      "owner": {
+        "name": "Whidbeytel.com ",
+        "url": "https://www.whidbeytel.com/cams/clinton/"
+      },
+      "isActive": true
+    },
+    {
+      "id": "9174",
+      "terminalId": "5",
+      "terminal": "Clinton",
+      "title": "WSF Clinton E SR 525",
+      "displayName": "Clinton E SR 525",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/clinton/clinteast.jpg",
+        "width": 400,
+        "height": 140
+      },
+      "location": {
+        "latitude": 47.97919,
+        "longitude": -122.356762
+      },
+      "owner": {
+        "name": "Whidbeytel.com ",
+        "url": "https://www.whidbeytel.com/cams/clinton/"
+      },
+      "isActive": true
+    },
+    {
+      "id": "9166",
+      "terminalId": "5",
+      "terminal": "Clinton",
+      "title": "WSF Clinton Terminal",
+      "displayName": "Clinton Terminal",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/clinton/terminal/clinton.jpg",
+        "width": 400,
+        "height": 421
+      },
+      "location": {
+        "latitude": 47.974718,
+        "longitude": -122.352079
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9172",
+      "terminalId": "5",
+      "terminal": "Clinton",
+      "title": "WSF Clinton Uphill",
+      "displayName": "Clinton Uphill",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/clinton/boothhill.jpg",
+        "width": 400,
+        "height": 137
+      },
+      "location": {
+        "latitude": 47.974718,
+        "longitude": -122.352079
+      },
+      "owner": {
+        "name": "Whidbeytel.com",
+        "url": "https://www.whidbeytel.com/cams/clinton/"
+      },
+      "isActive": true
+    },
+    {
+      "id": "9175",
+      "terminalId": "5",
+      "terminal": "Clinton",
+      "title": "WSF Clinton W SR 525",
+      "displayName": "Clinton W SR 525",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/clinton/clintwest.jpg",
+        "width": 400,
+        "height": 140
+      },
+      "location": {
+        "latitude": 47.979638,
+        "longitude": -122.359076
+      },
+      "owner": {
+        "name": "Whidbeytel.com",
+        "url": "https://www.whidbeytel.com/cams/clinton/"
+      },
+      "isActive": true
+    },
+    {
+      "id": "9170",
+      "terminalId": "11",
+      "terminal": "Coupeville ",
+      "title": "WSF Coupeville Street",
+      "displayName": "Coupeville Street",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/Keystone/Street/keyStreet.jpg",
+        "width": 400,
+        "height": 245
+      },
+      "location": {
+        "latitude": 48.159349,
+        "longitude": -122.672701
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9169",
+      "terminalId": "11",
+      "terminal": "Coupeville ",
+      "title": "WSF Coupeville Terminal",
+      "displayName": "Coupeville Terminal",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/Keystone/terminal/keyterm.jpg",
+        "width": 400,
+        "height": 245
+      },
+      "location": {
+        "latitude": 48.159349,
+        "longitude": -122.672701
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9157",
+      "terminalId": "8",
+      "terminal": "Edmonds",
+      "title": "WSF Edmonds Holding",
+      "displayName": "Edmonds Holding",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/edmonds/holding.jpg",
+        "width": 400,
+        "height": 421
+      },
+      "location": {
+        "latitude": 47.809746,
+        "longitude": -122.383209
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9160",
+      "terminalId": "8",
+      "terminal": "Edmonds",
+      "title": "WSF Edmonds Pine",
+      "displayName": "Edmonds Pine",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/edmonds/104pine.jpg",
+        "width": 400,
+        "height": 246
+      },
+      "location": {
+        "latitude": 47.802181,
+        "longitude": -122.382463
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9159",
+      "terminalId": "8",
+      "terminal": "Edmonds",
+      "title": "WSF Edmonds Underpass",
+      "displayName": "Edmonds Underpass",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/edmonds/104underpass.jpg",
+        "width": 400,
+        "height": 246
+      },
+      "location": {
+        "latitude": 47.802073,
+        "longitude": -122.382307
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9156",
+      "terminalId": "8",
+      "terminal": "Edmonds",
+      "title": "WSF Edmonds VMS Sign",
+      "displayName": "Edmonds VMS Sign",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/edmonds/104vms_wts.jpg",
+        "width": 400,
+        "height": 294
+      },
+      "location": {
+        "latitude": 47.790573,
+        "longitude": -122.366986
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9155",
+      "terminalId": "8",
+      "terminal": "Edmonds",
+      "title": "WSF Edmonds W Dayton St",
+      "displayName": "Edmonds W Dayton St",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/edmonds/104dayton.jpg",
+        "width": 400,
+        "height": 294
+      },
+      "location": {
+        "latitude": 47.809182,
+        "longitude": -122.383213
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9038",
+      "terminalId": "9",
+      "terminal": "Fauntleroy",
+      "title": "WSF Fauntleroy Ferry Holding",
+      "displayName": "Fauntleroy Ferry Holding",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/fauntleroy/terminal/fauntleroy.jpg",
+        "width": 400,
+        "height": 245
+      },
+      "location": {
+        "latitude": 47.5232,
+        "longitude": -122.39359
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9404",
+      "terminalId": "9",
+      "terminal": "Fauntleroy",
+      "title": "WSF Fauntleroy Lincoln Park looking North",
+      "displayName": "Fauntleroy Lincoln Park looking North",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/fauntleroy/terminal/fauntlincoln.jpg",
+        "width": 400,
+        "height": 294
+      },
+      "location": {
+        "latitude": 47.530459,
+        "longitude": -122.392633
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9403",
+      "terminalId": "9",
+      "terminal": "Fauntleroy",
+      "title": "WSF Fauntleroy Trenton St looking North",
+      "displayName": "Fauntleroy Trenton St looking North",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/fauntleroy/terminal/faunttrenton.jpg",
+        "width": 400,
+        "height": 294
+      },
+      "location": {
+        "latitude": 47.524794,
+        "longitude": -122.392652
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9377",
+      "terminalId": "9",
+      "terminal": "Fauntleroy",
+      "title": "WSF Fauntleroy Way and Cloverdale St.",
+      "displayName": "Fauntleroy Way and Cloverdale St.",
+      "image": {
+        "url": "https://www.seattle.gov/trafficcams/images/Fauntleroy_SW_Cloverdale_NS.jpg",
+        "width": 400,
+        "height": 246
+      },
+      "location": {
+        "latitude": 47.526718,
+        "longitude": -122.392883
+      },
+      "owner": {
+        "name": "City of Seattle",
+        "url": "http://web6.seattle.gov/travelers/"
+      },
+      "isActive": true
+    },
+    {
+      "id": "9402",
+      "terminalId": "9",
+      "terminal": "Fauntleroy",
+      "title": "WSF Fauntleroy Way looking North",
+      "displayName": "Fauntleroy Way looking North",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/fauntleroy/terminal/fauntterminal.jpg",
+        "width": 400,
+        "height": 294
+      },
+      "location": {
+        "latitude": 47.52263,
+        "longitude": -122.392938
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "1233",
+      "terminalId": "10",
+      "terminal": "Friday Harbor",
+      "title": "WSF Friday Harbor Ferry Holding",
+      "displayName": "Friday Harbor Ferry Holding",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/fridayharbor/friholding.jpg",
+        "width": 400,
+        "height": 245
+      },
+      "location": {
+        "latitude": 48.5351,
+        "longitude": -123.0066
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9502",
+      "terminalId": "10",
+      "terminal": "Friday Harbor",
+      "title": "WSF Friday Harbor Upper Holding",
+      "displayName": "Friday Harbor Upper Holding",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/fridayharbor/upperholding.jpg",
+        "width": 400,
+        "height": 245
+      },
+      "location": {
+        "latitude": 48.533251,
+        "longitude": -123.014861
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9154",
+      "terminalId": "12",
+      "terminal": "Kingston",
+      "title": "WSF Kingston Barber",
+      "displayName": "Kingston Barber",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/orflow/104vc02314.jpg",
+        "width": 335,
+        "height": 244
+      },
+      "location": {
+        "latitude": 47.808285,
+        "longitude": -122.517503
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9152",
+      "terminalId": "12",
+      "terminal": "Kingston",
+      "title": "WSF Kingston Ferry Sign East",
+      "displayName": "Kingston Ferry Sign East",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/kingston/fse/fse.jpg",
+        "width": 400,
+        "height": 294
+      },
+      "location": {
+        "latitude": 47.80941,
+        "longitude": -122.52564
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9153",
+      "terminalId": "12",
+      "terminal": "Kingston",
+      "title": "WSF Kingston Ferry Sign West",
+      "displayName": "Kingston Ferry Sign West",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/kingston/fsw/fsw.jpg",
+        "width": 400,
+        "height": 294
+      },
+      "location": {
+        "latitude": 47.80941,
+        "longitude": -122.52564
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "10266",
+      "terminalId": "12",
+      "terminal": "Kingston",
+      "title": "WSF Kingston Lindvog Rd",
+      "displayName": "Kingston Lindvog Rd",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/orflow/104vc02390.jpg",
+        "width": 335,
+        "height": 244
+      },
+      "location": {
+        "latitude": 47.802667,
+        "longitude": -122.503472
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9813",
+      "terminalId": "12",
+      "terminal": "Kingston",
+      "title": "WSF Kingston SR 104 at Toll Booths",
+      "displayName": "Kingston SR 104 at Toll Booths",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/orflow/104vc02466.jpg",
+        "width": 335,
+        "height": 244
+      },
+      "location": {
+        "latitude": 47.797035,
+        "longitude": -122.496861
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9151",
+      "terminalId": "12",
+      "terminal": "Kingston",
+      "title": "WSF Kingston Terminal",
+      "displayName": "Kingston Terminal",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/orflow/104vc02465.jpg",
+        "width": 335,
+        "height": 209
+      },
+      "location": {
+        "latitude": 47.797124,
+        "longitude": -122.495519
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9692",
+      "terminalId": "13",
+      "terminal": "Lopez Island",
+      "title": "WSF Lopez Ferry Approach",
+      "displayName": "Lopez Ferry Approach",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/lopez/approach.jpg",
+        "width": 400,
+        "height": 246
+      },
+      "location": {
+        "latitude": 48.56895,
+        "longitude": -122.884565
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "10113",
+      "terminalId": "13",
+      "terminal": "Lopez Island",
+      "title": "WSF Lopez Ferry Holding Looking North",
+      "displayName": "Lopez Ferry Holding Looking North",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/lopez/holding3.jpg",
+        "width": 400,
+        "height": 321
+      },
+      "location": {
+        "latitude": 48.569207,
+        "longitude": -122.883996
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9693",
+      "terminalId": "13",
+      "terminal": "Lopez Island",
+      "title": "WSF Lopez Ferry Holding Looking South",
+      "displayName": "Lopez Ferry Holding Looking South",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/lopez/holding.jpg",
+        "width": 400,
+        "height": 321
+      },
+      "location": {
+        "latitude": 48.569207,
+        "longitude": -122.883996
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "10112",
+      "terminalId": "13",
+      "terminal": "Lopez Island",
+      "title": "WSF Lopez Ferry Holding Middle",
+      "displayName": "Lopez Ferry Holding Middle",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/lopez/holding2.jpg",
+        "width": 400,
+        "height": 321
+      },
+      "location": {
+        "latitude": 48.569207,
+        "longitude": -122.883996
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9162",
+      "terminalId": "14",
+      "terminal": "Mukilteo",
+      "title": "SR 525 at MP 6.9: 76th St SW North - WSF Mukilteo",
+      "displayName": "SR 525 at MP 6.9: 76th St SW North - WSF Mukilteo",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/nw/525vc00695.jpg",
+        "width": 335,
+        "height": 249
+      },
+      "location": {
+        "latitude": 47.928385,
+        "longitude": -122.300644
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9163",
+      "terminalId": "14",
+      "terminal": "Mukilteo",
+      "title": "SR 525 at MP 6.9: 76th St SW South - WSF Mukilteo",
+      "displayName": "SR 525 at MP 6.9: 76th St SW South - WSF Mukilteo",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/nw/525vc00694.jpg",
+        "width": 335,
+        "height": 249
+      },
+      "location": {
+        "latitude": 47.92825,
+        "longitude": -122.300562
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9161",
+      "terminalId": "14",
+      "terminal": "Mukilteo",
+      "title": "SR 525 at MP 7.4: Clover Ln - WSF Mukilteo",
+      "displayName": "SR 525 at MP 7.4: Clover Ln - WSF Mukilteo",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/nw/525vc00740.jpg",
+        "width": 335,
+        "height": 249
+      },
+      "location": {
+        "latitude": 47.933469,
+        "longitude": -122.306348
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9728",
+      "terminalId": "14",
+      "terminal": "Mukilteo",
+      "title": "SR 525 at MP 8.1: 5th St South - WSF Mukilteo",
+      "displayName": "SR 525 at MP 8.1: 5th St South - WSF Mukilteo",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/nw/525vc00819.jpg",
+        "width": 335,
+        "height": 249
+      },
+      "location": {
+        "latitude": 47.944755,
+        "longitude": -122.304359
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9394",
+      "terminalId": "14",
+      "terminal": "Mukilteo",
+      "title": "SR 525 at MP 8.2: 5th St North - WSF Mukilteo",
+      "displayName": "SR 525 at MP 8.2: 5th St North - WSF Mukilteo",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/nw/525vc00820.jpg",
+        "width": 335,
+        "height": 249
+      },
+      "location": {
+        "latitude": 47.944899,
+        "longitude": -122.304287
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9944",
+      "terminalId": "14",
+      "terminal": "Mukilteo",
+      "title": "SR 525 at MP 8.4: 1st Street",
+      "displayName": "SR 525 at MP 8.4: 1st Street",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/nw/525vc00858.jpg",
+        "width": 335,
+        "height": 209
+      },
+      "location": {
+        "latitude": 47.948838,
+        "longitude": -122.301103
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9164",
+      "terminalId": "14",
+      "terminal": "Mukilteo",
+      "title": "WSF Mukilteo Holding",
+      "displayName": "Mukilteo Holding",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/Mukilteo/Terminal/mukterm.jpg",
+        "width": 400,
+        "height": 246
+      },
+      "location": {
+        "latitude": 47.948756,
+        "longitude": -122.302007
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9689",
+      "terminalId": "15",
+      "terminal": "Orcas Island",
+      "title": "WSF Orcas Ferry Booth",
+      "displayName": "Orcas Ferry Booth",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/orcas/booth.jpg",
+        "width": 400,
+        "height": 288
+      },
+      "location": {
+        "latitude": 48.598694,
+        "longitude": -122.945556
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9688",
+      "terminalId": "15",
+      "terminal": "Orcas Island",
+      "title": "WSF Orcas Ferry Holding",
+      "displayName": "Orcas Ferry Holding",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/orcas/holding.jpg",
+        "width": 400,
+        "height": 288
+      },
+      "location": {
+        "latitude": 48.598694,
+        "longitude": -122.945556
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9742",
+      "terminalId": "16",
+      "terminal": "Point Defiance",
+      "title": "WSF Point Defiance Booth",
+      "displayName": "Point Defiance Booth",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/PointDefiance/PtDefBooth.jpg",
+        "width": 400,
+        "height": 245
+      },
+      "location": {
+        "latitude": 47.30365,
+        "longitude": -122.514751
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9741",
+      "terminalId": "16",
+      "terminal": "Point Defiance",
+      "title": "WSF Point Defiance Holding",
+      "displayName": "Point Defiance Holding",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/PointDefiance/PtDefHolding.jpg",
+        "width": 400,
+        "height": 245
+      },
+      "location": {
+        "latitude": 47.303365,
+        "longitude": -122.514782
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9168",
+      "terminalId": "17",
+      "terminal": "Port Townsend",
+      "title": "WSF Port Townsend Street",
+      "displayName": "Port Townsend Street",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/PortTownsend/Street/ptStreet.jpg",
+        "width": 400,
+        "height": 245
+      },
+      "location": {
+        "latitude": 48.112086,
+        "longitude": -122.760466
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9167",
+      "terminalId": "17",
+      "terminal": "Port Townsend",
+      "title": "WSF Port Townsend Terminal",
+      "displayName": "Port Townsend Terminal",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/PortTownsend/terminal/ptterm.jpg",
+        "width": 400,
+        "height": 246
+      },
+      "location": {
+        "latitude": 48.112086,
+        "longitude": -122.760466
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9035",
+      "terminalId": "7",
+      "terminal": "Seattle",
+      "title": "WSF Seattle Ferry Main Vehicle Holding",
+      "displayName": "Seattle Ferry Main Vehicle Holding",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/colman/seattlemain.jpg",
+        "width": 400,
+        "height": 246
+      },
+      "location": {
+        "latitude": 47.60285,
+        "longitude": -122.3382
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9039",
+      "terminalId": "20",
+      "terminal": "Southworth",
+      "title": "WSF Southworth Ferry Holding",
+      "displayName": "Southworth Ferry Holding",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/southworth/holding.jpg",
+        "width": 400,
+        "height": 245
+      },
+      "location": {
+        "latitude": 47.51189,
+        "longitude": -122.4973
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9391",
+      "terminalId": "20",
+      "terminal": "Southworth",
+      "title": "WSF Southworth Ferry Terminal",
+      "displayName": "Southworth Ferry Terminal",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/southworth/terminal.jpg",
+        "width": 400,
+        "height": 245
+      },
+      "location": {
+        "latitude": 47.51189,
+        "longitude": -122.4973
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9046",
+      "terminalId": "21",
+      "terminal": "Tahlequah",
+      "title": "WSF Tahlequah @ SW Tahlequah Rd",
+      "displayName": "Tahlequah @ SW Tahlequah Rd",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/Tahlequah/VMSSign/VMSSign.jpg",
+        "width": 400,
+        "height": 245
+      },
+      "location": {
+        "latitude": 47.333079,
+        "longitude": -122.506957
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9045",
+      "terminalId": "21",
+      "terminal": "Tahlequah",
+      "title": "WSF Tahlequah Ferry Holding",
+      "displayName": "Tahlequah Ferry Holding",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/Tahlequah/holding/holding.jpg",
+        "width": 400,
+        "height": 245
+      },
+      "location": {
+        "latitude": 47.332941,
+        "longitude": -122.506968
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9717",
+      "terminalId": "22",
+      "terminal": "Vashon Island",
+      "title": "WSF Vashon Ferry Holding (South)",
+      "displayName": "Vashon Ferry Holding (South)",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/vashon/HoldingSouth.jpg",
+        "width": 400,
+        "height": 245
+      },
+      "location": {
+        "latitude": 47.510459,
+        "longitude": -122.463852
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9043",
+      "terminalId": "22",
+      "terminal": "Vashon Island",
+      "title": "WSF Vashon Hwy & 112th (North)",
+      "displayName": "Vashon Hwy & 112th (North)",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/vashon/VSHvc00004.jpg",
+        "width": 400,
+        "height": 294
+      },
+      "location": {
+        "latitude": 47.505682,
+        "longitude": -122.46173
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9044",
+      "terminalId": "22",
+      "terminal": "Vashon Island",
+      "title": "WSF Vashon Hwy & 112th (South)",
+      "displayName": "Vashon Hwy & 112th (South)",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/vashon/VSHvc00003.jpg",
+        "width": 400,
+        "height": 294
+      },
+      "location": {
+        "latitude": 47.505512,
+        "longitude": -122.461681
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9041",
+      "terminalId": "22",
+      "terminal": "Vashon Island",
+      "title": "WSF Vashon Hwy & Bunker (North)",
+      "displayName": "Vashon Hwy & Bunker (North)",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/vashon/VSHvc00001.jpg",
+        "width": 400,
+        "height": 294
+      },
+      "location": {
+        "latitude": 47.507541,
+        "longitude": -122.46291
+      },
+      "owner": null,
+      "isActive": true
+    },
+    {
+      "id": "9042",
+      "terminalId": "22",
+      "terminal": "Vashon Island",
+      "title": "WSF Vashon Hwy & Bunker (South)",
+      "displayName": "Vashon Hwy & Bunker (South)",
+      "image": {
+        "url": "https://images.wsdot.wa.gov/wsf/vashon/VSHvc00002.jpg",
+        "width": 400,
+        "height": 294
+      },
+      "location": {
+        "latitude": 47.507367,
+        "longitude": -122.46284
+      },
+      "owner": null,
+      "isActive": true
+    }
+  ]
+}

@@ -8,7 +8,7 @@ AUTH0_SERVER_AUDIENCE	runtime server secret/config	AWS Secrets Manager app confi
 AUTH0_SERVER_ID	runtime server secret/config	AWS Secrets Manager app config JSON	value redacted
 AUTH0_SERVER_SECRET	runtime server secret/config	AWS Secrets Manager app config JSON	value redacted
 AW_TAG_ID	build-time public	GitHub variable / Docker build arg	value comes from Heroku classification or provider public config; do not commit
-BASE_URL	AWS/ECS platform config	Terraform task environment, SSM, GitHub deployment variable	set to https://staging.ferry.fyi before production cutover
+BASE_URL	AWS/ECS platform config	Terraform task environment, SSM, GitHub deployment variable	set to https://ferry.fyi after production cutover
 DATABASE_URL	migration-only	Terraform-generated RDS DATABASE_URL secret	never import Heroku DATABASE_URL as AWS runtime config
 FCM_PUBLIC_KEY	runtime server secret/config	AWS Secrets Manager app config JSON	value redacted
 FIREBASE_API_KEY	build-time public	GitHub variable / Docker build arg	value comes from Heroku classification or provider public config; do not commit

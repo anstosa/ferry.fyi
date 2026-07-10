@@ -4,6 +4,9 @@ const { spawn, execFileSync } = require("node:child_process");
 const { readFileSync } = require("node:fs");
 
 const packageJson = JSON.parse(readFileSync("package.json", "utf8"));
+const args = new Set(process.argv.slice(2));
+const shouldStartCameraTools = args.has("--with-camera-tools");
+const isDryRun = args.has("--dry-run");
 const commands = [
   ["client", "start:client"],
   ["server", "start:server"],
@@ -12,6 +15,8 @@ const children = new Set();
 const childGroups = new Set();
 const shouldDetachChildren = process.platform !== "win32";
 const env = loadEnvrc();
+const detectorPort = env.DETECTOR_PORT || "8001";
+const detectorUrl = `http://127.0.0.1:${detectorPort}/detect`;
 let isShuttingDown = false;
 
 // load local env
@@ -46,6 +51,34 @@ function getScript(scriptName) {
     throw new Error(`Missing package script: ${scriptName}`);
   }
   return script;
+}
+
+// configure shared local detector
+function configureDetectorEnv() {
+  env.DETECTOR_PORT = detectorPort;
+  env.CAR_DETECTION_ENDPOINT = detectorUrl;
+  env.FERRY_DETECTOR_URL = detectorUrl;
+}
+
+// print local development URLs
+function printUrls() {
+  console.log("[dev] app: http://localhost:4040");
+  // camera tool URL
+  if (shouldStartCameraTools) {
+    console.log("[dev] annotator: http://127.0.0.1:8787/");
+  }
+}
+
+// start detector container first
+function startDetector() {
+  const command = ["compose", "-f", "docker-compose.dev.yml", "up", "--detach", "detector"];
+  console.log(`[dev] starting detector: docker ${command.join(" ")}`);
+  // print command wiring only
+  if (isDryRun) {
+    console.log(`[dev] detector env: DETECTOR_PORT=${detectorPort}`);
+    return;
+  }
+  execFileSync("docker", command, { env, stdio: "inherit" });
 }
 
 // signal process group
@@ -116,6 +149,13 @@ function shutdown(exitCode = 0) {
 function startScript(name, scriptName) {
   const command = getScript(scriptName);
   console.log(`[dev] starting ${name}: ${command}`);
+  // expose detector endpoint wiring
+  if (isDryRun) {
+    console.log(
+      `[dev] ${name} env: CAR_DETECTION_ENDPOINT=${env.CAR_DETECTION_ENDPOINT} FERRY_DETECTOR_URL=${env.FERRY_DETECTOR_URL}`
+    );
+    return;
+  }
   const child = spawn(command, {
     detached: shouldDetachChildren,
     env,
@@ -137,6 +177,16 @@ function startScript(name, scriptName) {
     shutdown(exitCode);
   });
 }
+
+// configure optional camera tools
+if (shouldStartCameraTools) {
+  configureDetectorEnv();
+  startDetector();
+  commands.push(["camera polygon annotator", "camera:polygons"]);
+}
+
+// print service endpoints
+printUrls();
 
 // launch targets
 for (const [name, scriptName] of commands) {

@@ -14,12 +14,19 @@ locals {
     Project     = var.project
   }
 
-  availability_zones = slice(data.aws_availability_zones.available.names, 0, max(length(var.public_subnet_cidrs), length(var.private_db_subnet_cidrs)))
+  availability_zones = slice(data.aws_availability_zones.available.names, 0, max(length(var.public_subnet_cidrs), length(var.private_app_subnet_cidrs), length(var.private_db_subnet_cidrs)))
 
   image_uri = "${aws_ecr_repository.app.repository_url}:${var.image_tag}"
 
+  detector_image_uri = "${aws_ecr_repository.detector.repository_url}:${var.detector_image_tag}"
+
+  service_discovery_namespace = "${local.name_prefix}.internal"
+
+  detector_endpoint = "http://${aws_service_discovery_service.detector.name}.${local.service_discovery_namespace}:${var.detector_container_port}/detect"
+
   web_environment = [
     { name = "BASE_URL", value = var.base_url },
+    { name = "CAR_DETECTION_ENDPOINT", value = local.detector_endpoint },
     { name = "NODE_ENV", value = "production" },
     { name = "PORT", value = tostring(var.container_port) },
     { name = "PROCESS_ROLE", value = "web" },
@@ -48,7 +55,116 @@ locals {
 
   container_secrets = concat(local.app_secret_references, [local.database_url_secret_reference])
 
+  # shared web container
+  web_container_definition = {
+    name      = "web"
+    image     = local.image_uri
+    essential = true
+    portMappings = [
+      {
+        containerPort = var.container_port
+        hostPort      = var.container_port
+        protocol      = "tcp"
+      }
+    ]
+    environment = local.web_environment
+    secrets     = local.container_secrets
+    logConfiguration = {
+      logDriver = "awslogs"
+      options = {
+        awslogs-group         = aws_cloudwatch_log_group.web.name
+        awslogs-region        = var.aws_region
+        awslogs-stream-prefix = "ecs"
+      }
+    }
+  }
+
+  # tunnel sidecar
+  cloudflare_tunnel_container_definition = {
+    name      = "cloudflared"
+    image     = var.cloudflare_tunnel_image
+    essential = !var.enable_public_alb
+    command = [
+      "tunnel",
+      "--no-autoupdate",
+      "--loglevel",
+      "info",
+      "--metrics",
+      "0.0.0.0:${var.cloudflare_tunnel_metrics_port}",
+      "run"
+    ]
+    secrets = [
+      {
+        name      = "TUNNEL_TOKEN"
+        valueFrom = aws_secretsmanager_secret.cloudflare_tunnel_token.arn
+      }
+    ]
+    dependsOn = [
+      {
+        containerName = "web"
+        condition     = "START"
+      }
+    ]
+    logConfiguration = {
+      logDriver = "awslogs"
+      options = {
+        awslogs-group         = aws_cloudwatch_log_group.web.name
+        awslogs-region        = var.aws_region
+        awslogs-stream-prefix = "ecs"
+      }
+    }
+  }
+
+  # optional tunnel list
+  cloudflare_tunnel_container_definitions = var.enable_cloudflare_tunnel ? [local.cloudflare_tunnel_container_definition] : []
+
   github_oidc_sub = "repo:${var.github_repository}:ref:refs/heads/${var.github_production_branch}"
+}
+
+# preserve alb state
+moved {
+  from = aws_security_group.alb
+  to   = aws_security_group.alb[0]
+}
+
+moved {
+  from = aws_vpc_security_group_ingress_rule.alb_http
+  to   = aws_vpc_security_group_ingress_rule.alb_http[0]
+}
+
+moved {
+  from = aws_vpc_security_group_ingress_rule.alb_https
+  to   = aws_vpc_security_group_ingress_rule.alb_https[0]
+}
+
+moved {
+  from = aws_vpc_security_group_egress_rule.alb_to_ecs
+  to   = aws_vpc_security_group_egress_rule.alb_to_ecs[0]
+}
+
+moved {
+  from = aws_vpc_security_group_ingress_rule.ecs_from_alb
+  to   = aws_vpc_security_group_ingress_rule.web_from_alb[0]
+}
+
+moved {
+  from = aws_vpc_security_group_ingress_rule.detector_from_ecs
+  to   = aws_vpc_security_group_ingress_rule.detector_from_web
+}
+
+moved {
+  from = aws_lb.app
+  to   = aws_lb.app[0]
+}
+
+moved {
+  from = aws_lb_target_group.web
+  to   = aws_lb_target_group.web[0]
+}
+
+moved {
+  from = aws_lb_listener.http
+  to   = aws_lb_listener.http[0]
 }
 
 resource "aws_vpc" "main" {
@@ -80,6 +196,20 @@ resource "aws_subnet" "public" {
   tags = {
     Name = "${local.name_prefix}-public-${count.index + 1}"
     Tier = "public"
+  }
+}
+
+resource "aws_subnet" "private_app" {
+  count = length(var.private_app_subnet_cidrs)
+
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = var.private_app_subnet_cidrs[count.index]
+  availability_zone       = local.availability_zones[count.index]
+  map_public_ip_on_launch = false
+
+  tags = {
+    Name = "${local.name_prefix}-private-app-${count.index + 1}"
+    Tier = "private-app"
   }
 }
 
@@ -116,7 +246,25 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
+resource "aws_route_table" "private_app" {
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name = "${local.name_prefix}-private-app"
+  }
+}
+
+resource "aws_route_table_association" "private_app" {
+  count = length(aws_subnet.private_app)
+
+  subnet_id      = aws_subnet.private_app[count.index].id
+  route_table_id = aws_route_table.private_app.id
+}
+
 resource "aws_security_group" "alb" {
+  # optional public ingress
+  count = var.enable_public_alb ? 1 : 0
+
   name        = "${local.name_prefix}-alb"
   description = "Allow public HTTP and HTTPS ingress to the ALB."
   vpc_id      = aws_vpc.main.id
@@ -127,7 +275,10 @@ resource "aws_security_group" "alb" {
 }
 
 resource "aws_vpc_security_group_ingress_rule" "alb_http" {
-  security_group_id = aws_security_group.alb.id
+  # optional http ingress
+  count = var.enable_public_alb ? 1 : 0
+
+  security_group_id = aws_security_group.alb[0].id
   cidr_ipv4         = "0.0.0.0/0"
   from_port         = 80
   ip_protocol       = "tcp"
@@ -135,7 +286,10 @@ resource "aws_vpc_security_group_ingress_rule" "alb_http" {
 }
 
 resource "aws_vpc_security_group_ingress_rule" "alb_https" {
-  security_group_id = aws_security_group.alb.id
+  # optional https ingress
+  count = var.enable_public_alb ? 1 : 0
+
+  security_group_id = aws_security_group.alb[0].id
   cidr_ipv4         = "0.0.0.0/0"
   from_port         = 443
   ip_protocol       = "tcp"
@@ -143,11 +297,30 @@ resource "aws_vpc_security_group_ingress_rule" "alb_https" {
 }
 
 resource "aws_vpc_security_group_egress_rule" "alb_to_ecs" {
-  security_group_id            = aws_security_group.alb.id
-  referenced_security_group_id = aws_security_group.ecs.id
+  # optional alb egress
+  count = var.enable_public_alb ? 1 : 0
+
+  security_group_id            = aws_security_group.alb[0].id
+  referenced_security_group_id = aws_security_group.web.id
   from_port                    = var.container_port
   ip_protocol                  = "tcp"
   to_port                      = var.container_port
+}
+
+resource "aws_security_group" "web" {
+  name        = "${local.name_prefix}-web"
+  description = "Allow ALB ingress and direct public-IP egress for the web service."
+  vpc_id      = aws_vpc.main.id
+
+  tags = {
+    Name = "${local.name_prefix}-web"
+  }
+}
+
+resource "aws_vpc_security_group_egress_rule" "web_all_egress" {
+  security_group_id = aws_security_group.web.id
+  cidr_ipv4         = "0.0.0.0/0"
+  ip_protocol       = "-1"
 }
 
 resource "aws_security_group" "ecs" {
@@ -160,9 +333,12 @@ resource "aws_security_group" "ecs" {
   }
 }
 
-resource "aws_vpc_security_group_ingress_rule" "ecs_from_alb" {
-  security_group_id            = aws_security_group.ecs.id
-  referenced_security_group_id = aws_security_group.alb.id
+resource "aws_vpc_security_group_ingress_rule" "web_from_alb" {
+  # optional alb source
+  count = var.enable_public_alb ? 1 : 0
+
+  security_group_id            = aws_security_group.web.id
+  referenced_security_group_id = aws_security_group.alb[0].id
   from_port                    = var.container_port
   ip_protocol                  = "tcp"
   to_port                      = var.container_port
@@ -172,6 +348,58 @@ resource "aws_vpc_security_group_egress_rule" "ecs_all_egress" {
   security_group_id = aws_security_group.ecs.id
   cidr_ipv4         = "0.0.0.0/0"
   ip_protocol       = "-1"
+}
+
+resource "aws_security_group" "detector" {
+  name        = "${local.name_prefix}-detector"
+  description = "Allow the Ferry FYI web ECS service to reach the detector service."
+  vpc_id      = aws_vpc.main.id
+
+  tags = {
+    Name = "${local.name_prefix}-detector"
+  }
+}
+
+resource "aws_vpc_security_group_ingress_rule" "detector_from_web" {
+  security_group_id            = aws_security_group.detector.id
+  referenced_security_group_id = aws_security_group.web.id
+  from_port                    = var.detector_container_port
+  ip_protocol                  = "tcp"
+  to_port                      = var.detector_container_port
+}
+
+resource "aws_vpc_security_group_egress_rule" "detector_to_vpc_endpoints" {
+  security_group_id            = aws_security_group.detector.id
+  referenced_security_group_id = aws_security_group.vpc_endpoints.id
+  from_port                    = 443
+  ip_protocol                  = "tcp"
+  to_port                      = 443
+}
+
+resource "aws_security_group" "vpc_endpoints" {
+  name        = "${local.name_prefix}-vpc-endpoints"
+  description = "Allow private detector tasks to reach AWS control-plane endpoints."
+  vpc_id      = aws_vpc.main.id
+
+  tags = {
+    Name = "${local.name_prefix}-vpc-endpoints"
+  }
+}
+
+resource "aws_vpc_security_group_ingress_rule" "vpc_endpoints_from_detector" {
+  security_group_id            = aws_security_group.vpc_endpoints.id
+  referenced_security_group_id = aws_security_group.detector.id
+  from_port                    = 443
+  ip_protocol                  = "tcp"
+  to_port                      = 443
+}
+
+resource "aws_vpc_security_group_ingress_rule" "vpc_endpoints_from_web" {
+  security_group_id            = aws_security_group.vpc_endpoints.id
+  referenced_security_group_id = aws_security_group.web.id
+  from_port                    = 443
+  ip_protocol                  = "tcp"
+  to_port                      = 443
 }
 
 resource "aws_security_group" "rds" {
@@ -192,6 +420,14 @@ resource "aws_vpc_security_group_ingress_rule" "rds_from_ecs" {
   to_port                      = 5432
 }
 
+resource "aws_vpc_security_group_ingress_rule" "rds_from_web" {
+  security_group_id            = aws_security_group.rds.id
+  referenced_security_group_id = aws_security_group.web.id
+  from_port                    = 5432
+  ip_protocol                  = "tcp"
+  to_port                      = 5432
+}
+
 resource "aws_vpc_security_group_egress_rule" "rds_all_egress" {
   security_group_id = aws_security_group.rds.id
   cidr_ipv4         = "0.0.0.0/0"
@@ -200,6 +436,19 @@ resource "aws_vpc_security_group_egress_rule" "rds_all_egress" {
 
 resource "aws_ecr_repository" "app" {
   name                 = local.name_prefix
+  image_tag_mutability = "MUTABLE"
+
+  encryption_configuration {
+    encryption_type = "AES256"
+  }
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+}
+
+resource "aws_ecr_repository" "detector" {
+  name                 = "${local.name_prefix}-detector"
   image_tag_mutability = "MUTABLE"
 
   encryption_configuration {
@@ -232,6 +481,85 @@ resource "aws_ecr_lifecycle_policy" "app" {
   })
 }
 
+resource "aws_ecr_lifecycle_policy" "detector" {
+  repository = aws_ecr_repository.detector.name
+
+  policy = jsonencode({
+    rules = [
+      {
+        rulePriority = 1
+        description  = "Keep the most recent 30 detector images."
+        selection = {
+          tagStatus   = "any"
+          countType   = "imageCountMoreThan"
+          countNumber = 30
+        }
+        action = {
+          type = "expire"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_vpc_endpoint" "ecr_api" {
+  private_dns_enabled = true
+  security_group_ids  = [aws_security_group.vpc_endpoints.id]
+  service_name        = "com.amazonaws.${var.aws_region}.ecr.api"
+  subnet_ids          = aws_subnet.private_app[*].id
+  vpc_endpoint_type   = "Interface"
+  vpc_id              = aws_vpc.main.id
+
+  tags = {
+    Name = "${local.name_prefix}-ecr-api"
+  }
+}
+
+resource "aws_vpc_endpoint" "ecr_dkr" {
+  private_dns_enabled = true
+  security_group_ids  = [aws_security_group.vpc_endpoints.id]
+  service_name        = "com.amazonaws.${var.aws_region}.ecr.dkr"
+  subnet_ids          = aws_subnet.private_app[*].id
+  vpc_endpoint_type   = "Interface"
+  vpc_id              = aws_vpc.main.id
+
+  tags = {
+    Name = "${local.name_prefix}-ecr-dkr"
+  }
+}
+
+resource "aws_vpc_endpoint" "logs" {
+  private_dns_enabled = true
+  security_group_ids  = [aws_security_group.vpc_endpoints.id]
+  service_name        = "com.amazonaws.${var.aws_region}.logs"
+  subnet_ids          = aws_subnet.private_app[*].id
+  vpc_endpoint_type   = "Interface"
+  vpc_id              = aws_vpc.main.id
+
+  tags = {
+    Name = "${local.name_prefix}-logs"
+  }
+}
+
+resource "aws_vpc_endpoint" "s3" {
+  route_table_ids   = [aws_route_table.private_app.id]
+  service_name      = "com.amazonaws.${var.aws_region}.s3"
+  vpc_endpoint_type = "Gateway"
+  vpc_id            = aws_vpc.main.id
+
+  tags = {
+    Name = "${local.name_prefix}-s3"
+  }
+}
+
+resource "aws_vpc_security_group_egress_rule" "detector_to_s3_gateway" {
+  security_group_id = aws_security_group.detector.id
+  prefix_list_id    = aws_vpc_endpoint.s3.prefix_list_id
+  from_port         = 443
+  ip_protocol       = "tcp"
+  to_port           = 443
+}
+
 resource "aws_acm_certificate" "app" {
   domain_name               = var.app_domains[0]
   subject_alternative_names = slice(var.app_domains, 1, length(var.app_domains))
@@ -247,10 +575,13 @@ resource "aws_acm_certificate" "app" {
 }
 
 resource "aws_lb" "app" {
+  # optional public alb
+  count = var.enable_public_alb ? 1 : 0
+
   name               = local.name_prefix
   internal           = false
   load_balancer_type = "application"
-  security_groups    = [aws_security_group.alb.id]
+  security_groups    = [aws_security_group.alb[0].id]
   subnets            = aws_subnet.public[*].id
 
   tags = {
@@ -259,6 +590,9 @@ resource "aws_lb" "app" {
 }
 
 resource "aws_lb_target_group" "web" {
+  # optional web target group
+  count = var.enable_public_alb ? 1 : 0
+
   name        = "${local.name_prefix}-web"
   port        = var.container_port
   protocol    = "HTTP"
@@ -285,7 +619,10 @@ resource "aws_lb_target_group" "web" {
 }
 
 resource "aws_lb_listener" "http" {
-  load_balancer_arn = aws_lb.app.arn
+  # optional http listener
+  count = var.enable_public_alb ? 1 : 0
+
+  load_balancer_arn = aws_lb.app[0].arn
   port              = 80
   protocol          = "HTTP"
 
@@ -295,7 +632,7 @@ resource "aws_lb_listener" "http" {
 
     content {
       type             = "forward"
-      target_group_arn = aws_lb_target_group.web.arn
+      target_group_arn = aws_lb_target_group.web[0].arn
     }
   }
 
@@ -316,9 +653,10 @@ resource "aws_lb_listener" "http" {
 }
 
 resource "aws_lb_listener" "https" {
-  count = var.enable_https_listener ? 1 : 0
+  # optional https listener
+  count = var.enable_public_alb && var.enable_https_listener ? 1 : 0
 
-  load_balancer_arn = aws_lb.app.arn
+  load_balancer_arn = aws_lb.app[0].arn
   port              = 443
   protocol          = "HTTPS"
   ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
@@ -326,7 +664,7 @@ resource "aws_lb_listener" "https" {
 
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.web.arn
+    target_group_arn = aws_lb_target_group.web[0].arn
   }
 }
 
@@ -338,6 +676,35 @@ resource "aws_cloudwatch_log_group" "web" {
 resource "aws_cloudwatch_log_group" "scheduler" {
   name              = "/ecs/${local.name_prefix}/scheduler"
   retention_in_days = 30
+}
+
+resource "aws_cloudwatch_log_group" "detector" {
+  name              = "/ecs/${local.name_prefix}/detector"
+  retention_in_days = 30
+}
+
+resource "aws_service_discovery_private_dns_namespace" "app" {
+  name = local.service_discovery_namespace
+  vpc  = aws_vpc.main.id
+
+  tags = {
+    Name = local.service_discovery_namespace
+  }
+}
+
+resource "aws_service_discovery_service" "detector" {
+  name = "detector"
+
+  dns_config {
+    namespace_id = aws_service_discovery_private_dns_namespace.app.id
+
+    dns_records {
+      ttl  = 10
+      type = "A"
+    }
+
+    routing_policy = "MULTIVALUE"
+  }
 }
 
 resource "aws_ecs_cluster" "app" {
@@ -386,6 +753,7 @@ resource "aws_iam_role_policy" "ecs_task_execution_secrets" {
         ]
         Resource = [
           aws_secretsmanager_secret.app_config.arn,
+          aws_secretsmanager_secret.cloudflare_tunnel_token.arn,
           aws_secretsmanager_secret.database_url.arn
         ]
       }
@@ -419,24 +787,53 @@ resource "aws_ecs_task_definition" "web" {
   execution_role_arn       = aws_iam_role.ecs_task_execution.arn
   task_role_arn            = aws_iam_role.ecs_task.arn
 
+  container_definitions = jsonencode(concat([local.web_container_definition], local.cloudflare_tunnel_container_definitions))
+}
+
+resource "aws_ecs_task_definition" "detector" {
+  family                   = "${local.name_prefix}-detector"
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = var.detector_cpu
+  memory                   = var.detector_memory
+  execution_role_arn       = aws_iam_role.ecs_task_execution.arn
+  task_role_arn            = aws_iam_role.ecs_task.arn
+
+  runtime_platform {
+    cpu_architecture        = "X86_64"
+    operating_system_family = "LINUX"
+  }
+
   container_definitions = jsonencode([
     {
-      name      = "web"
-      image     = local.image_uri
+      name      = "detector"
+      image     = local.detector_image_uri
       essential = true
       portMappings = [
         {
-          containerPort = var.container_port
-          hostPort      = var.container_port
+          containerPort = var.detector_container_port
+          hostPort      = var.detector_container_port
           protocol      = "tcp"
         }
       ]
-      environment = local.web_environment
-      secrets     = local.container_secrets
+      environment = [
+        { name = "DETECTOR_MODEL", value = "/app/models/yolov8n.pt" },
+        { name = "PORT", value = tostring(var.detector_container_port) }
+      ]
+      healthCheck = {
+        command = [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:${var.detector_container_port}/ready', timeout=5).read()\""
+        ]
+        interval    = 30
+        retries     = 3
+        startPeriod = 30
+        timeout     = 10
+      }
       logConfiguration = {
         logDriver = "awslogs"
         options = {
-          awslogs-group         = aws_cloudwatch_log_group.web.name
+          awslogs-group         = aws_cloudwatch_log_group.detector.name
           awslogs-region        = var.aws_region
           awslogs-stream-prefix = "ecs"
         }
@@ -480,18 +877,46 @@ resource "aws_ecs_service" "web" {
   desired_count   = var.web_desired_count
   launch_type     = "FARGATE"
 
-  health_check_grace_period_seconds = 60
+  # alb-only grace
+  health_check_grace_period_seconds = var.enable_public_alb ? 60 : null
 
-  load_balancer {
-    target_group_arn = aws_lb_target_group.web.arn
-    container_name   = "web"
-    container_port   = var.container_port
+  # optional service attachment
+  dynamic "load_balancer" {
+    for_each = var.enable_public_alb ? [1] : []
+
+    content {
+      target_group_arn = aws_lb_target_group.web[0].arn
+      container_name   = "web"
+      container_port   = var.container_port
+    }
   }
 
   network_configuration {
     assign_public_ip = true
-    security_groups  = [aws_security_group.ecs.id]
+    security_groups  = [aws_security_group.web.id]
     subnets          = aws_subnet.public[*].id
+  }
+
+  lifecycle {
+    ignore_changes = [task_definition]
+  }
+}
+
+resource "aws_ecs_service" "detector" {
+  name            = "${local.name_prefix}-detector"
+  cluster         = aws_ecs_cluster.app.id
+  task_definition = aws_ecs_task_definition.detector.arn
+  desired_count   = var.detector_desired_count
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    assign_public_ip = false
+    security_groups  = [aws_security_group.detector.id]
+    subnets          = aws_subnet.private_app[*].id
+  }
+
+  service_registries {
+    registry_arn = aws_service_discovery_service.detector.arn
   }
 
   lifecycle {
@@ -587,6 +1012,12 @@ resource "aws_secretsmanager_secret" "database_url" {
   description = "Generated PostgreSQL connection string for Ferry FYI ${var.environment}."
 }
 
+# remote tunnel token
+resource "aws_secretsmanager_secret" "cloudflare_tunnel_token" {
+  name        = "/${var.project}/${var.environment}/CLOUDFLARE_TUNNEL_TOKEN"
+  description = "Remote-managed Cloudflare Tunnel token for Ferry FYI ${var.environment}."
+}
+
 resource "aws_secretsmanager_secret_version" "database_url" {
   secret_id = aws_secretsmanager_secret.database_url.id
   secret_string = format(
@@ -629,6 +1060,13 @@ resource "aws_ssm_parameter" "ecr_repository_url" {
   value       = aws_ecr_repository.app.repository_url
 }
 
+resource "aws_ssm_parameter" "detector_ecr_repository_url" {
+  name        = "/${var.project}/${var.environment}/deploy/DETECTOR_ECR_REPOSITORY_URL"
+  description = "ECR repository URL for Ferry FYI ${var.environment} detector image pushes."
+  type        = "String"
+  value       = aws_ecr_repository.detector.repository_url
+}
+
 resource "aws_ssm_parameter" "ecs_cluster_name" {
   name        = "/${var.project}/${var.environment}/deploy/ECS_CLUSTER_NAME"
   description = "ECS cluster name for Ferry FYI ${var.environment} deployments."
@@ -648,4 +1086,11 @@ resource "aws_ssm_parameter" "scheduler_service_name" {
   description = "ECS scheduler service name for Ferry FYI ${var.environment} deployments."
   type        = "String"
   value       = aws_ecs_service.scheduler.name
+}
+
+resource "aws_ssm_parameter" "detector_service_name" {
+  name        = "/${var.project}/${var.environment}/deploy/DETECTOR_SERVICE_NAME"
+  description = "ECS detector service name for Ferry FYI ${var.environment} deployments."
+  type        = "String"
+  value       = aws_ecs_service.detector.name
 }

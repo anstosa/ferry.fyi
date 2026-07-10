@@ -63,8 +63,8 @@ COPY package.json yarn.lock ./
 COPY .sequelizerc sequelize.config.json ./
 COPY server/migrations ./server/migrations
 COPY shared/data/wsf-core.json ./shared/data/wsf-core.json
-COPY --from=build /app/dist ./dist
 RUN yarn install --frozen-lockfile --production=true --network-timeout 600000 && yarn cache clean
+COPY --from=build /app/dist ./dist
 
 EXPOSE 4040
 CMD ["yarn", "start:prod"]

@@ -1,0 +1,2289 @@
+{
+  "schemaVersion": 2,
+  "coordinateSpace": "normalized-image",
+  "pointFormat": [
+    "x",
+    "y"
+  ],
+  "origin": "top-left",
+  "status": "manual-partial-review",
+  "source": {
+    "annotator": "scripts/camera-polygon-annotator",
+    "promotedAt": "2026-07-08T22:34:25Z",
+    "notes": "Manual camera detection polygons. allowedAreas are countable queue/holding/slip regions. excludedAreas are holes/breaks/ignore regions that split or suppress detection. reviewed=true means a camera has been manually checked, including cameras with no relevant polygons."
+  },
+  "cameraIds": [
+    "9048",
+    "9047",
+    "9049",
+    "9478",
+    "9479",
+    "9477",
+    "9476",
+    "9040",
+    "9037",
+    "9173",
+    "9174",
+    "9166",
+    "9172",
+    "9175",
+    "9170",
+    "9169",
+    "9157",
+    "9160",
+    "9159",
+    "9156",
+    "9155",
+    "9038",
+    "9404",
+    "9403",
+    "9377",
+    "9402",
+    "1233",
+    "9502",
+    "9154",
+    "9152",
+    "9153",
+    "10266",
+    "9813",
+    "9151",
+    "9692",
+    "10113",
+    "9693",
+    "10112",
+    "9162",
+    "9163",
+    "9161",
+    "9728",
+    "9394",
+    "9944",
+    "9164",
+    "9689",
+    "9688",
+    "9742",
+    "9741",
+    "9168",
+    "9167",
+    "9035",
+    "9039",
+    "9391",
+    "9046",
+    "9045",
+    "9717",
+    "9043",
+    "9044",
+    "9041",
+    "9042"
+  ],
+  "cameras": {
+    "1233": {
+      "terminal": "Friday Harbor",
+      "terminalId": "10",
+      "displayName": "Friday Harbor Ferry Holding",
+      "title": "WSF Friday Harbor Ferry Holding",
+      "frameSize": {
+        "width": 400,
+        "height": 245
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/fridayharbor/friholding.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9035": {
+      "terminal": "Seattle",
+      "terminalId": "7",
+      "displayName": "Seattle Ferry Main Vehicle Holding",
+      "title": "WSF Seattle Ferry Main Vehicle Holding",
+      "frameSize": {
+        "width": 400,
+        "height": 246
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/colman/seattlemain.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9037": {
+      "terminal": "Bremerton",
+      "terminalId": "4",
+      "displayName": "Bremerton Ferry Holding",
+      "title": "WSF Bremerton Ferry Holding",
+      "frameSize": {
+        "width": 400,
+        "height": 246
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/bremerton/holding/holding.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9038": {
+      "terminal": "Fauntleroy",
+      "terminalId": "9",
+      "displayName": "Fauntleroy Ferry Holding",
+      "title": "WSF Fauntleroy Ferry Holding",
+      "frameSize": {
+        "width": 400,
+        "height": 245
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/fauntleroy/terminal/fauntleroy.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9039": {
+      "terminal": "Southworth",
+      "terminalId": "20",
+      "displayName": "Southworth Ferry Holding",
+      "title": "WSF Southworth Ferry Holding",
+      "frameSize": {
+        "width": 400,
+        "height": 245
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/southworth/holding.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9040": {
+      "terminal": "Bainbridge Island",
+      "terminalId": "3",
+      "displayName": "Bainbridge Ferry Holding",
+      "title": "WSF Bainbridge Ferry Holding",
+      "frameSize": {
+        "width": 400,
+        "height": 421
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/Bainbridge/Bainbridge.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9041": {
+      "terminal": "Vashon Island",
+      "terminalId": "22",
+      "displayName": "Vashon Hwy & Bunker (North)",
+      "title": "WSF Vashon Hwy & Bunker (North)",
+      "frameSize": {
+        "width": 400,
+        "height": 294
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/vashon/VSHvc00001.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9042": {
+      "terminal": "Vashon Island",
+      "terminalId": "22",
+      "displayName": "Vashon Hwy & Bunker (South)",
+      "title": "WSF Vashon Hwy & Bunker (South)",
+      "frameSize": {
+        "width": 400,
+        "height": 294
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/vashon/VSHvc00002.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9043": {
+      "terminal": "Vashon Island",
+      "terminalId": "22",
+      "displayName": "Vashon Hwy & 112th (North)",
+      "title": "WSF Vashon Hwy & 112th (North)",
+      "frameSize": {
+        "width": 400,
+        "height": 294
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/vashon/VSHvc00004.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9044": {
+      "terminal": "Vashon Island",
+      "terminalId": "22",
+      "displayName": "Vashon Hwy & 112th (South)",
+      "title": "WSF Vashon Hwy & 112th (South)",
+      "frameSize": {
+        "width": 400,
+        "height": 294
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/vashon/VSHvc00003.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9045": {
+      "terminal": "Tahlequah",
+      "terminalId": "21",
+      "displayName": "Tahlequah Ferry Holding",
+      "title": "WSF Tahlequah Ferry Holding",
+      "frameSize": {
+        "width": 400,
+        "height": 245
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/Tahlequah/holding/holding.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9046": {
+      "terminal": "Tahlequah",
+      "terminalId": "21",
+      "displayName": "Tahlequah @ SW Tahlequah Rd",
+      "title": "WSF Tahlequah @ SW Tahlequah Rd",
+      "frameSize": {
+        "width": 400,
+        "height": 245
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/Tahlequah/VMSSign/VMSSign.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9047": {
+      "terminal": "Anacortes",
+      "terminalId": "1",
+      "displayName": "Anacortes Ferry Terminal",
+      "title": "WSF Anacortes Ferry Terminal",
+      "frameSize": {
+        "width": 400,
+        "height": 245
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/anacortes/terminal/anaterm.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9048": {
+      "terminal": "Anacortes",
+      "terminalId": "1",
+      "displayName": "Anacortes Ferry Holding",
+      "title": "WSF Anacortes Ferry Holding",
+      "frameSize": {
+        "width": 400,
+        "height": 245
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/anacortes/holding/anahold.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9049": {
+      "terminal": "Anacortes",
+      "terminalId": "1",
+      "displayName": "Anacortes Ferry Terminal Rd",
+      "title": "WSF Anacortes Ferry Terminal Rd",
+      "frameSize": {
+        "width": 400,
+        "height": 245
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/anacortes/road/anaroad.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9151": {
+      "terminal": "Kingston",
+      "terminalId": "12",
+      "displayName": "Kingston Terminal",
+      "title": "WSF Kingston Terminal",
+      "frameSize": {
+        "width": 335,
+        "height": 209
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/orflow/104vc02465.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9152": {
+      "terminal": "Kingston",
+      "terminalId": "12",
+      "displayName": "Kingston Ferry Sign East",
+      "title": "WSF Kingston Ferry Sign East",
+      "frameSize": {
+        "width": 400,
+        "height": 294
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/kingston/fse/fse.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9153": {
+      "terminal": "Kingston",
+      "terminalId": "12",
+      "displayName": "Kingston Ferry Sign West",
+      "title": "WSF Kingston Ferry Sign West",
+      "frameSize": {
+        "width": 400,
+        "height": 294
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/kingston/fsw/fsw.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9154": {
+      "terminal": "Kingston",
+      "terminalId": "12",
+      "displayName": "Kingston Barber",
+      "title": "WSF Kingston Barber",
+      "frameSize": {
+        "width": 335,
+        "height": 244
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/orflow/104vc02314.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9155": {
+      "terminal": "Edmonds",
+      "terminalId": "8",
+      "displayName": "Edmonds W Dayton St",
+      "title": "WSF Edmonds W Dayton St",
+      "frameSize": {
+        "width": 400,
+        "height": 294
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/edmonds/104dayton.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9156": {
+      "terminal": "Edmonds",
+      "terminalId": "8",
+      "displayName": "Edmonds VMS Sign",
+      "title": "WSF Edmonds VMS Sign",
+      "frameSize": {
+        "width": 400,
+        "height": 294
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/edmonds/104vms_wts.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9157": {
+      "terminal": "Edmonds",
+      "terminalId": "8",
+      "displayName": "Edmonds Holding",
+      "title": "WSF Edmonds Holding",
+      "frameSize": {
+        "width": 400,
+        "height": 421
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/edmonds/holding.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9159": {
+      "terminal": "Edmonds",
+      "terminalId": "8",
+      "displayName": "Edmonds Underpass",
+      "title": "WSF Edmonds Underpass",
+      "frameSize": {
+        "width": 400,
+        "height": 246
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/edmonds/104underpass.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9160": {
+      "terminal": "Edmonds",
+      "terminalId": "8",
+      "displayName": "Edmonds Pine",
+      "title": "WSF Edmonds Pine",
+      "frameSize": {
+        "width": 400,
+        "height": 246
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/edmonds/104pine.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9161": {
+      "terminal": "Mukilteo",
+      "terminalId": "14",
+      "displayName": "SR 525 at MP 7.4: Clover Ln - WSF Mukilteo",
+      "title": "SR 525 at MP 7.4: Clover Ln - WSF Mukilteo",
+      "frameSize": {
+        "width": 335,
+        "height": 249
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/nw/525vc00740.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [
+        {
+          "id": "mukilteo_sr_525_at_mp_7_4_clover_ln_wsf_mukilteo_queue_lane",
+          "type": "queue_lane",
+          "label": "Queue Lane",
+          "polygon": [
+            [
+              0.9922,
+              0.834
+            ],
+            [
+              0.2018,
+              0.196
+            ],
+            [
+              0.2593,
+              0.1689
+            ],
+            [
+              0.9951,
+              0.5073
+            ]
+          ]
+        }
+      ],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": true
+    },
+    "9162": {
+      "terminal": "Mukilteo",
+      "terminalId": "14",
+      "displayName": "SR 525 at MP 6.9: 76th St SW North - WSF Mukilteo",
+      "title": "SR 525 at MP 6.9: 76th St SW North - WSF Mukilteo",
+      "frameSize": {
+        "width": 335,
+        "height": 249
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/nw/525vc00695.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9163": {
+      "terminal": "Mukilteo",
+      "terminalId": "14",
+      "displayName": "SR 525 at MP 6.9: 76th St SW South - WSF Mukilteo",
+      "title": "SR 525 at MP 6.9: 76th St SW South - WSF Mukilteo",
+      "frameSize": {
+        "width": 335,
+        "height": 249
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/nw/525vc00694.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [
+        {
+          "id": "mukilteo_sr_525_at_mp_6_9_76th_st_sw_south_wsf_mukilteo_queue_lane",
+          "type": "queue_lane",
+          "label": "Queue Lane",
+          "polygon": [
+            [
+              0.9802,
+              0.919
+            ],
+            [
+              0.6544,
+              0.5822
+            ],
+            [
+              0.4293,
+              0.3244
+            ],
+            [
+              0.3538,
+              0.202
+            ],
+            [
+              0.3622,
+              0.1375
+            ],
+            [
+              0.3945,
+              0.094
+            ],
+            [
+              0.4221,
+              0.0666
+            ],
+            [
+              0.4281,
+              0.0699
+            ],
+            [
+              0.4089,
+              0.1005
+            ],
+            [
+              0.3981,
+              0.1375
+            ],
+            [
+              0.4149,
+              0.1907
+            ],
+            [
+              0.5155,
+              0.3083
+            ],
+            [
+              0.7395,
+              0.5114
+            ],
+            [
+              0.9969,
+              0.7321
+            ],
+            [
+              0.9945,
+              0.9142
+            ]
+          ]
+        }
+      ],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": true
+    },
+    "9164": {
+      "terminal": "Mukilteo",
+      "terminalId": "14",
+      "displayName": "Mukilteo Holding",
+      "title": "WSF Mukilteo Holding",
+      "frameSize": {
+        "width": 400,
+        "height": 246
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/Mukilteo/Terminal/mukterm.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [
+        {
+          "id": "mukilteo_mukilteo_holding_holding_lane_7",
+          "type": "holding_lane",
+          "label": "Lane 7",
+          "polygon": [
+            [
+              0.3437,
+              0.4205
+            ],
+            [
+              0.5287,
+              0.1983
+            ],
+            [
+              0.5595,
+              0.1726
+            ],
+            [
+              0.557,
+              0.1522
+            ],
+            [
+              0.5437,
+              0.1536
+            ],
+            [
+              0.5387,
+              0.1712
+            ],
+            [
+              0.4604,
+              0.2146
+            ],
+            [
+              0.2495,
+              0.4124
+            ]
+          ]
+        },
+        {
+          "id": "mukilteo_mukilteo_holding_holding_lane_6",
+          "type": "holding_lane",
+          "label": "Lane 6",
+          "polygon": [
+            [
+              0.3429,
+              0.426
+            ],
+            [
+              0.5254,
+              0.1997
+            ],
+            [
+              0.5645,
+              0.1726
+            ],
+            [
+              0.5587,
+              0.1509
+            ],
+            [
+              0.5704,
+              0.1536
+            ],
+            [
+              0.582,
+              0.1699
+            ],
+            [
+              0.5645,
+              0.1983
+            ],
+            [
+              0.4462,
+              0.426
+            ]
+          ]
+        },
+        {
+          "id": "mukilteo_mukilteo_holding_holding_lane_5",
+          "type": "holding_lane",
+          "label": "Lane 5",
+          "polygon": [
+            [
+              0.4445,
+              0.426
+            ],
+            [
+              0.5612,
+              0.1983
+            ],
+            [
+              0.5862,
+              0.1726
+            ],
+            [
+              0.5687,
+              0.1495
+            ],
+            [
+              0.587,
+              0.1522
+            ],
+            [
+              0.6087,
+              0.1753
+            ],
+            [
+              0.6012,
+              0.201
+            ],
+            [
+              0.5462,
+              0.4368
+            ]
+          ]
+        },
+        {
+          "id": "mukilteo_mukilteo_holding_holding_lane_4",
+          "type": "holding_lane",
+          "label": "Lane 4",
+          "polygon": [
+            [
+              0.5462,
+              0.4354
+            ],
+            [
+              0.6012,
+              0.2051
+            ],
+            [
+              0.6104,
+              0.1753
+            ],
+            [
+              0.5879,
+              0.1482
+            ],
+            [
+              0.6087,
+              0.1495
+            ],
+            [
+              0.6345,
+              0.1712
+            ],
+            [
+              0.6454,
+              0.4368
+            ]
+          ]
+        },
+        {
+          "id": "mukilteo_mukilteo_holding_queue_lane_3",
+          "type": "queue_lane",
+          "label": "Lane 3",
+          "polygon": [
+            [
+              0.6453,
+              0.4424
+            ],
+            [
+              0.639,
+              0.1741
+            ],
+            [
+              0.609,
+              0.1528
+            ],
+            [
+              0.6284,
+              0.1477
+            ],
+            [
+              0.6734,
+              0.1813
+            ],
+            [
+              0.7584,
+              0.4495
+            ]
+          ]
+        },
+        {
+          "id": "mukilteo_mukilteo_holding_queue_lane_2",
+          "type": "queue_lane",
+          "label": "Lane 2",
+          "polygon": [
+            [
+              0.7596,
+              0.4526
+            ],
+            [
+              0.6753,
+              0.1833
+            ],
+            [
+              0.6278,
+              0.1457
+            ],
+            [
+              0.6415,
+              0.1467
+            ],
+            [
+              0.7153,
+              0.1874
+            ],
+            [
+              0.8628,
+              0.4567
+            ]
+          ]
+        },
+        {
+          "id": "mukilteo_mukilteo_holding_queue_lane_1",
+          "type": "queue_lane",
+          "label": "Lane 1",
+          "polygon": [
+            [
+              0.8634,
+              0.4536
+            ],
+            [
+              0.7165,
+              0.1894
+            ],
+            [
+              0.644,
+              0.1457
+            ],
+            [
+              0.6603,
+              0.1447
+            ],
+            [
+              0.7584,
+              0.1843
+            ],
+            [
+              0.9878,
+              0.4577
+            ]
+          ]
+        }
+      ],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": true
+    },
+    "9166": {
+      "terminal": "Clinton",
+      "terminalId": "5",
+      "displayName": "Clinton Terminal",
+      "title": "WSF Clinton Terminal",
+      "frameSize": {
+        "width": 400,
+        "height": 421
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/clinton/terminal/clinton.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [
+        {
+          "id": "clinton_clinton_terminal_holding_lane_1_front",
+          "type": "holding_lane",
+          "label": "Lane 1 Front",
+          "polygon": [
+            [
+              0.6654,
+              0.7399
+            ],
+            [
+              0.0024,
+              0.9304
+            ],
+            [
+              0.0034,
+              0.7646
+            ],
+            [
+              0.5621,
+              0.696
+            ]
+          ]
+        },
+        {
+          "id": "clinton_clinton_terminal_holding_lane_2_front",
+          "type": "holding_lane",
+          "label": "Lane 2 Front",
+          "polygon": [
+            [
+              0.5671,
+              0.6998
+            ],
+            [
+              0.0014,
+              0.7656
+            ],
+            [
+              0.0014,
+              0.6798
+            ],
+            [
+              0.516,
+              0.676
+            ]
+          ]
+        },
+        {
+          "id": "clinton_clinton_terminal_holding_lane_3_front",
+          "type": "holding_lane",
+          "label": "Lane 3 Front",
+          "polygon": [
+            [
+              0.514,
+              0.676
+            ],
+            [
+              0.0014,
+              0.6789
+            ],
+            [
+              0.0014,
+              0.6274
+            ],
+            [
+              0.4478,
+              0.6455
+            ]
+          ]
+        },
+        {
+          "id": "clinton_clinton_terminal_holding_lane_4_front",
+          "type": "holding_lane",
+          "label": "Lane 4 Front",
+          "polygon": [
+            [
+              0.4458,
+              0.6465
+            ],
+            [
+              0.0024,
+              0.6264
+            ],
+            [
+              0.0024,
+              0.595
+            ],
+            [
+              0.4167,
+              0.6274
+            ]
+          ]
+        },
+        {
+          "id": "clinton_clinton_terminal_holding_lane_5_front",
+          "type": "holding_lane",
+          "label": "Lane 5 Front",
+          "polygon": [
+            [
+              0.4127,
+              0.6284
+            ],
+            [
+              0.0034,
+              0.5931
+            ],
+            [
+              0.0014,
+              0.5683
+            ],
+            [
+              0.3836,
+              0.6112
+            ]
+          ]
+        },
+        {
+          "id": "clinton_clinton_terminal_holding_lane_6_front",
+          "type": "holding_lane",
+          "label": "Line 6 Front",
+          "polygon": [
+            [
+              0.3756,
+              0.6045
+            ],
+            [
+              0.0014,
+              0.5655
+            ],
+            [
+              0.0014,
+              0.5388
+            ],
+            [
+              0.3425,
+              0.5883
+            ]
+          ]
+        },
+        {
+          "id": "clinton_clinton_terminal_holding_lane_7_front",
+          "type": "holding_lane",
+          "label": "Lane 7 Front",
+          "polygon": [
+            [
+              0.3334,
+              0.5817
+            ],
+            [
+              0.0024,
+              0.5388
+            ],
+            [
+              0.0004,
+              0.5121
+            ],
+            [
+              0.2973,
+              0.5636
+            ]
+          ]
+        },
+        {
+          "id": "clinton_clinton_terminal_holding_lane_1_back",
+          "type": "holding_lane",
+          "label": "Lane 1 Back",
+          "polygon": [
+            [
+              0.9994,
+              0.2796
+            ],
+            [
+              0.0004,
+              0.2986
+            ],
+            [
+              0.0255,
+              0.2862
+            ],
+            [
+              0.9984,
+              0.209
+            ]
+          ]
+        },
+        {
+          "id": "clinton_clinton_terminal_queue_lane_2_back",
+          "type": "queue_lane",
+          "label": "Lane 2 Back",
+          "polygon": [
+            [
+              0.0245,
+              0.2872
+            ],
+            [
+              0.9954,
+              0.2052
+            ],
+            [
+              0.9984,
+              0.15
+            ],
+            [
+              0.0556,
+              0.2729
+            ]
+          ]
+        },
+        {
+          "id": "clinton_clinton_terminal_queue_lane_3_back",
+          "type": "queue_lane",
+          "label": "Lane 3 Back",
+          "polygon": [
+            [
+              0.9964,
+              0.1481
+            ],
+            [
+              0.0556,
+              0.2719
+            ],
+            [
+              0.0897,
+              0.2596
+            ],
+            [
+              0.9974,
+              0.1176
+            ]
+          ]
+        },
+        {
+          "id": "clinton_clinton_terminal_queue_lane_4_back",
+          "type": "queue_lane",
+          "label": "Lane 4 Back",
+          "polygon": [
+            [
+              0.9974,
+              0.1157
+            ],
+            [
+              0.0867,
+              0.2605
+            ],
+            [
+              0.1108,
+              0.2491
+            ],
+            [
+              0.9964,
+              0.0909
+            ]
+          ]
+        },
+        {
+          "id": "clinton_clinton_terminal_queue_lane_5_back",
+          "type": "queue_lane",
+          "label": "Lane 5 Back",
+          "polygon": [
+            [
+              0.1112,
+              0.2486
+            ],
+            [
+              0.9935,
+              0.0919
+            ],
+            [
+              0.9983,
+              0.0667
+            ],
+            [
+              0.1546,
+              0.2337
+            ]
+          ]
+        },
+        {
+          "id": "clinton_clinton_terminal_queue_lane_6",
+          "type": "queue_lane",
+          "label": "Lane 6 Back",
+          "polygon": [
+            [
+              0.1558,
+              0.2314
+            ],
+            [
+              0.9971,
+              0.0644
+            ],
+            [
+              0.9935,
+              0.0473
+            ],
+            [
+              0.1943,
+              0.2165
+            ]
+          ]
+        },
+        {
+          "id": "clinton_clinton_terminal_queue_lane_7_back",
+          "type": "queue_lane",
+          "label": "Lane 7 Back",
+          "polygon": [
+            [
+              0.9984,
+              0.0453
+            ],
+            [
+              0.1992,
+              0.2176
+            ],
+            [
+              0.2173,
+              0.2075
+            ],
+            [
+              0.9978,
+              0.0257
+            ]
+          ]
+        }
+      ],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": true
+    },
+    "9167": {
+      "terminal": "Port Townsend",
+      "terminalId": "17",
+      "displayName": "Port Townsend Terminal",
+      "title": "WSF Port Townsend Terminal",
+      "frameSize": {
+        "width": 400,
+        "height": 246
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/PortTownsend/terminal/ptterm.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9168": {
+      "terminal": "Port Townsend",
+      "terminalId": "17",
+      "displayName": "Port Townsend Street",
+      "title": "WSF Port Townsend Street",
+      "frameSize": {
+        "width": 400,
+        "height": 245
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/PortTownsend/Street/ptStreet.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9169": {
+      "terminal": "Coupeville ",
+      "terminalId": "11",
+      "displayName": "Coupeville Terminal",
+      "title": "WSF Coupeville Terminal",
+      "frameSize": {
+        "width": 400,
+        "height": 245
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/Keystone/terminal/keyterm.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9170": {
+      "terminal": "Coupeville ",
+      "terminalId": "11",
+      "displayName": "Coupeville Street",
+      "title": "WSF Coupeville Street",
+      "frameSize": {
+        "width": 400,
+        "height": 245
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/Keystone/Street/keyStreet.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9172": {
+      "terminal": "Clinton",
+      "terminalId": "5",
+      "displayName": "Clinton Uphill",
+      "title": "WSF Clinton Uphill",
+      "frameSize": {
+        "width": 400,
+        "height": 137
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/clinton/boothhill.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [
+        {
+          "id": "clinton_clinton_uphill_queue_lane",
+          "type": "queue_lane",
+          "label": "Queue Lane",
+          "polygon": [
+            [
+              0.2512,
+              0.4782
+            ],
+            [
+              0.198,
+              0.4221
+            ],
+            [
+              0.2291,
+              0.3839
+            ],
+            [
+              0.3876,
+              0.3415
+            ],
+            [
+              0.6845,
+              0.2594
+            ],
+            [
+              0.8911,
+              0.2074
+            ],
+            [
+              0.8911,
+              0.1718
+            ],
+            [
+              0.847,
+              0.1691
+            ],
+            [
+              0.6775,
+              0.2019
+            ],
+            [
+              0.517,
+              0.2197
+            ],
+            [
+              0.3515,
+              0.2279
+            ],
+            [
+              0.1358,
+              0.2402
+            ],
+            [
+              0.0185,
+              0.2744
+            ],
+            [
+              0.0215,
+              0.47
+            ]
+          ]
+        }
+      ],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": true
+    },
+    "9173": {
+      "terminal": "Clinton",
+      "terminalId": "5",
+      "displayName": "Clinton Dock",
+      "title": "WSF Clinton Dock",
+      "frameSize": {
+        "width": 480,
+        "height": 352
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/clinton/boothdock.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [
+        {
+          "id": "clinton_clinton_dock_ferry_slip_a",
+          "type": "ferry_slip",
+          "label": "Clinton Slip A",
+          "polygon": [
+            [
+              0.2112,
+              0.5182
+            ],
+            [
+              0.2093,
+              0.0012
+            ],
+            [
+              0.9984,
+              0
+            ],
+            [
+              0.9934,
+              0.5171
+            ]
+          ]
+        }
+      ],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": true
+    },
+    "9174": {
+      "terminal": "Clinton",
+      "terminalId": "5",
+      "displayName": "Clinton E SR 525",
+      "title": "WSF Clinton E SR 525",
+      "frameSize": {
+        "width": 480,
+        "height": 360
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/clinton/clinteast.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [
+        {
+          "id": "clinton_clinton_e_sr_525_queue_lane",
+          "type": "queue_lane",
+          "label": "Queue lane",
+          "polygon": [
+            [
+              0.3915,
+              0.3102
+            ],
+            [
+              0.3673,
+              0.3303
+            ],
+            [
+              0.3656,
+              0.3593
+            ],
+            [
+              0.384,
+              0.3827
+            ],
+            [
+              0.435,
+              0.4027
+            ],
+            [
+              0.5345,
+              0.4306
+            ],
+            [
+              0.9992,
+              0.5587
+            ],
+            [
+              0.9992,
+              0.4529
+            ],
+            [
+              0.5111,
+              0.3749
+            ],
+            [
+              0.4434,
+              0.3637
+            ],
+            [
+              0.4074,
+              0.3537
+            ],
+            [
+              0.3957,
+              0.3325
+            ],
+            [
+              0.4149,
+              0.3069
+            ]
+          ]
+        }
+      ],
+      "excludedAreas": [
+        {
+          "id": "clinton_clinton_e_sr_525_driveway_break_1",
+          "type": "driveway_break",
+          "label": "Exclude: Clinton Clinton E SR 525 driveway break",
+          "polygon": [
+            [
+              0.6574,
+              0.4766
+            ],
+            [
+              0.6584,
+              0.3977
+            ],
+            [
+              0.9954,
+              0.4538
+            ],
+            [
+              0.9964,
+              0.5702
+            ]
+          ]
+        }
+      ],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": true
+    },
+    "9175": {
+      "terminal": "Clinton",
+      "terminalId": "5",
+      "displayName": "Clinton W SR 525",
+      "title": "WSF Clinton W SR 525",
+      "frameSize": {
+        "width": 400,
+        "height": 140
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/clinton/clintwest.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [
+        {
+          "id": "clinton_clinton_w_sr_525_queue_lane",
+          "type": "queue_lane",
+          "label": "Queue Lane",
+          "polygon": [
+            [
+              0.0014,
+              0.2893
+            ],
+            [
+              0.539,
+              0.2225
+            ],
+            [
+              0.6835,
+              0.165
+            ],
+            [
+              0.7396,
+              0.1342
+            ],
+            [
+              0.7366,
+              0.1088
+            ],
+            [
+              0.7246,
+              0.1061
+            ],
+            [
+              0.7035,
+              0.1208
+            ],
+            [
+              0.6634,
+              0.1382
+            ],
+            [
+              0.53,
+              0.1623
+            ],
+            [
+              0.0014,
+              0.185
+            ]
+          ]
+        }
+      ],
+      "excludedAreas": [
+        {
+          "id": "clinton_clinton_w_sr_525_intersection_break_1",
+          "type": "intersection_break",
+          "label": "Intersection",
+          "polygon": [
+            [
+              0.4458,
+              0.2372
+            ],
+            [
+              0.4438,
+              0.1543
+            ],
+            [
+              0.0004,
+              0.1676
+            ],
+            [
+              0.0004,
+              0.3081
+            ]
+          ]
+        }
+      ],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": true
+    },
+    "9377": {
+      "terminal": "Fauntleroy",
+      "terminalId": "9",
+      "displayName": "Fauntleroy Way and Cloverdale St.",
+      "title": "WSF Fauntleroy Way and Cloverdale St.",
+      "frameSize": {
+        "width": 400,
+        "height": 246
+      },
+      "imageUrl": "https://www.seattle.gov/trafficcams/images/Fauntleroy_SW_Cloverdale_NS.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9391": {
+      "terminal": "Southworth",
+      "terminalId": "20",
+      "displayName": "Southworth Ferry Terminal",
+      "title": "WSF Southworth Ferry Terminal",
+      "frameSize": {
+        "width": 400,
+        "height": 245
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/southworth/terminal.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9394": {
+      "terminal": "Mukilteo",
+      "terminalId": "14",
+      "displayName": "SR 525 at MP 8.2: 5th St North - WSF Mukilteo",
+      "title": "SR 525 at MP 8.2: 5th St North - WSF Mukilteo",
+      "frameSize": {
+        "width": 335,
+        "height": 249
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/nw/525vc00820.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [
+        {
+          "id": "mukilteo_sr_525_at_mp_8_2_5th_st_north_wsf_mukilteo_queue_lane",
+          "type": "queue_lane",
+          "label": "Queue Lane",
+          "polygon": [
+            [
+              0.2148,
+              0.9191
+            ],
+            [
+              0.8184,
+              0.4299
+            ],
+            [
+              0.8284,
+              0.399
+            ],
+            [
+              0.8169,
+              0.3526
+            ],
+            [
+              0.7681,
+              0.3391
+            ],
+            [
+              0.7982,
+              0.3275
+            ],
+            [
+              0.8485,
+              0.3371
+            ],
+            [
+              0.8744,
+              0.3681
+            ],
+            [
+              0.883,
+              0.4067
+            ],
+            [
+              0.8672,
+              0.4551
+            ],
+            [
+              0.5022,
+              0.9288
+            ]
+          ]
+        }
+      ],
+      "excludedAreas": [
+        {
+          "id": "mukilteo_sr_525_at_mp_8_2_5th_st_north_wsf_mukilteo_driveway",
+          "type": "driveway_break",
+          "label": "Driveway",
+          "polygon": [
+            [
+              0.8255,
+              0.5633
+            ],
+            [
+              0.633,
+              0.544
+            ],
+            [
+              0.153,
+              0.9133
+            ],
+            [
+              0.5525,
+              0.9191
+            ]
+          ]
+        },
+        {
+          "id": "mukilteo_sr_525_at_mp_8_2_5th_st_north_wsf_mukilteo_intersection_break_4th",
+          "type": "intersection_break",
+          "label": "4th Ave",
+          "polygon": [
+            [
+              0.8888,
+              0.4493
+            ],
+            [
+              0.7882,
+              0.4338
+            ],
+            [
+              0.8025,
+              0.3855
+            ],
+            [
+              0.9046,
+              0.3932
+            ]
+          ]
+        }
+      ],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": true
+    },
+    "9402": {
+      "terminal": "Fauntleroy",
+      "terminalId": "9",
+      "displayName": "Fauntleroy Way looking North",
+      "title": "WSF Fauntleroy Way looking North",
+      "frameSize": {
+        "width": 400,
+        "height": 294
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/fauntleroy/terminal/fauntterminal.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9403": {
+      "terminal": "Fauntleroy",
+      "terminalId": "9",
+      "displayName": "Fauntleroy Trenton St looking North",
+      "title": "WSF Fauntleroy Trenton St looking North",
+      "frameSize": {
+        "width": 400,
+        "height": 294
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/fauntleroy/terminal/faunttrenton.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9404": {
+      "terminal": "Fauntleroy",
+      "terminalId": "9",
+      "displayName": "Fauntleroy Lincoln Park looking North",
+      "title": "WSF Fauntleroy Lincoln Park looking North",
+      "frameSize": {
+        "width": 400,
+        "height": 294
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/fauntleroy/terminal/fauntlincoln.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9476": {
+      "terminal": "Bainbridge Island",
+      "terminalId": "3",
+      "displayName": "SR 305 at MP 0.2: Winslow Way South",
+      "title": "SR 305 at MP 0.2: Winslow Way South",
+      "frameSize": {
+        "width": 335,
+        "height": 209
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/orflow/305vc00022.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9477": {
+      "terminal": "Bainbridge Island",
+      "terminalId": "3",
+      "displayName": "SR 305 at MP 0.2: Winslow Way North",
+      "title": "SR 305 at MP 0.2: Winslow Way North",
+      "frameSize": {
+        "width": 335,
+        "height": 209
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/orflow/305vc00023.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9478": {
+      "terminal": "Bainbridge Island",
+      "terminalId": "3",
+      "displayName": "SR 305 at MP 0.2: High School Rd North",
+      "title": "SR 305 at MP 0.2: High School Rd North",
+      "frameSize": {
+        "width": 335,
+        "height": 249
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/orflow/305vc00028.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9479": {
+      "terminal": "Bainbridge Island",
+      "terminalId": "3",
+      "displayName": "SR 305 at MP 0.2: High School Rd South",
+      "title": "SR 305 at MP 0.2: High School Rd South",
+      "frameSize": {
+        "width": 335,
+        "height": 249
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/orflow/305vc00029.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9502": {
+      "terminal": "Friday Harbor",
+      "terminalId": "10",
+      "displayName": "Friday Harbor Upper Holding",
+      "title": "WSF Friday Harbor Upper Holding",
+      "frameSize": {
+        "width": 400,
+        "height": 245
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/fridayharbor/upperholding.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9688": {
+      "terminal": "Orcas Island",
+      "terminalId": "15",
+      "displayName": "Orcas Ferry Holding",
+      "title": "WSF Orcas Ferry Holding",
+      "frameSize": {
+        "width": 400,
+        "height": 288
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/orcas/holding.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9689": {
+      "terminal": "Orcas Island",
+      "terminalId": "15",
+      "displayName": "Orcas Ferry Booth",
+      "title": "WSF Orcas Ferry Booth",
+      "frameSize": {
+        "width": 400,
+        "height": 288
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/orcas/booth.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9692": {
+      "terminal": "Lopez Island",
+      "terminalId": "13",
+      "displayName": "Lopez Ferry Approach",
+      "title": "WSF Lopez Ferry Approach",
+      "frameSize": {
+        "width": 400,
+        "height": 246
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/lopez/approach.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9693": {
+      "terminal": "Lopez Island",
+      "terminalId": "13",
+      "displayName": "Lopez Ferry Holding Looking South",
+      "title": "WSF Lopez Ferry Holding Looking South",
+      "frameSize": {
+        "width": 400,
+        "height": 321
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/lopez/holding.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9717": {
+      "terminal": "Vashon Island",
+      "terminalId": "22",
+      "displayName": "Vashon Ferry Holding (South)",
+      "title": "WSF Vashon Ferry Holding (South)",
+      "frameSize": {
+        "width": 400,
+        "height": 245
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/vashon/HoldingSouth.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9728": {
+      "terminal": "Mukilteo",
+      "terminalId": "14",
+      "displayName": "SR 525 at MP 8.1: 5th St South - WSF Mukilteo",
+      "title": "SR 525 at MP 8.1: 5th St South - WSF Mukilteo",
+      "frameSize": {
+        "width": 335,
+        "height": 249
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/nw/525vc00819.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [
+        {
+          "id": "mukilteo_sr_525_at_mp_8_1_5th_st_south_wsf_mukilteo_queue_lane",
+          "type": "queue_lane",
+          "label": "Queue Lane",
+          "polygon": [
+            [
+              0.393,
+              0.9172
+            ],
+            [
+              0.4289,
+              0.3951
+            ],
+            [
+              0.4533,
+              0.3178
+            ],
+            [
+              0.4274,
+              0.2791
+            ],
+            [
+              0.4145,
+              0.2791
+            ],
+            [
+              0.4203,
+              0.312
+            ],
+            [
+              0.3771,
+              0.3681
+            ],
+            [
+              0.2895,
+              0.5633
+            ],
+            [
+              0.2421,
+              0.9153
+            ]
+          ]
+        }
+      ],
+      "excludedAreas": [
+        {
+          "id": "mukilteo_sr_525_at_mp_8_1_5th_st_south_wsf_mukilteo_intersection_break_5th",
+          "type": "intersection_break",
+          "label": "5th Ave",
+          "polygon": [
+            [
+              0.3053,
+              0.4686
+            ],
+            [
+              0.4346,
+              0.4647
+            ],
+            [
+              0.4145,
+              0.9191
+            ],
+            [
+              0.2119,
+              0.9191
+            ],
+            [
+              0.255,
+              0.5595
+            ]
+          ]
+        },
+        {
+          "id": "mukilteo_sr_525_at_mp_8_1_5th_st_south_wsf_mukilteo_intersection_break_washington",
+          "type": "intersection_break",
+          "label": "Washington Ave",
+          "polygon": [
+            [
+              0.357,
+              0.3565
+            ],
+            [
+              0.4562,
+              0.3623
+            ],
+            [
+              0.4519,
+              0.4261
+            ],
+            [
+              0.3268,
+              0.4029
+            ]
+          ]
+        }
+      ],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": true
+    },
+    "9741": {
+      "terminal": "Point Defiance",
+      "terminalId": "16",
+      "displayName": "Point Defiance Holding",
+      "title": "WSF Point Defiance Holding",
+      "frameSize": {
+        "width": 400,
+        "height": 245
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/PointDefiance/PtDefHolding.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9742": {
+      "terminal": "Point Defiance",
+      "terminalId": "16",
+      "displayName": "Point Defiance Booth",
+      "title": "WSF Point Defiance Booth",
+      "frameSize": {
+        "width": 400,
+        "height": 245
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/PointDefiance/PtDefBooth.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9813": {
+      "terminal": "Kingston",
+      "terminalId": "12",
+      "displayName": "Kingston SR 104 at Toll Booths",
+      "title": "WSF Kingston SR 104 at Toll Booths",
+      "frameSize": {
+        "width": 335,
+        "height": 244
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/orflow/104vc02466.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "9944": {
+      "terminal": "Mukilteo",
+      "terminalId": "14",
+      "displayName": "SR 525 at MP 8.4: 1st Street",
+      "title": "SR 525 at MP 8.4: 1st Street",
+      "frameSize": {
+        "width": 335,
+        "height": 209
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/nw/525vc00858.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "10112": {
+      "terminal": "Lopez Island",
+      "terminalId": "13",
+      "displayName": "Lopez Ferry Holding Middle",
+      "title": "WSF Lopez Ferry Holding Middle",
+      "frameSize": {
+        "width": 400,
+        "height": 321
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/lopez/holding2.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "10113": {
+      "terminal": "Lopez Island",
+      "terminalId": "13",
+      "displayName": "Lopez Ferry Holding Looking North",
+      "title": "WSF Lopez Ferry Holding Looking North",
+      "frameSize": {
+        "width": 400,
+        "height": 321
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/wsf/lopez/holding3.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    },
+    "10266": {
+      "terminal": "Kingston",
+      "terminalId": "12",
+      "displayName": "Kingston Lindvog Rd",
+      "title": "WSF Kingston Lindvog Rd",
+      "frameSize": {
+        "width": 335,
+        "height": 244
+      },
+      "imageUrl": "https://images.wsdot.wa.gov/orflow/104vc02390.jpg",
+      "requiresDaylightReview": false,
+      "allowedAreas": [],
+      "excludedAreas": [],
+      "excludedAreaNotes": [
+        "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
+      ],
+      "reviewed": false
+    }
+  },
+  "reviewedCameraIds": [
+    "9161",
+    "9163",
+    "9164",
+    "9166",
+    "9172",
+    "9173",
+    "9174",
+    "9175",
+    "9394",
+    "9728"
+  ]
+}

@@ -1,23 +1,36 @@
-import { cert, initializeApp } from "firebase-admin/app";
+import { App, cert, initializeApp } from "firebase-admin/app";
 import { getMessaging } from "firebase-admin/messaging";
 import { isKeyOf, isObject } from "shared/lib/objects";
 
-if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
+const firebaseServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
+
+// require credentials in production
+if (!firebaseServiceAccount && process.env.NODE_ENV === "production") {
   throw new Error("FIREBASE_SERVICE_ACCOUNT is not set");
 }
 
-export const firebase = initializeApp({
-  credential: cert(
-    JSON.parse(
-      Buffer.from(
-        process.env.FIREBASE_SERVICE_ACCOUNT as string,
-        "base64"
-      ).toString()
-    )
-  ),
-});
+let firebase: App | undefined;
 
-export const firebaseMessaging = getMessaging(firebase);
+// initialize Firebase when configured
+if (firebaseServiceAccount) {
+  firebase = initializeApp({
+    credential: cert(
+      JSON.parse(Buffer.from(firebaseServiceAccount, "base64").toString())
+    ),
+  });
+}
+
+const noOpFirebaseMessaging = {
+  // discard local push sends
+  send(): Promise<string> {
+    return Promise.resolve("");
+  },
+};
+
+export { firebase };
+export const firebaseMessaging = firebase
+  ? getMessaging(firebase)
+  : noOpFirebaseMessaging;
 
 export const hasFirebaseCode = (error: unknown, code: string): boolean => {
   if (!isObject(error)) {

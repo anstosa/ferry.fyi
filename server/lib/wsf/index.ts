@@ -3,10 +3,7 @@ import logger from "heroku-logger";
 import { getErrorMessage, getLogError } from "~/lib/errors";
 import type { Schedule } from "~/models/Schedule";
 
-import { sendCancellationNotifications } from "../cancellationNotifications";
-import { sendDelayNotifications } from "../delayNotifications";
 import { updateEstimates } from "../forecast";
-import { sendSailingLifecycleNotifications } from "../sailingLifecycleNotifications";
 import { updateTideForecasts } from "../tides/updateForecasts";
 import { updateWeatherForecasts } from "../weather/updateForecasts";
 import { setWsfCoreReady, setWsfWarming } from "./api";
@@ -27,6 +24,22 @@ interface ShortRefreshOptions {
 }
 
 interface BackgroundRefreshOptions extends ShortRefreshOptions {}
+
+// load notification modules only when needed
+const loadNotificationSenders = async () => {
+  const [cancellation, delay, lifecycle] = await Promise.all([
+    import("../cancellationNotifications"),
+    import("../delayNotifications"),
+    import("../sailingLifecycleNotifications"),
+  ]);
+  return {
+    sendCancellationNotifications: cancellation.sendCancellationNotifications,
+    sendDelayNotifications: delay.sendDelayNotifications,
+    sendSailingLifecycleNotifications:
+      lifecycle.sendSailingLifecycleNotifications,
+  };
+};
+
 let estimateRefreshPromise: Promise<void> | null = null;
 let lastEstimateRefreshStartedAt = 0;
 let lastTideForecastRefreshStartedAt = 0;
@@ -192,9 +205,10 @@ const runShortRefresh = async (
     refreshEstimatesBestEffort(updatedSchedules);
     // notification guard
     if (options.sendNotifications !== false) {
-      await sendCancellationNotifications();
-      await sendDelayNotifications();
-      await sendSailingLifecycleNotifications();
+      const notificationSenders = await loadNotificationSenders();
+      await notificationSenders.sendCancellationNotifications();
+      await notificationSenders.sendDelayNotifications();
+      await notificationSenders.sendSailingLifecycleNotifications();
     }
   } finally {
     // tide best-effort

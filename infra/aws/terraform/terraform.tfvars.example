@@ -2,12 +2,14 @@
 aws_account_id = "333401878534"
 aws_region     = "us-west-2"
 
-# Start with staging.ferry.fyi pointing at the production ALB; add ferry.fyi/www later.
-app_domains = ["staging.ferry.fyi"]
-base_url    = "https://staging.ferry.fyi"
+# Production hostname is ferry.fyi; staging remains on the same AWS stack for smoke tests.
+app_domains = ["ferry.fyi", "staging.ferry.fyi"]
+base_url    = "https://ferry.fyi"
 
-# Enable only after Cloudflare has the ACM validation CNAME and ACM is issued.
-enable_https_listener = false
+# Keep ALB enabled until the Cloudflare Tunnel route is healthy, then disable it to remove ALB/IP charges.
+enable_public_alb      = true
+enable_https_listener  = true
+enable_cloudflare_tunnel = false
 
 # PostgreSQL 17.9 is available in us-west-2 per G003 read-only evidence.
 rds_engine_version       = "17.9"
@@ -18,8 +20,15 @@ rds_max_allocated_storage = 100
 # Keep false for first-create iteration if needed; set true before production cutover.
 rds_deletion_protection = false
 
-# CI image tag to deploy from ECR.
-image_tag = "latest"
+# CI image tags to deploy from ECR.
+image_tag          = "latest"
+detector_image_tag = "latest"
+
+# Always-on CPU-only detector service defaults.
+detector_desired_count  = 1
+detector_cpu            = 1024
+detector_memory         = 2048
+detector_container_port = 8000
 
 # The GitHub Actions OIDC role is limited to this repo and branch.
 github_repository        = "anstosa/ferry.fyi"

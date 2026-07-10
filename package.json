@@ -136,6 +136,7 @@
   "license": "ISC",
   "repository": "anstosa/ferry.fyi.git",
   "scripts": {
+    "camera:polygons": "scripts/camera-polygon-annotator/run-annotator.sh",
     "build": "yarn build:client && yarn build:server",
     "build:android": "scripts/with-android-env.sh sh -c 'NODE_ENV=production CACHE_NAME=android vite build --config client/vite.config.ts && cap sync && direnv allow'",
     "build:client": "NODE_ENV=production vite build --config client/vite.config.ts",
@@ -184,6 +185,7 @@
     "lint:js:shared:fix": "yarn lint:js:shared --fix",
     "start": "node scripts/start-dev.js",
     "start:dev": "node scripts/start-dev.js",
+    "start:camera-tools": "node scripts/start-dev.js --with-camera-tools",
     "weather:backfill": "cd server && node ../scripts/register-esbuild.js scripts/backfillWeather.ts",
     "weather:calculate-adjustments": "cd server && node ../scripts/register-esbuild.js scripts/calculateWeatherAdjustments.ts",
     "tides:backfill": "cd server && node ../scripts/register-esbuild.js scripts/backfillTides.ts",
@@ -191,7 +193,13 @@
     "user-settings:migrate-auth0": "cd server && node ../scripts/register-esbuild.js scripts/migrateAuth0UserSettings.ts",
     "school-breaks:update-events": "cd server && node ../scripts/register-esbuild.js scripts/updateSchoolBreakEvents.ts",
     "demand:update-events": "yarn school-breaks:update-events && yarn sports:update-events",
-    "start:prod": "cd dist/server && node server.js"
+    "start:prod": "cd dist/server && node server.js",
+    "container:build": "docker compose -f docker-compose.dev.yml build",
+    "container:up": "docker compose -f docker-compose.dev.yml up --detach postgres detector app",
+    "container:down": "docker compose -f docker-compose.dev.yml down",
+    "container:logs": "docker compose -f docker-compose.dev.yml logs --follow",
+    "container:migrate": "docker compose -f docker-compose.dev.yml --profile tools run --rm migrate",
+    "container:reset": "docker compose -f docker-compose.dev.yml down --volumes && docker compose -f docker-compose.dev.yml up --detach postgres detector && docker compose -f docker-compose.dev.yml --profile tools run --rm migrate && docker compose -f docker-compose.dev.yml up --detach app"
   },
   "resolutions": {
     "@babel/helper-remap-async-to-generator": "7.29.7",

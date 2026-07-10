@@ -13,14 +13,19 @@ output "ecr_repository_url" {
   value       = aws_ecr_repository.app.repository_url
 }
 
+output "detector_ecr_repository_url" {
+  description = "Detector Docker image repository URL for CI builds."
+  value       = aws_ecr_repository.detector.repository_url
+}
+
 output "alb_dns_name" {
   description = "ALB DNS target for manual Cloudflare CNAME records."
-  value       = aws_lb.app.dns_name
+  value       = var.enable_public_alb ? aws_lb.app[0].dns_name : null
 }
 
 output "alb_zone_id" {
   description = "ALB hosted zone id for alias-capable DNS tooling."
-  value       = aws_lb.app.zone_id
+  value       = var.enable_public_alb ? aws_lb.app[0].zone_id : null
 }
 
 output "acm_validation_records" {
@@ -49,6 +54,11 @@ output "scheduler_service_name" {
   value       = aws_ecs_service.scheduler.name
 }
 
+output "detector_service_name" {
+  description = "ECS detector service name."
+  value       = aws_ecs_service.detector.name
+}
+
 output "web_task_definition_family" {
   description = "ECS web task definition family for GitHub Actions render/deploy."
   value       = aws_ecs_task_definition.web.family
@@ -59,6 +69,16 @@ output "scheduler_task_definition_family" {
   value       = aws_ecs_task_definition.scheduler.family
 }
 
+output "detector_task_definition_family" {
+  description = "ECS detector task definition family for GitHub Actions render/deploy."
+  value       = aws_ecs_task_definition.detector.family
+}
+
+output "detector_endpoint" {
+  description = "Private detector URL injected into the web task as CAR_DETECTION_ENDPOINT."
+  value       = local.detector_endpoint
+}
+
 output "ecs_task_subnet_ids" {
   description = "Public subnet IDs for one-off GitHub Actions ECS migration tasks."
   value       = aws_subnet.public[*].id
@@ -67,6 +87,21 @@ output "ecs_task_subnet_ids" {
 output "ecs_task_security_group_id" {
   description = "ECS security group ID for one-off GitHub Actions ECS migration tasks."
   value       = aws_security_group.ecs.id
+}
+
+output "web_security_group_id" {
+  description = "Web ECS service security group ID."
+  value       = aws_security_group.web.id
+}
+
+output "detector_task_subnet_ids" {
+  description = "Private subnet IDs used by the internal detector ECS service."
+  value       = aws_subnet.private_app[*].id
+}
+
+output "detector_security_group_id" {
+  description = "Detector security group ID."
+  value       = aws_security_group.detector.id
 }
 
 output "database_endpoint" {
@@ -82,6 +117,11 @@ output "database_url_secret_arn" {
 output "app_config_secret_arn" {
   description = "Secrets Manager secret ARN for manual runtime config JSON."
   value       = aws_secretsmanager_secret.app_config.arn
+}
+
+output "cloudflare_tunnel_token_secret_arn" {
+  description = "Secrets Manager secret ARN for the remote-managed Cloudflare Tunnel token."
+  value       = aws_secretsmanager_secret.cloudflare_tunnel_token.arn
 }
 
 output "github_deploy_role_arn" {

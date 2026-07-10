@@ -28,6 +28,9 @@ jobs:
       AW_TAG_ID: ${{ vars.AW_TAG_ID }}
       AWS_REGION: ${{ vars.AWS_REGION }}
       BASE_URL: ${{ vars.BASE_URL }}
+      DETECTOR_CONTEXT: ${{ vars.DETECTOR_CONTEXT || 'detector-runtime' }}
+      DETECTOR_DOCKERFILE: ${{ vars.DETECTOR_DOCKERFILE || 'detector-runtime/Dockerfile' }}
+      DETECTOR_ECR_REPOSITORY_URL: ${{ vars.DETECTOR_ECR_REPOSITORY_URL }}
       ECR_REPOSITORY_URL: ${{ vars.ECR_REPOSITORY_URL }}
       ECS_CLUSTER: ${{ vars.ECS_CLUSTER }}
       FIREBASE_API_KEY: ${{ vars.FIREBASE_API_KEY }}
@@ -117,6 +120,44 @@ jobs:
           # expose immutable image
           echo "image=${IMAGE_URI}" >> "${GITHUB_OUTPUT}"
 
+      - name: Build and push detector image
+        id: detector-image
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          # fail on shell mistakes
+          set -euo pipefail
+          # require configured repository
+          if [[ -z "${DETECTOR_ECR_REPOSITORY_URL}" ]]; then
+            echo "DETECTOR_ECR_REPOSITORY_URL GitHub variable is required" >&2
+            exit 1
+          fi
+          # require detector build context
+          if [[ ! -d "${DETECTOR_CONTEXT}" ]]; then
+            echo "Detector build context not found at ${DETECTOR_CONTEXT}" >&2
+            exit 1
+          fi
+          # require detector build file
+          if [[ ! -f "${DETECTOR_DOCKERFILE}" ]]; then
+            echo "Detector Dockerfile not found at ${DETECTOR_DOCKERFILE}" >&2
+            exit 1
+          fi
+          # derive immutable detector tags
+          IMAGE_URI="${DETECTOR_ECR_REPOSITORY_URL}:${IMAGE_TAG}"
+          LATEST_IMAGE_URI="${DETECTOR_ECR_REPOSITORY_URL}:latest"
+          # build cpu-only detector image
+          docker build \
+            -f "${DETECTOR_DOCKERFILE}" \
+            -t "${IMAGE_URI}" \
+            -t "${LATEST_IMAGE_URI}" \
+            "${DETECTOR_CONTEXT}"
+          # push rollbackable detector image
+          docker push "${IMAGE_URI}"
+          # push detector convenience tag
+          docker push "${LATEST_IMAGE_URI}"
+          # expose immutable detector image
+          echo "image=${IMAGE_URI}" >> "${GITHUB_OUTPUT}"
+
       - name: Render web task definition
         id: render-web
         uses: aws-actions/amazon-ecs-render-task-definition@v1
@@ -165,6 +206,23 @@ jobs:
         with:
           task-definition: ${{ steps.render-web.outputs.task-definition }}
           service: ${{ vars.ECS_WEB_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
+          wait-max-delay-seconds: 15
+
+      - name: Render detector task definition
+        id: render-detector
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition-family: ${{ vars.ECS_DETECTOR_TASK_DEFINITION_FAMILY }}
+          container-name: detector
+          image: ${{ steps.detector-image.outputs.image }}
+
+      - name: Deploy detector service
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render-detector.outputs.task-definition }}
+          service: ${{ vars.ECS_DETECTOR_SERVICE }}
           cluster: ${{ env.ECS_CLUSTER }}
           wait-for-service-stability: true
           wait-max-delay-seconds: 15
