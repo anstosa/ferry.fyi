@@ -2,6 +2,6 @@
 fastapi==0.125.0
 uvicorn[standard]==0.38.0
 pillow==12.0.0
-torch==2.5.1+cpu
+torch==2.12.0+cpu
 torchvision==0.20.1+cpu
 ultralytics==8.3.238
