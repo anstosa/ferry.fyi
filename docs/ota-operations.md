@@ -48,6 +48,7 @@ Terraform injects these into the ECS web task when it applies the OTA stack:
 | Variable | Purpose |
 | --- | --- |
 | `OTA_RELEASES_URL` | Terraform-generated HTTPS URL for `releases.json`. |
+| `OTA_RELEASES_BUCKET` | Private S3 bucket used by the ECS task role to read `releases.json` without NAT egress. |
 | `OTA_DEFAULT_CHANNEL` | Fallback channel when a manifest request has no `defaultChannel`; set `ota_default_channel` in Terraform to one of the three channels above. |
 
 The API route is `POST /api/ota/manifest`. The server validates the release index and keeps it in memory for five minutes. If the index is unavailable, invalid, or has no newer release, it returns a safe no-update response.
@@ -92,6 +93,10 @@ The OTA bucket is private. Publish through S3 using the GitHub OIDC deployment r
 The generated CloudFront hostname uses AWS's default certificate, which AWS fixes at a TLSv1 minimum. Android clients negotiate modern TLS, but this does not enforce a TLS 1.2 minimum. Before a broad production rollout, move OTA delivery to a dedicated hostname backed by a DNS-validated ACM certificate in `us-east-1` and configure that hostname as the CloudFront alias.
 
 ## Publishing workflow
+
+Every successful `production` deployment automatically builds and publishes a `production` OTA bundle after the web, detector, and scheduler services are stable. The publisher is idempotent for the same source revision: it verifies and reuses the existing immutable ZIP on a deployment retry.
+
+Use **Actions → Publish OTA bundle** only for a `staging` release. It remains a manual gate for device testing. Do not manually publish `production` unless recovering a failed automated publication; the workflow builds the current `production` branch, not the previously published staging ZIP.
 
 1. Build the Android-targeted web assets and inspect `dist/client`:
 

@@ -1,6 +1,12 @@
 name: Publish OTA bundle
 
 on:
+  workflow_call:
+    inputs:
+      channel:
+        description: OTA channel to update
+        required: true
+        type: string
   workflow_dispatch:
     inputs:
       channel:
@@ -154,15 +160,16 @@ jobs:
 
       - name: Publish immutable bundle
         env:
+          BUNDLE_CHECKSUM: ${{ steps.bundle.outputs.checksum }}
           BUNDLE_KEY: ${{ steps.bundle.outputs.key }}
           BUNDLE_PATH: ${{ steps.bundle.outputs.zip_path }}
         run: |
           # fail on shell mistakes
           set -euo pipefail
-          # refuse to overwrite an immutable release key
+          # reuse a verified immutable bundle on deploy retries
           if aws s3api head-object --bucket "${OTA_BUCKET_NAME}" --key "${BUNDLE_KEY}" >/dev/null 2>&1; then
-            echo "Immutable OTA bundle already exists: ${BUNDLE_KEY}" >&2
-            exit 1
+            aws s3 cp "s3://${OTA_BUCKET_NAME}/${BUNDLE_KEY}" - | sha256sum --check --status <(printf '%s  -\n' "${BUNDLE_CHECKSUM}")
+            exit 0
           fi
           # upload the complete ZIP with immutable cache semantics
           aws s3 cp "${BUNDLE_PATH}" "s3://${OTA_BUCKET_NAME}/${BUNDLE_KEY}" \
