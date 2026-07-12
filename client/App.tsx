@@ -4,7 +4,6 @@ import "@capacitor/core";
 import { useAuth0 } from "@auth0/auth0-react";
 import { App as Native } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
-import { StatusBar } from "@capacitor/status-bar";
 import { AnimatePresence } from "framer-motion";
 import { Settings } from "luxon";
 import React, { ReactElement, useEffect } from "react";
@@ -23,7 +22,6 @@ import { useOnline, useWSF } from "~/lib/api";
 import { useDevice } from "~/lib/device";
 import { usePush } from "~/lib/push";
 import { slugs } from "~/lib/terminals";
-import { colors } from "~/lib/theme";
 import { useUser } from "~/lib/user";
 import DumpsterFireIcon from "~/static/images/icons/solid/dumpster-fire.svg";
 import OfflineIcon from "~/static/images/icons/solid/signal-alt-slash.svg";
@@ -92,13 +90,6 @@ export const App = (): ReactElement => {
       initializePush();
     }
   }, [alertRules]);
-
-  useEffect(() => {
-    // Android-only color API
-    if (device?.platform === "android") {
-      StatusBar.setBackgroundColor({ color: colors.green.dark });
-    }
-  }, [device?.platform]);
 
   const handleCallback = async (url = window.location.href) => {
     const match = url.match(

@@ -90,8 +90,8 @@ export const Toast: FunctionComponent<PropsWithChildren<Props>> = ({
 
   // footer safe-area offset
   const bottomOffset = footerDocked
-    ? "bottom-0 mb-[calc(4rem+env(safe-area-inset-bottom))]"
-    : "bottom-0 mb-[calc(6rem+env(safe-area-inset-bottom))]";
+    ? "bottom-0 mb-[calc(4rem+var(--safe-area-inset-bottom))]"
+    : "bottom-0 mb-[calc(6rem+var(--safe-area-inset-bottom))]";
 
   return (
     <motion.div

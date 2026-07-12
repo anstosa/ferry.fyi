@@ -18,7 +18,6 @@
     "@capacitor/geolocation": "^8.2.0",
     "@capacitor/ios": "^8.4.1",
     "@capacitor/share": "^8.0.1",
-    "@capacitor/status-bar": "^8.0.2",
     "@capgo/capacitor-updater": "^8.50.2",
     "@sentry/react": "^10.59.0",
     "compression": "^1.8.1",

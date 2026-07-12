@@ -25,7 +25,6 @@ export MAPBOX_ACCESS_TOKEN="<get from mapbox>"
 
 # Android
 export ANDROID_SDK_ROOT="/home/ansto/Android/Sdk"
-export ANDROID_CERT_FINGERPRINT="<get from android keystore>"
 
 # Auth0
 export AUTH0_DOMAIN="<get from auth0>"

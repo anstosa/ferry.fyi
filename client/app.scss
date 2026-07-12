@@ -307,6 +307,10 @@ html {
 
 @layer base {
   :root {
+    --safe-area-inset-top: env(safe-area-inset-top, 0px);
+    --safe-area-inset-right: env(safe-area-inset-right, 0px);
+    --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-area-inset-left: env(safe-area-inset-left, 0px);
     --app-motion-duration-fast: 140ms;
     --app-motion-duration: 220ms;
     --app-motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
@@ -326,8 +330,8 @@ html {
 
   body {
     background:
-      var(--app-header-gradient) top / 100% env(safe-area-inset-top) no-repeat,
-      var(--app-footer-gradient) bottom / 100% env(safe-area-inset-bottom)
+      var(--app-header-gradient) top / 100% var(--safe-area-inset-top) no-repeat,
+      var(--app-footer-gradient) bottom / 100% var(--safe-area-inset-bottom)
         no-repeat,
       var(--app-footer-gradient);
   }

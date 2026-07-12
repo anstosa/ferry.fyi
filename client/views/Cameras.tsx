@@ -465,7 +465,8 @@ const CameraList = ({
             {canScrollFurtherDown && (
               <motion.div
                 className={clsx(
-                  "fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 h-3 w-full",
+                  // honor native bottom inset
+                  "fixed bottom-[calc(4rem+var(--safe-area-inset-bottom))] left-0 h-3 w-full",
                   "pointer-events-none z-20",
                   "bg-gradient-to-t from-[rgba(0,77,97,0.24)] to-transparent dark:from-[rgba(0,0,0,0.5)]"
                 )}
