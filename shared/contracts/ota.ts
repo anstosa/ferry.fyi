@@ -2,7 +2,7 @@ export const OTA_CHANNELS = ["development", "staging", "production"] as const;
 
 export type OtaChannel = (typeof OTA_CHANNELS)[number];
 
-export type OtaPlatform = "android";
+export type OtaPlatform = "android" | "ios";
 
 export type OtaSemverVersion =
   | `${number}.${number}.${number}`

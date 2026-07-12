@@ -86,6 +86,18 @@ WSA
 19. **Review Release**
 20. **Start rollout to Production**
 
+## iOS development and release
+
+The iOS target is generated from the same Capacitor app as Android and requires macOS, Xcode, and an Apple Developer account for device builds and App Store distribution.
+
+1. Install dependencies with `yarn` on a Mac.
+2. Set `AUTH0_CLIENT_REDIRECT` to `fyi.ferry://callback` for the native build and add that URL to the Auth0 application's allowed callback and logout URLs.
+3. Run `yarn open:ios`, select the **App** target in Xcode, and choose the Apple Developer signing team. Keep the bundle identifier as `fyi.ferry` unless the registered App ID requires a different one.
+4. Run `yarn ios` to build, sync, and launch on a selected simulator or connected iPhone. The iPhone must grant camera and location access for ticket scanning and nearby-terminal features.
+5. For a release, increment **Version** and **Build** in the App target's **General** settings, then use **Product > Archive** and upload the validated archive through Xcode's Organizer or Transporter.
+
+`yarn build:ios` builds the production web bundle with an iOS-specific cache name and synchronizes it into the Xcode project. Run it again after changing web code or Capacitor plugins. The generated project targets iOS 15 and later.
+
 ## Credits
 
 Thank you to [![BrowserStack](https://user-images.githubusercontent.com/568242/60857158-6ad96100-a1be-11e9-9cdf-aa5872f2f6c5.png)](http://browserstack.com/) for providing free cross-browser testing.

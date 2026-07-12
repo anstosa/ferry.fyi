@@ -94,7 +94,8 @@ export const App = (): ReactElement => {
   }, [alertRules]);
 
   useEffect(() => {
-    if (device?.isNativeMobile) {
+    // Android-only color API
+    if (device?.platform === "android") {
       StatusBar.setBackgroundColor({ color: colors.green.dark });
     }
   }, [device?.platform]);

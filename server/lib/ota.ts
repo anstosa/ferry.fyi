@@ -133,7 +133,7 @@ const parseOtaReleaseIndex = (value: unknown): OtaRelease[] | undefined => {
 };
 
 // validate the updater's required manifest request fields
-const parseOtaManifestRequest = (
+export const parseOtaManifestRequest = (
   value: unknown
 ): OtaManifestRequest | undefined => {
   // object guard
@@ -151,7 +151,7 @@ const parseOtaManifestRequest = (
   }
   // platform and boolean guard
   if (
-    request.platform !== "android" ||
+    (request.platform !== "android" && request.platform !== "ios") ||
     typeof request.is_emulator !== "boolean" ||
     typeof request.is_prod !== "boolean"
   ) {

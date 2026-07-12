@@ -31,6 +31,24 @@ describe("OTA contract and configuration", () => {
     expect(request.app_id).toBe("fyi.ferry");
   });
 
+  // iOS custom-backend metadata
+  it("models iOS updater requests", () => {
+    const request: OtaUpdateRequest = {
+      app_id: "fyi.ferry",
+      device_id: "device-id",
+      is_emulator: false,
+      is_prod: true,
+      platform: "ios",
+      plugin_version: "8.0.0",
+      version_build: "42",
+      version_code: "42",
+      version_name: "builtin",
+      version_os: "18.0",
+    };
+
+    expect(request.platform).toBe("ios");
+  });
+
   // immutable bundle response
   it("models an available update with a semver release and checksum", () => {
     const response: OtaAvailableUpdate = {
@@ -92,7 +110,10 @@ describe("OTA contract and configuration", () => {
       "VITE_OTA_CHANNEL",
       "VITE_OTA_MANIFEST_URL",
     ]);
-    expect(OTA_SERVER_ENV_KEYS).toEqual(["OTA_DEFAULT_CHANNEL"]);
+    expect(OTA_SERVER_ENV_KEYS).toEqual([
+      "OTA_DEFAULT_CHANNEL",
+      "OTA_RELEASES_BUCKET",
+    ]);
     expect(OTA_PUBLISH_ENV_KEYS).toEqual([
       "OTA_CHANNEL",
       "OTA_RELEASE_VERSION",

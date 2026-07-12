@@ -1,12 +1,12 @@
 # OTA operations
 
-This runbook covers Android web-asset updates delivered by the Capacitor updater. The updater is configured in `capacitor.config.ts` with `autoUpdate: false`; `client/index.tsx` asks the server for an update at startup, downloads it in the background, and activates it on a later app start.
+This runbook covers Android and iOS web-asset updates delivered by the Capacitor updater. The updater is configured in `capacitor.config.ts` with `autoUpdate: false`; `client/index.tsx` asks the server for an update at startup, downloads it in the background, and activates it on a later app start.
 
 ## Release boundaries
 
 An OTA release contains only the web application assets. It can update React, TypeScript output, styles, and other files produced in `dist/client`.
 
-An OTA release cannot change the native Android binary. Changes to Capacitor plugins, plugin configuration, Android permissions, `android/`, `capacitor.config.ts`, or native code require a signed Google Play release. Follow the Android release procedure in `README.md`; use Play Console internal testing before production rollout. Do not use OTA to distribute native/plugin/permission changes.
+An OTA release cannot change a native app binary. Changes to Capacitor plugins, plugin configuration, Android or iOS permissions, `android/`, `ios/`, `capacitor.config.ts`, or native code require a signed store release. Follow the Android or iOS release procedure in `README.md`; use internal testing before production rollout. Do not use OTA to distribute native/plugin/permission changes.
 
 ## Configuration
 
@@ -18,7 +18,7 @@ Use only these channels, defined in `shared/contracts/ota.ts`:
 
 ### Client build variables
 
-Set these when building the web assets consumed by Android:
+Set these when building the web assets consumed by the native apps:
 
 | Variable | Required value |
 | --- | --- |
@@ -27,19 +27,19 @@ Set these when building the web assets consumed by Android:
 
 The client disables OTA when either variable is missing or invalid. The manifest URL is a server endpoint, not the S3 or CloudFront release-index URL.
 
-Build the Android web assets with the repository command:
+Build the native web assets with the repository command for the platform being tested:
 
 ```sh
 yarn build:android
 ```
 
-That command runs `scripts/with-android-env.sh`, builds with `NODE_ENV=production CACHE_NAME=android`, and runs Capacitor sync. For an OTA-only asset build, use the existing client build command instead:
+That Android command runs `scripts/with-android-env.sh`, builds with `NODE_ENV=production CACHE_NAME=android`, and runs Capacitor sync. Use `yarn build:ios` for the corresponding iOS build. For an OTA-only asset build, use the existing client build command instead:
 
 ```sh
 NODE_ENV=production CACHE_NAME=android yarn build:client
 ```
 
-The resulting web assets are in `dist/client`. Do not commit generated Android or `dist/` output as part of an OTA publication.
+The resulting web assets are in `dist/client`. Do not commit generated Android, iOS, or `dist/` output as part of an OTA publication.
 
 ### Server variables
 
@@ -152,7 +152,7 @@ Use **Actions → Publish OTA bundle** only for a `staging` release. It remains 
      --content-type application/json --region us-west-2
    ```
 
-6. Promote in order: `development` → `staging` → `production`. Verify the manifest endpoint and one Android device on each channel before promoting the same immutable bundle to the next channel. The server compares semver and will not downgrade an installed bundle.
+6. Promote in order: `development` → `staging` → `production`. Verify the manifest endpoint and one Android and iOS device on each channel before promoting the same immutable bundle to the next channel. The server compares semver and will not downgrade an installed bundle.
 
 7. Invalidate mutable paths when rollout must be visible before the five-minute CloudFront TTL expires:
 
@@ -196,4 +196,4 @@ A client-side fallback cannot force an already activated bad web bundle to downg
 
 ## Bundled fallback
 
-Every signed Android app includes its web assets in the native app bundle at build time. If OTA configuration is incomplete, the device is not native, the manifest cannot be fetched, or no newer valid release exists, the app continues using the currently installed bundle. A newly installed Play Store version therefore remains the final fallback: ship a corrected signed Android build through Play when an OTA rollback cannot safely recover the installed client.
+Every signed Android and iOS app includes its web assets in the native app bundle at build time. If OTA configuration is incomplete, the device is not native, the manifest cannot be fetched, or no newer valid release exists, the app continues using the currently installed bundle. A newly installed store version therefore remains the final fallback: ship a corrected signed build through Google Play or the App Store when an OTA rollback cannot safely recover the installed client.
