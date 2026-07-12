@@ -57,7 +57,8 @@ jobs:
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: '17'
+          # match Capacitor's Android Java compilation target
+          java-version: '21'
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
