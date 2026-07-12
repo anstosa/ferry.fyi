@@ -30,6 +30,7 @@ import { Account } from "~/views/Account";
 import { Feedback } from "~/views/Feedback";
 import { ForecastingExplained } from "~/views/ForecastingExplained";
 import { Home } from "~/views/Home";
+import { PrivacyPolicy } from "~/views/PrivacyPolicy";
 import { Route } from "~/views/Route";
 import { Tickets } from "~/views/Tickets";
 import { Today } from "~/views/Today";
@@ -141,6 +142,10 @@ export const App = (): ReactElement => {
     { path: "account", element: withRouteBoundary("Account", <Account />) },
     { path: "tickets", element: withRouteBoundary("Tickets", <Tickets />) },
     { path: "about", element: withRouteBoundary("About", <About />) },
+    {
+      path: "privacy",
+      element: withRouteBoundary("Privacy Policy", <PrivacyPolicy />),
+    },
     {
       path: "forecasting",
       element: withRouteBoundary("Forecasting", <ForecastingExplained />),
