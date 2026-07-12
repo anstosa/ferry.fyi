@@ -198,8 +198,10 @@ export default defineConfig(({ mode }) => ({
   build: {
     outDir: clientOutDir,
     emptyOutDir: true,
-    sourcemap:
-      getEnv("ENABLE_SOURCE_MAPS") === "TRUE" || mode === "development",
+    // hide uploaded production maps
+    sourcemap: shouldUploadSentryRelease()
+      ? "hidden"
+      : getEnv("ENABLE_SOURCE_MAPS") === "TRUE" || mode === "development",
     minify: getEnv("MINIMIZE") === "FALSE" ? false : "esbuild",
     rollupOptions: {
       output: {

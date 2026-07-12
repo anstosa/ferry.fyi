@@ -16,8 +16,12 @@ latest.dump
 
 # android
 android.keystore
+android/keystore.properties
+android/*.jks
+android/*.keystore
 app-release-*
 .gradle/
+.idea/
 private_key.pepk
 
 # cordova-res

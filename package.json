@@ -143,6 +143,8 @@
     "camera:polygons": "scripts/camera-polygon-annotator/run-annotator.sh",
     "build": "yarn build:client && yarn build:server",
     "build:android": "scripts/with-android-env.sh sh -c 'NODE_ENV=production CACHE_NAME=android vite build --config client/vite.config.ts && cap sync && direnv allow'",
+    "build:android:ci": "scripts/with-android-env.sh sh -c 'NODE_ENV=production CACHE_NAME=android vite build --config client/vite.config.ts && cap sync android'",
+    "build:android:release": "yarn build:android:ci && cd android && ./gradlew --no-daemon bundleRelease",
     "build:client": "NODE_ENV=production vite build --config client/vite.config.ts",
     "build:ios": "NODE_ENV=production CACHE_NAME=ios vite build --config client/vite.config.ts && cap sync ios",
     "build:server": "NODE_ENV=production vite build --config server/vite.config.ts",

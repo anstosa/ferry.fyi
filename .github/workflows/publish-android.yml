@@ -1,0 +1,178 @@
+name: Publish Android internal testing
+
+on:
+  push:
+    tags:
+      - 'android-v*'
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: Android version name, such as 2.9
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-internal-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Build and publish internal Android release
+    runs-on: ubuntu-latest
+    env:
+      AUTH0_CLIENT_AUDIENCE: ${{ vars.AUTH0_CLIENT_AUDIENCE }}
+      AUTH0_CLIENT_ID: ${{ vars.AUTH0_CLIENT_ID }}
+      AUTH0_DOMAIN: ${{ vars.AUTH0_DOMAIN }}
+      AW_TAG_ID: ${{ vars.AW_TAG_ID }}
+      BASE_URL: ${{ vars.BASE_URL }}
+      FIREBASE_API_KEY: ${{ vars.FIREBASE_API_KEY }}
+      FIREBASE_APP_ID: ${{ vars.FIREBASE_APP_ID }}
+      FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+      FIREBASE_SENDER_ID: ${{ vars.FIREBASE_SENDER_ID }}
+      FIREBASE_VAPID_KEY: ${{ vars.FIREBASE_VAPID_KEY }}
+      GOOGLE_ANALYTICS: ${{ vars.GOOGLE_ANALYTICS }}
+      GTM_CONTAINER_ID: ${{ vars.GTM_CONTAINER_ID }}
+      HEROKU_RELEASE_VERSION: ${{ github.sha }}
+      MAPBOX_ACCESS_TOKEN: ${{ vars.MAPBOX_ACCESS_TOKEN }}
+      REQUESTED_VERSION_NAME: ${{ inputs.version_name }}
+      SENTRY_DSN: ${{ vars.SENTRY_DSN }}
+      VITE_OTA_CHANNEL: production
+      VITE_OTA_MANIFEST_URL: ${{ vars.BASE_URL }}/api/ota/manifest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Use Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+          cache-dependency-path: yarn.lock
+
+      - name: Use Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install required Android SDK packages
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Verify release configuration
+        env:
+          ANDROID_UPLOAD_KEYSTORE_BASE64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_BASE64 }}
+          ANDROID_UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_PASSWORD }}
+          ANDROID_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+          ANDROID_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+          PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          # fail on shell mistakes
+          set -euo pipefail
+          # require private release credentials
+          for required_secret in \
+            ANDROID_UPLOAD_KEYSTORE_BASE64 \
+            ANDROID_UPLOAD_KEYSTORE_PASSWORD \
+            ANDROID_UPLOAD_KEY_ALIAS \
+            ANDROID_UPLOAD_KEY_PASSWORD \
+            PLAY_SERVICE_ACCOUNT_JSON; do
+            # stop before building with incomplete credentials
+            if [[ -z "${!required_secret}" ]]; then
+              echo "Missing GitHub Actions secret: ${required_secret}" >&2
+              exit 1
+            fi
+          done
+
+      - name: Derive Android version
+        id: version
+        run: |
+          # fail on shell mistakes
+          set -euo pipefail
+          # reserve a monotonic Play version-code range
+          VERSION_CODE="$((100000 + GITHUB_RUN_NUMBER))"
+          # derive tag releases from their Android version
+          if [[ "${GITHUB_REF_TYPE}" == 'tag' ]]; then
+            VERSION_NAME="${GITHUB_REF_NAME#android-v}"
+          else
+            VERSION_NAME="${REQUESTED_VERSION_NAME}"
+          fi
+          # reject an empty version name
+          if [[ -z "${VERSION_NAME}" ]]; then
+            echo 'Android version name is required' >&2
+            exit 1
+          fi
+          # expose the release versions
+          echo "code=${VERSION_CODE}" >> "${GITHUB_OUTPUT}"
+          echo "name=${VERSION_NAME}" >> "${GITHUB_OUTPUT}"
+
+      - name: Restore Android upload key
+        env:
+          ANDROID_UPLOAD_KEYSTORE_BASE64: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_BASE64 }}
+          ANDROID_UPLOAD_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEYSTORE_PASSWORD }}
+          ANDROID_UPLOAD_KEY_ALIAS: ${{ secrets.ANDROID_UPLOAD_KEY_ALIAS }}
+          ANDROID_UPLOAD_KEY_PASSWORD: ${{ secrets.ANDROID_UPLOAD_KEY_PASSWORD }}
+        run: |
+          # fail on shell mistakes
+          set -euo pipefail
+          # decode the CI-only upload key
+          printf '%s' "${ANDROID_UPLOAD_KEYSTORE_BASE64}" | base64 --decode > android/ferry-fyi-upload.jks
+          # configure Gradle without committing credentials
+          cat > android/keystore.properties <<EOF
+          storeFile=ferry-fyi-upload.jks
+          storePassword=${ANDROID_UPLOAD_KEYSTORE_PASSWORD}
+          keyAlias=${ANDROID_UPLOAD_KEY_ALIAS}
+          keyPassword=${ANDROID_UPLOAD_KEY_PASSWORD}
+          EOF
+          # restrict temporary credential access
+          chmod 600 android/ferry-fyi-upload.jks android/keystore.properties
+
+      - name: Build signed Android App Bundle
+        env:
+          SENTRY_AUTH_TOKEN: ''
+          VERSION_CODE: ${{ steps.version.outputs.code }}
+          VERSION_NAME: ${{ steps.version.outputs.name }}
+        run: |
+          # fail on shell mistakes
+          set -euo pipefail
+          # sync the production web bundle
+          yarn build:android:ci
+          # assemble the signed Play artifact
+          (
+            cd android
+            ./gradlew --no-daemon bundleRelease \
+              -PVERSION_CODE="${VERSION_CODE}" \
+              -PVERSION_NAME="${VERSION_NAME}"
+          )
+
+      - name: Upload App Bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ferry-fyi-android-${{ steps.version.outputs.name }}-${{ steps.version.outputs.code }}
+          path: android/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish to Google Play internal testing
+        uses: r0adkll/upload-google-play@v1.1.3
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: fyi.ferry
+          releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
+          track: internal
+          releaseName: ${{ steps.version.outputs.name }}
+          status: completed
+
+      - name: Remove temporary release credentials
+        if: always()
+        run: |
+          # remove ephemeral release credentials
+          rm -f android/ferry-fyi-upload.jks android/keystore.properties
