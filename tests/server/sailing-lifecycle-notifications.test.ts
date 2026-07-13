@@ -6,10 +6,18 @@ vi.mock("~/lib/push", () => ({
   sendPush: vi.fn(),
 }));
 
+const pushSubscriptions = vi.hoisted(() => ({
+  getSubscribedTerminalPushMessages: vi.fn(),
+  removeCompletedOneTimeSailingAlertRules: vi.fn(),
+}));
+
+vi.mock("~/lib/pushSubscriptions", () => pushSubscriptions);
+
 import {
   formatSailingLifecycleNotification,
   getSailingLifecycleNotificationEvents,
   resetSailingLifecycleNotificationState,
+  sendSailingLifecycleNotifications,
 } from "~/lib/sailingLifecycleNotifications";
 import { toWsfDate } from "~/lib/wsf/date";
 import { Schedule } from "~/models/Schedule";
@@ -135,6 +143,9 @@ describe("sailing lifecycle notifications", () => {
     vi.useFakeTimers();
     vi.setSystemTime(NOW.toJSDate());
     resetSailingLifecycleNotificationState();
+    pushSubscriptions.getSubscribedTerminalPushMessages.mockReset();
+    pushSubscriptions.removeCompletedOneTimeSailingAlertRules.mockReset();
+    Schedule.purge();
     Terminal.purge();
     Vessel.purge();
     process.env.BASE_URL = "https://ferry.fyi";
@@ -231,5 +242,28 @@ describe("sailing lifecycle notifications", () => {
     expect(firstEvents).toMatchObject([{ type: "arrived" }]);
     expect(secondEvents).toEqual([]);
     expect(content?.body).toBe("Tokitae arrived 5 mins late.");
+  });
+
+  // completed subscription cleanup
+  it("removes matching one-time rules after the vessel arrives", async () => {
+    saveVessel({
+      dockedTime: ARRIVAL_TIME + 5 * 60,
+      isAtDock: true,
+      location: { latitude: 47.97, longitude: -122.35 },
+    });
+    new Schedule(makeSchedule()).save();
+    pushSubscriptions.getSubscribedTerminalPushMessages.mockResolvedValue([]);
+    // trigger the post-arrival lifecycle event
+    vi.setSystemTime(DateTime.fromSeconds(ARRIVAL_TIME + 6 * 60).toJSDate());
+
+    await sendSailingLifecycleNotifications();
+
+    expect(
+      pushSubscriptions.removeCompletedOneTimeSailingAlertRules
+    ).toHaveBeenCalledWith({
+      routeKey: "14:5",
+      sailingTime: DateTime.fromSeconds(DEPARTURE_TIME),
+      terminalId: "14",
+    });
   });
 });

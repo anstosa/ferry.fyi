@@ -413,7 +413,9 @@ export const Route = ({
   } else if (view === "map") {
     content = (
       <Map
+        isReloading={isUpdating}
         mate={mate}
+        reload={updateSchedule}
         setRoute={setRoute}
         terminal={terminal}
         vessels={vessels}

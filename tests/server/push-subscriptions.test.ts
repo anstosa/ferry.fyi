@@ -9,7 +9,10 @@ vi.mock("~/models/UserSettings", () => ({
   UserSettings: userSettings,
 }));
 
-import { getSubscribedTerminalPushMessages } from "~/lib/pushSubscriptions";
+import {
+  getSubscribedTerminalPushMessages,
+  removeCompletedOneTimeSailingAlertRules,
+} from "~/lib/pushSubscriptions";
 
 // user settings fixture
 const makeSettings = (
@@ -236,6 +239,56 @@ describe("push subscriptions", () => {
       },
     ]);
     expect(nextWeekMessages).toEqual([]);
+  });
+
+  // completed sailing cleanup
+  it("removes a completed sailing rule without removing later sailings", async () => {
+    const completedRule = {
+      channels: ["delays", "cancellations", "sailing-updates"] as const,
+      date: "2026-07-06",
+      daysOfWeek: [1],
+      endTime: "06:45",
+      id: "completed-sailing",
+      routeKey: "14:5",
+      startTime: "06:45",
+      terminalIds: ["14"],
+    };
+    const laterRule = {
+      ...completedRule,
+      endTime: "08:15",
+      id: "later-sailing",
+      startTime: "08:15",
+    };
+    const selectedUser = makeSettings("selected-sailing", {
+      alertRules: [completedRule, laterRule],
+      fcmToken: "selected-token",
+    });
+    const otherUser = makeSettings("other-sailing", {
+      alertRules: [completedRule],
+      fcmToken: "other-token",
+    });
+    userSettings.findAll.mockResolvedValueOnce([selectedUser, otherUser]);
+
+    await removeCompletedOneTimeSailingAlertRules({
+      routeKey: "14:5",
+      sailingTime: DateTime.fromISO("2026-07-06T06:45:00", {
+        zone: "America/Los_Angeles",
+      }),
+      terminalId: "14",
+    });
+
+    expect(selectedUser.update).toHaveBeenCalledWith({
+      appMetadata: {
+        alertRules: [laterRule],
+        fcmToken: "selected-token",
+      },
+    });
+    expect(otherUser.update).toHaveBeenCalledWith({
+      appMetadata: {
+        alertRules: [],
+        fcmToken: "other-token",
+      },
+    });
   });
 
   it("uses the current time for terminal alerts without a sailing", async () => {

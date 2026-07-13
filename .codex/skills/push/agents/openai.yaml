@@ -1,0 +1,4 @@
+interface:
+  display_name: "Push Reviewed Changes"
+  short_description: "Review, commit, and push all branch changes"
+  default_prompt: "Run $push to review all uncommitted and unpushed branch changes, then commit and push them."

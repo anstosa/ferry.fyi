@@ -97,6 +97,7 @@ export const Header: FunctionComponent<PropsWithChildren<Props>> = (props) => {
         )}
       />
       <Menu
+        hasTopBanner={hasTopBanner}
         isOpen={isMenuOpen}
         reload={
           reload

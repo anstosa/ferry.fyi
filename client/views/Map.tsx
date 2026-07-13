@@ -21,6 +21,7 @@ import type { Vessel } from "shared/contracts/vessels";
 import { isEmpty } from "shared/lib/arrays";
 import { isNull } from "shared/lib/identity";
 
+import { ReloadButton } from "~/components/ReloadButton";
 import { useGeo } from "~/lib/geo";
 import { knotsToMph } from "~/lib/speed";
 import { getSlug, useTerminals } from "~/lib/terminals";
@@ -40,6 +41,7 @@ const DEFAULT_LEFT = -121;
 const DEFAULT_BOTTOM = 49;
 const DEFAULT_RIGHT = -123;
 const ABBREVIATION_BREAKPOINT = 350;
+const VESSEL_REFRESH_MS = 60 * 1000;
 const MARKER_LABEL_FIT_PADDING = { bottom: 112, left: 96, right: 96, top: 112 };
 const LABEL_PLACEMENTS = [
   "top-full left-1/2 mt-1 -translate-x-1/2",
@@ -49,7 +51,9 @@ const LABEL_PLACEMENTS = [
 ];
 
 interface Props {
+  isReloading: boolean;
   mate: Terminal | null;
+  reload: () => Promise<void>;
   setRoute: (target: string, mate?: string) => void;
   terminal: Terminal | null;
   vessels: Vessel[];
@@ -314,13 +318,16 @@ const getVesselLabel = (vessel: Vessel): string => {
 };
 
 export const Map = ({
+  isReloading,
   mate,
+  reload,
   setRoute,
   terminal,
   vessels,
 }: Props): ReactElement => {
   const mapRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<RenderedMarker[]>([]);
+  const reloadRef = useRef(reload);
   const [map, setMap] = useState<Mapbox | null>(null);
   const [isRouteOpen, setRouteOpen] = useState<boolean>(false);
   const [userLocation] = useGeo();
@@ -330,6 +337,22 @@ export const Map = ({
   const routeLabel =
     activeRoute?.description ??
     (terminal && mate ? `${terminal.name} / ${mate.name}` : "Route");
+
+  // latest refresh callback
+  useEffect(() => {
+    reloadRef.current = reload;
+  }, [reload]);
+
+  // refresh live vessel positions
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      reloadRef.current().catch((error) => {
+        // background refresh failure
+        console.error(error);
+      });
+    }, VESSEL_REFRESH_MS);
+    return () => window.clearInterval(interval);
+  }, []);
 
   const updateMarkers = (): void => {
     // default coords based on Puget Sound
@@ -540,7 +563,17 @@ export const Map = ({
         </div>
         <span className="ml-2 shrink-0">Map</span>
         <div className="min-w-0 flex-1" />
-        <div className="ml-4 h-6 w-6" />
+        <ReloadButton
+          ariaLabel="Refresh boat data"
+          className="ml-4"
+          isReloading={isReloading}
+          onClick={() => {
+            reload().catch((error) => {
+              // manual refresh failure
+              console.error(error);
+            });
+          }}
+        />
       </Header>
       <main
         ref={mapRef}

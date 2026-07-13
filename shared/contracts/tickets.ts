@@ -1,6 +1,6 @@
 export interface Ticket {
   description: string;
-  expirationDate: number;
+  expirationDate?: number;
   id: string;
   name: string;
   plu: string;

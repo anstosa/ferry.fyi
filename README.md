@@ -98,6 +98,8 @@ The iOS target is generated from the same Capacitor app as Android and requires 
 
 `yarn build:ios` builds the production web bundle with an iOS-specific cache name and synchronizes it into the Xcode project. Run it again after changing web code or Capacitor plugins. The generated project targets iOS 15 and later.
 
+For automated TestFlight uploads, configure the GitHub Actions credentials in [iOS TestFlight release automation](docs/ios-testflight-automation.md), then push an `ios-v*` tag or run **Publish iOS TestFlight** manually.
+
 ## Credits
 
 Thank you to [![BrowserStack](https://user-images.githubusercontent.com/568242/60857158-6ad96100-a1be-11e9-9cdf-aa5872f2f6c5.png)](http://browserstack.com/) for providing free cross-browser testing.

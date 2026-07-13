@@ -301,30 +301,26 @@ export const fetchTicket = async (ticketId: string): Promise<Ticket | null> => {
 
   const expirationDate = ticket.expirationDate
     ? DateTime.fromFormat(ticket.expirationDate, "LLLL d, yyyy").toMillis()
-    : Number.NaN;
+    : undefined;
   const usesRemaining = Number(ticket.usesRemaining);
 
   // incomplete ticket guard
   if (
-    !ticket.description ||
-    !Number.isFinite(expirationDate) ||
     !ticket.id ||
-    !ticket.name ||
-    !ticket.plu ||
-    !ticket.price ||
     !ticket.status ||
+    (expirationDate !== undefined && !Number.isFinite(expirationDate)) ||
     !Number.isFinite(usesRemaining)
   ) {
     return null;
   }
 
   return {
-    description: ticket.description,
+    description: ticket.description ?? "",
     expirationDate,
     id: ticket.id,
-    name: ticket.name,
-    plu: ticket.plu,
-    price: ticket.price,
+    name: ticket.name ?? "",
+    plu: ticket.plu ?? "",
+    price: ticket.price ?? "",
     status: ticket.status,
     usesRemaining,
   };

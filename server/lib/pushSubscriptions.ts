@@ -4,7 +4,10 @@ import type {
   AlertRule,
   AlertSubscriptionChannel,
 } from "shared/contracts/user";
-import { hasAlertRuleSubscription } from "shared/lib/alertSubscriptions";
+import {
+  hasAlertRuleSubscription,
+  isOneTimeSailingAlertRuleForSailing,
+} from "shared/lib/alertSubscriptions";
 
 import {
   hasAppMetadataChanged,
@@ -20,6 +23,12 @@ interface SubscribedTerminalPushInput {
   departureTimes?: number[];
   oneTimeOnly?: boolean;
   terminalIds: string[];
+}
+
+interface CompletedOneTimeSailingInput {
+  routeKey: string;
+  sailingTime: DateTime;
+  terminalId: string;
 }
 
 // scheduled rule match
@@ -106,4 +115,36 @@ export const getSubscribedTerminalPushMessages = async ({
     });
   }
   return messages;
+};
+
+// completed one-time rule cleanup
+export const removeCompletedOneTimeSailingAlertRules = async ({
+  routeKey,
+  sailingTime,
+  terminalId,
+}: CompletedOneTimeSailingInput): Promise<void> => {
+  const users = await UserSettings.findAll();
+  // settings row scan
+  for (const user of users) {
+    const appMetadata = await normalizeUserSettings(user);
+    const alertRules = appMetadata.alertRules ?? [];
+    const nextAlertRules = alertRules.filter((rule) => {
+      // completed sailing guard
+      return !isOneTimeSailingAlertRuleForSailing(rule, {
+        routeKey,
+        sailingTime,
+        terminalId,
+      });
+    });
+    // unchanged rules guard
+    if (nextAlertRules.length === alertRules.length) {
+      continue;
+    }
+    await user.update({
+      appMetadata: {
+        ...appMetadata,
+        alertRules: nextAlertRules,
+      },
+    });
+  }
 };

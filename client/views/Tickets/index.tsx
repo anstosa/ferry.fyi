@@ -606,7 +606,7 @@ const isInvalidTicket = (
   const { expirationDate, usesRemaining } = ticket;
 
   // pending lookups stay active
-  if (typeof expirationDate !== "number" || typeof usesRemaining !== "number") {
+  if (typeof usesRemaining !== "number") {
     return false;
   }
 
@@ -616,7 +616,10 @@ const isInvalidTicket = (
   }
 
   // expired pass
-  if (DateTime.fromMillis(expirationDate) < getTicketExpirationBoundary()) {
+  if (
+    typeof expirationDate === "number" &&
+    DateTime.fromMillis(expirationDate) < getTicketExpirationBoundary()
+  ) {
     return true;
   }
 

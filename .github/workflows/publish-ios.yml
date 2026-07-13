@@ -1,0 +1,247 @@
+name: Publish iOS TestFlight
+
+on:
+  push:
+    tags:
+      - 'ios-v*'
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: iOS version name, such as 1.0
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-testflight-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Build and publish TestFlight release
+    runs-on: macos-15
+    env:
+      AUTH0_CLIENT_AUDIENCE: ${{ vars.AUTH0_CLIENT_AUDIENCE }}
+      AUTH0_CLIENT_ID: ${{ vars.AUTH0_CLIENT_ID }}
+      AUTH0_CLIENT_REDIRECT: fyi.ferry://callback
+      AUTH0_DOMAIN: ${{ vars.AUTH0_DOMAIN }}
+      AW_TAG_ID: ${{ vars.AW_TAG_ID }}
+      BASE_URL: ${{ vars.BASE_URL }}
+      FIREBASE_API_KEY: ${{ vars.FIREBASE_API_KEY }}
+      FIREBASE_APP_ID: ${{ vars.FIREBASE_APP_ID }}
+      FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+      FIREBASE_SENDER_ID: ${{ vars.FIREBASE_SENDER_ID }}
+      FIREBASE_VAPID_KEY: ${{ vars.FIREBASE_VAPID_KEY }}
+      GOOGLE_ANALYTICS: ${{ vars.GOOGLE_ANALYTICS }}
+      GTM_CONTAINER_ID: ${{ vars.GTM_CONTAINER_ID }}
+      HEROKU_RELEASE_VERSION: ${{ github.sha }}
+      MAPBOX_ACCESS_TOKEN: ${{ vars.MAPBOX_ACCESS_TOKEN }}
+      REQUESTED_VERSION_NAME: ${{ inputs.version_name }}
+      SENTRY_DSN: ${{ vars.SENTRY_DSN }}
+      VITE_OTA_CHANNEL: production
+      VITE_OTA_MANIFEST_URL: ${{ vars.BASE_URL }}/api/ota/manifest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Use Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+          cache-dependency-path: yarn.lock
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Verify release configuration
+        env:
+          APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          IOS_DEVELOPMENT_TEAM_ID: ${{ secrets.IOS_DEVELOPMENT_TEAM_ID }}
+          IOS_DISTRIBUTION_CERTIFICATE_BASE64: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_BASE64 }}
+          IOS_DISTRIBUTION_CERTIFICATE_PASSWORD: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_PASSWORD }}
+          IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          # fail on shell mistakes
+          set -euo pipefail
+          # require private release credentials
+          for required_secret in \
+            APP_STORE_CONNECT_API_KEY_BASE64 \
+            APP_STORE_CONNECT_API_KEY_ID \
+            APP_STORE_CONNECT_ISSUER_ID \
+            IOS_DEVELOPMENT_TEAM_ID \
+            IOS_DISTRIBUTION_CERTIFICATE_BASE64 \
+            IOS_DISTRIBUTION_CERTIFICATE_PASSWORD \
+            IOS_PROVISIONING_PROFILE_BASE64; do
+            # stop before building with incomplete credentials
+            if [[ -z "${!required_secret}" ]]; then
+              echo "Missing GitHub Actions secret: ${required_secret}" >&2
+              exit 1
+            fi
+          done
+
+      - name: Derive iOS version
+        id: version
+        run: |
+          # fail on shell mistakes
+          set -euo pipefail
+          # reserve a monotonic TestFlight build number
+          VERSION_CODE="$((100000 + GITHUB_RUN_NUMBER))"
+          # derive tag releases from their iOS version
+          if [[ "${GITHUB_REF_TYPE}" == 'tag' ]]; then
+            VERSION_NAME="${GITHUB_REF_NAME#ios-v}"
+          else
+            VERSION_NAME="${REQUESTED_VERSION_NAME}"
+          fi
+          # reject an empty version name
+          if [[ -z "${VERSION_NAME}" ]]; then
+            echo 'iOS version name is required' >&2
+            exit 1
+          fi
+          # expose the release versions
+          echo "code=${VERSION_CODE}" >> "${GITHUB_OUTPUT}"
+          echo "name=${VERSION_NAME}" >> "${GITHUB_OUTPUT}"
+
+      - name: Restore iOS signing credentials
+        env:
+          APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          IOS_DISTRIBUTION_CERTIFICATE_BASE64: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_BASE64 }}
+          IOS_DISTRIBUTION_CERTIFICATE_PASSWORD: ${{ secrets.IOS_DISTRIBUTION_CERTIFICATE_PASSWORD }}
+          IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          # fail on shell mistakes
+          set -euo pipefail
+          # define temporary signing paths
+          CERTIFICATE_PATH="${RUNNER_TEMP}/ferry-fyi-distribution.p12"
+          KEYCHAIN_PATH="${RUNNER_TEMP}/ferry-fyi-signing.keychain-db"
+          PROFILE_PATH="${RUNNER_TEMP}/ferry-fyi.mobileprovision"
+          API_KEY_DIRECTORY="${HOME}/.appstoreconnect/private_keys"
+          API_KEY_PATH="${API_KEY_DIRECTORY}/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8"
+          # decode CI-only signing assets
+          printf '%s' "${IOS_DISTRIBUTION_CERTIFICATE_BASE64}" | base64 -D > "${CERTIFICATE_PATH}"
+          printf '%s' "${IOS_PROVISIONING_PROFILE_BASE64}" | base64 -D > "${PROFILE_PATH}"
+          mkdir -p "${API_KEY_DIRECTORY}"
+          printf '%s' "${APP_STORE_CONNECT_API_KEY_BASE64}" | base64 -D > "${API_KEY_PATH}"
+          # create an ephemeral signing keychain
+          KEYCHAIN_PASSWORD="$(uuidgen)"
+          security create-keychain -p "${KEYCHAIN_PASSWORD}" "${KEYCHAIN_PATH}"
+          security set-keychain-settings -lut 21600 "${KEYCHAIN_PATH}"
+          security unlock-keychain -p "${KEYCHAIN_PASSWORD}" "${KEYCHAIN_PATH}"
+          security import "${CERTIFICATE_PATH}" -P "${IOS_DISTRIBUTION_CERTIFICATE_PASSWORD}" -A -t cert -f pkcs12 -k "${KEYCHAIN_PATH}"
+          security list-keychain -d user -s "${KEYCHAIN_PATH}" login.keychain-db
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${KEYCHAIN_PASSWORD}" "${KEYCHAIN_PATH}"
+          # install the distribution provisioning profile
+          PROFILE_UUID="$(security cms -D -i "${PROFILE_PATH}" | plutil -extract UUID raw -)"
+          mkdir -p "${HOME}/Library/MobileDevice/Provisioning Profiles"
+          cp "${PROFILE_PATH}" "${HOME}/Library/MobileDevice/Provisioning Profiles/${PROFILE_UUID}.mobileprovision"
+
+      - name: Build signed iOS archive
+        env:
+          IOS_DEVELOPMENT_TEAM_ID: ${{ secrets.IOS_DEVELOPMENT_TEAM_ID }}
+          VERSION_CODE: ${{ steps.version.outputs.code }}
+          VERSION_NAME: ${{ steps.version.outputs.name }}
+          SENTRY_AUTH_TOKEN: ''
+        run: |
+          # fail on shell mistakes
+          set -euo pipefail
+          # sync the production web bundle
+          yarn build:ios
+          # locate the installed distribution profile
+          PROFILE_PATH="${RUNNER_TEMP}/ferry-fyi.mobileprovision"
+          PROFILE_UUID="$(security cms -D -i "${PROFILE_PATH}" | plutil -extract UUID raw -)"
+          # archive the manually signed App Store binary
+          xcodebuild \
+            -project ios/App/App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath "${RUNNER_TEMP}/FerryFYI.xcarchive" \
+            DEVELOPMENT_TEAM="${IOS_DEVELOPMENT_TEAM_ID}" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY='Apple Distribution' \
+            PROVISIONING_PROFILE_SPECIFIER="${PROFILE_UUID}" \
+            MARKETING_VERSION="${VERSION_NAME}" \
+            CURRENT_PROJECT_VERSION="${VERSION_CODE}" \
+            clean archive
+
+      - name: Export signed IPA
+        env:
+          IOS_DEVELOPMENT_TEAM_ID: ${{ secrets.IOS_DEVELOPMENT_TEAM_ID }}
+        run: |
+          # fail on shell mistakes
+          set -euo pipefail
+          # describe App Store export signing
+          PROFILE_PATH="${RUNNER_TEMP}/ferry-fyi.mobileprovision"
+          PROFILE_NAME="$(security cms -D -i "${PROFILE_PATH}" | plutil -extract Name raw -)"
+          cat > "${RUNNER_TEMP}/ExportOptions.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store</string>
+            <key>signingCertificate</key>
+            <string>Apple Distribution</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>teamID</key>
+            <string>${IOS_DEVELOPMENT_TEAM_ID}</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>fyi.ferry</key>
+              <string>${PROFILE_NAME}</string>
+            </dict>
+          </dict>
+          </plist>
+          EOF
+          # export the TestFlight upload artifact
+          xcodebuild -exportArchive \
+            -archivePath "${RUNNER_TEMP}/FerryFYI.xcarchive" \
+            -exportOptionsPlist "${RUNNER_TEMP}/ExportOptions.plist" \
+            -exportPath "${RUNNER_TEMP}/export"
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ferry-fyi-ios-${{ steps.version.outputs.name }}-${{ steps.version.outputs.code }}
+          path: ${{ runner.temp }}/export/App.ipa
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish to TestFlight
+        env:
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+        run: |
+          # fail on shell mistakes
+          set -euo pipefail
+          # upload the signed IPA with the App Store Connect API key
+          xcrun altool --upload-app \
+            --type ios \
+            --file "${RUNNER_TEMP}/export/App.ipa" \
+            --apiKey "${APP_STORE_CONNECT_API_KEY_ID}" \
+            --apiIssuer "${APP_STORE_CONNECT_ISSUER_ID}"
+
+      - name: Remove temporary release credentials
+        if: always()
+        env:
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+        run: |
+          # remove ephemeral release credentials
+          PROFILE_PATH="${RUNNER_TEMP}/ferry-fyi.mobileprovision"
+          # remove the installed distribution profile
+          if [[ -f "${PROFILE_PATH}" ]]; then
+            PROFILE_UUID="$(security cms -D -i "${PROFILE_PATH}" | plutil -extract UUID raw -)"
+            rm -f "${HOME}/Library/MobileDevice/Provisioning Profiles/${PROFILE_UUID}.mobileprovision"
+          fi
+          rm -f \
+            "${RUNNER_TEMP}/ferry-fyi-distribution.p12" \
+            "${RUNNER_TEMP}/ferry-fyi.mobileprovision" \
+            "${HOME}/.appstoreconnect/private_keys/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8"
+          security delete-keychain "${RUNNER_TEMP}/ferry-fyi-signing.keychain-db" || true

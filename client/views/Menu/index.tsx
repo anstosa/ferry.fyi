@@ -28,6 +28,7 @@ export interface ShareOptions {
 }
 
 interface Props {
+  hasTopBanner: boolean;
   isOpen: boolean;
   reload?: () => void;
   onClose: () => void;
@@ -61,6 +62,7 @@ const Avatar = ({ className }: SVGAttributes<SVGElement>) => {
 };
 
 export const Menu = ({
+  hasTopBanner,
   isOpen,
   onClose,
   onOpen,
@@ -247,17 +249,18 @@ export const Menu = ({
             "animate",
             "flex flex-col",
             "bg-ferry-gradient text-white shadow-lg",
-            "w-full h-screen max-w-xs",
+            "w-full max-w-xs",
+            hasTopBanner ? "h-[calc(100vh-80px)]" : "h-screen",
             "fixed top-0 z-30 -left-full",
             "pt-safe-top pb-safe-bottom pl-safe-left"
           )}
-          style={
-            isNull(dragStart)
+          style={{
+            // align with the banner-adjusted page header
+            top: hasTopBanner ? "80px" : 0,
+            ...(isNull(dragStart)
               ? {}
-              : {
-                  left: `calc(-100% + ${dragPosition ?? 0}px)`,
-                }
-          }
+              : { left: `calc(-100% + ${dragPosition ?? 0}px)` }),
+          }}
         >
           <div
             className={clsx(

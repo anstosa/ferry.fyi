@@ -24,6 +24,15 @@ const TICKET_LOOKUP_HTML = `
   </div>
 `;
 
+const TICKET_LOOKUP_WITHOUT_EXPIRATION_HTML = `
+  <div id="TicketLookup">
+    <span data-text="VisualId">1234567890</span>
+    <span data-text="Price">$0.00</span>
+    <span data-text="Status">Valid</span>
+    <span data-text="TotalRemainingUses">1</span>
+  </div>
+`;
+
 const execFileMock = vi.mocked(execFile);
 let ticketModule: typeof import("../../server/lib/wsf/ticket");
 
@@ -211,6 +220,33 @@ describe("Wave2Go ticket lookup", () => {
     ]);
 
     await expect(ticketModule.fetchTicket("123")).resolves.toBeNull();
+  });
+
+  // sparse ticket lookup behavior
+  it("returns valid tickets without expiration or product metadata", async () => {
+    mockCurlResponses([
+      {
+        body: "ok",
+        headers: "HTTP/2 200\r\nset-cookie: session=test; path=/\r\n\r\n",
+        status: 200,
+      },
+      {
+        body: TICKET_LOOKUP_WITHOUT_EXPIRATION_HTML,
+        headers: "HTTP/2 200\r\n\r\n",
+        status: 200,
+      },
+    ]);
+
+    await expect(ticketModule.fetchTicket("1234567890")).resolves.toEqual({
+      description: "",
+      expirationDate: undefined,
+      id: "1234567890",
+      name: "",
+      plu: "",
+      price: "$0.00",
+      status: "Valid",
+      usesRemaining: 1,
+    });
   });
 
   // upstream failure behavior

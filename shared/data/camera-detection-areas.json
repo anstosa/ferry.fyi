@@ -8,10 +8,22 @@
   "origin": "top-left",
   "status": "manual-partial-review",
   "source": {
-    "annotator": "scripts/camera-polygon-annotator",
-    "promotedAt": "2026-07-08T22:34:25Z",
-    "notes": "Manual camera detection polygons. allowedAreas are countable queue/holding/slip regions. excludedAreas are holes/breaks/ignore regions that split or suppress detection. reviewed=true means a camera has been manually checked, including cameras with no relevant polygons."
+    "annotatedAt": "2026-07-13T01:56:54.503Z",
+    "notes": "Manual polygons drawn in ferry-fyi-camera-polygon-annotator. allowedAreas are countable queue/holding regions. excludedAreas are holes/breaks/ignore regions that split or suppress detection.",
+    "savedBy": "ferry-fyi-camera-polygon-annotator"
   },
+  "reviewedCameraIds": [
+    "9161",
+    "9163",
+    "9164",
+    "9166",
+    "9172",
+    "9173",
+    "9174",
+    "9175",
+    "9394",
+    "9728"
+  ],
   "cameraIds": [
     "9048",
     "9047",
@@ -86,13 +98,13 @@
         "height": 245
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/fridayharbor/friholding.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9035": {
       "terminal": "Seattle",
@@ -104,13 +116,13 @@
         "height": 246
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/colman/seattlemain.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9037": {
       "terminal": "Bremerton",
@@ -122,13 +134,13 @@
         "height": 246
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/bremerton/holding/holding.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9038": {
       "terminal": "Fauntleroy",
@@ -140,13 +152,13 @@
         "height": 245
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/fauntleroy/terminal/fauntleroy.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9039": {
       "terminal": "Southworth",
@@ -158,13 +170,13 @@
         "height": 245
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/southworth/holding.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9040": {
       "terminal": "Bainbridge Island",
@@ -176,13 +188,13 @@
         "height": 421
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/Bainbridge/Bainbridge.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9041": {
       "terminal": "Vashon Island",
@@ -194,13 +206,13 @@
         "height": 294
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/vashon/VSHvc00001.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9042": {
       "terminal": "Vashon Island",
@@ -212,13 +224,13 @@
         "height": 294
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/vashon/VSHvc00002.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9043": {
       "terminal": "Vashon Island",
@@ -230,13 +242,13 @@
         "height": 294
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/vashon/VSHvc00004.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9044": {
       "terminal": "Vashon Island",
@@ -248,13 +260,13 @@
         "height": 294
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/vashon/VSHvc00003.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9045": {
       "terminal": "Tahlequah",
@@ -266,13 +278,13 @@
         "height": 245
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/Tahlequah/holding/holding.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9046": {
       "terminal": "Tahlequah",
@@ -284,13 +296,13 @@
         "height": 245
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/Tahlequah/VMSSign/VMSSign.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9047": {
       "terminal": "Anacortes",
@@ -302,13 +314,13 @@
         "height": 245
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/anacortes/terminal/anaterm.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9048": {
       "terminal": "Anacortes",
@@ -320,13 +332,13 @@
         "height": 245
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/anacortes/holding/anahold.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9049": {
       "terminal": "Anacortes",
@@ -338,13 +350,13 @@
         "height": 245
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/anacortes/road/anaroad.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9151": {
       "terminal": "Kingston",
@@ -356,13 +368,13 @@
         "height": 209
       },
       "imageUrl": "https://images.wsdot.wa.gov/orflow/104vc02465.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9152": {
       "terminal": "Kingston",
@@ -374,13 +386,13 @@
         "height": 294
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/kingston/fse/fse.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9153": {
       "terminal": "Kingston",
@@ -392,13 +404,13 @@
         "height": 294
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/kingston/fsw/fsw.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9154": {
       "terminal": "Kingston",
@@ -410,13 +422,13 @@
         "height": 244
       },
       "imageUrl": "https://images.wsdot.wa.gov/orflow/104vc02314.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9155": {
       "terminal": "Edmonds",
@@ -428,13 +440,13 @@
         "height": 294
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/edmonds/104dayton.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9156": {
       "terminal": "Edmonds",
@@ -446,13 +458,13 @@
         "height": 294
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/edmonds/104vms_wts.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9157": {
       "terminal": "Edmonds",
@@ -464,13 +476,13 @@
         "height": 421
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/edmonds/holding.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9159": {
       "terminal": "Edmonds",
@@ -482,13 +494,13 @@
         "height": 246
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/edmonds/104underpass.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9160": {
       "terminal": "Edmonds",
@@ -500,13 +512,13 @@
         "height": 246
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/edmonds/104pine.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9161": {
       "terminal": "Mukilteo",
@@ -518,6 +530,7 @@
         "height": 249
       },
       "imageUrl": "https://images.wsdot.wa.gov/nw/525vc00740.jpg",
+      "reviewed": true,
       "requiresDaylightReview": false,
       "allowedAreas": [
         {
@@ -547,8 +560,7 @@
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": true
+      ]
     },
     "9162": {
       "terminal": "Mukilteo",
@@ -560,13 +572,13 @@
         "height": 249
       },
       "imageUrl": "https://images.wsdot.wa.gov/nw/525vc00695.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9163": {
       "terminal": "Mukilteo",
@@ -578,6 +590,7 @@
         "height": 249
       },
       "imageUrl": "https://images.wsdot.wa.gov/nw/525vc00694.jpg",
+      "reviewed": true,
       "requiresDaylightReview": false,
       "allowedAreas": [
         {
@@ -651,8 +664,7 @@
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": true
+      ]
     },
     "9164": {
       "terminal": "Mukilteo",
@@ -664,6 +676,7 @@
         "height": 246
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/Mukilteo/Terminal/mukterm.jpg",
+      "reviewed": true,
       "requiresDaylightReview": false,
       "allowedAreas": [
         {
@@ -915,8 +928,7 @@
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": true
+      ]
     },
     "9166": {
       "terminal": "Clinton",
@@ -928,6 +940,7 @@
         "height": 421
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/clinton/terminal/clinton.jpg",
+      "reviewed": true,
       "requiresDaylightReview": false,
       "allowedAreas": [
         {
@@ -1256,8 +1269,7 @@
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": true
+      ]
     },
     "9167": {
       "terminal": "Port Townsend",
@@ -1269,13 +1281,13 @@
         "height": 246
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/PortTownsend/terminal/ptterm.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9168": {
       "terminal": "Port Townsend",
@@ -1287,13 +1299,13 @@
         "height": 245
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/PortTownsend/Street/ptStreet.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9169": {
       "terminal": "Coupeville ",
@@ -1305,13 +1317,13 @@
         "height": 245
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/Keystone/terminal/keyterm.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9170": {
       "terminal": "Coupeville ",
@@ -1323,13 +1335,13 @@
         "height": 245
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/Keystone/Street/keyStreet.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9172": {
       "terminal": "Clinton",
@@ -1341,6 +1353,7 @@
         "height": 137
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/clinton/boothhill.jpg",
+      "reviewed": true,
       "requiresDaylightReview": false,
       "allowedAreas": [
         {
@@ -1410,8 +1423,7 @@
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": true
+      ]
     },
     "9173": {
       "terminal": "Clinton",
@@ -1423,6 +1435,7 @@
         "height": 352
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/clinton/boothdock.jpg",
+      "reviewed": true,
       "requiresDaylightReview": false,
       "allowedAreas": [
         {
@@ -1452,8 +1465,7 @@
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": true
+      ]
     },
     "9174": {
       "terminal": "Clinton",
@@ -1465,6 +1477,7 @@
         "height": 360
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/clinton/clinteast.jpg",
+      "reviewed": true,
       "requiresDaylightReview": false,
       "allowedAreas": [
         {
@@ -1554,8 +1567,7 @@
       ],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": true
+      ]
     },
     "9175": {
       "terminal": "Clinton",
@@ -1567,6 +1579,7 @@
         "height": 140
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/clinton/clintwest.jpg",
+      "reviewed": true,
       "requiresDaylightReview": false,
       "allowedAreas": [
         {
@@ -1644,8 +1657,7 @@
       ],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": true
+      ]
     },
     "9377": {
       "terminal": "Fauntleroy",
@@ -1657,13 +1669,13 @@
         "height": 246
       },
       "imageUrl": "https://www.seattle.gov/trafficcams/images/Fauntleroy_SW_Cloverdale_NS.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9391": {
       "terminal": "Southworth",
@@ -1675,13 +1687,13 @@
         "height": 245
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/southworth/terminal.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9394": {
       "terminal": "Mukilteo",
@@ -1693,6 +1705,7 @@
         "height": 249
       },
       "imageUrl": "https://images.wsdot.wa.gov/nw/525vc00820.jpg",
+      "reviewed": true,
       "requiresDaylightReview": false,
       "allowedAreas": [
         {
@@ -1701,44 +1714,48 @@
           "label": "Queue Lane",
           "polygon": [
             [
-              0.2148,
-              0.9191
+              0.2503,
+              0.9182
             ],
             [
-              0.8184,
-              0.4299
+              0.6982,
+              0.5379
             ],
             [
-              0.8284,
-              0.399
+              0.7186,
+              0.5266
             ],
             [
-              0.8169,
-              0.3526
+              0.7353,
+              0.4783
             ],
             [
-              0.7681,
-              0.3391
+              0.6946,
+              0.4525
             ],
             [
-              0.7982,
-              0.3275
+              0.6539,
+              0.4428
             ],
             [
-              0.8485,
-              0.3371
+              0.6695,
+              0.4267
             ],
             [
-              0.8744,
-              0.3681
+              0.7258,
+              0.438
             ],
             [
-              0.883,
-              0.4067
+              0.7856,
+              0.4605
             ],
             [
-              0.8672,
-              0.4551
+              0.8192,
+              0.4896
+            ],
+            [
+              0.8168,
+              0.5395
             ],
             [
               0.5022,
@@ -1777,28 +1794,27 @@
           "label": "4th Ave",
           "polygon": [
             [
-              0.8888,
-              0.4493
+              0.8144,
+              0.5363
             ],
             [
-              0.7882,
-              0.4338
+              0.6946,
+              0.5298
             ],
             [
-              0.8025,
-              0.3855
+              0.7138,
+              0.4912
             ],
             [
-              0.9046,
-              0.3932
+              0.8443,
+              0.5008
             ]
           ]
         }
       ],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": true
+      ]
     },
     "9402": {
       "terminal": "Fauntleroy",
@@ -1810,13 +1826,13 @@
         "height": 294
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/fauntleroy/terminal/fauntterminal.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9403": {
       "terminal": "Fauntleroy",
@@ -1828,13 +1844,13 @@
         "height": 294
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/fauntleroy/terminal/faunttrenton.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9404": {
       "terminal": "Fauntleroy",
@@ -1846,13 +1862,13 @@
         "height": 294
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/fauntleroy/terminal/fauntlincoln.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9476": {
       "terminal": "Bainbridge Island",
@@ -1864,13 +1880,13 @@
         "height": 209
       },
       "imageUrl": "https://images.wsdot.wa.gov/orflow/305vc00022.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9477": {
       "terminal": "Bainbridge Island",
@@ -1882,13 +1898,13 @@
         "height": 209
       },
       "imageUrl": "https://images.wsdot.wa.gov/orflow/305vc00023.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9478": {
       "terminal": "Bainbridge Island",
@@ -1900,13 +1916,13 @@
         "height": 249
       },
       "imageUrl": "https://images.wsdot.wa.gov/orflow/305vc00028.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9479": {
       "terminal": "Bainbridge Island",
@@ -1918,13 +1934,13 @@
         "height": 249
       },
       "imageUrl": "https://images.wsdot.wa.gov/orflow/305vc00029.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9502": {
       "terminal": "Friday Harbor",
@@ -1936,13 +1952,13 @@
         "height": 245
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/fridayharbor/upperholding.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9688": {
       "terminal": "Orcas Island",
@@ -1954,13 +1970,13 @@
         "height": 288
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/orcas/holding.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9689": {
       "terminal": "Orcas Island",
@@ -1972,13 +1988,13 @@
         "height": 288
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/orcas/booth.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9692": {
       "terminal": "Lopez Island",
@@ -1990,13 +2006,13 @@
         "height": 246
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/lopez/approach.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9693": {
       "terminal": "Lopez Island",
@@ -2008,13 +2024,13 @@
         "height": 321
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/lopez/holding.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9717": {
       "terminal": "Vashon Island",
@@ -2026,13 +2042,13 @@
         "height": 245
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/vashon/HoldingSouth.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9728": {
       "terminal": "Mukilteo",
@@ -2044,6 +2060,7 @@
         "height": 249
       },
       "imageUrl": "https://images.wsdot.wa.gov/nw/525vc00819.jpg",
+      "reviewed": true,
       "requiresDaylightReview": false,
       "allowedAreas": [
         {
@@ -2144,8 +2161,7 @@
       ],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": true
+      ]
     },
     "9741": {
       "terminal": "Point Defiance",
@@ -2157,13 +2173,13 @@
         "height": 245
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/PointDefiance/PtDefHolding.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9742": {
       "terminal": "Point Defiance",
@@ -2175,13 +2191,13 @@
         "height": 245
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/PointDefiance/PtDefBooth.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9813": {
       "terminal": "Kingston",
@@ -2193,13 +2209,13 @@
         "height": 244
       },
       "imageUrl": "https://images.wsdot.wa.gov/orflow/104vc02466.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "9944": {
       "terminal": "Mukilteo",
@@ -2211,13 +2227,13 @@
         "height": 209
       },
       "imageUrl": "https://images.wsdot.wa.gov/nw/525vc00858.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "10112": {
       "terminal": "Lopez Island",
@@ -2229,13 +2245,13 @@
         "height": 321
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/lopez/holding2.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "10113": {
       "terminal": "Lopez Island",
@@ -2247,13 +2263,13 @@
         "height": 321
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/lopez/holding3.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     },
     "10266": {
       "terminal": "Kingston",
@@ -2265,25 +2281,13 @@
         "height": 244
       },
       "imageUrl": "https://images.wsdot.wa.gov/orflow/104vc02390.jpg",
+      "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
-      ],
-      "reviewed": false
+      ]
     }
-  },
-  "reviewedCameraIds": [
-    "9161",
-    "9163",
-    "9164",
-    "9166",
-    "9172",
-    "9173",
-    "9174",
-    "9175",
-    "9394",
-    "9728"
-  ]
+  }
 }

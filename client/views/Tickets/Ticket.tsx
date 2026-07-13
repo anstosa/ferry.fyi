@@ -75,7 +75,12 @@ const getProductLabel = (
 export const Ticket = ({ ticket, onClick }: Props): ReactElement => {
   let name: string;
   let routeName: string | undefined;
-  let status: ReactElement;
+  // ticket lookup placeholder
+  let status: ReactElement = (
+    <span className="text-sm font-semibold text-gray-dark dark:text-white/65">
+      Refreshing ticket details
+    </span>
+  );
   let subtitle: string;
   const typeLabel = getProductLabel(ticket);
   const typeLabelLines = PRODUCT_LABEL_LINES[typeLabel];
@@ -109,15 +114,11 @@ export const Ticket = ({ ticket, onClick }: Props): ReactElement => {
       ticket.codeFormat === "qr"
         ? ticket.id
         : ticketSubtitle || ticket.plu || ticket.id;
-    // incomplete ticket guard
-    if (!hasExpirationDate || !hasUsesRemaining) {
-      status = (
-        <span className="text-sm font-semibold text-gray-dark dark:text-white/65">
-          Refreshing ticket details
-        </span>
-      );
-    } else {
-      const expirationDate = DateTime.fromMillis(expirationDateMillis);
+    // resolved ticket details
+    if (hasUsesRemaining) {
+      const expirationDate = hasExpirationDate
+        ? DateTime.fromMillis(expirationDateMillis)
+        : null;
       const today = DateTime.local()
         .set({
           hour: 3,
@@ -126,7 +127,7 @@ export const Ticket = ({ ticket, onClick }: Props): ReactElement => {
           millisecond: 0,
         })
         .plus({ day: 1 });
-      const isExpired = expirationDate < today;
+      const isExpired = expirationDate !== null && expirationDate < today;
       const isEmpty = usesRemaining === 0;
       const isSingleRide = typeLabel === "Single Ride Ticket";
       let usageLabel = `${pluralize(usesRemaining, "ride")} left`;
@@ -136,17 +137,19 @@ export const Ticket = ({ ticket, onClick }: Props): ReactElement => {
       }
       status = (
         <div className="mt-3 flex flex-wrap items-center gap-2 text-sm font-bold">
-          <span
-            className={clsx("rounded-full px-3 py-1", {
-              "bg-darken-lowest text-gray-dark dark:bg-white/10 dark:text-white/70":
-                !isExpired,
-              "bg-red-light text-red-dark dark:bg-red-dark/25 dark:text-red-light":
-                isExpired,
-            })}
-          >
-            {isExpired ? "Expired" : "Expires"}{" "}
-            {toShortDateString(expirationDate)}
-          </span>
+          {expirationDate ? (
+            <span
+              className={clsx("rounded-full px-3 py-1", {
+                "bg-darken-lowest text-gray-dark dark:bg-white/10 dark:text-white/70":
+                  !isExpired,
+                "bg-red-light text-red-dark dark:bg-red-dark/25 dark:text-red-light":
+                  isExpired,
+              })}
+            >
+              {isExpired ? "Expired" : "Expires"}{" "}
+              {toShortDateString(expirationDate)}
+            </span>
+          ) : null}
           <span
             className={clsx("rounded-full px-3 py-1", {
               "bg-darken-lowest text-gray-dark dark:bg-white/10 dark:text-white/70":

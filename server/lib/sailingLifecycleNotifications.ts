@@ -3,10 +3,14 @@ import { DateTime } from "luxon";
 import type { MapPoint } from "shared/contracts/cameras";
 import type { Slot } from "shared/contracts/schedules";
 import type { Vessel } from "shared/contracts/vessels";
+import { getRouteSubscriptionKey } from "shared/lib/alertSubscriptions";
 import { values } from "shared/lib/objects";
 
 import { sendPush } from "~/lib/push";
-import { getSubscribedTerminalPushMessages } from "~/lib/pushSubscriptions";
+import {
+  getSubscribedTerminalPushMessages,
+  removeCompletedOneTimeSailingAlertRules,
+} from "~/lib/pushSubscriptions";
 import { toWsfDate } from "~/lib/wsf/date";
 import { Schedule } from "~/models/Schedule";
 import { Terminal } from "~/models/Terminal";
@@ -503,6 +507,14 @@ export const sendSailingLifecycleNotifications = async (): Promise<void> => {
     // message queue
     for (const message of messages) {
       await sendPush(message);
+    }
+    // completed sailing cleanup
+    if (event.type === "arrived") {
+      await removeCompletedOneTimeSailingAlertRules({
+        routeKey: getRouteSubscriptionKey([event.terminalId, event.mateId]),
+        sailingTime: DateTime.fromSeconds(event.time),
+        terminalId: event.terminalId,
+      });
     }
   }
 };
