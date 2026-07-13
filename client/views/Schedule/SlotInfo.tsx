@@ -80,8 +80,8 @@ import { Status } from "./Status";
 import { getTidalCancellationRisk } from "./tidalCancellationRisk";
 import { Time } from "./Time";
 import { getVesselProfileStats } from "./vesselProfile";
-import { VesselStatus } from "./VesselStatus";
 import { getDelayCardModel } from "./vesselStatus";
+import { VesselStatus } from "./VesselStatusView";
 
 const SMALL_BOAT_ROW_LABEL_SAFE_WIDTH = 20;
 

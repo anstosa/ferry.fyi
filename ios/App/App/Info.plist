@@ -26,7 +26,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>$(PRODUCT_NAME)</string>
+	<string>Ferry FYI</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -35,6 +35,10 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.travel</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>Copyright © 2026 Ansel Santosa. All rights reserved.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Ferry FYI uses the camera to scan your saved ferry ticket barcodes.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>

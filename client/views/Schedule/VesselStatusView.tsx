@@ -1,6 +1,6 @@
 import clsx from "clsx";
 import { DateTime } from "luxon";
-import React, { ReactElement } from "react";
+import React, { type ReactElement } from "react";
 import type { Vessel } from "shared/contracts/vessels";
 import { pluralize } from "shared/lib/strings";
 

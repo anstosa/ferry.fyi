@@ -24,8 +24,8 @@ import {
 import { useTerminals } from "~/lib/terminals";
 import IslandIcon from "~/static/images/icons/solid/island-tropical.svg";
 
-import { NowDivider } from "./NowDivider";
 import { getCurrentSlot, shouldRenderNowDivider } from "./nowDivider";
+import { NowDivider } from "./NowDividerView";
 import { SlotInfo } from "./SlotInfo";
 import {
   getCurrentRouteMaxVehicleCapacity,

@@ -1,0 +1,69 @@
+{
+  "originHash" : "1762af55df3b85c16a377be7e25864a0750f0309bf3adba11c4f28b297c519b7",
+  "pins" : [
+    {
+      "identity" : "alamofire",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Alamofire/Alamofire.git",
+      "state" : {
+        "revision" : "7595cbcf59809f9977c5f6378500de2ad73b7ddb",
+        "version" : "5.12.0"
+      }
+    },
+    {
+      "identity" : "bigint",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/attaswift/BigInt.git",
+      "state" : {
+        "revision" : "e07e00fa1fd435143a2dcf8b7eec9a7710b2fdfe",
+        "version" : "5.7.0"
+      }
+    },
+    {
+      "identity" : "capacitor-swift-pm",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/ionic-team/capacitor-swift-pm.git",
+      "state" : {
+        "revision" : "2231987d85b8b0b289320b1d0947b4ae8345cde4",
+        "version" : "8.4.1"
+      }
+    },
+    {
+      "identity" : "ion-ios-geolocation",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/ionic-team/ion-ios-geolocation.git",
+      "state" : {
+        "revision" : "db363927d3a954e3ea24d2e72b6e9814769a84be",
+        "version" : "2.1.1"
+      }
+    },
+    {
+      "identity" : "osbarcodelib-ios",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/OutSystems/OSBarcodeLib-iOS.git",
+      "state" : {
+        "revision" : "1ae7a716331be720f9f1075ef033276014c341ec",
+        "version" : "2.1.1"
+      }
+    },
+    {
+      "identity" : "version",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/mrackwitz/Version.git",
+      "state" : {
+        "revision" : "fd4b0eb5756aa7f1c33977fb626cf37d2140a3a0",
+        "version" : "0.8.0"
+      }
+    },
+    {
+      "identity" : "zipfoundation",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/weichsel/ZIPFoundation.git",
+      "state" : {
+        "revision" : "22787ffb59de99e5dc1fbfe80b19c97a904ad48d",
+        "version" : "0.9.20"
+      }
+    }
+  ],
+  "version" : 3
+}
