@@ -236,7 +236,6 @@ export default defineConfig(({ mode }) => ({
         start_url: "/",
         scope: "/",
         display: "standalone",
-        orientation: "portrait-primary",
         categories: ["navigation", "travel", "utilities"],
         background_color: BACKGROUND_COLOR,
         theme_color: COLOR,
