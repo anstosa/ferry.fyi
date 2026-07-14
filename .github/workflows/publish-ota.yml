@@ -140,9 +140,9 @@ jobs:
           # retain only lower-case SHA-256 in release metadata
           CHECKSUM="$(jq -r '.checksum | ascii_downcase' ota-bundle.json)"
           RELEASE_VERSION="$(jq -r '.bundle' ota-bundle.json)"
-          # bind the immutable object key to the release and source revision
-          BUNDLE_KEY="bundles/${RELEASE_VERSION}/ferry-fyi-${RELEASE_VERSION}-${GITHUB_SHA}.zip"
-          BUNDLE_URL="${OTA_BUNDLE_BASE_URL}/${RELEASE_VERSION}/ferry-fyi-${RELEASE_VERSION}-${GITHUB_SHA}.zip"
+          # bind the immutable object key to the exact bundle contents as well as its source revision
+          BUNDLE_KEY="bundles/${RELEASE_VERSION}/ferry-fyi-${RELEASE_VERSION}-${GITHUB_SHA}-${CHECKSUM}.zip"
+          BUNDLE_URL="${OTA_BUNDLE_BASE_URL}/${RELEASE_VERSION}/ferry-fyi-${RELEASE_VERSION}-${GITHUB_SHA}-${CHECKSUM}.zip"
           # expose only non-secret release metadata to later steps
           {
             echo "checksum=${CHECKSUM}"
