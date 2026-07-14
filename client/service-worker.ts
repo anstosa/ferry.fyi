@@ -148,9 +148,11 @@ registerRoute(
   })
 );
 
-// Aggresively cache other static resources
+// Aggressively cache small static resources. Do not intercept JS/CSS: hashed
+// application bundles should stream directly through the browser HTTP cache so a
+// service-worker cache fill cannot block first paint or update loads.
 registerRoute(
-  new RegExp("/.*"),
+  new RegExp("\\.(?:gif|ico|jpe?g|png|svg|webp|woff2?)$"),
   new StaleWhileRevalidate({
     cacheName: CACHE_OTHER,
     plugins: [

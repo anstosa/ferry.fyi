@@ -275,6 +275,7 @@ export default defineConfig(({ mode }) => ({
         ],
       },
       injectManifest: {
+        globIgnores: ["**/*.js", "**/*.css", "**/*.map"],
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
         rollupFormat: "iife",
       },

@@ -6,7 +6,7 @@ import { App as Native } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
 import { AnimatePresence } from "framer-motion";
 import { Settings } from "luxon";
-import React, { ReactElement, useEffect } from "react";
+import React, { lazy, ReactElement, Suspense, useEffect } from "react";
 import ReactGA from "react-ga4";
 import {
   Navigate,
@@ -25,17 +25,40 @@ import { slugs } from "~/lib/terminals";
 import { useUser } from "~/lib/user";
 import DumpsterFireIcon from "~/static/images/icons/solid/dumpster-fire.svg";
 import OfflineIcon from "~/static/images/icons/solid/signal-alt-slash.svg";
-import { About } from "~/views/About";
-import { Account } from "~/views/Account";
-import { Feedback } from "~/views/Feedback";
-import { ForecastingExplained } from "~/views/ForecastingExplained";
-import { Home } from "~/views/Home";
-import { PrivacyPolicy } from "~/views/PrivacyPolicy";
-import { Route } from "~/views/Route";
-import { Tickets } from "~/views/Tickets";
-import { Today } from "~/views/Today";
 
 import { Toast } from "./components/Toast";
+
+const About = lazy(() =>
+  import("~/views/About").then(({ About }) => ({ default: About }))
+);
+const Account = lazy(() =>
+  import("~/views/Account").then(({ Account }) => ({ default: Account }))
+);
+const Feedback = lazy(() =>
+  import("~/views/Feedback").then(({ Feedback }) => ({ default: Feedback }))
+);
+const ForecastingExplained = lazy(() =>
+  import("~/views/ForecastingExplained").then(({ ForecastingExplained }) => ({
+    default: ForecastingExplained,
+  }))
+);
+const Home = lazy(() =>
+  import("~/views/Home").then(({ Home }) => ({ default: Home }))
+);
+const PrivacyPolicy = lazy(() =>
+  import("~/views/PrivacyPolicy").then(({ PrivacyPolicy }) => ({
+    default: PrivacyPolicy,
+  }))
+);
+const Route = lazy(() =>
+  import("~/views/Route").then(({ Route }) => ({ default: Route }))
+);
+const Tickets = lazy(() =>
+  import("~/views/Tickets").then(({ Tickets }) => ({ default: Tickets }))
+);
+const Today = lazy(() =>
+  import("~/views/Today").then(({ Today }) => ({ default: Today }))
+);
 
 Settings.defaultZone = "America/Los_Angeles";
 
@@ -218,7 +241,7 @@ export const App = (): ReactElement => {
   if (element) {
     return (
       <>
-        {element}
+        <Suspense fallback={<Splash />}>{element}</Suspense>
         <AnimatePresence>
           {!isOnline && !offlineDismissed && (
             <Toast
