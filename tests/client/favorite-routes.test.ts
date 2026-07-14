@@ -4,7 +4,7 @@ import {
   isFavoriteRoute,
   normalizeFavoriteRouteIds,
   toggleFavoriteRoute,
-} from "../../client/lib/favoriteRoutes";
+} from "../../client/lib/favoriteRouteHelpers";
 import {
   RouteGroup,
   hasFavoriteRoute,

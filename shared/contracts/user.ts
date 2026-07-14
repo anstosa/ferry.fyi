@@ -24,6 +24,7 @@ export interface AppMetadata {
   tickets?: string[];
   subscribedTerminals?: string[];
   fcmToken?: string | null;
+  favoriteRouteIds?: string[];
 }
 
 export type UserMetadata = Record<string, unknown>;

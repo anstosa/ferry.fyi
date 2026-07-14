@@ -401,7 +401,11 @@ export const Route = ({
                         ? "text-yellow-lightest"
                         : "text-white/75 hover:text-white"
                     )}
-                    onClick={() => toggleFavoriteRoute(selectedRoute.id)}
+                    onClick={() => {
+                      toggleFavoriteRoute(selectedRoute.id).catch((error) => {
+                        console.error(error);
+                      });
+                    }}
                   >
                     {selectedRouteIsFavorite ? (
                       <StarFilledIcon />

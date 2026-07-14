@@ -33,6 +33,11 @@ const sanitizeAppMetadata = (input: unknown): AppMetadata | undefined => {
   if (tickets) {
     metadata.tickets = tickets;
   }
+  const favoriteRouteIds = getStringList(input.favoriteRouteIds);
+  // route favorites allow-list
+  if (favoriteRouteIds) {
+    metadata.favoriteRouteIds = favoriteRouteIds;
+  }
   const alertSubscriptions = getAlertSubscriptions(input.alertSubscriptions);
   // old route alert conversion
   if (alertSubscriptions) {
