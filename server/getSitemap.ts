@@ -1,76 +1,59 @@
 import logger from "heroku-logger";
-import { DateTime } from "luxon";
 import { isEmpty } from "shared/lib/arrays";
 import { entries } from "shared/lib/objects";
+import {
+  getRouteSeoMetadata,
+  getTerminalSeoMetadata,
+  SEO_INDEXABLE_PATHS,
+} from "shared/lib/seo";
 import { SitemapStream, streamToPromise } from "sitemap";
 
 import { Terminal } from "~/models/Terminal";
 
 let sitemap: Buffer;
 
-export const getTitle = (
-  terminal: Terminal,
-  mate: Terminal,
-  date?: DateTime
-): string => {
-  let dateSegment: string = "";
-  if (date) {
-    const today = DateTime.local();
-    const isToday = date.toISODate() === today.toISODate();
+export const getSitemapUrls = (terminals: Terminal[]): string[] => {
+  const urls: string[] = [...SEO_INDEXABLE_PATHS];
 
-    const formattedDate = [date.toFormat("ccc")];
-
-    if (date.month !== today.month) {
-      formattedDate.push(date.toFormat("MMM"));
+  terminals.forEach((terminal) => {
+    urls.push(
+      ...terminal.mates.map(
+        (mate) => getRouteSeoMetadata(terminal, mate).canonicalPath
+      )
+    );
+    if (terminal.mates.length > 0) {
+      urls.push(getTerminalSeoMetadata(terminal).canonicalPath);
     }
+  });
 
-    formattedDate.push(date.toFormat("d"));
-
-    if (date.year !== today.year) {
-      formattedDate.push(date.toFormat("y"));
-    }
-
-    if (!isToday) {
-      dateSegment = ` on ${formattedDate.join(" ")}`;
-    }
-  }
-
-  return `${terminal.name} to ${mate.name}${dateSegment} - Ferry FYI`;
+  return urls;
 };
 
 export const getSitemap = async (): Promise<Buffer> => {
   if (sitemap) {
     return sitemap;
   }
+  const generatedSitemap = await generateSitemap();
+  // cache the completed first request, rather than its pending promise
+  // eslint-disable-next-line require-atomic-updates
+  sitemap = generatedSitemap;
+  return sitemap;
+};
+
+const generateSitemap = async (): Promise<Buffer> => {
   const stream = new SitemapStream({ hostname: "https://ferry.fyi/" });
 
-  stream.write({ url: "/" });
-  stream.write({ url: "/about" });
-  stream.write({ url: "/feedback" });
-
-  const terminals = entries(await Terminal.getAll());
+  const terminals = entries(await Terminal.getAll()).map(
+    ([, terminal]) => terminal
+  );
 
   if (isEmpty(terminals)) {
     throw new Error();
   }
 
   logger.info("Generating sitemap...");
-  terminals.forEach(([, terminal]) => {
-    terminal.mates.forEach((mate) => {
-      logger.info(getTitle(terminal, mate));
+  getSitemapUrls(terminals).forEach((url) => stream.write({ url }));
 
-      // sync from server.ts
-      stream.write({
-        url: `/${terminal.slug}/${
-          terminal.mates.length === 1 ? "" : mate.slug
-        }`,
-      });
-    });
-  });
-
-  // cache the response
-  // eslint-disable-next-line require-atomic-updates
-  streamToPromise(stream).then((result) => (sitemap = result));
   stream.end();
-  return sitemap;
+  return streamToPromise(stream);
 };

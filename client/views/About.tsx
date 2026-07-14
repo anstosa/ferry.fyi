@@ -1,15 +1,14 @@
 import React, { ReactElement } from "react";
-import { Helmet } from "react-helmet-async";
+import { getSeoMetadata } from "shared/lib/seo";
 
 import DonateIcon from "~/static/images/icons/solid/heart.svg";
 
 import { Page } from "../components/Page";
+import { SeoHelmet } from "../components/SeoHelmet";
 
 export const About = (): ReactElement => (
   <Page>
-    <Helmet>
-      <link rel="canonical" href={`${process.env.BASE_URL}/about`} />
-    </Helmet>
+    <SeoHelmet seo={getSeoMetadata("/about")} />
     <p className="mt-4">
       A ferry schedule and tracker for the greater Seattle area. Supports all{" "}
       <a

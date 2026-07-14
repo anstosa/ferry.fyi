@@ -1,12 +1,16 @@
 import { DateTime } from "luxon";
 import React, { ReactElement, useEffect, useRef, useState } from "react";
-import { Helmet } from "react-helmet-async";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import type { Schedule as ScheduleClass } from "shared/contracts/schedules";
 import type { Terminal } from "shared/contracts/terminals";
 import type { Vessel } from "shared/contracts/vessels";
 import { findWhere } from "shared/lib/arrays";
 import { values } from "shared/lib/objects";
+import {
+  getDatedSeoTitle,
+  getRouteSeoMetadata,
+  getTerminalSeoMetadata,
+} from "shared/lib/seo";
 
 import { DateButton } from "~/components/DateButton";
 import { ErrorBoundary } from "~/components/ErrorBoundary";
@@ -15,6 +19,7 @@ import { InstallPromptToast } from "~/components/InstallPromptToast";
 import { Page } from "~/components/Page";
 import { PageLoadError } from "~/components/PageLoadError";
 import { RouteSelector } from "~/components/RouteSelector";
+import { SeoHelmet } from "~/components/SeoHelmet";
 import { Splash } from "~/components/Splash";
 import { useQuery } from "~/lib/browser";
 import { toShortDateString } from "~/lib/date";
@@ -199,6 +204,10 @@ export const Route = ({
     }
 
     const query = isToday ? "?" : `?date=${date.toISODate()}`;
+
+    if (newView === "terminal") {
+      return `/${getSlug(newTerminal.id)}/terminal${query}`;
+    }
 
     let terminalPath: string;
     if (newTerminal?.mates?.length === 1) {
@@ -423,12 +432,7 @@ export const Route = ({
     );
   } else if (view === "subscribe" && terminal && mate) {
     content = (
-      <AlertSubscription
-        getPath={getPath}
-        mate={mate}
-        setRoute={setRoute}
-        terminal={terminal}
-      />
+      <AlertSubscription mate={mate} setRoute={setRoute} terminal={terminal} />
     );
   }
 
@@ -450,31 +454,30 @@ export const Route = ({
     return <Splash />;
   }
 
-  const routeTitle =
-    selectedRoute?.description ?? `${terminal.name} / ${mate.name}`;
-  let routePageTitle = `${terminal.name} to ${mate.name}`;
-  // route alerts title
-  if (view === "alerts") {
-    routePageTitle = `${routeTitle} Alerts`;
-  }
-  // pair alerts title
-  if (view === "subscribe") {
-    routePageTitle = `${terminal.name} to ${mate.name} Alerts`;
-  }
-  // sync to server.ts
-  const title = `${routePageTitle}${
-    isToday ? "" : ` on ${formattedDate.join(" ")}`
-  } - Ferry FYI`;
+  const seoTerminal = {
+    name: terminal.name,
+    slug: getSlug(terminal.id),
+  };
+  const routeSeoTerminal = {
+    ...seoTerminal,
+    mates: terminal.mates ?? [],
+  };
+  const seoMate = {
+    name: mate.name,
+    slug: getSlug(mate.id),
+  };
+  const seo =
+    view === "terminal"
+      ? getTerminalSeoMetadata(seoTerminal)
+      : getRouteSeoMetadata(routeSeoTerminal, seoMate, view, !isToday);
+  const title = getDatedSeoTitle(
+    seo,
+    isToday ? undefined : formattedDate.join(" ")
+  );
 
   return (
     <>
-      <Helmet>
-        <title>{title}</title>
-        <meta name="twitter:title" content={title} />
-        <meta property="og:title" content={title} />
-        <meta itemProp="name" content={title} />
-        <link rel="canonical" href={`${process.env.BASE_URL}${getPath()}`} />
-      </Helmet>
+      <SeoHelmet seo={seo} title={title} />
       {content && (
         <ErrorBoundary
           resetKey={contentResetKey}

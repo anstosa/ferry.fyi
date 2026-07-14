@@ -3,7 +3,6 @@ import { Browser } from "@capacitor/browser";
 import { useAtomValue } from "jotai";
 import { DateTime } from "luxon";
 import React, { ReactElement, ReactNode } from "react";
-import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
 import type {
   AlertRule,
@@ -18,10 +17,12 @@ import {
   WEEKDAY_DAYS,
   WEEKEND_DAYS,
 } from "shared/lib/alertSubscriptions";
+import { getSeoMetadata } from "shared/lib/seo";
 import { pluralize } from "shared/lib/strings";
 
 import { Page } from "~/components/Page";
 import { PageLoadError } from "~/components/PageLoadError";
+import { SeoHelmet } from "~/components/SeoHelmet";
 import { Splash } from "~/components/Splash";
 import { useDevice } from "~/lib/device";
 import { getSlug, useTerminals } from "~/lib/terminals";
@@ -322,10 +323,7 @@ export const Account = withAuthenticationRequired(
 
     return (
       <Page title="Account">
-        <Helmet>
-          <title>Account - Ferry FYI</title>
-          <link rel="canonical" href={`${process.env.BASE_URL}/account`} />
-        </Helmet>
+        <SeoHelmet seo={getSeoMetadata("/account")} />
         <main className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-6">
           <section className="rounded bg-white p-6 shadow dark:bg-black">
             <h3 className="mb-3 text-xl font-bold">Profile</h3>

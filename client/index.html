@@ -7,9 +7,10 @@
       content="initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, width=device-width"
     />
 
-    <title>%APP_TITLE%</title>
-    <meta name="description" content="%APP_DESCRIPTION%" />
-    <link vite-ignore rel="canonical" href="%BASE_URL%" />
+    <title data-seo-seed="true">%APP_TITLE%</title>
+    <meta data-seo-seed="true" name="description" content="%APP_DESCRIPTION%" />
+    <meta data-seo-seed="true" name="robots" content="index,follow" />
+    <link data-seo-seed="true" vite-ignore rel="canonical" href="%SEO_BASE_URL%" />
     <link rel="icon" href="/static/images/favicon.ico" sizes="any" />
     <link
       rel="icon"
@@ -37,19 +38,21 @@
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:site" content="@FerryFYI" />
-    <meta name="twitter:title" content="%APP_TITLE%" />
-    <meta name="twitter:description" content="%APP_DESCRIPTION%" />
+    <meta data-seo-seed="true" name="twitter:title" content="%APP_TITLE%" />
+    <meta data-seo-seed="true" name="twitter:description" content="%APP_DESCRIPTION%" />
     <meta vite-ignore name="twitter:image" content="%SOCIAL_IMAGE%" />
 
-    <meta property="og:url" content="%BASE_URL%" />
+    <meta data-seo-seed="true" property="og:url" content="%SEO_BASE_URL%" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="%APP_TITLE%" />
-    <meta property="og:description" content="%APP_DESCRIPTION%" />
+    <meta data-seo-seed="true" property="og:title" content="%APP_TITLE%" />
+    <meta data-seo-seed="true" property="og:description" content="%APP_DESCRIPTION%" />
     <meta vite-ignore property="og:image" content="%SOCIAL_IMAGE%" />
 
-    <meta itemprop="name" content="%APP_TITLE%" />
-    <meta itemprop="description" content="%APP_DESCRIPTION%" />
-    <meta vite-ignore itemprop="image" content="%SOCIAL_IMAGE%" />
+    <meta data-seo-seed="true" itemprop="name" content="%APP_TITLE%" />
+    <meta data-seo-seed="true" itemprop="description" content="%APP_DESCRIPTION%" />
+    <script data-seo-seed="true" id="structured-data" type="application/ld+json">
+      {"@context":"https://schema.org","@type":"WebSite","name":"Ferry FYI","url":"%SEO_BASE_URL%","description":"%APP_DESCRIPTION%"}
+    </script>
     <meta name="theme-color" content="%THEME_COLOR%" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />

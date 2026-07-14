@@ -9,7 +9,6 @@ import React, {
   useMemo,
   useState,
 } from "react";
-import { Helmet } from "react-helmet-async";
 import { Link, useLocation } from "react-router-dom";
 import type { Schedule } from "shared/contracts/schedules";
 import type { Terminal } from "shared/contracts/terminals";
@@ -45,12 +44,10 @@ import BellSlashIcon from "~/static/images/icons/solid/bell-slash.svg";
 import CheckIcon from "~/static/images/icons/solid/check-circle.svg";
 import ArrowLeftIcon from "~/static/images/icons/solid/long-arrow-alt-left.svg";
 import ArrowRightIcon from "~/static/images/icons/solid/long-arrow-alt-right.svg";
-import type { GetPath } from "~/views/Route";
 
 import { Header } from "./Header";
 
 interface Props {
-  getPath: GetPath;
   mate: Terminal;
   setRoute: (target: string, mate?: string) => void;
   terminal: Terminal;
@@ -726,7 +723,6 @@ const AlertRuleEditor = ({
 };
 
 export const AlertSubscription = ({
-  getPath,
   mate,
   setRoute,
   terminal,
@@ -1037,13 +1033,6 @@ export const AlertSubscription = ({
 
   return (
     <>
-      <Helmet>
-        <title>{`${titleText} - Ferry FYI`}</title>
-        <link
-          rel="canonical"
-          href={`${process.env.BASE_URL}${getPath({ view: "subscribe" })}`}
-        />
-      </Helmet>
       <Header>
         <div className="min-w-0 flex-1" />
         <div className="min-w-0 text-center">

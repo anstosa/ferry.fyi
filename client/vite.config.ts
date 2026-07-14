@@ -10,6 +10,11 @@ import { VitePWA } from "vite-plugin-pwa";
 import svgr from "vite-plugin-svgr";
 
 import { OTA_CLIENT_ENV_KEYS } from "../shared/contracts/ota";
+import {
+  SEO_APP_NAME,
+  SEO_DEFAULT_DESCRIPTION,
+  SEO_DEFAULT_TITLE,
+} from "../shared/lib/seo";
 import tailwindConfig from "../tailwind.config.js";
 
 const configDir = path.dirname(fileURLToPath(import.meta.url));
@@ -39,10 +44,6 @@ const envKeys = [
 ];
 const { theme } = resolveConfig(tailwindConfig as never);
 const colors = theme.colors as Record<string, Record<string, string>>;
-const NAME = "Ferry FYI";
-const TITLE = `${NAME} - Seattle Area Ferry Schedule and Tracker`;
-const DESCRIPTION =
-  "A ferry schedule and tracker for the greater Seattle area.";
 const COLOR = colors.green.dark;
 const BACKGROUND_COLOR = colors.blue.dark;
 
@@ -138,9 +139,9 @@ const htmlTemplatePlugin = (): Plugin => {
       }
       const gtmContainerId = getEnv("GTM_CONTAINER_ID");
       const values: Record<string, string> = {
-        "%APP_DESCRIPTION%": DESCRIPTION,
-        "%APP_TITLE%": TITLE,
-        "%BASE_URL%": baseUrl,
+        "%APP_DESCRIPTION%": SEO_DEFAULT_DESCRIPTION,
+        "%APP_TITLE%": SEO_DEFAULT_TITLE,
+        "%SEO_BASE_URL%": baseUrl,
         "%GTM_CONTAINER_ID%": gtmContainerId ?? "",
         "%SOCIAL_IMAGE%": `${baseUrl}/static/images/social.png`,
         "%THEME_COLOR%": COLOR,
@@ -229,9 +230,9 @@ export default defineConfig(({ mode }) => ({
       injectRegister: false,
       manifest: {
         id: "/",
-        name: NAME,
-        short_name: NAME,
-        description: DESCRIPTION,
+        name: SEO_APP_NAME,
+        short_name: SEO_APP_NAME,
+        description: SEO_DEFAULT_DESCRIPTION,
         lang: "en-US",
         start_url: "/",
         scope: "/",

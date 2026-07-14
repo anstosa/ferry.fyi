@@ -3,8 +3,10 @@ import React, { ReactElement } from "react";
 import { Link } from "react-router-dom";
 import { Terminal as TerminalClass } from "shared/contracts/terminals";
 import { isEmpty } from "shared/lib/arrays";
+import { getSeoMetadata } from "shared/lib/seo";
 
 import { LoadingWaves } from "~/components/LoadingWaves";
+import { SeoHelmet } from "~/components/SeoHelmet";
 import { getSlug, useTerminals } from "~/lib/terminals";
 import logo from "~/static/images/icon_monochrome.png";
 import TicketIcon from "~/static/images/icons/solid/barcode-alt.svg";
@@ -220,6 +222,7 @@ export const Home = (): ReactElement => {
   );
   return (
     <div className="relative overflow-y-scroll scrolling-touch bg-ferry-gradient text-white">
+      <SeoHelmet seo={getSeoMetadata("/")} />
       <Link
         className="absolute top-0 left-0 mt-safe-top flex items-center px-4 py-2 text-lg font-bold hover:bg-lighten-high"
         to="/tickets"

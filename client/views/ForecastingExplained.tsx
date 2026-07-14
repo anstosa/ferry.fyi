@@ -1,14 +1,13 @@
 import React, { ReactElement } from "react";
-import { Helmet } from "react-helmet-async";
+import { getSeoMetadata } from "shared/lib/seo";
 
 import { Page } from "../components/Page";
+import { SeoHelmet } from "../components/SeoHelmet";
 
 // forecasting explainer page
 export const ForecastingExplained = (): ReactElement => (
   <Page title="Forecasting">
-    <Helmet>
-      <link rel="canonical" href={`${process.env.BASE_URL}/forecasting`} />
-    </Helmet>
+    <SeoHelmet seo={getSeoMetadata("/forecasting")} />
 
     <p className="mt-4">
       Ferry FYI forecasts estimate vehicle space, schedule delay, and tidal

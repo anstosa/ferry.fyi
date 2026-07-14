@@ -1,12 +1,18 @@
 import compression from "compression";
 import express, { Router } from "express";
 
-import { browserRouter, clientDist } from "./browser";
+import { browserRouter, clientDist, createBrowserRouter } from "./browser";
 
-const staticRouter = Router();
+export const createStaticRouter = (dist = clientDist): Router => {
+  const staticRouter = Router();
 
-staticRouter.use(compression());
-staticRouter.use(express.static(clientDist));
-staticRouter.use(browserRouter);
+  staticRouter.use(compression());
+  staticRouter.use(express.static(dist, { index: false }));
+  staticRouter.use(
+    dist === clientDist ? browserRouter : createBrowserRouter(dist)
+  );
 
-export { staticRouter };
+  return staticRouter;
+};
+
+export const staticRouter = createStaticRouter();

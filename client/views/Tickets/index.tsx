@@ -17,7 +17,6 @@ import { useAtom } from "jotai";
 import jsQR from "jsqr";
 import { DateTime } from "luxon";
 import React, { ReactElement, useEffect, useRef, useState } from "react";
-import { Helmet } from "react-helmet-async";
 import type {
   ReservationAccount,
   Ticket as TicketType,
@@ -25,9 +24,11 @@ import type {
   TicketStorage,
 } from "shared/contracts/tickets";
 import { sortBy, without } from "shared/lib/arrays";
+import { getSeoMetadata } from "shared/lib/seo";
 
 import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { Page } from "~/components/Page";
+import { SeoHelmet } from "~/components/SeoHelmet";
 import { Splash } from "~/components/Splash";
 import { ApiError, get } from "~/lib/api";
 import { useQuery } from "~/lib/browser";
@@ -982,9 +983,7 @@ export const Tickets = (): ReactElement => {
 
   return (
     <Page title="Tickets">
-      <Helmet>
-        <link rel="canonical" href={`${process.env.BASE_URL}/tickets`} />
-      </Helmet>
+      <SeoHelmet seo={getSeoMetadata("/tickets")} />
 
       <section className="mt-4 overflow-hidden rounded-2xl border border-[rgba(0,0,0,0.08)] bg-[linear-gradient(135deg,#016f52_0%,#004d61_100%)] text-white shadow-lg dark:border-[rgba(255,255,255,0.08)]">
         <div className="relative p-5 sm:p-6">

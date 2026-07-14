@@ -1,10 +1,11 @@
 import React, { ReactElement } from "react";
-import { Helmet } from "react-helmet-async";
+import { getSeoMetadata } from "shared/lib/seo";
 
 import GitHubIcon from "~/static/images/icons/brands/github.svg";
 import EmailIcon from "~/static/images/icons/solid/envelope.svg";
 
 import { Page } from "../components/Page";
+import { SeoHelmet } from "../components/SeoHelmet";
 
 export const Content = (): ReactElement => (
   <>
@@ -35,9 +36,7 @@ export const Content = (): ReactElement => (
 
 export const Feedback = (): ReactElement => (
   <Page>
-    <Helmet>
-      <link rel="canonical" href={`${process.env.BASE_URL}/feedback`} />
-    </Helmet>
+    <SeoHelmet seo={getSeoMetadata("/feedback")} />
     <Content />
   </Page>
 );

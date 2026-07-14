@@ -1,13 +1,14 @@
 import clsx from "clsx";
 import { DateTime } from "luxon";
 import React, { ReactElement, useEffect, useState } from "react";
-import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
 import type { Schedule } from "shared/contracts/schedules";
 import { Terminal } from "shared/contracts/terminals";
 import { findWhere } from "shared/lib/arrays";
 import { isNull } from "shared/lib/identity";
+import { getSeoMetadata } from "shared/lib/seo";
 
+import { SeoHelmet } from "~/components/SeoHelmet";
 import { Splash } from "~/components/Splash";
 import { getSchedule, requireScheduleResponse } from "~/lib/schedule";
 import { getTerminal } from "~/lib/terminals";
@@ -104,10 +105,7 @@ export const Today = (): ReactElement => {
 
   return (
     <>
-      <Helmet>
-        <title>How Many Boats?</title>
-        <link rel="canonical" href="https://howmanyboats.today" />
-      </Helmet>
+      <SeoHelmet seo={getSeoMetadata("/today")} title="How Many Boats?" />
       <div
         className={clsx(
           "fixed inset-0 h-full p-8",

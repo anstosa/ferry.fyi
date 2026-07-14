@@ -1,14 +1,13 @@
 import React, { ReactElement } from "react";
-import { Helmet } from "react-helmet-async";
+import { getSeoMetadata } from "shared/lib/seo";
 
 import { Page } from "../components/Page";
+import { SeoHelmet } from "../components/SeoHelmet";
 
 // privacy policy page
 export const PrivacyPolicy = (): ReactElement => (
   <Page title="Privacy Policy">
-    <Helmet>
-      <link rel="canonical" href={`${process.env.BASE_URL}/privacy`} />
-    </Helmet>
+    <SeoHelmet seo={getSeoMetadata("/privacy")} />
 
     <p className="mt-4 text-sm">Last updated: July 12, 2026</p>
     <p className="mt-4">
