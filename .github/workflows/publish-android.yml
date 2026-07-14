@@ -26,6 +26,7 @@ jobs:
       AUTH0_CLIENT_AUDIENCE: ${{ vars.AUTH0_CLIENT_AUDIENCE }}
       AUTH0_CLIENT_ID: ${{ vars.AUTH0_CLIENT_ID }}
       AUTH0_DOMAIN: ${{ vars.AUTH0_DOMAIN }}
+      ANDROID_ENFORCE_PROD_AUTH0: '1'
       AW_TAG_ID: ${{ vars.AW_TAG_ID }}
       BASE_URL: ${{ vars.BASE_URL }}
       FIREBASE_API_KEY: ${{ vars.FIREBASE_API_KEY }}
@@ -92,6 +93,19 @@ jobs:
               exit 1
             fi
           done
+          # require production Auth0 settings for Play internal testing
+          if [[ "${AUTH0_DOMAIN}" != "ferryfyi.us.auth0.com" ]]; then
+            echo "AUTH0_DOMAIN must be ferryfyi.us.auth0.com for Android internal testing" >&2
+            exit 1
+          fi
+          if [[ "${AUTH0_CLIENT_AUDIENCE}" != "https://ferry.fyi/api" ]]; then
+            echo "AUTH0_CLIENT_AUDIENCE must be https://ferry.fyi/api for Android internal testing" >&2
+            exit 1
+          fi
+          if [[ -z "${AUTH0_CLIENT_ID}" ]]; then
+            echo "AUTH0_CLIENT_ID is required for Android internal testing" >&2
+            exit 1
+          fi
 
       - name: Derive Android version
         id: version
