@@ -1,9 +1,9 @@
 import express from "express";
-import { mkdtempSync, rmSync, writeFileSync } from "fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import path from "path";
 import request from "supertest";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createStaticRouter } from "../../server/controllers/static";
 import {
@@ -34,7 +34,7 @@ const seattle = {
 };
 bainbridge.mates = [seattle];
 
-const template = `<!doctype html><title>placeholder</title><meta name="description" content="placeholder" /><meta name="robots" content="placeholder" /><link rel="canonical" href="placeholder" /><meta name="twitter:title" content="placeholder" /><meta name="twitter:description" content="placeholder" /><meta property="og:url" content="placeholder" /><meta property="og:title" content="placeholder" /><meta property="og:description" content="placeholder" /><meta itemprop="name" content="placeholder" /><meta itemprop="description" content="placeholder" /><script id="structured-data" type="application/ld+json">{}</script>`;
+const template = readFileSync(path.resolve("client/index.html"), "utf-8");
 
 let clientDist: string;
 let app: express.Express;
@@ -54,6 +54,7 @@ afterEach(() => {
   } else {
     process.env.BASE_URL = originalBaseUrl;
   }
+  vi.useRealTimers();
   rmSync(clientDist, { force: true, recursive: true });
 });
 
@@ -116,59 +117,15 @@ describe("SEO metadata", () => {
   });
 
   it("renders hermetic absolute crawler metadata for the homepage", () => {
-    const seededTemplate = template
-      .replace("<title>", '<title data-seo-seed="true">')
-      .replace(
-        '<meta name="description"',
-        '<meta data-seo-seed="true" name="description"'
-      )
-      .replace(
-        '<meta name="robots"',
-        '<meta data-seo-seed="true" name="robots"'
-      )
-      .replace(
-        '<link rel="canonical"',
-        '<link data-seo-seed="true" rel="canonical"'
-      )
-      .replace(
-        '<meta name="twitter:title"',
-        '<meta data-seo-seed="true" name="twitter:title"'
-      )
-      .replace(
-        '<meta name="twitter:description"',
-        '<meta data-seo-seed="true" name="twitter:description"'
-      )
-      .replace(
-        '<meta property="og:url"',
-        '<meta data-seo-seed="true" property="og:url"'
-      )
-      .replace(
-        '<meta property="og:title"',
-        '<meta data-seo-seed="true" property="og:title"'
-      )
-      .replace(
-        '<meta property="og:description"',
-        '<meta data-seo-seed="true" property="og:description"'
-      )
-      .replace(
-        '<meta itemprop="name"',
-        '<meta data-seo-seed="true" itemprop="name"'
-      )
-      .replace(
-        '<meta itemprop="description"',
-        '<meta data-seo-seed="true" itemprop="description"'
-      )
-      .replace(
-        '<script id="structured-data"',
-        '<script data-seo-seed="true" id="structured-data"'
-      );
     const html = renderSeoHtml(
-      seededTemplate,
+      template,
       getSeoMetadata("/"),
       "https://ferry.fyi"
     );
 
-    expect(html).not.toContain("placeholder");
+    expect(html).not.toContain("%APP_TITLE%");
+    expect(html).not.toContain("%APP_DESCRIPTION%");
+    expect(html).not.toContain("%SEO_BASE_URL%");
     expect(html).toContain('rel="canonical" href="https://ferry.fyi"');
     expect(html).toContain('property="og:url" content="https://ferry.fyi"');
     expect(html).toContain('"url":"https://ferry.fyi"');
@@ -300,8 +257,30 @@ describe("SEO metadata", () => {
   });
 
   it("renders noindex metadata for dated and route-adjacent pages", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-07-14T12:00:00-07:00"));
+    process.env.BASE_URL = "https://ferry.fyi";
+
+    const datedResponse = await request(app)
+      .get("/seattle/bremerton?date=2026-07-15")
+      .expect(200);
+
+    expect(datedResponse.text).toContain('content="noindex,follow"');
+    expect(datedResponse.text).toContain(
+      "Seattle to Bremerton Ferry Schedule on Wed 15 - Ferry FYI"
+    );
+    expect(datedResponse.text).toContain(
+      'rel="canonical" href="https://ferry.fyi/seattle/bremerton"'
+    );
+    expect(datedResponse.text).toContain(
+      'property="og:url" content="https://ferry.fyi/seattle/bremerton"'
+    );
+    expect(datedResponse.text).toContain(
+      '"url":"https://ferry.fyi/seattle/bremerton"'
+    );
+    expect(datedResponse.text).not.toContain("date=2026-07-15");
+
     for (const pathname of [
-      "/seattle/bremerton?date=2026-07-15",
       "/seattle/bremerton/cameras",
       "/seattle/bremerton/map",
       "/today",

@@ -58,55 +58,61 @@ export const renderSeoHtml = (
     },
   }).replace(/</g, "\\u003c");
 
-  return template
-    .replace(
+  const replacements: Array<[RegExp, string]> = [
+    [
       /<title(?: data-seo-seed="true")?>.*?<\/title>/,
-      `<title data-seo-seed="true">${title}</title>`
-    )
-    .replace(
+      `<title data-seo-seed="true">${title}</title>`,
+    ],
+    [
       /<meta\b(?=[^>]*\bname="description")[^>]*\/>/,
-      `<meta data-seo-seed="true" name="description" content="${description}" />`
-    )
-    .replace(
+      `<meta data-seo-seed="true" name="description" content="${description}" />`,
+    ],
+    [
       /<meta\b(?=[^>]*\bname="robots")[^>]*\/>/,
-      `<meta data-seo-seed="true" name="robots" content="${seo.robots}" />`
-    )
-    .replace(
+      `<meta data-seo-seed="true" name="robots" content="${seo.robots}" />`,
+    ],
+    [
       /<link\b(?=[^>]*\brel="canonical")[^>]*>/,
-      `<link data-seo-seed="true" rel="canonical" href="${canonicalUrl}" />`
-    )
-    .replace(
+      `<link data-seo-seed="true" rel="canonical" href="${canonicalUrl}" />`,
+    ],
+    [
       /<meta\b(?=[^>]*\bname="twitter:title")[^>]*\/>/,
-      `<meta data-seo-seed="true" name="twitter:title" content="${title}" />`
-    )
-    .replace(
+      `<meta data-seo-seed="true" name="twitter:title" content="${title}" />`,
+    ],
+    [
       /<meta\b(?=[^>]*\bname="twitter:description")[^>]*\/>/,
-      `<meta data-seo-seed="true" name="twitter:description" content="${description}" />`
-    )
-    .replace(
+      `<meta data-seo-seed="true" name="twitter:description" content="${description}" />`,
+    ],
+    [
       /<meta\b(?=[^>]*\bproperty="og:url")[^>]*\/>/,
-      `<meta data-seo-seed="true" property="og:url" content="${canonicalUrl}" />`
-    )
-    .replace(
+      `<meta data-seo-seed="true" property="og:url" content="${canonicalUrl}" />`,
+    ],
+    [
       /<meta\b(?=[^>]*\bproperty="og:title")[^>]*\/>/,
-      `<meta data-seo-seed="true" property="og:title" content="${title}" />`
-    )
-    .replace(
+      `<meta data-seo-seed="true" property="og:title" content="${title}" />`,
+    ],
+    [
       /<meta\b(?=[^>]*\bproperty="og:description")[^>]*\/>/,
-      `<meta data-seo-seed="true" property="og:description" content="${description}" />`
-    )
-    .replace(
+      `<meta data-seo-seed="true" property="og:description" content="${description}" />`,
+    ],
+    [
       /<meta\b(?=[^>]*\bitemprop="name")[^>]*\/>/,
-      `<meta data-seo-seed="true" itemprop="name" content="${title}" />`
-    )
-    .replace(
+      `<meta data-seo-seed="true" itemprop="name" content="${title}" />`,
+    ],
+    [
       /<meta\b(?=[^>]*\bitemprop="description")[^>]*\/>/,
-      `<meta data-seo-seed="true" itemprop="description" content="${description}" />`
-    )
-    .replace(
+      `<meta data-seo-seed="true" itemprop="description" content="${description}" />`,
+    ],
+    [
       /<script\b(?=[^>]*\bid="structured-data")[^>]*>[\s\S]*?<\/script>/,
-      `<script data-seo-seed="true" id="structured-data" type="application/ld+json">${schema}</script>`
-    );
+      `<script data-seo-seed="true" id="structured-data" type="application/ld+json">${schema}</script>`,
+    ],
+  ];
+
+  return replacements.reduce(
+    (html, [pattern, replacement]) => html.replace(pattern, replacement),
+    template
+  );
 };
 
 export const createBrowserRouter = (dist = clientDist): Router => {

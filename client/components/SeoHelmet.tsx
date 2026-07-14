@@ -11,15 +11,11 @@ import { removeSeedSeoTags } from "../lib/seo";
 
 interface Props {
   seo: SeoMetadata;
-  baseUrl?: string;
-  schema?: Record<string, unknown>;
   title?: string;
 }
 
 export const SeoHelmet = ({
   seo,
-  baseUrl: baseUrlOverride,
-  schema: schemaOverride,
   title: titleOverride,
 }: Props): ReactElement => {
   useInsertionEffect(removeSeedSeoTags, []);
@@ -29,12 +25,10 @@ export const SeoHelmet = ({
   const title = profile.baseUrl
     ? activeSeo.title
     : (titleOverride ?? activeSeo.title);
-  const baseUrl =
-    profile.baseUrl ?? baseUrlOverride ?? process.env.BASE_URL ?? "";
+  const baseUrl = profile.baseUrl ?? process.env.BASE_URL ?? "";
   const canonicalUrl = getSeoUrl(baseUrl, activeSeo.canonicalPath);
   const schema = {
     ...activeSeo.schema,
-    ...schemaOverride,
     name: title,
     url: canonicalUrl,
     isPartOf: {
