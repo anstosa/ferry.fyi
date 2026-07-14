@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import { DateTime } from "luxon";
 import React, { ReactElement, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
@@ -23,8 +24,11 @@ import { SeoHelmet } from "~/components/SeoHelmet";
 import { Splash } from "~/components/Splash";
 import { useQuery } from "~/lib/browser";
 import { toShortDateString } from "~/lib/date";
+import { isFavoriteRoute, useFavoriteRoutes } from "~/lib/favoriteRoutes";
 import { getSchedule, requireScheduleResponse } from "~/lib/schedule";
 import { getSlug, getTerminal } from "~/lib/terminals";
+import StarIcon from "~/static/images/icons/regular/star.svg";
+import StarFilledIcon from "~/static/images/icons/solid/star.svg";
 import WSDOTIcon from "~/static/images/icons/wsdot.svg";
 import { Header } from "~/views/Header";
 
@@ -135,6 +139,7 @@ export const Route = ({
   );
   const previousViewRef = useRef<View>(view);
   const tabDirection = getTabDirection(previousViewRef.current, view);
+  const [favoriteRouteIds, toggleFavoriteRoute] = useFavoriteRoutes();
 
   // remember selected tab
   useEffect(() => {
@@ -331,6 +336,10 @@ export const Route = ({
           );
         })
       : undefined;
+  const selectedRouteIsFavorite = isFavoriteRoute(
+    favoriteRouteIds,
+    selectedRoute?.id
+  );
   const contentResetKey = `${view}:${terminal?.id ?? ""}:${mate?.id ?? ""}:${date.toISODate()}`;
   const contentMotionKey = `${view}:${terminal?.id ?? ""}:${mate?.id ?? ""}`;
   const todayOnlyView: TodayOnlyView | null =
@@ -373,11 +382,40 @@ export const Route = ({
           >
             <div className="flex-grow" />
             {terminal ? (
-              <RouteSelector
-                terminal={terminal}
-                mate={mate}
-                setRoute={setRoute}
-              />
+              <div className="flex min-w-0 items-center justify-center">
+                {selectedRoute ? (
+                  <button
+                    type="button"
+                    aria-label={
+                      selectedRouteIsFavorite
+                        ? `Remove ${selectedRoute.description} from favorites`
+                        : `Add ${selectedRoute.description} to favorites`
+                    }
+                    aria-pressed={selectedRouteIsFavorite}
+                    className={clsx(
+                      "mr-2 flex h-8 w-8 shrink-0 items-center justify-center",
+                      "rounded-full text-xl transition",
+                      "hover:bg-lighten-high focus-visible:outline focus-visible:outline-2",
+                      "focus-visible:outline-offset-2 focus-visible:outline-yellow-lightest",
+                      selectedRouteIsFavorite
+                        ? "text-yellow-lightest"
+                        : "text-white/75 hover:text-white"
+                    )}
+                    onClick={() => toggleFavoriteRoute(selectedRoute.id)}
+                  >
+                    {selectedRouteIsFavorite ? (
+                      <StarFilledIcon />
+                    ) : (
+                      <StarIcon />
+                    )}
+                  </button>
+                ) : null}
+                <RouteSelector
+                  terminal={terminal}
+                  mate={mate}
+                  setRoute={setRoute}
+                />
+              </div>
             ) : (
               "Ferry FYI"
             )}
