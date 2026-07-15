@@ -17,6 +17,17 @@ import { UserSettings } from "~/models/UserSettings";
 
 const userRouter = Router();
 
+const normalizeFavoriteRouteIds = (routeIds: unknown): string[] => {
+  const stringRouteIds = getStringList(routeIds);
+  // valid list guard
+  if (!stringRouteIds) {
+    return [];
+  }
+  return Array.from(new Set(stringRouteIds)).sort((left, right) =>
+    left.localeCompare(right)
+  );
+};
+
 const sanitizeAppMetadata = (input: unknown): AppMetadata | undefined => {
   // metadata object guard
   if (!isObject(input)) {
@@ -32,11 +43,6 @@ const sanitizeAppMetadata = (input: unknown): AppMetadata | undefined => {
   // tickets allow-list
   if (tickets) {
     metadata.tickets = tickets;
-  }
-  const favoriteRouteIds = getStringList(input.favoriteRouteIds);
-  // route favorites allow-list
-  if (favoriteRouteIds) {
-    metadata.favoriteRouteIds = favoriteRouteIds;
   }
   const alertSubscriptions = getAlertSubscriptions(input.alertSubscriptions);
   // old route alert conversion
@@ -71,13 +77,18 @@ export const sanitizeUserUpdate = (input: unknown): UserUpdatePayload => {
   if (appMetadata) {
     payload.app_metadata = appMetadata;
   }
+  const favoriteRouteIds = getStringList(input.favoriteRouteIds);
+  // DB-backed route favorites allow-list
+  if (favoriteRouteIds) {
+    payload.favoriteRouteIds = normalizeFavoriteRouteIds(favoriteRouteIds);
+  }
   return payload;
 };
 
 // find or create app settings
 const getUserSettings = async (subject: string): Promise<UserSettings> => {
   const [settings] = await UserSettings.findOrCreate({
-    defaults: { appMetadata: {}, subject },
+    defaults: { appMetadata: {}, favoriteRouteIds: [], subject },
     where: { subject },
   });
   return settings;
@@ -103,6 +114,7 @@ const serializeUserSettings = (
 ): CurrentUser => {
   return {
     app_metadata: appMetadata,
+    favoriteRouteIds: normalizeFavoriteRouteIds(settings.favoriteRouteIds),
     user_id: settings.subject,
   };
 };
@@ -120,7 +132,12 @@ userRouter.post("/", async (request, response) => {
     ...normalizeAppMetadata(settings.appMetadata ?? {}),
     ...(update.app_metadata ?? {}),
   });
-  await settings.update({ appMetadata });
+  await settings.update({
+    appMetadata,
+    ...(update.favoriteRouteIds
+      ? { favoriteRouteIds: update.favoriteRouteIds }
+      : {}),
+  });
   return response.send(serializeUserSettings(settings, appMetadata));
 });
 

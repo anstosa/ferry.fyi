@@ -189,15 +189,6 @@ export const normalizeAppMetadata = (input: AppMetadata): AppMetadata => {
     metadata.fcmToken = input.fcmToken;
   }
 
-  // route favorites guard
-  if (Array.isArray(input.favoriteRouteIds)) {
-    metadata.favoriteRouteIds = Array.from(
-      new Set(
-        input.favoriteRouteIds.filter((routeId) => typeof routeId === "string")
-      )
-    ).sort((left, right) => left.localeCompare(right));
-  }
-
   return metadata;
 };
 

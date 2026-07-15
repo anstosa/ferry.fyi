@@ -48,14 +48,22 @@ vi.mock("express-oauth2-jwt-bearer", () => ({
 }));
 
 // user settings fixture
-const makeSettings = (appMetadata = {}) => {
+const makeSettings = (appMetadata = {}, favoriteRouteIds: string[] = []) => {
   const settings = {
     appMetadata,
+    favoriteRouteIds,
     subject: "auth0|123",
-    update: vi.fn(async (data: { appMetadata: Record<string, unknown> }) => {
-      settings.appMetadata = data.appMetadata;
-      return settings;
-    }),
+    update: vi.fn(
+      async (data: {
+        appMetadata: Record<string, unknown>;
+        favoriteRouteIds?: string[];
+      }) => {
+        settings.appMetadata = data.appMetadata;
+        settings.favoriteRouteIds =
+          data.favoriteRouteIds ?? settings.favoriteRouteIds;
+        return settings;
+      }
+    ),
   };
   return settings;
 };
@@ -98,7 +106,7 @@ describe("user API", () => {
 
   // current user case
   it("returns the current DB-backed app metadata", async () => {
-    const settings = makeSettings({ tickets: ["abc"] });
+    const settings = makeSettings({ tickets: ["abc"] }, ["3", "9"]);
     userSettings.findOrCreate.mockResolvedValueOnce([settings, false]);
     const app = createApp();
 
@@ -108,11 +116,16 @@ describe("user API", () => {
       .expect(200);
 
     expect(userSettings.findOrCreate).toHaveBeenCalledWith({
-      defaults: { appMetadata: {}, subject: "auth0|123" },
+      defaults: {
+        appMetadata: {},
+        favoriteRouteIds: [],
+        subject: "auth0|123",
+      },
       where: { subject: "auth0|123" },
     });
     expect(response.body).toEqual({
       app_metadata: { tickets: ["abc"] },
+      favoriteRouteIds: ["3", "9"],
       user_id: "auth0|123",
     });
   });
@@ -165,6 +178,7 @@ describe("user API", () => {
     });
     expect(response.body).toEqual({
       app_metadata: settings.update.mock.calls[0][0].appMetadata,
+      favoriteRouteIds: [],
       user_id: "auth0|123",
     });
   });
@@ -198,12 +212,13 @@ describe("user API", () => {
             bad: "not-array",
           },
           blocked: true,
-          favoriteRouteIds: ["9", "3", "9"],
+          favoriteRouteIds: ["ignored"],
           fcmToken: "token",
           tickets: ["abc"],
         },
         blocked: true,
         email: "attacker@example.com",
+        favoriteRouteIds: ["9", "3", "9"],
         user_metadata: { isAuthenticated: false },
       })
       .expect(200);
@@ -231,10 +246,10 @@ describe("user API", () => {
             terminalIds: ["5", "14"],
           },
         ],
-        favoriteRouteIds: ["3", "9"],
         fcmToken: "token",
         tickets: ["abc"],
       },
+      favoriteRouteIds: ["3", "9"],
     });
     expect(response.body).toEqual({
       app_metadata: {
@@ -259,10 +274,10 @@ describe("user API", () => {
             terminalIds: ["5", "14"],
           },
         ],
-        favoriteRouteIds: ["3", "9"],
         fcmToken: "token",
         tickets: ["abc"],
       },
+      favoriteRouteIds: ["3", "9"],
       user_id: "auth0|123",
     });
   });
@@ -292,6 +307,7 @@ describe("sanitizeUserUpdate", () => {
         },
         blocked: true,
         email: "attacker@example.com",
+        favoriteRouteIds: ["9", "3", "9"],
         user_metadata: { isAuthenticated: false },
       })
     ).toEqual({
@@ -332,6 +348,7 @@ describe("sanitizeUserUpdate", () => {
           },
         ],
       },
+      favoriteRouteIds: ["3", "9"],
     });
   });
 });

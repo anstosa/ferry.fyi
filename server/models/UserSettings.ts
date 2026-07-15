@@ -7,6 +7,7 @@ import { db } from "~/lib/db";
 export class UserSettings extends Model {
   subject!: string;
   appMetadata!: AppMetadata;
+  favoriteRouteIds!: string[];
 }
 
 UserSettings.init(
@@ -14,6 +15,11 @@ UserSettings.init(
     appMetadata: {
       allowNull: false,
       defaultValue: {},
+      type: DataTypes.JSONB,
+    },
+    favoriteRouteIds: {
+      allowNull: false,
+      defaultValue: [],
       type: DataTypes.JSONB,
     },
     subject: {

@@ -18,12 +18,10 @@ export const useFavoriteRoutes = (): readonly [
 
   const toggleRoute = async (routeId: string): Promise<void> => {
     await updateUser({
-      app_metadata: {
-        favoriteRouteIds: toggleFavoriteRoute(
-          normalizedFavoriteRouteIds,
-          routeId
-        ),
-      },
+      favoriteRouteIds: toggleFavoriteRoute(
+        normalizedFavoriteRouteIds,
+        routeId
+      ),
     });
   };
 

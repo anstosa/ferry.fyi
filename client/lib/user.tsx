@@ -23,6 +23,7 @@ import { useDevice } from "~/lib/device";
 
 const USER_AUTH_SCOPE = "openid profile email read:current_user offline_access";
 interface State extends AppMetadata, UserMetadata {
+  favoriteRouteIds: string[];
   isAuthenticated: boolean;
   isUserLoading: boolean;
   userError: Error | null;
@@ -263,6 +264,7 @@ const _useUser = (): Response => {
   const state: State = {
     ...user?.app_metadata,
     ...user?.user_metadata,
+    favoriteRouteIds: user?.favoriteRouteIds ?? [],
     isAuthenticated,
     isUserLoading:
       isAuthLoading ||
@@ -289,6 +291,7 @@ const _useUser = (): Response => {
 
 export const UserContext = createContext<Response>([
   {
+    favoriteRouteIds: [],
     isAuthenticated: false,
     isUserLoading: false,
     user: null,
