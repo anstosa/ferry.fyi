@@ -12,7 +12,7 @@ ticketRouter.get("/:ticketId", async (request, response) => {
     if (!ticket) {
       return response.status(404).send({ error: "ticket_not_found" });
     }
-    return response.send(ticket);
+    return response.send({ ...ticket, sourceUpdatedAt: Date.now() / 1000 });
   } catch (error) {
     // upstream unavailable guard
     if (error instanceof TicketLookupUnavailableError) {

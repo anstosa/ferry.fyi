@@ -17,7 +17,6 @@ import ScheduleIcon from "~/static/images/icons/solid/calendar-week.svg";
 import FeedbackIcon from "~/static/images/icons/solid/question-circle.svg";
 import ReloadIcon from "~/static/images/icons/solid/redo.svg";
 import ShareIcon from "~/static/images/icons/solid/share-alt.svg";
-import ShieldIcon from "~/static/images/icons/solid/shield.svg";
 import UserIcon from "~/static/images/icons/solid/user.svg";
 
 import { MenuItem } from "./MenuItem";
@@ -119,22 +118,18 @@ export const Menu = ({
     (item) => "isBottom" in item && item.isBottom
   );
 
+  const accountItem: MenuItem = isAuthenticated
+    ? {
+        Icon: Avatar,
+        label: "Account",
+        path: "/account",
+      }
+    : {
+        Icon: UserIcon,
+        label: "Log In",
+        onClick: login,
+      };
   const navigation: MenuItem[] = [
-    ...(isAuthenticated
-      ? [
-          {
-            Icon: Avatar,
-            label: "Account",
-            path: "/account",
-          },
-        ]
-      : [
-          {
-            Icon: UserIcon,
-            label: "Log In",
-            onClick: login,
-          },
-        ]),
     {
       Icon: ScheduleIcon,
       label: "Schedule",
@@ -147,6 +142,7 @@ export const Menu = ({
     },
     ...topItems,
     { isSpacer: true },
+    accountItem,
     ...bottomItems,
     {
       Icon: ForecastIcon,
@@ -158,12 +154,6 @@ export const Menu = ({
       Icon: AboutIcon,
       label: "About",
       path: "/about",
-      isBottom: true,
-    },
-    {
-      Icon: ShieldIcon,
-      label: "Privacy",
-      path: "/privacy",
       isBottom: true,
     },
     {

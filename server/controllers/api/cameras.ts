@@ -85,7 +85,14 @@ cameraRouter.get("/frames", async (request, response) => {
     })
     .filter((camera): camera is Camera => Boolean(camera));
   response.set("Cache-Control", "no-store");
-  return response.json(await getCameraFrameStatuses(cameras));
+  const frames = await getCameraFrameStatuses(cameras);
+  const sourceTimes = Object.values(frames)
+    .map(({ frameUpdatedAt }) => frameUpdatedAt)
+    .filter((time): time is number => typeof time === "number");
+  return response.json({
+    frames,
+    sourceUpdatedAt: sourceTimes.length ? Math.min(...sourceTimes) : null,
+  });
 });
 
 export { cameraRouter };

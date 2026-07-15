@@ -35,7 +35,7 @@ export const toWsfDate = (input?: number | DateTime): string => {
   } else {
     date = DateTime.local();
   }
-  date.setZone("America/Los_Angeles");
+  date = date.setZone("America/Los_Angeles");
   if (date.hour < 3) {
     date = date.minus({ days: 1 });
   }

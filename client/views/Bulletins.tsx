@@ -1,6 +1,6 @@
 import clsx from "clsx";
 import { DateTime } from "luxon";
-import React, { ReactElement, ReactNode, useState } from "react";
+import React, { ReactElement, ReactNode, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { type Bulletin, Level } from "shared/contracts/bulletins";
 import type { Route } from "shared/contracts/routes";
@@ -11,9 +11,16 @@ import { round } from "shared/lib/math";
 import { capitalize } from "shared/lib/strings";
 
 import { ExternalPillLink } from "~/components/ExternalPillLink";
+import { FreshnessPill } from "~/components/FreshnessPill";
 import { HeaderDropdown } from "~/components/HeaderDropdown";
 import { InlineLoader } from "~/components/InlineLoader";
-import { getSlug, useTerminals } from "~/lib/terminals";
+import { Toast } from "~/components/Toast";
+import {
+  getBulletinFreshness,
+  getSlug,
+  refreshBulletins,
+  useTerminals,
+} from "~/lib/terminals";
 import { useUser } from "~/lib/user";
 import UnsubscribedIcon from "~/static/images/icons/regular/bell.svg";
 import SubscribedIcon from "~/static/images/icons/solid/bell.svg";
@@ -124,11 +131,18 @@ const getRouteOptions = (terminals: Terminal[]): RouteOption[] => {
 
 // route bulletin key
 const getBulletinKey = (bulletin: Bulletin): string => {
-  return [bulletin.date, bulletin.title, bulletin.url ?? ""].join(":");
+  // WSF repeats route-wide alerts in the feeds for both route terminals.
+  // Terminal-specific URLs and slightly different updated times must not turn
+  // that one alert into two cards.
+  const normalize = (value: string): string =>
+    value.replace(/\s+/g, " ").trim().toLowerCase();
+  return [bulletin.level, bulletin.title, bulletin.bodyText]
+    .map(normalize)
+    .join(":");
 };
 
 // route bulletin filter
-const getRouteBulletins = (
+export const getRouteBulletins = (
   terminal: Terminal,
   mate: Terminal | null
 ): Bulletin[] => {
@@ -252,27 +266,56 @@ export const Bulletins = ({
 }: Props): ReactElement => {
   const { terminals } = useTerminals();
   const [isRouteOpen, setRouteOpen] = useState<boolean>(false);
+  const [sourceUpdatedAt, setSourceUpdatedAt] = useState<number | null>(null);
+  const [refreshedTerminal, setRefreshedTerminal] = useState<Terminal | null>(
+    null
+  );
+  const [isRefreshing, setRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState(false);
   const routeOptions = getRouteOptions(terminals);
+
+  useEffect(() => setRefreshedTerminal(null), [terminal?.id]);
+  useEffect(() => {
+    getBulletinFreshness()
+      .then(({ sourceUpdatedAt }) => setSourceUpdatedAt(sourceUpdatedAt))
+      .catch(console.error);
+  }, [terminal?.id]);
 
   // route loading guard
   if (!terminal) {
     return <InlineLoader>Loading alerts...</InlineLoader>;
   }
+  const displayTerminal = refreshedTerminal ?? terminal;
 
   const selectedRoute = mate
-    ? Object.values(terminal.routes ?? {}).find((route) => {
+    ? Object.values(displayTerminal.routes ?? {}).find((route) => {
         // selected route match
         return (
-          route.terminalIds.includes(terminal.id) &&
+          route.terminalIds.includes(displayTerminal.id) &&
           route.terminalIds.includes(mate.id)
         );
       })
     : undefined;
   const routeName =
     selectedRoute?.description ??
-    (mate ? `${terminal.name} / ${mate.name}` : terminal.name);
+    (mate ? `${displayTerminal.name} / ${mate.name}` : displayTerminal.name);
   const routeShortName = selectedRoute?.abbreviation ?? routeName;
-  const activeBulletins = getRouteBulletins(terminal, mate);
+  const activeBulletins = getRouteBulletins(displayTerminal, mate);
+
+  const refresh = async (): Promise<void> => {
+    setRefreshing(true);
+    setRefreshError(false);
+    try {
+      const result = await refreshBulletins(displayTerminal.id);
+      setSourceUpdatedAt(result.sourceUpdatedAt);
+      setRefreshedTerminal(result.terminal);
+    } catch (error) {
+      setRefreshError(true);
+      throw error;
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const renderBulletin = (bulletin: Bulletin): ReactNode => {
     const { bodyHTML, date, level, routePrefix, title, url } = bulletin;
@@ -346,12 +389,12 @@ export const Bulletins = ({
           sharedText: `Alerts for ${routeName}`,
         }}
         items={[
-          ...(terminal.terminalUrl
+          ...(displayTerminal.terminalUrl
             ? [
                 {
                   Icon: WSDOTIcon,
                   label: "WSF Alerts Page",
-                  url: terminal.terminalUrl,
+                  url: displayTerminal.terminalUrl,
                   isBottom: true,
                 },
               ]
@@ -424,13 +467,24 @@ export const Bulletins = ({
                 <div className="w-full sm:w-auto sm:shrink-0">
                   <SubscribeLink
                     getPath={getPath}
-                    terminal={terminal}
+                    terminal={displayTerminal}
                     mate={mate}
                   />
                 </div>
               </div>
             </div>
           </div>
+          {sourceUpdatedAt ? (
+            <div className="mb-2 flex justify-center">
+              <FreshnessPill
+                isRefreshing={isRefreshing}
+                onClick={() => {
+                  refresh().catch(console.error);
+                }}
+                sourceUpdatedAt={sourceUpdatedAt}
+              />
+            </div>
+          ) : null}
           {activeBulletins.length > 0 ? (
             <ul className="flex flex-col gap-4">
               {activeBulletins.map(renderBulletin)}
@@ -454,6 +508,9 @@ export const Bulletins = ({
           )}
         </section>
       </main>
+      {refreshError ? (
+        <Toast error>Could not refresh alerts. Showing saved data.</Toast>
+      ) : null}
     </>
   );
 };

@@ -22,15 +22,22 @@ const API_CACHE = `${API_TERMINALS}/cacheflushdate`;
 const API_VERBOSE = `${API_TERMINALS}/terminalverbose`;
 
 let lastFlushDate: number | null = null;
+let lastBulletinSourceUpdatedAt: number | null = null;
 
-export const updateTerminals = async (): Promise<void> => {
+export const getBulletinSourceUpdatedAt = (): number | null =>
+  lastBulletinSourceUpdatedAt;
+
+/** Returns whether terminal and bulletin source data was fetched from WSF. */
+export const updateTerminals = async (
+  options: { forceBulletins?: boolean } = {}
+): Promise<boolean> => {
   const cacheFlushDate = wsfDateToTimestamp(
     await wsfRequest<string>(API_CACHE)
   );
   // fresh cache guard
-  if (cacheFlushDate === lastFlushDate) {
+  if (cacheFlushDate === lastFlushDate && !options.forceBulletins) {
     logger.info("Skipped terminal update; cache flush unchanged");
-    return;
+    return false;
   } else {
     logger.info(`Started terminal update; cache flush ${cacheFlushDate}`);
   }
@@ -39,7 +46,7 @@ export const updateTerminals = async (): Promise<void> => {
   // missing terminals guard
   if (!terminals) {
     logger.info("Skipped terminal update; WSF returned no terminals");
-    return;
+    return false;
   }
   purgeRemovedTerminalData();
   const seenAt = Math.floor(Date.now() / 1000);
@@ -146,6 +153,7 @@ export const updateTerminals = async (): Promise<void> => {
   // commit after persistence
   // eslint-disable-next-line require-atomic-updates
   lastFlushDate = cacheFlushDate;
+  lastBulletinSourceUpdatedAt = Date.now() / 1000;
 
   logger.info(
     formatLogBlock("Terminal update complete", [
@@ -161,4 +169,5 @@ export const updateTerminals = async (): Promise<void> => {
       },
     ])
   );
+  return true;
 };

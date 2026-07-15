@@ -11,6 +11,7 @@ import type {
 import { isEmpty } from "shared/lib/arrays";
 
 import { ErrorBoundary } from "~/components/ErrorBoundary";
+import { FreshnessPill } from "~/components/FreshnessPill";
 import { InlineLoader } from "~/components/InlineLoader";
 import { PageLoadError } from "~/components/PageLoadError";
 import { Toast } from "~/components/Toast";
@@ -33,8 +34,10 @@ import {
 } from "./smallBoat";
 
 interface Props {
+  isRefreshing?: boolean;
   loadError?: Error | null;
   onReload?: () => void;
+  onRefresh?: () => Promise<void>;
   route?: Route;
   schedule: ScheduleClass | null;
   time: DateTime;
@@ -51,8 +54,10 @@ const getLinkedSailingTime = (input?: string): number | null => {
 };
 
 export const Schedule = ({
+  isRefreshing = false,
   loadError,
   onReload,
+  onRefresh,
   route,
   schedule,
   time,
@@ -261,6 +266,20 @@ export const Schedule = ({
         >
           {renderSchedule()}
         </div>
+        {loadError && schedule?.slots ? (
+          <Toast error>Could not refresh the schedule. Showing saved data.</Toast>
+        ) : null}
+        {onRefresh && schedule?.sourceUpdatedAt ? (
+          <div className="sticky bottom-1 z-10 mt-2 flex justify-center pb-1">
+            <FreshnessPill
+              isRefreshing={isRefreshing}
+              onClick={() => {
+                onRefresh().catch(console.error);
+              }}
+              sourceUpdatedAt={schedule.sourceUpdatedAt}
+            />
+          </div>
+        ) : null}
       </main>
     </>
   );

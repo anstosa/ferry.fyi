@@ -177,6 +177,8 @@ export const isAlertRule = (input: unknown): input is AlertRule => {
   if (
     typeof rule.id !== "string" ||
     typeof rule.routeKey !== "string" ||
+    (rule.enabled !== undefined && typeof rule.enabled !== "boolean") ||
+    (rule.nickname !== undefined && typeof rule.nickname !== "string") ||
     (rule.date !== undefined && !isAlertRuleDate(rule.date)) ||
     !isAlertRuleTime(rule.startTime) ||
     !isAlertRuleTime(rule.endTime)
@@ -216,6 +218,7 @@ export const normalizeAlertRuleDays = (daysOfWeek: number[]): number[] => {
 export const normalizeAlertRule = (rule: AlertRule): AlertRule => {
   const routeTerminalIds = rule.routeKey.split(":");
   const date = isAlertRuleDate(rule.date) ? rule.date : undefined;
+  const nickname = rule.nickname?.trim();
   const channels = Array.from(new Set(rule.channels)).filter(
     isAlertSubscriptionChannel
   );
@@ -233,6 +236,7 @@ export const normalizeAlertRule = (rule: AlertRule): AlertRule => {
     channels,
     ...(date ? { date } : {}),
     daysOfWeek: normalizeAlertRuleDays(rule.daysOfWeek),
+    nickname: nickname || undefined,
     routeKey: getRouteSubscriptionKey(routeTerminalIds),
     terminalIds: Array.from(new Set(rule.terminalIds)).filter((terminalId) => {
       return routeTerminalIds.includes(terminalId);
@@ -273,6 +277,10 @@ const isMatchingAlertRule = (
   rule: AlertRule,
   input: AlertRuleMatchInput
 ): boolean => {
+  // disabled window guard
+  if (rule.enabled === false) {
+    return false;
+  }
   // channel guard
   if (!input.channel || !rule.channels.includes(input.channel)) {
     return false;

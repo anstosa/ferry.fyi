@@ -20,6 +20,7 @@ export class Schedule extends CacheableModel implements ScheduleClass {
   date!: string;
   key!: string;
   mateId!: string;
+  sourceUpdatedAt!: number | null;
   slots!: ServerSlot[];
   terminalId!: string;
   validRange!: ValidRange;
@@ -58,6 +59,7 @@ export class Schedule extends CacheableModel implements ScheduleClass {
       date: this.date,
       key: this.key,
       mateId: this.mateId,
+      sourceUpdatedAt: this.sourceUpdatedAt ?? null,
       validRange: this.validRange,
       slots: this.slots,
       terminalId: this.terminalId,

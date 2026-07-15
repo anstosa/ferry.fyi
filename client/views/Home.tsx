@@ -8,11 +8,16 @@ import { getSeoMetadata } from "shared/lib/seo";
 import { LoadingWaves } from "~/components/LoadingWaves";
 import { SeoHelmet } from "~/components/SeoHelmet";
 import { useFavoriteRoutes } from "~/lib/favoriteRoutes";
-import { getRouteGroups, sortRouteGroups } from "~/lib/routeGroups";
+import {
+  getRouteGroups,
+  hasFavoriteRoute,
+  sortRouteGroups,
+} from "~/lib/routeGroups";
 import { getSlug, useTerminals } from "~/lib/terminals";
 import logo from "~/static/images/icon_monochrome.png";
 import TicketIcon from "~/static/images/icons/solid/barcode-alt.svg";
 import GpsTargetIcon from "~/static/images/icons/solid/location.svg";
+import StarFilledIcon from "~/static/images/icons/solid/star.svg";
 
 import { Today } from "./Today";
 
@@ -73,7 +78,7 @@ export const Home = (): ReactElement => {
     favoriteRouteIds
   );
   return (
-    <div className="relative overflow-y-scroll scrolling-touch bg-ferry-gradient text-white">
+    <div className="relative min-h-screen min-h-[100dvh] overflow-y-scroll scrolling-touch bg-ferry-gradient text-white">
       <SeoHelmet seo={getSeoMetadata("/")} />
       <Link
         className="absolute top-0 left-0 mt-safe-top flex items-center px-4 py-2 text-lg font-bold hover:bg-lighten-high"
@@ -106,7 +111,15 @@ export const Home = (): ReactElement => {
           {routeGroups.map((routeGroup) => (
             <section className="col-span-2 min-w-0" key={routeGroup.id}>
               <h2 className="px-4 pb-2 text-center text-sm font-extrabold uppercase tracking-[0.18em] text-[#fce580] drop-shadow-sm">
-                {routeGroup.label}
+                <span className="inline-flex items-center gap-2">
+                  {hasFavoriteRoute(routeGroup, favoriteRouteIds) && (
+                    <span className="inline-flex items-center">
+                      <StarFilledIcon aria-hidden="true" className="h-3 w-3" />
+                      <span className="sr-only">Contains a favorite route</span>
+                    </span>
+                  )}
+                  {routeGroup.label}
+                </span>
               </h2>
               <ul
                 className={getTerminalGridClasses(routeGroup.terminalColumns)}

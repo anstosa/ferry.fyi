@@ -4,8 +4,29 @@ import { entries } from "shared/lib/objects";
 
 import { getWsfStatus } from "~/lib/wsf/api";
 import { Vessel } from "~/models/Vessel";
+import { updateVesselStatus } from "~/lib/wsf/updateVessels";
 
 const vesselRouter = Router();
+let vesselRefresh: Promise<void> | null = null;
+let vesselSourceUpdatedAt: number | null = null;
+
+vesselRouter.post("/refresh", async (request, response) => {
+  if (!vesselRefresh) {
+    vesselRefresh = updateVesselStatus()
+      .then(() => {
+        vesselSourceUpdatedAt = Date.now() / 1000;
+      })
+      .finally(() => {
+        vesselRefresh = null;
+      });
+  }
+  try {
+    await vesselRefresh;
+    return response.send({ sourceUpdatedAt: vesselSourceUpdatedAt });
+  } catch (error) {
+    return response.status(502).send({ error: "Unable to refresh vessel data" });
+  }
+});
 
 vesselRouter.get("/", async (request, response) => {
   const vessels = await Vessel.getAll();

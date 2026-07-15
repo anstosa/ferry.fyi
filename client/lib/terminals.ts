@@ -10,7 +10,7 @@ import {
   getTerminalSorter,
 } from "shared/lib/terminalSorting";
 
-import { get } from "~/lib/api";
+import { get, post } from "~/lib/api";
 
 import { getDistance, Point, useGeo } from "./geo";
 
@@ -61,6 +61,22 @@ export const getTerminals = async (): Promise<Terminal[]> => {
   // alphabetical display order
   return values(terminalCache).sort(compareTerminalsByName);
 };
+
+export const refreshBulletins = async (
+  terminalId: string
+): Promise<{ sourceUpdatedAt: number | null; terminal: Terminal }> => {
+  const result = await post<{ sourceUpdatedAt: number | null }>(
+    "/terminals/bulletins/refresh",
+    {}
+  );
+  const terminal = await get<Terminal>(getApiTerminal(terminalId));
+  terminalCache[terminalId] = terminal;
+  return { ...result, terminal };
+};
+
+export const getBulletinFreshness = (): Promise<{
+  sourceUpdatedAt: number | null;
+}> => get("/terminals/bulletins/freshness");
 
 interface TerminalState {
   terminals: Terminal[];

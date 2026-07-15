@@ -244,4 +244,20 @@ scheduleRouter.get(schedulePaths, async (request, response) => {
   return response.status(404).send();
 });
 
+// Read-only manual refresh: it returns the cached schedule and deliberately
+// never starts schedule, estimate, forecast, or WSF recalculation work.
+scheduleRouter.post(schedulePaths, (request, response) => {
+  const { departingId, arrivingId, date: dateInput } = request.params;
+  const date = dateInput || toWsfDate();
+  const scheduleKey = Schedule.generateKey(departingId, arrivingId, date);
+  const schedule = Schedule.getByIndex(scheduleKey);
+  if (!schedule) {
+    return response.status(404).send();
+  }
+  return response.send({
+    schedule: schedule.serialize(),
+    timestamp: DateTime.local().toSeconds(),
+  });
+});
+
 export { scheduleRouter };

@@ -61,7 +61,8 @@ const hasVisibleHtml = (html?: string): boolean => {
 
 // address lines
 const getAddressLines = (terminal: Terminal): string[] => {
-  const { address } = terminal.location;
+  // WSF occasionally omits the optional address object for a terminal.
+  const address = terminal.location.address ?? {};
   const cityLine = [address.city, address.state, address.zip]
     .filter(Boolean)
     .join(", ");

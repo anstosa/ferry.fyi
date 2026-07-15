@@ -1,5 +1,4 @@
 import clsx from "clsx";
-import { AnimatePresence, motion } from "framer-motion";
 import React, {
   CSSProperties,
   ReactElement,
@@ -15,10 +14,10 @@ import type { Camera } from "shared/contracts/cameras";
 import type { Terminal } from "shared/contracts/terminals";
 import { isNull } from "shared/lib/identity";
 
+import { FreshnessPill } from "~/components/FreshnessPill";
 import { InlineLoader } from "~/components/InlineLoader";
 import { getCameraFrames } from "~/lib/cameras";
 import { locationToUrl } from "~/lib/maps";
-import { useScrollPosition } from "~/lib/scroll";
 import { getSlug, useTerminals } from "~/lib/terminals";
 import CarIcon from "~/static/images/icons/solid/car.svg";
 import LocationIcon from "~/static/images/icons/solid/location.svg";
@@ -119,33 +118,14 @@ const CameraList = ({
   const [isTouchDevice, setTouchDevice] = useState<boolean>(false);
   const firstMarker = useRef<HTMLDivElement | null>(null);
   const timeline = useRef<HTMLDivElement | null>(null);
-  const wrapper = useRef<HTMLDivElement | null>(null);
-  const { y } = useScrollPosition(wrapper);
   const [isTerminalOpen, setTerminalOpen] = useState<boolean>(false);
-  const [canScrollFurtherDown, setCanScrollFurtherDown] =
-    useState<boolean>(false);
   const { terminals, closestTerminal } = useTerminals();
-  const isScrolledFromTop = y > 0;
   // memoize camera ids
   const cameraIds = useMemo(() => {
     return cameras.map(({ id }) => {
       return id;
     });
   }, [cameras]);
-
-  // update scroll shadows
-  const updateScrollShadows = useCallback((): void => {
-    const scrollContainer = wrapper.current;
-    // missing scroll guard
-    if (!scrollContainer) {
-      setCanScrollFurtherDown(false);
-      return;
-    }
-    setCanScrollFurtherDown(
-      scrollContainer.scrollTop + scrollContainer.clientHeight <
-        scrollContainer.scrollHeight - 1
-    );
-  }, []);
 
   // align timeline rail
   const updateTimelineStart = useCallback((): void => {
@@ -166,7 +146,8 @@ const CameraList = ({
     if (cameraIds.length === 0) {
       return;
     }
-    setFrameStatuses(await getCameraFrames(cameraIds));
+    const response = await getCameraFrames(cameraIds);
+    setFrameStatuses(response.frames);
   }, [cameraIds]);
 
   // detect touch devices
@@ -192,26 +173,19 @@ const CameraList = ({
   // recalculate rail start
   useEffect(() => {
     updateTimelineStart();
-    updateScrollShadows();
-  }, [terminal.id, updateScrollShadows, updateTimelineStart]);
-
-  // recalculate on scroll
-  useEffect(() => {
-    updateScrollShadows();
-  }, [updateScrollShadows, y]);
+  }, [terminal.id, updateTimelineStart]);
 
   // recalculate on resize
   useEffect(() => {
     const updateLayout = (): void => {
       updateTimelineStart();
-      updateScrollShadows();
     };
     window.addEventListener("resize", updateLayout);
     return () => {
       // remove resize listener
       window.removeEventListener("resize", updateLayout);
     };
-  }, [updateScrollShadows, updateTimelineStart]);
+  }, [updateTimelineStart]);
 
   // manual freshness check
   const reload = (): void => {
@@ -221,7 +195,6 @@ const CameraList = ({
   // track image load
   const markImageLoaded = (imageKey: string): void => {
     setLoadedImages((current) => ({ ...current, [imageKey]: true }));
-    window.setTimeout(updateScrollShadows, 0);
   };
 
   // reveal stale image
@@ -231,7 +204,7 @@ const CameraList = ({
 
   // render camera item
   const renderCamera = (camera: Camera, index: number): ReactNode => {
-    const { id, title, image, location } = camera;
+    const { id, title, image, location, owner } = camera;
     const mapsUrl = locationToUrl(location);
     const frameStatus = frameStatuses[id];
     const frameToken = frameStatus?.frameToken ?? null;
@@ -308,6 +281,15 @@ const CameraList = ({
               anyway.
             </div>
           )}
+          <div className="absolute inset-x-0 bottom-0 z-10 flex justify-between border border-black bg-white p-[3px] text-xs font-bold text-[#0e1e2a]">
+            <span>{owner?.name ?? "WSDOT"}</span>
+            {frameStatus?.frameUpdatedAt ? (
+              <FreshnessPill
+                className="border-0 bg-transparent !p-0 text-xs font-bold text-[#0e1e2a] dark:bg-white dark:text-[#0e1e2a]"
+                sourceUpdatedAt={frameStatus.frameUpdatedAt}
+              />
+            ) : null}
+          </div>
         </div>
         <span className="relative mt-3 mb-2 flex flex-col gap-1 px-1 text-lg font-bold">
           <div
@@ -415,10 +397,7 @@ const CameraList = ({
           isReloading={false}
         />
       </Header>
-      <main
-        className="flex-grow overflow-y-scroll scrolling-touch bg-day-normal-light text-gray-dark dark:bg-night-normal-dark dark:text-[#e0f0f4]"
-        ref={wrapper}
-      >
+      <main className="flex-grow overflow-y-scroll scrolling-touch bg-day-normal-light text-gray-dark dark:bg-night-normal-dark dark:text-[#e0f0f4]">
         <div
           className={clsx(
             "mx-auto relative max-w-lg",
@@ -444,39 +423,6 @@ const CameraList = ({
               }
             />
           )}
-          {/* Top shadow on scroll */}
-          <AnimatePresence>
-            {isScrolledFromTop && (
-              <motion.div
-                className={clsx(
-                  "fixed left-0 top-16 h-3 w-full",
-                  "pointer-events-none z-20",
-                  "bg-gradient-to-b from-[rgba(0,77,97,0.24)] to-transparent dark:from-[rgba(0,0,0,0.5)]"
-                )}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.12 }}
-              />
-            )}
-          </AnimatePresence>
-          {/* Bottom shadow on scroll */}
-          <AnimatePresence>
-            {canScrollFurtherDown && (
-              <motion.div
-                className={clsx(
-                  // honor native bottom inset
-                  "fixed bottom-[calc(4rem+var(--safe-area-inset-bottom))] left-0 h-3 w-full",
-                  "pointer-events-none z-20",
-                  "bg-gradient-to-t from-[rgba(0,77,97,0.24)] to-transparent dark:from-[rgba(0,0,0,0.5)]"
-                )}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.12 }}
-              />
-            )}
-          </AnimatePresence>
           {/* camera empty state */}
           {hasCameras ? (
             <ul className="flex flex-col gap-8">{cameras.map(renderCamera)}</ul>

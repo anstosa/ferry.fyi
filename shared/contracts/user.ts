@@ -11,8 +11,10 @@ export interface AlertRule {
   channels: AlertSubscriptionChannel[];
   date?: string;
   daysOfWeek: number[];
+  enabled?: boolean;
   endTime: string;
   id: string;
+  nickname?: string;
   routeKey: string;
   startTime: string;
   terminalIds: string[];

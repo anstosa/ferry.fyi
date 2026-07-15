@@ -396,6 +396,7 @@ const updateSchedulePair = async (
     key,
     mateId,
     slots: mergedSlots,
+    sourceUpdatedAt: DateTime.local().toSeconds(),
     terminalId,
     validRange,
   };

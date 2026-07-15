@@ -25,7 +25,11 @@ import { Splash } from "~/components/Splash";
 import { useQuery } from "~/lib/browser";
 import { toShortDateString } from "~/lib/date";
 import { isFavoriteRoute, useFavoriteRoutes } from "~/lib/favoriteRoutes";
-import { getSchedule, requireScheduleResponse } from "~/lib/schedule";
+import {
+  getSchedule,
+  refreshSchedule,
+  requireScheduleResponse,
+} from "~/lib/schedule";
 import { getSlug, getTerminal } from "~/lib/terminals";
 import StarIcon from "~/static/images/icons/regular/star.svg";
 import StarFilledIcon from "~/static/images/icons/solid/star.svg";
@@ -308,8 +312,11 @@ export const Route = ({
         return;
       }
       setSchedule(schedule);
-      const time = DateTime.fromSeconds(timestamp);
-      setTime(time);
+      // Some cached legacy responses lack a timestamp. Keep the current clock
+      // rather than crashing the route when that happens.
+      if (Number.isFinite(timestamp)) {
+        setTime(DateTime.fromSeconds(timestamp));
+      }
     } catch (error) {
       // stale error guard
       if (requestId !== scheduleRequestRef.current) {
@@ -324,6 +331,26 @@ export const Route = ({
       if (requestId === scheduleRequestRef.current) {
         setUpdating(false);
       }
+    }
+  };
+
+  const refreshScheduleFromCache = async (): Promise<void> => {
+    if (!terminal || !mate) {
+      return;
+    }
+    setUpdating(true);
+    setScheduleError(null);
+    try {
+      const { schedule: refreshedSchedule, timestamp } =
+        requireScheduleResponse(await refreshSchedule(terminal, mate, date));
+      setSchedule({ ...refreshedSchedule, sourceUpdatedAt: timestamp });
+    } catch (error) {
+      const nextError =
+        error instanceof Error ? error : new Error(String(error));
+      console.error(nextError);
+      setScheduleError(nextError);
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -432,8 +459,10 @@ export const Route = ({
           </Header>
         )}
         <Schedule
+          isRefreshing={isUpdating}
           loadError={scheduleError}
           onReload={updateSchedule}
+          onRefresh={refreshScheduleFromCache}
           route={selectedRoute}
           time={time}
           schedule={schedule}
@@ -464,9 +493,7 @@ export const Route = ({
   } else if (view === "map") {
     content = (
       <Map
-        isReloading={isUpdating}
         mate={mate}
-        reload={updateSchedule}
         setRoute={setRoute}
         terminal={terminal}
         vessels={vessels}

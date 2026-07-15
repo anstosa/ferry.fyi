@@ -58,8 +58,10 @@ type DayPreset = "custom" | "every-day" | "weekdays" | "weekends";
 
 interface DraftAlertRule {
   daysOfWeek: number[];
+  enabled: boolean;
   endTime: string;
   id: string;
+  nickname: string;
   routeKey: string;
   startTime: string;
   terminalIds: string[];
@@ -69,6 +71,7 @@ interface AlertRuleEditorProps {
   disabled: boolean;
   mate: Terminal;
   onChange: (rule: DraftAlertRule) => void;
+  onDone: () => void;
   onRemove: () => void;
   rule: DraftAlertRule;
   terminal: Terminal;
@@ -174,9 +177,29 @@ const getDraftRules = (rules: AlertRule[]): DraftAlertRule[] => {
     .filter((rule) => {
       return !isFullDayAlertRule(rule);
     })
-    .map(({ daysOfWeek, endTime, id, routeKey, startTime, terminalIds }) => {
-      return { daysOfWeek, endTime, id, routeKey, startTime, terminalIds };
-    });
+    .map(
+      ({
+        daysOfWeek,
+        enabled,
+        endTime,
+        id,
+        nickname,
+        routeKey,
+        startTime,
+        terminalIds,
+      }) => {
+        return {
+          daysOfWeek,
+          enabled: enabled !== false,
+          endTime,
+          id,
+          nickname: nickname ?? "",
+          routeKey,
+          startTime,
+          terminalIds,
+        };
+      }
+    );
 };
 
 // rule channels
@@ -361,6 +384,7 @@ const AlertRuleEditor = ({
   disabled,
   mate,
   onChange,
+  onDone,
   onRemove,
   rule,
   terminal,
@@ -519,15 +543,41 @@ const AlertRuleEditor = ({
             Pick the first and last sailing you want covered.
           </p>
         </div>
-        <button
-          className="text-xs font-bold text-stale-light dark:text-[#ffb3b0]"
-          disabled={disabled}
-          onClick={onRemove}
-          type="button"
-        >
-          Remove
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            className="text-xs font-bold text-blue-dark dark:text-[#6fb8c8]"
+            disabled={disabled}
+            onClick={onDone}
+            type="button"
+          >
+            Done
+          </button>
+          <button
+            className="text-xs font-bold text-stale-light dark:text-[#ffb3b0]"
+            disabled={disabled}
+            onClick={onRemove}
+            type="button"
+          >
+            Remove
+          </button>
+        </div>
       </div>
+
+      <label className="mt-4 block">
+        <span className="mb-2 block text-xs font-bold uppercase tracking-[0.14em] text-blue-dark dark:text-[#6fb8c8]">
+          Nickname
+        </span>
+        <input
+          className="field my-0 w-full"
+          disabled={disabled}
+          maxLength={48}
+          onChange={(event) =>
+            onChange({ ...rule, nickname: event.target.value })
+          }
+          placeholder="Morning commute"
+          value={rule.nickname}
+        />
+      </label>
 
       <div className="mt-4">
         <p className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-blue-dark dark:text-[#6fb8c8]">
@@ -722,6 +772,80 @@ const AlertRuleEditor = ({
   );
 };
 
+interface AlertRuleSummaryProps {
+  disabled: boolean;
+  mate: Terminal;
+  onEdit: () => void;
+  onToggleEnabled: () => void;
+  rule: DraftAlertRule;
+  terminal: Terminal;
+}
+
+const AlertRuleSummary = ({
+  disabled,
+  mate,
+  onEdit,
+  onToggleEnabled,
+  rule,
+  terminal,
+}: AlertRuleSummaryProps): ReactElement => {
+  let departureLabel = `From ${mate.name}`;
+  if (rule.terminalIds.length === 2) {
+    departureLabel = "Both directions";
+  } else if (rule.terminalIds.includes(terminal.id)) {
+    departureLabel = `From ${terminal.name}`;
+  }
+  const timeLabel = getTimeLabel(rule.startTime);
+  const windowLabel =
+    rule.endTime && rule.endTime !== rule.startTime
+      ? `${timeLabel}–${getTimeLabel(rule.endTime)}`
+      : timeLabel;
+
+  return (
+    <div className="flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-white/10 dark:bg-white/[0.03]">
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-bold text-gray-darkest dark:text-white">
+          {rule.nickname || "Alert window"}
+        </p>
+        <p className="mt-1 text-xs text-gray-dark dark:text-[#b8d5de]">
+          {getDaysLabel(rule.daysOfWeek)} · {windowLabel} · {departureLabel}
+        </p>
+      </div>
+      <button
+        className="text-xs font-bold text-blue-dark dark:text-[#6fb8c8]"
+        disabled={disabled}
+        onClick={onEdit}
+        type="button"
+      >
+        Edit
+      </button>
+      <button
+        aria-checked={rule.enabled}
+        aria-label={`Turn ${rule.nickname || "alert window"} ${
+          rule.enabled ? "off" : "on"
+        }`}
+        className={clsx(
+          "relative h-7 w-12 shrink-0 rounded-full transition",
+          rule.enabled
+            ? "bg-green-dark dark:bg-green-light"
+            : "bg-gray-300 dark:bg-white/20"
+        )}
+        disabled={disabled}
+        onClick={onToggleEnabled}
+        role="switch"
+        type="button"
+      >
+        <span
+          className={clsx(
+            "absolute top-1 h-5 w-5 rounded-full bg-white shadow transition",
+            rule.enabled ? "left-6" : "left-1"
+          )}
+        />
+      </button>
+    </div>
+  );
+};
+
 export const AlertSubscription = ({
   mate,
   setRoute,
@@ -747,15 +871,16 @@ export const AlertSubscription = ({
     ? "custom"
     : "always";
   const initialDraftRules = getDraftRules(routeRules);
+  const isSubscribed = initialChannels.length > 0;
   const [selectedChannels, setSelectedChannels] =
     useState<AlertSubscriptionChannel[]>(initialChannels);
   const [scheduleMode, setScheduleMode] = useState<ScheduleMode>(initialMode);
   const [draftRules, setDraftRules] =
     useState<DraftAlertRule[]>(initialDraftRules);
+  const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
   const [isSaving, setSaving] = useState<boolean>(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [wasSaved, setWasSaved] = useState<boolean>(false);
-  const isSubscribed = initialChannels.length > 0;
   const customRuleError =
     scheduleMode === "custom" ? getCustomScheduleSaveError(draftRules) : null;
   const hasChanges =
@@ -816,6 +941,7 @@ export const AlertSubscription = ({
     setSelectedChannels(initialChannels);
     setScheduleMode(initialMode);
     setDraftRules(initialDraftRules);
+    setEditingRuleId(null);
   }, [
     routeKey,
     initialChannels.join(":"),
@@ -847,6 +973,8 @@ export const AlertSubscription = ({
       daysOfWeek: WEEKDAY_DAYS,
       endTime: "",
       id: createRuleId(),
+      enabled: true,
+      nickname: "",
       routeKey,
       startTime: "",
       terminalIds: [terminal.id],
@@ -860,7 +988,9 @@ export const AlertSubscription = ({
     setScheduleMode(mode);
     // first custom rule guard
     if (mode === "custom" && draftRules.length === 0) {
-      setDraftRules([createDefaultDraftRule()]);
+      const rule = createDefaultDraftRule();
+      setDraftRules([rule]);
+      setEditingRuleId(rule.id);
     }
   };
 
@@ -883,10 +1013,9 @@ export const AlertSubscription = ({
   const addDraftRule = (): void => {
     setSaveError(null);
     setWasSaved(false);
-    setDraftRules((currentRules) => [
-      ...currentRules,
-      createDefaultDraftRule(),
-    ]);
+    const rule = createDefaultDraftRule();
+    setDraftRules((currentRules) => [...currentRules, rule]);
+    setEditingRuleId(rule.id);
   };
 
   // remove draft rule
@@ -895,6 +1024,9 @@ export const AlertSubscription = ({
     setWasSaved(false);
     setDraftRules((currentRules) => {
       return currentRules.filter((rule) => rule.id !== ruleId);
+    });
+    setEditingRuleId((currentRuleId) => {
+      return currentRuleId === ruleId ? null : currentRuleId;
     });
   };
 
@@ -951,6 +1083,7 @@ export const AlertSubscription = ({
         },
       });
       setWasSaved(true);
+      setEditingRuleId(null);
     } finally {
       setSaving(false);
     }
@@ -1176,17 +1309,36 @@ export const AlertSubscription = ({
 
             {scheduleMode === "custom" && (
               <div className="mt-4 flex flex-col gap-3">
-                {draftRules.map((rule) => (
-                  <AlertRuleEditor
-                    disabled={isSaving}
-                    key={rule.id}
-                    mate={mate}
-                    onChange={updateDraftRule}
-                    onRemove={() => removeDraftRule(rule.id)}
-                    rule={rule}
-                    terminal={terminal}
-                  />
-                ))}
+                <p className="text-sm font-semibold text-gray-dark dark:text-[#b8d5de]">
+                  Enable only the windows you want active, or edit one window at
+                  a time.
+                </p>
+                {draftRules.map((rule) =>
+                  editingRuleId === rule.id ? (
+                    <AlertRuleEditor
+                      disabled={isSaving}
+                      key={rule.id}
+                      mate={mate}
+                      onChange={updateDraftRule}
+                      onDone={() => setEditingRuleId(null)}
+                      onRemove={() => removeDraftRule(rule.id)}
+                      rule={rule}
+                      terminal={terminal}
+                    />
+                  ) : (
+                    <AlertRuleSummary
+                      disabled={isSaving}
+                      key={rule.id}
+                      mate={mate}
+                      onEdit={() => setEditingRuleId(rule.id)}
+                      onToggleEnabled={() =>
+                        updateDraftRule({ ...rule, enabled: !rule.enabled })
+                      }
+                      rule={rule}
+                      terminal={terminal}
+                    />
+                  )
+                )}
                 <button
                   className="button border-blue-dark text-blue-dark hover:bg-blue-dark hover:text-white dark:border-white dark:text-white dark:hover:bg-white dark:hover:text-green-dark"
                   disabled={isSaving}

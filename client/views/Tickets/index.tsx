@@ -30,7 +30,8 @@ import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { Page } from "~/components/Page";
 import { SeoHelmet } from "~/components/SeoHelmet";
 import { Splash } from "~/components/Splash";
-import { ApiError, get } from "~/lib/api";
+import { Toast } from "~/components/Toast";
+import { get } from "~/lib/api";
 import { useQuery } from "~/lib/browser";
 import { useDevice } from "~/lib/device";
 import { useUser } from "~/lib/user";
@@ -90,6 +91,7 @@ const IMAGE_DECODE_CROP_SCALES = [0.24, 0.32, 0.42, 0.58, 0.74];
 const IMAGE_DECODE_MAX_VARIANTS = 72;
 const IMAGE_DECODE_MIN_CANVAS_SIZE = 900;
 const IMAGE_DECODE_MAX_CANVAS_SIZE = 1600;
+const TICKET_REFRESH_CONCURRENCY = 4;
 
 // WSF purchase links
 const WSF_RESERVATION_URL =
@@ -646,6 +648,8 @@ export const Tickets = (): ReactElement => {
     TicketStorage | ReservationAccount | null
   >(null);
   const [showInvalidTickets, setShowInvalidTickets] = useState<boolean>(false);
+  const [isRefreshingTickets, setRefreshingTickets] = useState<boolean>(false);
+  const [refreshError, setRefreshError] = useState(false);
   const brightnessRef = useRef<number | null>(null);
   const { add: codeInput, format: codeFormatInput } = useQuery();
   const device = useDevice();
@@ -669,31 +673,93 @@ export const Tickets = (): ReactElement => {
     return cameras;
   };
 
-  const updateTickets = async () => {
-    await Promise.all(
-      tickets.map(async (ticket) => {
-        if (ticket.type === "ticket") {
+  const updateTickets = async (): Promise<void> => {
+    const standardTickets = tickets.filter(
+      (ticket): ticket is TicketStorage => ticket.type === "ticket"
+    );
+    const refreshedTickets = new Map<string, TicketType>();
+    let didFail = false;
+    let nextTicketIndex = 0;
+    const workers = Array.from(
+      { length: Math.min(TICKET_REFRESH_CONCURRENCY, standardTickets.length) },
+      async () => {
+        while (nextTicketIndex < standardTickets.length) {
+          const ticket = standardTickets[nextTicketIndex];
+          nextTicketIndex += 1;
           try {
-            const data = await get<TicketType>(getTicketLookupPath(ticket.id));
-            setTickets((tickets) => [
-              ...without(tickets, ticket),
-              {
-                ...ticket,
-                ...data,
-                codeFormat: ticket.codeFormat,
-                id: ticket.id,
-                type: "ticket",
-              },
-            ]);
+            refreshedTickets.set(
+              ticket.id,
+              await get<TicketType>(getTicketLookupPath(ticket.id))
+            );
           } catch (error) {
-            // not found cleanup guard
-            if (error instanceof ApiError && error.status === 404) {
-              setTickets((tickets) => without(tickets, ticket));
-            }
+            // Keep the prior ticket and let independent ticket refreshes continue.
+            didFail = true;
+            console.error(error);
           }
         }
-      })
+      }
     );
+    await Promise.allSettled(workers);
+    setTickets((current) =>
+      standardTickets.reduce((next, ticket) => {
+        const data = refreshedTickets.get(ticket.id);
+        if (!data) {
+          return next;
+        }
+        return [
+          ...without(next, ticket),
+          {
+            ...ticket,
+            ...data,
+            codeFormat: ticket.codeFormat,
+            id: ticket.id,
+            sourceUpdatedAt: data.sourceUpdatedAt ?? null,
+            type: "ticket",
+          },
+        ];
+      }, current)
+    );
+    if (didFail) {
+      throw new Error("One or more ticket refreshes failed");
+    }
+  };
+
+  const refreshTicket = async (ticket: TicketStorage): Promise<void> => {
+    const data = await get<TicketType>(getTicketLookupPath(ticket.id));
+    setTickets((current) => [
+      ...without(current, ticket),
+      {
+        ...ticket,
+        ...data,
+        codeFormat: ticket.codeFormat,
+        id: ticket.id,
+        sourceUpdatedAt: data.sourceUpdatedAt ?? null,
+        type: "ticket",
+      },
+    ]);
+    setExpanded((current) =>
+      current && current.type === "ticket" && current.id === ticket.id
+        ? {
+            ...ticket,
+            ...data,
+            sourceUpdatedAt: data.sourceUpdatedAt ?? null,
+            type: "ticket",
+          }
+        : current
+    );
+  };
+
+  const refreshAllTickets = async (): Promise<void> => {
+    setRefreshingTickets(true);
+    setRefreshError(false);
+    try {
+      await updateTickets();
+    } catch (error) {
+      setRefreshError(true);
+      throw error;
+    } finally {
+      setRefreshingTickets(false);
+    }
   };
 
   const stopScanning = (inputControls = controls) => {
@@ -709,7 +775,7 @@ export const Tickets = (): ReactElement => {
 
   useEffect(() => {
     fetchCameras();
-    updateTickets();
+    updateTickets().catch(console.error);
     if (codeInput) {
       addCode(decodeURIComponent(codeInput), {
         codeFormat: codeFormatInput === "qr" ? "qr" : "barcode",
@@ -990,13 +1056,29 @@ export const Tickets = (): ReactElement => {
           <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/10" />
           <div className="absolute -bottom-16 right-12 h-36 w-36 rounded-full bg-yellow-medium/20 blur-sm" />
           <div className="relative flex flex-col gap-5">
-            <div>
-              <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-yellow-lightest">
-                Wallet
-              </p>
-              <h2 className="mt-2 text-3xl font-black tracking-tight">
-                Ferry tickets, ready to scan
-              </h2>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-yellow-lightest">
+                  Wallet
+                </p>
+                <h2 className="mt-2 text-3xl font-black tracking-tight">
+                  Ferry tickets, ready to scan
+                </h2>
+              </div>
+              <button
+                aria-label="Refresh all ticket codes from WSF"
+                aria-busy={isRefreshingTickets}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/30 bg-white/15 text-white disabled:opacity-60"
+                disabled={isRefreshingTickets}
+                onClick={() => {
+                  refreshAllTickets().catch(console.error);
+                }}
+                type="button"
+              >
+                <SyncIcon
+                  className={isRefreshingTickets ? "animate-spin" : ""}
+                />
+              </button>
             </div>
             <div className="grid grid-cols-3 gap-2">
               <button
@@ -1230,10 +1312,18 @@ export const Tickets = (): ReactElement => {
             : null}
         </ul>
       </section>
+      {refreshError ? (
+        <Toast error>Could not refresh every ticket. Showing saved tickets.</Toast>
+      ) : null}
 
       {expanded && (
         <BarcodeOverlay
           ticket={expanded}
+          onRefresh={
+            expanded.type === "ticket"
+              ? () => refreshTicket(expanded)
+              : undefined
+          }
           onClose={() => closeOverlay()}
           onDelete={async (deleted) => {
             setTickets(without(tickets, deleted));

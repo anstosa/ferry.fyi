@@ -21,11 +21,14 @@ import type { Vessel } from "shared/contracts/vessels";
 import { isEmpty } from "shared/lib/arrays";
 import { isNull } from "shared/lib/identity";
 
+import { FreshnessPill } from "~/components/FreshnessPill";
 import { ReloadButton } from "~/components/ReloadButton";
+import { Toast } from "~/components/Toast";
 import { useGeo } from "~/lib/geo";
 import { knotsToMph } from "~/lib/speed";
 import { getSlug, useTerminals } from "~/lib/terminals";
 import { isDark } from "~/lib/theme";
+import { refreshVessels } from "~/lib/vessels";
 import { useWindowSize } from "~/lib/window";
 import CaretDownIcon from "~/static/images/icons/solid/caret-down.svg";
 import CaretUpIcon from "~/static/images/icons/solid/caret-up.svg";
@@ -42,18 +45,21 @@ const DEFAULT_BOTTOM = 49;
 const DEFAULT_RIGHT = -123;
 const ABBREVIATION_BREAKPOINT = 350;
 const VESSEL_REFRESH_MS = 60 * 1000;
+const VESSEL_ANIMATION_MS = 1000;
+const METERS_PER_NAUTICAL_MILE = 1852;
 const MARKER_LABEL_FIT_PADDING = { bottom: 112, left: 96, right: 96, top: 112 };
-const LABEL_PLACEMENTS = [
-  "top-full left-1/2 mt-1 -translate-x-1/2",
-  "bottom-full left-1/2 mb-1 -translate-x-1/2",
-  "left-full top-1/2 ml-2 -translate-y-1/2",
-  "right-full top-1/2 mr-2 -translate-y-1/2",
-];
+const LABEL_PLACEMENTS = {
+  above: "bottom-full left-1/2 mb-1 -translate-x-1/2",
+  below: "top-full left-1/2 mt-1 -translate-x-1/2",
+  left: "right-full top-1/2 mr-1 -translate-y-1/2",
+  right: "left-full top-1/2 ml-1 -translate-y-1/2",
+} as const;
+const MAP_LABEL_MARGIN = 4;
+const MAP_MARKER_SIZE = 30;
+const MAP_LABEL_HEIGHT = 26;
 
 interface Props {
-  isReloading: boolean;
   mate: Terminal | null;
-  reload: () => Promise<void>;
   setRoute: (target: string, mate?: string) => void;
   terminal: Terminal | null;
   vessels: Vessel[];
@@ -63,13 +69,15 @@ interface MarkerLabelProps {
   icon: ReactElement;
   iconClassName: string;
   iconStyle?: CSSProperties;
-  label: string;
+  label: string | null;
+  labelClassName?: string;
   labelPlacement: string;
 }
 
 interface RenderedMarker {
   marker: Marker;
   root: ReturnType<typeof createRoot>;
+  vesselId?: string;
 }
 
 interface RouteOption {
@@ -87,10 +95,114 @@ interface RouteDropdownProps {
 }
 
 type LocatedVessel = Vessel & { location: NonNullable<Vessel["location"]> };
+type LabelPlacement = keyof typeof LABEL_PLACEMENTS;
 
-// stagger labels
-const getLabelPlacement = (index: number): string =>
-  LABEL_PLACEMENTS[index % LABEL_PLACEMENTS.length];
+interface LabelRect {
+  bottom: number;
+  left: number;
+  right: number;
+  top: number;
+}
+
+const advanceVesselPosition = (vessel: Vessel): Vessel => {
+  if (!vessel.location || vessel.heading === undefined || vessel.speed <= 0) {
+    return vessel;
+  }
+  const distanceMeters =
+    (vessel.speed * METERS_PER_NAUTICAL_MILE * VESSEL_ANIMATION_MS) / 3_600_000;
+  const headingRadians = (vessel.heading * Math.PI) / 180;
+  const latitudeRadians = (vessel.location.latitude * Math.PI) / 180;
+  const latitudeDelta = (distanceMeters * Math.cos(headingRadians)) / 111_320;
+  const longitudeDelta =
+    (distanceMeters * Math.sin(headingRadians)) /
+    (111_320 * Math.cos(latitudeRadians));
+  return {
+    ...vessel,
+    location: {
+      latitude: vessel.location.latitude + latitudeDelta,
+      longitude: vessel.location.longitude + longitudeDelta,
+    },
+  };
+};
+
+const labelWidth = (label: string): number =>
+  Math.min(220, Math.max(48, label.length * 7 + 16));
+
+const rectsOverlap = (left: LabelRect, right: LabelRect): boolean =>
+  left.left < right.right &&
+  left.right > right.left &&
+  left.top < right.bottom &&
+  left.bottom > right.top;
+
+const isInsideMap = (rect: LabelRect, width: number, height: number): boolean =>
+  rect.left >= MAP_LABEL_MARGIN &&
+  rect.right <= width - MAP_LABEL_MARGIN &&
+  rect.top >= MAP_LABEL_MARGIN &&
+  rect.bottom <= height - MAP_LABEL_MARGIN;
+
+const getLabelRect = (
+  x: number,
+  y: number,
+  label: string,
+  placement: LabelPlacement,
+  markerAnchor: "bottom" | "center"
+): LabelRect => {
+  const width = labelWidth(label);
+  const markerTop =
+    markerAnchor === "bottom" ? y - MAP_MARKER_SIZE : y - MAP_MARKER_SIZE / 2;
+  const markerBottom = markerAnchor === "bottom" ? y : y + MAP_MARKER_SIZE / 2;
+  if (placement === "above") {
+    return {
+      bottom: markerTop - 4,
+      left: x - width / 2,
+      right: x + width / 2,
+      top: markerTop - 4 - MAP_LABEL_HEIGHT,
+    };
+  }
+  if (placement === "below") {
+    return {
+      bottom: markerBottom + 4 + MAP_LABEL_HEIGHT,
+      left: x - width / 2,
+      right: x + width / 2,
+      top: markerBottom + 4,
+    };
+  }
+  if (placement === "left") {
+    return {
+      bottom: y + MAP_LABEL_HEIGHT / 2,
+      left: x - MAP_MARKER_SIZE / 2 - 4 - width,
+      right: x - MAP_MARKER_SIZE / 2 - 4,
+      top: y - MAP_LABEL_HEIGHT / 2,
+    };
+  }
+  return {
+    bottom: y + MAP_LABEL_HEIGHT / 2,
+    left: x + MAP_MARKER_SIZE / 2 + 4,
+    right: x + MAP_MARKER_SIZE / 2 + 4 + width,
+    top: y - MAP_LABEL_HEIGHT / 2,
+  };
+};
+
+const getVesselLabelPlacement = (
+  x: number,
+  y: number,
+  label: string,
+  occupied: LabelRect[],
+  mapWidth: number,
+  mapHeight: number
+): LabelPlacement | null => {
+  for (const placement of ["above", "below", "right", "left"] as const) {
+    const rect = getLabelRect(x, y, label, placement, "center");
+    if (
+      isInsideMap(rect, mapWidth, mapHeight) &&
+      !occupied.some((item) => rectsOverlap(rect, item))
+    ) {
+      occupied.push(rect);
+      return placement;
+    }
+  }
+  return null;
+};
 
 // route option label
 const getRouteLabel = (route: Route): string => route.description;
@@ -255,6 +367,7 @@ const renderMarkerLabel = ({
   iconClassName,
   iconStyle,
   label,
+  labelClassName,
   labelPlacement,
 }: MarkerLabelProps): ReactElement => {
   return (
@@ -262,17 +375,18 @@ const renderMarkerLabel = ({
       <div className={iconClassName} style={iconStyle}>
         {icon}
       </div>
-      <div
-        className={[
-          "absolute z-10 px-2 py-1 rounded-full border shadow",
-          "border-[rgba(1,111,82,0.18)] bg-day-normal-light text-gray-dark",
-          "dark:border-[rgba(255,255,255,0.08)] dark:bg-night-normal-dark dark:text-[#e0f0f4]",
-          "text-xs font-bold whitespace-nowrap transform",
-          labelPlacement,
-        ].join(" ")}
-      >
-        {label}
-      </div>
+      {label && (
+        <div
+          className={clsx(
+            "absolute z-10 border px-2 py-1 text-xs font-bold whitespace-nowrap shadow transform",
+            labelClassName ??
+              "rounded-full border-[rgba(1,111,82,0.18)] bg-day-normal-light text-gray-dark dark:border-[rgba(255,255,255,0.08)] dark:bg-night-normal-dark dark:text-[#e0f0f4]",
+            labelPlacement
+          )}
+        >
+          {label}
+        </div>
+      )}
     </div>
   );
 };
@@ -291,11 +405,10 @@ const renderMarkerIcon = (
 const removeRenderedMarkers = (renderedMarkers: RenderedMarker[]): void => {
   // marker cleanup loop
   renderedMarkers.forEach(({ marker, root }) => {
+    // Unmount before Mapbox detaches the marker element. Deferring this can
+    // make React remove children from an element Mapbox already removed.
+    root.unmount();
     marker.remove();
-    window.setTimeout(() => {
-      // defer react cleanup
-      root.unmount();
-    }, 0);
   });
 };
 
@@ -318,16 +431,20 @@ const getVesselLabel = (vessel: Vessel): string => {
 };
 
 export const Map = ({
-  isReloading,
   mate,
-  reload,
   setRoute,
   terminal,
   vessels,
 }: Props): ReactElement => {
   const mapRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<RenderedMarker[]>([]);
-  const reloadRef = useRef(reload);
+  const lastFittedVesselsRef = useRef<Vessel[] | null>(null);
+  const routeVesselIdsRef = useRef(new Set(vessels.map(({ id }) => id)));
+  const [displayedVessels, setDisplayedVessels] = useState(vessels);
+  const [animatedVessels, setAnimatedVessels] = useState(vessels);
+  const [sourceUpdatedAt, setSourceUpdatedAt] = useState<number | null>(null);
+  const [isReloading, setReloading] = useState(false);
+  const [refreshError, setRefreshError] = useState(false);
   const [map, setMap] = useState<Mapbox | null>(null);
   const [isRouteOpen, setRouteOpen] = useState<boolean>(false);
   const [userLocation] = useGeo();
@@ -338,18 +455,51 @@ export const Map = ({
     activeRoute?.description ??
     (terminal && mate ? `${terminal.name} / ${mate.name}` : "Route");
 
-  // latest refresh callback
   useEffect(() => {
-    reloadRef.current = reload;
-  }, [reload]);
+    routeVesselIdsRef.current = new Set(vessels.map(({ id }) => id));
+    setDisplayedVessels(vessels);
+  }, [vessels]);
+  // Confirmed API positions replace any client-side prediction.
+  useEffect(() => setAnimatedVessels(displayedVessels), [displayedVessels]);
 
-  // refresh live vessel positions
   useEffect(() => {
     const interval = window.setInterval(() => {
-      reloadRef.current().catch((error) => {
-        // background refresh failure
-        console.error(error);
+      setAnimatedVessels((current) => current.map(advanceVesselPosition));
+    }, VESSEL_ANIMATION_MS);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  const reloadVessels = async (): Promise<void> => {
+    setReloading(true);
+    setRefreshError(false);
+    try {
+      const refreshed = await refreshVessels();
+      setDisplayedVessels((current) => {
+        // A map can open before its schedule has populated `current`. Keep
+        // that empty startup state from replacing route vessels with an empty
+        // refresh result (or, worse, every vessel in the system).
+        const routeVesselIds = new Set([
+          ...current.map(({ id }) => id),
+          ...routeVesselIdsRef.current,
+        ]);
+        if (routeVesselIds.size === 0) {
+          return current;
+        }
+        return refreshed.vessels.filter(({ id }) => routeVesselIds.has(id));
       });
+      setSourceUpdatedAt(refreshed.sourceUpdatedAt);
+    } catch (error) {
+      setRefreshError(true);
+      throw error;
+    } finally {
+      setReloading(false);
+    }
+  };
+
+  useEffect(() => {
+    reloadVessels().catch(console.error);
+    const interval = window.setInterval(() => {
+      reloadVessels().catch(console.error);
     }, VESSEL_REFRESH_MS);
     return () => window.clearInterval(interval);
   }, []);
@@ -399,21 +549,61 @@ export const Map = ({
       markersRef.current = [];
     }
 
+    const mapSize = map.getContainer().getBoundingClientRect();
+    const occupied: LabelRect[] = [];
+    const addMarkerRect = (x: number, y: number): void => {
+      occupied.push({
+        bottom: y + MAP_MARKER_SIZE / 2,
+        left: x - MAP_MARKER_SIZE / 2,
+        right: x + MAP_MARKER_SIZE / 2,
+        top: y - MAP_MARKER_SIZE / 2,
+      });
+    };
+
+    // Keep vessel labels clear of every map marker, including the user's dot.
+    displayedVessels.filter(hasVesselLocation).forEach((vessel) => {
+      const point = map.project([
+        vessel.location.longitude,
+        vessel.location.latitude,
+      ]);
+      addMarkerRect(point.x, point.y);
+    });
+    if (userLocation) {
+      const point = map.project([
+        userLocation.longitude,
+        userLocation.latitude,
+      ]);
+      addMarkerRect(point.x, point.y);
+      occupied.push(getLabelRect(point.x, point.y, "You", "above", "center"));
+    }
+
     // add terminal markers
     newMarkers.push(
-      ...[terminal, ...(terminal.mates || [])].map((targetTerminal, index) => {
+      ...[terminal, ...(terminal.mates || [])].map((targetTerminal) => {
         const marker = document.createElement("div");
         const lngLat = {
           lon: targetTerminal.location.longitude,
           lat: targetTerminal.location.latitude,
         };
+        const point = map.project([lngLat.lon, lngLat.lat]);
+        const terminalLabelRect = getLabelRect(
+          point.x,
+          point.y,
+          targetTerminal.name,
+          "below",
+          "bottom"
+        );
+        addMarkerRect(point.x, point.y);
+        occupied.push(terminalLabelRect);
         maybeUpdateBounds(lngLat);
         const root = renderMarkerIcon(
           renderMarkerLabel({
             icon: <MapPinIcon />,
             iconClassName: "text-3xl text-green-dark drop-shadow",
             label: targetTerminal.name,
-            labelPlacement: getLabelPlacement(index),
+            labelClassName:
+              "rounded-none border-green-dark bg-green-dark text-white",
+            labelPlacement: LABEL_PLACEMENTS.below,
           }),
           marker
         );
@@ -428,21 +618,33 @@ export const Map = ({
 
     // add vessel markers
     newMarkers.push(
-      ...vessels.filter(hasVesselLocation).map((vessel, index) => {
+      ...displayedVessels.filter(hasVesselLocation).map((vessel) => {
         const marker = document.createElement("div");
         const heading = (vessel.heading ?? 0) - 45;
         const lngLat = {
           lon: vessel.location.longitude,
           lat: vessel.location.latitude,
         };
+        const label = getVesselLabel(vessel);
+        const point = map.project([lngLat.lon, lngLat.lat]);
+        const placement = getVesselLabelPlacement(
+          point.x,
+          point.y,
+          label,
+          occupied,
+          mapSize.width,
+          mapSize.height
+        );
         maybeUpdateBounds(lngLat);
         const root = renderMarkerIcon(
           renderMarkerLabel({
             icon: <VesselIcon />,
             iconClassName: "text-3xl text-countdown drop-shadow",
             iconStyle: { transform: `rotate(${heading}deg)` },
-            label: getVesselLabel(vessel),
-            labelPlacement: getLabelPlacement(index + 1),
+            label: placement ? label : null,
+            labelClassName:
+              "rounded-full border-countdown bg-countdown text-white",
+            labelPlacement: placement ? LABEL_PLACEMENTS[placement] : "",
           }),
           marker
         );
@@ -451,6 +653,7 @@ export const Map = ({
             .setLngLat(lngLat)
             .addTo(map),
           root,
+          vesselId: vessel.id,
         };
       })
     );
@@ -467,7 +670,7 @@ export const Map = ({
           icon: <UserLocationIcon />,
           iconClassName: "text-2xl text-blue-dark drop-shadow",
           label: "You",
-          labelPlacement: getLabelPlacement(newMarkers.length),
+          labelPlacement: LABEL_PLACEMENTS.above,
         }),
         marker
       );
@@ -482,14 +685,40 @@ export const Map = ({
     markersRef.current = newMarkers;
 
     // fit map to route markers
-    map.fitBounds(
-      new LngLatBounds({ lat: bottom, lon: left }, { lat: top, lon: right }),
-      { padding: MARKER_LABEL_FIT_PADDING }
-    );
+    if (lastFittedVesselsRef.current !== displayedVessels) {
+      map.fitBounds(
+        new LngLatBounds({ lat: bottom, lon: left }, { lat: top, lon: right }),
+        { padding: MARKER_LABEL_FIT_PADDING }
+      );
+      lastFittedVesselsRef.current = displayedVessels;
+    }
   };
 
   // update markers when anything changes
-  useEffect(updateMarkers, [map, vessels, terminal, mate, userLocation]);
+  useEffect(updateMarkers, [
+    map,
+    displayedVessels,
+    terminal,
+    mate,
+    userLocation,
+  ]);
+
+  // Move the existing DOM markers during dead-reckoning. Recreating their
+  // React roots every second causes visible flashes, while Mapbox can move a
+  // marker without replacing its icon or label.
+  useEffect(() => {
+    const vesselMarkers = new globalThis.Map(
+      markersRef.current
+        .filter(({ vesselId }) => Boolean(vesselId))
+        .map((renderedMarker) => [renderedMarker.vesselId, renderedMarker])
+    );
+    animatedVessels.filter(hasVesselLocation).forEach((vessel) => {
+      vesselMarkers.get(vessel.id)?.marker.setLngLat({
+        lng: vessel.location.longitude,
+        lat: vessel.location.latitude,
+      });
+    });
+  }, [animatedVessels]);
 
   // initialize map when mapRef is available
   useEffect(() => {
@@ -568,7 +797,7 @@ export const Map = ({
           className="ml-4"
           isReloading={isReloading}
           onClick={() => {
-            reload().catch((error) => {
+            reloadVessels().catch((error) => {
               // manual refresh failure
               console.error(error);
             });
@@ -579,6 +808,21 @@ export const Map = ({
         ref={mapRef}
         className="map-container flex-grow bg-day-normal-light dark:bg-night-normal-dark"
       />
+      {sourceUpdatedAt && (
+        <div className="pointer-events-none fixed bottom-[calc(4rem+var(--safe-area-inset-bottom)+0.5rem)] left-0 right-0 z-20 flex justify-center">
+          <FreshnessPill
+            className="pointer-events-auto"
+            isRefreshing={isReloading}
+            onClick={() => {
+              reloadVessels().catch(console.error);
+            }}
+            sourceUpdatedAt={sourceUpdatedAt}
+          />
+        </div>
+      )}
+      {refreshError ? (
+        <Toast error>Could not refresh vessel data. Showing saved data.</Toast>
+      ) : null}
     </>
   );
 };

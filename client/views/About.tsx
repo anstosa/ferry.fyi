@@ -1,4 +1,5 @@
 import React, { ReactElement } from "react";
+import { Link } from "react-router-dom";
 import { getSeoMetadata } from "shared/lib/seo";
 
 import DonateIcon from "~/static/images/icons/solid/heart.svg";
@@ -72,6 +73,15 @@ export const About = (): ReactElement => (
         CC BY 4.0
       </a>
       . Ferry FYI uses and summarizes this data for capacity forecasts.
+    </p>
+
+    <h2 className="font-bold text-lg mt-8">Privacy</h2>
+    <p className="mt-2">
+      Read the{" "}
+      <Link className="link" to="/privacy">
+        Privacy Policy
+      </Link>
+      .
     </p>
   </Page>
 );

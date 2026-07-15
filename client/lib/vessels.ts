@@ -3,7 +3,7 @@ import { Vessel } from "shared/contracts/vessels";
 import { sortBy } from "shared/lib/arrays";
 import { values } from "shared/lib/objects";
 
-import { get } from "~/lib/api";
+import { get, post } from "~/lib/api";
 
 const API_VESSELS = "/vessels";
 const getApiVessel = (id: string): string => `/vessels/${id}`;
@@ -33,6 +33,17 @@ export const getVessels = async (
     hasAll = true;
   }
   return sortBy(values(vesselCache), "name");
+};
+
+export const refreshVessels = async (): Promise<{
+  sourceUpdatedAt: number | null;
+  vessels: Vessel[];
+}> => {
+  const { sourceUpdatedAt } = await post<{ sourceUpdatedAt: number | null }>(
+    "/vessels/refresh",
+    {}
+  );
+  return { sourceUpdatedAt, vessels: await getVessels({ force: true }) };
 };
 
 export const useLiveVessels = (

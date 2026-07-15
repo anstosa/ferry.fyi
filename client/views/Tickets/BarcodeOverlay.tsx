@@ -13,6 +13,8 @@ import {
 import { pluralize } from "shared/lib/strings";
 import { getTicketDisplayInfo } from "shared/lib/tickets";
 
+import { FreshnessPill } from "~/components/FreshnessPill";
+import { Toast } from "~/components/Toast";
 import logo from "~/static/images/icon_monochrome.png";
 import RemoveConfirmIcon from "~/static/images/icons/solid/exclamation-square.svg";
 import ShareIcon from "~/static/images/icons/solid/share-alt.svg";
@@ -23,6 +25,7 @@ import WSDOTIcon from "~/static/images/icons/wsdot.svg";
 interface Props {
   ticket: TicketStorage | ReservationAccount;
   onDelete: (ticket: TicketStorage | ReservationAccount) => Promise<void>;
+  onRefresh?: () => Promise<void>;
   onClose: () => void;
 }
 
@@ -351,6 +354,7 @@ export const BarcodeOverlay = ({
   ticket,
   onClose,
   onDelete,
+  onRefresh,
 }: Props): ReactElement | null => {
   const codeContainerRef = useRef<HTMLDivElement | null>(null);
   const ticketTitle = getTicketTitle(ticket);
@@ -367,6 +371,24 @@ export const BarcodeOverlay = ({
   const [confirmation, setConfirmation] = useState<ConfirmationState | null>(
     null
   );
+  const [isRefreshing, setRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState(false);
+
+  const refresh = async (): Promise<void> => {
+    if (!onRefresh) {
+      return;
+    }
+    setRefreshing(true);
+    setRefreshError(false);
+    try {
+      await onRefresh();
+    } catch (error) {
+      setRefreshError(true);
+      throw error;
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     const codeContainer = codeContainerRef.current;
@@ -506,6 +528,10 @@ export const BarcodeOverlay = ({
       >
         <StopIcon className="text-xl" />
       </button>
+      <div
+        className="relative flex w-full max-w-lg flex-col items-center"
+        onClick={(event) => event.stopPropagation()}
+      >
       <div
         className={clsx(
           "relative w-full max-w-lg overflow-hidden rounded-3xl shadow-2xl",
@@ -665,6 +691,20 @@ export const BarcodeOverlay = ({
             )}
           </div>
         </div>
+      </div>
+      {ticket.type === "ticket" && ticket.sourceUpdatedAt && onRefresh ? (
+        <FreshnessPill
+          className="relative z-10 mt-3 bg-white shadow-lg"
+          isRefreshing={isRefreshing}
+          onClick={() => {
+            refresh().catch(console.error);
+          }}
+          sourceUpdatedAt={ticket.sourceUpdatedAt}
+        />
+      ) : null}
+      {refreshError ? (
+        <Toast error>Could not refresh this ticket. Showing saved data.</Toast>
+      ) : null}
       </div>
       {confirmation ? (
         <div

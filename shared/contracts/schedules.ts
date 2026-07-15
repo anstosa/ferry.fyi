@@ -92,4 +92,6 @@ export interface Schedule {
   slots: Slot[];
   terminalId: string;
   mateId: string;
+  /** Epoch seconds when WSF schedule data was last successfully acquired. */
+  sourceUpdatedAt?: number | null;
 }

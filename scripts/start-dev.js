@@ -63,10 +63,23 @@ function configureDetectorEnv() {
 // print local development URLs
 function printUrls() {
   console.log("[dev] app: http://localhost:4040");
+  console.log(`[dev] database: ${env.DATABASE_URL}`);
+  console.log(`[dev] detector: ${detectorUrl}`);
   // camera tool URL
   if (shouldStartCameraTools) {
     console.log("[dev] annotator: http://127.0.0.1:8787/");
   }
+}
+
+// start postgres using the same DATABASE_URL provided to the server
+function startDatabase() {
+  const command = ["scripts/dev-db.js"];
+  console.log(`[dev] starting database: node ${command.join(" ")}`);
+  // print command wiring only
+  if (isDryRun) {
+    return;
+  }
+  execFileSync(process.execPath, command, { env, stdio: "inherit" });
 }
 
 // start detector container first
@@ -178,10 +191,14 @@ function startScript(name, scriptName) {
   });
 }
 
+// configure and start shared infrastructure before launching app processes.
+// Both the server and camera tools inherit these local service endpoints.
+configureDetectorEnv();
+startDatabase();
+startDetector();
+
 // configure optional camera tools
 if (shouldStartCameraTools) {
-  configureDetectorEnv();
-  startDetector();
   commands.push(["camera polygon annotator", "camera:polygons"]);
 }
 

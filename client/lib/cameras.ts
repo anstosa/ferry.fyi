@@ -1,4 +1,4 @@
-import type { CameraFrameStatusResponse } from "shared/contracts/cameraFrames";
+import type { CameraFrameStatusEnvelope } from "shared/contracts/cameraFrames";
 
 import { get } from "~/lib/api";
 
@@ -9,6 +9,6 @@ const getApiCameraFrames = (cameraIds: string[]): string =>
 // fetch active camera frame metadata
 export const getCameraFrames = (
   cameraIds: string[]
-): Promise<CameraFrameStatusResponse> => {
-  return get<CameraFrameStatusResponse>(getApiCameraFrames(cameraIds));
+): Promise<CameraFrameStatusEnvelope> => {
+  return get<CameraFrameStatusEnvelope>(getApiCameraFrames(cameraIds));
 };
