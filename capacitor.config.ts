@@ -6,6 +6,9 @@ const config: CapacitorConfig = {
   webDir: "dist/client",
   bundledWebRuntime: false,
   backgroundColor: "#016f52",
+  ios: {
+    scheme: "Ferry FYI",
+  },
   plugins: {
     CapacitorUpdater: {
       // retain manual update control

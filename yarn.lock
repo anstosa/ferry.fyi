@@ -1363,6 +1363,11 @@
   resolved "https://registry.yarnpkg.com/@capacitor/ios/-/ios-8.4.1.tgz#afc483682406eae1a703e8751082e1bfc9fe8652"
   integrity sha512-EgcAk7NYheHMTyP3CUrA65qKs4D2UEAKgw44HI6Uk3dTw6KjLQkdLOQWvbeRncHaZ2gklfOojUoc5DlSw2lhYg==
 
+"@capacitor/local-notifications@^8.0.0":
+  version "8.2.1"
+  resolved "https://registry.yarnpkg.com/@capacitor/local-notifications/-/local-notifications-8.2.1.tgz#3398e8e8bb6f4a5bd63d68ad5b5dcaf0f1f1d9cc"
+  integrity sha512-Bkim+MGl7UrDTjDferV4ECq0aWciTsa0k15+MX2jnx2PeWgEPvlBy5yrqzBlwEZPrtHFUvPVxPi5V66MPGHkAw==
+
 "@capacitor/share@^8.0.1":
   version "8.0.1"
   resolved "https://registry.yarnpkg.com/@capacitor/share/-/share-8.0.1.tgz#8941ce371a6239685db010098a5e60d0795666da"

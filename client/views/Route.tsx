@@ -16,7 +16,6 @@ import {
 import { DateButton } from "~/components/DateButton";
 import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { Footer } from "~/components/Footer";
-import { InstallPromptToast } from "~/components/InstallPromptToast";
 import { Page } from "~/components/Page";
 import { PageLoadError } from "~/components/PageLoadError";
 import { RouteSelector } from "~/components/RouteSelector";
@@ -561,7 +560,6 @@ export const Route = ({
           </div>
         </ErrorBoundary>
       )}
-      <InstallPromptToast />
       <Footer terminal={terminal} getPath={getPath} />
     </>
   );

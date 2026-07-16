@@ -26,6 +26,7 @@ import type {
 import { sortBy, without } from "shared/lib/arrays";
 import { getSeoMetadata } from "shared/lib/seo";
 
+import { AppTeaser } from "~/components/AppTeaser";
 import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { Page } from "~/components/Page";
 import { SeoHelmet } from "~/components/SeoHelmet";
@@ -34,6 +35,9 @@ import { Toast } from "~/components/Toast";
 import { get } from "~/lib/api";
 import { useQuery } from "~/lib/browser";
 import { useDevice } from "~/lib/device";
+import { useFavoriteRoutes } from "~/lib/favoriteRoutes";
+import { getNearbyTicketGroups } from "~/lib/nearbyTickets";
+import { useTerminals } from "~/lib/terminals";
 import { useUser } from "~/lib/user";
 import ScanIcon from "~/static/images/icons/solid/barcode-scan.svg";
 import ErrorIcon from "~/static/images/icons/solid/exclamation-triangle.svg";
@@ -650,9 +654,17 @@ export const Tickets = (): ReactElement => {
   const [showInvalidTickets, setShowInvalidTickets] = useState<boolean>(false);
   const [isRefreshingTickets, setRefreshingTickets] = useState<boolean>(false);
   const [refreshError, setRefreshError] = useState(false);
+  const autoOpenedTicketId = useRef<string | null>(null);
   const brightnessRef = useRef<number | null>(null);
-  const { add: codeInput, format: codeFormatInput } = useQuery();
+  const {
+    add: codeInput,
+    format: codeFormatInput,
+    nearbyTerminal: nearbyTerminalId,
+    openTicket: openTicketId,
+  } = useQuery();
   const device = useDevice();
+  const { terminals } = useTerminals();
+  const [favoriteRouteIds] = useFavoriteRoutes();
   const [{ tickets: savedTickets }, { updateUser }] = useUser();
 
   // add saved tickets from cloud
@@ -796,6 +808,17 @@ export const Tickets = (): ReactElement => {
       setTickets(normalizedTickets);
     }
   }, [setTickets, tickets]);
+
+  useEffect(() => {
+    if (!openTicketId || autoOpenedTicketId.current === openTicketId) {
+      return;
+    }
+    const ticket = tickets.find((ticket) => ticket.id === openTicketId);
+    if (ticket) {
+      autoOpenedTicketId.current = openTicketId;
+      setExpanded(ticket);
+    }
+  }, [openTicketId, tickets]);
 
   if (!device) {
     return <Splash />;
@@ -1041,10 +1064,24 @@ export const Tickets = (): ReactElement => {
 
   const normalizedTickets = normalizeTicketList(tickets);
   const sortedTickets = sortTickets(normalizedTickets);
-  const activeTickets = sortedTickets.filter(
-    (ticket) => !isInvalidTicket(ticket)
+  const nearbyTerminal = terminals.find(
+    (terminal) => terminal.id === nearbyTerminalId
   );
-  const invalidTickets = sortedTickets.filter(isInvalidTicket);
+  const nearbyTicketGroups = nearbyTerminal
+    ? getNearbyTicketGroups({
+        favoriteRouteIds,
+        location: nearbyTerminal.location,
+        terminal: nearbyTerminal,
+        terminals,
+        tickets: sortedTickets,
+      })
+    : null;
+  const activeTickets = nearbyTicketGroups
+    ? nearbyTicketGroups.flatMap((group) => group.tickets)
+    : sortedTickets.filter((ticket) => !isInvalidTicket(ticket));
+  const invalidTickets = nearbyTicketGroups
+    ? []
+    : sortedTickets.filter(isInvalidTicket);
   const ticketCount = normalizedTickets.length;
 
   return (
@@ -1228,6 +1265,10 @@ export const Tickets = (): ReactElement => {
         </div>
       </section>
 
+      <div className="mt-5">
+        <AppTeaser />
+      </div>
+
       <section className="mt-5">
         <ul className="space-y-3">
           {tickets.length ? <LoginPrompt /> : null}
@@ -1257,17 +1298,41 @@ export const Tickets = (): ReactElement => {
             </li>
           )}
           {/* active tickets */}
-          {activeTickets.map((ticket) => (
-            <ErrorBoundary
-              className="my-4"
-              fallbackTitle="Ticket crashed"
-              fallbackMessage="This ticket could not be shown. Your other tickets are still available."
-              key={ticket.id}
-              resetKey={ticket.id}
-            >
-              <Ticket ticket={ticket} onClick={() => openOverlay(ticket)} />
-            </ErrorBoundary>
-          ))}
+          {nearbyTicketGroups
+            ? nearbyTicketGroups.map((group) => (
+                <li key={group.id}>
+                  <h3 className="mb-2 text-sm font-black uppercase tracking-[0.16em] text-green-dark dark:text-green-light">
+                    {group.label}
+                  </h3>
+                  <ul className="space-y-3">
+                    {group.tickets.map((ticket) => (
+                      <ErrorBoundary
+                        className="my-4"
+                        fallbackTitle="Ticket crashed"
+                        fallbackMessage="This ticket could not be shown. Your other tickets are still available."
+                        key={ticket.id}
+                        resetKey={ticket.id}
+                      >
+                        <Ticket
+                          ticket={ticket}
+                          onClick={() => openOverlay(ticket)}
+                        />
+                      </ErrorBoundary>
+                    ))}
+                  </ul>
+                </li>
+              ))
+            : activeTickets.map((ticket) => (
+                <ErrorBoundary
+                  className="my-4"
+                  fallbackTitle="Ticket crashed"
+                  fallbackMessage="This ticket could not be shown. Your other tickets are still available."
+                  key={ticket.id}
+                  resetKey={ticket.id}
+                >
+                  <Ticket ticket={ticket} onClick={() => openOverlay(ticket)} />
+                </ErrorBoundary>
+              ))}
           {invalidTickets.length ? (
             <li>
               <button

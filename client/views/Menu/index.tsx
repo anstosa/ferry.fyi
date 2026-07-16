@@ -7,13 +7,20 @@ import React, { ReactElement, SVGAttributes, useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { isNull } from "shared/lib/identity";
 
-import { useDevice } from "~/lib/device";
+import {
+  getBrowserInstallPlatform,
+  requestInstallPrompt,
+} from "~/lib/appInstall";
+import { isInstalledApp, useDevice } from "~/lib/device";
 import { colors } from "~/lib/theme";
 import logo from "~/static/images/icon_monochrome.png";
+import AppStoreIcon from "~/static/images/icons/brands/app-store-ios.svg";
+import GooglePlayIcon from "~/static/images/icons/brands/google-play.svg";
 import AboutIcon from "~/static/images/icons/solid/address-card.svg";
 import ForecastIcon from "~/static/images/icons/solid/analytics.svg";
 import TicketIcon from "~/static/images/icons/solid/barcode-alt.svg";
 import ScheduleIcon from "~/static/images/icons/solid/calendar-week.svg";
+import DownloadIcon from "~/static/images/icons/solid/download.svg";
 import FeedbackIcon from "~/static/images/icons/solid/question-circle.svg";
 import ReloadIcon from "~/static/images/icons/solid/redo.svg";
 import ShareIcon from "~/static/images/icons/solid/share-alt.svg";
@@ -129,6 +136,23 @@ export const Menu = ({
         label: "Log In",
         onClick: login,
       };
+  const platform = getBrowserInstallPlatform();
+  let InstallIcon = DownloadIcon;
+  if (platform === "android") {
+    InstallIcon = GooglePlayIcon;
+  } else if (platform === "ios") {
+    InstallIcon = AppStoreIcon;
+  }
+  const installItem: MenuItem | null = isInstalledApp()
+    ? null
+    : {
+        Icon: InstallIcon,
+        label: "Install Ferry FYI",
+        onClick: () => {
+          onClose();
+          requestInstallPrompt();
+        },
+      };
   const navigation: MenuItem[] = [
     {
       Icon: ScheduleIcon,
@@ -142,6 +166,7 @@ export const Menu = ({
     },
     ...topItems,
     { isSpacer: true },
+    ...(installItem ? [installItem] : []),
     accountItem,
     ...bottomItems,
     {

@@ -16,6 +16,9 @@ import {
 } from "react-router-dom";
 
 import { ErrorBoundary } from "~/components/ErrorBoundary";
+import { InstallPromptToast } from "~/components/InstallPromptToast";
+import { NearbyTicketNotifications } from "~/components/NearbyTicketNotifications";
+import { Prompt } from "~/components/Prompt";
 import { Splash } from "~/components/Splash";
 import { useRecordPageViews } from "~/lib/analytics";
 import { useOnline, useWSF } from "~/lib/api";
@@ -25,8 +28,6 @@ import { slugs } from "~/lib/terminals";
 import { useUser } from "~/lib/user";
 import DumpsterFireIcon from "~/static/images/icons/solid/dumpster-fire.svg";
 import OfflineIcon from "~/static/images/icons/solid/signal-alt-slash.svg";
-
-import { Toast } from "./components/Toast";
 
 const About = lazy(() =>
   import("~/views/About").then(({ About }) => ({ default: About }))
@@ -244,28 +245,32 @@ export const App = (): ReactElement => {
         <Suspense fallback={<Splash />}>{element}</Suspense>
         <AnimatePresence>
           {!isOnline && !offlineDismissed && (
-            <Toast
-              warning
+            <Prompt
+              key="device-offline"
               footerDocked
+              level="warning"
               onClose={() => setOfflineDismissed(true)}
               Icon={OfflineIcon}
             >
               Your device is offline! You can still view the schedule, but
               things may not be up to date.
-            </Toast>
+            </Prompt>
           )}
           {isScheduleRoute && isWsfOffline && !wsfDismissed && (
-            <Toast
-              warning
+            <Prompt
+              key="wsf-offline"
               footerDocked
+              level="warning"
               onClose={() => setWsfDismissed(true)}
               Icon={DumpsterFireIcon}
             >
               WSF web services are offline! You can still use the app but things
               may not be up to date.
-            </Toast>
+            </Prompt>
           )}
+          <InstallPromptToast key="install-prompt" />
         </AnimatePresence>
+        <NearbyTicketNotifications />
       </>
     );
   } else {

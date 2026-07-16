@@ -14,6 +14,7 @@ import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { FreshnessPill } from "~/components/FreshnessPill";
 import { InlineLoader } from "~/components/InlineLoader";
 import { PageLoadError } from "~/components/PageLoadError";
+import { Prompt } from "~/components/Prompt";
 import { Toast } from "~/components/Toast";
 import { useQuery } from "~/lib/browser";
 import { isWSFToday } from "~/lib/date";
@@ -233,10 +234,13 @@ export const Schedule = ({
           {!hasCapacityInfo &&
             isWSFToday(DateTime.fromISO(schedule.date)) &&
             !capacityWarningDismissed && (
-              <Toast warning onClose={() => setCapacityWarningDismissed(true)}>
+              <Prompt
+                level="warning"
+                onClose={() => setCapacityWarningDismissed(true)}
+              >
                 WSF capacity info currently unavailable. Pay attention to
                 cameras and forecasts to estimate load!
-              </Toast>
+              </Prompt>
             )}
         </AnimatePresence>
       </>

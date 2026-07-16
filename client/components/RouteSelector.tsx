@@ -1,4 +1,3 @@
-import clsx from "clsx";
 import { AnimatePresence } from "framer-motion";
 import React, { ReactElement, ReactNode, useEffect, useState } from "react";
 import ReactGA from "react-ga4";
@@ -8,7 +7,7 @@ import { without } from "shared/lib/arrays";
 import { isNull, isUndefined } from "shared/lib/identity";
 import { getTerminalSorter } from "shared/lib/terminalSorting";
 
-import { Toast } from "~/components/Toast";
+import { Prompt } from "~/components/Prompt";
 import { useLocalStorage } from "~/lib/browser";
 import { useGeo } from "~/lib/geo";
 import { getSlug, useTerminals } from "~/lib/terminals";
@@ -118,63 +117,46 @@ export const RouteSelector = (props: Props): ReactElement => {
         {!isNull(closestTerminal) &&
           closestTerminal.id !== terminal.id &&
           !closestDismissed && (
-            <Toast info footerDocked>
+            <Prompt
+              key="closest-terminal"
+              footerDocked
+              actions={[
+                {
+                  Icon: LocationIcon,
+                  label: `Switch to ${closestTerminal.name}`,
+                  primary: true,
+                  to: `/${getSlug(closestTerminal.id)}`,
+                },
+                {
+                  label: "Stay here",
+                  onClick: () => setClosestDismissed(true),
+                },
+              ]}
+            >
               Looks like your closest terminal is {closestTerminal.name}.
-              <div className="button-group mt-5">
-                <Link
-                  className={clsx(
-                    "button button-group-left alert__button-primary",
-                    "truncate",
-                    "bg-blue-dark border-transparent text-white",
-                    "hover:bg-blue-darkest"
-                  )}
-                  to={`/${getSlug(closestTerminal.id)}`}
-                >
-                  <LocationIcon className="button-icon" />
-                  <span className="button-label">
-                    Switch to {closestTerminal?.name}
-                  </span>
-                </Link>
-
-                <button
-                  className="button button-group-right truncate"
-                  onClick={() => setClosestDismissed(true)}
-                >
-                  Stay here
-                </button>
-              </div>
-            </Toast>
+            </Prompt>
           )}
         {isUndefined(noLocation) && (
-          <Toast info footerDocked>
-            <span className="font-bold block">Enable location features?</span>
-            This will highlight nearby terminals and warn you when you're not
-            looking at the closest terminal
-            <div className="button-group mt-5">
-              <button
-                className={clsx(
-                  "button button-group-left alert__button-primary",
-                  "truncate",
-                  "bg-blue-dark border-transparent text-white",
-                  "hover:bg-blue-darkest"
-                )}
-                onClick={() => {
+          <Prompt
+            key="location-permission"
+            footerDocked
+            actions={[
+              {
+                Icon: LocationIcon,
+                label: "Sure!",
+                onClick: () => {
                   saveNoLocation(false);
                   updateGeo(false);
-                }}
-              >
-                <LocationIcon className="button-icon" />
-                <span className="button-label">Sure!</span>
-              </button>
-
-              <button
-                className="button button-group-right truncate"
-                onClick={() => saveNoLocation(true)}
-              >
-                No thanks
-              </button>
-            </div>
-          </Toast>
+                },
+                primary: true,
+              },
+              { label: "No thanks", onClick: () => saveNoLocation(true) },
+            ]}
+            title="Enable location features?"
+          >
+            This will highlight nearby terminals and warn you when you're not
+            looking at the closest terminal
+          </Prompt>
         )}
       </AnimatePresence>
     </>

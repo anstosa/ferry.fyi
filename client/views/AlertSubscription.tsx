@@ -32,6 +32,7 @@ import {
 } from "shared/lib/alertSubscriptions";
 import { without } from "shared/lib/arrays";
 
+import { AppTeaser } from "~/components/AppTeaser";
 import { HeaderDropdown } from "~/components/HeaderDropdown";
 import { LoadingWaves } from "~/components/LoadingWaves";
 import { Splash } from "~/components/Splash";
@@ -1219,6 +1220,7 @@ export const AlertSubscription = ({
               </div>
             </div>
           </div>
+          <AppTeaser />
 
           <div className="rounded-2xl border border-[rgba(0,0,0,0.08)] bg-white p-4 shadow-sm dark:border-[rgba(255,255,255,0.08)] dark:bg-[#00202a]">
             <h2 className="mb-3 text-lg font-bold text-gray-darkest dark:text-white">

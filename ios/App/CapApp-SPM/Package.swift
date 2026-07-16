@@ -19,6 +19,7 @@ let package = Package(
         .package(name: "CapacitorBrowser", path: "../../../node_modules/@capacitor/browser"),
         .package(name: "CapacitorDevice", path: "../../../node_modules/@capacitor/device"),
         .package(name: "CapacitorGeolocation", path: "../../../node_modules/@capacitor/geolocation"),
+        .package(name: "CapacitorLocalNotifications", path: "../../../node_modules/@capacitor/local-notifications"),
         .package(name: "CapacitorShare", path: "../../../node_modules/@capacitor/share"),
         .package(name: "CapgoCapacitorUpdater", path: "../../../node_modules/@capgo/capacitor-updater")
     ],
@@ -35,6 +36,7 @@ let package = Package(
                 .product(name: "CapacitorBrowser", package: "CapacitorBrowser"),
                 .product(name: "CapacitorDevice", package: "CapacitorDevice"),
                 .product(name: "CapacitorGeolocation", package: "CapacitorGeolocation"),
+                .product(name: "CapacitorLocalNotifications", package: "CapacitorLocalNotifications"),
                 .product(name: "CapacitorShare", package: "CapacitorShare"),
                 .product(name: "CapgoCapacitorUpdater", package: "CapgoCapacitorUpdater")
             ]
