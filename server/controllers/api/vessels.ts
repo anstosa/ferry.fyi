@@ -3,8 +3,8 @@ import { Vessel as VesselClass } from "shared/contracts/vessels";
 import { entries } from "shared/lib/objects";
 
 import { getWsfStatus } from "~/lib/wsf/api";
-import { Vessel } from "~/models/Vessel";
 import { updateVesselStatus } from "~/lib/wsf/updateVessels";
+import { Vessel } from "~/models/Vessel";
 
 const vesselRouter = Router();
 let vesselRefresh: Promise<void> | null = null;
@@ -23,8 +23,10 @@ vesselRouter.post("/refresh", async (request, response) => {
   try {
     await vesselRefresh;
     return response.send({ sourceUpdatedAt: vesselSourceUpdatedAt });
-  } catch (error) {
-    return response.status(502).send({ error: "Unable to refresh vessel data" });
+  } catch {
+    return response
+      .status(502)
+      .send({ error: "Unable to refresh vessel data" });
   }
 });
 
