@@ -267,7 +267,9 @@ export const Schedule = ({
           {renderSchedule()}
         </div>
         {loadError && schedule?.slots ? (
-          <Toast error>Could not refresh the schedule. Showing saved data.</Toast>
+          <Toast error>
+            Could not refresh the schedule. Showing saved data.
+          </Toast>
         ) : null}
         {onRefresh && schedule?.sourceUpdatedAt ? (
           <div className="sticky bottom-1 z-10 mt-2 flex justify-center pb-1">
