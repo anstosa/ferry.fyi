@@ -1,0 +1,7 @@
+name: Ferry FYI CodeQL
+
+# Capacitor plugins are compiled from node_modules for the native builds. They
+# are third-party library sources, not application code, and can otherwise
+# create one alert with hundreds of duplicate related locations.
+paths-ignore:
+  - node_modules/**
