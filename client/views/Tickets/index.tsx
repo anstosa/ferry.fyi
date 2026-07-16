@@ -1313,7 +1313,9 @@ export const Tickets = (): ReactElement => {
         </ul>
       </section>
       {refreshError ? (
-        <Toast error>Could not refresh every ticket. Showing saved tickets.</Toast>
+        <Toast error>
+          Could not refresh every ticket. Showing saved tickets.
+        </Toast>
       ) : null}
 
       {expanded && (
