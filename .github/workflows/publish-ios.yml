@@ -87,8 +87,15 @@ jobs:
         run: |
           # fail on shell mistakes
           set -euo pipefail
-          # reserve a monotonic TestFlight build number
-          VERSION_CODE="$((100000 + GITHUB_RUN_NUMBER))"
+          # Reusable workflows inherit the caller's run number, which can be
+          # lower than a previously uploaded build. Use a UTC year/day/time
+          # code instead so every serialized release gets a newer build number.
+          VERSION_CODE="$(date -u +%y%j%H%M)"
+          VERSION_CODE_NUMBER="$((10#${VERSION_CODE}))"
+          if (( VERSION_CODE_NUMBER <= 0 || VERSION_CODE_NUMBER > 2100000000 )); then
+            echo "Derived iOS build number is outside the supported range: ${VERSION_CODE}" >&2
+            exit 1
+          fi
           # derive tag releases from their iOS version
           if [[ "${GITHUB_REF_TYPE}" == 'tag' ]]; then
             VERSION_NAME="${GITHUB_REF_NAME#ios-v}"
@@ -154,8 +161,8 @@ jobs:
           PROFILE_UUID="$(security cms -D -i "${PROFILE_PATH}" | plutil -extract UUID raw -)"
           # archive the manually signed App Store binary
           xcodebuild \
-            -project ios/App/App.xcodeproj \
-            -scheme App \
+            -project "ios/App/Ferry FYI.xcodeproj" \
+            -scheme "Ferry FYI" \
             -configuration Release \
             -sdk iphoneos \
             -archivePath "${RUNNER_TEMP}/FerryFYI.xcarchive" \
@@ -207,7 +214,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ferry-fyi-ios-${{ steps.version.outputs.name }}-${{ steps.version.outputs.code }}
-          path: ${{ runner.temp }}/export/App.ipa
+          path: ${{ runner.temp }}/export/Ferry FYI.ipa
           if-no-files-found: error
           retention-days: 30
 
@@ -221,7 +228,7 @@ jobs:
           # upload the signed IPA with the App Store Connect API key
           xcrun altool --upload-app \
             --type ios \
-            --file "${RUNNER_TEMP}/export/App.ipa" \
+            --file "${RUNNER_TEMP}/export/Ferry FYI.ipa" \
             --apiKey "${APP_STORE_CONNECT_API_KEY_ID}" \
             --apiIssuer "${APP_STORE_CONNECT_ISSUER_ID}"
 
