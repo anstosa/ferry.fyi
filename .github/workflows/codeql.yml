@@ -1,0 +1,97 @@
+name: CodeQL
+
+on:
+  push:
+    branches: [production]
+  pull_request:
+    branches: [production]
+  schedule:
+    - cron: '26 4 * * 1'
+
+permissions:
+  actions: read
+  contents: read
+  security-events: write
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: actions
+            build-mode: none
+            runner: ubuntu-latest
+          - language: javascript-typescript
+            build-mode: none
+            runner: ubuntu-latest
+          - language: python
+            build-mode: none
+            runner: ubuntu-latest
+          - language: java-kotlin
+            build-mode: manual
+            runner: ubuntu-latest
+          - language: swift
+            build-mode: manual
+            runner: macos-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Use Node.js for iOS dependencies
+        if: matrix.language == 'swift'
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+          cache-dependency-path: yarn.lock
+
+      - name: Install iOS dependencies
+        if: matrix.language == 'swift'
+        run: yarn install --frozen-lockfile
+
+      - name: Use Java for Android analysis
+        if: matrix.language == 'java-kotlin'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Android SDK
+        if: matrix.language == 'java-kotlin'
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        if: matrix.language == 'java-kotlin'
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+
+      - name: Build Android code
+        if: matrix.language == 'java-kotlin'
+        run: ./gradlew --no-daemon :app:assembleDebug
+        working-directory: android
+
+      - name: Build iOS code
+        if: matrix.language == 'swift'
+        run: >-
+          xcodebuild build
+          -project "ios/App/Ferry FYI.xcodeproj"
+          -target "Ferry FYI"
+          -sdk iphonesimulator
+          -configuration Debug
+          ARCHS=arm64
+          CODE_SIGNING_ALLOWED=NO
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: /language:${{ matrix.language }}
