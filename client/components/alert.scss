@@ -34,7 +34,7 @@
   }
 }
 
-@media (prefers-color-scheme: dark) {
+html.dark {
   .alert {
     @apply bg-night-normal-dark;
     @apply text-[#e0f0f4];

@@ -267,7 +267,10 @@ export const Menu = ({
             "w-full max-w-xs",
             hasTopBanner ? "h-[calc(100vh-80px)]" : "h-screen",
             "fixed top-0 z-30 -left-full",
-            "pt-safe-top pb-safe-bottom pl-safe-left"
+            "pt-safe-top pl-safe-left",
+            // Keep the bottom menu links above the mobile tab bar and the
+            // device safe area. Desktop menus retain their existing inset.
+            "pb-[calc(4rem+var(--safe-area-inset-bottom))] sm:pb-safe-bottom"
           )}
           style={{
             // align with the banner-adjusted page header

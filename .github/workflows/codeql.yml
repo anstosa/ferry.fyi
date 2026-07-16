@@ -7,7 +7,7 @@ on:
   pull_request:
     branches: [production]
   schedule:
-    - cron: '26 4 * * 1'
+    - cron: "26 4 * * 1"
 
 permissions:
   actions: read
@@ -18,7 +18,7 @@ jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 30
+    timeout-minutes: ${{ matrix.timeout_minutes }}
     strategy:
       fail-fast: false
       matrix:
@@ -26,18 +26,25 @@ jobs:
           - language: actions
             build-mode: none
             runner: ubuntu-latest
+            timeout_minutes: 30
           - language: javascript-typescript
             build-mode: none
             runner: ubuntu-latest
+            timeout_minutes: 30
           - language: python
             build-mode: none
             runner: ubuntu-latest
+            timeout_minutes: 30
           - language: java-kotlin
             build-mode: manual
             runner: ubuntu-latest
+            timeout_minutes: 30
           - language: swift
             build-mode: manual
             runner: macos-latest
+            # SwiftPM dependency resolution can exceed the default CodeQL job
+            # window on a cold macOS runner.
+            timeout_minutes: 60
 
     steps:
       - name: Check out repository
@@ -55,12 +62,19 @@ jobs:
         if: matrix.language == 'java-kotlin' || matrix.language == 'swift'
         run: yarn install --frozen-lockfile
 
+      - name: Resolve iOS Swift packages
+        if: matrix.language == 'swift'
+        run: >-
+          xcodebuild -resolvePackageDependencies
+          -project "ios/App/Ferry FYI.xcodeproj"
+          -scheme "Ferry FYI"
+
       - name: Use Java for Android analysis
         if: matrix.language == 'java-kotlin'
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: "21"
 
       - name: Set up Android SDK
         if: matrix.language == 'java-kotlin'
@@ -88,13 +102,15 @@ jobs:
       - name: Build iOS code
         if: matrix.language == 'swift'
         run: >-
-          xcodebuild build
+          xcodebuild
           -project "ios/App/Ferry FYI.xcodeproj"
-          -target "Ferry FYI"
+          -scheme "Ferry FYI"
           -sdk iphonesimulator
           -configuration Debug
-          ARCHS=arm64
+          -destination 'generic/platform=iOS Simulator'
+          ARCH=arm64
           CODE_SIGNING_ALLOWED=NO
+          build
 
       - name: Analyze
         uses: github/codeql-action/analyze@v4

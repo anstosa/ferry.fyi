@@ -17,6 +17,7 @@ const borderPlugin = ({ addUtilities }) => {
 };
 
 module.exports = {
+  darkMode: "class",
   corePlugins: {},
   important: false,
   plugins: [borderPlugin],

@@ -1,5 +1,6 @@
 import { useAuth0, withAuthenticationRequired } from "@auth0/auth0-react";
 import { Browser } from "@capacitor/browser";
+import clsx from "clsx";
 import { useAtomValue } from "jotai";
 import { DateTime } from "luxon";
 import React, { ReactElement, ReactNode } from "react";
@@ -26,6 +27,7 @@ import { SeoHelmet } from "~/components/SeoHelmet";
 import { Splash } from "~/components/Splash";
 import { useDevice } from "~/lib/device";
 import { getSlug, useTerminals } from "~/lib/terminals";
+import { type ThemePreference, useThemePreference } from "~/lib/theme";
 import { useUser } from "~/lib/user";
 import {
   getReservationAccountCount,
@@ -50,6 +52,28 @@ interface TicketSummaryCounts {
   reservationAccountCount: number;
   savedTicketCount: number;
 }
+
+const THEME_OPTIONS: Array<{
+  description: string;
+  label: string;
+  value: ThemePreference;
+}> = [
+  {
+    description: "Match your device",
+    label: "System",
+    value: "system",
+  },
+  {
+    description: "Always use light mode",
+    label: "Light",
+    value: "light",
+  },
+  {
+    description: "Always use dark mode",
+    label: "Dark",
+    value: "dark",
+  },
+];
 
 // day list key
 const getDayKey = (daysOfWeek: number[]): string => {
@@ -255,6 +279,7 @@ export const Account = withAuthenticationRequired(
     const [{ alertRules, isUserLoading, tickets, userError }, { refreshUser }] =
       useUser();
     const device = useDevice();
+    const [themePreference, setThemePreference] = useThemePreference();
     const { terminals } = useTerminals();
     const storedTickets = useAtomValue(ticketsAtom);
     const subscriptionSummaries = getAlertRuleSummaries(alertRules, terminals);
@@ -337,6 +362,41 @@ export const Account = withAuthenticationRequired(
               <DetailRow label="Logged in with" value={provider} />
               <DetailRow label="Updated" value={updatedAt} />
             </dl>
+          </section>
+
+          <section className="rounded bg-white p-6 shadow dark:bg-black">
+            <h3 className="text-xl font-bold">Appearance</h3>
+            <p className="mt-2 text-sm text-gray-dark dark:text-gray-medium">
+              Choose how Ferry FYI looks on this device.
+            </p>
+            <div
+              aria-label="Theme preference"
+              className="mt-4 grid gap-3 sm:grid-cols-3"
+              role="group"
+            >
+              {THEME_OPTIONS.map(({ description, label, value }) => {
+                const isSelected = themePreference === value;
+                return (
+                  <button
+                    aria-pressed={isSelected}
+                    className={clsx(
+                      "rounded-xl border px-3 py-3 text-left transition",
+                      isSelected
+                        ? "border-green-dark bg-green-dark text-white dark:border-green-light dark:bg-green-light dark:text-green-dark"
+                        : "border-gray-200 bg-gray-lightest text-gray-dark hover:border-blue-dark hover:bg-blue-dark/5 dark:border-gray-dark dark:bg-white/[0.04] dark:text-gray-light dark:hover:border-[#6fb8c8] dark:hover:bg-white/[0.08]"
+                    )}
+                    key={value}
+                    onClick={() => setThemePreference(value)}
+                    type="button"
+                  >
+                    <span className="block font-bold">{label}</span>
+                    <span className="mt-1 block text-xs font-medium opacity-80">
+                      {description}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </section>
 
           <section className="rounded bg-white p-6 shadow dark:bg-black">

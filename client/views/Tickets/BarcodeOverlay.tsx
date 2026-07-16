@@ -48,6 +48,8 @@ const PASS_DETAIL_CLASSES: Record<PassDetail["tone"], string> = {
   red: "bg-red-light text-red-dark",
   yellow: "bg-yellow-lightest text-yellow-darkest",
 };
+const LIGHT_SURFACE_SECONDARY_BUTTON =
+  "button-secondary bg-gray-lightest text-gray-dark hover:bg-white hover:text-gray-darkest dark:bg-gray-lightest dark:text-gray-dark dark:hover:bg-white dark:hover:text-gray-darkest";
 
 // multi-ride text terms
 const MULTI_RIDE_PATTERN =
@@ -669,7 +671,7 @@ export const BarcodeOverlay = ({
               <button
                 className={clsx("button", {
                   "button-danger": isDeleting === ticket.id,
-                  "button-secondary": isDeleting !== ticket.id,
+                  [LIGHT_SURFACE_SECONDARY_BUTTON]: isDeleting !== ticket.id,
                   "col-span-2": !canShare,
                 })}
                 onClick={deleteTicket}
@@ -725,7 +727,7 @@ export const BarcodeOverlay = ({
             </p>
             <div className="mt-5 grid grid-cols-2 gap-3">
               <button
-                className="button button-secondary"
+                className={clsx("button", LIGHT_SURFACE_SECONDARY_BUTTON)}
                 onClick={cancelConfirmation}
                 type="button"
               >

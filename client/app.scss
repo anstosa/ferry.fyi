@@ -80,7 +80,7 @@
   }
 }
 
-@media (prefers-color-scheme: dark) {
+html.dark {
   .date-button-picker {
     @apply bg-night-normal-dark;
     @apply text-[#e0f0f4];
@@ -241,7 +241,7 @@ html {
     );
   }
 
-  @media (prefers-color-scheme: dark) {
+  html.dark {
     .bg-full-day {
       background: repeating-linear-gradient(
         135deg,

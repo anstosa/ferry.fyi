@@ -10,9 +10,12 @@ import { isUndefined } from "shared/lib/identity";
 
 import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { initializeOtaUpdater } from "~/lib/ota";
+import { initializeTheme } from "~/lib/theme";
 import { UserProvider } from "~/lib/user";
 
 import { App } from "./App";
+
+initializeTheme();
 
 if (!process.env.AUTH0_DOMAIN) {
   throw Error("AUTH0_DOMAIN environment variable is not set");

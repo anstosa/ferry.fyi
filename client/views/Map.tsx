@@ -27,7 +27,7 @@ import { Toast } from "~/components/Toast";
 import { useGeo } from "~/lib/geo";
 import { knotsToMph } from "~/lib/speed";
 import { getSlug, useTerminals } from "~/lib/terminals";
-import { isDark } from "~/lib/theme";
+import { useResolvedTheme } from "~/lib/theme";
 import { refreshVessels } from "~/lib/vessels";
 import { useWindowSize } from "~/lib/window";
 import CaretDownIcon from "~/static/images/icons/solid/caret-down.svg";
@@ -447,6 +447,7 @@ export const Map = ({
   const [refreshError, setRefreshError] = useState(false);
   const [map, setMap] = useState<Mapbox | null>(null);
   const [isRouteOpen, setRouteOpen] = useState<boolean>(false);
+  const theme = useResolvedTheme();
   const [userLocation] = useGeo();
   const { terminals } = useTerminals();
   const activeRoute = getActiveRoute(terminal, mate);
@@ -733,9 +734,10 @@ export const Map = ({
         { lat: DEFAULT_TOP, lon: DEFAULT_LEFT },
         { lat: DEFAULT_BOTTOM, lon: DEFAULT_RIGHT }
       ),
-      style: isDark
-        ? "mapbox://styles/ferryfyi/ckvzb5jy11hmj14o4imlemf5h"
-        : "mapbox://styles/ferryfyi/ckvzbpoh21ggd14pdjorf1z5x",
+      style:
+        theme === "dark"
+          ? "mapbox://styles/ferryfyi/ckvzb5jy11hmj14o4imlemf5h"
+          : "mapbox://styles/ferryfyi/ckvzbpoh21ggd14pdjorf1z5x",
     });
     map.addControl(new NavigationControl({ showCompass: false }));
     // publish loaded map
@@ -750,7 +752,7 @@ export const Map = ({
       markersRef.current = [];
       map.remove();
     };
-  }, [mapRef]);
+  }, [theme]);
 
   return (
     <>

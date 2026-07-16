@@ -21,7 +21,7 @@
   @apply whitespace-nowrap;
   @apply px-5;
 
-  @media (prefers-color-scheme: dark) {
+  html.dark & {
     @apply border-[rgba(255,255,255,0.08)];
     @apply text-white;
   }
@@ -45,7 +45,7 @@
     @apply border-[rgba(0,0,0,0.12)];
     @apply shadow-lg;
 
-    @media (prefers-color-scheme: dark) {
+    html.dark & {
       @apply border-[rgba(255,255,255,0.14)];
     }
   }
@@ -64,7 +64,7 @@
       @apply shadow-none;
       @apply text-gray-darkest;
 
-      @media (prefers-color-scheme: dark) {
+      html.dark & {
         @apply text-white;
       }
     }
@@ -92,7 +92,7 @@
     @apply bg-gray-lightest;
     @apply text-gray-dark;
 
-    @media (prefers-color-scheme: dark) {
+    html.dark & {
       @apply bg-lighten-lower;
       @apply text-white;
     }
@@ -101,7 +101,7 @@
       @apply bg-white;
       @apply text-gray-darkest;
 
-      @media (prefers-color-scheme: dark) {
+      html.dark & {
         @apply bg-lighten-low;
         @apply text-white;
       }
