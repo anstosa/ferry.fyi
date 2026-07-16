@@ -109,8 +109,16 @@ jobs:
         run: |
           # fail on shell mistakes
           set -euo pipefail
-          # reserve a monotonic Play version-code range
-          VERSION_CODE="$((100000 + GITHUB_RUN_NUMBER))"
+          # Reusable workflows inherit the caller's run number, which can be
+          # lower than a previously published Android release. Use a UTC
+          # year/day/time code instead so every serialized release gets a
+          # newer Play-safe version code.
+          VERSION_CODE="$(date -u +%y%j%H%M)"
+          VERSION_CODE_NUMBER="$((10#${VERSION_CODE}))"
+          if (( VERSION_CODE_NUMBER <= 0 || VERSION_CODE_NUMBER > 2100000000 )); then
+            echo "Derived Android version code is outside Play's valid range: ${VERSION_CODE}" >&2
+            exit 1
+          fi
           # derive tag releases from their Android version
           if [[ "${GITHUB_REF_TYPE}" == 'tag' ]]; then
             VERSION_NAME="${GITHUB_REF_NAME#android-v}"
