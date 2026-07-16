@@ -216,6 +216,11 @@
     "@babel/traverse": "7.29.7",
     "**/@babel/helper-remap-async-to-generator": "7.29.7",
     "**/@babel/plugin-transform-async-to-generator": "7.29.7",
-    "**/@babel/traverse": "7.29.7"
+    "**/@babel/traverse": "7.29.7",
+    "@types/draft-js/immutable": "3.8.3",
+    "**/gaxios/uuid": "11.1.1",
+    "draft-js/immutable": "3.8.3",
+    "sequelize/uuid": "11.1.1",
+    "**/teeny-request/uuid": "11.1.1"
   }
 }
