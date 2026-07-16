@@ -43,16 +43,16 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v6
 
-      - name: Use Node.js for iOS dependencies
-        if: matrix.language == 'swift'
+      - name: Use Node.js for native dependencies
+        if: matrix.language == 'java-kotlin' || matrix.language == 'swift'
         uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
           cache: yarn
           cache-dependency-path: yarn.lock
 
-      - name: Install iOS dependencies
-        if: matrix.language == 'swift'
+      - name: Install native dependencies
+        if: matrix.language == 'java-kotlin' || matrix.language == 'swift'
         run: yarn install --frozen-lockfile
 
       - name: Use Java for Android analysis
@@ -78,8 +78,12 @@ jobs:
 
       - name: Build Android code
         if: matrix.language == 'java-kotlin'
-        run: ./gradlew --no-daemon :app:assembleDebug
-        working-directory: android
+        run: |
+          yarn build:android:ci
+          (
+            cd android
+            ./gradlew --no-daemon :app:assembleDebug
+          )
 
       - name: Build iOS code
         if: matrix.language == 'swift'
