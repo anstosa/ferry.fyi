@@ -62,6 +62,12 @@ jobs:
         if: matrix.language == 'java-kotlin' || matrix.language == 'swift'
         run: yarn install --frozen-lockfile
 
+      # Capacitor excludes generated web assets from git. Recreate them before
+      # xcodebuild so the iOS target's public resource can be copied.
+      - name: Prepare iOS app assets
+        if: matrix.language == 'swift'
+        run: yarn build:ios
+
       - name: Resolve iOS Swift packages
         if: matrix.language == 'swift'
         run: >-
@@ -109,7 +115,7 @@ jobs:
           -sdk iphonesimulator
           -configuration Debug
           -destination 'generic/platform=iOS Simulator'
-          ARCH=arm64
+          ARCHS=arm64
           CODE_SIGNING_ALLOWED=NO
           build
 
