@@ -96,7 +96,7 @@ The generated CloudFront hostname uses AWS's default certificate, which AWS fixe
 
 Every successful `production` deployment automatically builds and publishes a `production` OTA bundle after the web, detector, and scheduler services are stable. The publisher is idempotent for the same source revision: it verifies and reuses the existing immutable ZIP on a deployment retry.
 
-Use **Actions → Publish OTA bundle** only for a `staging` release. It remains a manual gate for device testing. Do not manually publish `production` unless recovering a failed automated publication; the workflow builds the current `production` branch, not the previously published staging ZIP.
+OTA publication is deployment-owned; do not publish a bundle separately.
 
 1. Build the Android-targeted web assets and inspect `dist/client`:
 

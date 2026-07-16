@@ -1,6 +1,6 @@
 # Android internal release automation
 
-The `Publish Android internal testing` workflow builds a signed Android App Bundle
+The Android job in the `Publish apps` workflow builds a signed Android App Bundle
 and uploads it only to the Google Play **Internal testing** track. It never
 publishes to production.
 
@@ -29,8 +29,8 @@ Use either of these triggers:
 
 - Push a tag such as `android-v2.9`; the tag suffix becomes the Android version
   name.
-- Run **Publish Android internal testing** from the Actions tab and enter a
-  version name.
+- Run **Publish apps** from the Actions tab, choose **android** (or **both**),
+  and enter a version name.
 
 The workflow assigns `versionCode` as `100000 + GitHub run number`, making every
 release monotonically newer than the app's current version code. It retains the

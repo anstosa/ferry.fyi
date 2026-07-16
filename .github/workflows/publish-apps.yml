@@ -1,0 +1,50 @@
+name: Publish apps
+
+on:
+  push:
+    tags:
+      - 'android-v*'
+      - 'ios-v*'
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: App platform to publish
+        required: true
+        default: both
+        type: choice
+        options:
+          - both
+          - android
+          - ios
+      version_name:
+        description: Release version name, such as 2.9
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  publish-android:
+    if: >-
+      ${{
+        (github.event_name == 'workflow_dispatch' &&
+          (inputs.platform == 'android' || inputs.platform == 'both')) ||
+        (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/android-v'))
+      }}
+    uses: ./.github/workflows/publish-android.yml
+    with:
+      version_name: ${{ inputs.version_name }}
+    secrets: inherit
+
+  publish-ios:
+    if: >-
+      ${{
+        (github.event_name == 'workflow_dispatch' &&
+          (inputs.platform == 'ios' || inputs.platform == 'both')) ||
+        (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/ios-v'))
+      }}
+    uses: ./.github/workflows/publish-ios.yml
+    with:
+      version_name: ${{ inputs.version_name }}
+    secrets: inherit

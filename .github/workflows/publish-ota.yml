@@ -7,15 +7,6 @@ on:
         description: OTA channel to update
         required: true
         type: string
-  workflow_dispatch:
-    inputs:
-      channel:
-        description: OTA channel to update
-        required: true
-        type: choice
-        options:
-          - staging
-          - production
 
 permissions:
   contents: read

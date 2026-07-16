@@ -1,10 +1,7 @@
-name: Publish iOS TestFlight
+name: iOS TestFlight release
 
 on:
-  push:
-    tags:
-      - 'ios-v*'
-  workflow_dispatch:
+  workflow_call:
     inputs:
       version_name:
         description: iOS version name, such as 1.0

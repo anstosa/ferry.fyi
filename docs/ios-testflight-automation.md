@@ -1,6 +1,6 @@
 # iOS TestFlight release automation
 
-The `Publish iOS TestFlight` workflow builds a signed IPA and uploads it to
+The iOS job in the `Publish apps` workflow builds a signed IPA and uploads it to
 App Store Connect for TestFlight. It never submits an App Store release for
 review or publishes directly to customers.
 
@@ -33,7 +33,7 @@ Developer team and profile the `fyi.ferry` App ID. Never store the `.p8`,
 Use either trigger:
 
 - Push a tag such as `ios-v1.0`; the tag suffix becomes the iOS version.
-- Run **Publish iOS TestFlight** from the Actions tab and enter a version name.
+- Run **Publish apps** from the Actions tab, choose **ios** (or **both**), and enter a version name.
 
 The workflow uses `100000 + GitHub run number` as its build number, so each
 TestFlight upload is monotonically newer. It retains the signed IPA as a
