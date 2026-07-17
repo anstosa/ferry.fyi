@@ -24,3 +24,7 @@ query-filters:
       id: java/weak-cryptographic-algorithm
   - exclude:
       id: java/xss
+  # Ticket labels are rendered as React text, never as HTML. This query flags
+  # the display-only normalization helper despite there being no HTML sink.
+  - exclude:
+      id: js/incomplete-multi-character-sanitization

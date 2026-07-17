@@ -6,7 +6,7 @@ import webbrowser
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlunparse
 from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parent
@@ -77,9 +77,17 @@ class Handler(SimpleHTTPRequestHandler):
         ):
             self.send_json(400, {"error": "Expected an HTTPS WSDOT camera imageUrl"})
             return
+        trusted_image_url = urlunparse((
+            "https",
+            CAMERA_IMAGE_HOST,
+            parsed_image_url.path,
+            parsed_image_url.params,
+            parsed_image_url.query,
+            "",
+        ))
         try:
             # fetch image bytes in memory
-            with urlopen(Request(image_url, headers={"User-Agent": "FerryFYI-PolygonAnnotator/1.0"}), timeout=20) as image_response:
+            with urlopen(Request(trusted_image_url, headers={"User-Agent": "FerryFYI-PolygonAnnotator/1.0"}), timeout=20) as image_response:
                 image_bytes = image_response.read()
                 content_type = image_response.headers.get_content_type()
             # forward image bytes to detector

@@ -1,4 +1,5 @@
 import logger from "heroku-logger";
+import { convert } from "html-to-text";
 import { DateTime, Interval } from "luxon";
 import { Op } from "sequelize";
 
@@ -95,14 +96,7 @@ const getBreakKind = (
 };
 
 // compact html text
-const stripHtml = (html: string): string =>
-  html
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/giu, " ")
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/giu, " ")
-    .replace(/&nbsp;|&#160;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ");
+const stripHtml = (html: string): string => convert(html, { wordwrap: false });
 
 // parse OSPI break ranges
 export const parseOspiSchoolBreakRanges = (

@@ -50,15 +50,22 @@ const fetchWithTimeout = async (url: string): Promise<Response> => {
 };
 
 export const wsfRequest = async <T>(path: string): Promise<T | undefined> => {
-  const url = `${path}${path.includes("cacheflushdate") ? "" : API_ACCESS}`;
-  const requestUrl = new URL(url);
+  const requestedUrl = new URL(
+    `${path}${path.includes("cacheflushdate") ? "" : API_ACCESS}`
+  );
   if (
-    requestUrl.protocol !== "https:" ||
-    requestUrl.hostname !== WSF_API_HOST
+    requestedUrl.protocol !== "https:" ||
+    requestedUrl.hostname !== WSF_API_HOST
   ) {
-    throw new Error(`Refused request to non-WSF URL: ${getLoggedUrl(url)}`);
+    throw new Error(
+      `Refused request to non-WSF URL: ${getLoggedUrl(requestedUrl.toString())}`
+    );
   }
-  const loggedUrl = getLoggedUrl(url);
+  const requestUrl = new URL(
+    `${requestedUrl.pathname}${requestedUrl.search}`,
+    `https://${WSF_API_HOST}`
+  );
+  const loggedUrl = getLoggedUrl(requestUrl.toString());
   // logger.debug(`WSF request <${loggedUrl}>`);
   try {
     const response = await fetchWithTimeout(requestUrl.toString());

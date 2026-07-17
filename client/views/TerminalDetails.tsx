@@ -60,12 +60,9 @@ const hasVisibleHtml = (html?: string): boolean => {
 };
 
 const getPlainText = (html?: string): string =>
-  (html ?? "")
-    .replace(/<(?:br|\/p|\/li)\b[^>]*>/giu, "\n")
-    .replace(/<[^>]*>/gu, "")
-    .replace(/&nbsp;/giu, " ")
-    .replace(/\n{3,}/gu, "\n\n")
-    .trim();
+  new DOMParser()
+    .parseFromString(html ?? "", "text/html")
+    .body.textContent?.trim() ?? "";
 
 // address lines
 const getAddressLines = (terminal: Terminal): string[] => {
