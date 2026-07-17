@@ -81,6 +81,16 @@ jobs:
               exit 1
             fi
           done
+          # verify encoded signing assets before mutating the keychain
+          for encoded_secret in \
+            APP_STORE_CONNECT_API_KEY_BASE64 \
+            IOS_DISTRIBUTION_CERTIFICATE_BASE64 \
+            IOS_PROVISIONING_PROFILE_BASE64; do
+            if ! printf '%s' "${!encoded_secret}" | base64 -D >/dev/null 2>&1; then
+              echo "GitHub Actions secret must be valid Base64: ${encoded_secret}" >&2
+              exit 1
+            fi
+          done
 
       - name: Derive iOS version
         id: version

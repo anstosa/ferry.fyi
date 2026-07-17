@@ -4,6 +4,7 @@ import clsx from "clsx";
 import React, { ReactElement } from "react";
 import { useLocation } from "react-router-dom";
 
+import { getConfiguredAuth0RedirectUri } from "~/lib/auth";
 import { useDevice } from "~/lib/device";
 
 export const LoginPrompt = (): ReactElement | null => {
@@ -18,7 +19,7 @@ export const LoginPrompt = (): ReactElement | null => {
       await loginWithRedirect({
         appState: { redirectPath: location.pathname },
         authorizationParams: {
-          redirect_uri: process.env.AUTH0_CLIENT_REDIRECT,
+          redirect_uri: getConfiguredAuth0RedirectUri(),
         },
         openUrl: async (url) => {
           await Browser.open({ url });
@@ -28,7 +29,7 @@ export const LoginPrompt = (): ReactElement | null => {
       loginWithRedirect({
         appState: { redirectPath: location.pathname },
         authorizationParams: {
-          redirect_uri: process.env.AUTH0_CLIENT_REDIRECT,
+          redirect_uri: getConfiguredAuth0RedirectUri(),
         },
       });
     }

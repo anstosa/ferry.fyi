@@ -25,6 +25,7 @@ import { Page } from "~/components/Page";
 import { PageLoadError } from "~/components/PageLoadError";
 import { SeoHelmet } from "~/components/SeoHelmet";
 import { Splash } from "~/components/Splash";
+import { getConfiguredAuth0RedirectUri } from "~/lib/auth";
 import { useDevice } from "~/lib/device";
 import { getSlug, useTerminals } from "~/lib/terminals";
 import { type ThemePreference, useThemePreference } from "~/lib/theme";
@@ -307,14 +308,14 @@ export const Account = withAuthenticationRequired(
       // native browser logout
       if (device?.isNativeMobile) {
         await logout({
-          logoutParams: { returnTo: process.env.AUTH0_CLIENT_REDIRECT },
+          logoutParams: { returnTo: getConfiguredAuth0RedirectUri() },
           openUrl: async (url) => {
             await Browser.open({ url });
           },
         });
       } else {
         await logout({
-          logoutParams: { returnTo: process.env.AUTH0_CLIENT_REDIRECT },
+          logoutParams: { returnTo: getConfiguredAuth0RedirectUri() },
         });
       }
     };

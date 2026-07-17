@@ -9,6 +9,7 @@ import { BrowserRouter } from "react-router-dom";
 import { isUndefined } from "shared/lib/identity";
 
 import { ErrorBoundary } from "~/components/ErrorBoundary";
+import { getConfiguredAuth0RedirectUri } from "~/lib/auth";
 import { initializeTheme } from "~/lib/theme";
 import { UserProvider } from "~/lib/user";
 
@@ -127,7 +128,7 @@ whenReady(() => {
               clientId={process.env.AUTH0_CLIENT_ID as string}
               authorizationParams={{
                 audience: process.env.AUTH0_CLIENT_AUDIENCE as string,
-                redirect_uri: process.env.AUTH0_CLIENT_REDIRECT as string,
+                redirect_uri: getConfiguredAuth0RedirectUri(),
                 scope: "openid profile email read:current_user offline_access",
               }}
               cacheLocation="localstorage"

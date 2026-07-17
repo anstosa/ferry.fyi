@@ -11,6 +11,7 @@ import {
   getBrowserInstallPlatform,
   requestInstallPrompt,
 } from "~/lib/appInstall";
+import { getConfiguredAuth0RedirectUri } from "~/lib/auth";
 import { isInstalledApp, useDevice } from "~/lib/device";
 import { colors } from "~/lib/theme";
 import logo from "~/static/images/icon_monochrome.png";
@@ -98,7 +99,7 @@ export const Menu = ({
       await loginWithRedirect({
         appState: { redirectPath: location.pathname },
         authorizationParams: {
-          redirect_uri: process.env.AUTH0_CLIENT_REDIRECT,
+          redirect_uri: getConfiguredAuth0RedirectUri(),
         },
         openUrl: async (url) => {
           await Browser.open({ url });
@@ -108,7 +109,7 @@ export const Menu = ({
       loginWithRedirect({
         appState: { redirectPath: location.pathname },
         authorizationParams: {
-          redirect_uri: process.env.AUTH0_CLIENT_REDIRECT,
+          redirect_uri: getConfiguredAuth0RedirectUri(),
         },
       });
     }

@@ -43,6 +43,10 @@ Run the full containerized development stack with `yarn dev:up`.
 
 ## Running locally
 
+`yarn` installs the repository pre-commit hook automatically. It type-checks
+app changes, synchronizes Capacitor artifacts after native dependency or
+configuration changes, and compiles Android resources for native edits.
+
 1. Run `yarn client`
 2. Run `yarn server` (in another terminal)
 3. Go to http://localhost:4040
@@ -67,26 +71,11 @@ WSA
 
 ## Android Release
 
-1. Run frontend build `yarn build:android`
-2. Update `versionCode` and `versionName` in `android/app/build.gradle`
-3. Launch Android Studio `studio`
-4. Install all the updates
-5. Click **Sync Project with Gradle Files**
-6. **Build > Rebuild Project**
-7. **Build > Generate Signed Bundle(s) / APK(s)**
-8. Select **Signed App Bundle**
-9. Enter key store passwords
-10. Select **Release**
-11. Open Google Play Console
-12. Upload to **Internal testing > Create new release**
-13. Enter Release Notes
-14. **Save**
-15. **Review Release**
-16. **Start rollout to Internal testing**
-17. TEST IT
-18. **Internal testing > {new version} > Promote > Production**
-19. **Review Release**
-20. **Start rollout to Production**
+Use the **Publish apps** GitHub Action with platform `android` and the release
+version, or push an `android-v*` tag. It starts from a clean checkout, installs
+dependencies, builds the production web bundle, runs `cap sync android`, signs
+the App Bundle, and uploads it to Play internal testing. No local build, sync,
+or version-code command is required before committing.
 
 ## iOS development and release
 
@@ -96,7 +85,7 @@ The iOS target is generated from the same Capacitor app as Android and requires 
 2. Set `AUTH0_CLIENT_REDIRECT` to `fyi.ferry://callback` for the native build and add that URL to the Auth0 application's allowed callback and logout URLs.
 3. Run `yarn open:ios`, select the **App** target in Xcode, and choose the Apple Developer signing team. Keep the bundle identifier as `fyi.ferry` unless the registered App ID requires a different one.
 4. Run `yarn ios` to build, sync, and launch on a selected simulator or connected iPhone. The iPhone must grant camera and location access for ticket scanning and nearby-terminal features.
-5. For a release, increment **Version** and **Build** in the App target's **General** settings, then use **Product > Archive** and upload the validated archive through Xcode's Organizer or Transporter.
+5. For a release, use **Publish apps** with platform `ios` and the release version, or push an `ios-v*` tag. The workflow builds, synchronizes, signs, and uploads the TestFlight archive from a clean checkout.
 
 `yarn build:ios` builds the production web bundle with an iOS-specific cache name and synchronizes it into the Xcode project. Run it again after changing web code or Capacitor plugins. The generated project targets iOS 15 and later.
 

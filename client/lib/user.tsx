@@ -19,6 +19,7 @@ import {
 } from "shared/contracts/user";
 
 import { get, post } from "~/lib/api";
+import { getConfiguredAuth0RedirectUri } from "~/lib/auth";
 import { useDevice } from "~/lib/device";
 
 const USER_AUTH_SCOPE = "openid profile email read:current_user offline_access";
@@ -182,7 +183,7 @@ const _useUser = (): Response => {
       authorizationParams: {
         audience: process.env.AUTH0_CLIENT_AUDIENCE as string,
         prompt: "consent" as const,
-        redirect_uri: process.env.AUTH0_CLIENT_REDIRECT as string,
+        redirect_uri: getConfiguredAuth0RedirectUri(),
         scope: USER_AUTH_SCOPE,
       },
     };

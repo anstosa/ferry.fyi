@@ -34,6 +34,7 @@ import { pluralize } from "shared/lib/strings";
 
 import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { ExternalPillLink } from "~/components/ExternalPillLink";
+import { getConfiguredAuth0RedirectUri } from "~/lib/auth";
 import { isDuringDaylight } from "~/lib/daylight";
 import { useDevice } from "~/lib/device";
 import { vesselAssets } from "~/lib/generated/vesselAssets";
@@ -415,7 +416,7 @@ export const SlotInfo = (props: Props): ReactElement => {
         redirectPath: `${locationRoute.pathname}${locationRoute.search}`,
       },
       authorizationParams: {
-        redirect_uri: process.env.AUTH0_CLIENT_REDIRECT,
+        redirect_uri: getConfiguredAuth0RedirectUri(),
       },
     };
     try {

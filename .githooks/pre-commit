@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+staged_files="$(git diff --cached --name-only --diff-filter=ACMR)"
+
+has_staged_file() {
+  grep -qE "$1" <<<"${staged_files}"
+}
+
+if has_staged_file '^(client/|shared/|capacitor\.config\.ts$)'; then
+  echo 'Running client type-check for app changes'
+  yarn type-check:client
+fi
+
+if has_staged_file '^(capacitor\.config\.ts|android/app/capacitor\.build\.gradle|android/capacitor\.settings\.gradle|android/app/src/main/assets/capacitor\.(config|plugins)\.json)$' ||
+  git diff --cached -U0 -- package.json yarn.lock | grep -qE '^[+-].*(@capacitor/|@capgo/capacitor-updater)'; then
+  echo 'Synchronizing Android Capacitor artifacts'
+  yarn build:android:ci
+
+  generated_changes="$(git diff --name-only -- \
+    android/app/capacitor.build.gradle \
+    android/capacitor.settings.gradle \
+    android/app/src/main/assets/capacitor.config.json \
+    android/app/src/main/assets/capacitor.plugins.json)"
+  if [[ -n "${generated_changes}" ]]; then
+    echo 'Capacitor generated tracked files. Stage these updates and commit again:' >&2
+    echo "${generated_changes}" >&2
+    exit 1
+  fi
+fi
+
+if has_staged_file '^android/' || has_staged_file '^capacitor\.config\.ts$'; then
+  echo 'Compiling Android resources'
+  (
+    cd android
+    ./gradlew --no-daemon :app:processDebugResources --console=plain
+  )
+fi

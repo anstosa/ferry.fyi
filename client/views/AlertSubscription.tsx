@@ -36,6 +36,7 @@ import { AppTeaser } from "~/components/AppTeaser";
 import { HeaderDropdown } from "~/components/HeaderDropdown";
 import { LoadingWaves } from "~/components/LoadingWaves";
 import { Splash } from "~/components/Splash";
+import { getConfiguredAuth0RedirectUri } from "~/lib/auth";
 import { useDevice } from "~/lib/device";
 import { getSchedule } from "~/lib/schedule";
 import { getSlug, useTerminals } from "~/lib/terminals";
@@ -904,7 +905,7 @@ export const AlertSubscription = ({
       const loginOptions = {
         appState: { redirectPath },
         authorizationParams: {
-          redirect_uri: process.env.AUTH0_CLIENT_REDIRECT,
+          redirect_uri: getConfiguredAuth0RedirectUri(),
         },
       };
       try {
