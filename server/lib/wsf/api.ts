@@ -31,24 +31,6 @@ export const setWsfWarming = (isWarming: boolean): void => {
   wsfStatus.warming = isWarming;
 };
 
-// fetch with timeout
-const fetchWithTimeout = async (url: URL): Promise<Response> => {
-  const controller = new AbortController();
-  // timeout guard
-  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-  try {
-    return await fetch(url, {
-      method: "GET",
-      headers: {
-        Accept: "application/json",
-      },
-      signal: controller.signal,
-    });
-  } finally {
-    clearTimeout(timeout);
-  }
-};
-
 export const wsfRequest = async <T>(path: string): Promise<T | undefined> => {
   const requestedUrl = new URL(
     `${path}${path.includes("cacheflushdate") ? "" : API_ACCESS}`
@@ -67,8 +49,16 @@ export const wsfRequest = async <T>(path: string): Promise<T | undefined> => {
   );
   const loggedUrl = getLoggedUrl(requestUrl.toString());
   // logger.debug(`WSF request <${loggedUrl}>`);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
-    const response = await fetchWithTimeout(requestUrl);
+    const response = await fetch(requestUrl, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+      },
+      signal: controller.signal,
+    });
     // successful response guard
     if (response.ok) {
       wsfStatus.offline = false;
@@ -90,5 +80,7 @@ export const wsfRequest = async <T>(path: string): Promise<T | undefined> => {
       return;
     }
     logger.error(`WSF request error <${loggedUrl}>: ${error.message}`, error);
+  } finally {
+    clearTimeout(timeout);
   }
 };
