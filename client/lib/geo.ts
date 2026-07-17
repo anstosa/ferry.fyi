@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { isUndefined } from "shared/lib/identity";
 
 import { useLocalStorage } from "./browser";
+import { requestPermissionIfNeeded } from "./permissions";
 
 export interface Point {
   latitude: number;
@@ -31,16 +32,13 @@ export const getDistance = (a: Point, b: Point): number => {
 
 export const getCurrentLocation = async (): Promise<Point | null> => {
   if (Capacitor.isNativePlatform()) {
-    // Complete Android's permission callback before starting a location read.
-    const permissions = await Geolocation.checkPermissions();
-    const locationPermission =
-      permissions.coarseLocation === "granted"
-        ? permissions.coarseLocation
-        : (await Geolocation.requestPermissions({
-            permissions: ["coarseLocation"],
-          })).coarseLocation;
-
-    if (locationPermission !== "granted") {
+    // Complete the native permission callback before starting a location read.
+    const isGranted = await requestPermissionIfNeeded(
+      "coarseLocation",
+      () => Geolocation.checkPermissions(),
+      () => Geolocation.requestPermissions({ permissions: ["coarseLocation"] })
+    );
+    if (!isGranted) {
       return null;
     }
   }

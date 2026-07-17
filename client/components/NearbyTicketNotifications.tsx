@@ -7,6 +7,7 @@ import { isNativeMobileApp } from "~/lib/device";
 import { useFavoriteRoutes } from "~/lib/favoriteRoutes";
 import { useGeo } from "~/lib/geo";
 import { getNearbyTicketGroups } from "~/lib/nearbyTickets";
+import { requestPermissionIfNeeded } from "~/lib/permissions";
 import { useTerminals } from "~/lib/terminals";
 import { normalizeTicketList, ticketsAtom } from "~/views/Tickets/storage";
 
@@ -71,11 +72,12 @@ export const NearbyTicketNotifications: FunctionComponent = () => {
         ? `/tickets?nearbyTerminal=${closestTerminal.id}&openTicket=${eligibleTickets[0].id}`
         : `/tickets?nearbyTerminal=${closestTerminal.id}`;
     const send = async (): Promise<void> => {
-      let permissions = await LocalNotifications.checkPermissions();
-      if (permissions.display === "prompt") {
-        permissions = await LocalNotifications.requestPermissions();
-      }
-      if (permissions.display !== "granted") {
+      const isGranted = await requestPermissionIfNeeded(
+        "display",
+        () => LocalNotifications.checkPermissions(),
+        () => LocalNotifications.requestPermissions()
+      );
+      if (!isGranted) {
         return;
       }
       await LocalNotifications.schedule({
