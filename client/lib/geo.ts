@@ -1,3 +1,4 @@
+import { Capacitor } from "@capacitor/core";
 import { Geolocation } from "@capacitor/geolocation";
 import { useEffect, useState } from "react";
 import { isUndefined } from "shared/lib/identity";
@@ -28,6 +29,28 @@ export const getDistance = (a: Point, b: Point): number => {
   return c * EARTH_RADIUS;
 };
 
+export const getCurrentLocation = async (): Promise<Point | null> => {
+  if (Capacitor.isNativePlatform()) {
+    // Complete Android's permission callback before starting a location read.
+    const permissions = await Geolocation.checkPermissions();
+    const locationPermission =
+      permissions.coarseLocation === "granted"
+        ? permissions.coarseLocation
+        : (await Geolocation.requestPermissions({
+            permissions: ["coarseLocation"],
+          })).coarseLocation;
+
+    if (locationPermission !== "granted") {
+      return null;
+    }
+  }
+
+  const {
+    coords: { latitude, longitude },
+  } = await Geolocation.getCurrentPosition();
+  return { latitude, longitude };
+};
+
 // Hook to get user's current geolocation
 export const useGeo = (): [Point | null, (noLocation?: boolean) => void] => {
   const [location, setLocation] = useState<Point | null>(null);
@@ -39,10 +62,10 @@ export const useGeo = (): [Point | null, (noLocation?: boolean) => void] => {
   const updateLocation = async (noLocation = savedNoLocation) => {
     if ((isUndefined(noLocation) ? savedNoLocation : noLocation) === false) {
       try {
-        const {
-          coords: { latitude, longitude },
-        } = await Geolocation.getCurrentPosition();
-        setLocation({ latitude, longitude });
+        const location = await getCurrentLocation();
+        if (location) {
+          setLocation(location);
+        }
       } catch {}
     }
   };
