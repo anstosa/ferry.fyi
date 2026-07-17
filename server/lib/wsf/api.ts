@@ -12,6 +12,9 @@ const REQUEST_TIMEOUT_MS = Number(
 const WSF_API_HOST = "www.wsdot.wa.gov";
 const WSF_API_ORIGIN = `https://${WSF_API_HOST}`;
 
+const encodePathSegment = (segment: string): string =>
+  encodeURIComponent(decodeURIComponent(segment));
+
 const wsfStatus: WSFStatus = {
   coreReady: false,
   offline: false,
@@ -35,20 +38,26 @@ export const setWsfWarming = (isWarming: boolean): void => {
 };
 
 export const wsfRequest = async <T>(path: string): Promise<T | undefined> => {
-  const requestedUrl = new URL(
-    `${path}${path.includes("cacheflushdate") ? "" : API_ACCESS}`
-  );
+  const requestedUrl = new URL(path);
   if (
     requestedUrl.protocol !== "https:" ||
-    requestedUrl.hostname !== WSF_API_HOST
+    requestedUrl.hostname !== WSF_API_HOST ||
+    requestedUrl.search ||
+    requestedUrl.hash
   ) {
     throw new Error(
-      `Refused request to non-WSF URL: ${getLoggedUrl(requestedUrl.toString())}`
+      `Refused invalid WSF URL: ${getLoggedUrl(requestedUrl.toString())}`
     );
   }
-  // The fixed origin cannot be changed by the caller: URL.pathname always
-  // starts with a slash, so it cannot introduce a new authority component.
-  const requestUrl = `${WSF_API_ORIGIN}${requestedUrl.pathname}${requestedUrl.search}`;
+  const requestPath = requestedUrl.pathname
+    .split("/")
+    .map(encodePathSegment)
+    .join("/");
+  // The fixed origin cannot be changed by the caller, and each dynamic path
+  // segment is encoded before it is used in the request target.
+  const requestUrl = `${WSF_API_ORIGIN}${requestPath}${
+    requestPath.endsWith("/cacheflushdate") ? "" : API_ACCESS
+  }`;
   const loggedUrl = getLoggedUrl(requestUrl);
   // logger.debug(`WSF request <${loggedUrl}>`);
   const controller = new AbortController();
