@@ -81,17 +81,9 @@ jobs:
               exit 1
             fi
           done
-          # Verify the App Store Connect key whether it was stored as Base64
-          # (the documented format) or as the raw PEM contents. GitHub Secrets
-          # preserves the newlines in a raw .p8 key, and both forms are safe to
-          # restore into the runner's ephemeral credential directory.
-          if ! printf '%s' "${APP_STORE_CONNECT_API_KEY_BASE64}" | base64 -D 2>/dev/null | openssl pkey -noout >/dev/null 2>&1 \
-            && ! printf '%s' "${APP_STORE_CONNECT_API_KEY_BASE64}" | openssl pkey -noout >/dev/null 2>&1; then
-            echo 'APP_STORE_CONNECT_API_KEY_BASE64 must contain a Base64-encoded or raw PEM App Store Connect .p8 key' >&2
-            exit 1
-          fi
           # verify encoded signing assets before mutating the keychain
           for encoded_secret in \
+            APP_STORE_CONNECT_API_KEY_BASE64 \
             IOS_DISTRIBUTION_CERTIFICATE_BASE64 \
             IOS_PROVISIONING_PROFILE_BASE64; do
             if ! printf '%s' "${!encoded_secret}" | base64 -D >/dev/null 2>&1; then
@@ -149,12 +141,7 @@ jobs:
           printf '%s' "${IOS_DISTRIBUTION_CERTIFICATE_BASE64}" | base64 -D > "${CERTIFICATE_PATH}"
           printf '%s' "${IOS_PROVISIONING_PROFILE_BASE64}" | base64 -D > "${PROFILE_PATH}"
           mkdir -p "${API_KEY_DIRECTORY}"
-          # Prefer the documented Base64 format, but retain a raw PEM key when
-          # it was entered directly in GitHub Actions secrets.
-          if ! printf '%s' "${APP_STORE_CONNECT_API_KEY_BASE64}" | base64 -D > "${API_KEY_PATH}" 2>/dev/null \
-            || ! openssl pkey -in "${API_KEY_PATH}" -noout >/dev/null 2>&1; then
-            printf '%s' "${APP_STORE_CONNECT_API_KEY_BASE64}" > "${API_KEY_PATH}"
-          fi
+          printf '%s' "${APP_STORE_CONNECT_API_KEY_BASE64}" | base64 -D > "${API_KEY_PATH}"
           # create an ephemeral signing keychain
           KEYCHAIN_PASSWORD="$(uuidgen)"
           security create-keychain -p "${KEYCHAIN_PASSWORD}" "${KEYCHAIN_PATH}"
