@@ -1,0 +1,6 @@
+name: Ferry FYI Java CodeQL
+
+# Capacitor and its plugins are third-party code. Java no-build mode lets
+# CodeQL analyze only the Java owned by this app instead of those dependencies.
+paths:
+  - android/app/src/main/java
