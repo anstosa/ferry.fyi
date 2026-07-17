@@ -32,7 +32,7 @@ export const setWsfWarming = (isWarming: boolean): void => {
 };
 
 // fetch with timeout
-const fetchWithTimeout = async (url: string): Promise<Response> => {
+const fetchWithTimeout = async (url: URL): Promise<Response> => {
   const controller = new AbortController();
   // timeout guard
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -68,7 +68,7 @@ export const wsfRequest = async <T>(path: string): Promise<T | undefined> => {
   const loggedUrl = getLoggedUrl(requestUrl.toString());
   // logger.debug(`WSF request <${loggedUrl}>`);
   try {
-    const response = await fetchWithTimeout(requestUrl.toString());
+    const response = await fetchWithTimeout(requestUrl);
     // successful response guard
     if (response.ok) {
       wsfStatus.offline = false;
