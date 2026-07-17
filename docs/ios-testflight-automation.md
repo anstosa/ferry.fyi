@@ -11,8 +11,9 @@ review or publishes directly to customers.
 3. Create an Apple Distribution certificate and an App Store provisioning
    profile for `fyi.ferry`.
 4. Add these repository Actions secrets:
-   - `APP_STORE_CONNECT_API_KEY_BASE64`: the `.p8` API key encoded as one line:
-     `base64 < AuthKey_<KEY_ID>.p8 | tr -d '\n'`
+   - `APP_STORE_CONNECT_API_KEY_BASE64`: preferably, the `.p8` API key encoded
+     as one line: `base64 < AuthKey_<KEY_ID>.p8 | tr -d '\n'`. The workflow also
+     accepts the raw PEM contents of the `.p8` key, including its newlines.
    - `APP_STORE_CONNECT_API_KEY_ID`: the API key ID.
    - `APP_STORE_CONNECT_ISSUER_ID`: the API issuer ID.
    - `IOS_DEVELOPMENT_TEAM_ID`: the Apple Developer team ID.
