@@ -192,7 +192,7 @@
     "lint:js:shared": "cd shared && eslint --ext .ts,.tsx .",
     "lint:js:shared:fix": "yarn lint:js:shared --fix",
     "open:ios": "yarn build:ios && yarn cap open ios",
-    "postinstall": "rm -rf node_modules/.vite .cache && scripts/install-git-hooks.sh",
+    "postinstall": "rm -rf node_modules/.vite .cache && if [ -x scripts/install-git-hooks.sh ]; then scripts/install-git-hooks.sh; fi",
     "reinstall": "rm -rf node_modules client/node_modules server/node_modules shared/node_modules && yarn",
     "school-breaks:update-events": "cd server && node ../scripts/register-esbuild.js scripts/updateSchoolBreakEvents.ts",
     "sports:update-events": "cd server && node ../scripts/register-esbuild.js scripts/updateMajorSportsEvents.ts",
