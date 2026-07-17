@@ -1,10 +1,8 @@
-import { Capacitor } from "@capacitor/core";
 import { Geolocation } from "@capacitor/geolocation";
 import { useEffect, useState } from "react";
 import { isUndefined } from "shared/lib/identity";
 
 import { useLocalStorage } from "./browser";
-import { requestPermissionIfNeeded } from "./permissions";
 
 export interface Point {
   latitude: number;
@@ -31,22 +29,15 @@ export const getDistance = (a: Point, b: Point): number => {
 };
 
 export const getCurrentLocation = async (): Promise<Point | null> => {
-  if (Capacitor.isNativePlatform()) {
-    // Complete the native permission callback before starting a location read.
-    const isGranted = await requestPermissionIfNeeded(
-      "coarseLocation",
-      () => Geolocation.checkPermissions(),
-      () => Geolocation.requestPermissions({ permissions: ["coarseLocation"] })
-    );
-    if (!isGranted) {
-      return null;
-    }
+  try {
+    // The native plugin owns the Android permission callback for this lookup.
+    const {
+      coords: { latitude, longitude },
+    } = await Geolocation.getCurrentPosition({ enableHighAccuracy: false });
+    return { latitude, longitude };
+  } catch {
+    return null;
   }
-
-  const {
-    coords: { latitude, longitude },
-  } = await Geolocation.getCurrentPosition();
-  return { latitude, longitude };
 };
 
 // Hook to get user's current geolocation

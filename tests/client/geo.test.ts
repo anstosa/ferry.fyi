@@ -1,4 +1,3 @@
-import { Capacitor } from "@capacitor/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const geolocation = vi.hoisted(() => ({
@@ -17,16 +16,7 @@ describe("getCurrentLocation", () => {
     vi.restoreAllMocks();
   });
 
-  it("requests Android permission before reading the location", async () => {
-    vi.spyOn(Capacitor, "isNativePlatform").mockReturnValue(true);
-    geolocation.checkPermissions.mockResolvedValue({
-      coarseLocation: "prompt",
-      location: "prompt",
-    });
-    const requestPermissions = geolocation.requestPermissions.mockResolvedValue({
-      coarseLocation: "granted",
-      location: "granted",
-    });
+  it("lets the native position lookup request coarse location access", async () => {
     const getCurrentPosition = geolocation.getCurrentPosition.mockResolvedValue(
       {
         coords: {
@@ -46,25 +36,17 @@ describe("getCurrentLocation", () => {
       latitude: 47.6,
       longitude: -122.3,
     });
-    expect(requestPermissions).toHaveBeenCalledWith({
-      permissions: ["coarseLocation"],
+    expect(getCurrentPosition).toHaveBeenCalledWith({
+      enableHighAccuracy: false,
     });
-    expect(getCurrentPosition).toHaveBeenCalledAfter(requestPermissions);
+    expect(geolocation.checkPermissions).not.toHaveBeenCalled();
+    expect(geolocation.requestPermissions).not.toHaveBeenCalled();
   });
 
-  it("does not read the location when Android permission is denied", async () => {
-    vi.spyOn(Capacitor, "isNativePlatform").mockReturnValue(true);
-    geolocation.checkPermissions.mockResolvedValue({
-      coarseLocation: "prompt",
-      location: "prompt",
-    });
-    geolocation.requestPermissions.mockResolvedValue({
-      coarseLocation: "denied",
-      location: "denied",
-    });
-    const { getCurrentPosition } = geolocation;
-
+  it("returns no location when the native lookup is rejected", async () => {
+    geolocation.getCurrentPosition.mockRejectedValue(
+      new Error("Location permission denied")
+    );
     await expect(getCurrentLocation()).resolves.toBeNull();
-    expect(getCurrentPosition).not.toHaveBeenCalled();
   });
 });
