@@ -97,8 +97,8 @@ const getBreakKind = (
 // compact html text
 const stripHtml = (html: string): string =>
   html
-    .replace(/<script[\s\S]*?<\/script>/gi, " ")
-    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/giu, " ")
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/giu, " ")
     .replace(/&nbsp;|&#160;/gi, " ")
     .replace(/&amp;/gi, "&")
     .replace(/<[^>]+>/g, " ")

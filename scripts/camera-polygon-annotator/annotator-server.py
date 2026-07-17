@@ -6,6 +6,7 @@ import webbrowser
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.error import HTTPError, URLError
+from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parent
@@ -15,6 +16,7 @@ ANNOTATION_ROUTE = "/camera-detection-areas.json"
 HOST = "127.0.0.1"
 PORT = int(os.environ.get("FERRY_ANNOTATOR_PORT", "8787"))
 DETECTOR_URL = os.environ.get("FERRY_DETECTOR_URL", "http://127.0.0.1:8001/detect")
+CAMERA_IMAGE_HOST = "images.wsdot.wa.gov"
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -67,8 +69,13 @@ class Handler(SimpleHTTPRequestHandler):
             return
         image_url = payload.get("imageUrl") if isinstance(payload, dict) else None
         # image URL guard
-        if not isinstance(image_url, str) or not image_url.startswith(("http://", "https://")):
-            self.send_json(400, {"error": "Expected an http(s) imageUrl"})
+        parsed_image_url = urlparse(image_url) if isinstance(image_url, str) else None
+        if (
+            not parsed_image_url
+            or parsed_image_url.scheme != "https"
+            or parsed_image_url.hostname != CAMERA_IMAGE_HOST
+        ):
+            self.send_json(400, {"error": "Expected an HTTPS WSDOT camera imageUrl"})
             return
         try:
             # fetch image bytes in memory

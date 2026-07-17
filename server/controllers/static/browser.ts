@@ -117,6 +117,7 @@ export const renderSeoHtml = (
 
 export const createBrowserRouter = (dist = clientDist): Router => {
   const browserRouter = Router();
+  const indexHtml = fs.readFile(path.resolve(dist, "index.html"), "utf-8");
 
   browserRouter.get("/robots.txt", (request, response) => {
     response.type("text/plain");
@@ -201,7 +202,7 @@ export const createBrowserRouter = (dist = clientDist): Router => {
       }
     }
 
-    const data = await fs.readFile(path.resolve(dist, "index.html"), "utf-8");
+    const data = await indexHtml;
     response.type("text/html");
     const seo = metadata ?? seoProfileMetadata;
     const dateLabel = isDated ? getDateLabel(request.query.date) : undefined;

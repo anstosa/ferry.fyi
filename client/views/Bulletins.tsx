@@ -318,17 +318,8 @@ export const Bulletins = ({
   };
 
   const renderBulletin = (bulletin: Bulletin): ReactNode => {
-    const { bodyHTML, date, level, routePrefix, title, url } = bulletin;
+    const { bodyText, date, level, routePrefix, title, url } = bulletin;
     const { accent, badge, Icon, label } = getBulletinLevelStyles(level);
-    const filteredDescription = bodyHTML
-      .replace(/<script>.*<\/script>/, "")
-      .replace(/\s*style=".*"\s*/g, "")
-      .replace(/<p>/g, '<p class="my-2 leading-relaxed">')
-      .replace(/<ul>/g, '<ul class="my-2 list-disc space-y-1 pl-5">')
-      .replace(
-        /<a /g,
-        '<a class="font-semibold text-blue-dark underline decoration-[#6fb8c8] underline-offset-2 dark:text-[#6fb8c8]" '
-      );
     return (
       <li
         className={clsx(
@@ -365,10 +356,9 @@ export const Bulletins = ({
               <h2 className="text-lg font-bold leading-snug text-gray-darkest dark:text-white">
                 {title}
               </h2>
-              <div
-                className="mt-2 text-sm leading-relaxed text-gray-dark dark:text-[#e0f0f4]"
-                dangerouslySetInnerHTML={{ __html: filteredDescription }}
-              />
+              <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-gray-dark dark:text-[#e0f0f4]">
+                {bodyText}
+              </p>
               {url && (
                 <ExternalPillLink className="mt-3" href={url}>
                   View WSF alert

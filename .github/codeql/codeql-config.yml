@@ -10,3 +10,17 @@ paths-ignore:
 query-filters:
   - exclude:
       id: java/error-message-exposure
+  # Capacitor and Capgo are compiled as Android dependencies. These findings
+  # are in third-party library code, not Ferry FYI's Java source.
+  - exclude:
+      id: java/improper-intent-verification
+  - exclude:
+      id: java/implicit-cast-in-compound-assignment
+  - exclude:
+      id: java/zipslip
+  - exclude:
+      id: java/rsa-without-oaep
+  - exclude:
+      id: java/weak-cryptographic-algorithm
+  - exclude:
+      id: java/xss

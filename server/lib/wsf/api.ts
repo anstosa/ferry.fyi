@@ -7,6 +7,7 @@ const DEFAULT_TIMEOUT_MS =
 const REQUEST_TIMEOUT_MS = Number(
   process.env.WSF_TIMEOUT_MS ?? DEFAULT_TIMEOUT_MS
 );
+const WSF_API_HOST = "www.wsdot.wa.gov";
 
 const wsfStatus: WSFStatus = {
   coreReady: false,
@@ -50,10 +51,17 @@ const fetchWithTimeout = async (url: string): Promise<Response> => {
 
 export const wsfRequest = async <T>(path: string): Promise<T | undefined> => {
   const url = `${path}${path.includes("cacheflushdate") ? "" : API_ACCESS}`;
+  const requestUrl = new URL(url);
+  if (
+    requestUrl.protocol !== "https:" ||
+    requestUrl.hostname !== WSF_API_HOST
+  ) {
+    throw new Error(`Refused request to non-WSF URL: ${getLoggedUrl(url)}`);
+  }
   const loggedUrl = getLoggedUrl(url);
   // logger.debug(`WSF request <${loggedUrl}>`);
   try {
-    const response = await fetchWithTimeout(url);
+    const response = await fetchWithTimeout(requestUrl.toString());
     // successful response guard
     if (response.ok) {
       wsfStatus.offline = false;

@@ -137,7 +137,7 @@ registerRoute(
 
 // Aggresively cache fonts
 registerRoute(
-  new RegExp("https://fonts.(googleapis|gstatic).com/.*"),
+  new RegExp("https://fonts\\.(googleapis|gstatic)\\.com/.*"),
   new CacheFirst({
     cacheName: CACHE_FONTS,
     plugins: [

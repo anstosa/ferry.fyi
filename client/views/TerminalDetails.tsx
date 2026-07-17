@@ -59,6 +59,14 @@ const hasVisibleHtml = (html?: string): boolean => {
   );
 };
 
+const getPlainText = (html?: string): string =>
+  (html ?? "")
+    .replace(/<(?:br|\/p|\/li)\b[^>]*>/giu, "\n")
+    .replace(/<[^>]*>/gu, "")
+    .replace(/&nbsp;/giu, " ")
+    .replace(/\n{3,}/gu, "\n\n")
+    .trim();
+
 // address lines
 const getAddressLines = (terminal: Terminal): string[] => {
   // WSF occasionally omits the optional address object for a terminal.
@@ -158,11 +166,12 @@ export const TerminalDetails = ({
         </button>
         {/* accordion content */}
         {isOpen && (
-          <div
-            className="mt-3 text-sm leading-relaxed text-gray-dark dark:text-[#e0f0f4]"
-            dangerouslySetInnerHTML={{ __html: terminal.info[key] ?? "" }}
+          <p
+            className="mt-3 whitespace-pre-line text-sm leading-relaxed text-gray-dark dark:text-[#e0f0f4]"
             id={contentId}
-          />
+          >
+            {getPlainText(terminal.info[key])}
+          </p>
         )}
       </DetailCard>
     );
