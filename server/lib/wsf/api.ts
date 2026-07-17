@@ -1,7 +1,9 @@
 import logger from "heroku-logger";
 import { WSFStatus } from "shared/contracts/api";
 
-const API_ACCESS = `?apiaccesscode=${process.env.WSDOT_API_KEY}`;
+const API_ACCESS = `?apiaccesscode=${encodeURIComponent(
+  process.env.WSDOT_API_KEY ?? ""
+)}`;
 const DEFAULT_TIMEOUT_MS =
   process.env.NODE_ENV === "development" ? 5000 : 10000;
 const REQUEST_TIMEOUT_MS = Number(
