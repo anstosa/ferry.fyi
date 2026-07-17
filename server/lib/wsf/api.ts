@@ -8,6 +8,7 @@ const REQUEST_TIMEOUT_MS = Number(
   process.env.WSF_TIMEOUT_MS ?? DEFAULT_TIMEOUT_MS
 );
 const WSF_API_HOST = "www.wsdot.wa.gov";
+const WSF_API_ORIGIN = `https://${WSF_API_HOST}`;
 
 const wsfStatus: WSFStatus = {
   coreReady: false,
@@ -43,11 +44,10 @@ export const wsfRequest = async <T>(path: string): Promise<T | undefined> => {
       `Refused request to non-WSF URL: ${getLoggedUrl(requestedUrl.toString())}`
     );
   }
-  const requestUrl = new URL(
-    `${requestedUrl.pathname}${requestedUrl.search}`,
-    `https://${WSF_API_HOST}`
-  );
-  const loggedUrl = getLoggedUrl(requestUrl.toString());
+  // The fixed origin cannot be changed by the caller: URL.pathname always
+  // starts with a slash, so it cannot introduce a new authority component.
+  const requestUrl = `${WSF_API_ORIGIN}${requestedUrl.pathname}${requestedUrl.search}`;
+  const loggedUrl = getLoggedUrl(requestUrl);
   // logger.debug(`WSF request <${loggedUrl}>`);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
