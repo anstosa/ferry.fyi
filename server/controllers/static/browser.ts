@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { existsSync, promises as fs } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { DateTime } from "luxon";
 import path from "path";
 import { entries } from "shared/lib/objects";
@@ -117,7 +117,7 @@ export const renderSeoHtml = (
 
 export const createBrowserRouter = (dist = clientDist): Router => {
   const browserRouter = Router();
-  const indexHtml = fs.readFile(path.resolve(dist, "index.html"), "utf-8");
+  const indexHtml = readFileSync(path.resolve(dist, "index.html"), "utf-8");
 
   browserRouter.get("/robots.txt", (request, response) => {
     response.type("text/plain");
@@ -202,7 +202,6 @@ export const createBrowserRouter = (dist = clientDist): Router => {
       }
     }
 
-    const data = await indexHtml;
     response.type("text/html");
     const seo = metadata ?? seoProfileMetadata;
     const dateLabel = isDated ? getDateLabel(request.query.date) : undefined;
@@ -214,7 +213,7 @@ export const createBrowserRouter = (dist = clientDist): Router => {
     if (seoProfileBaseUrl) {
       baseUrl = seoProfileBaseUrl;
     }
-    return response.send(renderSeoHtml(data, { ...seo, title }, baseUrl));
+    return response.send(renderSeoHtml(indexHtml, { ...seo, title }, baseUrl));
   });
 
   return browserRouter;

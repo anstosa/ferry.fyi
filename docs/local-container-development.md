@@ -5,34 +5,35 @@ Use `docker-compose.dev.yml` to run a prod-like local stack with the app, detect
 ## Quick start
 
 ```sh
-yarn container:build
-yarn container:up
-yarn container:migrate
+yarn dev:up
 ```
 
-Open the app at <http://localhost:4041>. The detector health endpoint is available at <http://localhost:8001/health> and the API is available to the app at `http://detector:8000/detect` inside the Compose network.
+This builds the app and detector images when needed, starts Postgres and the detector, applies Sequelize migrations, and waits until the app is healthy. Open the app at <http://localhost:4041>. The detector health endpoint is available at <http://localhost:8001/health> and the API is available to the app at `http://detector:8000/detect` inside the Compose network.
 
 ## Commands
 
 - `yarn container:build` builds the app and detector images.
-- `yarn container:up` starts `postgres`, `detector`, and `app` in the background.
+- `yarn dev:up` builds as needed, starts the full stack, applies migrations, and waits for the long-running services to become healthy.
+- `yarn container:up` remains an alias for `yarn dev:up`.
 - `yarn container:down` stops the stack and keeps the Postgres volume.
 - `yarn container:logs` follows stack logs.
-- `yarn container:migrate` runs Sequelize migrations against the container Postgres database.
+- `yarn container:migrate` manually reruns Sequelize migrations against the already-running container Postgres database.
 - `yarn container:reset` removes the Postgres volume, restarts dependencies, reruns migrations, and starts the app. Do not run this if you need to keep local container data.
 
 ## Environment overrides
 
-Compose uses safe local defaults directly from `docker-compose.dev.yml`. Optional overrides live in `local-container.env.example` using plain `KEY=VALUE` syntax.
+Compose uses safe local defaults directly from `docker-compose.dev.yml`. It automatically passes every value in an optional root `.env` file to the app and migration containers. Container-only settings such as the database and detector URLs still take precedence so they always use the Compose network.
 
-To customize ports or browser build placeholders, copy selected values into `.env` for Compose's automatic env loading, or pass a file explicitly:
+To customize ports, browser configuration, or server credentials, copy the example to `.env`:
 
 ```sh
-cp local-container.env.example local-container.env
-docker compose --env-file local-container.env -f docker-compose.dev.yml up --detach postgres detector app
+cp local-container.env.example .env
+yarn dev:up
 ```
 
-Do not use `.envrc` as a Compose `env_file`; it can contain shell syntax that Compose does not parse. The `migrate` service is in the `tools` profile, so it only runs through `yarn container:migrate` or an explicit `--profile tools` command.
+Do not use `.envrc` as the Compose `.env` file; it can contain shell syntax that Compose does not parse. The migration container runs automatically before the app starts and can be rerun with `yarn container:migrate` after adding a migration.
+
+Set `WSDOT_API_KEY` in `.env` when you need the stack to refresh live ferry data. The stack still boots without it, but live WSF refresh requests will be unauthorized.
 
 ## Database
 

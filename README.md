@@ -37,7 +37,9 @@ An alternative to the WSDOT mobile app. With Ferry FYI, you get:
 
 ## Local container stack
 
-For a prod-like local Docker Compose setup with the app, detector runtime, and Postgres, see [Local container development](docs/local-container-development.md).
+For a prod-like local Docker Compose setup with the app, detector runtime, Postgres, and automatic database migrations, see [Local container development](docs/local-container-development.md).
+
+Run the full containerized development stack with `yarn dev:up`.
 
 ## Running locally
 

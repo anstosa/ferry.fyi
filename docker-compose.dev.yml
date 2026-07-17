@@ -23,11 +23,14 @@ services:
   app:
     image: ferry-fyi-local-app
     build: *app-build
+    env_file:
+      - path: .env
+        required: false
     environment:
-      ANDROID_CERT_FINGERPRINT: local-container-fingerprint
-      AUTH0_CLIENT_AUDIENCE: http://localhost:${APP_PORT:-4041}/api
-      AUTH0_DOMAIN: local-container.invalid
-      BASE_URL: http://localhost:${APP_PORT:-4041}
+      ANDROID_CERT_FINGERPRINT: ${ANDROID_CERT_FINGERPRINT:-local-container-fingerprint}
+      AUTH0_CLIENT_AUDIENCE: ${AUTH0_CLIENT_AUDIENCE:-http://localhost:${APP_PORT:-4041}/api}
+      AUTH0_DOMAIN: ${AUTH0_DOMAIN:-local-container.invalid}
+      BASE_URL: ${BASE_URL:-http://localhost:${APP_PORT:-4041}}
       CAR_DETECTION_ENDPOINT: http://detector:8000/detect
       DATABASE_URL: postgres://test:testing@postgres:5432/ferryfyi
       NODE_ENV: development
@@ -35,11 +38,14 @@ services:
       PORT: 4040
       PROCESS_ROLE: web
       RUN_SCHEDULER: false
+      WSDOT_API_KEY: ${WSDOT_API_KEY:-}
     depends_on:
       postgres:
         condition: service_healthy
       detector:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     ports:
       - "${APP_PORT:-4041}:4040"
     healthcheck:
@@ -81,11 +87,12 @@ services:
       start_period: 10s
 
   migrate:
-    profiles:
-      - tools
     image: ferry-fyi-local-app
     build: *app-build
     command: yarn db:migrate
+    env_file:
+      - path: .env
+        required: false
     environment:
       DATABASE_URL: postgres://test:testing@postgres:5432/ferryfyi
       NODE_ENV: development
@@ -93,5 +100,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    restart: "no"
 volumes:
   postgres-data:

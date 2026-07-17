@@ -23,6 +23,7 @@ import { Splash } from "~/components/Splash";
 import { useRecordPageViews } from "~/lib/analytics";
 import { useOnline, useWSF } from "~/lib/api";
 import { useDevice } from "~/lib/device";
+import { initializeOtaUpdater } from "~/lib/ota";
 import { usePush } from "~/lib/push";
 import { slugs } from "~/lib/terminals";
 import { useUser } from "~/lib/user";
@@ -68,6 +69,15 @@ if (!process.env.AUTH0_DOMAIN) {
 }
 
 export const App = (): ReactElement => {
+  useEffect(() => {
+    // Acknowledge the bundle only after the app has rendered successfully.
+    initializeOtaUpdater({
+      environment: {
+        VITE_OTA_CHANNEL: process.env.VITE_OTA_CHANNEL,
+        VITE_OTA_MANIFEST_URL: process.env.VITE_OTA_MANIFEST_URL,
+      },
+    }).catch(() => undefined);
+  }, []);
   useEffect(() => {
     if (process.env.GOOGLE_ANALYTICS) {
       ReactGA.initialize(process.env.GOOGLE_ANALYTICS);

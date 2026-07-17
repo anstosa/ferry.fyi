@@ -22,6 +22,7 @@ jobs:
     env:
       AUTH0_CLIENT_AUDIENCE: ${{ vars.AUTH0_CLIENT_AUDIENCE }}
       AUTH0_CLIENT_ID: ${{ vars.AUTH0_CLIENT_ID }}
+      AUTH0_CLIENT_REDIRECT: fyi.ferry://callback
       AUTH0_DOMAIN: ${{ vars.AUTH0_DOMAIN }}
       ANDROID_ENFORCE_PROD_AUTH0: '1'
       AW_TAG_ID: ${{ vars.AW_TAG_ID }}

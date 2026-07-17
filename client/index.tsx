@@ -9,7 +9,6 @@ import { BrowserRouter } from "react-router-dom";
 import { isUndefined } from "shared/lib/identity";
 
 import { ErrorBoundary } from "~/components/ErrorBoundary";
-import { initializeOtaUpdater } from "~/lib/ota";
 import { initializeTheme } from "~/lib/theme";
 import { UserProvider } from "~/lib/user";
 
@@ -27,7 +26,7 @@ if (!process.env.AUTH0_CLIENT_AUDIENCE) {
   throw Error("AUTH0_CLIENT_AUDIENCE environment variable is not set");
 }
 if (!process.env.AUTH0_CLIENT_REDIRECT) {
-  throw Error("AUTH0_CLIENT_AUDIENCE environment variable is not set");
+  throw Error("AUTH0_CLIENT_REDIRECT environment variable is not set");
 }
 
 if (process.env.SENTRY_DSN) {
@@ -86,17 +85,6 @@ if (process.env.SENTRY_DSN) {
     release: `web@${process.env.HEROKU_RELEASE_VERSION}`,
   });
 }
-
-// suppress non-critical updater failures
-const ignoreOtaInitializationFailure = (): undefined => undefined;
-
-// acknowledge native bundles before application initialization
-initializeOtaUpdater({
-  environment: {
-    VITE_OTA_CHANNEL: process.env.VITE_OTA_CHANNEL,
-    VITE_OTA_MANIFEST_URL: process.env.VITE_OTA_MANIFEST_URL,
-  },
-}).catch(ignoreOtaInitializationFailure);
 
 /**
  * @description Fires callback exactly once, after the document is loaded.

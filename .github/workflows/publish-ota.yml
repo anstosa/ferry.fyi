@@ -24,12 +24,27 @@ jobs:
     # retain the branch-scoped OIDC subject used by Terraform
     if: github.ref == 'refs/heads/production'
     env:
+      AUTH0_CLIENT_AUDIENCE: ${{ vars.AUTH0_CLIENT_AUDIENCE }}
+      AUTH0_CLIENT_ID: ${{ vars.AUTH0_CLIENT_ID }}
+      AUTH0_CLIENT_REDIRECT: fyi.ferry://callback
+      AUTH0_DOMAIN: ${{ vars.AUTH0_DOMAIN }}
       AWS_REGION: ${{ vars.AWS_REGION }}
+      AW_TAG_ID: ${{ vars.AW_TAG_ID }}
       BASE_URL: ${{ vars.BASE_URL }}
+      FIREBASE_API_KEY: ${{ vars.FIREBASE_API_KEY }}
+      FIREBASE_APP_ID: ${{ vars.FIREBASE_APP_ID }}
+      FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+      FIREBASE_SENDER_ID: ${{ vars.FIREBASE_SENDER_ID }}
+      FIREBASE_VAPID_KEY: ${{ vars.FIREBASE_VAPID_KEY }}
+      GOOGLE_ANALYTICS: ${{ vars.GOOGLE_ANALYTICS }}
+      GTM_CONTAINER_ID: ${{ vars.GTM_CONTAINER_ID }}
+      HEROKU_RELEASE_VERSION: ${{ github.sha }}
+      MAPBOX_ACCESS_TOKEN: ${{ vars.MAPBOX_ACCESS_TOKEN }}
       OTA_BUCKET_NAME: ${{ vars.OTA_BUCKET_NAME }}
       OTA_BUNDLE_BASE_URL: ${{ vars.OTA_BUNDLE_BASE_URL }}
       OTA_DISTRIBUTION_ID: ${{ vars.OTA_DISTRIBUTION_ID }}
       OTA_RELEASES_URL: ${{ vars.OTA_RELEASES_URL }}
+      SENTRY_DSN: ${{ vars.SENTRY_DSN }}
       OTA_CHANNEL: ${{ inputs.channel }}
       VITE_OTA_CHANNEL: ${{ inputs.channel }}
 
@@ -105,7 +120,22 @@ jobs:
           BASE_URL: ${{ env.BASE_URL }}
           # use the API manifest instead of the release index
           VITE_OTA_MANIFEST_URL: ${{ env.BASE_URL }}/api/ota/manifest
-        run: yarn build:client
+        run: |
+          # fail before publishing a bundle with the wrong Auth0 tenant
+          set -euo pipefail
+          if [[ "${AUTH0_DOMAIN}" != "ferryfyi.us.auth0.com" ]]; then
+            echo "AUTH0_DOMAIN must be ferryfyi.us.auth0.com for production OTA" >&2
+            exit 1
+          fi
+          if [[ "${AUTH0_CLIENT_AUDIENCE}" != "https://ferry.fyi/api" ]]; then
+            echo "AUTH0_CLIENT_AUDIENCE must be https://ferry.fyi/api for production OTA" >&2
+            exit 1
+          fi
+          if [[ -z "${AUTH0_CLIENT_ID}" ]]; then
+            echo "AUTH0_CLIENT_ID is required for production OTA" >&2
+            exit 1
+          fi
+          yarn build:client
 
       - name: Create and validate OTA bundle
         id: bundle
