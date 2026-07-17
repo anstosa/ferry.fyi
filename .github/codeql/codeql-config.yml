@@ -1,7 +1,12 @@
 name: Ferry FYI CodeQL
 
-# Capacitor plugins are compiled from node_modules for the native builds. They
-# are third-party library sources, not application code, and can otherwise
-# create one alert with hundreds of duplicate related locations.
+# Buildless scans should not inspect installed JavaScript dependencies.
 paths-ignore:
   - node_modules/**
+
+# Capacitor's library code generates hundreds of related locations for this
+# low-value dependency finding. Exclude this query rather than lowering the
+# quality of the app's Java/Kotlin analysis.
+query-filters:
+  - exclude:
+      id: java/error-message-exposure

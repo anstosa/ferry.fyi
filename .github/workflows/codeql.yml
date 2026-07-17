@@ -27,31 +27,24 @@ jobs:
             build-mode: none
             runner: ubuntu-latest
             timeout_minutes: 30
-            config_file: ./.github/codeql/codeql-config.yml
           - language: javascript-typescript
             build-mode: none
             runner: ubuntu-latest
             timeout_minutes: 30
-            config_file: ./.github/codeql/codeql-config.yml
           - language: python
             build-mode: none
             runner: ubuntu-latest
             timeout_minutes: 30
-            config_file: ./.github/codeql/codeql-config.yml
           - language: java-kotlin
-            # The app has Java only. Analyze its owned source without
-            # compiling Capacitor's third-party Java/Kotlin plugin sources.
-            build-mode: none
+            build-mode: manual
             runner: ubuntu-latest
             timeout_minutes: 30
-            config_file: ./.github/codeql/codeql-java-config.yml
           - language: swift
             build-mode: manual
             runner: macos-latest
             # SwiftPM dependency resolution can exceed the default CodeQL job
             # window on a cold macOS runner.
             timeout_minutes: 60
-            config_file: ./.github/codeql/codeql-config.yml
 
     steps:
       - name: Check out repository
@@ -102,10 +95,10 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
-          config-file: ${{ matrix.config_file }}
+          config-file: ./.github/codeql/codeql-config.yml
 
       - name: Build Android code
-        if: matrix.language == 'java-kotlin' && matrix.build-mode == 'manual'
+        if: matrix.language == 'java-kotlin'
         run: |
           yarn build:android:ci
           (
