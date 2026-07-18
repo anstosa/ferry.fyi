@@ -6,7 +6,6 @@ import { type Bulletin, Level } from "shared/contracts/bulletins";
 import type { Route } from "shared/contracts/routes";
 import type { Terminal } from "shared/contracts/terminals";
 import { isRuleForRoute } from "shared/lib/alertSubscriptions";
-import { isSuppressedBulletin } from "shared/lib/bulletins";
 import { round } from "shared/lib/math";
 import { capitalize } from "shared/lib/strings";
 
@@ -15,6 +14,7 @@ import { FreshnessPill } from "~/components/FreshnessPill";
 import { HeaderDropdown } from "~/components/HeaderDropdown";
 import { InlineLoader } from "~/components/InlineLoader";
 import { Toast } from "~/components/Toast";
+import { getRouteBulletins } from "~/lib/bulletins";
 import {
   getBulletinFreshness,
   getSlug,
@@ -78,19 +78,6 @@ const getBulletinLevelStyles = (level: Level): BulletinLevelStyles => {
   };
 };
 
-// active bulletin guard
-const isActiveBulletin = (bulletin: Bulletin): boolean => {
-  // low priority guard
-  if (bulletin.level === Level.LOW) {
-    return false;
-  }
-  // app-managed alert guard
-  if (isSuppressedBulletin(bulletin)) {
-    return false;
-  }
-  return true;
-};
-
 // collect route choices
 const getRouteOptions = (terminals: Terminal[]): RouteOption[] => {
   const terminalsById = Object.fromEntries(
@@ -126,40 +113,6 @@ const getRouteOptions = (terminals: Terminal[]): RouteOption[] => {
   return Array.from(routesById.values()).sort((left, right) => {
     // alphabetical route order
     return left.route.description.localeCompare(right.route.description);
-  });
-};
-
-// route bulletin key
-const getBulletinKey = (bulletin: Bulletin): string => {
-  // WSF repeats route-wide alerts in the feeds for both route terminals.
-  // Terminal-specific URLs and slightly different updated times must not turn
-  // that one alert into two cards.
-  const normalize = (value: string): string =>
-    value.replace(/\s+/g, " ").trim().toLowerCase();
-  return [bulletin.level, bulletin.title, bulletin.bodyText]
-    .map(normalize)
-    .join(":");
-};
-
-// route bulletin filter
-export const getRouteBulletins = (
-  terminal: Terminal,
-  mate: Terminal | null
-): Bulletin[] => {
-  const bulletinsByKey = new Map<string, Bulletin>();
-  // route terminal loop
-  [terminal, mate]
-    .filter((routeTerminal): routeTerminal is Terminal => {
-      return Boolean(routeTerminal);
-    })
-    .forEach((routeTerminal) => {
-      routeTerminal.bulletins.filter(isActiveBulletin).forEach((bulletin) => {
-        bulletinsByKey.set(getBulletinKey(bulletin), bulletin);
-      });
-    });
-  return Array.from(bulletinsByKey.values()).sort((left, right) => {
-    // newest first
-    return right.date - left.date;
   });
 };
 
