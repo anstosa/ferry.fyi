@@ -4,7 +4,10 @@ import type {
   FareQuoteRequest,
 } from "shared/contracts/fares";
 
-import { PersistedFareQuote } from "~/models/PersistedFareQuote";
+import {
+  PersistedFareQuote,
+  PERSISTED_FARE_QUOTE_EXACT_FIELDS,
+} from "~/models/PersistedFareQuote";
 
 /** Stored quote boundary so API tests and future cache backends stay database-free. */
 export interface FareQuoteStore {
@@ -84,6 +87,9 @@ export const sequelizeFareQuoteStore: FareQuoteStore = {
     ) {
       return;
     }
-    await PersistedFareQuote.upsert(row);
+    await PersistedFareQuote.upsert(row, {
+      // Do not let Sequelize fall back to the surrogate id for this cache key.
+      conflictFields: [...PERSISTED_FARE_QUOTE_EXACT_FIELDS],
+    });
   },
 };

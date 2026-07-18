@@ -56,8 +56,14 @@ const fareTotals = [
   },
 ];
 
-const createRequest = (generations: string[]) => {
+const createRequest = (
+  generations: Array<string | undefined>,
+  unavailablePath?: RegExp
+) => {
   const read = vi.fn(async (path: string) => {
+    if (unavailablePath?.test(path)) {
+      return undefined;
+    }
     if (path.endsWith("/cacheflushdate")) {
       return generations.shift();
     }
@@ -70,8 +76,8 @@ const createRequest = (generations: string[]) => {
     if (path.endsWith("/terminalmates/2026-07-20/16")) {
       return [{ TerminalID: 21 }];
     }
-    if (path.endsWith("/terminalcombo/2026-07-20/16/21")) {
-      return { ArrivingTerminalID: 21, DepartingTerminalID: 16 };
+    if (path.endsWith("/terminalcomboverbose/2026-07-20")) {
+      return [{ ArrivingTerminalID: 21, DepartingTerminalID: 16 }];
     }
     if (path.includes("/farelineitems/2026-07-20/16/21/true")) {
       return fareLineItems;
@@ -105,7 +111,7 @@ describe("WSF fare adapter", () => {
       "https://www.wsdot.wa.gov/ferries/api/fares/rest/terminalmates/2026-07-20/16"
     );
     expect(source).toHaveBeenCalledWith(
-      "https://www.wsdot.wa.gov/ferries/api/fares/rest/terminalcombo/2026-07-20/16/21"
+      "https://www.wsdot.wa.gov/ferries/api/fares/rest/terminalcomboverbose/2026-07-20"
     );
   });
 
@@ -199,5 +205,36 @@ describe("WSF fare adapter", () => {
       reason: "generation-race",
       request,
     });
+  });
+
+  it("preserves upstream-unavailable when a later source request is absent", async () => {
+    const source = createRequest(["generation-1"], /terminalmates/);
+    const adapter = createFareAdapter({
+      now: () => now,
+      policyEntries: reviewedPolicy("generation-1"),
+      request: source,
+    });
+
+    await expect(adapter.getCatalog(request)).resolves.toMatchObject({
+      kind: "unavailable",
+      reason: "upstream-unavailable",
+    });
+  });
+
+  it("preserves upstream-unavailable when the final generation read is absent", async () => {
+    const source = createRequest(["generation-1", undefined]);
+    const adapter = createFareAdapter({
+      now: () => now,
+      policyEntries: reviewedPolicy("generation-1"),
+      request: source,
+    });
+
+    await expect(adapter.getCatalog(request)).resolves.toMatchObject({
+      kind: "unavailable",
+      reason: "upstream-unavailable",
+    });
+    expect(
+      source.mock.calls.filter(([path]) => path.endsWith("/cacheflushdate"))
+    ).toHaveLength(2);
   });
 });

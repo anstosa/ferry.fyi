@@ -3,6 +3,16 @@ import type { FareQuote } from "shared/contracts/fares";
 
 import { db } from "~/lib/db";
 
+/** Database key for one canonical quote from one WSDOT tariff generation. */
+export const PERSISTED_FARE_QUOTE_EXACT_FIELDS = [
+  "departingTerminalId",
+  "arrivingTerminalId",
+  "tripDate",
+  "roundTrip",
+  "canonicalSelections",
+  "sourceCacheFlushDate",
+] as const;
+
 /**
  * Historical, server-calculated WSDOT quote.  The unique fingerprint includes
  * WSDOT's cache-flush generation so a prior tariff can only be stale fallback.
@@ -36,6 +46,23 @@ PersistedFareQuote.init(
     validThrough: { allowNull: false, type: DataTypes.DATEONLY },
   },
   {
+    indexes: [
+      {
+        fields: [...PERSISTED_FARE_QUOTE_EXACT_FIELDS],
+        name: "persisted_fare_quotes_exact_generation",
+        unique: true,
+      },
+      {
+        fields: [
+          "departingTerminalId",
+          "arrivingTerminalId",
+          "tripDate",
+          "canonicalSelections",
+          "fetchedAt",
+        ],
+        name: "persisted_fare_quotes_stale_lookup",
+      },
+    ],
     sequelize: db,
     modelName: "PersistedFareQuote",
     tableName: "PersistedFareQuotes",

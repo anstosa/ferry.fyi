@@ -27,7 +27,7 @@ export namespace WSF {
     TerminalID?: number | string;
   }
 
-  /** A date-specific route pair accepted by the fare API. */
+  /** An exact pair in the date-specific terminalcomboverbose response. */
   export interface FareTerminalComboResponse {
     ArrivingTerminalID: number | string;
     DepartingTerminalID: number | string;

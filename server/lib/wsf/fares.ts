@@ -232,11 +232,13 @@ export const createFareAdapter = (
   ): Promise<
     { context: ValidatedContext } | { reason: FareUnavailableReason }
   > => {
-    const validRange = findDateRange(
-      await request<WSF.FareValidDateRangeResponse>(
-        `${FARES_API}/validdaterange`
-      )
+    const validRangeResponse = await request<WSF.FareValidDateRangeResponse>(
+      `${FARES_API}/validdaterange`
     );
+    if (!validRangeResponse) {
+      return { reason: "upstream-unavailable" };
+    }
+    const validRange = findDateRange(validRangeResponse);
     if (!validRange || !dateIsInRange(input.tripDate, validRange)) {
       return { reason: "invalid-source" };
     }
@@ -244,6 +246,9 @@ export const createFareAdapter = (
     const terminals = await request<WSF.FareTerminalResponse[]>(
       `${FARES_API}/terminals/${input.tripDate}`
     );
+    if (!terminals) {
+      return { reason: "upstream-unavailable" };
+    }
     if (
       !Array.isArray(terminals) ||
       !terminals.some((terminal) =>
@@ -259,6 +264,9 @@ export const createFareAdapter = (
     const mates = await request<WSF.FareTerminalMateResponse[]>(
       `${FARES_API}/terminalmates/${input.tripDate}/${input.departingTerminalId}`
     );
+    if (!mates) {
+      return { reason: "upstream-unavailable" };
+    }
     if (
       !Array.isArray(mates) ||
       !mates.some(
@@ -270,16 +278,23 @@ export const createFareAdapter = (
       return { reason: "invalid-source" };
     }
 
-    const combo = await request<WSF.FareTerminalComboResponse>(
-      `${FARES_API}/terminalcombo/${input.tripDate}/${input.departingTerminalId}/${input.arrivingTerminalId}`
+    const combos = await request<WSF.FareTerminalComboResponse[]>(
+      `${FARES_API}/terminalcomboverbose/${input.tripDate}`
     );
+    if (!combos) {
+      return { reason: "upstream-unavailable" };
+    }
+    // Exact IDs come from terminalcomboverbose; descriptions are never policy.
     if (
-      !combo ||
-      !isExactTerminalId(
-        combo.DepartingTerminalID,
-        input.departingTerminalId
-      ) ||
-      !isExactTerminalId(combo.ArrivingTerminalID, input.arrivingTerminalId)
+      !Array.isArray(combos) ||
+      !combos.some(
+        (combo) =>
+          isExactTerminalId(
+            combo?.DepartingTerminalID,
+            input.departingTerminalId
+          ) &&
+          isExactTerminalId(combo?.ArrivingTerminalID, input.arrivingTerminalId)
+      )
     ) {
       return { reason: "invalid-source" };
     }
@@ -341,6 +356,12 @@ export const createFareAdapter = (
     const { context } = contextResult;
     if (!context.policy.fareCollected) {
       const g2 = await readGeneration();
+      if (!g2) {
+        return {
+          generationChanged: false,
+          result: unavailable(input, "upstream-unavailable"),
+        };
+      }
       if (g2 !== g1) {
         return { generationChanged: true };
       }
@@ -353,11 +374,16 @@ export const createFareAdapter = (
       };
       return { generationChanged: false, result };
     }
-    const items = mapLineItems(
-      await request<unknown>(
-        `${FARES_API}/farelineitems/${input.tripDate}/${input.departingTerminalId}/${input.arrivingTerminalId}/${context.policy.roundTrip}`
-      )
+    const itemsResponse = await request<unknown>(
+      `${FARES_API}/farelineitems/${input.tripDate}/${input.departingTerminalId}/${input.arrivingTerminalId}/${context.policy.roundTrip}`
     );
+    if (itemsResponse === undefined) {
+      return {
+        generationChanged: false,
+        result: unavailable(input, "upstream-unavailable"),
+      };
+    }
+    const items = mapLineItems(itemsResponse);
     if (!items.ok) {
       return {
         generationChanged: false,
@@ -365,6 +391,12 @@ export const createFareAdapter = (
       };
     }
     const g2 = await readGeneration();
+    if (!g2) {
+      return {
+        generationChanged: false,
+        result: unavailable(input, "upstream-unavailable"),
+      };
+    }
     if (g2 !== g1) {
       return { generationChanged: true };
     }
@@ -417,6 +449,12 @@ export const createFareAdapter = (
     const { context } = contextResult;
     if (!context.policy.fareCollected) {
       const g2 = await readGeneration();
+      if (!g2) {
+        return {
+          generationChanged: false,
+          result: unavailable(input, "upstream-unavailable"),
+        };
+      }
       if (g2 !== g1) {
         return { generationChanged: true };
       }
@@ -437,11 +475,16 @@ export const createFareAdapter = (
         result: unavailable(input, "invalid-request"),
       };
     }
-    const catalog = mapLineItems(
-      await request<unknown>(
-        `${FARES_API}/farelineitems/${input.tripDate}/${input.departingTerminalId}/${input.arrivingTerminalId}/${context.policy.roundTrip}`
-      )
+    const catalogResponse = await request<unknown>(
+      `${FARES_API}/farelineitems/${input.tripDate}/${input.departingTerminalId}/${input.arrivingTerminalId}/${context.policy.roundTrip}`
     );
+    if (catalogResponse === undefined) {
+      return {
+        generationChanged: false,
+        result: unavailable(input, "upstream-unavailable"),
+      };
+    }
+    const catalog = mapLineItems(catalogResponse);
     if (
       !catalog.ok ||
       !normalized.value.every((item) =>
@@ -455,11 +498,16 @@ export const createFareAdapter = (
     }
     const ids = normalized.value.map((item) => item.fareLineItemId).join(",");
     const quantities = normalized.value.map((item) => item.quantity).join(",");
-    const totals = mapTotals(
-      await request<unknown>(
-        `${FARES_API}/faretotals/${input.tripDate}/${input.departingTerminalId}/${input.arrivingTerminalId}/${context.policy.roundTrip}/${ids}/${quantities}`
-      )
+    const totalsResponse = await request<unknown>(
+      `${FARES_API}/faretotals/${input.tripDate}/${input.departingTerminalId}/${input.arrivingTerminalId}/${context.policy.roundTrip}/${ids}/${quantities}`
     );
+    if (totalsResponse === undefined) {
+      return {
+        generationChanged: false,
+        result: unavailable(input, "upstream-unavailable"),
+      };
+    }
+    const totals = mapTotals(totalsResponse);
     if (!totals.ok) {
       return {
         generationChanged: false,
@@ -467,6 +515,12 @@ export const createFareAdapter = (
       };
     }
     const g2 = await readGeneration();
+    if (!g2) {
+      return {
+        generationChanged: false,
+        result: unavailable(input, "upstream-unavailable"),
+      };
+    }
     if (g2 !== g1) {
       return { generationChanged: true };
     }
