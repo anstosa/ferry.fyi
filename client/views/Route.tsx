@@ -38,10 +38,10 @@ import { Header } from "~/views/Header";
 import { AlertSubscription } from "./AlertSubscription";
 import { Bulletins } from "./Bulletins";
 import { Cameras } from "./Cameras";
+import { Fares } from "./Fares";
 import { Map } from "./Map";
 import { Schedule } from "./Schedule";
 import { TerminalDetails } from "./TerminalDetails";
-import { Fares } from "./Fares";
 
 export type View =
   | "schedule"
@@ -375,7 +375,7 @@ export const Route = ({
   const contentResetKey = `${view}:${terminal?.id ?? ""}:${mate?.id ?? ""}:${date.toISODate()}`;
   const contentMotionKey = `${view}:${terminal?.id ?? ""}:${mate?.id ?? ""}`;
   const todayOnlyView: TodayOnlyView | null =
-  view === "schedule" ||
+    view === "schedule" ||
     view === "terminal" ||
     view === "subscribe" ||
     view === "fare" ||
@@ -488,13 +488,7 @@ export const Route = ({
     );
   } else if (view === "fare" && terminal && mate) {
     content = (
-      <Fares
-        date={date}
-        getPath={getPath}
-        mate={mate}
-        setDate={setDate}
-        terminal={terminal}
-      />
+      <Fares date={date} mate={mate} setDate={setDate} terminal={terminal} />
     );
   } else if (view === "alerts") {
     content = (

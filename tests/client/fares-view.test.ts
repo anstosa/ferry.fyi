@@ -38,7 +38,6 @@ const render = async (): Promise<HTMLDivElement> => {
     root?.render(
       React.createElement(Fares, {
         date: DateTime.fromISO("2026-07-18"),
-        getPath: () => "/seattle/bainbridge/fare",
         mate,
         setDate: vi.fn(),
         terminal,

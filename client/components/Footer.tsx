@@ -14,8 +14,8 @@ import BellAlertIcon from "~/static/images/icons/solid/bell-exclamation.svg";
 import ScheduleIcon from "~/static/images/icons/solid/calendar-week.svg";
 import VideoIcon from "~/static/images/icons/solid/cctv.svg";
 import TerminalIcon from "~/static/images/icons/solid/garage-car.svg";
-import MapIcon from "~/static/images/icons/solid/route.svg";
 import FareIcon from "~/static/images/icons/solid/receipt.svg";
+import MapIcon from "~/static/images/icons/solid/route.svg";
 import { GetPath } from "~/views/Route";
 
 import { getLastBulletinTime, getWaitTime } from "../views/Bulletins";
@@ -137,7 +137,10 @@ export const Footer = ({ terminal, getPath }: Props): ReactElement => {
           <FooterLink label="Cameras" path={getPath({ view: "cameras" })}>
             <VideoIcon className="text-2xl" />
           </FooterLink>
-          <FooterLink label="Terminal details" path={getPath({ view: "terminal" })}>
+          <FooterLink
+            label="Terminal details"
+            path={getPath({ view: "terminal" })}
+          >
             <TerminalIcon className="text-2xl" />
           </FooterLink>
           <FooterLink label="Map" path={getPath({ view: "map" })}>
