@@ -24,11 +24,15 @@ describe("fare contracts and WSDOT source validation", () => {
   };
 
   it("validates the documented WSDOT line-item and total response shapes", () => {
-    expect(validateWsdotFareLineItems(redactedWsdotFareFixture.fareLineItems)).toEqual({
+    expect(
+      validateWsdotFareLineItems(redactedWsdotFareFixture.fareLineItems)
+    ).toEqual({
       ok: true,
       value: redactedWsdotFareFixture.fareLineItems,
     });
-    expect(validateWsdotFareTotals(redactedWsdotFareFixture.fareTotals)).toEqual({
+    expect(
+      validateWsdotFareTotals(redactedWsdotFareFixture.fareTotals)
+    ).toEqual({
       ok: true,
       value: redactedWsdotFareFixture.fareTotals,
     });
@@ -66,7 +70,10 @@ describe("fare contracts and WSDOT source validation", () => {
     const quote: FareQuote = {
       freshness,
       kind: "quote",
-      request: { ...request, lineItems: [{ fareLineItemId: 101, quantity: 1 }] },
+      request: {
+        ...request,
+        lineItems: [{ fareLineItemId: 101, quantity: 1 }],
+      },
       totals: [
         {
           amount: 9.25,
@@ -92,7 +99,10 @@ describe("fare contracts and WSDOT source validation", () => {
     expect(WSDOT_FARE_API_CAPABILITIES).toMatchObject({
       credential: { exposure: "server-only", queryParameter: "apiaccesscode" },
       endpoints: {
-        fareLineItems: { requiresApiAccessCode: true, response: "fare-line-items" },
+        fareLineItems: {
+          requiresApiAccessCode: true,
+          response: "fare-line-items",
+        },
         fareTotals: { requiresApiAccessCode: true, response: "fare-totals" },
       },
       source: "wsdot-fares-rest",

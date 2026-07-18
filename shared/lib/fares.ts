@@ -42,9 +42,7 @@ const hasWsdotFareTotalShape = (
     hasNonNegativeNumber(total.Amount) &&
     hasString(total.BriefDescription) &&
     hasString(total.Description) &&
-    ["Depart", "Either", "Return", "Total"].includes(
-      total.TotalType as string
-    )
+    ["Depart", "Either", "Return", "Total"].includes(total.TotalType as string)
   );
 };
 
@@ -53,14 +51,21 @@ export const validateWsdotFareLineItems = (
   value: unknown
 ): FareSourceValidation<WsdotFareLineItemResponse[]> => {
   if (!Array.isArray(value)) {
-    return { errors: ["Expected an array of WSDOT fare line items."], ok: false };
+    return {
+      errors: ["Expected an array of WSDOT fare line items."],
+      ok: false,
+    };
   }
 
-  const invalidIndex = value.findIndex((item) => !hasWsdotFareLineItemShape(item));
+  const invalidIndex = value.findIndex(
+    (item) => !hasWsdotFareLineItemShape(item)
+  );
   return invalidIndex === -1
     ? { ok: true, value }
     : {
-        errors: [`Fare line item at index ${invalidIndex} does not match WSDOT's documented shape.`],
+        errors: [
+          `Fare line item at index ${invalidIndex} does not match WSDOT's documented shape.`,
+        ],
         ok: false,
       };
 };
@@ -77,7 +82,9 @@ export const validateWsdotFareTotals = (
   return invalidIndex === -1
     ? { ok: true, value }
     : {
-        errors: [`Fare total at index ${invalidIndex} does not match WSDOT's documented shape.`],
+        errors: [
+          `Fare total at index ${invalidIndex} does not match WSDOT's documented shape.`,
+        ],
         ok: false,
       };
 };
