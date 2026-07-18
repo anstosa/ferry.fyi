@@ -22,6 +22,7 @@ import { Prompt } from "~/components/Prompt";
 import { Splash } from "~/components/Splash";
 import { useRecordPageViews } from "~/lib/analytics";
 import { useOnline, useWSF } from "~/lib/api";
+import { isAuth0CallbackUrl } from "~/lib/auth";
 import { useDevice } from "~/lib/device";
 import { initializeOtaUpdater } from "~/lib/ota";
 import { usePush } from "~/lib/push";
@@ -127,21 +128,19 @@ export const App = (): ReactElement => {
   }, [alertRules]);
 
   const handleCallback = async (url = window.location.href) => {
-    const match = url.match(
-      // eslint-disable-next-line no-useless-escape
-      /^.*:\/\/[^\/]*([^\?]*)($|\?.*)/
-    );
-    if (!match) {
+    let appUrl: URL;
+    try {
+      appUrl = new URL(url);
+    } catch {
       return;
     }
-    const [, pathname = "/", query = ""] = match;
-    if (pathname === "/callback") {
+    if (isAuth0CallbackUrl(url)) {
       if (
-        query.includes("state") &&
-        (query.includes("code") || query.includes("error"))
+        appUrl.searchParams.has("state") &&
+        (appUrl.searchParams.has("code") || appUrl.searchParams.has("error"))
       ) {
         const { appState } = await handleRedirectCallback(url);
-        if (appState.redirectPath) {
+        if (appState?.redirectPath) {
           navigate(appState.redirectPath);
           return;
         }
@@ -149,15 +148,32 @@ export const App = (): ReactElement => {
       navigate("/");
       return;
     }
-    navigate(`${pathname ?? "/"}${query ?? ""}`);
+    navigate(`${appUrl.pathname || "/"}${appUrl.search}${appUrl.hash}`);
   };
 
   useEffect(() => {
     if (device?.isNativeMobile) {
-      Native.addListener("appUrlOpen", async ({ url }) => {
-        await handleCallback(url);
-        Browser.close();
+      const listener = Native.addListener("appUrlOpen", async ({ url }) => {
+        // Dismiss the native auth browser before processing its callback.
+        try {
+          await Browser.close();
+        } catch (error) {
+          console.error("Auth browser close failed", error);
+        }
+        try {
+          await handleCallback(url);
+        } catch (error) {
+          console.error("Auth redirect callback failed", error);
+        }
       });
+
+      return () => {
+        listener
+          .then((handle) => handle.remove())
+          .catch((error) =>
+            console.error("Auth listener cleanup failed", error)
+          );
+      };
     }
   }, [handleRedirectCallback, device?.isNativeMobile]);
 

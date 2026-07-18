@@ -8,6 +8,9 @@
 		"scheme": "Ferry FYI"
 	},
 	"plugins": {
+		"CapacitorHttp": {
+			"enabled": true
+		},
 		"CapacitorUpdater": {
 			"autoUpdate": false,
 			"allowModifyUrl": true
