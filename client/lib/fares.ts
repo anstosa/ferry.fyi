@@ -32,6 +32,10 @@ export const getFareCatalog = (
 /** Request a server-validated quote for the selected official catalog items. */
 export const getFareQuote = (
   request: FareQuoteRequest
-): Promise<FareQuoteApiResponse> => post<FareQuoteApiResponse>("/fares/quote", request);
+): Promise<FareQuoteApiResponse> =>
+  post<FareQuoteApiResponse>(
+    "/fares/quote",
+    request as unknown as Record<string, unknown>
+  );
 
 export const getFareCatalogUrl = getCatalogPath;

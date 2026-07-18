@@ -5,6 +5,7 @@ import type {
   FareCatalogApiResponse,
   FareLineItem,
   FareQuoteApiResponse,
+  FareQuoteRequest,
   FareTotal,
 } from "shared/contracts/fares";
 import type { Terminal } from "shared/contracts/terminals";
@@ -122,7 +123,7 @@ export const Fares = ({ date, getPath, mate, setDate, terminal }: Props): ReactE
             }))
             .filter(({ quantity }) => quantity > 0),
           roundTrip: false,
-          tripDate: date.toISODate() ?? "",
+          tripDate: date.toISODate() as FareQuoteRequest["tripDate"],
         })
       );
     } catch {
