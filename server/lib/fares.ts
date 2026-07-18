@@ -5,8 +5,8 @@ import type {
 } from "shared/contracts/fares";
 
 import {
-  PersistedFareQuote,
   PERSISTED_FARE_QUOTE_EXACT_FIELDS,
+  PersistedFareQuote,
 } from "~/models/PersistedFareQuote";
 
 /** Stored quote boundary so API tests and future cache backends stay database-free. */
