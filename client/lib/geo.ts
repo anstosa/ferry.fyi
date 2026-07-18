@@ -11,6 +11,7 @@ export interface Point {
 
 const EARTH_RADIUS = 3956;
 const toRadians = (degrees: number): number => (degrees * Math.PI) / 180;
+let locationRequest: Promise<Point | null> | undefined;
 
 // Gets distance between two points in miles using Haversine formula
 export const getDistance = (a: Point, b: Point): number => {
@@ -28,7 +29,7 @@ export const getDistance = (a: Point, b: Point): number => {
   return c * EARTH_RADIUS;
 };
 
-export const getCurrentLocation = async (): Promise<Point | null> => {
+const fetchCurrentLocation = async (): Promise<Point | null> => {
   try {
     // The native plugin owns the Android permission callback for this lookup.
     const {
@@ -38,6 +39,15 @@ export const getCurrentLocation = async (): Promise<Point | null> => {
   } catch {
     return null;
   }
+};
+
+export const getCurrentLocation = (): Promise<Point | null> => {
+  if (!locationRequest) {
+    locationRequest = fetchCurrentLocation().finally(() => {
+      locationRequest = undefined;
+    });
+  }
+  return locationRequest;
 };
 
 // Hook to get user's current geolocation
