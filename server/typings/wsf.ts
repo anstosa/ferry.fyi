@@ -2,6 +2,38 @@
 /* eslint-disable @typescript-eslint/no-namespace */
 export namespace WSF {
   /******************************************************************************
+   * FARES
+   *
+   * https://www.wsdot.wa.gov/ferries/api/fares/documentation/rest.html
+   ******************************************************************************/
+
+  export interface FareValidDateRangeResponse {
+    EndDate?: string;
+    StartDate?: string;
+    /** Observed alternate names used by WSDOT date-range endpoints. */
+    DateFrom?: string;
+    DateThru?: string;
+  }
+
+  /** The fare API terminal directory is authoritative for fare terminal IDs. */
+  export interface FareTerminalResponse {
+    TerminalID: number | string;
+    TerminalName?: string;
+  }
+
+  /** The fare API's date-specific mates response. */
+  export interface FareTerminalMateResponse {
+    ArrivingTerminalID?: number | string;
+    TerminalID?: number | string;
+  }
+
+  /** A date-specific route pair accepted by the fare API. */
+  export interface FareTerminalComboResponse {
+    ArrivingTerminalID: number | string;
+    DepartingTerminalID: number | string;
+  }
+
+  /******************************************************************************
    * TERMINALS
    *
    * https://www.wsdot.wa.gov/ferries/api/terminals/documentation/rest.html#tabterminalsailingspace
