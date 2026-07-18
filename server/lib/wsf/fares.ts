@@ -298,7 +298,10 @@ export const createFareAdapter = (
       context: {
         freshness: {
           fetchedAt: Math.floor(now().getTime() / 1000),
+          policyVersion: policy.value.policyVersion,
           sourceCacheFlushDate: generation,
+          validFrom: validRange.start.slice(0, 10) as FareTripRequest["tripDate"],
+          validThrough: validRange.end.slice(0, 10) as FareTripRequest["tripDate"],
         },
         policy: policy.value,
       },
@@ -340,6 +343,7 @@ export const createFareAdapter = (
         kind: "no-fare",
         message: context.policy.noFareMessage ?? null,
         request: { ...input, roundTrip: context.policy.roundTrip },
+        sourceUrl: context.policy.noFareSourceUrl ?? null,
       };
       return { generationChanged: false, result };
     }
@@ -415,6 +419,7 @@ export const createFareAdapter = (
         kind: "no-fare",
         message: context.policy.noFareMessage ?? null,
         request: { ...input, roundTrip: context.policy.roundTrip },
+        sourceUrl: context.policy.noFareSourceUrl ?? null,
       };
       return { generationChanged: false, result };
     }

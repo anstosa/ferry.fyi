@@ -43,6 +43,11 @@ export interface FareFreshness {
   fetchedAt: number;
   /** WSDOT cache marker, if supplied by its cacheflushdate endpoint. */
   sourceCacheFlushDate: string | null;
+  /** Inclusive WSDOT travel dates validated for this response. */
+  validFrom: FareTripDate;
+  validThrough: FareTripDate;
+  /** Audited collection-policy version used for this response. */
+  policyVersion: string;
 }
 
 /** A catalog of prices collected for a route and travel date. */
@@ -68,10 +73,55 @@ export interface FareNoFare {
   kind: "no-fare";
   message: string | null;
   request: FareTripRequest;
+  sourceUrl: string | null;
 }
 
 export type FareCatalogResult = FareCatalog | FareNoFare;
 export type FareQuoteResult = FareQuote | FareNoFare;
+
+/** API state for a live official catalog response. */
+export interface FareCurrentCatalogResponse {
+  catalog: FareCatalog;
+  state: "current";
+}
+
+/** API state for a live official calculated quote. */
+export interface FareCurrentQuoteResponse {
+  quote: FareQuote;
+  state: "current";
+}
+
+/** API state for a policy-declared direction where no fare is collected. */
+export interface FareNoFareResponse {
+  noFare: FareNoFare;
+  state: "no-fare";
+}
+
+/** An exact historical quote, which must never be rendered as current. */
+export interface FareStaleQuoteResponse {
+  calculatorUrl: string;
+  quote: FareQuote;
+  staleAt: number;
+  state: "stale";
+}
+
+/** A safe public failure state which contains no source credential or detail. */
+export interface FareUnavailableResponse {
+  calculatorUrl: string;
+  reason: "invalid-request" | "policy" | "unavailable";
+  state: "unavailable";
+}
+
+export type FareCatalogApiResponse =
+  | FareCurrentCatalogResponse
+  | FareNoFareResponse
+  | FareUnavailableResponse;
+
+export type FareQuoteApiResponse =
+  | FareCurrentQuoteResponse
+  | FareNoFareResponse
+  | FareStaleQuoteResponse
+  | FareUnavailableResponse;
 
 /**
  * Raw WSDOT fare API line item shape.
