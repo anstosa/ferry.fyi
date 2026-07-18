@@ -44,8 +44,15 @@ const render = async (): Promise<HTMLDivElement> => {
         terminal,
       })
     );
+    await Promise.resolve();
   });
   return container;
+};
+
+const flushEffects = async (): Promise<void> => {
+  await act(async () => {
+    await Promise.resolve();
+  });
 };
 
 afterEach(() => {
@@ -86,7 +93,7 @@ describe("Fares", () => {
       state: "current",
     });
     const container = await render();
-    await act(async () => {});
+    await flushEffects();
 
     expect(container.textContent).toContain("Adult passenger");
     expect(container.textContent).toContain(
@@ -95,9 +102,10 @@ describe("Fares", () => {
     const button = [...container.querySelectorAll("button")].find(
       (item) => item.textContent === "Calculate fare"
     );
-    await act(async () =>
-      button?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
-    );
+    await act(async () => {
+      button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await Promise.resolve();
+    });
     expect(container.textContent).toContain("Official total: $10.50");
   });
 
@@ -110,7 +118,7 @@ describe("Fares", () => {
       state: "no-fare",
     });
     let container = await render();
-    await act(async () => {});
+    await flushEffects();
     expect(container.textContent).toContain("$0.00 fare");
     expect(container.textContent).toContain(
       "Fare is collected in the other direction."
@@ -123,7 +131,7 @@ describe("Fares", () => {
       state: "unavailable",
     });
     container = await render();
-    await act(async () => {});
+    await flushEffects();
     expect(container.textContent).toContain("Fares unavailable");
     expect(container.querySelector("a")?.getAttribute("href")).toBe(
       "https://example.test/calculator"
