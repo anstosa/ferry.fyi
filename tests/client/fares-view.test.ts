@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
+import { DateTime } from "luxon";
 import React, { act } from "react";
 import { createRoot, Root } from "react-dom/client";
-import { DateTime } from "luxon";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 const fares = vi.hoisted(() => ({
   getFareCatalog: vi.fn(),
@@ -10,14 +12,14 @@ const fares = vi.hoisted(() => ({
 }));
 
 vi.mock("~/lib/fares", () => fares);
-vi.mock("../../client/views/Header", () => ({
+vi.mock("~/views/Header", () => ({
   Header: ({ children }: { children: React.ReactNode }) =>
     React.createElement("header", null, children),
 }));
-vi.mock("../../client/components/DateButton", () => ({
+vi.mock("~/components/DateButton", () => ({
   DateButton: () => React.createElement("div", null, "Date"),
 }));
-vi.mock("../../client/components/InlineLoader", () => ({
+vi.mock("~/components/InlineLoader", () => ({
   InlineLoader: () => React.createElement("div", null, "Loading"),
 }));
 
@@ -59,34 +61,60 @@ describe("Fares", () => {
       catalog: {
         collectionDescription: null,
         fares: [
-          { amount: 10.5, category: "Passenger", directionIndependent: false, id: 11, label: "Adult passenger" },
+          {
+            amount: 10.5,
+            category: "Passenger",
+            directionIndependent: false,
+            id: 11,
+            label: "Adult passenger",
+          },
         ],
       },
       state: "current",
     });
     fares.getFareQuote.mockResolvedValue({
-      quote: { totals: [{ amount: 10.5, briefDescription: "Total", description: "Total", type: "total" }] },
+      quote: {
+        totals: [
+          {
+            amount: 10.5,
+            briefDescription: "Total",
+            description: "Total",
+            type: "total",
+          },
+        ],
+      },
       state: "current",
     });
     const container = await render();
     await act(async () => {});
 
     expect(container.textContent).toContain("Adult passenger");
-    expect(container.textContent).toContain("Ferry FYI does not determine eligibility.");
-    const button = [...container.querySelectorAll("button")].find((item) => item.textContent === "Calculate fare");
-    await act(async () => button?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    expect(container.textContent).toContain(
+      "Ferry FYI does not determine eligibility."
+    );
+    const button = [...container.querySelectorAll("button")].find(
+      (item) => item.textContent === "Calculate fare"
+    );
+    await act(async () =>
+      button?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+    );
     expect(container.textContent).toContain("Official total: $10.50");
   });
 
   it("renders no-fare and unavailable calculator states", async () => {
     fares.getFareCatalog.mockResolvedValueOnce({
-      noFare: { message: "Fare is collected in the other direction.", sourceUrl: "https://example.test/fare" },
+      noFare: {
+        message: "Fare is collected in the other direction.",
+        sourceUrl: "https://example.test/fare",
+      },
       state: "no-fare",
     });
     let container = await render();
     await act(async () => {});
     expect(container.textContent).toContain("$0.00 fare");
-    expect(container.textContent).toContain("Fare is collected in the other direction.");
+    expect(container.textContent).toContain(
+      "Fare is collected in the other direction."
+    );
 
     act(() => root?.unmount());
     fares.getFareCatalog.mockResolvedValueOnce({
@@ -97,6 +125,8 @@ describe("Fares", () => {
     container = await render();
     await act(async () => {});
     expect(container.textContent).toContain("Fares unavailable");
-    expect(container.querySelector("a")?.getAttribute("href")).toBe("https://example.test/calculator");
+    expect(container.querySelector("a")?.getAttribute("href")).toBe(
+      "https://example.test/calculator"
+    );
   });
 });
