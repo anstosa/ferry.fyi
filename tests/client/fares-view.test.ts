@@ -203,4 +203,70 @@ describe("Fares", () => {
 
     expect(container.textContent).not.toContain("Official total: $10.50");
   });
+
+  it("does not render a late quote after a quantity edit", async () => {
+    let resolveQuote: (value: unknown) => void;
+    fares.getFareCatalog.mockResolvedValue({
+      catalog: {
+        collectionDescription: null,
+        fares: [
+          {
+            amount: 10.5,
+            category: "Passenger",
+            directionIndependent: false,
+            id: 11,
+            label: "Adult passenger",
+          },
+        ],
+      },
+      state: "current",
+    });
+    fares.getFareQuote.mockReturnValue(
+      new Promise((resolve) => {
+        resolveQuote = resolve;
+      })
+    );
+    const container = await render();
+    await flushEffects();
+    const button = [...container.querySelectorAll("button")].find(
+      (item) => item.textContent === "Calculate fare"
+    );
+    act(() => {
+      button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const quantity = container.querySelector<HTMLInputElement>(
+      '[aria-label="Adult passenger quantity"]'
+    );
+    await act(async () => {
+      if (quantity) {
+        const setValue = Object.getOwnPropertyDescriptor(
+          HTMLInputElement.prototype,
+          "value"
+        )?.set;
+        setValue?.call(quantity, "1");
+        quantity.dispatchEvent(new Event("input", { bubbles: true }));
+        quantity.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+      await Promise.resolve();
+    });
+    await act(async () => {
+      resolveQuote?.({
+        quote: {
+          totals: [
+            {
+              amount: 10.5,
+              briefDescription: "Total",
+              description: "Total",
+              type: "total",
+            },
+          ],
+        },
+        state: "current",
+      });
+      await Promise.resolve();
+    });
+
+    expect(container.textContent).not.toContain("Official total: $10.50");
+  });
 });

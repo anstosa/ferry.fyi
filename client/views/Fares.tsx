@@ -120,6 +120,9 @@ export const Fares = ({
 
   const updateQuantity = (id: number, value: string): void => {
     const next = Number(value);
+    // A changed selection makes any in-flight calculation obsolete.
+    quoteRequestRef.current += 1;
+    setQuoting(false);
     setQuoteResponse(null);
     setQuantities((current) => ({
       ...current,
