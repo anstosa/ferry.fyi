@@ -41,19 +41,25 @@ import { Cameras } from "./Cameras";
 import { Map } from "./Map";
 import { Schedule } from "./Schedule";
 import { TerminalDetails } from "./TerminalDetails";
+import { Fares } from "./Fares";
 
 export type View =
   | "schedule"
   | "cameras"
   | "terminal"
+  | "fare"
   | "map"
   | "alerts"
   | "subscribe";
 
-type TodayOnlyView = Exclude<View, "schedule" | "terminal" | "subscribe">;
+type TodayOnlyView = Exclude<
+  View,
+  "schedule" | "terminal" | "subscribe" | "fare"
+>;
 
 const TAB_ORDER: View[] = [
   "schedule",
+  "fare",
   "cameras",
   "terminal",
   "map",
@@ -369,9 +375,10 @@ export const Route = ({
   const contentResetKey = `${view}:${terminal?.id ?? ""}:${mate?.id ?? ""}:${date.toISODate()}`;
   const contentMotionKey = `${view}:${terminal?.id ?? ""}:${mate?.id ?? ""}`;
   const todayOnlyView: TodayOnlyView | null =
-    view === "schedule" ||
+  view === "schedule" ||
     view === "terminal" ||
     view === "subscribe" ||
+    view === "fare" ||
     isToday
       ? null
       : view;
@@ -476,6 +483,16 @@ export const Route = ({
         getPath={getPath}
         mate={mate}
         setRoute={setRoute}
+        terminal={terminal}
+      />
+    );
+  } else if (view === "fare" && terminal && mate) {
+    content = (
+      <Fares
+        date={date}
+        getPath={getPath}
+        mate={mate}
+        setDate={setDate}
         terminal={terminal}
       />
     );

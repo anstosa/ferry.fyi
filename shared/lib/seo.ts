@@ -13,7 +13,8 @@ export type SeoView =
   | "terminal"
   | "map"
   | "alerts"
-  | "subscribe";
+  | "subscribe"
+  | "fare";
 
 export interface SeoMetadata {
   canonicalPath: string;

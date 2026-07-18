@@ -15,6 +15,7 @@ import ScheduleIcon from "~/static/images/icons/solid/calendar-week.svg";
 import VideoIcon from "~/static/images/icons/solid/cctv.svg";
 import TerminalIcon from "~/static/images/icons/solid/garage-car.svg";
 import MapIcon from "~/static/images/icons/solid/route.svg";
+import FareIcon from "~/static/images/icons/solid/receipt.svg";
 import { GetPath } from "~/views/Route";
 
 import { getLastBulletinTime, getWaitTime } from "../views/Bulletins";
@@ -47,11 +48,11 @@ const FooterSelection = (): ReactElement => (
 );
 
 // footer nav item
-const FooterLink: FunctionComponent<PropsWithChildren<{ path: string }>> = ({
-  path,
-  children,
-}) => (
+const FooterLink: FunctionComponent<
+  PropsWithChildren<{ label?: string; path: string }>
+> = ({ path, label, children }) => (
   <NavLink
+    aria-label={label}
     to={path}
     end
     className={({ isActive }) =>
@@ -130,17 +131,20 @@ export const Footer = ({ terminal, getPath }: Props): ReactElement => {
       />
       <WrapFooter>
         <LayoutGroup id="footer-nav">
-          <FooterLink path={getPath({ view: "schedule" })}>
+          <FooterLink label="Schedule" path={getPath({ view: "schedule" })}>
             <ScheduleIcon className="text-2xl" />
           </FooterLink>
-          <FooterLink path={getPath({ view: "cameras" })}>
+          <FooterLink label="Cameras" path={getPath({ view: "cameras" })}>
             <VideoIcon className="text-2xl" />
           </FooterLink>
-          <FooterLink path={getPath({ view: "terminal" })}>
+          <FooterLink label="Terminal details" path={getPath({ view: "terminal" })}>
             <TerminalIcon className="text-2xl" />
           </FooterLink>
-          <FooterLink path={getPath({ view: "map" })}>
+          <FooterLink label="Map" path={getPath({ view: "map" })}>
             <MapIcon className="text-2xl" />
+          </FooterLink>
+          <FooterLink label="Fares" path={getPath({ view: "fare" })}>
+            <FareIcon className="text-2xl" />
           </FooterLink>
           {/* flexible spacer */}
           <div className="flex-1" />

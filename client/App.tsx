@@ -221,6 +221,10 @@ export const App = (): ReactElement => {
           element: withRouteBoundary("Terminal", <Route view="terminal" />),
         },
         {
+          path: "fare",
+          element: withRouteBoundary("Fares", <Route view="fare" />),
+        },
+        {
           path: "map",
           element: withRouteBoundary("Map", <Route view="map" />),
         },
@@ -246,6 +250,10 @@ export const App = (): ReactElement => {
             {
               path: "terminal",
               element: withRouteBoundary("Terminal", <Route view="terminal" />),
+            },
+            {
+              path: "fare",
+              element: withRouteBoundary("Fares", <Route view="fare" />),
             },
             {
               path: "map",
