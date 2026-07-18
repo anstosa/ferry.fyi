@@ -177,9 +177,9 @@ jobs:
             -configuration Release \
             -sdk iphoneos \
             -archivePath "${RUNNER_TEMP}/FerryFYI.xcarchive" \
-            DEVELOPMENT_TEAM="${IOS_DEVELOPMENT_TEAM_ID}" \
+            FERRY_FYI_DEVELOPMENT_TEAM="${IOS_DEVELOPMENT_TEAM_ID}" \
             FERRY_FYI_CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY='Apple Distribution' \
+            FERRY_FYI_CODE_SIGN_IDENTITY='Apple Distribution' \
             FERRY_FYI_PROVISIONING_PROFILE_SPECIFIER="${PROFILE_UUID}" \
             MARKETING_VERSION="${VERSION_NAME}" \
             CURRENT_PROJECT_VERSION="${VERSION_CODE}" \
