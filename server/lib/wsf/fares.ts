@@ -7,14 +7,14 @@ import {
   FareQuote,
   FareQuoteRequest,
   FareQuoteResult,
+  FareSourceValidation,
   FareTotal,
   FareTripRequest,
-  FareSourceValidation,
   WsdotFareTotalResponse,
 } from "shared/contracts/fares";
 import {
-  FareCollectionPolicy,
   FARE_COLLECTION_POLICY,
+  FareCollectionPolicy,
   validateFareCollectionPolicy,
 } from "shared/lib/fareCollectionPolicy";
 import {
@@ -300,8 +300,14 @@ export const createFareAdapter = (
           fetchedAt: Math.floor(now().getTime() / 1000),
           policyVersion: policy.value.policyVersion,
           sourceCacheFlushDate: generation,
-          validFrom: validRange.start.slice(0, 10) as FareTripRequest["tripDate"],
-          validThrough: validRange.end.slice(0, 10) as FareTripRequest["tripDate"],
+          validFrom: validRange.start.slice(
+            0,
+            10
+          ) as FareTripRequest["tripDate"],
+          validThrough: validRange.end.slice(
+            0,
+            10
+          ) as FareTripRequest["tripDate"],
         },
         policy: policy.value,
       },

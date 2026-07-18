@@ -13,10 +13,7 @@ import {
   validateFareCollectionPolicy,
 } from "shared/lib/fareCollectionPolicy";
 
-import {
-  FareQuoteStore,
-  sequelizeFareQuoteStore,
-} from "~/lib/fares";
+import { FareQuoteStore, sequelizeFareQuoteStore } from "~/lib/fares";
 import {
   createFareAdapter,
   FareAdapter,
@@ -64,7 +61,7 @@ const asQuoteRequest = (value: unknown): FareQuoteRequest | undefined => {
   if (!trip || !value || typeof value !== "object") {
     return undefined;
   }
-  const lineItems = (value as Record<string, unknown>).lineItems;
+  const { lineItems } = value as Record<string, unknown>;
   if (!Array.isArray(lineItems)) {
     return undefined;
   }
@@ -95,11 +92,9 @@ const unavailable = (
 ): FareUnavailableResponse => ({
   calculatorUrl: WSDOT_FARE_CALCULATOR_URL,
   reason:
-    reason === "invalid-request"
-      ? "invalid-request"
-      : reason === "policy"
-        ? "policy"
-        : "unavailable",
+    reason === "invalid-request" || reason === "policy"
+      ? reason
+      : "unavailable",
   state: "unavailable",
 });
 
@@ -109,7 +104,7 @@ const candidateIsExactAndEligible = (
   policyEntries: FareCollectionPolicy[],
   now: Date
 ): boolean => {
-  const freshness = quote.freshness;
+  const { freshness } = quote;
   if (
     quote.request.departingTerminalId !== request.departingTerminalId ||
     quote.request.arrivingTerminalId !== request.arrivingTerminalId ||
@@ -152,12 +147,14 @@ export const createFareRouter = (
       return response.send(unavailable("invalid-request"));
     }
     const result = await adapter.getCatalog(input);
-    const body: FareCatalogApiResponse =
-      result.kind === "catalog"
-        ? { catalog: result, state: "current" }
-        : result.kind === "no-fare"
-          ? { noFare: result, state: "no-fare" }
-          : unavailable(result.reason);
+    let body: FareCatalogApiResponse;
+    if (result.kind === "catalog") {
+      body = { catalog: result, state: "current" };
+    } else if (result.kind === "no-fare") {
+      body = { noFare: result, state: "no-fare" };
+    } else {
+      body = unavailable(result.reason);
+    }
     return response.send(body);
   });
 

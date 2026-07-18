@@ -35,5 +35,9 @@ PersistedFareQuote.init(
     validFrom: { allowNull: false, type: DataTypes.DATEONLY },
     validThrough: { allowNull: false, type: DataTypes.DATEONLY },
   },
-  { sequelize: db, modelName: "PersistedFareQuote", tableName: "PersistedFareQuotes" }
+  {
+    sequelize: db,
+    modelName: "PersistedFareQuote",
+    tableName: "PersistedFareQuotes",
+  }
 );
