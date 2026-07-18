@@ -184,6 +184,19 @@ describe("SEO metadata", () => {
       'rel="canonical" href="https://ferry.fyi/seattle/bremerton"'
     );
     expect(scheduleResponse.text).toContain('content="index,follow"');
+
+    for (const [pathname, canonicalPath] of [
+      ["/seattle/fare", "/seattle/bainbridge-island/fare"],
+      ["/seattle/bremerton/fare", "/seattle/bremerton/fare"],
+    ]) {
+      const fareResponse = await request(app).get(pathname).expect(200);
+
+      expect(fareResponse.text).toContain("fare - Ferry FYI");
+      expect(fareResponse.text).toContain(
+        `rel="canonical" href="https://ferry.fyi${canonicalPath}"`
+      );
+      expect(fareResponse.text).toContain('content="noindex,follow"');
+    }
   });
 
   it("noindexes routes whose mate does not belong to the terminal", async () => {

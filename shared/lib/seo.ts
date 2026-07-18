@@ -42,6 +42,7 @@ export const SEO_ROUTE_VIEWS: readonly SeoView[] = [
   "map",
   "alerts",
   "subscribe",
+  "fare",
 ];
 export const SEO_INDEXABLE_PATHS = ["/", "/about", "/forecasting"] as const;
 

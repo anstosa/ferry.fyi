@@ -79,11 +79,15 @@ export const Fares = ({
     useState<FareQuoteApiResponse | null>(null);
   const [quantities, setQuantities] = useState<Record<number, number>>({});
   const requestRef = useRef(0);
+  const quoteRequestRef = useRef(0);
 
   useEffect(() => {
     const requestId = requestRef.current + 1;
     requestRef.current = requestId;
+    // A route/date catalog change makes any in-flight quote obsolete.
+    quoteRequestRef.current += 1;
     setLoadingCatalog(true);
+    setQuoting(false);
     setCatalogError(null);
     setCatalogResponse(null);
     setQuoteResponse(null);
@@ -127,29 +131,38 @@ export const Fares = ({
     if (!catalogResponse || catalogResponse.state !== "current") {
       return;
     }
+    const quoteRequestId = quoteRequestRef.current + 1;
+    quoteRequestRef.current = quoteRequestId;
     setQuoting(true);
     setQuoteResponse(null);
     try {
-      setQuoteResponse(
-        await getFareQuote({
-          arrivingTerminalId: mate.id,
-          departingTerminalId: terminal.id,
-          lineItems: Object.entries(quantities)
-            .map(([fareLineItemId, quantity]) => ({
-              fareLineItemId: Number(fareLineItemId),
-              quantity,
-            }))
-            .filter(({ quantity }) => quantity > 0),
-          roundTrip: false,
-          tripDate: date.toISODate() as FareQuoteRequest["tripDate"],
-        })
-      );
+      const response = await getFareQuote({
+        arrivingTerminalId: mate.id,
+        departingTerminalId: terminal.id,
+        lineItems: Object.entries(quantities)
+          .map(([fareLineItemId, quantity]) => ({
+            fareLineItemId: Number(fareLineItemId),
+            quantity,
+          }))
+          .filter(({ quantity }) => quantity > 0),
+        roundTrip: false,
+        tripDate: date.toISODate() as FareQuoteRequest["tripDate"],
+      });
+      if (quoteRequestId !== quoteRequestRef.current) {
+        return;
+      }
+      setQuoteResponse(response);
     } catch {
+      if (quoteRequestId !== quoteRequestRef.current) {
+        return;
+      }
       // Keep the public UI safe if the transport itself fails.
       setQuoteResponse(null);
       setCatalogError(new Error("Fare quote could not load."));
     } finally {
-      setQuoting(false);
+      if (quoteRequestId === quoteRequestRef.current) {
+        setQuoting(false);
+      }
     }
   };
 

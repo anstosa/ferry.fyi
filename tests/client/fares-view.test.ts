@@ -48,6 +48,20 @@ const render = async (): Promise<HTMLDivElement> => {
   return container;
 };
 
+const rerender = async (date: DateTime): Promise<void> => {
+  await act(async () => {
+    root?.render(
+      React.createElement(Fares, {
+        date,
+        mate,
+        setDate: vi.fn(),
+        terminal,
+      })
+    );
+    await Promise.resolve();
+  });
+};
+
 const flushEffects = async (): Promise<void> => {
   await act(async () => {
     await Promise.resolve();
@@ -135,5 +149,58 @@ describe("Fares", () => {
     expect(container.querySelector("a")?.getAttribute("href")).toBe(
       "https://example.test/calculator"
     );
+  });
+
+  it("does not render a late quote after the fare catalog identity changes", async () => {
+    let resolveQuote: (value: unknown) => void;
+    fares.getFareCatalog.mockResolvedValue({
+      catalog: {
+        collectionDescription: null,
+        fares: [
+          {
+            amount: 10.5,
+            category: "Passenger",
+            directionIndependent: false,
+            id: 11,
+            label: "Adult passenger",
+          },
+        ],
+      },
+      state: "current",
+    });
+    fares.getFareQuote.mockReturnValue(
+      new Promise((resolve) => {
+        resolveQuote = resolve;
+      })
+    );
+    const container = await render();
+    await flushEffects();
+    const button = [...container.querySelectorAll("button")].find(
+      (item) => item.textContent === "Calculate fare"
+    );
+    act(() => {
+      button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    await rerender(DateTime.fromISO("2026-07-19"));
+    await flushEffects();
+    await act(async () => {
+      resolveQuote?.({
+        quote: {
+          totals: [
+            {
+              amount: 10.5,
+              briefDescription: "Total",
+              description: "Total",
+              type: "total",
+            },
+          ],
+        },
+        state: "current",
+      });
+      await Promise.resolve();
+    });
+
+    expect(container.textContent).not.toContain("Official total: $10.50");
   });
 });
