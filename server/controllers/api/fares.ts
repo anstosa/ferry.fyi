@@ -98,6 +98,33 @@ const unavailable = (
   state: "unavailable",
 });
 
+/** Recheck cache-key equivalence at the API boundary before serving stale data. */
+const canonicalSelections = (
+  lineItems: FareQuoteRequest["lineItems"]
+): string | undefined => {
+  const quantities = new Map<number, number>();
+  for (const { fareLineItemId, quantity } of lineItems) {
+    if (
+      !Number.isInteger(fareLineItemId) ||
+      fareLineItemId <= 0 ||
+      !Number.isInteger(quantity) ||
+      quantity < 0
+    ) {
+      return undefined;
+    }
+    if (quantity > 0) {
+      quantities.set(
+        fareLineItemId,
+        (quantities.get(fareLineItemId) ?? 0) + quantity
+      );
+    }
+  }
+  const selections = [...quantities]
+    .map(([fareLineItemId, quantity]) => ({ fareLineItemId, quantity }))
+    .sort((first, second) => first.fareLineItemId - second.fareLineItemId);
+  return selections.length ? JSON.stringify(selections) : undefined;
+};
+
 const candidateIsExactAndEligible = (
   quote: FareQuote,
   request: FareQuoteRequest,
@@ -105,10 +132,14 @@ const candidateIsExactAndEligible = (
   now: Date
 ): boolean => {
   const { freshness } = quote;
+  const candidateSelections = canonicalSelections(quote.request.lineItems);
+  const requestedSelections = canonicalSelections(request.lineItems);
   if (
     quote.request.departingTerminalId !== request.departingTerminalId ||
     quote.request.arrivingTerminalId !== request.arrivingTerminalId ||
     quote.request.tripDate !== request.tripDate ||
+    !candidateSelections ||
+    candidateSelections !== requestedSelections ||
     request.tripDate < freshness.validFrom ||
     request.tripDate > freshness.validThrough ||
     !freshness.sourceCacheFlushDate ||
@@ -165,7 +196,12 @@ export const createFareRouter = (
     }
     const result = await adapter.getQuote(input);
     if (result.kind === "quote") {
-      await quoteStore.save(result);
+      // Caching cannot make a freshly calculated, valid quote unavailable.
+      try {
+        await quoteStore.save(result);
+      } catch {
+        // Best-effort cache persistence; serve the current upstream result.
+      }
       const body: FareQuoteApiResponse = { quote: result, state: "current" };
       return response.send(body);
     }
@@ -175,7 +211,12 @@ export const createFareRouter = (
     }
     // A stale value is permitted only after a true live upstream failure.
     if (result.reason === "upstream-unavailable") {
-      const candidates = await quoteStore.findExact(input);
+      let candidates: FareQuote[];
+      try {
+        candidates = await quoteStore.findExact(input);
+      } catch {
+        return response.send(unavailable(result.reason));
+      }
       const quote = candidates.find((candidate) =>
         candidateIsExactAndEligible(candidate, input, policyEntries, now())
       );

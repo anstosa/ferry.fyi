@@ -100,6 +100,24 @@ describe("anonymous fare API", () => {
     expect(JSON.stringify(response.body)).not.toMatch(/apiaccesscode|WSDOT_API_KEY/i);
   });
 
+  it("returns a current quote when best-effort cache persistence fails", async () => {
+    const quoteStore: FareQuoteStore = {
+      findExact: vi.fn(),
+      save: vi.fn().mockRejectedValue(new Error("database unavailable")),
+    };
+    const adapter: FareAdapter = {
+      getCatalog: vi.fn(),
+      getQuote: vi.fn().mockResolvedValue(quote),
+    };
+
+    const response = await request(appFor(adapter, quoteStore))
+      .post("/fares/quote")
+      .send({ ...trip, lineItems: quote.request.lineItems })
+      .expect(200);
+
+    expect(response.body.body).toEqual({ quote, state: "current" });
+  });
+
   it("returns stale only for an exact, valid-range, policy-gated quote after upstream failure", async () => {
     const quoteStore = store([quote]);
     const adapter: FareAdapter = {
@@ -122,6 +140,57 @@ describe("anonymous fare API", () => {
       state: "stale",
     });
     expect(quoteStore.findExact).toHaveBeenCalledOnce();
+  });
+
+  it("rejects stale candidates whose canonical selections do not match", async () => {
+    const quoteStore = store([quote]);
+    const adapter: FareAdapter = {
+      getCatalog: vi.fn(),
+      getQuote: vi.fn().mockResolvedValue({
+        calculatorUrl: "https://wsdot.wa.gov/ferries/fares/",
+        kind: "unavailable",
+        reason: "upstream-unavailable",
+        request: { ...trip, lineItems: [{ fareLineItemId: 101, quantity: 1 }] },
+      }),
+    };
+
+    const response = await request(appFor(adapter, quoteStore))
+      .post("/fares/quote")
+      .send({ ...trip, lineItems: [{ fareLineItemId: 101, quantity: 1 }] })
+      .expect(200);
+
+    expect(response.body.body).toEqual({
+      calculatorUrl: "https://wsdot.wa.gov/ferries/fares/",
+      reason: "unavailable",
+      state: "unavailable",
+    });
+  });
+
+  it("returns typed unavailable when stale quote lookup fails", async () => {
+    const quoteStore: FareQuoteStore = {
+      findExact: vi.fn().mockRejectedValue(new Error("database unavailable")),
+      save: vi.fn(),
+    };
+    const adapter: FareAdapter = {
+      getCatalog: vi.fn(),
+      getQuote: vi.fn().mockResolvedValue({
+        calculatorUrl: "https://wsdot.wa.gov/ferries/fares/",
+        kind: "unavailable",
+        reason: "upstream-unavailable",
+        request: { ...trip, lineItems: quote.request.lineItems },
+      }),
+    };
+
+    const response = await request(appFor(adapter, quoteStore))
+      .post("/fares/quote")
+      .send({ ...trip, lineItems: quote.request.lineItems })
+      .expect(200);
+
+    expect(response.body.body).toEqual({
+      calculatorUrl: "https://wsdot.wa.gov/ferries/fares/",
+      reason: "unavailable",
+      state: "unavailable",
+    });
   });
 
   it("never uses stale fallback for invalid input, a generation race, or policy mismatch", async () => {
