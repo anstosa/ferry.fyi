@@ -18,7 +18,7 @@ concurrency:
 jobs:
   publish:
     name: Build and publish TestFlight release
-    runs-on: macos-15
+    runs-on: macos-26
     env:
       AUTH0_CLIENT_AUDIENCE: ${{ vars.AUTH0_CLIENT_AUDIENCE }}
       AUTH0_CLIENT_ID: ${{ vars.AUTH0_CLIENT_ID }}
