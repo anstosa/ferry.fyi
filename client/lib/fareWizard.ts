@@ -20,15 +20,11 @@ export interface FareWizardConfig {
   vehicleType?: FareVehicleType;
 }
 
-export const DEFAULT_FARE_WIZARD_CONFIG: FareWizardConfig = {
+const DEFAULT_PASSENGER_COUNTS = {
   adultPassengers: 0,
   childPassengers: 0,
-  isSeniorOrDisabledDriver: false,
   seniorPassengers: 0,
-  travelMode: "vehicle",
-  vehicleLength: 30,
-  vehicleType: "standard",
-};
+} as const;
 
 const isTravelMode = (value: string | null): value is FareTravelMode =>
   value === "bicycle" || value === "vehicle" || value === "walk-on";
@@ -74,16 +70,16 @@ export const parseFareWizardConfig = (
   return {
     adultPassengers: readNonNegativeInteger(
       query.get("fareAdults"),
-      DEFAULT_FARE_WIZARD_CONFIG.adultPassengers
+      DEFAULT_PASSENGER_COUNTS.adultPassengers
     ),
     childPassengers: readNonNegativeInteger(
       query.get("fareChildren"),
-      DEFAULT_FARE_WIZARD_CONFIG.childPassengers
+      DEFAULT_PASSENGER_COUNTS.childPassengers
     ),
     isSeniorOrDisabledDriver: readDriverEligibility(query.get("fareDriver")),
     seniorPassengers: readNonNegativeInteger(
       query.get("fareSeniors"),
-      DEFAULT_FARE_WIZARD_CONFIG.seniorPassengers
+      DEFAULT_PASSENGER_COUNTS.seniorPassengers
     ),
     travelMode: isTravelMode(travelMode) ? travelMode : undefined,
     vehicleLength: readVehicleLength(query.get("fareLength")),
