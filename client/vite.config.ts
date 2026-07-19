@@ -189,11 +189,16 @@ export default defineConfig(({ mode }) => ({
     preserveSymlinks: true,
   },
   server: {
+    allowedHosts: ["ferry-fyi.santosa.family"],
     host: "0.0.0.0",
     port: 3042,
     proxy: {
-      "/api": `http://localhost:${process.env.PORT ?? "4040"}`,
-      "/auth": `http://localhost:${process.env.PORT ?? "4040"}`,
+      "/api":
+        process.env.VITE_API_PROXY_TARGET ??
+        `http://localhost:${process.env.PORT ?? "4040"}`,
+      "/auth":
+        process.env.VITE_API_PROXY_TARGET ??
+        `http://localhost:${process.env.PORT ?? "4040"}`,
     },
   },
   build: {

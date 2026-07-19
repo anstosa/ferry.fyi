@@ -141,7 +141,7 @@ export interface WsdotFareTotalResponse {
   Amount: number;
   BriefDescription: string;
   Description: string;
-  TotalType: "Depart" | "Either" | "Return" | "Total";
+  TotalType: "Depart" | "Either" | "Return" | "Total" | 1 | 2 | 3 | 4;
 }
 
 export type FareSourceValidation<T> =

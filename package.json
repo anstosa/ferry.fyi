@@ -196,7 +196,7 @@
     "reinstall": "rm -rf node_modules client/node_modules server/node_modules shared/node_modules && yarn",
     "school-breaks:update-events": "cd server && node ../scripts/register-esbuild.js scripts/updateSchoolBreakEvents.ts",
     "sports:update-events": "cd server && node ../scripts/register-esbuild.js scripts/updateMajorSportsEvents.ts",
-    "start:android": "scripts/with-android-env.sh sh -c 'NODE_ENV=production CACHE_NAME=android vite build --config client/vite.config.ts && cap sync && NODE_ENV=production CACHE_NAME=android vite build --config client/vite.config.ts --watch --'",
+    "start:android": "scripts/with-android-env.sh scripts/start-android.sh",
     "start:camera-tools": "node scripts/start-dev.js --with-camera-tools",
     "start:client": "NODE_ENV=development vite --config client/vite.config.ts --host 0.0.0.0",
     "start": "node scripts/start-dev.js",

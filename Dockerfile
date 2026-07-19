@@ -51,6 +51,15 @@ ENV AUTH0_CLIENT_AUDIENCE=${AUTH0_CLIENT_AUDIENCE} \
     SENTRY_DSN=${SENTRY_DSN}
 RUN yarn build
 
+FROM node:24-bookworm-slim AS development
+
+WORKDIR /app
+
+RUN corepack enable && corepack prepare yarn@1.22.22 --activate
+
+COPY package.json yarn.lock ./
+RUN yarn install --frozen-lockfile --network-timeout 600000
+
 FROM node:24-bookworm-slim AS runtime
 
 WORKDIR /app

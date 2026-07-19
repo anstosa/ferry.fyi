@@ -13,8 +13,8 @@ import type { Terminal } from "shared/contracts/terminals";
 import BellAlertIcon from "~/static/images/icons/solid/bell-exclamation.svg";
 import ScheduleIcon from "~/static/images/icons/solid/calendar-week.svg";
 import VideoIcon from "~/static/images/icons/solid/cctv.svg";
+import FareIcon from "~/static/images/icons/solid/dollar-sign.svg";
 import TerminalIcon from "~/static/images/icons/solid/garage-car.svg";
-import FareIcon from "~/static/images/icons/solid/receipt.svg";
 import MapIcon from "~/static/images/icons/solid/route.svg";
 import { GetPath } from "~/views/Route";
 

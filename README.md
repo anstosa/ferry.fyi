@@ -53,6 +53,12 @@ configuration changes, and compiles Android resources for native edits.
 
 ## Android testing
 
+From WSL, `yarn start:android` uses the Windows Android SDK and emulator when it
+is installed, avoiding WSL graphics issues. It waits for Android itself to finish
+booting, builds the APK in WSL, then installs and opens it through Windows ADB.
+It uses the first configured AVD by default; set `ANDROID_AVD_NAME` to select a
+specific emulator. Without a Windows SDK, it falls back to the Linux emulator.
+
 Physical device
 
 1. Plug device into Windows via compatible cable

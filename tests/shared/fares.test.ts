@@ -36,6 +36,11 @@ describe("fare contracts and WSDOT source validation", () => {
       ok: true,
       value: redactedWsdotFareFixture.fareTotals,
     });
+    expect(
+      validateWsdotFareTotals([
+        { ...redactedWsdotFareFixture.fareTotals[0], TotalType: 4 },
+      ])
+    ).toMatchObject({ ok: true });
   });
 
   it("rejects malformed WSDOT source data instead of treating it as a fare", () => {

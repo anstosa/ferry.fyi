@@ -13,6 +13,13 @@ const hasNonNegativeNumber = (value: unknown): value is number =>
 const hasPositiveInteger = (value: unknown): value is number =>
   Number.isInteger(value) && (value as number) > 0;
 
+const hasWsdotFareTotalType = (
+  value: unknown
+): value is WsdotFareTotalResponse["TotalType"] =>
+  (typeof value === "string" &&
+    ["Depart", "Either", "Return", "Total"].includes(value)) ||
+  (typeof value === "number" && [1, 2, 3, 4].includes(value));
+
 const hasWsdotFareLineItemShape = (
   value: unknown
 ): value is WsdotFareLineItemResponse => {
@@ -42,7 +49,7 @@ const hasWsdotFareTotalShape = (
     hasNonNegativeNumber(total.Amount) &&
     hasString(total.BriefDescription) &&
     hasString(total.Description) &&
-    ["Depart", "Either", "Return", "Total"].includes(total.TotalType as string)
+    hasWsdotFareTotalType(total.TotalType)
   );
 };
 

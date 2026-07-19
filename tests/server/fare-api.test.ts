@@ -6,9 +6,15 @@ import { wrapApiResponse } from "../../server/controllers/api";
 import {
   createFareRouter,
 } from "../../server/controllers/api/fares";
-import type { FareQuoteStore } from "../../server/lib/fares";
+import type {
+  FareCatalogStore,
+  FareQuoteStore,
+} from "../../server/lib/fares";
 import type { FareAdapter } from "../../server/lib/wsf/fares";
-import type { FareQuote } from "../../shared/contracts/fares";
+import type {
+  FareCatalogResult,
+  FareQuote,
+} from "../../shared/contracts/fares";
 import type { FareCollectionPolicy } from "../../shared/lib/fareCollectionPolicy";
 
 const now = new Date("2026-07-18T12:00:00.000Z");
@@ -50,20 +56,35 @@ const quote: FareQuote = {
 const appFor = (
   adapter: FareAdapter,
   store: FareQuoteStore,
-  policyEntries: FareCollectionPolicy[] = [policy]
+  policyEntries: FareCollectionPolicy[] = [policy],
+  catalogStore: FareCatalogStore = catalogCache()
 ) => {
   const app = express();
   app.use(express.json());
   app.use(wrapApiResponse);
   app.use(
     "/fares",
-    createFareRouter({ adapter, now: () => now, policyEntries, quoteStore: store })
+    createFareRouter({
+      adapter,
+      catalogStore,
+      now: () => now,
+      policyEntries,
+      quoteStore: store,
+    })
   );
   return app;
 };
 
 const store = (candidates: FareQuote[] = []): FareQuoteStore => ({
   findExact: vi.fn().mockResolvedValue(candidates),
+  save: vi.fn().mockResolvedValue(undefined),
+});
+
+const catalogCache = (
+  result?: FareCatalogResult
+): FareCatalogStore => ({
+  find: vi.fn().mockResolvedValue(result),
+  findRefreshCandidates: vi.fn().mockResolvedValue([]),
   save: vi.fn().mockResolvedValue(undefined),
 });
 
@@ -118,8 +139,32 @@ describe("anonymous fare API", () => {
     expect(response.body.body).toEqual({ quote, state: "current" });
   });
 
-  it("returns stale only for an exact, valid-range, policy-gated quote after upstream failure", async () => {
+  it("serves a fresh exact quote from the database without another WSDOT call", async () => {
     const quoteStore = store([quote]);
+    const adapter: FareAdapter = {
+      getCatalog: vi.fn(),
+      getQuote: vi.fn(),
+    };
+
+    const response = await request(appFor(adapter, quoteStore))
+      .post("/fares/quote")
+      .send({ ...trip, lineItems: quote.request.lineItems })
+      .expect(200);
+
+    expect(response.body.body).toEqual({ quote, state: "current" });
+    expect(adapter.getQuote).not.toHaveBeenCalled();
+  });
+
+  it("returns stale only for an exact, valid-range, policy-gated quote after upstream failure", async () => {
+    const quoteStore = store([
+      {
+        ...quote,
+        freshness: {
+          ...quote.freshness,
+          fetchedAt: quote.freshness.fetchedAt - 8 * 24 * 60 * 60,
+        },
+      },
+    ]);
     const adapter: FareAdapter = {
       getCatalog: vi.fn(),
       getQuote: vi.fn().mockResolvedValue({
@@ -135,11 +180,15 @@ describe("anonymous fare API", () => {
       .expect(200);
 
     expect(response.body.body).toMatchObject({
-      quote,
-      staleAt: quote.freshness.fetchedAt,
+      quote: expect.objectContaining({
+        freshness: expect.objectContaining({
+          fetchedAt: quote.freshness.fetchedAt - 8 * 24 * 60 * 60,
+        }),
+      }),
+      staleAt: quote.freshness.fetchedAt - 8 * 24 * 60 * 60,
       state: "stale",
     });
-    expect(quoteStore.findExact).toHaveBeenCalledOnce();
+    expect(quoteStore.findExact).toHaveBeenCalledTimes(2);
   });
 
   it("rejects stale candidates whose canonical selections do not match", async () => {
@@ -193,7 +242,7 @@ describe("anonymous fare API", () => {
     });
   });
 
-  it("never uses stale fallback for invalid input, a generation race, or policy mismatch", async () => {
+  it("never uses stale fallback for invalid input, a generation race, or missing policy", async () => {
     const quoteStore = store([quote]);
     const adapter: FareAdapter = {
       getCatalog: vi.fn(),
@@ -204,9 +253,7 @@ describe("anonymous fare API", () => {
         request: { ...trip, lineItems: quote.request.lineItems },
       }),
     };
-    const app = appFor(adapter, quoteStore, [
-      { ...policy, reviewedForCacheFlushGeneration: "different-generation" },
-    ]);
+    const app = appFor(adapter, quoteStore, []);
     const raced = await request(app)
       .post("/fares/quote")
       .send({ ...trip, lineItems: quote.request.lineItems });
@@ -223,8 +270,8 @@ describe("anonymous fare API", () => {
       reason: "unavailable",
       state: "unavailable",
     });
-    // Invalid ids are rejected by the adapter; stale lookup is never called for a race.
-    expect(quoteStore.findExact).not.toHaveBeenCalled();
+    // Invalid ids bypass the cache; a valid generation-race request can still read it.
+    expect(quoteStore.findExact).toHaveBeenCalledOnce();
   });
 
   it("returns policy-declared no-fare catalog data with its official source URL", async () => {
@@ -250,5 +297,29 @@ describe("anonymous fare API", () => {
       noFare: { sourceUrl: "https://example.test/wsdot/no-fare" },
       state: "no-fare",
     });
+  });
+
+  it("serves a fresh catalog from the database without another WSDOT request", async () => {
+    const catalog: FareCatalogResult = {
+      fares: [{ amount: 10, category: "Vehicle", directionIndependent: false, id: 1, label: "Car" }],
+      freshness: quote.freshness,
+      kind: "catalog",
+      request: { ...trip, roundTrip: false },
+    };
+    const adapter: FareAdapter = {
+      getCatalog: vi.fn(),
+      getQuote: vi.fn(),
+    };
+    const response = await request(appFor(adapter, store(), [policy], catalogCache(catalog)))
+      .get("/fares/catalog")
+      .query({
+        arrivingTerminalId: trip.arrivingTerminalId,
+        departingTerminalId: trip.departingTerminalId,
+        tripDate: trip.tripDate,
+      })
+      .expect(200);
+
+    expect(response.body.body).toEqual({ catalog, state: "current" });
+    expect(adapter.getCatalog).not.toHaveBeenCalled();
   });
 });

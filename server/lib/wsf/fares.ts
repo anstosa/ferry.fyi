@@ -88,6 +88,24 @@ const isDate = (value: string): boolean =>
   /^\d{4}-\d{2}-\d{2}$/.test(value) &&
   !Number.isNaN(Date.parse(`${value}T00:00:00Z`));
 
+/** WSDOT returns fare-date bounds as either ISO dates or .NET JSON dates. */
+const toIsoDate = (value: unknown): string | undefined => {
+  if (typeof value !== "string") {
+    return;
+  }
+  if (isDate(value)) {
+    return value;
+  }
+  const match = /^\/Date\((-?\d+)(?:[+-]\d{4})?\)\/$/.exec(value);
+  if (!match) {
+    return;
+  }
+  const date = new Date(Number(match[1]));
+  return Number.isNaN(date.getTime())
+    ? undefined
+    : date.toISOString().slice(0, 10);
+};
+
 const isExactTerminalId = (value: unknown, terminalId: string): boolean =>
   (typeof value === "string" || typeof value === "number") &&
   String(value) === terminalId;
@@ -98,11 +116,9 @@ const findDateRange = (
   if (!value || typeof value !== "object") {
     return;
   }
-  const start = value.StartDate ?? value.DateFrom;
-  const end = value.EndDate ?? value.DateThru;
-  return typeof start === "string" && typeof end === "string"
-    ? { end, start }
-    : undefined;
+  const start = toIsoDate(value.StartDate ?? value.DateFrom);
+  const end = toIsoDate(value.EndDate ?? value.DateThru);
+  return start && end ? { end, start } : undefined;
 };
 
 const dateIsInRange = (
@@ -179,6 +195,10 @@ const mapTotals = (value: unknown): FareSourceValidation<FareTotal[]> => {
     WsdotFareTotalResponse["TotalType"],
     FareTotal["type"]
   > = {
+    1: "depart",
+    2: "return",
+    3: "either",
+    4: "total",
     Depart: "depart",
     Either: "either",
     Return: "return",

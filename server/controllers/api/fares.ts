@@ -1,6 +1,7 @@
 import { Request, Router } from "express";
 import type {
   FareCatalogApiResponse,
+  FareCatalogResult,
   FareQuote,
   FareQuoteApiResponse,
   FareQuoteRequest,
@@ -13,7 +14,6 @@ import {
   validateFareCollectionPolicy,
 } from "shared/lib/fareCollectionPolicy";
 
-import { FareQuoteStore, sequelizeFareQuoteStore } from "~/lib/fares";
 import {
   createFareAdapter,
   FareAdapter,
@@ -21,8 +21,22 @@ import {
   WSDOT_FARE_CALCULATOR_URL,
 } from "~/lib/wsf/fares";
 
+import {
+  warmFareCatalogInBackground,
+  warmFareQuoteInBackground,
+} from "../../lib/fareCache";
+import {
+  FARE_CACHE_FRESH_SECONDS,
+  FARE_CACHE_STALE_SECONDS,
+  FareCatalogStore,
+  FareQuoteStore,
+  sequelizeFareCatalogStore,
+  sequelizeFareQuoteStore,
+} from "../../lib/fares";
+
 export interface FareRouterDependencies {
   adapter?: FareAdapter;
+  catalogStore?: FareCatalogStore;
   now?: () => Date;
   policyEntries?: FareCollectionPolicy[];
   quoteStore?: FareQuoteStore;
@@ -162,6 +176,14 @@ const candidateIsExactAndEligible = (
   );
 };
 
+const cacheAgeSeconds = (fetchedAt: number, now: Date): number =>
+  Math.floor(now.getTime() / 1000) - fetchedAt;
+
+const isUsableCachedResult = (fetchedAt: number, now: Date): boolean =>
+  Number.isFinite(fetchedAt) &&
+  cacheAgeSeconds(fetchedAt, now) >= 0 &&
+  cacheAgeSeconds(fetchedAt, now) <= FARE_CACHE_STALE_SECONDS;
+
 /** Anonymous server-only fare endpoint; the upstream key never crosses this boundary. */
 export const createFareRouter = (
   dependencies: FareRouterDependencies = {}
@@ -170,6 +192,7 @@ export const createFareRouter = (
   const adapter = dependencies.adapter ?? createFareAdapter();
   const now = dependencies.now ?? (() => new Date());
   const policyEntries = dependencies.policyEntries ?? FARE_COLLECTION_POLICY;
+  const catalogStore = dependencies.catalogStore ?? sequelizeFareCatalogStore;
   const quoteStore = dependencies.quoteStore ?? sequelizeFareQuoteStore;
 
   router.get("/catalog", async (request, response) => {
@@ -177,7 +200,34 @@ export const createFareRouter = (
     if (!input) {
       return response.send(unavailable("invalid-request"));
     }
+    let cached: FareCatalogResult | undefined;
+    try {
+      cached = await catalogStore.find(input);
+    } catch {
+      // A database outage must not prevent a live official fare lookup.
+    }
+    if (cached && isUsableCachedResult(cached.freshness.fetchedAt, now())) {
+      if (
+        cacheAgeSeconds(cached.freshness.fetchedAt, now()) >=
+        FARE_CACHE_FRESH_SECONDS
+      ) {
+        warmFareCatalogInBackground(adapter, catalogStore, input);
+      }
+      const body: FareCatalogApiResponse =
+        cached.kind === "catalog"
+          ? { catalog: cached, state: "current" }
+          : { noFare: cached, state: "no-fare" };
+      return response.send(body);
+    }
     const result = await adapter.getCatalog(input);
+    if (result.kind !== "unavailable") {
+      // Persist in the request path only for a cold miss; refreshes are async.
+      try {
+        await catalogStore.save(result);
+      } catch {
+        // Best-effort persistence must never suppress a current official result.
+      }
+    }
     let body: FareCatalogApiResponse;
     if (result.kind === "catalog") {
       body = { catalog: result, state: "current" };
@@ -193,6 +243,30 @@ export const createFareRouter = (
     const input = asQuoteRequest(request.body);
     if (!input) {
       return response.send(unavailable("invalid-request"));
+    }
+    const requestedSelections = canonicalSelections(input.lineItems);
+    if (requestedSelections) {
+      let candidates: FareQuote[] = [];
+      try {
+        candidates = (await quoteStore.findExact(input)) ?? [];
+      } catch {
+        // Fall through to the live official calculation on a cache failure.
+      }
+      const cached = candidates.find(
+        (candidate) =>
+          candidateIsExactAndEligible(candidate, input, policyEntries, now()) &&
+          isUsableCachedResult(candidate.freshness.fetchedAt, now())
+      );
+      if (cached) {
+        if (
+          cacheAgeSeconds(cached.freshness.fetchedAt, now()) >=
+          FARE_CACHE_FRESH_SECONDS
+        ) {
+          warmFareQuoteInBackground(adapter, quoteStore, input);
+        }
+        const body: FareQuoteApiResponse = { quote: cached, state: "current" };
+        return response.send(body);
+      }
     }
     const result = await adapter.getQuote(input);
     if (result.kind === "quote") {

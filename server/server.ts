@@ -9,6 +9,7 @@ import { refreshCameraLineDetectionCache } from "~/lib/cameraLineDetection";
 import { dbInit } from "~/lib/db";
 import { updateMajorSportsEvents } from "~/lib/demandEvents/updateMajorSportsEvents";
 import { updateSchoolBreakEvents } from "~/lib/demandEvents/updateSchoolBreakEvents";
+import { warmDueFareCatalogs, warmTodayFareCatalogs } from "~/lib/fareCache";
 import { safeScheduledTask } from "~/lib/safeScheduledJob";
 import {
   forceHttps,
@@ -67,6 +68,27 @@ function refreshCameraLineDetectionsInBackground(): void {
   });
 }
 
+function refreshFareCatalogsInBackground(): void {
+  Promise.all([warmTodayFareCatalogs(), warmDueFareCatalogs()]).catch(
+    (error: Error) => {
+      logger.error(
+        `Fare catalog cache refresh failed: ${error.message}`,
+        error
+      );
+    }
+  );
+}
+
+function scheduleTodayFareCatalogWarmup(): void {
+  scheduleJob(
+    { hour: 0, minute: 5, second: 0, tz: "America/Los_Angeles" },
+    safeScheduledTask(
+      "daily fare catalog warmup",
+      refreshFareCatalogsInBackground
+    )
+  );
+}
+
 // defer noncritical startup work
 function deferStartupMaintenance(name: string, task: () => void): void {
   const timeout = setTimeout(() => {
@@ -81,6 +103,11 @@ export function startWsfCacheRefreshJobs(): void {
   logger.info("Initializing WSF cache refresh jobs");
   // warm web caches
   refreshWsfInBackground({ sendNotifications: false });
+  deferStartupMaintenance(
+    "fare catalog cache",
+    refreshFareCatalogsInBackground
+  );
+  scheduleTodayFareCatalogWarmup();
   // refresh schedules after cache purge
   scheduleJob(
     { hour: 4, minute: 5, second: 0 },
@@ -115,6 +142,11 @@ export function startScheduler(): void {
   logger.info("Initializing WSF scheduler jobs");
   // warm scheduler caches
   refreshWsfInBackground({ sendNotifications: true });
+  deferStartupMaintenance(
+    "fare catalog cache",
+    refreshFareCatalogsInBackground
+  );
+  scheduleTodayFareCatalogWarmup();
   // defer demand event maintenance
   deferStartupMaintenance("demand events", refreshDemandEventsInBackground);
   // defer detector warmup
@@ -126,6 +158,14 @@ export function startScheduler(): void {
   scheduleJob(
     { hour: 4, minute: 10, second: 0 },
     safeScheduledTask("daily WSF route-vessel inference", updateDaily)
+  );
+  // Recheck a bounded batch hourly; visitors never trigger a cache stampede.
+  scheduleJob(
+    { minute: 15, second: 0 },
+    safeScheduledTask(
+      "hourly fare catalog cache refresh",
+      refreshFareCatalogsInBackground
+    )
   );
   // refresh schedules after cache purge
   scheduleJob(

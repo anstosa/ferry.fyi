@@ -17,8 +17,31 @@ export default defineConfig({
         replacement: path.resolve(__dirname, "client/components/InlineLoader"),
       },
       {
+        find: /^~\/components\/FareWizardIcons$/,
+        replacement: path.resolve(__dirname, "client/components/FareWizardIcons"),
+      },
+      {
+        find: /^~\/components\/ExternalPillLink$/,
+        replacement: path.resolve(__dirname, "client/components/ExternalPillLink"),
+      },
+      {
+        find: /^~\/components\/RouteSelector$/,
+        replacement: path.resolve(__dirname, "client/components/RouteSelector"),
+      },
+      {
         find: /^~\/lib\/fares$/,
         replacement: path.resolve(__dirname, "client/lib/fares"),
+      },
+      {
+        find: /^~\/lib\/fareWizard$/,
+        replacement: path.resolve(__dirname, "client/lib/fareWizard"),
+      },
+      {
+        find: /^~\/static\/images\/icons\/solid\/share-alt\.svg$/,
+        replacement: path.resolve(
+          __dirname,
+          "client/static/images/icons/solid/share-alt.svg"
+        ),
       },
       {
         find: /^~\/static\/images\/icons\/wsdot\.svg$/,

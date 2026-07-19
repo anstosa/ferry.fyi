@@ -11,7 +11,7 @@ import { isKeyOf, values } from "shared/lib/objects";
 import { Camera } from "~/models/Camera";
 import { Route } from "~/models/Route";
 
-import { Bulletin } from "./Bulletin";
+import { Bulletin, BulletinInput } from "./Bulletin";
 import { CacheableModel } from "./CacheableModel";
 
 export class Terminal extends CacheableModel implements TerminalClass {
@@ -58,10 +58,21 @@ export class Terminal extends CacheableModel implements TerminalClass {
   };
 
   serialize({ withoutMates }: Record<string, true> = {}): TerminalClass {
+    const bulletins = (this.bulletins as Array<Bulletin | BulletinInput>)
+      .map((bulletin) =>
+        bulletin instanceof Bulletin
+          ? { bulletin, ignoreAll: bulletin.ignoreAll }
+          : {
+              bulletin: Bulletin.serializeInput(bulletin),
+              ignoreAll: Bulletin.normalizeInput(bulletin).ignoreAll,
+            }
+      )
+      .filter(({ ignoreAll }) => !ignoreAll)
+      .map(({ bulletin }) => bulletin);
     return CacheableModel.serialize(
       {
         abbreviation: this.abbreviation,
-        bulletins: this.bulletins.filter(({ ignoreAll }) => !ignoreAll),
+        bulletins,
         cameras: this.cameras,
         hasElevator: this.hasElevator,
         hasOverheadLoading: this.hasOverheadLoading,

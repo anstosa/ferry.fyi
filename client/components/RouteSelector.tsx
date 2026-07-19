@@ -19,7 +19,7 @@ import { TerminalDropdown } from "./TerminalDropdown";
 
 interface Props {
   mate: Terminal;
-  setRoute: (target: string, mate: string) => void;
+  setRoute: (target: string, mate?: string) => void | Promise<void>;
   terminal: Terminal;
 }
 
@@ -55,7 +55,11 @@ export const RouteSelector = (props: Props): ReactElement => {
           selected={terminal}
           isOpen={isTerminalOpen}
           setOpen={setTerminalOpen}
-          onSelect={() => setTerminalOpen(false)}
+          onSelect={(event, selectedTerminal) => {
+            event.preventDefault();
+            setTerminalOpen(false);
+            setRoute(getSlug(selectedTerminal.id));
+          }}
         />
       </>
     );
@@ -71,12 +75,14 @@ export const RouteSelector = (props: Props): ReactElement => {
         to={`/${getSlug(mate.id)}`}
         onMouseEnter={() => setSwapHovering(true)}
         onMouseLeave={() => setSwapHovering(false)}
-        onClick={() =>
+        onClick={(event) => {
+          event.preventDefault();
           ReactGA.event({
             category: "Navigation",
             action: "Swap Terminals",
-          })
-        }
+          });
+          setRoute(getSlug(mate.id), getSlug(terminal.id));
+        }}
         aria-label="Swap Terminals"
       >
         {isSwapHovering ? <ExchangeIcon /> : <ArrowRightIcon />}

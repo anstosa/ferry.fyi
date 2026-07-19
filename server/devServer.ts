@@ -3,7 +3,8 @@ import nodemon from "nodemon";
 let isShuttingDown = false;
 
 nodemon({
-  watch: ["."],
+  legacyWatch: process.env.CHOKIDAR_USEPOLLING === "true",
+  watch: [".", "../shared"],
   script: "server.ts",
   exec: "node ../scripts/register-esbuild.js",
   ext: "ts",

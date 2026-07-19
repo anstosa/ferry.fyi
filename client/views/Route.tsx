@@ -130,7 +130,7 @@ export const Route = ({
   const today = DateTime.local();
   const { terminalSlug, mateSlug } = useParams();
   const { date: dateInput } = useQuery();
-  const { pathname } = useLocation();
+  const { pathname, search } = useLocation();
   const navigate = useNavigate();
   const [schedule, setSchedule] = useState<ScheduleClass | null>(null);
   const [scheduleError, setScheduleError] = useState<Error | null>(null);
@@ -217,7 +217,18 @@ export const Route = ({
       return "";
     }
 
-    const query = isToday ? "?" : `?date=${date.toISODate()}`;
+    const queryParams = new URLSearchParams();
+    if (!isToday) {
+      queryParams.set("date", date.toISODate() ?? "");
+    }
+    if (newView === "fare") {
+      for (const [key, value] of new URLSearchParams(search)) {
+        if (key.startsWith("fare")) {
+          queryParams.set(key, value);
+        }
+      }
+    }
+    const query = queryParams.size ? `?${queryParams.toString()}` : "";
 
     if (newView === "terminal") {
       return `/${getSlug(newTerminal.id)}/terminal${query}`;
@@ -262,7 +273,7 @@ export const Route = ({
       setScheduleError(null);
       setSchedule(null);
       // route sync guard
-      if (pathname !== path) {
+      if (`${pathname}${search}` !== path) {
         navigate(path);
       }
     } catch (error) {
@@ -488,7 +499,13 @@ export const Route = ({
     );
   } else if (view === "fare" && terminal && mate) {
     content = (
-      <Fares date={date} mate={mate} setDate={setDate} terminal={terminal} />
+      <Fares
+        date={date}
+        mate={mate}
+        setDate={setDate}
+        setRoute={setRoute}
+        terminal={terminal}
+      />
     );
   } else if (view === "alerts") {
     content = (

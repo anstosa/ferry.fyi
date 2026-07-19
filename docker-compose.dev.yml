@@ -1,5 +1,6 @@
 x-app-build: &app-build
   context: .
+  target: development
   args:
     AUTH0_CLIENT_AUDIENCE: ${AUTH0_CLIENT_AUDIENCE:-http://localhost:4041/api}
     AUTH0_CLIENT_ID: ${AUTH0_CLIENT_ID:-local-container-client}
@@ -23,15 +24,56 @@ services:
   app:
     image: ferry-fyi-local-app
     build: *app-build
+    command: yarn start:client
     env_file:
       - path: .env
         required: false
     environment:
       ANDROID_CERT_FINGERPRINT: ${ANDROID_CERT_FINGERPRINT:-local-container-fingerprint}
       AUTH0_CLIENT_AUDIENCE: ${AUTH0_CLIENT_AUDIENCE:-http://localhost:${APP_PORT:-4041}/api}
+      AUTH0_CLIENT_ID: ${AUTH0_CLIENT_ID:-local-container-client}
+      AUTH0_CLIENT_REDIRECT: ${AUTH0_CLIENT_REDIRECT:-http://localhost:${APP_PORT:-4041}}
       AUTH0_DOMAIN: ${AUTH0_DOMAIN:-local-container.invalid}
       BASE_URL: ${BASE_URL:-http://localhost:${APP_PORT:-4041}}
       CAR_DETECTION_ENDPOINT: http://detector:8000/detect
+      CHOKIDAR_USEPOLLING: "true"
+      DATABASE_URL: postgres://test:testing@postgres:5432/ferryfyi
+      NODE_ENV: development
+      PGSSLMODE: disable
+      PORT: 4040
+      PROCESS_ROLE: web
+      RUN_SCHEDULER: false
+      WSDOT_API_KEY: ${WSDOT_API_KEY:-}
+      VITE_API_PROXY_TARGET: http://server:4040
+    depends_on:
+      server:
+        condition: service_started
+    ports:
+      - "${APP_PORT:-4041}:3042"
+    volumes:
+      - .:/app
+      - app-node-modules:/app/node_modules
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3042').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  server:
+    image: ferry-fyi-local-app
+    build: *app-build
+    command: yarn start:server
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      AUTH0_CLIENT_AUDIENCE: ${AUTH0_CLIENT_AUDIENCE:-http://localhost:${APP_PORT:-4041}/api}
+      AUTH0_CLIENT_ID: ${AUTH0_CLIENT_ID:-local-container-client}
+      AUTH0_CLIENT_REDIRECT: ${AUTH0_CLIENT_REDIRECT:-http://localhost:${APP_PORT:-4041}}
+      AUTH0_DOMAIN: ${AUTH0_DOMAIN:-local-container.invalid}
+      CAR_DETECTION_ENDPOINT: http://detector:8000/detect
+      CHOKIDAR_USEPOLLING: "true"
       DATABASE_URL: postgres://test:testing@postgres:5432/ferryfyi
       NODE_ENV: development
       PGSSLMODE: disable
@@ -46,14 +88,9 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
-    ports:
-      - "${APP_PORT:-4041}:4040"
-    healthcheck:
-      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:4040/healthz').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
-      interval: 30s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
+    volumes:
+      - .:/app
+      - app-node-modules:/app/node_modules
 
   detector:
     build:
@@ -100,6 +137,10 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    volumes:
+      - .:/app
+      - app-node-modules:/app/node_modules
     restart: "no"
 volumes:
   postgres-data:
+  app-node-modules:

@@ -10,7 +10,7 @@ import {
 } from "../../shared/lib/fareCollectionPolicy";
 
 describe("fare collection policy", () => {
-  const now = new Date("2026-07-18T20:51:40.000Z");
+  const now = new Date("2026-07-20T20:51:40.000Z");
   const reviewed = FARE_COLLECTION_POLICY.map((entry) => ({
     ...entry,
     reviewedAt: new Date(
@@ -21,27 +21,27 @@ describe("fare collection policy", () => {
   }));
 
   it("covers every ordered two-terminal route direction", () => {
-    expect(FARE_COLLECTION_POLICY).toHaveLength(18);
+    expect(FARE_COLLECTION_POLICY).toHaveLength(38);
     expect(
       new Set(
         FARE_COLLECTION_POLICY.map(
           (p) => `${p.departingTerminalId}:${p.arrivingTerminalId}`
         )
     ).size
-    ).toBe(18);
+    ).toBe(38);
     expect(FARE_COLLECTION_POLICY).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           departingTerminalId: "16",
           arrivingTerminalId: "21",
           sourceUrl:
-            "https://www.wsdot.wa.gov/ferries/api/fares/rest/terminalcombo/2026-07-18/16/21",
+            "https://www.wsdot.wa.gov/ferries/api/fares/rest/terminalcombo/2026-07-19/16/21",
         }),
         expect.objectContaining({
           departingTerminalId: "22",
           arrivingTerminalId: "20",
           sourceUrl:
-            "https://www.wsdot.wa.gov/ferries/api/fares/rest/terminalcombo/2026-07-18/22/20",
+            "https://www.wsdot.wa.gov/ferries/api/fares/rest/terminalcombo/2026-07-19/22/20",
         }),
       ])
     );
@@ -55,7 +55,7 @@ describe("fare collection policy", () => {
     }
   });
 
-  it("accepts the audited generation and fails closed for another generation", () => {
+  it("accepts new WSDOT cache generations while the route policy is fresh", () => {
     expect(
       validateFareCollectionPolicy(
         FARE_COLLECTION_POLICY,
@@ -73,7 +73,7 @@ describe("fare collection policy", () => {
         "generation-2",
         now
       )
-    ).toMatchObject({ ok: false });
+    ).toMatchObject({ ok: true });
   });
 
   it("requires a no-fare explanation and independently evaluates reverse directions", () => {
@@ -112,6 +112,6 @@ describe("fare collection policy", () => {
     }
     expect(
       FARE_COLLECTION_POLICY.filter((entry) => !entry.fareCollected)
-    ).toHaveLength(3);
+    ).toHaveLength(7);
   });
 });

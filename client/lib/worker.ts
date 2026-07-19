@@ -38,4 +38,13 @@ if (canRegisterServiceWorker) {
       }
     });
   });
+} else if ("serviceWorker" in navigator) {
+  // A production PWA worker can otherwise keep serving an old bundle when a
+  // mobile browser opens a development host. Remove it automatically so the
+  // source-mounted Vite server always owns the next reload.
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      registrations.forEach((entry) => entry.unregister());
+    });
+  });
 }

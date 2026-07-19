@@ -26,7 +26,7 @@ interface NormalizedBulletinInput extends BulletinInput {
   title: string;
 }
 
-type BulletinInput = Omit<
+export type BulletinInput = Omit<
   BulletinClass,
   "bodyText" | "level" | "routePrefix"
 > & {
@@ -187,8 +187,8 @@ export class Bulletin extends CacheableModel implements BulletinClass {
       return SortedLevels.indexOf(b.level) - SortedLevels.indexOf(a.level);
     });
 
-  get routePrefix(): string {
-    const rawRouteMatch = this.rawTitle.match(ROUTE_MATCH);
+  static getRoutePrefix = (rawTitle: string): string => {
+    const rawRouteMatch = rawTitle.match(ROUTE_MATCH);
     if (rawRouteMatch) {
       const [, rawRoute] = rawRouteMatch;
       const route = rawRoute
@@ -206,7 +206,26 @@ export class Bulletin extends CacheableModel implements BulletinClass {
     } else {
       return "All";
     }
+  };
+
+  get routePrefix(): string {
+    return Bulletin.getRoutePrefix(this.rawTitle);
   }
+
+  /** Serialize bundled seed data that has not yet been refreshed from WSF. */
+  static serializeInput = (data: BulletinInput): BulletinClass => {
+    const normalized = Bulletin.normalizeInput(data);
+    return {
+      bodyHTML: normalized.bodyHTML,
+      bodyText: normalized.bodyText,
+      date: normalized.date,
+      level: normalized.level,
+      routePrefix: Bulletin.getRoutePrefix(data.title),
+      terminalId: normalized.terminalId,
+      title: normalized.title,
+      ...(normalized.url && { url: normalized.url }),
+    };
+  };
 
   static normalizeTitle = (title: string): string => {
     const rawRouteMatch = title.match(ROUTE_MATCH);
