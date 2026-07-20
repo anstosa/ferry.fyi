@@ -27,7 +27,7 @@ describe("getCurrentLocation", () => {
     vi.restoreAllMocks();
   });
 
-  it("lets the native position lookup request coarse location access", async () => {
+  it("gets the browser position without invoking native permission APIs", async () => {
     const getCurrentPosition = geolocation.getCurrentPosition.mockResolvedValue(
       {
         coords: {
@@ -63,24 +63,16 @@ describe("getCurrentLocation", () => {
 
   it("does not open an Android permission dialog during a background refresh", async () => {
     capacitor.isNativePlatform.mockReturnValue(true);
-    geolocation.checkPermissions.mockResolvedValue({
-      coarseLocation: "prompt",
-    });
 
     await expect(getCurrentLocation()).resolves.toBeNull();
 
+    expect(geolocation.checkPermissions).not.toHaveBeenCalled();
     expect(geolocation.requestPermissions).not.toHaveBeenCalled();
     expect(geolocation.getCurrentPosition).not.toHaveBeenCalled();
   });
 
-  it("requests Android permission only from the explicit location action", async () => {
+  it("uses the native position lookup only from the explicit location action", async () => {
     capacitor.isNativePlatform.mockReturnValue(true);
-    geolocation.checkPermissions.mockResolvedValue({
-      coarseLocation: "prompt",
-    });
-    geolocation.requestPermissions.mockResolvedValue({
-      coarseLocation: "granted",
-    });
     geolocation.getCurrentPosition.mockResolvedValue({
       coords: { latitude: 47.6, longitude: -122.3 },
     });
@@ -90,9 +82,11 @@ describe("getCurrentLocation", () => {
       longitude: -122.3,
     });
 
-    expect(geolocation.requestPermissions).toHaveBeenCalledWith({
-      permissions: ["coarseLocation"],
+    expect(geolocation.getCurrentPosition).toHaveBeenCalledWith({
+      enableHighAccuracy: false,
     });
+    expect(geolocation.checkPermissions).not.toHaveBeenCalled();
+    expect(geolocation.requestPermissions).not.toHaveBeenCalled();
   });
 
   it("allows a new lookup after a denied permission request", async () => {

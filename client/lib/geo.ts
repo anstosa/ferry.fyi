@@ -12,9 +12,7 @@ export interface Point {
 
 const EARTH_RADIUS = 3956;
 const toRadians = (degrees: number): number => (degrees * Math.PI) / 180;
-let locationRequest:
-  | { promptsForPermission: boolean; promise: Promise<Point | null> }
-  | undefined;
+let locationRequest: Promise<Point | null> | undefined;
 
 // Gets distance between two points in miles using Haversine formula
 export const getDistance = (a: Point, b: Point): number => {
@@ -32,32 +30,8 @@ export const getDistance = (a: Point, b: Point): number => {
   return c * EARTH_RADIUS;
 };
 
-const hasNativeLocationPermission = async (
-  promptsForPermission: boolean
-): Promise<boolean> => {
-  if (!Capacitor.isNativePlatform()) {
-    return true;
-  }
-  let permissions = await Geolocation.checkPermissions();
-  if (permissions.coarseLocation === "granted") {
-    return true;
-  }
-  if (!promptsForPermission) {
-    return false;
-  }
-  permissions = await Geolocation.requestPermissions({
-    permissions: ["coarseLocation"],
-  });
-  return permissions.coarseLocation === "granted";
-};
-
-const fetchCurrentLocation = async (
-  promptsForPermission: boolean
-): Promise<Point | null> => {
+const fetchCurrentLocation = async (): Promise<Point | null> => {
   try {
-    if (!(await hasNativeLocationPermission(promptsForPermission))) {
-      return null;
-    }
     const {
       coords: { latitude, longitude },
     } = await Geolocation.getCurrentPosition({ enableHighAccuracy: false });
@@ -68,21 +42,27 @@ const fetchCurrentLocation = async (
 };
 
 const getLocation = (promptsForPermission: boolean): Promise<Point | null> => {
+  // Android's checkPermissions() reaches the native location service and has
+  // caused startup crashes on affected devices. Never invoke the plugin from a
+  // background refresh; getCurrentPosition() owns the permission flow after an
+  // explicit user action instead.
+  if (Capacitor.isNativePlatform() && !promptsForPermission) {
+    return Promise.resolve(null);
+  }
+
   if (!locationRequest) {
-    const promise = fetchCurrentLocation(promptsForPermission).finally(() => {
+    locationRequest = fetchCurrentLocation().finally(() => {
       locationRequest = undefined;
     });
-    locationRequest = { promptsForPermission, promise };
-  } else if (promptsForPermission && !locationRequest.promptsForPermission) {
-    return locationRequest.promise.finally(() => getLocation(true));
   }
-  return locationRequest.promise;
+  return locationRequest;
 };
 
-/** Read location only when permission is already granted. */
-export const getCurrentLocation = (): Promise<Point | null> => getLocation(false);
+/** Browser lookup only; native apps wait for an explicit user action. */
+export const getCurrentLocation = (): Promise<Point | null> =>
+  getLocation(false);
 
-/** Request Android location permission from an explicit user action. */
+/** Get a location (and let the native plugin request permission) after a tap. */
 export const requestCurrentLocation = (): Promise<Point | null> =>
   getLocation(true);
 
