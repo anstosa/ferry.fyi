@@ -11,7 +11,10 @@ vi.mock("../../client/lib/firebase", () => ({ firebaseApp: {} }));
 vi.mock("../../client/lib/user", () => ({ useUser: vi.fn() }));
 vi.mock("../../client/lib/worker", () => ({ getRegistration: vi.fn() }));
 
-import { requestNotificationPermission } from "../../client/lib/push";
+import {
+  getNotificationPermission,
+  requestNotificationPermission,
+} from "../../client/lib/push";
 
 describe("requestNotificationPermission", () => {
   afterEach(() => {
@@ -38,5 +41,20 @@ describe("requestNotificationPermission", () => {
 
     await expect(requestNotificationPermission()).resolves.toBe(false);
     expect(requestPermission).not.toHaveBeenCalled();
+  });
+
+  it("re-requests a denied permission from an explicit retry", async () => {
+    const requestPermission = vi.fn().mockResolvedValue("granted");
+    vi.stubGlobal("Notification", {
+      permission: "denied",
+      requestPermission,
+    });
+
+    await expect(requestNotificationPermission(true)).resolves.toBe(true);
+    expect(requestPermission).toHaveBeenCalledOnce();
+  });
+
+  it("reports that notifications are unavailable without the browser API", () => {
+    expect(getNotificationPermission()).toBeNull();
   });
 });

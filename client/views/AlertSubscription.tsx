@@ -35,6 +35,7 @@ import { without } from "shared/lib/arrays";
 import { AppTeaser } from "~/components/AppTeaser";
 import { HeaderDropdown } from "~/components/HeaderDropdown";
 import { LoadingWaves } from "~/components/LoadingWaves";
+import { NotificationPermissionWarning } from "~/components/NotificationPermissionWarning";
 import { Splash } from "~/components/Splash";
 import { getConfiguredAuth0RedirectUri } from "~/lib/auth";
 import { useDevice } from "~/lib/device";
@@ -890,6 +891,7 @@ export const AlertSubscription = ({
     scheduleMode !== initialMode ||
     serializeDraftRules(draftRules) !== serializeDraftRules(initialDraftRules);
   const terminalPairOptions = getTerminalPairOptions(terminals);
+  const hasConfiguredAlerts = (alertRules?.length ?? 0) > 0;
   const pairName = `${terminal.name} to ${mate.name}`;
   const pairShortName = `${terminal.abbreviation} → ${mate.abbreviation}`;
   const titleText = `${pairName} Alerts`;
@@ -1222,6 +1224,7 @@ export const AlertSubscription = ({
             </div>
           </div>
           <AppTeaser />
+          <NotificationPermissionWarning hasAlerts={hasConfiguredAlerts} />
 
           <div className="rounded-2xl border border-[rgba(0,0,0,0.08)] bg-white p-4 shadow-sm dark:border-[rgba(255,255,255,0.08)] dark:bg-[#00202a]">
             <h2 className="mb-3 text-lg font-bold text-gray-darkest dark:text-white">

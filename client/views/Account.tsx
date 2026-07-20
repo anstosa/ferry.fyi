@@ -23,6 +23,7 @@ import { pluralize } from "shared/lib/strings";
 
 import { Page } from "~/components/Page";
 import { PageLoadError } from "~/components/PageLoadError";
+import { NotificationPermissionWarning } from "~/components/NotificationPermissionWarning";
 import { SeoHelmet } from "~/components/SeoHelmet";
 import { Splash } from "~/components/Splash";
 import { getConfiguredAuth0RedirectUri } from "~/lib/auth";
@@ -427,6 +428,9 @@ export const Account = withAuthenticationRequired(
                 ? `${pluralize(subscriptionSummaries.length, "saved alert")}.`
                 : "You have not saved any alerts yet."}
             </p>
+            <NotificationPermissionWarning
+              hasAlerts={subscriptionSummaries.length > 0}
+            />
             {subscriptionSummaries.length > 0 ? (
               <ul className="flex flex-col gap-3">
                 {subscriptionSummaries.map(

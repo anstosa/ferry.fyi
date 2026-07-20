@@ -13,6 +13,7 @@ import { ExternalPillLink } from "~/components/ExternalPillLink";
 import { FreshnessPill } from "~/components/FreshnessPill";
 import { HeaderDropdown } from "~/components/HeaderDropdown";
 import { InlineLoader } from "~/components/InlineLoader";
+import { NotificationPermissionWarning } from "~/components/NotificationPermissionWarning";
 import { Toast } from "~/components/Toast";
 import { getRouteBulletins } from "~/lib/bulletins";
 import {
@@ -226,6 +227,7 @@ export const Bulletins = ({
   const [isRefreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState(false);
   const routeOptions = getRouteOptions(terminals);
+  const [{ alertRules }] = useUser();
 
   useEffect(() => setRefreshedTerminal(null), [terminal?.id]);
   useEffect(() => {
@@ -254,6 +256,9 @@ export const Bulletins = ({
     (mate ? `${displayTerminal.name} / ${mate.name}` : displayTerminal.name);
   const routeShortName = selectedRoute?.abbreviation ?? routeName;
   const activeBulletins = getRouteBulletins(displayTerminal, mate);
+  const hasConfiguredAlerts = (alertRules ?? []).some((rule) =>
+    isRuleForRoute(rule, mate ? [displayTerminal.id, mate.id] : [displayTerminal.id])
+  );
 
   const refresh = async (): Promise<void> => {
     setRefreshing(true);
@@ -417,6 +422,7 @@ export const Bulletins = ({
               </div>
             </div>
           </div>
+          <NotificationPermissionWarning hasAlerts={hasConfiguredAlerts} />
           {sourceUpdatedAt ? (
             <div className="mb-2 flex justify-center">
               <FreshnessPill

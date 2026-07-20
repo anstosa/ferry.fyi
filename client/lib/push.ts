@@ -30,14 +30,21 @@ const isNotification = (payload: MessagePayload): payload is Notification =>
 
 type InitializePush = () => void;
 
-export const requestNotificationPermission = async (): Promise<boolean> => {
+export const getNotificationPermission = (): NotificationPermission | null => {
   if (typeof Notification === "undefined") {
-    return false;
+    return null;
   }
-  if (Notification.permission === "granted") {
+  return Notification.permission;
+};
+
+export const requestNotificationPermission = async (
+  requestAgain = false
+): Promise<boolean> => {
+  const permission = getNotificationPermission();
+  if (permission === "granted") {
     return true;
   }
-  if (Notification.permission !== "default") {
+  if (!requestAgain && permission !== "default") {
     return false;
   }
   return (await Notification.requestPermission()) === "granted";
