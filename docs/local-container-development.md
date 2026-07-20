@@ -8,7 +8,7 @@ Use `docker-compose.dev.yml` to run a prod-like local stack with the app, detect
 yarn dev:up
 ```
 
-This builds the app and detector images when needed, starts Postgres and the detector, applies Sequelize migrations, and waits until the app is healthy. Open the app at <http://localhost:4041>. The detector health endpoint is available at <http://localhost:8001/health> and the API is available to the app at `http://detector:8000/detect` inside the Compose network.
+This builds the app and detector images when needed, starts Postgres and the detector, applies Sequelize migrations, and waits until the app is healthy. Open the app at <http://localhost:4040>. The detector health endpoint is available at <http://localhost:8001/health> and the API is available to the app at `http://detector:8000/detect` inside the Compose network.
 
 ## Commands
 
@@ -56,5 +56,5 @@ Postgres data is stored in the `postgres-data` Docker volume.
 With the app running on the default port, render camera line-detection QA overlays against the containerized API:
 
 ```sh
-python3 scripts/render-camera-line-detection-results.py --api-url http://localhost:4041/api/cameras/line-detection
+python3 scripts/render-camera-line-detection-results.py --api-url http://localhost:4040/api/cameras/line-detection
 ```

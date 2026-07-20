@@ -823,7 +823,9 @@ export const Map = ({
         </div>
       )}
       {refreshError ? (
-        <Toast error>Could not refresh vessel data. Showing saved data.</Toast>
+        <Toast footerDocked error>
+          Could not refresh vessel data. Showing saved data.
+        </Toast>
       ) : null}
     </>
   );

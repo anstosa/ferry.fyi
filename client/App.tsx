@@ -104,6 +104,7 @@ export const App = (): ReactElement => {
     (routeParts.length === 2 &&
       slugs.includes(routeParts[0]) &&
       slugs.includes(routeParts[1]));
+  const hasBottomBar = slugs.includes(routeParts[0] ?? "");
 
   // wrap route element
   const withRouteBoundary = (
@@ -281,7 +282,7 @@ export const App = (): ReactElement => {
           {!isOnline && !offlineDismissed && (
             <Prompt
               key="device-offline"
-              footerDocked
+              footerDocked={hasBottomBar}
               level="warning"
               onClose={() => setOfflineDismissed(true)}
               Icon={OfflineIcon}
@@ -293,7 +294,7 @@ export const App = (): ReactElement => {
           {isScheduleRoute && isWsfOffline && !wsfDismissed && (
             <Prompt
               key="wsf-offline"
-              footerDocked
+              footerDocked={hasBottomBar}
               level="warning"
               onClose={() => setWsfDismissed(true)}
               Icon={DumpsterFireIcon}
@@ -302,7 +303,10 @@ export const App = (): ReactElement => {
               may not be up to date.
             </Prompt>
           )}
-          <InstallPromptToast key="install-prompt" />
+          <InstallPromptToast
+            footerDocked={hasBottomBar}
+            key="install-prompt"
+          />
         </AnimatePresence>
         <NearbyTicketNotifications />
       </>

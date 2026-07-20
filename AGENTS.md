@@ -65,6 +65,10 @@ Ferry FYI is a TypeScript web and Android app for Washington State Ferries sched
 - Never infer, auto-increment, or otherwise change a requested app version. Dispatch only the user-confirmed version; if it is missing or ambiguous, ask before triggering the action.
 - Report the confirmed version and source commit/ref when starting the release, then report the completed workflow result.
 
+### Git change control
+
+- Do not create commits or push changes to any remote unless the user explicitly asks to commit or push. Local edits and validation are allowed without that request.
+
 ## Architecture notes
 
 - The client talks to the server through helpers in `client/lib/api.ts`; keep API shape changes synchronized with `shared/contracts/*` and server routes.

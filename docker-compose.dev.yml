@@ -2,11 +2,11 @@ x-app-build: &app-build
   context: .
   target: development
   args:
-    AUTH0_CLIENT_AUDIENCE: ${AUTH0_CLIENT_AUDIENCE:-http://localhost:4041/api}
+    AUTH0_CLIENT_AUDIENCE: ${AUTH0_CLIENT_AUDIENCE:-http://localhost:4040/api}
     AUTH0_CLIENT_ID: ${AUTH0_CLIENT_ID:-local-container-client}
-    AUTH0_CLIENT_REDIRECT: ${AUTH0_CLIENT_REDIRECT:-http://localhost:4041}
+    AUTH0_CLIENT_REDIRECT: ${AUTH0_CLIENT_REDIRECT:-http://localhost:4040}
     AUTH0_DOMAIN: ${AUTH0_DOMAIN:-local-container.invalid}
-    BASE_URL: ${BASE_URL:-http://localhost:4041}
+    BASE_URL: ${BASE_URL:-http://localhost:4040}
     FIREBASE_API_KEY: ${FIREBASE_API_KEY:-local-container-api-key}
     FIREBASE_APP_ID: ${FIREBASE_APP_ID:-local-container-app-id}
     FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID:-local-container-project}
@@ -30,11 +30,12 @@ services:
         required: false
     environment:
       ANDROID_CERT_FINGERPRINT: ${ANDROID_CERT_FINGERPRINT:-local-container-fingerprint}
-      AUTH0_CLIENT_AUDIENCE: ${AUTH0_CLIENT_AUDIENCE:-http://localhost:${APP_PORT:-4041}/api}
+      AUTH0_CLIENT_AUDIENCE: ${AUTH0_CLIENT_AUDIENCE:-http://localhost:${APP_PORT:-4040}/api}
       AUTH0_CLIENT_ID: ${AUTH0_CLIENT_ID:-local-container-client}
-      AUTH0_CLIENT_REDIRECT: ${AUTH0_CLIENT_REDIRECT:-http://localhost:${APP_PORT:-4041}}
+      AUTH0_CLIENT_REDIRECT: ${AUTH0_CLIENT_REDIRECT:-http://localhost:${APP_PORT:-4040}}
       AUTH0_DOMAIN: ${AUTH0_DOMAIN:-local-container.invalid}
-      BASE_URL: ${BASE_URL:-http://localhost:${APP_PORT:-4041}}
+      BASE_URL: ${BASE_URL:-http://localhost:${APP_PORT:-4040}}
+      MAPBOX_ACCESS_TOKEN: ${MAPBOX_ACCESS_TOKEN:-local-container-mapbox-token}
       CAR_DETECTION_ENDPOINT: http://detector:8000/detect
       CHOKIDAR_USEPOLLING: "true"
       DATABASE_URL: postgres://test:testing@postgres:5432/ferryfyi
@@ -49,7 +50,7 @@ services:
       server:
         condition: service_started
     ports:
-      - "${APP_PORT:-4041}:3042"
+      - "${APP_PORT:-4040}:3042"
     volumes:
       - .:/app
       - app-node-modules:/app/node_modules
@@ -68,9 +69,9 @@ services:
       - path: .env
         required: false
     environment:
-      AUTH0_CLIENT_AUDIENCE: ${AUTH0_CLIENT_AUDIENCE:-http://localhost:${APP_PORT:-4041}/api}
+      AUTH0_CLIENT_AUDIENCE: ${AUTH0_CLIENT_AUDIENCE:-http://localhost:${APP_PORT:-4040}/api}
       AUTH0_CLIENT_ID: ${AUTH0_CLIENT_ID:-local-container-client}
-      AUTH0_CLIENT_REDIRECT: ${AUTH0_CLIENT_REDIRECT:-http://localhost:${APP_PORT:-4041}}
+      AUTH0_CLIENT_REDIRECT: ${AUTH0_CLIENT_REDIRECT:-http://localhost:${APP_PORT:-4040}}
       AUTH0_DOMAIN: ${AUTH0_DOMAIN:-local-container.invalid}
       CAR_DETECTION_ENDPOINT: http://detector:8000/detect
       CHOKIDAR_USEPOLLING: "true"

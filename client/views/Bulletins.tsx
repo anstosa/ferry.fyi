@@ -425,7 +425,10 @@ export const Bulletins = ({
               </div>
             </div>
           </div>
-          <NotificationPermissionWarning hasAlerts={hasConfiguredAlerts} />
+          <NotificationPermissionWarning
+            className="mb-4"
+            hasAlerts={hasConfiguredAlerts}
+          />
           {sourceUpdatedAt ? (
             <div className="mb-2 flex justify-center">
               <FreshnessPill
@@ -461,7 +464,9 @@ export const Bulletins = ({
         </section>
       </main>
       {refreshError ? (
-        <Toast error>Could not refresh alerts. Showing saved data.</Toast>
+        <Toast footerDocked error>
+          Could not refresh alerts. Showing saved data.
+        </Toast>
       ) : null}
     </>
   );

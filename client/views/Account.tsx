@@ -429,6 +429,7 @@ export const Account = withAuthenticationRequired(
                 : "You have not saved any alerts yet."}
             </p>
             <NotificationPermissionWarning
+              className="mb-4"
               hasAlerts={subscriptionSummaries.length > 0}
             />
             {subscriptionSummaries.length > 0 ? (

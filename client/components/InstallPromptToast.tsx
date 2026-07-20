@@ -23,8 +23,14 @@ const INSTALL_PROMPT_LOAD_COUNT_KEY = "installPromptLoadCount";
 const INSTALL_PROMPT_HIDE_KEY = "hideInstallPrompt";
 const INSTALL_PROMPT_LOAD_THRESHOLD = 2;
 
+interface Props {
+  footerDocked?: boolean;
+}
+
 // install prompt toast
-export const InstallPromptToast = (): ReactElement | null => {
+export const InstallPromptToast = ({
+  footerDocked = false,
+}: Props): ReactElement | null => {
   const [loadCount, setLoadCount] = useLocalStorage<number>(
     INSTALL_PROMPT_LOAD_COUNT_KEY,
     0
@@ -121,7 +127,7 @@ export const InstallPromptToast = (): ReactElement | null => {
           ? "flex flex-col items-center gap-3"
           : undefined
       }
-      footerDocked
+      footerDocked={footerDocked}
       groupActions={platform === "web"}
       onClose={() => setHideInstallPrompt(true)}
       title={

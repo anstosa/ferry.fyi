@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import React, { FunctionComponent, useState } from "react";
 
 import {
@@ -8,10 +9,12 @@ import {
 import BellSlashIcon from "~/static/images/icons/solid/bell-slash.svg";
 
 interface Props {
+  className?: string;
   hasAlerts: boolean;
 }
 
 export const NotificationPermissionWarning: FunctionComponent<Props> = ({
+  className,
   hasAlerts,
 }) => {
   const initializePush = usePush(false);
@@ -35,7 +38,13 @@ export const NotificationPermissionWarning: FunctionComponent<Props> = ({
   };
 
   return (
-    <section className="rounded-2xl border border-stale-light bg-stale-light/10 p-4 text-gray-darkest dark:border-stale-dark dark:bg-stale-dark/20 dark:text-white">
+    <section
+      className={clsx(
+        "rounded-2xl border border-stale-light bg-stale-light/10 p-4 text-gray-darkest",
+        "dark:border-stale-dark dark:bg-stale-dark/20 dark:text-white",
+        className
+      )}
+    >
       <div className="flex items-start gap-3">
         <BellSlashIcon className="mt-0.5 h-5 w-5 shrink-0 text-stale-dark dark:text-stale-light" />
         <div className="min-w-0 flex-1">
@@ -45,7 +54,7 @@ export const NotificationPermissionWarning: FunctionComponent<Props> = ({
             notification permission is allowed.
           </p>
           <button
-            className="button button-outline mt-3"
+            className="button button-primary mt-3 hover:bg-green-dark"
             disabled={isRequesting}
             onClick={() => requestPermissionsAgain()}
             type="button"

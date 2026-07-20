@@ -42,6 +42,7 @@
   },
   "devDependencies": {
     "@auth0/auth0-react": "^2.19.0",
+    "@playwright/test": "^1.61.1",
     "@capgo/cli": "^8.25.13",
     "@sentry/vite-plugin": "^5.3.0",
     "@tailwindcss/aspect-ratio": "^0.4.2",
@@ -206,6 +207,8 @@
     "setup:hooks": "scripts/install-git-hooks.sh",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:install": "playwright install chromium",
     "test:watch": "vitest",
     "tides:backfill": "cd server && node ../scripts/register-esbuild.js scripts/backfillTides.ts",
     "tides:update-forecasts": "cd server && node ../scripts/register-esbuild.js scripts/updateTideForecasts.ts",

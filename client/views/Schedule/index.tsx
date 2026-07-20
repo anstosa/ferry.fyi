@@ -235,6 +235,7 @@ export const Schedule = ({
             isWSFToday(DateTime.fromISO(schedule.date)) &&
             !capacityWarningDismissed && (
               <Prompt
+                footerDocked
                 level="warning"
                 onClose={() => setCapacityWarningDismissed(true)}
               >
@@ -271,7 +272,7 @@ export const Schedule = ({
           {renderSchedule()}
         </div>
         {loadError && schedule?.slots ? (
-          <Toast error>
+          <Toast footerDocked error>
             Could not refresh the schedule. Showing saved data.
           </Toast>
         ) : null}
