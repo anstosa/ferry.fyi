@@ -1,7 +1,6 @@
 import { Capacitor } from "@capacitor/core";
 import { Geolocation } from "@capacitor/geolocation";
-import { useEffect, useState } from "react";
-import type { Dispatch, SetStateAction } from "react";
+import { type Dispatch, type SetStateAction, useEffect, useState } from "react";
 import { isUndefined } from "shared/lib/identity";
 
 import { useLocalStorage } from "./browser";
@@ -101,9 +100,10 @@ export const useGeo = (): [
         // A native user who has already opted in can refresh their location
         // without another permission prompt. New native users still need the
         // explicit RouteSelector action before the plugin is invoked.
-        const location = requestPermission || Capacitor.isNativePlatform()
-          ? await requestCurrentLocation()
-          : await getCurrentLocation();
+        const location =
+          requestPermission || Capacitor.isNativePlatform()
+            ? await requestCurrentLocation()
+            : await getCurrentLocation();
         if (location) {
           shareLocation(location);
         }
