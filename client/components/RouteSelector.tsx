@@ -1,5 +1,11 @@
 import { AnimatePresence } from "framer-motion";
-import React, { ReactElement, ReactNode, useEffect, useState } from "react";
+import React, {
+  ReactElement,
+  ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import ReactGA from "react-ga4";
 import { Link } from "react-router-dom";
 import type { Terminal } from "shared/contracts/terminals";
@@ -30,6 +36,7 @@ export const RouteSelector = (props: Props): ReactElement => {
   const [isMateOpen, setMateOpen] = useState<boolean>(false);
   const [isSwapHovering, setSwapHovering] = useState<boolean>(false);
   const [closestDismissed, setClosestDismissed] = useState<boolean>(false);
+  const locationRequestStarted = useRef(false);
   const { terminals, closestTerminal } = useTerminals();
   const [noLocation, saveNoLocation] = useLocalStorage<boolean | undefined>(
     "noLocation",
@@ -151,11 +158,15 @@ export const RouteSelector = (props: Props): ReactElement => {
                 Icon: LocationIcon,
                 label: "Sure!",
                 onClick: () => {
+                  if (locationRequestStarted.current) {
+                    return;
+                  }
+                  locationRequestStarted.current = true;
                   saveNoLocation(false);
-                  // Let the prompt unmount before Android opens its native
-                  // permission activity. Invoking both in one click handler
-                  // can race the WebView state transition on Android.
-                  window.setTimeout(() => updateGeo(false, true), 0);
+                  // Let the exit animation finish before Android opens its
+                  // native permission activity. Capacitor's geolocation
+                  // plugin cannot handle overlapping permission requests.
+                  window.setTimeout(() => updateGeo(false, true), 350);
                 },
                 primary: true,
               },
