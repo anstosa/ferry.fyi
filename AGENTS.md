@@ -59,6 +59,12 @@ Ferry FYI is a TypeScript web and Android app for Washington State Ferries sched
 - For local device testing, run the web build/sync path with `yarn start:android` or run `npx cap run android` through `yarn android` after Android SDK/JDK setup.
 - Keep `android/local.properties`, Gradle caches, `android/app/build/`, `android/build/`, and packaged web assets out of commits unless intentionally generated and tracked.
 
+### App-release version control
+
+- Before triggering the `Publish apps` GitHub Action (or any Android/iOS release action), confirm the exact requested version name and target platform with the user.
+- Never infer, auto-increment, or otherwise change a requested app version. Dispatch only the user-confirmed version; if it is missing or ambiguous, ask before triggering the action.
+- Report the confirmed version and source commit/ref when starting the release, then report the completed workflow result.
+
 ## Architecture notes
 
 - The client talks to the server through helpers in `client/lib/api.ts`; keep API shape changes synchronized with `shared/contracts/*` and server routes.

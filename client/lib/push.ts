@@ -30,6 +30,19 @@ const isNotification = (payload: MessagePayload): payload is Notification =>
 
 type InitializePush = () => void;
 
+export const requestNotificationPermission = async (): Promise<boolean> => {
+  if (typeof Notification === "undefined") {
+    return false;
+  }
+  if (Notification.permission === "granted") {
+    return true;
+  }
+  if (Notification.permission !== "default") {
+    return false;
+  }
+  return (await Notification.requestPermission()) === "granted";
+};
+
 // supported messaging loader
 const getSupportedMessaging = async () => {
   // browser support guard
@@ -73,6 +86,9 @@ export const usePush = (requestPermission: boolean): InitializePush => {
     // push initializer
     const initialize = async () => {
       try {
+        if (!(await requestNotificationPermission())) {
+          return;
+        }
         const messaging = await getSupportedMessaging();
 
         // unsupported browser guard
