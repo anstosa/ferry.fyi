@@ -36,8 +36,11 @@ tasks.configureEach { task ->
     }
 }
 
-// allow CI release version overrides
-def releaseVersionCode = (findProperty('VERSION_CODE') ?: 16).toInteger()
+// CI supplies VERSION_CODE; local builds use the same generator as CI.
+def configuredVersionCode = findProperty('VERSION_CODE')
+def releaseVersionCode = (configuredVersionCode ?: providers.exec {
+    commandLine 'bash', new File(rootProject.projectDir.parentFile, 'scripts/android-version-code.sh').absolutePath
+}.standardOutput.asText.get().trim()).toInteger()
 def releaseVersionName = findProperty('VERSION_NAME') ?: '2.8'
 
 android {

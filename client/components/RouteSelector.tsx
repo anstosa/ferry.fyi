@@ -31,7 +31,7 @@ interface Props {
 
 export const RouteSelector = (props: Props): ReactElement => {
   const { mate, terminal, setRoute } = props;
-  const [, updateGeo] = useGeo();
+  const [location, updateGeo] = useGeo();
   const [isTerminalOpen, setTerminalOpen] = useState<boolean>(false);
   const [isMateOpen, setMateOpen] = useState<boolean>(false);
   const [isSwapHovering, setSwapHovering] = useState<boolean>(false);

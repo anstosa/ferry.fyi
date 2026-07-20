@@ -49,6 +49,8 @@ describe("getCurrentLocation", () => {
     });
     expect(getCurrentPosition).toHaveBeenCalledWith({
       enableHighAccuracy: false,
+      maximumAge: 5 * 60 * 1000,
+      timeout: 30 * 1000,
     });
     expect(geolocation.checkPermissions).not.toHaveBeenCalled();
     expect(geolocation.requestPermissions).not.toHaveBeenCalled();
@@ -84,6 +86,8 @@ describe("getCurrentLocation", () => {
 
     expect(geolocation.getCurrentPosition).toHaveBeenCalledWith({
       enableHighAccuracy: false,
+      maximumAge: 5 * 60 * 1000,
+      timeout: 30 * 1000,
     });
     expect(geolocation.checkPermissions).not.toHaveBeenCalled();
     expect(geolocation.requestPermissions).not.toHaveBeenCalled();
