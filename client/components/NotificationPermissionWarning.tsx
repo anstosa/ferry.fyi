@@ -50,7 +50,9 @@ export const NotificationPermissionWarning: FunctionComponent<Props> = ({
             onClick={() => requestPermissionsAgain()}
             type="button"
           >
-            {isRequesting ? "Requesting permission…" : "Request permission again"}
+            {isRequesting
+              ? "Requesting permission…"
+              : "Request permission again"}
           </button>
           <p className="mt-2 text-xs opacity-80">
             If your device does not show a prompt, enable notifications in its

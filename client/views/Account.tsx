@@ -21,9 +21,9 @@ import {
 import { getSeoMetadata } from "shared/lib/seo";
 import { pluralize } from "shared/lib/strings";
 
+import { NotificationPermissionWarning } from "~/components/NotificationPermissionWarning";
 import { Page } from "~/components/Page";
 import { PageLoadError } from "~/components/PageLoadError";
-import { NotificationPermissionWarning } from "~/components/NotificationPermissionWarning";
 import { SeoHelmet } from "~/components/SeoHelmet";
 import { Splash } from "~/components/Splash";
 import { getConfiguredAuth0RedirectUri } from "~/lib/auth";

@@ -257,7 +257,10 @@ export const Bulletins = ({
   const routeShortName = selectedRoute?.abbreviation ?? routeName;
   const activeBulletins = getRouteBulletins(displayTerminal, mate);
   const hasConfiguredAlerts = (alertRules ?? []).some((rule) =>
-    isRuleForRoute(rule, mate ? [displayTerminal.id, mate.id] : [displayTerminal.id])
+    isRuleForRoute(
+      rule,
+      mate ? [displayTerminal.id, mate.id] : [displayTerminal.id]
+    )
   );
 
   const refresh = async (): Promise<void> => {
