@@ -3,8 +3,8 @@ set -euo pipefail
 
 platform="linux"
 sdk_root="${ANDROID_SDK_ROOT:-}"
-adb="$(command -v adb)"
-emulator="$(command -v emulator)"
+adb="$(command -v adb || true)"
+emulator="$(command -v emulator || true)"
 
 if [[ -n "${WSL_INTEROP:-}" ]]; then
   for candidate in /mnt/c/Users/*/AppData/Local/Android/Sdk; do

@@ -152,7 +152,10 @@ export const RouteSelector = (props: Props): ReactElement => {
                 label: "Sure!",
                 onClick: () => {
                   saveNoLocation(false);
-                  updateGeo(false);
+                  // Let the prompt unmount before Android opens its native
+                  // permission activity. Invoking both in one click handler
+                  // can race the WebView state transition on Android.
+                  window.setTimeout(() => updateGeo(false, true), 0);
                 },
                 primary: true,
               },

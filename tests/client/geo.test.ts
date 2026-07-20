@@ -1,16 +1,27 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const geolocation = vi.hoisted(() => ({
   checkPermissions: vi.fn(),
   getCurrentPosition: vi.fn(),
   requestPermissions: vi.fn(),
 }));
+const capacitor = vi.hoisted(() => ({
+  isNativePlatform: vi.fn(),
+}));
 
+vi.mock("@capacitor/core", () => ({ Capacitor: capacitor }));
 vi.mock("@capacitor/geolocation", () => ({ Geolocation: geolocation }));
 
-import { getCurrentLocation } from "../../client/lib/geo";
+import {
+  getCurrentLocation,
+  requestCurrentLocation,
+} from "../../client/lib/geo";
 
 describe("getCurrentLocation", () => {
+  beforeEach(() => {
+    capacitor.isNativePlatform.mockReturnValue(false);
+  });
+
   afterEach(() => {
     vi.clearAllMocks();
     vi.restoreAllMocks();
@@ -50,6 +61,40 @@ describe("getCurrentLocation", () => {
     await expect(getCurrentLocation()).resolves.toBeNull();
   });
 
+  it("does not open an Android permission dialog during a background refresh", async () => {
+    capacitor.isNativePlatform.mockReturnValue(true);
+    geolocation.checkPermissions.mockResolvedValue({
+      coarseLocation: "prompt",
+    });
+
+    await expect(getCurrentLocation()).resolves.toBeNull();
+
+    expect(geolocation.requestPermissions).not.toHaveBeenCalled();
+    expect(geolocation.getCurrentPosition).not.toHaveBeenCalled();
+  });
+
+  it("requests Android permission only from the explicit location action", async () => {
+    capacitor.isNativePlatform.mockReturnValue(true);
+    geolocation.checkPermissions.mockResolvedValue({
+      coarseLocation: "prompt",
+    });
+    geolocation.requestPermissions.mockResolvedValue({
+      coarseLocation: "granted",
+    });
+    geolocation.getCurrentPosition.mockResolvedValue({
+      coords: { latitude: 47.6, longitude: -122.3 },
+    });
+
+    await expect(requestCurrentLocation()).resolves.toEqual({
+      latitude: 47.6,
+      longitude: -122.3,
+    });
+
+    expect(geolocation.requestPermissions).toHaveBeenCalledWith({
+      permissions: ["coarseLocation"],
+    });
+  });
+
   it("allows a new lookup after a denied permission request", async () => {
     geolocation.getCurrentPosition
       .mockRejectedValueOnce(new Error("Location permission denied"))
@@ -85,6 +130,7 @@ describe("getCurrentLocation", () => {
     const firstLookup = getCurrentLocation();
     const secondLookup = getCurrentLocation();
 
+    await Promise.resolve();
     expect(geolocation.getCurrentPosition).toHaveBeenCalledOnce();
     resolvePosition({ coords: { latitude: 47.6, longitude: -122.3 } });
 
