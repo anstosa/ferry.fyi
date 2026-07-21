@@ -63,6 +63,7 @@ function configureDetectorEnv() {
 // print local development URLs
 function printUrls() {
   console.log("[dev] app: http://localhost:4040");
+  console.log(`[dev] API: http://localhost:${env.PORT ?? "4041"}`);
   console.log(`[dev] database: ${env.DATABASE_URL}`);
   console.log(`[dev] detector: ${detectorUrl}`);
   // camera tool URL

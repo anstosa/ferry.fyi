@@ -191,7 +191,8 @@ export default defineConfig(({ mode }) => ({
   server: {
     allowedHosts: ["ferry-fyi.santosa.family"],
     host: "0.0.0.0",
-    port: 3042,
+    port: Number(process.env.DEV_CLIENT_PORT ?? "4040"),
+    strictPort: true,
     proxy: {
       "/api":
         process.env.VITE_API_PROXY_TARGET ??
