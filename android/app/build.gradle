@@ -79,6 +79,10 @@ android {
             // Enable R8 for publishable builds to reduce code and resource size.
             minifyEnabled true
             shrinkResources true
+            // Preserve a compact native symbol table in the App Bundle for Play Console crash reports.
+            ndk {
+                debugSymbolLevel 'SYMBOL_TABLE'
+            }
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
