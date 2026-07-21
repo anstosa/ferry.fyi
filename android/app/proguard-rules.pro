@@ -9,6 +9,16 @@
 # runtime. Preserve their annotation metadata in minified release builds.
 -keepattributes RuntimeVisibleAnnotations,RuntimeInvisibleAnnotations,AnnotationDefault
 
+# R8 must also retain Capacitor's cached plugin annotation and the methods that
+# consume it. Otherwise it can inline a null result into permission requests.
+-keepclassmembers class com.getcapacitor.PluginHandle {
+    com.getcapacitor.annotation.CapacitorPlugin pluginAnnotation;
+    com.getcapacitor.annotation.CapacitorPlugin getPluginAnnotation();
+}
+-keepclassmembers class com.getcapacitor.Plugin {
+    java.util.Map getPermissionStates();
+}
+
 # If your project uses WebView with JS, uncomment the following
 # and specify the fully qualified class name to the JavaScript interface
 # class:
