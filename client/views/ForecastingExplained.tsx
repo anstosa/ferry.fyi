@@ -6,7 +6,7 @@ import { SeoHelmet } from "../components/SeoHelmet";
 
 // forecasting explainer page
 export const ForecastingExplained = (): ReactElement => (
-  <Page contentClassName="mx-auto w-full max-w-2xl" title="Forecasting">
+  <Page title="Forecasting">
     <SeoHelmet seo={getSeoMetadata("/forecasting")} />
 
     <p className="mt-4">

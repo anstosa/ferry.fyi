@@ -384,7 +384,7 @@ export const Bulletins = ({
         <div className="min-w-0 flex-1" />
       </Header>
       <main className="flex-grow overflow-y-scroll scrolling-touch bg-day-normal-light text-gray-dark dark:bg-night-normal-dark dark:text-[#e0f0f4]">
-        <section className="mx-auto w-full max-w-3xl px-4 py-5 sm:px-6">
+        <section className="mx-auto w-full max-w-6xl px-4 py-5 sm:px-6">
           <div
             className={clsx(
               "mb-4 overflow-hidden rounded-2xl border shadow-sm",

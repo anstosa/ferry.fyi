@@ -1114,7 +1114,7 @@ export const AlertSubscription = ({
         <span className="text-center flex-1">Alerts</span>
       </Header>
       <main className="flex-grow overflow-y-scroll scrolling-touch bg-day-normal-light px-4 py-8 text-gray-dark dark:bg-night-normal-dark dark:text-[#e0f0f4]">
-        <section className="mx-auto max-w-2xl rounded-2xl border border-[rgba(0,0,0,0.08)] bg-white p-5 shadow-sm dark:border-[rgba(255,255,255,0.08)] dark:bg-[#00202a]">
+        <section className="mx-auto w-full max-w-6xl rounded-2xl border border-[rgba(0,0,0,0.08)] bg-white p-5 shadow-sm dark:border-[rgba(255,255,255,0.08)] dark:bg-[#00202a]">
           <h1 className="text-2xl font-bold text-gray-darkest dark:text-white">
             {title}
           </h1>
@@ -1203,7 +1203,7 @@ export const AlertSubscription = ({
         <div className="min-w-0 flex-1" />
       </Header>
       <main className="flex-grow overflow-y-scroll scrolling-touch bg-day-normal-light text-gray-dark dark:bg-night-normal-dark dark:text-[#e0f0f4]">
-        <section className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-5 pb-24 sm:px-6">
+        <section className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-5 pb-24 sm:px-6">
           <div className="rounded-2xl border border-[rgba(0,0,0,0.08)] bg-white p-5 shadow-sm dark:border-[rgba(255,255,255,0.08)] dark:bg-[#00202a]">
             <div className="flex items-start gap-3">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-green-dark text-white dark:bg-green-light dark:text-blue-darkest">

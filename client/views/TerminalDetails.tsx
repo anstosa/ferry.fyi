@@ -224,7 +224,7 @@ export const TerminalDetails = ({
         <div className="flex-1 min-w-0" />
       </Header>
       <main className="flex-grow overflow-y-scroll scrolling-touch bg-day-normal-light text-gray-dark dark:bg-night-normal-dark dark:text-[#e0f0f4]">
-        <div className="mx-auto flex max-w-2xl flex-col gap-4 p-4 pb-8">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-4 pb-8">
           <DetailCard>
             <div className="flex items-center gap-4">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-green-dark text-lg font-black text-white shadow-sm">

@@ -400,7 +400,7 @@ const CameraList = ({
       <main className="flex-grow overflow-y-scroll scrolling-touch bg-day-normal-light text-gray-dark dark:bg-night-normal-dark dark:text-[#e0f0f4]">
         <div
           className={clsx(
-            "mx-auto relative max-w-lg",
+            "mx-auto relative w-full max-w-6xl",
             hasCameras
               ? "my-6 pl-16 pr-4"
               : "flex min-h-full items-center justify-center p-4 text-center text-gray-dark dark:text-gray-light"

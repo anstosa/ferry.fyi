@@ -32,7 +32,7 @@ const WrapHeader: FunctionComponent<PropsWithChildren<WrapHeaderProps>> = ({
     )}
     style={{ top: hasTopBanner ? "80px" : 0 }}
   >
-    <div className={clsx("w-full max-w-6xl p-4", "flex items-center")}>
+    <div className={clsx("mx-auto w-full max-w-6xl p-4", "flex items-center")}>
       {children}
     </div>
   </header>

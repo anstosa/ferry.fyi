@@ -351,7 +351,7 @@ export const Account = withAuthenticationRequired(
     return (
       <Page title="Account">
         <SeoHelmet seo={getSeoMetadata("/account")} />
-        <main className="mx-auto flex w-full max-w-2xl flex-col gap-6 px-4 py-6">
+        <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6">
           <section className="rounded bg-white p-6 shadow dark:bg-black">
             <h3 className="mb-3 text-xl font-bold">Profile</h3>
             <dl>

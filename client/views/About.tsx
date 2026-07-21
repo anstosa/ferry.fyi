@@ -9,7 +9,7 @@ import { Page } from "../components/Page";
 import { SeoHelmet } from "../components/SeoHelmet";
 
 export const About = (): ReactElement => (
-  <Page contentClassName="mx-auto w-full max-w-2xl">
+  <Page>
     <SeoHelmet seo={getSeoMetadata("/about")} />
     <p className="mt-4">
       A ferry schedule and tracker for the greater Seattle area. Supports all{" "}

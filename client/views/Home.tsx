@@ -92,7 +92,7 @@ export const Home = (): ReactElement => {
         <h1 className="text-4xl font-bold">Ferry FYI</h1>
       </div>
       <div className="w-full flex justify-center px-4 pb-8">
-        <div className="grid w-full max-w-3xl grid-cols-2 gap-x-4 gap-y-6">
+        <div className="grid w-full max-w-6xl grid-cols-2 gap-x-4 gap-y-6">
           {isEmpty(terminals) && (
             <div
               className={clsx(

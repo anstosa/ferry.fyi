@@ -126,7 +126,7 @@ const StateCard = ({
   children: React.ReactNode;
 }): ReactElement => (
   <main className="flex-grow overflow-y-auto bg-day-normal-light p-4 text-gray-dark dark:bg-night-normal-dark dark:text-[#e0f0f4]">
-    <div className="mx-auto max-w-2xl rounded-2xl border border-black/10 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-blue-dark">
+    <div className="mx-auto w-full max-w-6xl rounded-2xl border border-black/10 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-blue-dark">
       {children}
     </div>
   </main>
@@ -550,7 +550,7 @@ export const Fares = ({
     <>
       {header}
       <main className="flex-grow overflow-y-auto bg-day-normal-light text-gray-dark dark:bg-night-normal-dark dark:text-[#e0f0f4]">
-        <div className="mx-auto max-w-2xl space-y-4 p-4 pb-8">
+        <div className="mx-auto w-full max-w-6xl space-y-4 p-4 pb-8">
           <section className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-blue-dark">
             <div className="flex items-center justify-between gap-3">
               <h1 className="text-xl font-bold">Fare estimator</h1>

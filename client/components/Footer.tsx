@@ -32,7 +32,7 @@ const WrapFooter: FunctionComponent<PropsWithChildren> = ({ children }) => (
       "pr-safe-right pl-safe-left"
     )}
   >
-    <div className={clsx("h-16 w-full max-w-6xl", "flex justify-between")}>
+    <div className="mx-auto flex h-16 w-full max-w-6xl justify-between">
       {children}
     </div>
   </footer>
