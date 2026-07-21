@@ -4,11 +4,12 @@ import { getSeoMetadata } from "shared/lib/seo";
 
 import DonateIcon from "~/static/images/icons/solid/heart.svg";
 
+import { AppVersionInfo } from "../components/AppVersionInfo";
 import { Page } from "../components/Page";
 import { SeoHelmet } from "../components/SeoHelmet";
 
 export const About = (): ReactElement => (
-  <Page>
+  <Page contentClassName="mx-auto w-full max-w-2xl">
     <SeoHelmet seo={getSeoMetadata("/about")} />
     <p className="mt-4">
       A ferry schedule and tracker for the greater Seattle area. Supports all{" "}
@@ -83,5 +84,6 @@ export const About = (): ReactElement => (
       </Link>
       .
     </p>
+    <AppVersionInfo />
   </Page>
 );

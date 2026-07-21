@@ -13,6 +13,7 @@ const databaseConfig = parseDatabaseUrl(
 );
 const containerName =
   env.FERRYFYI_DB_CONTAINER || `ferrydb-${databaseConfig.hostPort}`;
+const volumeName = `${containerName}-data`;
 
 // choose command
 if (process.argv.includes("--stop")) {
@@ -82,9 +83,15 @@ function startContainer(name, config) {
     return;
   }
 
+  // restart existing persistent container
+  if (doesContainerExist(name)) {
+    console.log(`starting existing ${name}`);
+    runDocker(["start", name]);
+    return;
+  }
+
   const args = [
     "run",
-    "--rm",
     "-d",
     "-p",
     `${config.hostPort}:${INTERNAL_POSTGRES_PORT}`,
@@ -96,6 +103,8 @@ function startContainer(name, config) {
     `POSTGRES_USER=${config.username}`,
     "--name",
     name,
+    "--mount",
+    `type=volume,source=${volumeName},target=/var/lib/postgresql/data`,
     POSTGRES_IMAGE,
   ];
 
@@ -103,6 +112,15 @@ function startContainer(name, config) {
     `starting ${name} on localhost:${config.hostPort} for ${config.database}`
   );
   runDocker(args);
+}
+
+// check whether a stopped persistent container already exists
+function doesContainerExist(name) {
+  const result = spawnSync("docker", ["inspect", name], {
+    stdio: "ignore",
+  });
+
+  return result.status === 0;
 }
 
 // stop postgres

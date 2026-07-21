@@ -6,7 +6,7 @@ import { SeoHelmet } from "../components/SeoHelmet";
 
 // privacy policy page
 export const PrivacyPolicy = (): ReactElement => (
-  <Page title="Privacy Policy">
+  <Page contentClassName="mx-auto w-full max-w-2xl" title="Privacy Policy">
     <SeoHelmet seo={getSeoMetadata("/privacy")} />
 
     <p className="mt-4 text-sm">Last updated: July 12, 2026</p>

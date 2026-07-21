@@ -8,11 +8,13 @@ import React, {
 import { Header } from "../views/Header";
 
 interface Props {
+  contentClassName?: string;
   title?: string;
 }
 
 // app page shell
 export const Page: FunctionComponent<PropsWithChildren<Props>> = ({
+  contentClassName,
   title,
   children,
 }): ReactElement => (
@@ -26,6 +28,10 @@ export const Page: FunctionComponent<PropsWithChildren<Props>> = ({
     <Header>
       <h1 className="font-bold text-2xl">{title ?? "Ferry FYI"}</h1>
     </Header>
-    {children}
+    {contentClassName ? (
+      <main className={contentClassName}>{children}</main>
+    ) : (
+      children
+    )}
   </div>
 );

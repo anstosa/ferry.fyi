@@ -21,6 +21,9 @@ function registerExtension(extension) {
           useDefineForClassFields: false,
         },
       },
+      supported: {
+        "dynamic-import": false,
+      },
     });
     module._compile(output.code, filename);
   };
