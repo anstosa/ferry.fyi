@@ -1,4 +1,5 @@
-import { Request, Router } from "express";
+import { Request, RequestHandler, Router } from "express";
+import { MINUTE, rateLimit } from "express-rate-limit";
 import type {
   FareCatalogApiResponse,
   FareCatalogResult,
@@ -40,7 +41,23 @@ export interface FareRouterDependencies {
   now?: () => Date;
   policyEntries?: FareCollectionPolicy[];
   quoteStore?: FareQuoteStore;
+  rateLimiter?: RequestHandler;
 }
+
+export const createFareRateLimiter = ({
+  limit = 60,
+  windowMs = MINUTE,
+}: {
+  limit?: number;
+  windowMs?: number;
+} = {}): RequestHandler =>
+  rateLimit({
+    identifier: "fares",
+    legacyHeaders: false,
+    limit,
+    standardHeaders: "draft-8",
+    windowMs,
+  });
 
 const isTripDate = (value: unknown): value is FareTripRequest["tripDate"] =>
   typeof value === "string" &&
@@ -194,6 +211,8 @@ export const createFareRouter = (
   const policyEntries = dependencies.policyEntries ?? FARE_COLLECTION_POLICY;
   const catalogStore = dependencies.catalogStore ?? sequelizeFareCatalogStore;
   const quoteStore = dependencies.quoteStore ?? sequelizeFareQuoteStore;
+
+  router.use(dependencies.rateLimiter ?? createFareRateLimiter());
 
   router.get("/catalog", async (request, response) => {
     const input = fromQuery(request);

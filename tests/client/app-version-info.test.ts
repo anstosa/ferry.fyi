@@ -5,7 +5,10 @@ import { createRoot, Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const app = vi.hoisted(() => ({ getInfo: vi.fn() }));
-const capacitor = vi.hoisted(() => ({ isNativePlatform: vi.fn() }));
+const capacitor = vi.hoisted(() => ({
+  getPlatform: vi.fn(),
+  isNativePlatform: vi.fn(),
+}));
 const updater = vi.hoisted(() => ({ current: vi.fn() }));
 
 vi.mock("@capacitor/app", () => ({ App: app }));
@@ -70,14 +73,31 @@ describe("AppVersionInfo", () => {
     expect(updater.current).not.toHaveBeenCalled();
   });
 
-  it("shows the installed app and active OTA bundle versions", async () => {
+  it("shows the Android build and OTA revision on one line", async () => {
     capacitor.isNativePlatform.mockReturnValue(true);
+    capacitor.getPlatform.mockReturnValue("android");
     app.getInfo.mockResolvedValue({ build: "262012119", version: "3.0" });
-    updater.current.mockResolvedValue({ bundle: { version: "3.0.1" } });
+    updater.current.mockResolvedValue({
+      bundle: { id: "ota-bundle", version: "3.0.1" },
+    });
+    const container = await renderVersionInfo();
+
+    expect(container.textContent).toBe(
+      "Android 262012119 · OTA DEVELOPMENT"
+    );
+    expect(
+      container.firstElementChild?.classList.contains("whitespace-nowrap")
+    ).toBe(true);
+  });
+
+  it("uses the iOS label with its canonical build version", async () => {
+    capacitor.isNativePlatform.mockReturnValue(true);
+    capacitor.getPlatform.mockReturnValue("ios");
+    app.getInfo.mockResolvedValue({ build: "263", version: "3.0" });
+    updater.current.mockResolvedValue({ bundle: { id: "builtin" } });
 
     const container = await renderVersionInfo();
 
-    expect(container.textContent).toContain("App 3.0 (262012119)");
-    expect(container.textContent).toContain("OTA 3.0.1");
+    expect(container.textContent).toBe("iOS 263");
   });
 });

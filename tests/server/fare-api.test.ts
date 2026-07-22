@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { wrapApiResponse } from "../../server/controllers/api";
 import {
+  createFareRateLimiter,
   createFareRouter,
 } from "../../server/controllers/api/fares";
 import type {
@@ -57,7 +58,8 @@ const appFor = (
   adapter: FareAdapter,
   store: FareQuoteStore,
   policyEntries: FareCollectionPolicy[] = [policy],
-  catalogStore: FareCatalogStore = catalogCache()
+  catalogStore: FareCatalogStore = catalogCache(),
+  rateLimiter = createFareRateLimiter()
 ) => {
   const app = express();
   app.use(express.json());
@@ -70,6 +72,7 @@ const appFor = (
       now: () => now,
       policyEntries,
       quoteStore: store,
+      rateLimiter,
     })
   );
   return app;
@@ -89,6 +92,25 @@ const catalogCache = (
 });
 
 describe("anonymous fare API", () => {
+  it("rate limits repeated anonymous fare lookups", async () => {
+    const adapter: FareAdapter = {
+      getCatalog: vi.fn(),
+      getQuote: vi.fn(),
+    };
+    const app = appFor(
+      adapter,
+      store(),
+      [policy],
+      catalogCache(),
+      createFareRateLimiter({ limit: 1 })
+    );
+
+    await request(app).get("/fares/catalog").expect(200);
+    const limited = await request(app).get("/fares/catalog").expect(429);
+
+    expect(limited.headers.ratelimit).toBeDefined();
+  });
+
   it("persists only a normalized current quote and preserves the API envelope", async () => {
     const quoteStore = store();
     const adapter: FareAdapter = {

@@ -18,7 +18,11 @@ export const getWebVersion = (
   return environment.HEROKU_RELEASE_VERSION ?? "DEVELOPMENT";
 };
 
-// Show native build and active bundle versions for support requests.
+export const getNativePlatformLabel = (platform: string): string => {
+  return platform === "ios" ? "iOS" : "Android";
+};
+
+// Show native builds and active OTA source revisions for support requests.
 export const AppVersionInfo: FunctionComponent = () => {
   const [versions, setVersions] = useState<Versions>({});
   const isNative = Capacitor.isNativePlatform();
@@ -30,11 +34,11 @@ export const AppVersionInfo: FunctionComponent = () => {
     let isMounted = true;
 
     App.getInfo()
-      .then(({ build, version }) => {
+      .then(({ build }) => {
         if (isMounted) {
           setVersions((current) => ({
             ...current,
-            app: `${version} (${build})`,
+            app: `${getNativePlatformLabel(Capacitor.getPlatform())} ${build}`,
           }));
         }
       })
@@ -42,8 +46,8 @@ export const AppVersionInfo: FunctionComponent = () => {
 
     CapacitorUpdater.current()
       .then(({ bundle }) => {
-        if (isMounted) {
-          setVersions((current) => ({ ...current, ota: bundle.version }));
+        if (isMounted && bundle.id !== "builtin") {
+          setVersions((current) => ({ ...current, ota: getWebVersion() }));
         }
       })
       .catch(() => undefined);
@@ -67,9 +71,10 @@ export const AppVersionInfo: FunctionComponent = () => {
   }
 
   return (
-    <div className="mt-12 text-center font-mono text-xs text-gray-500 dark:text-gray-400">
-      {versions.app && <div>App {versions.app}</div>}
-      {versions.ota && <div>OTA {versions.ota}</div>}
+    <div className="mt-12 text-center font-mono text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+      {versions.app}
+      {versions.app && versions.ota && " · "}
+      {versions.ota && `OTA ${versions.ota}`}
     </div>
   );
 };
