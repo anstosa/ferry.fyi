@@ -2,7 +2,6 @@ import React, { ReactElement } from "react";
 import { getSeoMetadata } from "shared/lib/seo";
 
 import { Page } from "../components/Page";
-import { SeoBreadcrumbs } from "../components/SeoBreadcrumbs";
 import { SeoHelmet } from "../components/SeoHelmet";
 
 const seo = getSeoMetadata("/forecasting");
@@ -11,8 +10,6 @@ const seo = getSeoMetadata("/forecasting");
 export const ForecastingExplained = (): ReactElement => (
   <Page title="Forecasting">
     <SeoHelmet seo={seo} />
-    <SeoBreadcrumbs seo={seo} />
-
     <p className="mt-4">
       Ferry FYI forecasts estimate vehicle space, schedule delay, and tidal
       cancellation risk for upcoming sailings. They are meant to help you

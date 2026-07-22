@@ -21,12 +21,12 @@ const configDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(configDir, "..");
 const staticDir = path.resolve(configDir, "static");
 const clientOutDir = path.resolve(repoRoot, "dist/client");
+const rootStaticFiles = ["llms.txt", "robots.txt"];
 const envKeys = [
   "AUTH0_CLIENT_AUDIENCE",
   "AUTH0_CLIENT_ID",
   "AUTH0_CLIENT_REDIRECT",
   "AUTH0_DOMAIN",
-  "AW_TAG_ID",
   "BASE_URL",
   "FIREBASE_API_KEY",
   "FIREBASE_APP_ID",
@@ -99,6 +99,12 @@ const copyStaticPlugin = (): Plugin => {
       fs.cpSync(staticDir, path.resolve(clientOutDir, "static"), {
         recursive: true,
       });
+      rootStaticFiles.forEach((fileName) => {
+        fs.copyFileSync(
+          path.resolve(staticDir, fileName),
+          path.resolve(clientOutDir, fileName)
+        );
+      });
     },
   };
 };
@@ -137,12 +143,10 @@ const htmlTemplatePlugin = (): Plugin => {
       if (!baseUrl) {
         throw new Error("Must set BASE_URL");
       }
-      const gtmContainerId = getEnv("GTM_CONTAINER_ID");
       const values: Record<string, string> = {
         "%APP_DESCRIPTION%": SEO_DEFAULT_DESCRIPTION,
         "%APP_TITLE%": SEO_DEFAULT_TITLE,
         "%SEO_BASE_URL%": baseUrl,
-        "%GTM_CONTAINER_ID%": gtmContainerId ?? "",
         "%SOCIAL_IMAGE%": `${baseUrl}/static/images/social.png`,
         "%THEME_COLOR%": COLOR,
       };
@@ -150,17 +154,6 @@ const htmlTemplatePlugin = (): Plugin => {
       // replace placeholders
       for (const [placeholder, value] of Object.entries(values)) {
         output = output.replaceAll(placeholder, value);
-      }
-      // optional gtm guard
-      if (!gtmContainerId) {
-        output = output.replace(
-          /\s*<!-- GTM:START -->[\s\S]*?<!-- GTM:END -->/,
-          ""
-        );
-        output = output.replace(
-          /\s*<!-- GTM_NOSCRIPT:START -->[\s\S]*?<!-- GTM_NOSCRIPT:END -->/,
-          ""
-        );
       }
       return output;
     },
@@ -176,7 +169,7 @@ const shouldUploadSentryRelease = (): boolean => {
 };
 
 // create vite config
-export default defineConfig(({ mode }) => ({
+export default defineConfig(() => ({
   root: configDir,
   publicDir: false,
   define: buildEnvDefines(),
@@ -205,10 +198,8 @@ export default defineConfig(({ mode }) => ({
   build: {
     outDir: clientOutDir,
     emptyOutDir: true,
-    // hide uploaded production maps
-    sourcemap: shouldUploadSentryRelease()
-      ? "hidden"
-      : getEnv("ENABLE_SOURCE_MAPS") === "TRUE" || mode === "development",
+    // Publish source maps with every client build for browser debugging.
+    sourcemap: true,
     minify: getEnv("MINIMIZE") === "FALSE" ? false : "esbuild",
     rollupOptions: {
       output: {

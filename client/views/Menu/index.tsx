@@ -14,16 +14,14 @@ import {
 import { getConfiguredAuth0RedirectUri } from "~/lib/auth";
 import { isInstalledApp, useDevice } from "~/lib/device";
 import { colors } from "~/lib/theme";
-import logo from "~/static/images/icon_monochrome.png";
+import logo from "~/static/images/icon_monochrome-256.png";
 import AppStoreIcon from "~/static/images/icons/brands/app-store-ios.svg";
 import GooglePlayIcon from "~/static/images/icons/brands/google-play.svg";
 import AboutIcon from "~/static/images/icons/solid/address-card.svg";
-import ForecastIcon from "~/static/images/icons/solid/analytics.svg";
 import TicketIcon from "~/static/images/icons/solid/barcode-alt.svg";
 import ScheduleIcon from "~/static/images/icons/solid/calendar-week.svg";
 import DownloadIcon from "~/static/images/icons/solid/download.svg";
 import FeedbackIcon from "~/static/images/icons/solid/question-circle.svg";
-import ReloadIcon from "~/static/images/icons/solid/redo.svg";
 import ShareIcon from "~/static/images/icons/solid/share-alt.svg";
 import UserIcon from "~/static/images/icons/solid/user.svg";
 
@@ -37,7 +35,6 @@ export interface ShareOptions {
 interface Props {
   hasTopBanner: boolean;
   isOpen: boolean;
-  reload?: () => void;
   onClose: () => void;
   onOpen: () => void;
   share?: ShareOptions;
@@ -56,6 +53,7 @@ const Avatar = ({ className }: SVGAttributes<SVGElement>) => {
   if (user?.picture && failedImageUrl !== user.picture) {
     return (
       <img
+        alt=""
         src={user.picture}
         className={clsx(
           className,
@@ -73,7 +71,6 @@ export const Menu = ({
   isOpen,
   onClose,
   onOpen,
-  reload,
   share,
   items = [],
 }: Props): ReactElement | null => {
@@ -170,12 +167,6 @@ export const Menu = ({
     ...(installItem ? [installItem] : []),
     accountItem,
     ...bottomItems,
-    {
-      Icon: ForecastIcon,
-      label: "Forecasting",
-      path: "/forecasting",
-      isBottom: true,
-    },
     {
       Icon: AboutIcon,
       label: "About",
@@ -280,6 +271,7 @@ export const Menu = ({
               ? {}
               : { left: `calc(-100% + ${dragPosition ?? 0}px)` }),
           }}
+          aria-label="Main navigation"
         >
           <div
             className={clsx(
@@ -290,7 +282,13 @@ export const Menu = ({
             )}
           >
             <Link to="/" className="flex items-center">
-              <img src={logo} className="inline-block mr-4 w-10" />
+              <img
+                alt="Ferry FYI"
+                className="inline-block mr-4 w-10"
+                height={40}
+                src={logo}
+                width={40}
+              />
               <h1 className="font-bold">Ferry FYI</h1>
             </Link>
             <div className="flex-grow" />
@@ -317,18 +315,6 @@ export const Menu = ({
                 aria-label={shareMenuText}
               >
                 <ShareIcon />
-              </div>
-            )}
-            {reload && (
-              <div
-                className="w-10 h-10 cursor-pointer text-md flex justify-center items-center"
-                onClick={() => {
-                  reload();
-                  onClose();
-                }}
-                aria-label="Refresh"
-              >
-                <ReloadIcon />
               </div>
             )}
           </div>

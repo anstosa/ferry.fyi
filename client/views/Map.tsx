@@ -1,3 +1,5 @@
+import "mapbox-gl/dist/mapbox-gl.css";
+
 import clsx from "clsx";
 import { AnimatePresence, motion } from "framer-motion";
 import {

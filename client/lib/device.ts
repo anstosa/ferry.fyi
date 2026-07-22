@@ -1,10 +1,21 @@
 import { Capacitor } from "@capacitor/core";
-import { Device, DeviceInfo as CapacitorDevice } from "@capacitor/device";
+import type { DeviceInfo as CapacitorDevice } from "@capacitor/device";
 import { useEffect, useState } from "react";
 
 interface DeviceInfo extends CapacitorDevice {
   isNativeMobile: boolean;
 }
+
+const webDevice: DeviceInfo = {
+  isNativeMobile: false,
+  isVirtual: false,
+  manufacturer: "",
+  model: "",
+  operatingSystem: "unknown",
+  osVersion: "",
+  platform: "web",
+  webViewVersion: "",
+};
 
 // synchronous guard for UI that must never flash inside a native app
 export const isNativeMobileApp = (): boolean => Capacitor.isNativePlatform();
@@ -28,9 +39,12 @@ export const isInstalledApp = (): boolean =>
 
 // Hook to get user's device info
 export const useDevice = (): DeviceInfo | null => {
-  const [device, setDevice] = useState<DeviceInfo | null>(null);
+  const [device, setDevice] = useState<DeviceInfo | null>(
+    isNativeMobileApp() ? null : webDevice
+  );
 
   const updateDevice = async () => {
+    const { Device } = await import("@capacitor/device");
     const deviceInfo = await Device.getInfo();
     setDevice({
       ...deviceInfo,
@@ -40,8 +54,9 @@ export const useDevice = (): DeviceInfo | null => {
   };
 
   useEffect(() => {
-    // get info
-    updateDevice();
+    if (isNativeMobileApp()) {
+      updateDevice();
+    }
   }, []);
 
   return device;

@@ -6,7 +6,6 @@ import DonateIcon from "~/static/images/icons/solid/heart.svg";
 
 import { AppVersionInfo } from "../components/AppVersionInfo";
 import { Page } from "../components/Page";
-import { SeoBreadcrumbs } from "../components/SeoBreadcrumbs";
 import { SeoHelmet } from "../components/SeoHelmet";
 
 const seo = getSeoMetadata("/about");
@@ -14,7 +13,6 @@ const seo = getSeoMetadata("/about");
 export const About = (): ReactElement => (
   <Page>
     <SeoHelmet seo={seo} />
-    <SeoBreadcrumbs seo={seo} />
     <p className="mt-4">
       A ferry schedule and tracker for the greater Seattle area. Supports all{" "}
       <a
@@ -38,6 +36,13 @@ export const About = (): ReactElement => (
         Ansel Santosa
       </a>{" "}
       on Whidbey Island
+    </p>
+    <p className="mt-4">
+      Learn how Ferry FYI{" "}
+      <Link className="link" to="/forecasting">
+        forecasts ferry capacity, delays, and tide conditions
+      </Link>
+      .
     </p>
 
     <h2 className="font-bold text-lg mt-8">Support</h2>

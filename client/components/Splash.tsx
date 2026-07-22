@@ -6,7 +6,7 @@ import React, {
   useState,
 } from "react";
 
-import logo from "~/static/images/icon_monochrome.png";
+import logo from "~/static/images/icon_monochrome-256.png";
 
 import { LoadingWaves } from "./LoadingWaves";
 
@@ -55,7 +55,13 @@ export const Splash: FC<PropsWithChildren> = ({ children }) => {
         flex flex-col justify-center items-center
       "
     >
-      <img src={logo} className="w-20 splash-logo" />
+      <img
+        alt="Ferry FYI"
+        className="w-20 splash-logo"
+        height={80}
+        src={logo}
+        width={80}
+      />
       <LoadingWaves className="mt-8" />
       {children && <span className="max-w-sm mt-8">{children}</span>}
       {renderHelp()}

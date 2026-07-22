@@ -10,8 +10,6 @@ declare module "*.png" {
 
 declare module "*.scss";
 
-declare const gtag: Gtag.Gtag;
-
 interface Window {
-  gtag?: Gtag.Gtag;
+  dataLayer?: Array<Record<string, unknown>>;
 }

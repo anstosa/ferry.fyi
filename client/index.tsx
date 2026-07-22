@@ -6,7 +6,6 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import { HelmetProvider } from "react-helmet-async";
 import { BrowserRouter } from "react-router-dom";
-import { isUndefined } from "shared/lib/identity";
 
 import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { getConfiguredAuth0RedirectUri } from "~/lib/auth";
@@ -148,10 +147,3 @@ whenReady(() => {
   window.addEventListener("offline", renderAll);
   renderAll();
 });
-
-// if there's a gtag, initialize it
-if (!isUndefined(window.gtag)) {
-  gtag("event", "conversion", {
-    send_to: `${process.env.AW_TAG_ID}/78vaCLmvr4QDEJvr0tUC`,
-  });
-}

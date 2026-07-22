@@ -59,8 +59,7 @@ describe("client SEO", () => {
     const schema = document.querySelector(
       'script[type="application/ld+json"]'
     )?.textContent;
-    expect(schema).toContain('"@type":"BreadcrumbList"');
-    expect(schema).toContain('"item":"https://ferry.fyi"');
+    expect(schema).not.toContain('"@type":"BreadcrumbList"');
     expect(schema).toContain('"@type":"Organization"');
   });
 

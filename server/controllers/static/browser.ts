@@ -57,18 +57,9 @@ const getSeoFallbackHtml = (seo: SeoMetadata, canonicalUrl: string): string => {
     return "";
   }
 
-  const breadcrumbs = seo.breadcrumbs
-    .map(({ name, path }, index) => {
-      const label = escapeHtml(name);
-      if (!path || index === seo.breadcrumbs.length - 1) {
-        return `<li>${label}</li>`;
-      }
-      return `<li><a href="${escapeHtml(path)}">${label}</a></li>`;
-    })
-    .join("");
   const heading = escapeHtml(seo.title.replace(` - ${SEO_APP_NAME}`, ""));
 
-  return `<main aria-labelledby="seo-page-title" data-seo-seed="true" style="background:#fff;color:#1f2937;min-height:100%;padding:2rem 1rem"><nav aria-label="Breadcrumb"><ol>${breadcrumbs}</ol></nav><h1 id="seo-page-title">${heading}</h1><p>${escapeHtml(seo.description)}</p><p><a href="${canonicalUrl}">View the live ferry schedule and service information</a></p></main>`;
+  return `<main aria-labelledby="seo-page-title" data-seo-seed="true" style="background:#fff;color:#1f2937;min-height:100%;padding:2rem 1rem"><h1 id="seo-page-title">${heading}</h1><p>${escapeHtml(seo.description)}</p><p><a href="${canonicalUrl}">View the live ferry schedule and service information</a></p></main>`;
 };
 
 export const renderSeoHtml = (
@@ -151,9 +142,12 @@ export const createBrowserRouter = (dist = clientDist): Router => {
 
   browserRouter.get("/robots.txt", (request, response) => {
     response.type("text/plain");
-    return response.send(
-      "User-agent: *\nAllow: /\nSitemap: https://ferry.fyi/sitemap.xml"
-    );
+    return response.sendFile(path.resolve(dist, "robots.txt"));
+  });
+
+  browserRouter.get("/llms.txt", (request, response) => {
+    response.type("text/plain");
+    return response.sendFile(path.resolve(dist, "llms.txt"));
   });
 
   browserRouter.get("/sitemap.xml", async (request, response) => {

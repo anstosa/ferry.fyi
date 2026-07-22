@@ -106,7 +106,7 @@ export const Today = (): ReactElement => {
   return (
     <>
       <SeoHelmet seo={getSeoMetadata("/today")} title="How Many Boats?" />
-      <div
+      <main
         className={clsx(
           "fixed inset-0 h-full p-8",
           "text-white text-center",
@@ -154,7 +154,7 @@ export const Today = (): ReactElement => {
           </Link>
         </div>
         <div />
-      </div>
+      </main>
     </>
   );
 };

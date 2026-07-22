@@ -13,6 +13,7 @@ interface FreshnessPillBaseProps {
   className?: string;
   now?: number;
   sourceUpdatedAt: number | null;
+  verb?: "Checked" | "Updated";
 }
 
 interface FreshnessPillButtonProps
@@ -45,10 +46,16 @@ const baseClassName =
 export const FreshnessPill = (
   props: FreshnessPillProps
 ): ReactElement | null => {
-  const { className, now: fixedNow, sourceUpdatedAt, ...elementProps } = props;
+  const {
+    className,
+    now: fixedNow,
+    sourceUpdatedAt,
+    verb,
+    ...elementProps
+  } = props;
   const [currentNow, setCurrentNow] = useState(() => Date.now() / 1000);
   const now = fixedNow ?? currentNow;
-  const label = formatUpdatedAt(sourceUpdatedAt, now);
+  const label = formatUpdatedAt(sourceUpdatedAt, now, verb);
   const classes = clsx(baseClassName, className);
 
   useEffect(() => {

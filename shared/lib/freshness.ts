@@ -3,7 +3,8 @@
  */
 export const formatUpdatedAt = (
   sourceUpdatedAt: number | null | undefined,
-  now: number
+  now: number,
+  verb = "Updated"
 ): string | null => {
   if (
     sourceUpdatedAt === null ||
@@ -17,6 +18,6 @@ export const formatUpdatedAt = (
   const minutesAgo = Math.floor(Math.max(0, now - sourceUpdatedAt) / 60);
 
   return minutesAgo === 0
-    ? "Updated just now"
-    : `Updated ${minutesAgo} min${minutesAgo === 1 ? "" : "s"} ago`;
+    ? `${verb} just now`
+    : `${verb} ${minutesAgo} min${minutesAgo === 1 ? "" : "s"} ago`;
 };

@@ -14,7 +14,7 @@ import type { Camera } from "shared/contracts/cameras";
 import type { Terminal } from "shared/contracts/terminals";
 import { isNull } from "shared/lib/identity";
 
-import { FreshnessPill } from "~/components/FreshnessPill";
+import { CameraFrameFreshness } from "~/components/CameraFrameFreshness";
 import { InlineLoader } from "~/components/InlineLoader";
 import { getCameraFrames } from "~/lib/cameras";
 import { locationToUrl } from "~/lib/maps";
@@ -224,7 +224,10 @@ const CameraList = ({
       : formatSailingCount(carCount, sailingVehicleCapacity);
 
     return (
-      <li className={clsx("flex flex-col", "relative")} key={id}>
+      <li
+        className={clsx("relative flex w-full max-w-[480px] flex-col")}
+        key={id}
+      >
         <div
           className={clsx(
             "group relative w-full max-w-[480px] overflow-hidden shadow-sm",
@@ -281,14 +284,11 @@ const CameraList = ({
               anyway.
             </div>
           )}
-          <div className="absolute inset-x-0 bottom-0 z-10 flex justify-between border border-black bg-white p-[3px] text-xs font-bold text-[#0e1e2a]">
-            <span>{owner?.name ?? "WSDOT"}</span>
-            {frameStatus?.frameUpdatedAt ? (
-              <FreshnessPill
-                className="border-0 bg-transparent !p-0 text-xs font-bold text-[#0e1e2a] dark:bg-white dark:text-[#0e1e2a]"
-                sourceUpdatedAt={frameStatus.frameUpdatedAt}
-              />
-            ) : null}
+          <div className="absolute inset-x-0 bottom-0 z-10 flex justify-between gap-2 border border-black bg-white p-[3px] text-xs font-bold text-[#0e1e2a]">
+            <span className="min-w-0 truncate" title={owner?.name ?? "WSDOT"}>
+              {owner?.name ?? "WSDOT"}
+            </span>
+            <CameraFrameFreshness frameStatus={frameStatus} />
           </div>
         </div>
         <span className="relative mt-3 mb-2 flex flex-col gap-1 px-1 text-lg font-bold">
@@ -345,7 +345,6 @@ const CameraList = ({
   return (
     <>
       <Header
-        reload={reload}
         share={{
           shareButtonText: "Share Cameras",
           sharedText: `Cameras for ${terminal.name} Ferry Terminal`,

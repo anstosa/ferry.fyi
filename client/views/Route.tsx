@@ -25,7 +25,6 @@ import { Footer } from "~/components/Footer";
 import { Page } from "~/components/Page";
 import { PageLoadError } from "~/components/PageLoadError";
 import { RouteSelector } from "~/components/RouteSelector";
-import { SeoBreadcrumbs } from "~/components/SeoBreadcrumbs";
 import { SeoHelmet } from "~/components/SeoHelmet";
 import { Splash } from "~/components/Splash";
 import { useQuery } from "~/lib/browser";
@@ -428,7 +427,6 @@ export const Route = ({
       <>
         {terminal && mate && (
           <Header
-            reload={updateSchedule}
             isReloading={isUpdating}
             share={{
               shareButtonText: "Share Schedule",
@@ -599,7 +597,6 @@ export const Route = ({
   return (
     <>
       <SeoHelmet seo={seo} title={title} />
-      <SeoBreadcrumbs seo={seo} />
       {content && (
         <ErrorBoundary
           resetKey={contentResetKey}

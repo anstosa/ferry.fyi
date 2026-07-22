@@ -1,5 +1,11 @@
 import express from "express";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "fs";
+import {
+  copyFileSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "fs";
 import { tmpdir } from "os";
 import path from "path";
 import request from "supertest";
@@ -44,6 +50,8 @@ beforeEach(() => {
   originalBaseUrl = process.env.BASE_URL;
   clientDist = mkdtempSync(path.join(tmpdir(), "ferry-seo-"));
   writeFileSync(path.join(clientDist, "index.html"), template);
+  copyFileSync("client/static/llms.txt", path.join(clientDist, "llms.txt"));
+  copyFileSync("client/static/robots.txt", path.join(clientDist, "robots.txt"));
   app = express();
   app.use(createBrowserRouter(clientDist));
 });
@@ -59,6 +67,30 @@ afterEach(() => {
 });
 
 describe("SEO metadata", () => {
+  it("explicitly allows search and AI crawlers", async () => {
+    const response = await request(app).get("/robots.txt").expect(200);
+
+    expect(response.type).toBe("text/plain");
+    expect(response.text).toContain("User-agent: Googlebot\nAllow: /");
+    expect(response.text).toContain("User-agent: OAI-SearchBot\nAllow: /");
+    expect(response.text).toContain("User-agent: ClaudeBot\nAllow: /");
+    expect(response.text).toContain("User-agent: PerplexityBot\nAllow: /");
+    expect(response.text).toContain("Sitemap: https://ferry.fyi/sitemap.xml");
+  });
+
+  it("serves a concise app guide for language models", async () => {
+    const response = await request(app).get("/llms.txt").expect(200);
+
+    expect(response.type).toBe("text/plain");
+    expect(response.text).toContain("# Ferry FYI");
+    expect(response.text).toContain(
+      "[Forecasting](https://ferry.fyi/forecasting)"
+    );
+    expect(response.text).toContain(
+      "[Washington State Ferries](https://wsdot.wa.gov/travel/washington-state-ferries)"
+    );
+  });
+
   it("creates indexable canonical schedule metadata", () => {
     const metadata = getRouteSeoMetadata(seattle, bainbridge, "schedule");
 
@@ -192,8 +224,7 @@ describe("SEO metadata", () => {
     expect(scheduleResponse.text).toContain(
       '<h1 id="seo-page-title">Seattle to Bremerton Ferry Schedule</h1>'
     );
-    expect(scheduleResponse.text).toContain('"@type":"BreadcrumbList"');
-    expect(scheduleResponse.text).toContain('"item":"https://ferry.fyi"');
+    expect(scheduleResponse.text).not.toContain('"@type":"BreadcrumbList"');
 
     await request(app)
       .get("/seattle/fare")

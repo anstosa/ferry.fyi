@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import React, { ReactElement } from "react";
+import React, { ReactElement, useState } from "react";
 import { Link } from "react-router-dom";
 import { Terminal as TerminalClass } from "shared/contracts/terminals";
 import { isEmpty } from "shared/lib/arrays";
@@ -14,10 +14,11 @@ import {
   sortRouteGroups,
 } from "~/lib/routeGroups";
 import { getSlug, useTerminals } from "~/lib/terminals";
-import logo from "~/static/images/icon_monochrome.png";
-import TicketIcon from "~/static/images/icons/solid/barcode-alt.svg";
+import logo from "~/static/images/icon_monochrome-256.png";
+import MenuIcon from "~/static/images/icons/solid/bars.svg";
 import GpsTargetIcon from "~/static/images/icons/solid/location.svg";
 import StarFilledIcon from "~/static/images/icons/solid/star.svg";
+import { Menu } from "~/views/Menu";
 
 import { Today } from "./Today";
 
@@ -72,23 +73,38 @@ export const Home = (): ReactElement => {
   }
   const { terminals, closestTerminal } = useTerminals();
   const [favoriteRouteIds] = useFavoriteRoutes();
+  const [isMenuOpen, setMenuOpen] = useState(false);
   const routeGroups = sortRouteGroups(
     getRouteGroups(terminals),
     closestTerminal,
     favoriteRouteIds
   );
   return (
-    <div className="relative min-h-screen min-h-[100dvh] overflow-y-scroll scrolling-touch bg-ferry-gradient text-white">
+    <main className="relative min-h-screen min-h-[100dvh] overflow-y-scroll scrolling-touch bg-ferry-gradient text-white">
       <SeoHelmet seo={getSeoMetadata("/")} />
-      <Link
-        className="absolute top-0 left-0 mt-safe-top flex items-center px-4 py-2 text-lg font-bold hover:bg-lighten-high"
-        to="/tickets"
+      <Menu
+        hasTopBanner={false}
+        isOpen={isMenuOpen}
+        onClose={() => setMenuOpen(false)}
+        onOpen={() => setMenuOpen(true)}
+      />
+      <button
+        aria-label="Open Menu"
+        className="absolute top-0 left-0 z-20 mt-safe-top p-4 text-2xl hover:bg-lighten-high"
+        onClick={() => setMenuOpen(true)}
+        type="button"
       >
-        <TicketIcon className="mr-3" />
-        Tickets
-      </Link>
+        <MenuIcon />
+      </button>
       <div className="flex flex-col items-center justify-center w-full h-60">
-        <img src={logo} className="w-28" />
+        <img
+          alt="Ferry FYI"
+          className="w-28"
+          fetchPriority="high"
+          height={112}
+          src={logo}
+          width={112}
+        />
         <h1 className="text-4xl font-bold">Ferry FYI</h1>
       </div>
       <div className="w-full flex justify-center px-4 pb-8">
@@ -136,6 +152,6 @@ export const Home = (): ReactElement => {
           ))}
         </div>
       </div>
-    </div>
+    </main>
   );
 };

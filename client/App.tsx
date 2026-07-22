@@ -7,7 +7,6 @@ import { Browser } from "@capacitor/browser";
 import { AnimatePresence } from "framer-motion";
 import { Settings } from "luxon";
 import React, { lazy, ReactElement, Suspense, useEffect } from "react";
-import ReactGA from "react-ga4";
 import {
   Navigate,
   useLocation,
@@ -20,7 +19,7 @@ import { InstallPromptToast } from "~/components/InstallPromptToast";
 import { NearbyTicketNotifications } from "~/components/NearbyTicketNotifications";
 import { Prompt } from "~/components/Prompt";
 import { Splash } from "~/components/Splash";
-import { useRecordPageViews } from "~/lib/analytics";
+import { deferAnalytics, useRecordPageViews } from "~/lib/analytics";
 import { useOnline, useWSF } from "~/lib/api";
 import { isAuth0CallbackUrl } from "~/lib/auth";
 import { useDevice } from "~/lib/device";
@@ -79,11 +78,7 @@ export const App = (): ReactElement => {
       },
     }).catch(() => undefined);
   }, []);
-  useEffect(() => {
-    if (process.env.GOOGLE_ANALYTICS) {
-      ReactGA.initialize(process.env.GOOGLE_ANALYTICS);
-    }
-  }, []);
+  useEffect(() => deferAnalytics(), []);
   const isOnline = useOnline();
   const isWsfOffline = useWSF()?.offline ?? false;
   const [offlineDismissed, setOfflineDismissed] = React.useState(false);

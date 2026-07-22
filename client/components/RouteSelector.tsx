@@ -6,7 +6,6 @@ import React, {
   useRef,
   useState,
 } from "react";
-import ReactGA from "react-ga4";
 import { Link } from "react-router-dom";
 import type { Terminal } from "shared/contracts/terminals";
 import { without } from "shared/lib/arrays";
@@ -14,6 +13,7 @@ import { isNull, isUndefined } from "shared/lib/identity";
 import { getTerminalSorter } from "shared/lib/terminalSorting";
 
 import { Prompt } from "~/components/Prompt";
+import { trackEvent } from "~/lib/analytics";
 import { useLocalStorage } from "~/lib/browser";
 import { useGeo } from "~/lib/geo";
 import { getSlug, useTerminals } from "~/lib/terminals";
@@ -84,10 +84,7 @@ export const RouteSelector = (props: Props): ReactElement => {
         onMouseLeave={() => setSwapHovering(false)}
         onClick={(event) => {
           event.preventDefault();
-          ReactGA.event({
-            category: "Navigation",
-            action: "Swap Terminals",
-          });
+          trackEvent("Navigation", "Swap Terminals");
           setRoute(getSlug(mate.id), getSlug(terminal.id));
         }}
         aria-label="Swap Terminals"

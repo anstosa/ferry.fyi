@@ -26,6 +26,6 @@ export const Page: FunctionComponent<PropsWithChildren<Props>> = ({
     <Header>
       <h1 className="font-bold text-2xl">{title ?? "Ferry FYI"}</h1>
     </Header>
-    <div className="mx-auto w-full max-w-6xl">{children}</div>
+    <main className="mx-auto w-full max-w-6xl">{children}</main>
   </div>
 );

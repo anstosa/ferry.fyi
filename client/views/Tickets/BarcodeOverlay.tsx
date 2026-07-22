@@ -567,6 +567,7 @@ export const BarcodeOverlay = ({
             <div className="relative grid grid-cols-[3.5rem_1fr] items-center gap-x-3 gap-y-2">
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/12">
                 <img
+                  alt=""
                   src={logo}
                   className="h-11 w-11 rounded-xl object-contain"
                 />

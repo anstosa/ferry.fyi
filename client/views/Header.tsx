@@ -5,10 +5,10 @@ import React, {
   ReactNode,
   useState,
 } from "react";
-import ReactGA from "react-ga4";
 
 import { OnboardSailingBanner } from "~/components/OnboardSailingBanner";
 import { ReloadButton } from "~/components/ReloadButton";
+import { trackEvent } from "~/lib/analytics";
 import MenuIcon from "~/static/images/icons/solid/bars.svg";
 import { Menu, ShareOptions } from "~/views/Menu";
 
@@ -39,39 +39,31 @@ const WrapHeader: FunctionComponent<PropsWithChildren<WrapHeaderProps>> = ({
 );
 
 interface Props {
-  reload?: () => void;
   isReloading?: boolean;
   share?: ShareOptions;
   items?: MenuItem[];
 }
 
 export const Header: FunctionComponent<PropsWithChildren<Props>> = (props) => {
-  const { isReloading, reload, children, share, items } = props;
+  const { isReloading, children, share, items } = props;
   const [isMenuOpen, setMenuOpen] = useState<boolean>(false);
-  const [isFakeReloading, setFakeReloading] = useState<boolean>(false);
   const [hasTopBanner, setHasTopBanner] = useState<boolean>(false);
 
   const openNav = () => {
     setMenuOpen(true);
-    ReactGA.event({
-      category: "Navigation",
-      action: "Open Menu",
-    });
+    trackEvent("Navigation", "Open Menu");
   };
 
   const renderMenuToggle = (): ReactNode => {
-    if (isReloading || isFakeReloading) {
+    if (isReloading) {
       return (
         <ReloadButton
-          isReloading={isReloading || isFakeReloading}
+          isReloading={isReloading}
           ariaLabel="Open Menu"
           className="mr-4"
           onClick={() => {
             setMenuOpen(true);
-            ReactGA.event({
-              category: "Navigation",
-              action: "Open Menu",
-            });
+            trackEvent("Navigation", "Open Menu");
           }}
         />
       );
@@ -99,23 +91,9 @@ export const Header: FunctionComponent<PropsWithChildren<Props>> = (props) => {
       <Menu
         hasTopBanner={hasTopBanner}
         isOpen={isMenuOpen}
-        reload={
-          reload
-            ? () => {
-                setFakeReloading(true);
-                reload();
-                setTimeout(() => {
-                  setFakeReloading(false);
-                }, 1000);
-              }
-            : undefined
-        }
         onClose={() => {
           setMenuOpen(false);
-          ReactGA.event({
-            category: "Navigation",
-            action: "Close Menu",
-          });
+          trackEvent("Navigation", "Close Menu");
         }}
         onOpen={openNav}
         share={share}

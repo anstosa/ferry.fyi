@@ -17,17 +17,11 @@ export type SeoView =
   | "fare";
 
 export interface SeoMetadata {
-  breadcrumbs: readonly SeoBreadcrumb[];
   canonicalPath: string;
   description: string;
   robots: "index,follow" | "noindex,follow";
   schema: Record<string, unknown>;
   title: string;
-}
-
-export interface SeoBreadcrumb {
-  name: string;
-  path?: string;
 }
 
 export interface SeoProfile {
@@ -69,19 +63,6 @@ const fixedPages: Record<string, Pick<SeoMetadata, "title" | "description">> = {
 
 const indexablePaths = new Set<string>(SEO_INDEXABLE_PATHS);
 
-const getFixedPageBreadcrumb = (
-  canonicalPath: string,
-  title: string
-): string => {
-  if (canonicalPath === "/about") {
-    return "About";
-  }
-  if (canonicalPath === "/forecasting") {
-    return "Forecasting";
-  }
-  return title;
-};
-
 const getWebPageSchema = (
   title: string,
   description: string,
@@ -100,19 +81,6 @@ export const getSeoSchema = (
   title = seo.title
 ): Record<string, unknown> => ({
   ...seo.schema,
-  ...(seo.breadcrumbs.length > 1
-    ? {
-        breadcrumb: {
-          "@type": "BreadcrumbList",
-          itemListElement: seo.breadcrumbs.map(({ name, path }, index) => ({
-            "@type": "ListItem",
-            ...(path ? { item: getSeoUrl(baseUrl, path) } : {}),
-            name,
-            position: index + 1,
-          })),
-        },
-      }
-    : {}),
   ...(seo.canonicalPath === "/" || seo.canonicalPath === "/about"
     ? {
         publisher: {
@@ -140,16 +108,7 @@ export const getSeoMetadata = (pathname: string): SeoMetadata => {
   const robots = indexablePaths.has(canonicalPath)
     ? "index,follow"
     : "noindex,follow";
-  const breadcrumbs: SeoBreadcrumb[] =
-    robots !== "index,follow" || canonicalPath === "/"
-      ? [{ name: SEO_APP_NAME, path: "/" }]
-      : [
-          { name: SEO_APP_NAME, path: "/" },
-          { name: getFixedPageBreadcrumb(canonicalPath, title) },
-        ];
-
   return {
-    breadcrumbs,
     canonicalPath,
     description,
     robots,
@@ -162,13 +121,7 @@ export const getTerminalSeoMetadata = (terminal: SeoTerminal): SeoMetadata => {
   const canonicalPath = `/${terminal.slug}/terminal`;
   const title = `${terminal.name} Ferry Terminal Information - ${SEO_APP_NAME}`;
   const description = `Terminal information, amenities, and travel details for the Washington State Ferries ${terminal.name} terminal.`;
-  const breadcrumbs: SeoBreadcrumb[] = [
-    { name: SEO_APP_NAME, path: "/" },
-    { name: `${terminal.name} terminal` },
-  ];
-
   return {
-    breadcrumbs,
     canonicalPath,
     description,
     robots: "index,follow",
@@ -182,13 +135,7 @@ export const getHowManyBoatsSeoMetadata = (): SeoMetadata => {
   const title = `How Many Boats? - ${SEO_APP_NAME}`;
   const description =
     "See whether the Clinton to Mukilteo ferry route is running one boat or two boats today.";
-  const breadcrumbs: SeoBreadcrumb[] = [
-    { name: SEO_APP_NAME, path: "/" },
-    { name: "How Many Boats?" },
-  ];
-
   return {
-    breadcrumbs,
     canonicalPath,
     description,
     robots: "index,follow",
@@ -224,13 +171,7 @@ export const getRouteSeoMetadata = (
   const description = isSchedule
     ? `Washington State Ferries schedules, sailing times, vehicle-capacity forecasts, and service information for the ${terminal.name} to ${mate.name} route.`
     : `Current Washington State Ferries ${view} for the ${terminal.name} to ${mate.name} route.`;
-  const breadcrumbs: SeoBreadcrumb[] = [
-    { name: SEO_APP_NAME, path: "/" },
-    { name: `${terminal.name} to ${mate.name}` },
-  ];
-
   return {
-    breadcrumbs,
     canonicalPath,
     description,
     robots: isSchedule && !isDated ? "index,follow" : "noindex,follow",

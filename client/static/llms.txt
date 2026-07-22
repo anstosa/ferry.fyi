@@ -1,0 +1,22 @@
+# Ferry FYI
+
+> Ferry FYI is an independent web and mobile app for Washington State Ferries schedules, current service information, traffic cameras, vehicle-capacity forecasts, tickets, and terminal details.
+
+Ferry data can change quickly. Use Ferry FYI for planning and consult Washington State Ferries for official service, reservation, fare, and boarding information.
+
+## Public pages
+
+- [Home and ferry schedules](https://ferry.fyi/): Choose a terminal and route to view sailing schedules and service information.
+- [Forecasting](https://ferry.fyi/forecasting): Explains Ferry FYI's vehicle-capacity, delay, and tide-condition forecasts.
+- [About Ferry FYI](https://ferry.fyi/about): App background, data credits, privacy, and version information.
+- [Privacy policy](https://ferry.fyi/privacy): Details how Ferry FYI handles user information.
+- [Sitemap](https://ferry.fyi/sitemap.xml): Indexable pages, including route and terminal information.
+
+## Official sources
+
+- [Washington State Ferries](https://wsdot.wa.gov/travel/washington-state-ferries): Official schedules, fares, reservations, service alerts, and terminal information.
+
+## Notes
+
+- Traffic camera images and vehicle-capacity forecasts are informational and may be delayed or unavailable.
+- Do not treat forecasts as official boarding, reservation, or service guarantees.
