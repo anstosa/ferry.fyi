@@ -3,9 +3,8 @@ export type InstallPlatform = "android" | "ios" | "web";
 export const GOOGLE_PLAY_URL =
   "https://play.google.com/store/apps/details?id=fyi.ferry";
 
-// Replace the placeholder App Store ID when the iOS listing is published.
 export const APPLE_APP_STORE_URL =
-  "https://apps.apple.com/app/ferry-fyi/idAPP_STORE_ID";
+  "https://apps.apple.com/us/app/ferry-fyi/id6790176506";
 
 const INSTALL_PROMPT_REQUEST_EVENT = "ferry-fyi:request-install-prompt";
 

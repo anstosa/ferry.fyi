@@ -1,8 +1,17 @@
 import { describe, expect, it } from "vitest";
 
-import { getInstallPlatform } from "../../client/lib/appInstall";
+import {
+  APPLE_APP_STORE_URL,
+  getInstallPlatform,
+} from "../../client/lib/appInstall";
 
 describe("getInstallPlatform", () => {
+  it("uses the published iOS App Store listing", () => {
+    expect(APPLE_APP_STORE_URL).toBe(
+      "https://apps.apple.com/us/app/ferry-fyi/id6790176506"
+    );
+  });
+
   it("routes Android browsers to Google Play", () => {
     expect(getInstallPlatform("Mozilla/5.0 (Linux; Android 15; Pixel 9)")).toBe(
       "android"

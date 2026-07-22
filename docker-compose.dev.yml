@@ -50,12 +50,12 @@ services:
       server:
         condition: service_started
     ports:
-      - "${APP_PORT:-4040}:3042"
+      - "${APP_PORT:-4040}:4040"
     volumes:
       - .:/app
       - app-node-modules:/app/node_modules
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3042').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:4040').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
       interval: 30s
       timeout: 5s
       retries: 5
