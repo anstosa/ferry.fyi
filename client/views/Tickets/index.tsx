@@ -6,17 +6,21 @@ import {
 } from "@capacitor/barcode-scanner";
 import { KeepAwake } from "@capacitor-community/keep-awake";
 import { ScreenBrightness } from "@capacitor-community/screen-brightness";
-import {
-  BrowserCodeReader,
+import type {
   BrowserMultiFormatReader,
   IScannerControls,
 } from "@zxing/browser";
-import { BarcodeFormat, DecodeHintType } from "@zxing/library";
+import type { BarcodeFormat, DecodeHintType } from "@zxing/library";
 import clsx from "clsx";
 import { useAtom } from "jotai";
-import jsQR from "jsqr";
 import { DateTime } from "luxon";
-import React, { ReactElement, useEffect, useRef, useState } from "react";
+import React, {
+  ReactElement,
+  Suspense,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import type {
   ReservationAccount,
   Ticket as TicketType,
@@ -48,16 +52,70 @@ import SpinnerIcon from "~/static/images/icons/solid/spinner-third.svg";
 import SyncIcon from "~/static/images/icons/solid/sync-alt.svg";
 import StopIcon from "~/static/images/icons/solid/times.svg";
 
-import { BarcodeOverlay } from "./BarcodeOverlay";
+const BarcodeOverlay = React.lazy(() =>
+  import("./BarcodeOverlay").then(({ BarcodeOverlay }) => ({
+    default: BarcodeOverlay,
+  }))
+);
 import { LoginPrompt } from "./LoginPrompt";
 import { normalizeTicketList, ticketsAtom } from "./storage";
 import { Ticket } from "./Ticket";
 
-const hints = new Map();
-hints.set(DecodeHintType.POSSIBLE_FORMATS, [
-  BarcodeFormat.CODE_128,
-  BarcodeFormat.QR_CODE,
-]);
+interface WebBarcodeScanner {
+  BarcodeFormat: typeof import("@zxing/library").BarcodeFormat;
+  BrowserCodeReader: typeof import("@zxing/browser").BrowserCodeReader;
+  BrowserMultiFormatReader: typeof import("@zxing/browser").BrowserMultiFormatReader;
+  DecodeHintType: typeof import("@zxing/library").DecodeHintType;
+}
+
+interface ImageBarcodeScanner extends WebBarcodeScanner {
+  decodeQr: typeof import("jsqr").default;
+}
+
+let webBarcodeScannerPromise: Promise<WebBarcodeScanner> | undefined;
+let imageBarcodeScannerPromise: Promise<ImageBarcodeScanner> | undefined;
+
+const loadWebBarcodeScanner = (): Promise<WebBarcodeScanner> => {
+  if (!webBarcodeScannerPromise) {
+    webBarcodeScannerPromise = Promise.all([
+      import("@zxing/browser"),
+      import("@zxing/library"),
+    ]).then(([browser, library]) => ({
+      BarcodeFormat: library.BarcodeFormat,
+      BrowserCodeReader: browser.BrowserCodeReader,
+      BrowserMultiFormatReader: browser.BrowserMultiFormatReader,
+      DecodeHintType: library.DecodeHintType,
+    }));
+    webBarcodeScannerPromise.catch(() => {
+      webBarcodeScannerPromise = undefined;
+    });
+  }
+  return webBarcodeScannerPromise;
+};
+
+const loadImageBarcodeScanner = (): Promise<ImageBarcodeScanner> => {
+  if (!imageBarcodeScannerPromise) {
+    imageBarcodeScannerPromise = Promise.all([
+      loadWebBarcodeScanner(),
+      import("jsqr"),
+    ]).then(([scanner, { default: decodeQr }]) => ({ ...scanner, decodeQr }));
+    imageBarcodeScannerPromise.catch(() => {
+      imageBarcodeScannerPromise = undefined;
+    });
+  }
+  return imageBarcodeScannerPromise;
+};
+
+const getWebScannerHints = ({
+  BarcodeFormat,
+  DecodeHintType,
+}: WebBarcodeScanner): Map<DecodeHintType, BarcodeFormat[]> =>
+  new Map([
+    [
+      DecodeHintType.POSSIBLE_FORMATS,
+      [BarcodeFormat.CODE_128, BarcodeFormat.QR_CODE],
+    ],
+  ]);
 
 interface TicketCodeScan {
   code: string;
@@ -150,10 +208,11 @@ const getTicketCodeFormatFromDetector = (format?: string): TicketCodeFormat => {
 
 // ZXing result format
 const getTicketCodeFormatFromZxing = (
-  format?: BarcodeFormat
+  format: BarcodeFormat | undefined,
+  qrCodeFormat: BarcodeFormat
 ): TicketCodeFormat => {
   // QR ZXing format
-  if (format === BarcodeFormat.QR_CODE) {
+  if (format === qrCodeFormat) {
     return "qr";
   }
 
@@ -382,21 +441,25 @@ const createTicketImageDecodeVariants = async (
 
 // ZXing URL detector
 const decodeTicketImageUrlWithZxing = async (
+  scanner: WebBarcodeScanner,
   reader: BrowserMultiFormatReader,
   url: string,
   tryHarder: boolean
 ): Promise<TicketCodeScan> => {
   // rotate fallback toggle
   if (tryHarder) {
-    reader.hints.set(DecodeHintType.TRY_HARDER, true);
+    reader.hints.set(scanner.DecodeHintType.TRY_HARDER, true);
   } else {
-    reader.hints.delete(DecodeHintType.TRY_HARDER);
+    reader.hints.delete(scanner.DecodeHintType.TRY_HARDER);
   }
 
   const result = await reader.decodeFromImageUrl(url);
   return {
     code: result.getText(),
-    codeFormat: getTicketCodeFormatFromZxing(result.getBarcodeFormat()),
+    codeFormat: getTicketCodeFormatFromZxing(
+      result.getBarcodeFormat(),
+      scanner.BarcodeFormat.QR_CODE
+    ),
   };
 };
 
@@ -439,9 +502,10 @@ const decodeTicketImageWithBarcodeDetector = async (
 
 // jsQR crop detector
 const decodeTicketImageVariantWithJsQr = (
+  decodeQr: ImageBarcodeScanner["decodeQr"],
   variant: TicketImageDecodeVariant
 ): TicketCodeScan | null => {
-  const result = jsQR(
+  const result = decodeQr(
     variant.imageData.data,
     variant.imageData.width,
     variant.imageData.height,
@@ -457,6 +521,7 @@ const decodeTicketImageVariantWithJsQr = (
 
 // jsQR image detector
 const decodeTicketImageVariantsWithJsQr = async (
+  decodeQr: ImageBarcodeScanner["decodeQr"],
   file: File
 ): Promise<TicketCodeScan | null> => {
   let variants: TicketImageDecodeVariant[] = [];
@@ -465,7 +530,7 @@ const decodeTicketImageVariantsWithJsQr = async (
     variants = await createTicketImageDecodeVariants(file);
     // scan crop variants
     for (const variant of variants) {
-      const qrResult = decodeTicketImageVariantWithJsQr(variant);
+      const qrResult = decodeTicketImageVariantWithJsQr(decodeQr, variant);
       // QR crop hit
       if (qrResult) {
         return qrResult;
@@ -483,6 +548,7 @@ const decodeTicketImageVariantsWithJsQr = async (
 
 // ZXing image detector
 const decodeTicketImageWithZxing = async (
+  scanner: WebBarcodeScanner,
   reader: BrowserMultiFormatReader,
   file: File,
   tryHarder: boolean
@@ -490,7 +556,7 @@ const decodeTicketImageWithZxing = async (
   const url = URL.createObjectURL(file);
 
   try {
-    return await decodeTicketImageUrlWithZxing(reader, url, tryHarder);
+    return await decodeTicketImageUrlWithZxing(scanner, reader, url, tryHarder);
   } catch {
     return null;
   } finally {
@@ -500,6 +566,7 @@ const decodeTicketImageWithZxing = async (
 
 // ZXing crop detector
 const decodeTicketImageVariantsWithZxing = async (
+  scanner: WebBarcodeScanner,
   reader: BrowserMultiFormatReader,
   file: File
 ): Promise<TicketCodeScan | null> => {
@@ -511,7 +578,12 @@ const decodeTicketImageVariantsWithZxing = async (
     // decode crop variants
     for (const variant of variants) {
       try {
-        return await decodeTicketImageUrlWithZxing(reader, variant.url, true);
+        return await decodeTicketImageUrlWithZxing(
+          scanner,
+          reader,
+          variant.url,
+          true
+        );
       } catch (error) {
         lastError = error;
       }
@@ -531,6 +603,7 @@ const decodeTicketImageVariantsWithZxing = async (
 
 // uploaded ticket detector
 const decodeTicketImage = async (
+  scanner: ImageBarcodeScanner,
   reader: BrowserMultiFormatReader,
   file: File
 ): Promise<TicketCodeScan | null> => {
@@ -541,28 +614,41 @@ const decodeTicketImage = async (
     return detectedCode;
   }
 
-  const qrVariantCode = await decodeTicketImageVariantsWithJsQr(file);
+  const qrVariantCode = await decodeTicketImageVariantsWithJsQr(
+    scanner.decodeQr,
+    file
+  );
 
   // QR crop hit
   if (qrVariantCode) {
     return qrVariantCode;
   }
 
-  const directCode = await decodeTicketImageWithZxing(reader, file, false);
+  const directCode = await decodeTicketImageWithZxing(
+    scanner,
+    reader,
+    file,
+    false
+  );
 
   // direct ZXing hit
   if (directCode) {
     return directCode;
   }
 
-  const tryHarderCode = await decodeTicketImageWithZxing(reader, file, true);
+  const tryHarderCode = await decodeTicketImageWithZxing(
+    scanner,
+    reader,
+    file,
+    true
+  );
 
   // try-harder ZXing hit
   if (tryHarderCode) {
     return tryHarderCode;
   }
 
-  return decodeTicketImageVariantsWithZxing(reader, file);
+  return decodeTicketImageVariantsWithZxing(scanner, reader, file);
 };
 
 // account-first sorting
@@ -640,7 +726,6 @@ export const Tickets = (): ReactElement => {
   const [controls, setControls] = useState<IScannerControls | null>(null);
   const [cameras, setCameras] = useState<MediaDeviceInfo[]>([]);
   const previewRef = useRef<HTMLVideoElement | null>(null);
-  const [reader] = useState(new BrowserMultiFormatReader(hints));
   const [tickets, setTickets] = useAtom(ticketsAtom);
   const [ticketNumber, setTicketNumber] = useState<string>("");
   const [isScanning, setScanning] = useState<boolean>(false);
@@ -676,14 +761,6 @@ export const Tickets = (): ReactElement => {
       });
     });
   }, [savedTickets]);
-
-  // list scanner cameras
-  const fetchCameras = async (): Promise<MediaDeviceInfo[]> => {
-    const cameras = await BrowserCodeReader.listVideoInputDevices();
-    setCameras(cameras);
-    setSelectedCameraId(getPreferredCameraId(cameras));
-    return cameras;
-  };
 
   const updateTickets = async (): Promise<void> => {
     const standardTickets = tickets.filter(
@@ -786,7 +863,6 @@ export const Tickets = (): ReactElement => {
   };
 
   useEffect(() => {
-    fetchCameras();
     updateTickets().catch(console.error);
     if (codeInput) {
       addCode(decodeURIComponent(codeInput), {
@@ -954,7 +1030,12 @@ export const Tickets = (): ReactElement => {
     let nextCameraId = cameraId ?? selectedCameraId;
 
     try {
-      const availableCameras = await BrowserCodeReader.listVideoInputDevices();
+      const scanner = await loadWebBarcodeScanner();
+      const reader = new scanner.BrowserMultiFormatReader(
+        getWebScannerHints(scanner)
+      );
+      const availableCameras =
+        await scanner.BrowserCodeReader.listVideoInputDevices();
       setCameras(availableCameras);
       nextCameraId = nextCameraId ?? getPreferredCameraId(availableCameras);
 
@@ -963,7 +1044,7 @@ export const Tickets = (): ReactElement => {
         setSelectedCameraId(nextCameraId);
       }
 
-      reader.hints.set(DecodeHintType.TRY_HARDER, false);
+      reader.hints.set(scanner.DecodeHintType.TRY_HARDER, false);
       const nextControls = await reader.decodeFromVideoDevice(
         nextCameraId,
         previewRef.current ?? undefined,
@@ -973,7 +1054,8 @@ export const Tickets = (): ReactElement => {
             stopScanning(controls);
             addCode(result.getText(), {
               codeFormat: getTicketCodeFormatFromZxing(
-                result.getBarcodeFormat()
+                result.getBarcodeFormat(),
+                scanner.BarcodeFormat.QR_CODE
               ),
             });
           }
@@ -983,7 +1065,7 @@ export const Tickets = (): ReactElement => {
 
       try {
         const refreshedCameras =
-          await BrowserCodeReader.listVideoInputDevices();
+          await scanner.BrowserCodeReader.listVideoInputDevices();
         setCameras(refreshedCameras);
       } catch {}
     } catch (error) {
@@ -997,7 +1079,9 @@ export const Tickets = (): ReactElement => {
     let availableCameras = cameras;
 
     try {
-      availableCameras = await BrowserCodeReader.listVideoInputDevices();
+      const scanner = await loadWebBarcodeScanner();
+      availableCameras =
+        await scanner.BrowserCodeReader.listVideoInputDevices();
       setCameras(availableCameras);
     } catch {}
 
@@ -1154,18 +1238,34 @@ export const Tickets = (): ReactElement => {
                       return;
                     }
                     event.target.value = "";
-                    const result = await decodeTicketImage(reader, file);
-                    // ticket code result guard
-                    if (result) {
-                      addCode(result.code, {
-                        codeFormat: result.codeFormat,
-                      });
-                    } else {
-                      setManualEntry(true);
-                      setUploadError(
-                        "We couldn't find a barcode or QR code in that image. Try a sharper screenshot or enter the ticket code manually."
+                    try {
+                      const scanner = await loadImageBarcodeScanner();
+                      const reader = new scanner.BrowserMultiFormatReader(
+                        getWebScannerHints(scanner)
+                      );
+                      const result = await decodeTicketImage(
+                        scanner,
+                        reader,
+                        file
+                      );
+                      // ticket code result guard
+                      if (result) {
+                        addCode(result.code, {
+                          codeFormat: result.codeFormat,
+                        });
+                        return;
+                      }
+                    } catch (error) {
+                      console.error(
+                        "Unable to load ticket image scanner",
+                        error
                       );
                     }
+
+                    setManualEntry(true);
+                    setUploadError(
+                      "We couldn't find a barcode or QR code in that image. Try a sharper screenshot or enter the ticket code manually."
+                    );
                   }}
                   className="hidden"
                 />
@@ -1384,28 +1484,31 @@ export const Tickets = (): ReactElement => {
       ) : null}
 
       {expanded && (
-        <BarcodeOverlay
-          ticket={expanded}
-          onRefresh={
-            expanded.type === "ticket"
-              ? () => refreshTicket(expanded)
-              : undefined
-          }
-          onClose={() => closeOverlay()}
-          onDelete={async (deleted) => {
-            setTickets(without(tickets, deleted));
-            const nextSavedTickets = savedTickets?.filter(
-              (savedCode) => parseSavedTicketCode(savedCode).code !== deleted.id
-            );
-            try {
-              await updateUser({
-                app_metadata: { tickets: nextSavedTickets },
-              });
-            } finally {
-              await closeOverlay();
+        <Suspense fallback={<Splash />}>
+          <BarcodeOverlay
+            ticket={expanded}
+            onRefresh={
+              expanded.type === "ticket"
+                ? () => refreshTicket(expanded)
+                : undefined
             }
-          }}
-        />
+            onClose={() => closeOverlay()}
+            onDelete={async (deleted) => {
+              setTickets(without(tickets, deleted));
+              const nextSavedTickets = savedTickets?.filter(
+                (savedCode) =>
+                  parseSavedTicketCode(savedCode).code !== deleted.id
+              );
+              try {
+                await updateUser({
+                  app_metadata: { tickets: nextSavedTickets },
+                });
+              } finally {
+                await closeOverlay();
+              }
+            }}
+          />
+        </Suspense>
       )}
 
       <video

@@ -4,12 +4,19 @@ import { describe, expect, it } from "vitest";
 
 import { Level, type Bulletin } from "../../shared/contracts/bulletins";
 import type { Terminal } from "../../shared/contracts/terminals";
-import { getRouteBulletins } from "../../client/lib/bulletins";
+import { getRouteBulletins, getWaitTime } from "../../client/lib/bulletins";
 
-const getTerminal = (
-  id: string,
-  bulletins: Bulletin[] | undefined
-): Terminal => ({ id, name: id, bulletins } as Terminal);
+const getTerminal = (id: string, bulletins: Bulletin[] | undefined): Terminal =>
+  ({ id, name: id, bulletins }) as Terminal;
+
+describe("bulletin summaries", () => {
+  it("formats WSF wait-time bulletin titles", () => {
+    expect(getWaitTime({ title: "Seattle: 90 Minute Wait" } as Bulletin)).toBe(
+      "1.5hr wait"
+    );
+    expect(getWaitTime({ title: "Service update" } as Bulletin)).toBeNull();
+  });
+});
 
 describe("route bulletins", () => {
   it("normalizes legacy API bulletins", () => {
@@ -20,14 +27,16 @@ describe("route bulletins", () => {
       title: "Clinton update",
     } as Bulletin;
 
-    expect(getRouteBulletins(getTerminal("5", [legacyBulletin]), null)).toEqual([
-      {
-        ...legacyBulletin,
-        bodyText: "Service & loading update",
-        level: Level.INFO,
-        routePrefix: "All",
-      },
-    ]);
+    expect(getRouteBulletins(getTerminal("5", [legacyBulletin]), null)).toEqual(
+      [
+        {
+          ...legacyBulletin,
+          bodyText: "Service & loading update",
+          level: Level.INFO,
+          routePrefix: "All",
+        },
+      ]
+    );
   });
 
   it("deduplicates legacy route bulletins", () => {

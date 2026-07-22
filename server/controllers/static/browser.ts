@@ -7,6 +7,7 @@ import {
   getDatedSeoTitle,
   getRouteSeoMetadata,
   getSeoProfile,
+  getSeoSchema,
   getSeoUrl,
   getTerminalSeoMetadata,
   SEO_APP_NAME,
@@ -32,6 +33,17 @@ const HTML_ENTITIES: Record<string, string> = {
 };
 const bundledClientDist = path.resolve(__dirname, "../client");
 const sourceClientDist = path.resolve(__dirname, "../../../dist/client");
+const APP_PATHS = new Set([
+  "/",
+  "/about",
+  "/account",
+  "/callback",
+  "/feedback",
+  "/forecasting",
+  "/privacy",
+  "/tickets",
+  "/today",
+]);
 
 export const clientDist = existsSync(bundledClientDist)
   ? bundledClientDist
@@ -39,6 +51,25 @@ export const clientDist = existsSync(bundledClientDist)
 
 const escapeHtml = (input: string): string =>
   input.replace(/[&<>"']/g, (character) => HTML_ENTITIES[character]);
+
+const getSeoFallbackHtml = (seo: SeoMetadata, canonicalUrl: string): string => {
+  if (seo.robots !== "index,follow") {
+    return "";
+  }
+
+  const breadcrumbs = seo.breadcrumbs
+    .map(({ name, path }, index) => {
+      const label = escapeHtml(name);
+      if (!path || index === seo.breadcrumbs.length - 1) {
+        return `<li>${label}</li>`;
+      }
+      return `<li><a href="${escapeHtml(path)}">${label}</a></li>`;
+    })
+    .join("");
+  const heading = escapeHtml(seo.title.replace(` - ${SEO_APP_NAME}`, ""));
+
+  return `<main aria-labelledby="seo-page-title" data-seo-seed="true" style="background:#fff;color:#1f2937;min-height:100%;padding:2rem 1rem"><nav aria-label="Breadcrumb"><ol>${breadcrumbs}</ol></nav><h1 id="seo-page-title">${heading}</h1><p>${escapeHtml(seo.description)}</p><p><a href="${canonicalUrl}">View the live ferry schedule and service information</a></p></main>`;
+};
 
 export const renderSeoHtml = (
   template: string,
@@ -48,15 +79,10 @@ export const renderSeoHtml = (
   const canonicalUrl = getSeoUrl(baseUrl, seo.canonicalPath);
   const title = escapeHtml(seo.title);
   const description = escapeHtml(seo.description);
-  const schema = JSON.stringify({
-    ...seo.schema,
-    url: canonicalUrl,
-    isPartOf: {
-      "@type": "WebSite",
-      name: SEO_APP_NAME,
-      url: getSeoUrl(baseUrl, "/"),
-    },
-  }).replace(/</g, "\\u003c");
+  const schema = JSON.stringify(getSeoSchema(seo, baseUrl)).replace(
+    /</g,
+    "\\u003c"
+  );
 
   const replacements: Array<[RegExp, string]> = [
     [
@@ -107,6 +133,10 @@ export const renderSeoHtml = (
       /<script\b(?=[^>]*\bid="structured-data")[^>]*>[\s\S]*?<\/script>/,
       `<script data-seo-seed="true" id="structured-data" type="application/ld+json">${schema}</script>`,
     ],
+    [
+      /<div\b(?=[^>]*\bid="seo-content")[^>]*><\/div>/,
+      `<div data-seo-seed="true" id="seo-content">${getSeoFallbackHtml(seo, canonicalUrl)}</div>`,
+    ],
   ];
 
   return replacements.reduce(
@@ -147,7 +177,7 @@ export const createBrowserRouter = (dist = clientDist): Router => {
     ]);
   });
 
-  browserRouter.get(/.*/, async (request, response) => {
+  browserRouter.get(/.*/, (request, response) => {
     const requestHost = request.hostname;
     const terminalMatch = request.path.match(
       /^\/([^/]+)(?:\/([^/]+))?(?:\/([^/]+))?\/?$/
@@ -156,6 +186,13 @@ export const createBrowserRouter = (dist = clientDist): Router => {
     let isDated = false;
     const { baseUrl: seoProfileBaseUrl, metadata: seoProfileMetadata } =
       getSeoProfile(requestHost, request.path);
+    let baseUrl = "https://ferry.fyi";
+    if (process.env.BASE_URL?.startsWith("http")) {
+      baseUrl = process.env.BASE_URL;
+    }
+    if (seoProfileBaseUrl) {
+      baseUrl = seoProfileBaseUrl;
+    }
     if (seoProfileBaseUrl) {
       metadata = seoProfileMetadata;
     } else if (terminalMatch) {
@@ -202,17 +239,32 @@ export const createBrowserRouter = (dist = clientDist): Router => {
       }
     }
 
+    const normalizedPath =
+      request.path === "/" ? "/" : request.path.replace(/\/$/, "");
+    if (normalizedPath === "/forecasting-explained") {
+      return response.redirect(301, "/forecasting");
+    }
+    if (!seoProfileBaseUrl && !metadata && !APP_PATHS.has(normalizedPath)) {
+      return response
+        .status(404)
+        .type("text/html")
+        .send(renderSeoHtml(indexHtml, seoProfileMetadata, baseUrl));
+    }
+
+    if (
+      !seoProfileBaseUrl &&
+      metadata &&
+      !isDated &&
+      normalizedPath !== metadata.canonicalPath &&
+      request.query.date === undefined
+    ) {
+      return response.redirect(301, metadata.canonicalPath);
+    }
+
     response.type("text/html");
     const seo = metadata ?? seoProfileMetadata;
     const dateLabel = isDated ? getDateLabel(request.query.date) : undefined;
     const title = getDatedSeoTitle(seo, dateLabel);
-    let baseUrl = "https://ferry.fyi";
-    if (process.env.BASE_URL?.startsWith("http")) {
-      baseUrl = process.env.BASE_URL;
-    }
-    if (seoProfileBaseUrl) {
-      baseUrl = seoProfileBaseUrl;
-    }
     return response.send(renderSeoHtml(indexHtml, { ...seo, title }, baseUrl));
   });
 

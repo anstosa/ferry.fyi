@@ -6,8 +6,6 @@ import { type Bulletin, Level } from "shared/contracts/bulletins";
 import type { Route } from "shared/contracts/routes";
 import type { Terminal } from "shared/contracts/terminals";
 import { isRuleForRoute } from "shared/lib/alertSubscriptions";
-import { round } from "shared/lib/math";
-import { capitalize } from "shared/lib/strings";
 
 import { ExternalPillLink } from "~/components/ExternalPillLink";
 import { FreshnessPill } from "~/components/FreshnessPill";
@@ -15,7 +13,7 @@ import { HeaderDropdown } from "~/components/HeaderDropdown";
 import { InlineLoader } from "~/components/InlineLoader";
 import { NotificationPermissionWarning } from "~/components/NotificationPermissionWarning";
 import { Toast } from "~/components/Toast";
-import { getRouteBulletins } from "~/lib/bulletins";
+import { getBulletinTime, getRouteBulletins } from "~/lib/bulletins";
 import {
   getBulletinFreshness,
   getSlug,
@@ -33,18 +31,6 @@ import WSDOTIcon from "~/static/images/icons/wsdot.svg";
 import { Header } from "./Header";
 import type { GetPath } from "./Route";
 
-const WAIT_NUMBER_HOURS_MATCH = /^[^\d]*(\d+) (Hour|Hr) Wait.*$/i;
-const WAIT_SPELL_HOURS_MATCH =
-  /^.*(one|two|three|four|five|six)( 1\/2){0,1} (Hour|Hr) Wait.*$/i;
-const WAIT_MINUTES_MATCH = /^[^\d]*(\d+) (Minute|Min) Wait.*$/i;
-const HOURS_BY_SPELLED: Record<string, number> = {
-  one: 1,
-  two: 2,
-  three: 3,
-  four: 4,
-  five: 5,
-  six: 6,
-};
 interface RouteOption {
   mate: Terminal;
   route: Route;
@@ -117,34 +103,6 @@ const getRouteOptions = (terminals: Terminal[]): RouteOption[] => {
   });
 };
 
-export const getWaitTime = ({ title }: Bulletin): string | null => {
-  let match = title.match(WAIT_NUMBER_HOURS_MATCH);
-  if (match) {
-    const [, hours] = match;
-    return `${hours}hr wait`;
-  }
-
-  match = title.match(WAIT_SPELL_HOURS_MATCH);
-  if (match) {
-    const [, hours, minutes] = match;
-    return `${HOURS_BY_SPELLED[hours.toLowerCase()]}${
-      minutes === "1/2" ? ".5" : ""
-    }hr wait`;
-  }
-
-  match = title.match(WAIT_MINUTES_MATCH);
-  if (match) {
-    const [, minutesString] = match;
-    const minutes = Number(minutesString);
-    if (minutes >= 60) {
-      return `${minutes / 60}hr wait`;
-    } else {
-      return `${minutes}min wait`;
-    }
-  }
-  return null;
-};
-
 interface SubscribeLinkProps {
   getPath: GetPath;
   mate: Terminal | null;
@@ -178,29 +136,6 @@ const SubscribeLink = ({
       <span className="button-label">{label}</span>
     </Link>
   );
-};
-
-const getBulletinTime = (
-  bulletin: Bulletin,
-  now: DateTime = DateTime.local()
-): string => {
-  const time = DateTime.fromSeconds(bulletin.date);
-  const diff = time.diff(now);
-  let result;
-  if (Math.abs(diff.as("hours")) < 1) {
-    const mins = round(Math.abs(diff.as("minutes")));
-    result = `${mins} min${mins > 1 ? "s" : ""} ago`;
-  } else if (time.hasSame(now, "day")) {
-    result = time.toFormat("h:mm a");
-  } else {
-    result = capitalize(time.toRelativeCalendar() ?? "");
-  }
-  return result;
-};
-
-export const getLastBulletinTime = (terminal: Terminal): string => {
-  const bulletin = terminal.bulletins[0];
-  return getBulletinTime(bulletin);
 };
 
 interface Props {

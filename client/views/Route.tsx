@@ -1,6 +1,12 @@
 import clsx from "clsx";
 import { DateTime } from "luxon";
-import React, { ReactElement, useEffect, useRef, useState } from "react";
+import React, {
+  ReactElement,
+  Suspense,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import type { Schedule as ScheduleClass } from "shared/contracts/schedules";
 import type { Terminal } from "shared/contracts/terminals";
@@ -19,6 +25,7 @@ import { Footer } from "~/components/Footer";
 import { Page } from "~/components/Page";
 import { PageLoadError } from "~/components/PageLoadError";
 import { RouteSelector } from "~/components/RouteSelector";
+import { SeoBreadcrumbs } from "~/components/SeoBreadcrumbs";
 import { SeoHelmet } from "~/components/SeoHelmet";
 import { Splash } from "~/components/Splash";
 import { useQuery } from "~/lib/browser";
@@ -35,13 +42,31 @@ import StarFilledIcon from "~/static/images/icons/solid/star.svg";
 import WSDOTIcon from "~/static/images/icons/wsdot.svg";
 import { Header } from "~/views/Header";
 
-import { AlertSubscription } from "./AlertSubscription";
-import { Bulletins } from "./Bulletins";
-import { Cameras } from "./Cameras";
-import { Fares } from "./Fares";
-import { Map } from "./Map";
-import { Schedule } from "./Schedule";
-import { TerminalDetails } from "./TerminalDetails";
+const AlertSubscription = React.lazy(() =>
+  import("./AlertSubscription").then(({ AlertSubscription }) => ({
+    default: AlertSubscription,
+  }))
+);
+const Bulletins = React.lazy(() =>
+  import("./Bulletins").then(({ Bulletins }) => ({ default: Bulletins }))
+);
+const Cameras = React.lazy(() =>
+  import("./Cameras").then(({ Cameras }) => ({ default: Cameras }))
+);
+const Fares = React.lazy(() =>
+  import("./Fares").then(({ Fares }) => ({ default: Fares }))
+);
+const Map = React.lazy(() =>
+  import("./Map").then(({ Map }) => ({ default: Map }))
+);
+const Schedule = React.lazy(() =>
+  import("./Schedule").then(({ Schedule }) => ({ default: Schedule }))
+);
+const TerminalDetails = React.lazy(() =>
+  import("./TerminalDetails").then(({ TerminalDetails }) => ({
+    default: TerminalDetails,
+  }))
+);
 
 export type View =
   | "schedule"
@@ -574,6 +599,7 @@ export const Route = ({
   return (
     <>
       <SeoHelmet seo={seo} title={title} />
+      <SeoBreadcrumbs seo={seo} />
       {content && (
         <ErrorBoundary
           resetKey={contentResetKey}
@@ -584,7 +610,7 @@ export const Route = ({
             className={`route-tab-motion route-tab-motion--${tabDirection}`}
             key={contentMotionKey}
           >
-            {content}
+            <Suspense fallback={<Splash />}>{content}</Suspense>
           </div>
         </ErrorBoundary>
       )}

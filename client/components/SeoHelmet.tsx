@@ -2,8 +2,8 @@ import React, { ReactElement, useInsertionEffect } from "react";
 import { Helmet } from "react-helmet-async";
 import {
   getSeoProfile,
+  getSeoSchema,
   getSeoUrl,
-  SEO_APP_NAME,
   type SeoMetadata,
 } from "shared/lib/seo";
 
@@ -27,16 +27,7 @@ export const SeoHelmet = ({
     : (titleOverride ?? activeSeo.title);
   const baseUrl = profile.baseUrl ?? process.env.BASE_URL ?? "";
   const canonicalUrl = getSeoUrl(baseUrl, activeSeo.canonicalPath);
-  const schema = {
-    ...activeSeo.schema,
-    name: title,
-    url: canonicalUrl,
-    isPartOf: {
-      "@type": "WebSite",
-      name: SEO_APP_NAME,
-      url: getSeoUrl(baseUrl, "/"),
-    },
-  };
+  const schema = getSeoSchema(activeSeo, baseUrl, title);
 
   return (
     <Helmet>

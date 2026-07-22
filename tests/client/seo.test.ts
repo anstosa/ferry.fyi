@@ -36,6 +36,34 @@ describe("client SEO", () => {
     ).not.toBeNull();
   });
 
+  it("hydrates absolute structured data for the canonical page", () => {
+    vi.stubEnv("BASE_URL", "https://ferry.fyi");
+    vi.stubGlobal("location", {
+      host: "ferry.fyi",
+      pathname: "/about",
+    });
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    act(() => {
+      root?.render(
+        React.createElement(
+          HelmetProvider,
+          null,
+          React.createElement(SeoHelmet, { seo: getSeoMetadata("/about") })
+        )
+      );
+    });
+
+    const schema = document.querySelector(
+      'script[type="application/ld+json"]'
+    )?.textContent;
+    expect(schema).toContain('"@type":"BreadcrumbList"');
+    expect(schema).toContain('"item":"https://ferry.fyi"');
+    expect(schema).toContain('"@type":"Organization"');
+  });
+
   it("keeps hydrated metadata host-aware on howmanyboats.today", () => {
     vi.stubGlobal("location", {
       host: "howmanyboats.today",

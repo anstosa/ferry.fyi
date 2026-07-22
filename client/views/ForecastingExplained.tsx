@@ -2,12 +2,16 @@ import React, { ReactElement } from "react";
 import { getSeoMetadata } from "shared/lib/seo";
 
 import { Page } from "../components/Page";
+import { SeoBreadcrumbs } from "../components/SeoBreadcrumbs";
 import { SeoHelmet } from "../components/SeoHelmet";
+
+const seo = getSeoMetadata("/forecasting");
 
 // forecasting explainer page
 export const ForecastingExplained = (): ReactElement => (
   <Page title="Forecasting">
-    <SeoHelmet seo={getSeoMetadata("/forecasting")} />
+    <SeoHelmet seo={seo} />
+    <SeoBreadcrumbs seo={seo} />
 
     <p className="mt-4">
       Ferry FYI forecasts estimate vehicle space, schedule delay, and tidal

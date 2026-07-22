@@ -18,7 +18,7 @@ import TerminalIcon from "~/static/images/icons/solid/garage-car.svg";
 import MapIcon from "~/static/images/icons/solid/route.svg";
 import { GetPath } from "~/views/Route";
 
-import { getLastBulletinTime, getWaitTime } from "../views/Bulletins";
+import { getLastBulletinTime, getWaitTime } from "../lib/bulletins";
 
 const WrapFooter: FunctionComponent<PropsWithChildren> = ({ children }) => (
   <footer

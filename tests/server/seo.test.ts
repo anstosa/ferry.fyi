@@ -132,6 +132,11 @@ describe("SEO metadata", () => {
     expect(html).toContain('<title data-seo-seed="true">');
     expect(html).toContain('data-seo-seed="true" name="robots"');
     expect(html).toContain('data-seo-seed="true" id="structured-data"');
+    expect(html).toContain('id="seo-content"');
+    expect(html).toContain(
+      '<h1 id="seo-page-title">Ferry FYI - Washington State Ferries Schedules &amp; Tracker</h1>'
+    );
+    expect(html).toContain('"@type":"Organization"');
   });
 
   it("uses the second URL segment as the mate and third as the view", async () => {
@@ -151,7 +156,7 @@ describe("SEO metadata", () => {
       slug: "bremerton",
     });
     const seattle = new Terminal({
-      aliases: [],
+      aliases: ["sea"],
       id: "seattle",
       mates: [bainbridge, bremerton],
       name: "Seattle",
@@ -184,47 +189,51 @@ describe("SEO metadata", () => {
       'rel="canonical" href="https://ferry.fyi/seattle/bremerton"'
     );
     expect(scheduleResponse.text).toContain('content="index,follow"');
-
-    for (const [pathname, canonicalPath] of [
-      ["/seattle/fare", "/seattle/bainbridge-island/fare"],
-      ["/seattle/bremerton/fare", "/seattle/bremerton/fare"],
-    ]) {
-      const fareResponse = await request(app).get(pathname).expect(200);
-
-      expect(fareResponse.text).toContain("fare - Ferry FYI");
-      expect(fareResponse.text).toContain(
-        `rel="canonical" href="https://ferry.fyi${canonicalPath}"`
-      );
-      expect(fareResponse.text).toContain('content="noindex,follow"');
-    }
-  });
-
-  it("noindexes routes whose mate does not belong to the terminal", async () => {
-    const response = await request(app)
-      .get("/bainbridge-island/bremerton")
-      .expect(200);
-
-    expect(response.text).toContain('content="noindex,follow"');
-    expect(response.text).not.toContain(
-      "Seattle to Bainbridge Island Ferry Schedule"
+    expect(scheduleResponse.text).toContain(
+      '<h1 id="seo-page-title">Seattle to Bremerton Ferry Schedule</h1>'
     );
+    expect(scheduleResponse.text).toContain('"@type":"BreadcrumbList"');
+    expect(scheduleResponse.text).toContain('"item":"https://ferry.fyi"');
+
+    await request(app)
+      .get("/seattle/fare")
+      .expect(301)
+      .expect("Location", "/seattle/bainbridge-island/fare");
+
+    const fareResponse = await request(app)
+      .get("/seattle/bremerton/fare")
+      .expect(200);
+    expect(fareResponse.text).toContain("fare - Ferry FYI");
+    expect(fareResponse.text).toContain(
+      'rel="canonical" href="https://ferry.fyi/seattle/bremerton/fare"'
+    );
+    expect(fareResponse.text).toContain('content="noindex,follow"');
+
+    await request(app)
+      .get("/sea/bremerton")
+      .expect(301)
+      .expect("Location", "/seattle/bremerton");
   });
 
-  it("noindexes malformed nested route URLs", async () => {
+  it("redirects the legacy forecasting explanation path", async () => {
+    await request(app)
+      .get("/forecasting-explained")
+      .expect(301)
+      .expect("Location", "/forecasting");
+  });
+
+  it("returns 404 for routes whose mate does not belong to the terminal", async () => {
+    await request(app).get("/bainbridge-island/bremerton").expect(404);
+  });
+
+  it("returns 404 for malformed and unknown browser URLs", async () => {
     for (const pathname of [
       "/seattle/not-a-mate/terminal",
       "/seattle/bremerton/terminal",
       "/seattle/bremerton/schedule",
+      "/not-a-real-page",
     ]) {
-      const response = await request(app).get(pathname).expect(200);
-
-      expect(response.text).toContain('content="noindex,follow"');
-      expect(response.text).not.toContain(
-        "Seattle Ferry Terminal Information - Ferry FYI"
-      );
-      expect(response.text).not.toContain(
-        "Seattle to Bremerton Ferry Schedule - Ferry FYI"
-      );
+      await request(app).get(pathname).expect(404);
     }
   });
 

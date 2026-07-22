@@ -5,6 +5,7 @@ import { Terminal } from "../../server/models/Terminal";
 import {
   getRouteSeoMetadata,
   getTerminalSeoMetadata,
+  SEO_CONTENT_LAST_MODIFIED,
 } from "../../shared/lib/seo";
 
 describe("sitemap URLs", () => {
@@ -75,6 +76,9 @@ describe("sitemap URLs", () => {
     expect(first).toBe(second);
     expect(getAll).toHaveBeenCalledTimes(1);
     expect(first.toString()).toContain("/seattle/terminal");
+    expect(first.toString()).toContain(
+      `<lastmod>${SEO_CONTENT_LAST_MODIFIED}T00:00:00.000Z</lastmod>`
+    );
     expect(first.toString()).not.toContain(
       "/seattle/bainbridge-island/terminal"
     );

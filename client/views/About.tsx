@@ -6,11 +6,15 @@ import DonateIcon from "~/static/images/icons/solid/heart.svg";
 
 import { AppVersionInfo } from "../components/AppVersionInfo";
 import { Page } from "../components/Page";
+import { SeoBreadcrumbs } from "../components/SeoBreadcrumbs";
 import { SeoHelmet } from "../components/SeoHelmet";
+
+const seo = getSeoMetadata("/about");
 
 export const About = (): ReactElement => (
   <Page>
-    <SeoHelmet seo={getSeoMetadata("/about")} />
+    <SeoHelmet seo={seo} />
+    <SeoBreadcrumbs seo={seo} />
     <p className="mt-4">
       A ferry schedule and tracker for the greater Seattle area. Supports all{" "}
       <a

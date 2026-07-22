@@ -4,6 +4,7 @@ import { entries } from "shared/lib/objects";
 import {
   getRouteSeoMetadata,
   getTerminalSeoMetadata,
+  SEO_CONTENT_LAST_MODIFIED,
   SEO_INDEXABLE_PATHS,
 } from "shared/lib/seo";
 import { SitemapStream, streamToPromise } from "sitemap";
@@ -52,7 +53,9 @@ const generateSitemap = async (): Promise<Buffer> => {
   }
 
   logger.info("Generating sitemap...");
-  getSitemapUrls(terminals).forEach((url) => stream.write({ url }));
+  getSitemapUrls(terminals).forEach((url) =>
+    stream.write({ lastmod: SEO_CONTENT_LAST_MODIFIED, url })
+  );
 
   stream.end();
   return streamToPromise(stream);
