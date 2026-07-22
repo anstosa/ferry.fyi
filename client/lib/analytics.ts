@@ -1,10 +1,11 @@
 import { useEffect } from "react";
+import type ReactGA from "react-ga4";
 import { useLocation } from "react-router-dom";
 
 type AnalyticsEvent =
   | { action: "event"; category: string; label: string }
   | { action: "pageview"; pathname: string };
-type GoogleAnalytics = (typeof import("react-ga4"))["default"];
+type GoogleAnalytics = typeof ReactGA;
 
 const queuedEvents: AnalyticsEvent[] = [];
 const engagementEvents = ["keydown", "pointerdown", "scroll", "touchstart"];
