@@ -6,6 +6,8 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { CameraFrameFreshness } from "../../client/components/CameraFrameFreshness";
 
+const roots: Root[] = [];
+
 interface RenderResult {
   container: HTMLDivElement;
   root: Root;
@@ -19,12 +21,17 @@ const renderFreshness = (element: React.ReactElement): RenderResult => {
   act(() => {
     root.render(element);
   });
+  roots.push(root);
 
   return { container, root };
 };
 
 describe("CameraFrameFreshness", () => {
   afterEach(() => {
+    act(() => {
+      roots.forEach((root) => root.unmount());
+    });
+    roots.length = 0;
     document.body.innerHTML = "";
   });
 
