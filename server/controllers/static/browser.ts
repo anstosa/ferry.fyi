@@ -11,6 +11,7 @@ import {
   getSeoUrl,
   getTerminalSeoMetadata,
   SEO_APP_NAME,
+  SEO_CONTENT_LAST_MODIFIED,
   SEO_ROUTE_VIEWS,
   type SeoMetadata,
   type SeoView,
@@ -38,6 +39,7 @@ const APP_PATHS = new Set([
   "/about",
   "/account",
   "/callback",
+  "/data-sources",
   "/feedback",
   "/forecasting",
   "/privacy",
@@ -58,8 +60,17 @@ const getSeoFallbackHtml = (seo: SeoMetadata, canonicalUrl: string): string => {
   }
 
   const heading = escapeHtml(seo.title.replace(` - ${SEO_APP_NAME}`, ""));
+  const lastModified = `<p><small>Methodology and page content last reviewed <time datetime="${SEO_CONTENT_LAST_MODIFIED}">${SEO_CONTENT_LAST_MODIFIED}</time>.</small></p>`;
+  const dataSourcesUrl = new URL("/data-sources", canonicalUrl).toString();
+  const citationGuidance = `<h2>Data source and citation guidance</h2><p>Ferry FYI presents time-sensitive ferry planning information. Preserve the access time and displayed source timestamp when citing live schedules, vessel context, camera information, capacity reports, or forecasts. Describe observed data separately from predictions.</p><p><a href="${dataSourcesUrl}">Read Ferry FYI data sources, API, and citation guidance</a>.</p>`;
+  const forecastingGuidance = `<h2>Forecast methodology</h2><p>Vehicle-space, delay, weather, and tide-condition forecasts are estimates. They are not confirmations of boarding availability, cancellations, or delays. Current observations and forecast inputs can change after a refresh.</p>`;
+  const dataSourcesContent = `<h2>Sources and freshness</h2><p>Ferry FYI combines ferry schedules and service context with weather, tide, historical, and live observations. Each live claim should retain its source timestamp and availability state.</p><h2>Public read-only API</h2><p>The public API provides terminals, schedules, vessel context, camera metadata, and fare information. Its JSON responses include a body payload and wsfStatus availability information. It is operational data, not a stable third-party integration contract.</p><h2>How to cite Ferry FYI</h2><p>Cite the canonical page for a human-readable statement, this page for methodology, and include the time you accessed time-sensitive information.</p>`;
+  const content =
+    seo.canonicalPath === "/data-sources"
+      ? dataSourcesContent
+      : `${seo.canonicalPath === "/forecasting" ? forecastingGuidance : ""}${citationGuidance}`;
 
-  return `<main aria-labelledby="seo-page-title" data-seo-seed="true" style="background:#fff;color:#1f2937;min-height:100%;padding:2rem 1rem"><h1 id="seo-page-title">${heading}</h1><p>${escapeHtml(seo.description)}</p><p><a href="${canonicalUrl}">View the live ferry schedule and service information</a></p></main>`;
+  return `<main aria-labelledby="seo-page-title" data-seo-seed="true" style="background:#fff;color:#1f2937;min-height:100%;padding:2rem 1rem"><h1 id="seo-page-title">${heading}</h1><p>${escapeHtml(seo.description)}</p>${content}${lastModified}<p><a href="${canonicalUrl}">View the live ferry schedule and service information</a></p></main>`;
 };
 
 export const renderSeoHtml = (

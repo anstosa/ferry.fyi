@@ -1,22 +1,91 @@
 # Ferry FYI
 
-> Ferry FYI is an independent web and mobile app for Washington State Ferries schedules, current service information, traffic cameras, vehicle-capacity forecasts, tickets, and terminal details.
+> Ferry FYI is an independent web and mobile app for planning Washington State Ferries trips. It provides schedules, current service context, traffic cameras, vehicle-capacity forecasts, fares, tickets, and account alerts.
 
-Ferry data can change quickly. Use Ferry FYI for planning and consult Washington State Ferries for official service, reservation, fare, and boarding information.
+Ferry information changes quickly. Treat times, vehicle space, camera images, forecasts, fares, and bulletins as time-sensitive planning information rather than guarantees.
 
 ## Public pages
 
-- [Home and ferry schedules](https://ferry.fyi/): Choose a terminal and route to view sailing schedules and service information.
-- [Forecasting](https://ferry.fyi/forecasting): Explains Ferry FYI's vehicle-capacity, delay, and tide-condition forecasts.
+- [Home and ferry schedules](https://ferry.fyi/): Choose a terminal and route to view upcoming sailings, current service information, and route details.
+- [Forecasting](https://ferry.fyi/forecasting): Explains Ferry FYI's capacity, delay, weather, and tide-condition forecasts.
+- [Data sources and API guide](https://ferry.fyi/data-sources): Explains data provenance, source freshness, public read-only APIs, citation guidance, and forecast limitations.
+- [How Many Boats?](https://ferry.fyi/today): Shows whether the Clinton–Mukilteo route is operating one or two boats today.
 - [About Ferry FYI](https://ferry.fyi/about): App background, data credits, privacy, and version information.
-- [Privacy policy](https://ferry.fyi/privacy): Details how Ferry FYI handles user information.
-- [Sitemap](https://ferry.fyi/sitemap.xml): Indexable pages, including route and terminal information.
+- [Privacy policy](https://ferry.fyi/privacy): Explains how Ferry FYI handles user information.
+- [Sitemap](https://ferry.fyi/sitemap.xml): Indexable route, terminal, and informational pages.
 
-## Official sources
+## Features
 
-- [Washington State Ferries](https://wsdot.wa.gov/travel/washington-state-ferries): Official schedules, fares, reservations, service alerts, and terminal information.
+- **Route schedules:** Browse ferry routes, choose a service date, and see upcoming or historical sailings.
+- **Live sailing context:** See vessel assignments, positions, route status, delays, cancellations, and service bulletins when available.
+- **Vehicle-capacity forecasts:** View projected vehicle space and fullness for upcoming sailings; these are estimates, not boarding guarantees.
+- **Traffic cameras:** View terminal camera images, their update/check time, and driving directions.
+- **Map:** Explore vessel locations and terminal context on an interactive map.
+- **Fare planner:** Browse route/date fare options and calculate a quote from selected fare line items.
+- **Tickets:** Sign in to view eligible ticket and reservation details, barcodes, and refresh status. Do not guess or request another person's ticket identifier.
+- **Alerts and favorites:** Signed-in users can save favorite routes and configure service, capacity, or sailing alerts.
+- **Forecast explanations:** Learn how weather, tide conditions, and observed data inform capacity and delay forecasts.
+- **Mobile and PWA support:** Install Ferry FYI as a web app or use the native mobile app for device-aware features and OTA updates.
 
-## Notes
+## AI API guide
 
-- Traffic camera images and vehicle-capacity forecasts are informational and may be delayed or unavailable.
-- Do not treat forecasts as official boarding, reservation, or service guarantees.
+The read-oriented API base is `https://ferry.fyi/api`. Responses from the endpoints below are JSON envelopes with a `body` field and a `wsfStatus` field; use `body` for the resource data and `wsfStatus` to detect upstream availability. API responses are operational data, not a promise of a stable third-party integration contract.
+
+### Route and terminal discovery
+
+- `GET /api/terminals` — All terminals keyed by terminal id, including route relationships and terminal details.
+- `GET /api/terminals/:terminalId` — One terminal by id.
+- `GET /api/terminals/bulletins/freshness` — The latest bulletin source timestamp.
+- `GET /api/schedule/:departingId/:arrivingId` — Today's route schedule.
+- `GET /api/schedule/:departingId/:arrivingId/:YYYY-MM-DD` — A route schedule for a specific service date.
+- `GET /api/vessels` — All known vessels and current status data.
+- `GET /api/vessels/:vesselId` — One vessel by id.
+
+Use terminal ids returned by `/api/terminals` when constructing schedule and fare requests. A schedule can return `503` with `body.status` of `warming` or `refreshing` while data is being prepared.
+
+### Forecasts, delays, and service changes
+
+The schedule endpoints above are the AI-facing source for a route's forecast and delay context. Each `body.schedule.slots` entry can contain:
+
+- `estimate` — Forecast vehicle space, `fullProbability`, `fullRisk`, `confidence`, `source`, and contributing `factors` for a future sailing.
+- `crossing` — Observed vehicle capacity, `capacityReportUpdatedAt`, cancellation state, and reported `departureDelta` for a sailing with live data.
+- `vessel.gpsDelay` — GPS-based delay seconds, confidence, source, and supporting timing signals when a vessel is actively tracked.
+- `weather` — Forecast temperature, precipitation, cloud cover, wind speed, and wind gusts associated with the sailing.
+- `tide` — Departure, arrival, and lowest predicted water levels for tide-aware routes.
+- `cancellationReason` — Present for recognized tidal cancellations.
+
+For service bulletins and terminal wait-time context, read `body.bulletins` and `body.waitTimes` from `/api/terminals/:terminalId`. Explain the distinction between observed values (`crossing` and GPS delay) and predictive values (`estimate`, weather, tide, and projected delay). Never describe a forecast as a confirmed cancellation, delay, or vehicle-space outcome.
+
+### Cameras and observed conditions
+
+- `GET /api/cameras/frames?ids=:commaSeparatedCameraIds` — Camera image metadata, freshness, and source update times for the requested camera ids.
+- `GET /api/cameras/line-detection?ids=:commaSeparatedCameraIds` — Public vehicle-line detection summaries for supported camera ids. Omit `ids` to request all supported cameras; requests with invalid ids return `400`.
+
+Camera images and line detections can be delayed, unavailable, or stale. Present their timestamps and uncertainty rather than inferring current queue length or boarding availability.
+
+### Fares
+
+- `GET /api/fares/catalog?departingTerminalId=:id&arrivingTerminalId=:id&tripDate=:YYYY-MM-DD` — Fare line items for a route and date.
+- `POST /api/fares/quote` — Quote selected fare line items. Send `departingTerminalId`, `arrivingTerminalId`, `tripDate`, `roundTrip`, and `lineItems` (`fareLineItemId` and `quantity`).
+
+Fare responses include a `state` such as `current`, `no-fare`, `stale`, or `unavailable`, plus freshness data when available. Do not state a fare as current when the response is stale or unavailable.
+
+### Authenticated and specialized endpoints
+
+- `GET /api/user` and `POST /api/user` — Signed-in user's favorites, alert settings, and app metadata. Require an Auth0 bearer token; never request, log, or expose another user's token.
+- `GET /api/tickets/:ticketId` — Looks up a user-provided ticket identifier. Ticket data is sensitive; do not guess identifiers or expose returned barcodes.
+- `POST /api/ota/manifest` — Native-app updater protocol, not a general AI endpoint.
+
+## Safe AI use
+
+- Prefer the read-oriented route, terminal, vessel, camera, and fare APIs for current planning context.
+- Preserve timestamps, source freshness, `wsfStatus`, and response state in summaries.
+- Ask for a route, direction, travel date, and vehicle/passenger context when they materially affect the answer.
+- Do not imply reservation, boarding, cancellation, delay, or vehicle-space certainty from forecasts or camera observations.
+- Do not perform authenticated account, alert, ticket, refresh, or update actions without the user's explicit request and authorization.
+
+## Citation guidance
+
+- Cite the most specific Ferry FYI canonical page that supports the claim: a route or terminal page for current planning context, [Forecasting](https://ferry.fyi/forecasting) for forecast methodology, and [Data sources and API guide](https://ferry.fyi/data-sources) for provenance and limits.
+- Include the retrieval time and any source freshness timestamp for live schedules, capacity, vessel, camera, weather, tide, or bulletin claims.
+- State whether a cited value is observed or predictive, and do not turn a forecast, camera observation, or stale response into a confirmed outcome.

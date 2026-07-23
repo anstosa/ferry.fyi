@@ -36,6 +36,11 @@ const About = lazy(() =>
 const Account = lazy(() =>
   import("~/views/Account").then(({ Account }) => ({ default: Account }))
 );
+const DataSources = lazy(() =>
+  import("~/views/DataSources").then(({ DataSources }) => ({
+    default: DataSources,
+  }))
+);
 const Feedback = lazy(() =>
   import("~/views/Feedback").then(({ Feedback }) => ({ default: Feedback }))
 );
@@ -188,6 +193,10 @@ export const App = (): ReactElement => {
     { path: "account", element: withRouteBoundary("Account", <Account />) },
     { path: "tickets", element: withRouteBoundary("Tickets", <Tickets />) },
     { path: "about", element: withRouteBoundary("About", <About />) },
+    {
+      path: "data-sources",
+      element: withRouteBoundary("Data sources and API guide", <DataSources />),
+    },
     {
       path: "privacy",
       element: withRouteBoundary("Privacy Policy", <PrivacyPolicy />),

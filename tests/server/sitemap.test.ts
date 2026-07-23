@@ -27,6 +27,7 @@ describe("sitemap URLs", () => {
       "/",
       "/about",
       "/forecasting",
+      "/data-sources",
       "/seattle",
       "/seattle/terminal",
       "/bainbridge-island",

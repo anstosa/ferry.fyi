@@ -46,7 +46,12 @@ export const SEO_ROUTE_VIEWS: readonly SeoView[] = [
   "subscribe",
   "fare",
 ];
-export const SEO_INDEXABLE_PATHS = ["/", "/about", "/forecasting"] as const;
+export const SEO_INDEXABLE_PATHS = [
+  "/",
+  "/about",
+  "/forecasting",
+  "/data-sources",
+] as const;
 
 const fixedPages: Record<string, Pick<SeoMetadata, "title" | "description">> = {
   "/about": {
@@ -59,6 +64,11 @@ const fixedPages: Record<string, Pick<SeoMetadata, "title" | "description">> = {
     description:
       "Learn how Ferry FYI estimates Washington State Ferries vehicle capacity, schedule delays, and low-tide cancellation risk.",
   },
+  "/data-sources": {
+    title: "Ferry FYI Data Sources and API Guide",
+    description:
+      "Learn how Ferry FYI sources, timestamps, and explains Washington State Ferries schedules, vessel context, forecasts, cameras, weather, tide data, and public read-only APIs.",
+  },
 };
 
 const indexablePaths = new Set<string>(SEO_INDEXABLE_PATHS);
@@ -68,37 +78,81 @@ const getWebPageSchema = (
   description: string,
   canonicalPath: string
 ): Record<string, unknown> => ({
-  "@context": "https://schema.org",
   "@type": "WebPage",
   name: title,
   description,
   url: canonicalPath,
 });
 
+const getOrganizationSchema = (baseUrl: string): Record<string, unknown> => ({
+  "@id": `${getSeoUrl(baseUrl, "/")}#organization`,
+  "@type": "Organization",
+  description:
+    "Independent web and mobile app for planning Washington State Ferries trips.",
+  logo: getSeoUrl(baseUrl, "/static/images/icon-512x512.png"),
+  name: SEO_APP_NAME,
+  url: getSeoUrl(baseUrl, "/"),
+});
+
+const getDatasetSchema = (baseUrl: string): Record<string, unknown> => ({
+  "@id": `${getSeoUrl(baseUrl, "/data-sources")}#dataset`,
+  "@type": "Dataset",
+  description:
+    "Current and historical Washington State Ferries planning data, including schedules, terminal context, vessel data, camera metadata, capacity estimates, weather, and tides.",
+  distribution: {
+    "@type": "DataDownload",
+    contentUrl: getSeoUrl(baseUrl, "/api/terminals"),
+    encodingFormat: "application/json",
+  },
+  name: "Ferry FYI ferry planning data",
+  url: getSeoUrl(baseUrl, "/data-sources"),
+  variableMeasured: [
+    "Ferry schedule",
+    "Vehicle capacity estimate",
+    "Vessel delay",
+    "Terminal camera freshness",
+    "Weather forecast",
+    "Tide forecast",
+  ],
+});
+
 export const getSeoSchema = (
   seo: SeoMetadata,
   baseUrl: string,
   title = seo.title
-): Record<string, unknown> => ({
-  ...seo.schema,
-  ...(seo.canonicalPath === "/" || seo.canonicalPath === "/about"
-    ? {
-        publisher: {
-          "@type": "Organization",
-          logo: getSeoUrl(baseUrl, "/static/images/icon-512x512.png"),
-          name: SEO_APP_NAME,
-          url: getSeoUrl(baseUrl, "/"),
-        },
-      }
-    : {}),
-  name: title,
-  url: getSeoUrl(baseUrl, seo.canonicalPath),
-  isPartOf: {
+): Record<string, unknown> => {
+  const websiteUrl = getSeoUrl(baseUrl, "/");
+  const organization = getOrganizationSchema(baseUrl);
+  const webpage = {
+    ...seo.schema,
+    "@id": `${getSeoUrl(baseUrl, seo.canonicalPath)}#webpage`,
+    dateModified: SEO_CONTENT_LAST_MODIFIED,
+    isPartOf: { "@id": `${websiteUrl}#website` },
+    name: title,
+    publisher: { "@id": `${websiteUrl}#organization` },
+    url: getSeoUrl(baseUrl, seo.canonicalPath),
+  };
+  const website = {
+    "@id": `${websiteUrl}#website`,
     "@type": "WebSite",
+    description: SEO_DEFAULT_DESCRIPTION,
     name: SEO_APP_NAME,
-    url: getSeoUrl(baseUrl, "/"),
-  },
-});
+    publisher: { "@id": `${websiteUrl}#organization` },
+    url: websiteUrl,
+  };
+
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      webpage,
+      website,
+      organization,
+      ...(seo.canonicalPath === "/data-sources"
+        ? [getDatasetSchema(baseUrl)]
+        : []),
+    ],
+  };
+};
 
 export const getSeoMetadata = (pathname: string): SeoMetadata => {
   const canonicalPath = pathname === "/" ? "/" : pathname.replace(/\/$/, "");

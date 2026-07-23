@@ -44,6 +44,13 @@ export const About = (): ReactElement => (
       </Link>
       .
     </p>
+    <p className="mt-4">
+      Review Ferry FYI&apos;s{" "}
+      <Link className="link" to="/data-sources">
+        data sources, freshness guidance, and public API
+      </Link>
+      .
+    </p>
 
     <h2 className="font-bold text-lg mt-8">Support</h2>
     <p className="mt-2">

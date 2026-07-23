@@ -1,4 +1,5 @@
 import React, { ReactElement } from "react";
+import { Link } from "react-router-dom";
 import { getSeoMetadata } from "shared/lib/seo";
 
 import { Page } from "../components/Page";
@@ -15,6 +16,13 @@ export const ForecastingExplained = (): ReactElement => (
       cancellation risk for upcoming sailings. They are meant to help you
       compare options, not to replace official Washington State Ferries status,
       route alerts, or terminal signs.
+    </p>
+    <p className="mt-2">
+      For source freshness and citation guidance, see Ferry FYI&apos;s{" "}
+      <Link className="link" to="/data-sources">
+        data sources and API guide
+      </Link>
+      .
     </p>
 
     <h2 className="font-bold text-lg mt-8">

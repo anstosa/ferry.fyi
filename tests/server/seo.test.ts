@@ -83,12 +83,26 @@ describe("SEO metadata", () => {
 
     expect(response.type).toBe("text/plain");
     expect(response.text).toContain("# Ferry FYI");
+    expect(response.text).toContain("## AI API guide");
     expect(response.text).toContain(
       "[Forecasting](https://ferry.fyi/forecasting)"
     );
+    expect(response.text).toContain("GET /api/terminals");
+    expect(response.text).toContain("### Forecasts, delays, and service changes");
+    expect(response.text).not.toContain("wsdot.wa.gov");
+  });
+
+  it("makes the data sources and API guide a canonical public page", async () => {
+    const response = await request(app).get("/data-sources").expect(200);
+
     expect(response.text).toContain(
-      "[Washington State Ferries](https://wsdot.wa.gov/travel/washington-state-ferries)"
+      "Ferry FYI Data Sources and API Guide"
     );
+    expect(response.text).toContain(
+      'rel="canonical" href="https://ferry.fyi/data-sources"'
+    );
+    expect(response.text).toContain("How to cite Ferry FYI");
+    expect(response.text).toContain('"@type":"Dataset"');
   });
 
   it("creates indexable canonical schedule metadata", () => {
@@ -142,6 +156,7 @@ describe("SEO metadata", () => {
 
   it("keeps product pages indexable and private pages noindexed", () => {
     expect(getSeoMetadata("/forecasting").robots).toBe("index,follow");
+    expect(getSeoMetadata("/data-sources").robots).toBe("index,follow");
     expect(getSeoMetadata("/account").robots).toBe("noindex,follow");
     expect(getSeoUrl("https://ferry.fyi/", "/about")).toBe(
       "https://ferry.fyi/about"

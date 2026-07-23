@@ -72,6 +72,20 @@ const copyStaticPlugin = (): Plugin => {
     name: "ferry-copy-static",
     // serve static assets
     configureServer(server) {
+      server.middlewares.use(async (request, response, next) => {
+        const requestPath = new URL(request.url ?? "/", "http://localhost")
+          .pathname;
+        const rootStaticFile = requestPath.slice(1);
+        if (!rootStaticFiles.includes(rootStaticFile)) {
+          next();
+          return;
+        }
+
+        response.setHeader("Content-Type", "text/plain; charset=utf-8");
+        response.end(
+          await fs.promises.readFile(path.resolve(staticDir, rootStaticFile))
+        );
+      });
       server.middlewares.use("/static", async (request, response, next) => {
         const rawUrl = request.url ?? "/";
         // vite import guard
