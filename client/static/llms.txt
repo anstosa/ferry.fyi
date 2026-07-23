@@ -74,7 +74,6 @@ Fare responses include a `state` such as `current`, `no-fare`, `stale`, or `unav
 
 - `GET /api/user` and `POST /api/user` — Signed-in user's favorites, alert settings, and app metadata. Require an Auth0 bearer token; never request, log, or expose another user's token.
 - `GET /api/tickets/:ticketId` — Looks up a user-provided ticket identifier. Ticket data is sensitive; do not guess identifiers or expose returned barcodes.
-- `POST /api/ota/manifest` — Native-app updater protocol, not a general AI endpoint.
 
 ## Safe AI use
 
