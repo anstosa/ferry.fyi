@@ -73,6 +73,8 @@ services:
       AUTH0_CLIENT_ID: ${AUTH0_CLIENT_ID:-local-container-client}
       AUTH0_CLIENT_REDIRECT: ${AUTH0_CLIENT_REDIRECT:-http://localhost:${APP_PORT:-4040}}
       AUTH0_DOMAIN: ${AUTH0_DOMAIN:-local-container.invalid}
+      AUTH0_SERVER_ID: ${AUTH0_SERVER_ID:-}
+      AUTH0_SERVER_SECRET: ${AUTH0_SERVER_SECRET:-}
       CAR_DETECTION_ENDPOINT: http://detector:8000/detect
       CHOKIDAR_USEPOLLING: "true"
       DATABASE_URL: postgres://test:testing@postgres:5432/ferryfyi

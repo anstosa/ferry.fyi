@@ -13,7 +13,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createStaticRouter } from "../../server/controllers/static";
 import {
+  createBrowserRateLimiter,
   createBrowserRouter,
+  getInternalRedirectPath,
   renderSeoHtml,
 } from "../../server/controllers/static/browser";
 import { Terminal } from "../../server/models/Terminal";
@@ -67,6 +69,30 @@ afterEach(() => {
 });
 
 describe("SEO metadata", () => {
+  it("rate limits filesystem-backed browser documents", async () => {
+    const rateLimitedApp = express();
+    rateLimitedApp.use(
+      createBrowserRouter(clientDist, {
+        rateLimiter: createBrowserRateLimiter({ limit: 1 }),
+      })
+    );
+
+    await request(rateLimitedApp).get("/robots.txt").expect(200);
+    await request(rateLimitedApp).get("/llms.txt").expect(429);
+  });
+
+  it("allows only same-origin canonical redirect paths", () => {
+    expect(getInternalRedirectPath("/seattle/bainbridge")).toBe(
+      "/seattle/bainbridge"
+    );
+    expect(
+      getInternalRedirectPath("//untrusted.example/redirect")
+    ).toBeUndefined();
+    expect(
+      getInternalRedirectPath("https://untrusted.example/redirect")
+    ).toBeUndefined();
+  });
+
   it("explicitly allows search and AI crawlers", async () => {
     const response = await request(app).get("/robots.txt").expect(200);
 
@@ -88,16 +114,16 @@ describe("SEO metadata", () => {
       "[Forecasting](https://ferry.fyi/forecasting)"
     );
     expect(response.text).toContain("GET /api/terminals");
-    expect(response.text).toContain("### Forecasts, delays, and service changes");
+    expect(response.text).toContain(
+      "### Forecasts, delays, and service changes"
+    );
     expect(response.text).not.toContain("wsdot.wa.gov");
   });
 
   it("makes the data sources and API guide a canonical public page", async () => {
     const response = await request(app).get("/data-sources").expect(200);
 
-    expect(response.text).toContain(
-      "Ferry FYI Data Sources and API Guide"
-    );
+    expect(response.text).toContain("Ferry FYI Data Sources and API Guide");
     expect(response.text).toContain(
       'rel="canonical" href="https://ferry.fyi/data-sources"'
     );

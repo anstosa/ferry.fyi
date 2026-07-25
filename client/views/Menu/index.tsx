@@ -13,6 +13,7 @@ import {
 } from "~/lib/appInstall";
 import { getConfiguredAuth0RedirectUri } from "~/lib/auth";
 import { isInstalledApp, useDevice } from "~/lib/device";
+import { useFeatureFlags } from "~/lib/featureFlags";
 import { colors } from "~/lib/theme";
 import logo from "~/static/images/icon_monochrome-256.png";
 import AppStoreIcon from "~/static/images/icons/brands/app-store-ios.svg";
@@ -23,7 +24,9 @@ import ScheduleIcon from "~/static/images/icons/solid/calendar-week.svg";
 import DownloadIcon from "~/static/images/icons/solid/download.svg";
 import FeedbackIcon from "~/static/images/icons/solid/question-circle.svg";
 import ShareIcon from "~/static/images/icons/solid/share-alt.svg";
+import TrophyIcon from "~/static/images/icons/solid/trophy.svg";
 import UserIcon from "~/static/images/icons/solid/user.svg";
+import AdminIcon from "~/static/images/icons/solid/user-shield.svg";
 
 import { MenuItem } from "./MenuItem";
 
@@ -80,7 +83,8 @@ export const Menu = ({
   const [dragStart, setDragStart] = useState<number | null>(null);
   const [dragPosition, setDragPosition] = useState<number | null>(null);
   const device = useDevice();
-  const { isAuthenticated, loginWithRedirect } = useAuth0();
+  const { isAuthenticated, loginWithRedirect, user } = useAuth0();
+  const { leaderboardsEnabled } = useFeatureFlags();
   const [canShare, setShare] = useState<boolean>(false);
   const location = useLocation();
 
@@ -162,7 +166,19 @@ export const Menu = ({
       label: "Tickets",
       path: "/tickets",
     },
+    ...(leaderboardsEnabled
+      ? [
+          {
+            Icon: TrophyIcon,
+            label: "Leaderboards",
+            path: "/leaderboards",
+          } satisfies MenuItem,
+        ]
+      : []),
     ...topItems,
+    ...(user?.email === "anstosa@gmail.com"
+      ? [{ Icon: AdminIcon, label: "Admin", path: "/admin" } satisfies MenuItem]
+      : []),
     { isSpacer: true },
     ...(installItem ? [installItem] : []),
     accountItem,

@@ -39,6 +39,8 @@
 	<string>public.app-category.travel</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>GateABackgroundLocationFeasibilityEnabled</key>
+	<false/>
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright © 2026 Ansel Santosa. All rights reserved.</string>
 	<key>NSCameraUsageDescription</key>

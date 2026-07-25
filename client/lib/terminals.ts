@@ -85,6 +85,31 @@ interface TerminalState {
 
 const terminalsAtom = atom<Terminal[] | null>(null);
 
+/**
+ * Loads the canonical terminal list without reading or requesting a location.
+ * Use this for features that need terminal metadata but must not participate in
+ * the shared geolocation cache.
+ */
+export const useTerminalList = (): Terminal[] => {
+  const [terminals, setTerminals] = useAtom(terminalsAtom);
+
+  useEffect(() => {
+    if (terminals) {
+      return;
+    }
+    getTerminals()
+      .then(setTerminals)
+      .catch((error: unknown) => {
+        // Terminal metadata remains available to location-free callers even
+        // when the API is temporarily unavailable.
+        console.error(error);
+        setTerminals([]);
+      });
+  }, [setTerminals, terminals]);
+
+  return terminals ?? [];
+};
+
 export const useTerminals = (): TerminalState => {
   const [location] = useGeo();
   const [terminals, setTerminals] = useAtom(terminalsAtom);

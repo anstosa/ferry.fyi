@@ -41,6 +41,8 @@ export class Vessel extends CacheableModel implements VesselClass {
   name!: string;
   passengerCapacity!: number;
   speed!: number;
+  /** In-memory timestamp for freshness checks; never exposed in the API. */
+  statusUpdatedAt!: number;
   tallVehicleCapacity!: number;
   vesselWatchUrl!: string;
   vehicleCapacity!: number;

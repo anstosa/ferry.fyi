@@ -9,6 +9,7 @@ import { BrowserRouter } from "react-router-dom";
 
 import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { getConfiguredAuth0RedirectUri } from "~/lib/auth";
+import { FeatureFlagProvider } from "~/lib/featureFlags";
 import { initializeTheme } from "~/lib/theme";
 import { UserProvider } from "~/lib/user";
 
@@ -134,9 +135,11 @@ whenReady(() => {
               useRefreshTokens={true}
               useRefreshTokensFallback={true}
             >
-              <UserProvider>
-                <App />
-              </UserProvider>
+              <FeatureFlagProvider>
+                <UserProvider>
+                  <App />
+                </UserProvider>
+              </FeatureFlagProvider>
             </Auth0Provider>
           </HelmetProvider>
         </BrowserRouter>

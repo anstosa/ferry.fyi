@@ -249,3 +249,49 @@ export const getSeoUrl = (baseUrl: string, path: string): string => {
   const normalizedBaseUrl = baseUrl.replace(/\/$/, "");
   return path === "/" ? normalizedBaseUrl : `${normalizedBaseUrl}${path}`;
 };
+
+export const getTerminalLeaderboardSeoMetadata = (terminal: {
+  id: string;
+  name: string;
+}): SeoMetadata => {
+  const canonicalPath = `/leaderboards/terminals/${encodeURIComponent(terminal.id)}`;
+  const title = `${terminal.name} Terminal Leaderboard - ${SEO_APP_NAME}`;
+  const description = `All-time and period leaderboard for foreground terminal check-ins at the ${terminal.name} Washington State Ferries terminal.`;
+  return {
+    canonicalPath,
+    description,
+    robots: "index,follow",
+    schema: getWebPageSchema(title, description, canonicalPath),
+    title,
+  };
+};
+
+export const getVesselLeaderboardSeoMetadata = (vessel: {
+  id: string;
+  name: string;
+}): SeoMetadata => {
+  const canonicalPath = `/leaderboards/vessels/${encodeURIComponent(vessel.id)}`;
+  const title = `${vessel.name} Vessel Leaderboard - ${SEO_APP_NAME}`;
+  const description = `Public Ferry FYI leaderboard page for the Washington State Ferries vessel ${vessel.name}. Vessel check-ins are not currently available.`;
+  return {
+    canonicalPath,
+    description,
+    robots: "index,follow",
+    schema: getWebPageSchema(title, description, canonicalPath),
+    title,
+  };
+};
+
+export const getLeaderboardsSeoMetadata = (): SeoMetadata => {
+  const canonicalPath = "/leaderboards";
+  const title = `Washington State Ferries Leaderboards - ${SEO_APP_NAME}`;
+  const description =
+    "Public Ferry FYI terminal and vessel leaderboards based on foreground location policy checks.";
+  return {
+    canonicalPath,
+    description,
+    robots: "index,follow",
+    schema: getWebPageSchema(title, description, canonicalPath),
+    title,
+  };
+};

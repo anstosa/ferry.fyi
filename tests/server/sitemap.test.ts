@@ -41,6 +41,20 @@ describe("sitemap URLs", () => {
     );
   });
 
+  it("includes leaderboard entity URLs only when enabled", () => {
+    const terminal = { id: "seattle", mates: [], name: "Seattle", slug: "seattle" };
+    const vessel = { id: "kaleetan", name: "Kaleetan" };
+    expect(getSitemapUrls([terminal] as any, [vessel] as any, false)).not.toContain(
+      "/leaderboards/terminals/seattle"
+    );
+    expect(getSitemapUrls([terminal] as any, [vessel] as any, true)).toEqual(
+      expect.arrayContaining([
+        "/leaderboards/terminals/seattle",
+        "/leaderboards/vessels/kaleetan",
+      ])
+    );
+  });
+
   it("emits one terminal canonical per terminal and caches the completed sitemap", async () => {
     Terminal.purge();
     const bainbridge = new Terminal({

@@ -11,7 +11,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import type { Route } from "shared/contracts/routes";
 import type {
   ForecastConfidence,
@@ -37,6 +37,7 @@ import { ExternalPillLink } from "~/components/ExternalPillLink";
 import { getConfiguredAuth0RedirectUri } from "~/lib/auth";
 import { isDuringDaylight } from "~/lib/daylight";
 import { useDevice } from "~/lib/device";
+import { useFeatureFlags } from "~/lib/featureFlags";
 import { vesselAssets } from "~/lib/generated/vesselAssets";
 import {
   isLocalhostSimulationEnabled,
@@ -47,6 +48,7 @@ import { usePush } from "~/lib/push";
 import type { DetailTab } from "~/lib/sailingDeepLink";
 import { useUser } from "~/lib/user";
 import BellIcon from "~/static/images/icons/regular/bell.svg";
+import ArrowRightIcon from "~/static/images/icons/solid/arrow-right.svg";
 import BellSolidIcon from "~/static/images/icons/solid/bell.svg";
 import CarIcon from "~/static/images/icons/solid/car.svg";
 import CheckCircleIcon from "~/static/images/icons/solid/check-circle.svg";
@@ -58,6 +60,7 @@ import ShareIcon from "~/static/images/icons/solid/share-alt.svg";
 import ShipIcon from "~/static/images/icons/solid/ship.svg";
 import TemperatureHighIcon from "~/static/images/icons/solid/temperature-high.svg";
 import ThumbsUpIcon from "~/static/images/icons/solid/thumbs-up.svg";
+import TrophyIcon from "~/static/images/icons/solid/trophy.svg";
 import TruckIcon from "~/static/images/icons/solid/truck.svg";
 import UsersIcon from "~/static/images/icons/solid/users.svg";
 import WindIcon from "~/static/images/icons/solid/wind.svg";
@@ -261,6 +264,7 @@ export const SlotInfo = (props: Props): ReactElement => {
   const { isAuthenticated, isLoading, loginWithRedirect } = useAuth0();
   const [{ alertRules, isUserLoading }, { updateUser }] = useUser();
   const initializePush = usePush(false);
+  const { leaderboardsEnabled: showLeaderboardLink } = useFeatureFlags();
   const [isSailingAlertSaving, setSailingAlertSaving] =
     useState<boolean>(false);
   const [sailingAlertError, setSailingAlertError] = useState<string | null>(
@@ -1665,6 +1669,34 @@ export const SlotInfo = (props: Props): ReactElement => {
             </div>
           </div>
         </header>
+        {showLeaderboardLink && (
+          <Link
+            className={clsx(
+              "group relative isolate mx-4 mt-4 flex items-center gap-3 overflow-hidden rounded-xl border p-3 text-[#3d2800] shadow-[0_8px_20px_rgba(185,120,4,0.28)]",
+              "border-[#b97804] bg-[linear-gradient(135deg,#fff6bb_0%,#f8d65a_26%,#d99a0a_52%,#ffe681_76%,#be7800_100%)]",
+              "before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-1/2 before:bg-gradient-to-br before:from-white/65 before:to-transparent",
+              "transition hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(185,120,4,0.42)]",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-light"
+            )}
+            to={`/leaderboards/vessels/${vessel.id}`}
+          >
+            <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/35 shadow-sm">
+              <TrophyIcon className="h-4 w-4" />
+            </span>
+            <span className="relative min-w-0 flex-1 text-left">
+              <span className="block text-sm font-black">
+                Vessel leaderboard
+              </span>
+              <span className="block text-xs text-[#614000]">
+                See who is leading aboard {name}.
+              </span>
+            </span>
+            <span className="relative transition-transform group-hover:translate-x-0.5">
+              <span className="sr-only">View vessel leaderboard</span>
+              <ArrowRightIcon aria-hidden className="h-4 w-4" />
+            </span>
+          </Link>
+        )}
         <div className="grid grid-cols-2 gap-3 p-4">
           {renderProfileStat(
             "Vehicle deck",

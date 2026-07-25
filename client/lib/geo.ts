@@ -10,12 +10,13 @@ export interface Point {
   longitude: number;
 }
 
+/** A single, user-initiated foreground fix. Never persist this object. */
+export interface ForegroundLocation extends Point {
+  accuracyMeters: number;
+  observedAt: string;
+}
+
 const EARTH_RADIUS = 3956;
-const LOCATION_OPTIONS = {
-  enableHighAccuracy: false,
-  maximumAge: 5 * 60 * 1000,
-  timeout: 30 * 1000,
-};
 const toRadians = (degrees: number): number => (degrees * Math.PI) / 180;
 let locationRequest: Promise<Point | null> | undefined;
 let lastNativeLocation: Point | null = null;
@@ -42,6 +43,12 @@ export const getDistance = (a: Point, b: Point): number => {
   return c * EARTH_RADIUS;
 };
 
+const LOCATION_OPTIONS = {
+  enableHighAccuracy: false,
+  maximumAge: 5 * 60 * 1000,
+  timeout: 30 * 1000,
+};
+
 const fetchCurrentLocation = async (): Promise<Point | null> => {
   try {
     const {
@@ -52,6 +59,29 @@ const fetchCurrentLocation = async (): Promise<Point | null> => {
     return null;
   }
 };
+
+export const fetchForegroundLocation =
+  async (): Promise<ForegroundLocation | null> => {
+    try {
+      // Credits require a fresh, high-accuracy fix acquired while this page is visible.
+      const { coords, timestamp } = await Geolocation.getCurrentPosition({
+        enableHighAccuracy: true,
+        maximumAge: 0,
+        timeout: 30 * 1000,
+      });
+      return {
+        accuracyMeters: coords.accuracy,
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+        observedAt: new Date(timestamp).toISOString(),
+      };
+    } catch {
+      return null;
+    }
+  };
+
+/** Request one foreground location after a user tap. The caller must discard it after use. */
+export const requestForegroundLocation = fetchForegroundLocation;
 
 const getLocation = (promptsForPermission: boolean): Promise<Point | null> => {
   // Android's checkPermissions() reaches the native location service and has

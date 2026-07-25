@@ -37,3 +37,5 @@ export AUTH0_CLIENT_REDIRECT="http://localhost:4040/callback"
 
 # Sentry
 export SENTRY_DSN="<get from sentry>"
+
+# Leaderboards are disabled unless explicitly enabled together.

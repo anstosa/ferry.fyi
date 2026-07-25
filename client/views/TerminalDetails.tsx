@@ -5,13 +5,16 @@ import type { Terminal, TerminalInfo } from "shared/contracts/terminals";
 
 import { ExternalPillLink } from "~/components/ExternalPillLink";
 import { TerminalDropdown } from "~/components/TerminalDropdown";
+import { useFeatureFlags } from "~/lib/featureFlags";
 import { locationToUrl } from "~/lib/maps";
 import { getSlug, useTerminals } from "~/lib/terminals";
+import ArrowRightIcon from "~/static/images/icons/solid/arrow-right.svg";
 import CheckIcon from "~/static/images/icons/solid/check-circle.svg";
 import InfoIcon from "~/static/images/icons/solid/info-circle.svg";
 import LocationIcon from "~/static/images/icons/solid/location.svg";
 import MapIcon from "~/static/images/icons/solid/map-marked.svg";
 import UnavailableIcon from "~/static/images/icons/solid/times.svg";
+import TrophyIcon from "~/static/images/icons/solid/trophy.svg";
 import WSDOTIcon from "~/static/images/icons/wsdot.svg";
 import type { GetPath } from "~/views/Route";
 
@@ -113,6 +116,7 @@ export const TerminalDetails = ({
     return hasVisibleHtml(terminal.info[key]);
   });
   const routeMates = terminal.mates ?? [];
+  const { leaderboardsEnabled: showLeaderboardLink } = useFeatureFlags();
   // route switcher guard
   const shouldShowRoutes = routeMates.length > 1;
   // accordion state
@@ -268,6 +272,35 @@ export const TerminalDetails = ({
               )}
             </div>
           </DetailCard>
+
+          {showLeaderboardLink && (
+            <Link
+              className={clsx(
+                "group relative isolate flex items-center gap-3 overflow-hidden rounded-2xl border p-4 text-[#3d2800] shadow-[0_8px_20px_rgba(185,120,4,0.28)]",
+                "border-[#b97804] bg-[linear-gradient(135deg,#fff6bb_0%,#f8d65a_26%,#d99a0a_52%,#ffe681_76%,#be7800_100%)]",
+                "before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-1/2 before:bg-gradient-to-br before:from-white/65 before:to-transparent",
+                "transition hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(185,120,4,0.42)]",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-light"
+              )}
+              to={`/leaderboards/terminals/${terminal.id}`}
+            >
+              <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/35 shadow-sm">
+                <TrophyIcon className="h-5 w-5" />
+              </span>
+              <span className="relative min-w-0 flex-1">
+                <span className="block text-sm font-black">
+                  Terminal leaderboard
+                </span>
+                <span className="mt-0.5 block text-xs text-[#614000]">
+                  See who is leading at {terminal.name}.
+                </span>
+              </span>
+              <span className="relative text-sm font-bold transition-transform group-hover:translate-x-0.5">
+                <span className="sr-only">View leaderboard</span>
+                <ArrowRightIcon aria-hidden className="h-4 w-4" />
+              </span>
+            </Link>
+          )}
 
           <DetailCard>
             <h2 className="mb-3 text-lg font-bold text-gray-darkest dark:text-white">

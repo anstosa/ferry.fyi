@@ -15,6 +15,7 @@ vi.mock("@capacitor/geolocation", () => ({ Geolocation: geolocation }));
 import {
   getCurrentLocation,
   requestCurrentLocation,
+  requestForegroundLocation,
 } from "../../client/lib/geo";
 
 describe("getCurrentLocation", () => {
@@ -54,6 +55,25 @@ describe("getCurrentLocation", () => {
     });
     expect(geolocation.checkPermissions).not.toHaveBeenCalled();
     expect(geolocation.requestPermissions).not.toHaveBeenCalled();
+  });
+
+  it("uses a fresh high-accuracy position for an explicit foreground check-in", async () => {
+    geolocation.getCurrentPosition.mockResolvedValue({
+      coords: { accuracy: 8, latitude: 47.6, longitude: -122.3 },
+      timestamp: 1_700_000_000_000,
+    });
+
+    await expect(requestForegroundLocation()).resolves.toEqual({
+      accuracyMeters: 8,
+      latitude: 47.6,
+      longitude: -122.3,
+      observedAt: "2023-11-14T22:13:20.000Z",
+    });
+    expect(geolocation.getCurrentPosition).toHaveBeenCalledWith({
+      enableHighAccuracy: true,
+      maximumAge: 0,
+      timeout: 30 * 1000,
+    });
   });
 
   it("returns no location when the native lookup is rejected", async () => {

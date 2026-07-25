@@ -1,15 +1,19 @@
-import { Router } from "express";
+import { RequestHandler, Router } from "express";
+import { MINUTE, rateLimit } from "express-rate-limit";
 import { existsSync, readFileSync } from "fs";
 import { DateTime } from "luxon";
 import path from "path";
 import { entries } from "shared/lib/objects";
 import {
   getDatedSeoTitle,
+  getLeaderboardsSeoMetadata,
   getRouteSeoMetadata,
   getSeoProfile,
   getSeoSchema,
   getSeoUrl,
+  getTerminalLeaderboardSeoMetadata,
   getTerminalSeoMetadata,
+  getVesselLeaderboardSeoMetadata,
   SEO_APP_NAME,
   SEO_CONTENT_LAST_MODIFIED,
   SEO_ROUTE_VIEWS,
@@ -18,7 +22,10 @@ import {
 } from "shared/lib/seo";
 
 import { getSitemap } from "~/getSitemap";
+import { leaderboardsEnabled } from "~/lib/leaderboardFlags";
+import { filterLeaderboardLlms } from "~/lib/leaderboardSeo";
 import { Terminal } from "~/models/Terminal";
+import { Vessel } from "~/models/Vessel";
 
 // published Play signing certificates
 const ANDROID_APP_LINK_CERT_FINGERPRINTS = [
@@ -46,6 +53,33 @@ const APP_PATHS = new Set([
   "/tickets",
   "/today",
 ]);
+
+export interface BrowserRouterDependencies {
+  rateLimiter?: RequestHandler;
+}
+
+export const createBrowserRateLimiter = ({
+  limit = 300,
+  windowMs = MINUTE,
+}: {
+  limit?: number;
+  windowMs?: number;
+} = {}): RequestHandler =>
+  rateLimit({
+    identifier: "browser-static",
+    legacyHeaders: false,
+    limit,
+    standardHeaders: "draft-8",
+    windowMs,
+  });
+
+/** Only redirect to a path proven to remain on Ferry FYI's origin. */
+export const getInternalRedirectPath = (value: string): string | undefined => {
+  const redirect = new URL(value, "https://ferry.fyi");
+  return redirect.origin === "https://ferry.fyi"
+    ? `${redirect.pathname}${redirect.search}${redirect.hash}`
+    : undefined;
+};
 
 export const clientDist = existsSync(bundledClientDist)
   ? bundledClientDist
@@ -147,18 +181,25 @@ export const renderSeoHtml = (
   );
 };
 
-export const createBrowserRouter = (dist = clientDist): Router => {
+export const createBrowserRouter = (
+  dist = clientDist,
+  dependencies: BrowserRouterDependencies = {}
+): Router => {
   const browserRouter = Router();
   const indexHtml = readFileSync(path.resolve(dist, "index.html"), "utf-8");
+
+  browserRouter.use(dependencies.rateLimiter ?? createBrowserRateLimiter());
 
   browserRouter.get("/robots.txt", (request, response) => {
     response.type("text/plain");
     return response.sendFile(path.resolve(dist, "robots.txt"));
   });
 
-  browserRouter.get("/llms.txt", (request, response) => {
-    response.type("text/plain");
-    return response.sendFile(path.resolve(dist, "llms.txt"));
+  browserRouter.get("/llms.txt", async (request, response) => {
+    const llms = readFileSync(path.resolve(dist, "llms.txt"), "utf-8");
+    return response
+      .type("text/plain")
+      .send(filterLeaderboardLlms(llms, await leaderboardsEnabled()));
   });
 
   browserRouter.get("/sitemap.xml", async (request, response) => {
@@ -182,7 +223,7 @@ export const createBrowserRouter = (dist = clientDist): Router => {
     ]);
   });
 
-  browserRouter.get(/.*/, (request, response) => {
+  browserRouter.get(/.*/, async (request, response) => {
     const requestHost = request.hostname;
     const terminalMatch = request.path.match(
       /^\/([^/]+)(?:\/([^/]+))?(?:\/([^/]+))?\/?$/
@@ -198,8 +239,33 @@ export const createBrowserRouter = (dist = clientDist): Router => {
     if (seoProfileBaseUrl) {
       baseUrl = seoProfileBaseUrl;
     }
+    const leaderboardMatch = request.path.match(
+      /^\/leaderboards\/(terminals|vessels)\/([^/]+)\/?$/
+    );
+    if (
+      request.path.startsWith("/leaderboards") &&
+      !(await leaderboardsEnabled())
+    ) {
+      return response.status(404).set("X-Robots-Tag", "noindex").send();
+    }
     if (seoProfileBaseUrl) {
       metadata = seoProfileMetadata;
+    } else if (
+      request.path === "/leaderboards" ||
+      request.path === "/leaderboards/"
+    ) {
+      metadata = getLeaderboardsSeoMetadata();
+    } else if (leaderboardMatch) {
+      const [, type, entityId] = leaderboardMatch;
+      if (type === "terminals") {
+        const terminal = Terminal.getByIndex(entityId);
+        metadata = terminal
+          ? getTerminalLeaderboardSeoMetadata(terminal)
+          : undefined;
+      } else {
+        const vessel = Vessel.getByIndex(entityId);
+        metadata = vessel ? getVesselLeaderboardSeoMetadata(vessel) : undefined;
+      }
     } else if (terminalMatch) {
       const [, terminalSlug, secondSegment, thirdSegment] = terminalMatch;
       const terminals: Terminal[] = entries(Terminal.getAll()).map(
@@ -256,14 +322,18 @@ export const createBrowserRouter = (dist = clientDist): Router => {
         .send(renderSeoHtml(indexHtml, seoProfileMetadata, baseUrl));
     }
 
+    const canonicalRedirectPath = metadata
+      ? getInternalRedirectPath(metadata.canonicalPath)
+      : undefined;
     if (
       !seoProfileBaseUrl &&
       metadata &&
+      canonicalRedirectPath &&
       !isDated &&
-      normalizedPath !== metadata.canonicalPath &&
+      normalizedPath !== canonicalRedirectPath &&
       request.query.date === undefined
     ) {
-      return response.redirect(301, metadata.canonicalPath);
+      return response.redirect(301, canonicalRedirectPath);
     }
 
     response.type("text/html");

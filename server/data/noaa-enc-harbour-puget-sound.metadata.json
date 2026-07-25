@@ -1,0 +1,21 @@
+{
+  "artifact": "noaa-enc-harbour-puget-sound.json",
+  "bbox": {
+    "east": -121.8,
+    "north": 48.7,
+    "south": 46.9,
+    "west": -123.6
+  },
+  "coastlineFeatureCount": 7863,
+  "coverageFeatureCount": 172,
+  "license": "U.S. Government work; NOAA ENC Direct terms apply. See source URL.",
+  "process": "Harbour COALNE and Harbour coverage features intersecting bbox, requested as GeoJSON from NOAA ArcGIS REST, then normalized into one FeatureCollection.",
+  "retrievedAt": "2026-07-24T02:19:33.208Z",
+  "sha256": "1e15f34ab22d174c65c16ce51c8f62296b1f6182eae7d2127610bed1255b0b4c",
+  "sourceUrls": [
+    "https://encdirect.noaa.gov/arcgis/rest/services/encdirect/enc_harbour/MapServer/84/query",
+    "https://encdirect.noaa.gov/arcgis/rest/services/encdirect/enc_coverage/MapServer/4/query"
+  ],
+  "version": "NOAA ENC Direct Harbour snapshot",
+  "warning": "ENC Direct GIS data are not certified for navigation and are used only for non-navigation leaderboard eligibility."
+}

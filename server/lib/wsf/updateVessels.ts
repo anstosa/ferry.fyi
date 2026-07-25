@@ -195,6 +195,7 @@ export const updateVesselStatus = async (): Promise<any> => {
       },
       mmsi: VesselData.Mmsi,
       speed: VesselData.Speed,
+      statusUpdatedAt: Date.now(),
       info: {
         ...vessel?.info,
         crossing: VesselData.EtaBasis,

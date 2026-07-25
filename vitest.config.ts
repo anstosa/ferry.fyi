@@ -18,15 +18,32 @@ export default defineConfig({
       },
       {
         find: /^~\/components\/FareWizardIcons$/,
-        replacement: path.resolve(__dirname, "client/components/FareWizardIcons"),
+        replacement: path.resolve(
+          __dirname,
+          "client/components/FareWizardIcons"
+        ),
       },
       {
         find: /^~\/components\/ExternalPillLink$/,
-        replacement: path.resolve(__dirname, "client/components/ExternalPillLink"),
+        replacement: path.resolve(
+          __dirname,
+          "client/components/ExternalPillLink"
+        ),
       },
       {
         find: /^~\/components\/RouteSelector$/,
         replacement: path.resolve(__dirname, "client/components/RouteSelector"),
+      },
+      {
+        find: /^~\/components\/LeaderboardForegroundCheckinWatcher$/,
+        replacement: path.resolve(
+          __dirname,
+          "client/components/LeaderboardForegroundCheckinWatcher"
+        ),
+      },
+      {
+        find: /^~\/lib\/(geo|leaderboardForeground|leaderboardLocation|leaderboardNotifications|leaderboards|terminals|vessels)$/,
+        replacement: path.resolve(__dirname, "client/lib/$1"),
       },
       {
         find: /^~\/lib\/fares$/,
@@ -41,6 +58,20 @@ export default defineConfig({
         replacement: path.resolve(
           __dirname,
           "client/static/images/icons/solid/share-alt.svg"
+        ),
+      },
+      {
+        find: /^~\/static\/images\/icons\/solid\/check-circle\.svg$/,
+        replacement: path.resolve(
+          __dirname,
+          "client/static/images/icons/solid/check-circle.svg"
+        ),
+      },
+      {
+        find: /^~\/static\/images\/icons\/solid\/location\.svg$/,
+        replacement: path.resolve(
+          __dirname,
+          "client/static/images/icons/solid/location.svg"
         ),
       },
       {

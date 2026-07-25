@@ -16,6 +16,7 @@ import {
 
 import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { InstallPromptToast } from "~/components/InstallPromptToast";
+import { LeaderboardForegroundCheckins } from "~/components/LeaderboardForegroundCheckins";
 import { NearbyTicketNotifications } from "~/components/NearbyTicketNotifications";
 import { Prompt } from "~/components/Prompt";
 import { Splash } from "~/components/Splash";
@@ -30,6 +31,9 @@ import { useUser } from "~/lib/user";
 import DumpsterFireIcon from "~/static/images/icons/solid/dumpster-fire.svg";
 import OfflineIcon from "~/static/images/icons/solid/signal-alt-slash.svg";
 
+const Admin = lazy(() =>
+  import("~/views/Admin").then(({ Admin }) => ({ default: Admin }))
+);
 const About = lazy(() =>
   import("~/views/About").then(({ About }) => ({ default: About }))
 );
@@ -51,6 +55,11 @@ const ForecastingExplained = lazy(() =>
 );
 const Home = lazy(() =>
   import("~/views/Home").then(({ Home }) => ({ default: Home }))
+);
+const Leaderboards = lazy(() =>
+  import("~/views/Leaderboards").then(({ Leaderboards }) => ({
+    default: Leaderboards,
+  }))
 );
 const PrivacyPolicy = lazy(() =>
   import("~/views/PrivacyPolicy").then(({ PrivacyPolicy }) => ({
@@ -193,6 +202,11 @@ export const App = (): ReactElement => {
     { path: "account", element: withRouteBoundary("Account", <Account />) },
     { path: "tickets", element: withRouteBoundary("Tickets", <Tickets />) },
     { path: "about", element: withRouteBoundary("About", <About />) },
+    { path: "admin", element: withRouteBoundary("Admin", <Admin />) },
+    {
+      path: "leaderboards/*",
+      element: withRouteBoundary("Leaderboards", <Leaderboards />),
+    },
     {
       path: "data-sources",
       element: withRouteBoundary("Data sources and API guide", <DataSources />),
@@ -313,6 +327,7 @@ export const App = (): ReactElement => {
           />
         </AnimatePresence>
         <NearbyTicketNotifications />
+        <LeaderboardForegroundCheckins />
       </>
     );
   } else {

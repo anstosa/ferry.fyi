@@ -42,6 +42,10 @@ def releaseVersionCode = (configuredVersionCode ?: providers.exec {
     commandLine 'bash', new File(rootProject.projectDir.parentFile, 'scripts/android-version-code.sh').absolutePath
 }.standardOutput.asText.get().trim()).toInteger()
 def releaseVersionName = findProperty('VERSION_NAME') ?: '2.8'
+// This is an opt-in feasibility build only. It must never enable background work by default.
+def backgroundLocationFeasibilityEnabled = providers.gradleProperty('backgroundLocationFeasibilityEnabled')
+    .map { it.toBoolean() }
+    .getOrElse(false)
 
 android {
     namespace = "fyi.ferry"
@@ -52,12 +56,16 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode releaseVersionCode
         versionName releaseVersionName
+        buildConfigField 'boolean', 'BACKGROUND_LOCATION_FEASIBILITY_ENABLED', backgroundLocationFeasibilityEnabled.toString()
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
+    }
+    buildFeatures {
+        buildConfig true
     }
     signingConfigs {
         release {
