@@ -18,6 +18,7 @@ import {
   getInternalRedirectPath,
   renderSeoHtml,
 } from "../../server/controllers/static/browser";
+import * as leaderboardFlags from "../../server/lib/leaderboardFlags";
 import { Terminal } from "../../server/models/Terminal";
 import {
   getHowManyBoatsSeoMetadata,
@@ -79,6 +80,18 @@ describe("SEO metadata", () => {
 
     await request(rateLimitedApp).get("/robots.txt").expect(200);
     await request(rateLimitedApp).get("/llms.txt").expect(429);
+  });
+
+  it("rate limits policy-controlled static documents before they query state", async () => {
+    const rateLimitedApp = express();
+    rateLimitedApp.use(
+      createStaticRouter(clientDist, {
+        rateLimiter: createBrowserRateLimiter({ limit: 1 }),
+      })
+    );
+
+    await request(rateLimitedApp).get("/robots.txt").expect(200);
+    await request(rateLimitedApp).get("/sitemap.xml").expect(429);
   });
 
   it("allows only same-origin canonical redirect paths", () => {
@@ -383,5 +396,17 @@ describe("SEO metadata", () => {
 
       expect(response.text).toContain('content="noindex,follow"');
     }
+  });
+
+  it("serves a noindex SPA shell for privately rolled-out leaderboard routes", async () => {
+    vi.spyOn(leaderboardFlags, "isPublicFeatureEnabled").mockResolvedValue(
+      false
+    );
+    const response = await request(app).get("/leaderboards").expect(200);
+
+    expect(response.headers["x-robots-tag"]).toBe("noindex, follow");
+    expect(response.text).toContain("Ferry FYI");
+    expect(response.text).toContain('name="robots" content="noindex,follow"');
+    vi.restoreAllMocks();
   });
 });

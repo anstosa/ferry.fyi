@@ -1,34 +1,57 @@
 import { Message } from "firebase-admin/messaging";
 
-import { UserSettings } from "~/models/UserSettings";
-
 import { firebaseMessaging, hasFirebaseCode } from "./firebase";
 import { delay } from "./time";
 
-const MAX_RERTY_TIME = 10 * 1000;
+const MAX_RETRY_TIME = 10 * 1000;
 
-let retryTime = 1;
-const pushQueue: Message[] = [];
+export type PushSendResult =
+  | { providerSubmission: "accepted" }
+  | {
+      providerSubmission: "not-submitted";
+      reason: "failed" | "paused" | "unavailable";
+    };
 
-const trySend = async (): Promise<void> => {
-  while (pushQueue.length > 0) {
-    const message = pushQueue.shift();
-    if (!message) {
-      continue;
+type QueuedPush = {
+  message: Message;
+  resolve: (result: PushSendResult) => void;
+};
+
+const pushQueue: QueuedPush[] = [];
+let draining = false;
+
+const resultFor = (
+  reason: "failed" | "paused" | "unavailable"
+): PushSendResult => ({ providerSubmission: "not-submitted", reason });
+
+/**
+ * The single final Firebase boundary. Policy is read immediately before every
+ * provider submission, including a retry after the message was queued.
+ */
+const submitPush = async (message: Message): Promise<PushSendResult> => {
+  let retryTime = 1;
+  while (true) {
+    try {
+      const { getNotificationPolicy } =
+        await import("~/lib/admin/notificationPolicy");
+      if ((await getNotificationPolicy()).paused) {
+        return resultFor("paused");
+      }
+    } catch {
+      // Do not send when the globally shared policy cannot be read.
+      return resultFor("unavailable");
     }
+
     try {
       await firebaseMessaging.send(message);
-      retryTime = 1;
+      return { providerSubmission: "accepted" };
     } catch (error: unknown) {
       if (
         hasFirebaseCode(error, "messaging/registration-token-not-registered")
       ) {
-        console.warn(
-          `Deleting expired push token for user ${message.data?.userId}`
-        );
         if (message.data?.userId) {
+          const { UserSettings } = await import("~/models/UserSettings");
           const settings = await UserSettings.findByPk(message.data.userId);
-          // settings guard
           if (settings) {
             await settings.update({
               appMetadata: {
@@ -38,29 +61,83 @@ const trySend = async (): Promise<void> => {
             });
           }
         }
-      } else if (retryTime <= MAX_RERTY_TIME) {
-        retryTime *= 2;
-        pushQueue.unshift(message);
-        console.warn(
-          `Temporary push failure, waiting ${retryTime / 1000}secs`,
-          message,
-          error
-        );
-        await delay(retryTime);
-      } else {
-        retryTime = 1;
-        console.warn(
-          "Permanent push failure, dropping message",
-          message,
-          error
-        );
+        return resultFor("failed");
       }
-      retryTime = Math.min(retryTime * 2, MAX_RERTY_TIME);
+      if (retryTime > MAX_RETRY_TIME) {
+        console.warn("Permanent push failure; provider submission abandoned");
+        return resultFor("failed");
+      }
+      retryTime *= 2;
+      console.warn(`Temporary push failure; retrying in ${retryTime / 1000}s`);
+      await delay(retryTime);
     }
   }
 };
 
-export const sendPush = async (message: Message): Promise<void> => {
-  pushQueue.push(message);
-  return await trySend();
+const recordStatus = async (result: PushSendResult): Promise<void> => {
+  const { notificationFinished } =
+    await import("~/lib/admin/notificationStatus");
+  await notificationFinished(
+    result.providerSubmission === "accepted" ? "accepted" : result.reason
+  );
 };
+
+const trySend = async (): Promise<void> => {
+  if (draining) {
+    return;
+  }
+  draining = true;
+  try {
+    while (pushQueue.length > 0) {
+      const queuedPush = pushQueue.shift();
+      if (!queuedPush) {
+        continue;
+      }
+      try {
+        const { notificationDequeued } =
+          await import("~/lib/admin/notificationStatus");
+        await notificationDequeued();
+      } catch {
+        // Aggregate observability must not prevent a queued notification.
+      }
+      let result: PushSendResult;
+      try {
+        result = await submitPush(queuedPush.message);
+      } catch {
+        // Do not leak provider/database details into the operational dashboard.
+        result = resultFor("failed");
+      }
+      try {
+        await recordStatus(result);
+      } catch {
+        // Aggregate observability must not alter provider-boundary semantics.
+      }
+      queuedPush.resolve(result);
+    }
+  } finally {
+    draining = false;
+  }
+};
+
+/**
+ * Queues a push for the shared provider boundary. "accepted" means Firebase
+ * accepted the submission; it never claims recipient delivery.
+ */
+export const sendPush = (message: Message): Promise<PushSendResult> =>
+  new Promise((resolve) => {
+    Promise.resolve()
+      .then(async () => {
+        try {
+          const { notificationQueued } =
+            await import("~/lib/admin/notificationStatus");
+          await notificationQueued();
+        } catch {
+          // Aggregate observability must not prevent a queued notification.
+        }
+      })
+      .then(() => {
+        pushQueue.push({ message, resolve });
+        return trySend();
+      })
+      .catch(() => undefined);
+  });

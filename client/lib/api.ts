@@ -155,6 +155,24 @@ export const put = async <T = Record<string, unknown>>(
   return await processResponse(response);
 };
 
+/** Performs an authenticated API delete without retaining request data. */
+export const del = async <T = Record<string, unknown>>(
+  path: string,
+  data: Record<string, unknown>,
+  accessToken?: string
+): Promise<T> => {
+  const response = await CapacitorHttp.request({
+    method: "DELETE",
+    url: `${getApiBaseUrl()}${path}`,
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeader(accessToken),
+    },
+    data,
+  });
+  return await processResponse(response);
+};
+
 export const useOnline = (): boolean => {
   const isOnline = window?.navigator?.onLine ?? true;
   const [online, setOnline] = useState<boolean>(isOnline);

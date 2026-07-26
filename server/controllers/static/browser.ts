@@ -22,7 +22,7 @@ import {
 } from "shared/lib/seo";
 
 import { getSitemap } from "~/getSitemap";
-import { leaderboardsEnabled } from "~/lib/leaderboardFlags";
+import type { PublicContent } from "~/lib/admin/content";
 import { filterLeaderboardLlms } from "~/lib/leaderboardSeo";
 import { Terminal } from "~/models/Terminal";
 import { Vessel } from "~/models/Vessel";
@@ -88,6 +88,24 @@ export const clientDist = existsSync(bundledClientDist)
 const escapeHtml = (input: string): string =>
   input.replace(/[&<>"']/g, (character) => HTML_ENTITIES[character]);
 
+const getPublicContentHtml = (content: PublicContent): string => {
+  const messages = [
+    ...(content.maintenance.enabled && content.maintenance.message
+      ? [{ body: content.maintenance.message, title: "Maintenance notice" }]
+      : []),
+    ...content.announcements,
+  ];
+  if (!messages.length) {
+    return "";
+  }
+  return `<aside data-public-content="true" aria-label="Service notices">${messages
+    .map(
+      ({ body, title }) =>
+        `<section><h2>${escapeHtml(title)}</h2><p>${escapeHtml(body)}</p></section>`
+    )
+    .join("")}</aside>`;
+};
+
 const getSeoFallbackHtml = (seo: SeoMetadata, canonicalUrl: string): string => {
   if (seo.robots !== "index,follow") {
     return "";
@@ -110,7 +128,8 @@ const getSeoFallbackHtml = (seo: SeoMetadata, canonicalUrl: string): string => {
 export const renderSeoHtml = (
   template: string,
   seo: SeoMetadata,
-  baseUrl: string
+  baseUrl: string,
+  publicContent?: PublicContent
 ): string => {
   const canonicalUrl = getSeoUrl(baseUrl, seo.canonicalPath);
   const title = escapeHtml(seo.title);
@@ -171,7 +190,7 @@ export const renderSeoHtml = (
     ],
     [
       /<div\b(?=[^>]*\bid="seo-content")[^>]*><\/div>/,
-      `<div data-seo-seed="true" id="seo-content">${getSeoFallbackHtml(seo, canonicalUrl)}</div>`,
+      `<div data-seo-seed="true" id="seo-content">${getPublicContentHtml(publicContent ?? { announcements: [], crawlerPolicy: { aiCrawlers: "allow", disallowPaths: [] }, leaderboardIndexingEnabled: true, leaderboardSharingEnabled: true, maintenance: { enabled: false, message: "" } })}${getSeoFallbackHtml(seo, canonicalUrl)}</div>`,
     ],
   ];
 
@@ -190,16 +209,29 @@ export const createBrowserRouter = (
 
   browserRouter.use(dependencies.rateLimiter ?? createBrowserRateLimiter());
 
-  browserRouter.get("/robots.txt", (request, response) => {
-    response.type("text/plain");
-    return response.sendFile(path.resolve(dist, "robots.txt"));
+  browserRouter.get("/robots.txt", async (_request, response) => {
+    const { getPublicContent, getRobotsTxt } =
+      await import("~/lib/admin/content");
+    const content = await getPublicContent();
+    return response
+      .type("text/plain")
+      .send(getRobotsTxt(content.crawlerPolicy));
   });
 
   browserRouter.get("/llms.txt", async (request, response) => {
+    const { getPublicContent } = await import("~/lib/admin/content");
+    const { isPublicFeatureEnabled } = await import("~/lib/leaderboardFlags");
     const llms = readFileSync(path.resolve(dist, "llms.txt"), "utf-8");
+    const content = await getPublicContent();
     return response
       .type("text/plain")
-      .send(filterLeaderboardLlms(llms, await leaderboardsEnabled()));
+      .send(
+        filterLeaderboardLlms(
+          llms,
+          (await isPublicFeatureEnabled("leaderboards")) &&
+            content.leaderboardIndexingEnabled
+        )
+      );
   });
 
   browserRouter.get("/sitemap.xml", async (request, response) => {
@@ -242,12 +274,17 @@ export const createBrowserRouter = (
     const leaderboardMatch = request.path.match(
       /^\/leaderboards\/(terminals|vessels)\/([^/]+)\/?$/
     );
-    if (
-      request.path.startsWith("/leaderboards") &&
-      !(await leaderboardsEnabled())
-    ) {
-      return response.status(404).set("X-Robots-Tag", "noindex").send();
-    }
+    const { getPublicContent } = await import("~/lib/admin/content");
+    const { isPublicFeatureEnabled } = await import("~/lib/leaderboardFlags");
+    const publicContent = await getPublicContent();
+    const isLeaderboardPath = request.path.startsWith("/leaderboards");
+    const publicLeaderboardsEnabled =
+      await isPublicFeatureEnabled("leaderboards");
+    // Allow an allowlisted signed-in user to load the SPA after a direct web
+    // navigation. The client/API enforce the private feature decision; the
+    // shell is noindex until the feature is globally public.
+    const privateLeaderboardNavigation =
+      isLeaderboardPath && !publicLeaderboardsEnabled;
     if (seoProfileBaseUrl) {
       metadata = seoProfileMetadata;
     } else if (
@@ -315,7 +352,12 @@ export const createBrowserRouter = (
     if (normalizedPath === "/forecasting-explained") {
       return response.redirect(301, "/forecasting");
     }
-    if (!seoProfileBaseUrl && !metadata && !APP_PATHS.has(normalizedPath)) {
+    if (
+      !seoProfileBaseUrl &&
+      !metadata &&
+      !APP_PATHS.has(normalizedPath) &&
+      !privateLeaderboardNavigation
+    ) {
       return response
         .status(404)
         .type("text/html")
@@ -340,7 +382,17 @@ export const createBrowserRouter = (
     const seo = metadata ?? seoProfileMetadata;
     const dateLabel = isDated ? getDateLabel(request.query.date) : undefined;
     const title = getDatedSeoTitle(seo, dateLabel);
-    return response.send(renderSeoHtml(indexHtml, { ...seo, title }, baseUrl));
+    const renderedSeo =
+      isLeaderboardPath &&
+      (!publicLeaderboardsEnabled || !publicContent.leaderboardIndexingEnabled)
+        ? { ...seo, robots: "noindex,follow" as const }
+        : { ...seo, title };
+    if (privateLeaderboardNavigation) {
+      response.set("X-Robots-Tag", "noindex, follow");
+    }
+    return response.send(
+      renderSeoHtml(indexHtml, renderedSeo, baseUrl, publicContent)
+    );
   });
 
   return browserRouter;

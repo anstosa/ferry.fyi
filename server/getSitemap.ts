@@ -11,11 +11,8 @@ import {
 } from "shared/lib/seo";
 import { SitemapStream, streamToPromise } from "sitemap";
 
-import { leaderboardsEnabled } from "~/lib/leaderboardFlags";
 import { Terminal } from "~/models/Terminal";
 import { Vessel } from "~/models/Vessel";
-
-let sitemap: Buffer;
 
 export const getSitemapUrls = (
   terminals: Terminal[],
@@ -50,16 +47,11 @@ export const getSitemapUrls = (
   return urls;
 };
 
-export const getSitemap = async (): Promise<Buffer> => {
-  if (sitemap) {
-    return sitemap;
-  }
-  const generatedSitemap = await generateSitemap();
-  // cache the completed first request, rather than its pending promise
-  // eslint-disable-next-line require-atomic-updates
-  sitemap = generatedSitemap;
-  return sitemap;
-};
+/**
+ * Do not cache this in module state: public controls may be changed on a
+ * different dyno. Each response reads the persisted policy before generating.
+ */
+export const getSitemap = (): Promise<Buffer> => generateSitemap();
 
 const generateSitemap = async (): Promise<Buffer> => {
   const stream = new SitemapStream({ hostname: "https://ferry.fyi/" });
@@ -74,9 +66,19 @@ const generateSitemap = async (): Promise<Buffer> => {
   }
 
   logger.info("Generating sitemap...");
-  getSitemapUrls(terminals, vessels, await leaderboardsEnabled()).forEach(
-    (url) => stream.write({ lastmod: SEO_CONTENT_LAST_MODIFIED, url })
-  );
+  const [{ getPublicContent }, { isPublicFeatureEnabled }] = await Promise.all([
+    import("~/lib/admin/content"),
+    import("~/lib/leaderboardFlags"),
+  ]);
+  const [leaderboardsEnabled, publicContent] = await Promise.all([
+    isPublicFeatureEnabled("leaderboards"),
+    getPublicContent(),
+  ]);
+  getSitemapUrls(
+    terminals,
+    vessels,
+    leaderboardsEnabled && publicContent.leaderboardIndexingEnabled
+  ).forEach((url) => stream.write({ lastmod: SEO_CONTENT_LAST_MODIFIED, url }));
 
   stream.end();
   return streamToPromise(stream);

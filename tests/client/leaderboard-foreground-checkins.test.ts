@@ -18,7 +18,11 @@ const leaderboards = vi.hoisted(() => ({
   submitTerminalDeparture: vi.fn(),
   submitVesselCheckIn: vi.fn(),
 }));
-const watcher = vi.hoisted(() => ({ isOptedOut: true, onEnterVessel: false }));
+const watcher = vi.hoisted(() => ({
+  isOptedOut: true,
+  onEnterVessel: false,
+  renderCount: 0,
+}));
 const locationEnrollment = vi.hoisted(() => ({
   initialLeaderboardLocationEnrollmentState: {
     enrollment: "not-enrolled",
@@ -42,6 +46,13 @@ vi.mock("~/lib/leaderboardLocation", () => locationEnrollment);
 vi.mock("~/lib/leaderboardNotifications", () => ({
   notifyLeaderboardCheckIn: vi.fn(),
 }));
+vi.mock("~/lib/featureFlags", () => ({
+  useFeatureFlags: () => ({
+    automaticLeaderboardCheckinsEnabled: true,
+    leaderboardsEnabled: true,
+    loading: false,
+  }),
+}));
 vi.mock("~/lib/terminals", () => ({ useTerminalList: () => [] }));
 vi.mock("../../client/lib/vessels", () => ({ useLiveVessels: () => [] }));
 vi.mock("~/components/LeaderboardForegroundCheckinWatcher", () => ({
@@ -54,6 +65,7 @@ vi.mock("~/components/LeaderboardForegroundCheckinWatcher", () => ({
   }) => {
     watcher.isOptedOut = isOptedOut;
     watcher.onEnterVessel = Boolean(onEnterVessel);
+    watcher.renderCount += 1;
     return null;
   },
 }));
@@ -93,54 +105,12 @@ afterEach(() => {
   vi.clearAllMocks();
   watcher.isOptedOut = true;
   watcher.onEnterVessel = false;
+  watcher.renderCount = 0;
 });
 
 describe("LeaderboardForegroundCheckins", () => {
-  it("does not let a stale preference response undo an optimistic opt-out", async () => {
-    const initial = deferred<LeaderboardPreferences>();
-    const staleRefresh = deferred<LeaderboardPreferences>();
-    leaderboards.getLeaderboardPreferences
-      .mockReturnValueOnce(initial.promise)
-      .mockReturnValueOnce(staleRefresh.promise);
-    const container = document.createElement("div");
-    document.body.appendChild(container);
-    root = createRoot(container);
-
-    await act(async () => {
-      root?.render(React.createElement(LeaderboardForegroundCheckins));
-      await Promise.resolve();
-    });
-    await act(async () => {
-      initial.resolve(preferences(false));
-      await initial.promise;
-    });
-    expect(watcher.isOptedOut).toBe(false);
-
-    await act(async () => {
-      window.dispatchEvent(
-        new CustomEvent("leaderboard-preferences-changed", { detail: null })
-      );
-      await Promise.resolve();
-    });
-    await act(async () => {
-      window.dispatchEvent(
-        new CustomEvent("leaderboard-preferences-changed", {
-          detail: preferences(true),
-        })
-      );
-      staleRefresh.resolve(preferences(false));
-      await staleRefresh.promise;
-    });
-
-    expect(watcher.isOptedOut).toBe(true);
-  });
-
-  it("activates the vessel foreground lane independently of terminal check-ins", async () => {
-    leaderboards.isLeaderboardForegroundCheckinsEnabled.mockReturnValue(false);
-    leaderboards.isLeaderboardVesselsEnabled.mockReturnValue(true);
-    leaderboards.getLeaderboardPreferences.mockResolvedValue(
-      preferences(false)
-    );
+  it("never mounts a foreground watcher even if a legacy feature response enables automation", async () => {
+    leaderboards.getLeaderboardPreferences.mockResolvedValue(preferences(false));
     const container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
@@ -150,7 +120,7 @@ describe("LeaderboardForegroundCheckins", () => {
       await Promise.resolve();
     });
 
-    expect(watcher.onEnterVessel).toBe(true);
+    expect(watcher.renderCount).toBe(0);
   });
 
   it("pauses automatic checks when the user selects manual-only check-ins", async () => {
@@ -168,5 +138,6 @@ describe("LeaderboardForegroundCheckins", () => {
     });
 
     expect(watcher.isOptedOut).toBe(true);
+    expect(watcher.renderCount).toBe(0);
   });
 });

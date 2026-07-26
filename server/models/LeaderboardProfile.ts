@@ -16,7 +16,7 @@ LeaderboardProfile.init(
   {
     automaticCheckinsEnabled: {
       allowNull: false,
-      defaultValue: true,
+      defaultValue: false,
       type: DataTypes.BOOLEAN,
     },
     displayName: { allowNull: false, defaultValue: "", type: DataTypes.STRING },

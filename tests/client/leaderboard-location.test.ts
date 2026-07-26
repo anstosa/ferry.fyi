@@ -8,7 +8,6 @@ vi.mock("../../client/lib/push", () => ({ requestNotificationPermission }));
 
 import {
   initialLeaderboardLocationEnrollmentState,
-  isLeaderboardLocationEnrollmentEnabled,
   leaderboardInitials,
   parseLeaderboardLocationEnrollmentState,
   requestLeaderboardLocationAccess,
@@ -16,14 +15,12 @@ import {
 } from "../../client/lib/leaderboardLocation";
 
 describe("leaderboard location enrollment", () => {
-  it("is disabled unless explicitly enabled", () => {
-    expect(isLeaderboardLocationEnrollmentEnabled({})).toBe(false);
-    expect(
-      isLeaderboardLocationEnrollmentEnabled({
-        VITE_LEADERBOARDS_ENABLED: "true",
-        VITE_LEADERBOARD_FOREGROUND_CHECKINS_ENABLED: "true",
-      })
-    ).toBe(true);
+  it("starts unprompted until the server-controlled feature is available", () => {
+    expect(initialLeaderboardLocationEnrollmentState).toEqual({
+      enrollment: "unprompted",
+      locationAccess: "unknown",
+      notificationAccess: "unknown",
+    });
   });
 
   it("keeps only valid consent and permission outcomes", () => {

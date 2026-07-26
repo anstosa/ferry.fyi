@@ -82,6 +82,7 @@ Ferry FYI is a TypeScript web and Android app for Washington State Ferries sched
 
 - Prefer existing patterns, aliases, scripts, models, and contracts before adding new abstractions or dependencies.
 - Keep `client/static/llms.txt` current whenever public pages, user-facing features, or AI-useful API endpoints change. It must describe Ferry FYI directly, link only to Ferry FYI pages, and document authentication, freshness, and safety constraints for any API it lists.
+- Keep owner admin operations, notification send paths, public content/SEO controls, `docs/admin-operations.md`, `docs/leaderboards.md`, and `client/static/llms.txt` aligned; new privileged jobs must use the owner admin boundary, and new notification sends must use the final shared policy boundary.
 - Keep frontend/API boundary changes typed through `shared/contracts` when possible.
 - For DB changes, add a Sequelize migration and corresponding model/test coverage.
 - For scheduled ingestion or forecast logic, add focused tests under `tests/server` or `tests/shared` before claiming behavior is safe.

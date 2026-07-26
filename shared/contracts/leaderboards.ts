@@ -75,6 +75,10 @@ export interface ForegroundTerminalCheckInResult {
 }
 
 export interface LeaderboardPreferences {
+  /**
+   * Retained for wire compatibility with existing clients. The manual-only
+   * launch always returns false and rejects attempts to set it true.
+   */
   automaticCheckinsEnabled: boolean;
   /**
    * The user-controlled public label. This may be initials only; clients must

@@ -1,0 +1,179 @@
+# Owner admin operations
+
+This guide describes the current owner-only operational controls. The admin UI
+is a convenience layer, not an authorization boundary. Treat `/api/admin/*` as
+an internal application API rather than a third-party integration.
+
+## Access and confirmation
+
+Every admin route requires a valid Auth0 bearer token and a server-side Auth0
+lookup confirming that its subject belongs to Ferry FYI's single configured
+owner. Authentication, ownership lookup, or ownership mismatch failures deny
+access. Client-side menu or route visibility does not grant access. Admin
+responses use `Cache-Control: no-store`.
+
+Mutations require an action-specific typed confirmation. The server derives the
+canonical target from the trusted route resource and accepts only the normalized
+phrase `CONFIRM <action> <target>`. A client cannot choose another target or
+replace the phrase with a boolean. The server removes the phrase before calling
+the domain handler and does not store or log it.
+
+Use the admin UI to obtain the exact target and confirmation prompt. Do not
+reuse a confirmation intended for one user, operation, or content item on
+another target.
+
+## Feature delivery and manual check-ins
+
+The `leaderboards` flag is persisted in the database. Its evaluation order is:
+
+1. An active kill switch denies the feature for everyone.
+2. Otherwise, a globally enabled flag permits it for everyone.
+3. Otherwise, an explicit authenticated Auth0 subject allowlist may permit it
+   for supported subject-aware features.
+4. Otherwise, the feature is unavailable.
+
+Public pages and public API decisions use global state only; a subject allowlist
+never makes a feature public. There is no percentage rollout or expiry.
+
+Automatic and background leaderboard check-ins are unavailable. The server
+always reports that capability as disabled, and the admin feature endpoint
+cannot enable it. Check-ins require an open-app, foreground interaction.
+
+## User data and sign-out
+
+### Delete Ferry FYI user data
+
+Deleting a user removes Ferry FYI-owned identifying state in one database
+transaction, including user settings, feature allowlist entries, leaderboard
+profile data, and terminal-presence state. Retained leaderboard check-in/score
+records are reassigned to a newly generated, non-linkable anonymous subject so
+aggregate scores remain usable. This is irreversible.
+
+The deletion does **not** delete, disable, or otherwise modify the person's
+Auth0 identity. A later Auth0 sign-in can therefore create fresh Ferry FYI
+state.
+
+### Force sign-out
+
+Force sign-out immediately writes a bounded application-token revocation
+watermark. Authenticated API routes reject tokens issued at or before that
+watermark. The record contains an HMAC of the Auth0 subject rather than the
+subject itself and expires after the maximum accepted application token
+lifetime (24 hours by default; `APPLICATION_TOKEN_MAX_AGE_SECONDS` can change
+that lifetime).
+
+The operation also attempts Auth0 Management API revocation for device
+credentials and tenant-supported sessions. Its result names each capability as
+`complete` or `unavailable`, with an overall `complete` or `partial` status.
+A partial result means Ferry FYI application tokens were revoked but one or
+more Auth0 operations could not be completed. It never claims to end an Auth0
+SSO session.
+
+## Data operations
+
+The Data operations screen lists every current maintenance operation. It shows
+what the operation changes, its usual trigger, and its most recently recorded
+run. Scheduled-only rows are informational and cannot be started from the
+data-health API.
+
+| Operation                                            | Effect                                                                    | Normal trigger                                                                   |
+| ---------------------------------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `camera-line-detection-refresh`                      | Refreshes camera line-detection results used by camera views.             | Every minute at `:30`; also deferred after scheduler startup.                    |
+| `clear-wsf-memory-cache`                             | Clears named in-memory WSF caches; it does not delete persisted data.     | Daily at 04:00 server time.                                                      |
+| `demand-events-refresh`                              | Refreshes school-break and major-sports forecast inputs.                  | Daily at 04:20; also deferred after scheduler startup.                           |
+| `fare-catalog-refresh`                               | Warms current ferry-day and due fare catalogs.                            | Hourly at `:15`, daily at 00:05 America/Los_Angeles, and deferred after startup. |
+| `leaderboard-rebuild`                                | Rebuilds leaderboard aggregates from retained check-ins.                  | Manual only.                                                                     |
+| `schedule-refresh`                                   | Refreshes WSF sailing schedules and schedule cache data.                  | Daily at 04:05 server time.                                                      |
+| `tide-forecast-refresh` / `weather-forecast-refresh` | Forces forecast inputs used by route forecasting.                         | Best-effort after short WSF refreshes, rate-limited by the environment.          |
+| `wsf-daily-refresh`                                  | Runs daily WSF route-to-vessel inference.                                 | Daily at 04:10 server time.                                                      |
+| `wsf-long-refresh`                                   | Refreshes WSF cameras, vessels, routes, and terminals.                    | Every 5 minutes.                                                                 |
+| `wsf-refresh`                                        | Runs full WSF long/status/schedule refresh without notification dispatch. | Web-cache startup and manual runs.                                               |
+| `wsf-short-refresh`                                  | Refreshes WSF vessel status and capacity without notifications.           | Every minute on the web-cache process.                                           |
+| `wsf-short-notifying-refresh`                        | Refreshes vessel status/capacity and sends eligible notifications.        | Every minute on the scheduler process; scheduled only.                           |
+| `wsf-notifying-refresh`                              | Performs full WSF cache warmup with notification-capable status refresh.  | Scheduler startup; scheduled only.                                               |
+
+An operation has one persisted current-status row, not an execution history.
+States are `idle`, `running`, `succeeded`, or `failed`, with sanitized result or
+error text and timing/lease fields. A run holds a 15-minute database lease.
+Another request for a non-expired run returns the current state instead of
+starting duplicate work; a stale lease can be recovered. The lease token
+prevents a stale worker from overwriting a newer run's result.
+
+The WSF operations intentionally share a single lease/status row so overlapping
+startup, scheduler, and manual work cannot run at the same time. Their displayed
+last-run timestamp therefore reflects the latest shared WSF activity, not a
+separate per-job execution history.
+
+Do not add shell commands, URLs, SQL, arbitrary cache keys, or unregistered
+jobs to this surface. Add a named registry entry, bounded domain implementation,
+and focused tests instead.
+
+## Notification pause and dashboard
+
+The notification pause is a persisted global policy. The Firebase submission
+boundary reads that policy immediately before every provider call, including
+queued retries. Once the pause commits, queued or retried messages are
+suppressed. A provider call already in flight cannot be recalled.
+
+The dashboard is deliberately limited to:
+
+- global paused state;
+- cross-process aggregate queued and in-flight counts; and
+- the most recent aggregate request result (`accepted`, `failed`, `paused`, or
+  `unavailable`), retained for at most five minutes.
+
+It does not contain message payloads, recipients, provider credentials,
+delivery claims, or history. Both the policy and these short-lived aggregate
+dashboard values are stored in the database so any web process reads the same
+state; they expire after five minutes rather than forming a history.
+
+## Public content and SEO controls
+
+Published announcements and an enabled maintenance notice render as escaped,
+server-rendered public notices. Unpublished announcements are not included in
+public content. Announcement title and body are plain text, not HTML.
+
+Crawler policy is restricted to the following persisted choices:
+
+- AI crawlers: `allow` or `disallow` for the fixed supported agent list.
+- General disallow paths: `/account`, `/admin`, `/callback`, and
+  `/leaderboards/settings` only.
+
+`robots.txt`, `sitemap.xml`, and the leaderboard section of `llms.txt` are
+served dynamically before `express.static`. Each request reads the persisted
+public policy, so a new dyno cannot serve a deploy-time `robots.txt` or sitemap
+snapshot. Disabling leaderboard indexing removes leaderboard URLs from the
+sitemap and leaderboard material from `llms.txt`, and emits `noindex,follow` on
+leaderboard pages. Disabling the public leaderboard feature instead makes those
+pages unavailable.
+
+`llms.txt` itself remains source-controlled and has no admin edit endpoint.
+The persisted leaderboard sharing setting is returned with public/admin content
+state, but this release does not yet consume it in a public sharing route; do
+not treat it as an enforcement mechanism until such a route exists.
+
+## Deliberate no-audit policy
+
+This suite does not keep an actor/action audit history. It does not retain typed
+confirmation values, notification delivery history, recipients, message bodies,
+or an operation run log. The current operation-status row, temporary aggregate
+notification status, and short-lived non-identifying token-revocation watermark
+exist only to operate the service safely; they are not audit records.
+
+When changing admin behavior, preserve this policy. If a capability needs
+forensic history, obtain an explicit product and privacy decision before adding
+one.
+
+## Change checklist
+
+When adding or changing an admin capability:
+
+1. Mount it only below the authenticated owner composition root.
+2. Require a server-derived typed confirmation for every destructive mutation.
+3. Keep automatic/background check-ins unavailable.
+4. Route all provider notifications through the final shared policy boundary.
+5. Put public crawler, sitemap, and `llms.txt` behavior behind the persisted
+   content controls before static-file middleware.
+6. Update this guide, `docs/leaderboards.md` when leaderboard behavior changes,
+   `client/static/llms.txt` when a public page or AI-useful API changes, and
+   focused tests and migrations as applicable.

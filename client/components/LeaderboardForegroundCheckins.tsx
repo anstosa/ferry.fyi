@@ -57,10 +57,12 @@ export const LeaderboardForegroundCheckins: FunctionComponent = () => {
   // Do not use useTerminals here: it reads the shared useGeo cache and could
   // acquire location before this foreground-only watcher has explicit consent.
   const terminals = useTerminalList();
-  const { automaticLeaderboardCheckinsEnabled, leaderboardsEnabled } =
-    useFeatureFlags();
-  const terminalCheckinsEnabled = automaticLeaderboardCheckinsEnabled;
-  const vesselCheckinsEnabled = automaticLeaderboardCheckinsEnabled;
+  const { leaderboardsEnabled } = useFeatureFlags();
+  // Foreground automation is deliberately not part of the manual-only launch.
+  // These explicit constants protect this client even if an old API response
+  // still contains the retired automatic-check-ins flag.
+  const terminalCheckinsEnabled = false;
+  const vesselCheckinsEnabled = false;
   const vessels = useLiveVessels(vesselCheckinsEnabled, 60_000);
   const [enrollment, setEnrollment] = useState(initialEnrollment);
   const [preferences, setPreferences] = useState<LeaderboardPreferences | null>(
@@ -73,21 +75,9 @@ export const LeaderboardForegroundCheckins: FunctionComponent = () => {
   const preferenceRequestVersion = useRef(0);
   const checkinGeneration = useRef(0);
 
-  const isCurrentCheckinGeneration = useCallback(
-    (generation: number): boolean =>
-      generation === checkinGeneration.current &&
-      isAuthenticated &&
-      enrollment.enrollment === "enrolled" &&
-      automaticLeaderboardCheckinsEnabled &&
-      preferencesRef.current !== null &&
-      !preferencesRef.current.optedOut &&
-      preferencesRef.current.automaticCheckinsEnabled,
-    [
-      enrollment.enrollment,
-      isAuthenticated,
-      automaticLeaderboardCheckinsEnabled,
-    ]
-  );
+  // Kept as a defensive guard for callbacks that may outlive a render.
+  const isCurrentCheckinGeneration: (generation: number) => boolean =
+    useCallback((): boolean => false, []);
 
   useEffect(() => {
     const updateEnrollment = (event: Event): void => {
@@ -126,11 +116,7 @@ export const LeaderboardForegroundCheckins: FunctionComponent = () => {
         setPreferences(null);
       }
     }
-  }, [
-    getAccessTokenSilently,
-    isAuthenticated,
-    automaticLeaderboardCheckinsEnabled,
-  ]);
+  }, [getAccessTokenSilently, isAuthenticated]);
 
   useEffect(() => {
     const handlePreferencesChange = (event: Event): void => {

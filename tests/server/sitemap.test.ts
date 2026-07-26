@@ -55,7 +55,7 @@ describe("sitemap URLs", () => {
     );
   });
 
-  it("emits one terminal canonical per terminal and caches the completed sitemap", async () => {
+  it("emits one terminal canonical per terminal without process-local caching", async () => {
     Terminal.purge();
     const bainbridge = new Terminal({
       aliases: [],
@@ -88,8 +88,8 @@ describe("sitemap URLs", () => {
     const first = await getSitemap();
     const second = await getSitemap();
 
-    expect(first).toBe(second);
-    expect(getAll).toHaveBeenCalledTimes(1);
+    expect(first).not.toBe(second);
+    expect(getAll).toHaveBeenCalledTimes(2);
     expect(first.toString()).toContain("/seattle/terminal");
     expect(first.toString()).toContain(
       `<lastmod>${SEO_CONTENT_LAST_MODIFIED}T00:00:00.000Z</lastmod>`

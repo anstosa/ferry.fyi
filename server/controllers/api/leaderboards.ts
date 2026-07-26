@@ -15,7 +15,10 @@ import { isObject } from "shared/lib/objects";
 
 import coastlineSnapshot from "~/data/noaa-enc-harbour-puget-sound.json";
 import { db } from "~/lib/db";
-import { leaderboardsEnabled } from "~/lib/leaderboardFlags";
+import {
+  leaderboardsEnabled,
+  leaderboardsEnabledForSubject,
+} from "~/lib/leaderboardFlags";
 import { anonymizeLeaderboardAccount } from "~/lib/leaderboardPrivacy";
 import {
   evaluateTerminalEligibility,
@@ -57,7 +60,7 @@ const getProfile = async (
 ): Promise<LeaderboardProfile> => {
   const [profile] = await LeaderboardProfile.findOrCreate({
     defaults: {
-      automaticCheckinsEnabled: true,
+      automaticCheckinsEnabled: false,
       displayName: "",
       notificationsEnabled: true,
       optedOut: false,
@@ -77,7 +80,7 @@ const getProfile = async (
 const serializePreferences = (
   profile: LeaderboardProfile
 ): LeaderboardPreferences => ({
-  automaticCheckinsEnabled: profile.automaticCheckinsEnabled,
+  automaticCheckinsEnabled: false,
   displayName: profile.displayName,
   notificationsEnabled: profile.notificationsEnabled,
   optedOut: profile.optedOut,
@@ -109,7 +112,6 @@ const sanitizePreferences = (
     update.displayName = displayName;
   }
   for (const key of [
-    "automaticCheckinsEnabled",
     "notificationsEnabled",
     "optedOut",
     "useFullName",
@@ -186,121 +188,156 @@ const locationTimeReason = (
     : null;
 };
 
-leaderboardRouter.use(async (request, response, next) => {
+const rejectDisabledLeaderboard = (
+  response: import("express").Response
+): void => {
+  response.set("X-Robots-Tag", "noindex").status(404).send();
+};
+
+/** Public rankings are global-only: private allowlists must never affect SEO. */
+const requirePublicLeaderboards = async (
+  _request: import("express").Request,
+  response: import("express").Response,
+  next: import("express").NextFunction
+): Promise<void> => {
   response.set("Cache-Control", "no-store");
   if (!(await leaderboardsEnabled())) {
-    response.set("X-Robots-Tag", "noindex");
-    return response.status(404).send();
+    rejectDisabledLeaderboard(response);
+    return;
   }
   next();
-});
+};
 
-leaderboardRouter.get("/terminals/:terminalId", async (request, response) => {
-  const period = getPeriod(request.query.period ?? "all");
-  if (!period) {
-    return response.status(400).send({ error: "Invalid leaderboard period" });
-  }
-  const where = {
-    entityId: request.params.terminalId,
-    kind: "terminal",
-    ...(periodStart(period)
-      ? { occurredAt: { [Op.gte]: periodStart(period) } }
-      : {}),
-  };
-  const rows = (await LeaderboardCheckin.findAll({
-    attributes: ["subject", [db.fn("COUNT", db.col("id")), "score"]],
-    group: ["subject"],
-    order: [
-      [db.literal('"score"'), "DESC"],
-      ["subject", "ASC"],
-    ],
-    raw: true,
-    where,
-  })) as unknown as Array<{ score: string | number; subject: string }>;
-  const subjects = rows.map((row) => row.subject as string);
-  const profiles = subjects.length
-    ? await LeaderboardProfile.findAll({
-        where: { subject: { [Op.in]: subjects } },
+leaderboardRouter.get(
+  "/terminals/:terminalId",
+  requirePublicLeaderboards,
+  async (request, response) => {
+    const period = getPeriod(request.query.period ?? "all");
+    if (!period) {
+      return response.status(400).send({ error: "Invalid leaderboard period" });
+    }
+    const where = {
+      entityId: request.params.terminalId,
+      kind: "terminal",
+      ...(periodStart(period)
+        ? { occurredAt: { [Op.gte]: periodStart(period) } }
+        : {}),
+    };
+    const rows = (await LeaderboardCheckin.findAll({
+      attributes: ["subject", [db.fn("COUNT", db.col("id")), "score"]],
+      group: ["subject"],
+      order: [
+        [db.literal('"score"'), "DESC"],
+        ["subject", "ASC"],
+      ],
+      raw: true,
+      where,
+    })) as unknown as Array<{ score: string | number; subject: string }>;
+    const subjects = rows.map((row) => row.subject as string);
+    const profiles = subjects.length
+      ? await LeaderboardProfile.findAll({
+          where: { subject: { [Op.in]: subjects } },
+        })
+      : [];
+    const profileBySubject = new Map(
+      profiles.map((profile) => [profile.subject, profile])
+    );
+    const eligibleRanks = rows
+      .map((row) => {
+        const profile = profileBySubject.get(row.subject as string);
+        if (profile?.optedOut) {
+          return null;
+        }
+        return {
+          label: profile
+            ? leaderboardLabel(profile.displayName, profile.useFullName)
+            : "Anonymous",
+          score: Number(row.score),
+        };
       })
-    : [];
-  const profileBySubject = new Map(
-    profiles.map((profile) => [profile.subject, profile])
-  );
-  const eligibleRanks = rows
-    .map((row) => {
-      const profile = profileBySubject.get(row.subject as string);
-      if (profile?.optedOut) {
-        return null;
-      }
-      return {
-        label: profile
-          ? leaderboardLabel(profile.displayName, profile.useFullName)
-          : "Anonymous",
-        score: Number(row.score),
-      };
-    })
-    .filter((rank): rank is { label: string; score: number } => rank !== null);
-  const ranks = limitLeaderboardRanks(eligibleRanks).map((rank, index) => ({
-    ...rank,
-    rank: index + 1,
-  }));
-  return response.send({ entityId: request.params.terminalId, period, ranks });
-});
+      .filter(
+        (rank): rank is { label: string; score: number } => rank !== null
+      );
+    const ranks = limitLeaderboardRanks(eligibleRanks).map((rank, index) => ({
+      ...rank,
+      rank: index + 1,
+    }));
+    return response.send({
+      entityId: request.params.terminalId,
+      period,
+      ranks,
+    });
+  }
+);
 
-leaderboardRouter.get("/vessels/:vesselId", async (request, response) => {
-  if (!(await leaderboardsEnabled())) {
-    return response.status(404).send();
-  }
-  const period = getPeriod(request.query.period ?? "all");
-  if (!period) {
-    return response.status(400).send({ error: "Invalid leaderboard period" });
-  }
-  const where = {
-    entityId: request.params.vesselId,
-    kind: "vessel",
-    ...(periodStart(period)
-      ? { occurredAt: { [Op.gte]: periodStart(period) } }
-      : {}),
-  };
-  const rows = (await LeaderboardCheckin.findAll({
-    attributes: ["subject", [db.fn("COUNT", db.col("id")), "score"]],
-    group: ["subject"],
-    order: [
-      [db.literal('"score"'), "DESC"],
-      ["subject", "ASC"],
-    ],
-    raw: true,
-    where,
-  })) as unknown as Array<{ score: string | number; subject: string }>;
-  const profiles = rows.length
-    ? await LeaderboardProfile.findAll({
-        where: { subject: { [Op.in]: rows.map((row) => row.subject) } },
+leaderboardRouter.get(
+  "/vessels/:vesselId",
+  requirePublicLeaderboards,
+  async (request, response) => {
+    const period = getPeriod(request.query.period ?? "all");
+    if (!period) {
+      return response.status(400).send({ error: "Invalid leaderboard period" });
+    }
+    const where = {
+      entityId: request.params.vesselId,
+      kind: "vessel",
+      ...(periodStart(period)
+        ? { occurredAt: { [Op.gte]: periodStart(period) } }
+        : {}),
+    };
+    const rows = (await LeaderboardCheckin.findAll({
+      attributes: ["subject", [db.fn("COUNT", db.col("id")), "score"]],
+      group: ["subject"],
+      order: [
+        [db.literal('"score"'), "DESC"],
+        ["subject", "ASC"],
+      ],
+      raw: true,
+      where,
+    })) as unknown as Array<{ score: string | number; subject: string }>;
+    const profiles = rows.length
+      ? await LeaderboardProfile.findAll({
+          where: { subject: { [Op.in]: rows.map((row) => row.subject) } },
+        })
+      : [];
+    const profileBySubject = new Map(
+      profiles.map((profile) => [profile.subject, profile])
+    );
+    const eligibleRanks = rows
+      .map((row) => {
+        const profile = profileBySubject.get(row.subject);
+        return profile?.optedOut
+          ? null
+          : {
+              label: profile
+                ? leaderboardLabel(profile.displayName, profile.useFullName)
+                : "Anonymous",
+              score: Number(row.score),
+            };
       })
-    : [];
-  const profileBySubject = new Map(
-    profiles.map((profile) => [profile.subject, profile])
-  );
-  const eligibleRanks = rows
-    .map((row) => {
-      const profile = profileBySubject.get(row.subject);
-      return profile?.optedOut
-        ? null
-        : {
-            label: profile
-              ? leaderboardLabel(profile.displayName, profile.useFullName)
-              : "Anonymous",
-            score: Number(row.score),
-          };
-    })
-    .filter((rank): rank is { label: string; score: number } => rank !== null);
-  const ranks = limitLeaderboardRanks(eligibleRanks).map((rank, index) => ({
-    ...rank,
-    rank: index + 1,
-  }));
-  return response.send({ entityId: request.params.vesselId, period, ranks });
-});
+      .filter(
+        (rank): rank is { label: string; score: number } => rank !== null
+      );
+    const ranks = limitLeaderboardRanks(eligibleRanks).map((rank, index) => ({
+      ...rank,
+      rank: index + 1,
+    }));
+    return response.send({ entityId: request.params.vesselId, period, ranks });
+  }
+);
 
-leaderboardRouter.use(requireAuth, assignAuthUser);
+leaderboardRouter.use(
+  requireAuth,
+  assignAuthUser,
+  async (request, response, next) => {
+    response.set("Cache-Control", "no-store");
+    if (!(await leaderboardsEnabledForSubject(response.locals.user.sub))) {
+      rejectDisabledLeaderboard(response);
+      return;
+    }
+    next();
+  }
+);
 
 leaderboardRouter.delete("/account", async (request, response) => {
   await db.transaction((transaction: Transaction) =>
@@ -312,9 +349,6 @@ leaderboardRouter.delete("/account", async (request, response) => {
 leaderboardRouter.get(
   "/checkins/terminals/:terminalId/status",
   async (request, response) => {
-    if (!(await leaderboardsEnabled())) {
-      return response.status(404).send();
-    }
     const presence = await LeaderboardTerminalPresence.findOne({
       where: {
         subject: response.locals.user.sub,
@@ -331,9 +365,6 @@ leaderboardRouter.get(
 leaderboardRouter.get(
   "/checkins/vessels/:vesselId/status",
   async (request, response) => {
-    if (!(await leaderboardsEnabled())) {
-      return response.status(404).send();
-    }
     const vessel = Vessel.getByIndex(request.params.vesselId);
     const sailingId = vessel ? stableSailingId(vessel) : null;
     const checkin = sailingId
@@ -351,9 +382,6 @@ leaderboardRouter.get(
 );
 
 leaderboardRouter.post("/checkins/vessels", async (request, response) => {
-  if (!(await leaderboardsEnabled())) {
-    return response.status(404).send();
-  }
   const checkin = parseVesselCheckin(request.body);
   if (!checkin) {
     return response
@@ -453,15 +481,20 @@ leaderboardRouter.put("/preferences", async (request, response) => {
       .status(400)
       .send({ error: "Invalid leaderboard preferences" });
   }
+  if (
+    isObject(request.body) &&
+    request.body.automaticCheckinsEnabled === true
+  ) {
+    return response
+      .status(400)
+      .send({ error: "Automatic check-ins are unavailable" });
+  }
   const profile = await getProfile(response.locals.user.sub);
   await profile.update(sanitized.update);
   return response.send(serializePreferences(profile));
 });
 
 leaderboardRouter.post("/presence/terminals", async (request, response) => {
-  if (!(await leaderboardsEnabled())) {
-    return response.status(404).send();
-  }
   const location = parseLocation(request.body);
   if (!location) {
     return response
@@ -530,9 +563,6 @@ leaderboardRouter.post("/presence/terminals", async (request, response) => {
 });
 
 leaderboardRouter.post("/checkins/terminals", async (request, response) => {
-  if (!(await leaderboardsEnabled())) {
-    return response.status(404).send();
-  }
   const location = parseLocation(request.body);
   if (!location) {
     return response

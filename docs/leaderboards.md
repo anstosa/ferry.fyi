@@ -1,6 +1,27 @@
 # Leaderboards
 
-Leaderboards are server-gated by `LEADERBOARDS_ENABLED`. Foreground terminal check-ins additionally require `LEADERBOARD_FOREGROUND_CHECKINS_ENABLED`. Vessel check-ins require both the master flag and `LEADERBOARD_VESSEL_CHECKINS_ENABLED`; both default to false. The server uses the pinned `server/data/noaa-enc-harbour-puget-sound.json` NOAA ENC Direct Harbour COALNE snapshot and matching Harbour coverage polygons. Regenerate it with `node scripts/download-noaa-enc-coastline.mjs`; its adjacent metadata records source endpoints, retrieval time, SHA-256, bounding box, and non-navigation warning.
+Leaderboards use a DB-backed `leaderboards` feature flag. Public pages and
+public ranking APIs require the global enabled state and are disabled by a kill
+switch. Authenticated leaderboard/check-in requests can additionally admit a
+normalized Auth0 subject allowlist while the global flag is off; a kill switch
+still wins. The anonymous `/api/features` endpoint reports only global public
+decisions, while authenticated clients use `/api/features/me`. There is no
+percentage rollout or expiry. Automatic/background check-ins are permanently
+disabled and cannot be enabled through an admin control. The server uses the
+pinned `server/data/noaa-enc-harbour-puget-sound.json` NOAA ENC Direct Harbour
+COALNE snapshot and matching Harbour coverage polygons. Regenerate it with
+`node scripts/download-noaa-enc-coastline.mjs`; its adjacent metadata records
+source endpoints, retrieval time, SHA-256, bounding box, and non-navigation
+warning.
+
+When global leaderboard indexing is disabled, leaderboard URLs are omitted from
+the sitemap and leaderboard material is omitted from `llms.txt`; rendered
+leaderboard pages receive `noindex,follow`. When the public feature itself is
+disabled, public leaderboard APIs return `404` with a `noindex` signal. The
+web server still returns a noindex SPA shell for leaderboard paths so an
+authenticated allowlisted user can direct-navigate or refresh; that shell does
+not expose ranking data, and the private subject allowlist never makes content
+public.
 
 ## Vessel check-in contract
 
@@ -14,4 +35,4 @@ The client turns an accepted check-in response into a silent local notification.
 
 ## Foreground presence contract
 
-`POST /api/leaderboards/presence/terminals` requires authentication and the same transient payload as terminal check-in: `terminalId`, `latitude`, `longitude`, `accuracyMeters`, and `observedAt`. It is available only when the master and foreground-check-in flags are enabled. A response of `{ "recorded": true }` means the location was definitely outside the terminal geofence and the durable exit state was recorded; the submitted location evidence is discarded. It does not award a score. Clients should send this while the app is open after leaving a terminal so a later check-in can satisfy the required exit plus cooldown rule.
+`POST /api/leaderboards/presence/terminals` requires authentication and the same transient payload as terminal check-in: `terminalId`, `latitude`, `longitude`, `accuracyMeters`, and `observedAt`. It is available only when the authenticated subject is enabled for leaderboards. A response of `{ "recorded": true }` means the location was definitely outside the terminal geofence and the durable exit state was recorded; the submitted location evidence is discarded. It does not award a score. Clients should send this while the app is open after leaving a terminal so a later check-in can satisfy the required exit plus cooldown rule.

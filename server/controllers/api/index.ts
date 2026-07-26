@@ -2,7 +2,7 @@ import { RequestHandler, Response, Router } from "express";
 
 import { getWsfStatus } from "~/lib/wsf/api";
 
-import { adminRouter } from "./admin";
+import { adminRouter, preventAdminCaching } from "./admin";
 import { assignAuthUser, requireAuth } from "./auth";
 import { cameraRouter } from "./cameras";
 import { debugRouter } from "./debug";
@@ -76,7 +76,7 @@ if (process.env.NODE_ENV === "development") {
   apiRouter.use("/debug", debugRouter);
 }
 
-apiRouter.use("/admin", requireAuth, adminRouter);
+apiRouter.use("/admin", preventAdminCaching, requireAuth, adminRouter);
 apiRouter.use("/user", requireAuth, assignAuthUser, userRouter);
 
 export { apiRouter };

@@ -9,6 +9,14 @@ export default defineConfig({
     // Fare view before applying it so the component can be imported in jsdom.
     alias: [
       {
+        find: /^~\/components\/Page$/,
+        replacement: path.resolve(__dirname, "client/components/Page"),
+      },
+      {
+        find: /^~\/lib\/(api|adminConfirmation)$/,
+        replacement: path.resolve(__dirname, "client/lib/$1"),
+      },
+      {
         find: /^~\/components\/DateButton$/,
         replacement: path.resolve(__dirname, "client/components/DateButton"),
       },
@@ -42,7 +50,7 @@ export default defineConfig({
         ),
       },
       {
-        find: /^~\/lib\/(geo|leaderboardForeground|leaderboardLocation|leaderboardNotifications|leaderboards|terminals|vessels)$/,
+        find: /^~\/lib\/(featureFlags|geo|leaderboardForeground|leaderboardLocation|leaderboardNotifications|leaderboards|terminals|vessels)$/,
         replacement: path.resolve(__dirname, "client/lib/$1"),
       },
       {

@@ -1,3 +1,4 @@
+import { useAuth0 } from "@auth0/auth0-react";
 import React, {
   createContext,
   FunctionComponent,
@@ -15,49 +16,60 @@ interface FeatureFlags {
   loading: boolean;
 }
 
-const FeatureFlagContext = createContext<FeatureFlags>({
+const disabledFlags: FeatureFlags = {
   automaticLeaderboardCheckinsEnabled: false,
   leaderboardsEnabled: false,
+  loading: false,
+};
+
+const FeatureFlagContext = createContext<FeatureFlags>({
+  ...disabledFlags,
   loading: true,
 });
 
+const parseFlags = (value: unknown): FeatureFlags => ({
+  // Automatic/background check-ins are permanently unavailable for this launch.
+  automaticLeaderboardCheckinsEnabled: false,
+  leaderboardsEnabled:
+    typeof value === "object" &&
+    value !== null &&
+    "leaderboardsEnabled" in value &&
+    (value as { leaderboardsEnabled?: unknown }).leaderboardsEnabled === true,
+  loading: false,
+});
+
+/** Fetches public flags anonymously and private flags with the active subject token. */
 export const FeatureFlagProvider: FunctionComponent<PropsWithChildren> = ({
   children,
 }) => {
+  const { getAccessTokenSilently, isAuthenticated } = useAuth0();
   const [flags, setFlags] = useState<FeatureFlags>({
-    automaticLeaderboardCheckinsEnabled: false,
-    leaderboardsEnabled: false,
+    ...disabledFlags,
     loading: true,
   });
+
   useEffect(() => {
-    get("/features")
-      .then((value: unknown) => {
-        const leaderboardsEnabled =
-          typeof value === "object" &&
-          value !== null &&
-          "leaderboardsEnabled" in value &&
-          (value as { leaderboardsEnabled?: unknown }).leaderboardsEnabled ===
-            true;
-        const automaticLeaderboardCheckinsEnabled =
-          typeof value === "object" &&
-          value !== null &&
-          "automaticLeaderboardCheckinsEnabled" in value &&
-          (value as { automaticLeaderboardCheckinsEnabled?: unknown })
-            .automaticLeaderboardCheckinsEnabled === true;
-        setFlags({
-          automaticLeaderboardCheckinsEnabled,
-          leaderboardsEnabled,
-          loading: false,
-        });
-      })
-      .catch(() =>
-        setFlags({
-          automaticLeaderboardCheckinsEnabled: false,
-          leaderboardsEnabled: false,
-          loading: false,
-        })
-      );
-  }, []);
+    let cancelled = false;
+    const load = async (): Promise<void> => {
+      try {
+        const value = isAuthenticated
+          ? await get("/features/me", await getAccessTokenSilently())
+          : await get("/features");
+        if (!cancelled) {
+          setFlags(parseFlags(value));
+        }
+      } catch {
+        if (!cancelled) {
+          setFlags(disabledFlags);
+        }
+      }
+    };
+    load().catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [getAccessTokenSilently, isAuthenticated]);
+
   return (
     <FeatureFlagContext.Provider value={flags}>
       {children}

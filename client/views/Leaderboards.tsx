@@ -336,6 +336,7 @@ const Preferences = (): ReactElement => {
   const save = async (next: LeaderboardPreferences): Promise<boolean> => {
     const normalized = {
       ...next,
+      automaticCheckinsEnabled: false,
       useFullName: false,
       verboseNotificationsEnabled: false,
     };
@@ -400,37 +401,6 @@ const Preferences = (): ReactElement => {
           })
         }
       />
-      <div className="mt-4 flex items-center justify-between gap-4">
-        <span className="text-sm">
-          Automatically check in while Ferry FYI is open
-        </span>
-        <button
-          aria-checked={preferences.automaticCheckinsEnabled}
-          aria-label="Automatically check in while Ferry FYI is open"
-          className={clsx(
-            "relative h-7 w-12 shrink-0 rounded-full transition",
-            preferences.automaticCheckinsEnabled
-              ? "bg-green-dark"
-              : "bg-gray-medium"
-          )}
-          disabled={preferences.optedOut || saving}
-          onClick={() =>
-            save({
-              ...preferences,
-              automaticCheckinsEnabled: !preferences.automaticCheckinsEnabled,
-            })
-          }
-          role="switch"
-          type="button"
-        >
-          <span
-            className={clsx(
-              "absolute top-1 h-5 w-5 rounded-full bg-white shadow transition",
-              preferences.automaticCheckinsEnabled ? "left-6" : "left-1"
-            )}
-          />
-        </button>
-      </div>
       <div className="mt-4 flex items-center justify-between gap-2">
         {preferences.optedOut ? (
           <button
