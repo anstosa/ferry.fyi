@@ -15,11 +15,8 @@ const operations = vi.hoisted(() => ({
   updateWeatherForecasts: vi.fn().mockResolvedValue(undefined),
 }));
 const cacheModels = vi.hoisted(() => ({
-  Camera: { purge: vi.fn() },
   Route: { purge: vi.fn() },
   Schedule: { purge: vi.fn() },
-  Terminal: { purge: vi.fn() },
-  Vessel: { purge: vi.fn() },
 }));
 const rows = vi.hoisted(() => new Map<string, any>());
 const status = vi.hoisted(() => ({
@@ -58,11 +55,8 @@ vi.mock("~/lib/wsf", () => ({
   updateShort: operations.updateShort,
   updateUserFacingStatus: operations.updateUserFacingStatus,
 }));
-vi.mock("~/models/Camera", () => ({ Camera: cacheModels.Camera }));
 vi.mock("~/models/Route", () => ({ Route: cacheModels.Route }));
 vi.mock("~/models/Schedule", () => ({ Schedule: cacheModels.Schedule }));
-vi.mock("~/models/Terminal", () => ({ Terminal: cacheModels.Terminal }));
-vi.mock("~/models/Vessel", () => ({ Vessel: cacheModels.Vessel }));
 vi.mock("~/models/AdminOperationStatus", () => ({
   AdminOperationStatus: status,
 }));
@@ -220,12 +214,12 @@ describe("admin operation leases", () => {
     expect(operations.updateScheduleCache).toHaveBeenCalledTimes(1);
   });
 
-  it("limits cache clearing to the one named safe cache operation", async () => {
+  it("preserves core terminal data while clearing rebuildable WSF caches", async () => {
     const result = await runAdminOperation("clear-wsf-memory-cache");
 
     expect(result.operation.status).toBe("succeeded");
     expect(cacheModels.Schedule.purge).toHaveBeenCalledOnce();
-    expect(cacheModels.Camera.purge).toHaveBeenCalledOnce();
+    expect(cacheModels.Route.purge).toHaveBeenCalledOnce();
     expect(operations.updateLong).not.toHaveBeenCalled();
   });
 

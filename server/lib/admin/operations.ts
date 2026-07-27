@@ -16,11 +16,8 @@ import {
   updateUserFacingStatus,
 } from "~/lib/wsf";
 import { AdminOperationStatus } from "~/models/AdminOperationStatus";
-import { Camera } from "~/models/Camera";
 import { Route } from "~/models/Route";
 import { Schedule } from "~/models/Schedule";
-import { Terminal } from "~/models/Terminal";
-import { Vessel } from "~/models/Vessel";
 
 export const ADMIN_OPERATION_LEASE_MS = 15 * 60 * 1000;
 export const ADMIN_OPERATION_LEASE_RENEWAL_MS = ADMIN_OPERATION_LEASE_MS / 2;
@@ -81,15 +78,14 @@ const operationRegistry: Record<AdminOperationName, OperationDefinition> = {
   "clear-wsf-memory-cache": {
     adminAllowed: true,
     description:
-      "Clears in-memory WSF route, terminal, vessel, camera, and schedule caches. Persisted data is not deleted.",
+      "Clears rebuildable in-memory WSF route and schedule caches. Core terminal, vessel, and camera catalogs stay available.",
     destructive: true,
     run: async () => {
-      // These are named in-memory caches only; no persisted data is deleted.
-      Camera.purge();
+      // Terminal, vessel, and camera caches form the immediately available
+      // baseline after startup. Clearing them can leave every terminal route
+      // empty while an upstream refresh is delayed or unavailable.
       Route.purge();
       Schedule.purge();
-      Terminal.purge();
-      Vessel.purge();
     },
     trigger: "Daily at 04:00 server time.",
   },
