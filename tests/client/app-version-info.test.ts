@@ -26,7 +26,9 @@ afterEach(() => {
   act(() => root?.unmount());
   root = undefined;
   document.body.innerHTML = "";
+  document.head.innerHTML = "";
   vi.clearAllMocks();
+  vi.unstubAllEnvs();
 });
 
 const renderVersionInfo = async (): Promise<HTMLDivElement> => {
@@ -60,6 +62,19 @@ describe("getWebVersion", () => {
       })
     ).toBe("production-hash");
   });
+
+  it("prefers the release injected by the running production server", () => {
+    const document = window.document.implementation.createHTMLDocument();
+    document.head.innerHTML =
+      '<meta name="ferry-fyi-release" content="runtime-hash" />';
+
+    expect(
+      getWebVersion(
+        { HEROKU_RELEASE_VERSION: "build-hash", NODE_ENV: "production" },
+        document
+      )
+    ).toBe("runtime-hash");
+  });
 });
 
 describe("AppVersionInfo", () => {
@@ -76,6 +91,9 @@ describe("AppVersionInfo", () => {
   it("shows the Android build and OTA revision on one line", async () => {
     capacitor.isNativePlatform.mockReturnValue(true);
     capacitor.getPlatform.mockReturnValue("android");
+    vi.stubEnv("NODE_ENV", "production");
+    document.head.innerHTML =
+      '<meta name="ferry-fyi-release" content="web-build-hash" />';
     app.getInfo.mockResolvedValue({ build: "262012119", version: "3.0" });
     updater.current.mockResolvedValue({
       bundle: { id: "ota-bundle", version: "3.0.1" },
@@ -83,7 +101,7 @@ describe("AppVersionInfo", () => {
     const container = await renderVersionInfo();
 
     expect(container.textContent).toBe(
-      "Android 262012119 · OTA DEVELOPMENT"
+      "Android 262012119 · OTA web-build-hash"
     );
     expect(
       container.firstElementChild?.classList.contains("whitespace-nowrap")
@@ -98,6 +116,6 @@ describe("AppVersionInfo", () => {
 
     const container = await renderVersionInfo();
 
-    expect(container.textContent).toBe("iOS 263");
+    expect(container.textContent).toBe("iOS 263 · OTA Built-in");
   });
 });

@@ -88,6 +88,17 @@ export const clientDist = existsSync(bundledClientDist)
 const escapeHtml = (input: string): string =>
   input.replace(/[&<>"']/g, (character) => HTML_ENTITIES[character]);
 
+// The browser bundle is cached across deploys, so expose the running release
+// in HTML rather than trusting its build-time environment alone.
+export const getRuntimeReleaseVersion = (
+  environment: NodeJS.ProcessEnv = process.env
+): string | undefined => {
+  if (environment.NODE_ENV === "development") {
+    return "DEVELOPMENT";
+  }
+  return environment.HEROKU_RELEASE_VERSION;
+};
+
 const getPublicContentHtml = (content: PublicContent): string => {
   const messages = [
     ...(content.maintenance.enabled && content.maintenance.message
@@ -129,7 +140,8 @@ export const renderSeoHtml = (
   template: string,
   seo: SeoMetadata,
   baseUrl: string,
-  publicContent?: PublicContent
+  publicContent?: PublicContent,
+  releaseVersion = getRuntimeReleaseVersion()
 ): string => {
   const canonicalUrl = getSeoUrl(baseUrl, seo.canonicalPath);
   const title = escapeHtml(seo.title);
@@ -139,7 +151,16 @@ export const renderSeoHtml = (
     "\\u003c"
   );
 
+  const releaseVersionReplacement: Array<[RegExp, string]> = releaseVersion
+    ? [
+        [
+          /<meta\b(?=[^>]*\bname="ferry-fyi-release")[^>]*\/>/,
+          `<meta name="ferry-fyi-release" content="${escapeHtml(releaseVersion)}" />`,
+        ],
+      ]
+    : [];
   const replacements: Array<[RegExp, string]> = [
+    ...releaseVersionReplacement,
     [
       /<title(?: data-seo-seed="true")?>.*?<\/title>/,
       `<title data-seo-seed="true">${title}</title>`,

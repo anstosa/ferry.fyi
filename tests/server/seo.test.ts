@@ -15,6 +15,7 @@ import { createStaticRouter } from "../../server/controllers/static";
 import {
   createBrowserRateLimiter,
   createBrowserRouter,
+  getRuntimeReleaseVersion,
   getInternalRedirectPath,
   renderSeoHtml,
 } from "../../server/controllers/static/browser";
@@ -70,6 +71,41 @@ afterEach(() => {
 });
 
 describe("SEO metadata", () => {
+  it("injects the running release version into browser HTML", () => {
+    expect(
+      getRuntimeReleaseVersion({
+        HEROKU_RELEASE_VERSION: "runtime-hash",
+        NODE_ENV: "production",
+      })
+    ).toBe("runtime-hash");
+
+    const html = renderSeoHtml(
+      template.replace("%APP_RELEASE_VERSION%", "build-hash"),
+      getSeoMetadata("/about"),
+      "https://ferry.fyi",
+      undefined,
+      "runtime-hash"
+    );
+
+    expect(html).toContain(
+      '<meta name="ferry-fyi-release" content="runtime-hash" />'
+    );
+  });
+
+  it("keeps the build release when runtime metadata is unavailable", () => {
+    const html = renderSeoHtml(
+      template.replace("%APP_RELEASE_VERSION%", "build-hash"),
+      getSeoMetadata("/about"),
+      "https://ferry.fyi",
+      undefined,
+      ""
+    );
+
+    expect(html).toContain(
+      '<meta name="ferry-fyi-release" content="build-hash" />'
+    );
+  });
+
   it("rate limits filesystem-backed browser documents", async () => {
     const rateLimitedApp = express();
     rateLimitedApp.use(

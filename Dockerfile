@@ -63,8 +63,10 @@ RUN yarn install --frozen-lockfile --network-timeout 600000
 FROM node:24-bookworm-slim AS runtime
 
 WORKDIR /app
+ARG HEROKU_RELEASE_VERSION=UNKNOWN
 ENV NODE_ENV=production \
-    PORT=4040
+    PORT=4040 \
+    HEROKU_RELEASE_VERSION=${HEROKU_RELEASE_VERSION}
 
 RUN corepack enable && corepack prepare yarn@1.22.22 --activate
 

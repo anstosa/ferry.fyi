@@ -159,6 +159,8 @@ const htmlTemplatePlugin = (): Plugin => {
       }
       const values: Record<string, string> = {
         "%APP_DESCRIPTION%": SEO_DEFAULT_DESCRIPTION,
+        "%APP_RELEASE_VERSION%":
+          getEnv("HEROKU_RELEASE_VERSION", "UNKNOWN") ?? "UNKNOWN",
         "%APP_TITLE%": SEO_DEFAULT_TITLE,
         "%SEO_BASE_URL%": baseUrl,
         "%SOCIAL_IMAGE%": `${baseUrl}/static/images/social.png`,

@@ -10,12 +10,16 @@ interface Versions {
 
 // Keep local browser builds distinct from deployed web releases.
 export const getWebVersion = (
-  environment: Record<string, string | undefined> = process.env
+  environment: Record<string, string | undefined> = process.env,
+  document: Document | undefined = globalThis.document
 ): string => {
-  if (environment.NODE_ENV === "development") {
+  if (environment.NODE_ENV !== "production") {
     return "DEVELOPMENT";
   }
-  return environment.HEROKU_RELEASE_VERSION ?? "DEVELOPMENT";
+  const runtimeVersion = document
+    ?.querySelector<HTMLMetaElement>('meta[name="ferry-fyi-release"]')
+    ?.content.trim();
+  return runtimeVersion || environment.HEROKU_RELEASE_VERSION || "UNKNOWN";
 };
 
 export const getNativePlatformLabel = (platform: string): string => {
@@ -46,8 +50,11 @@ export const AppVersionInfo: FunctionComponent = () => {
 
     CapacitorUpdater.current()
       .then(({ bundle }) => {
-        if (isMounted && bundle.id !== "builtin") {
-          setVersions((current) => ({ ...current, ota: getWebVersion() }));
+        if (isMounted) {
+          setVersions((current) => ({
+            ...current,
+            ota: bundle.id === "builtin" ? "Built-in" : getWebVersion(),
+          }));
         }
       })
       .catch(() => undefined);
