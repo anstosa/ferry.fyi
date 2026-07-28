@@ -15,8 +15,8 @@ import { createStaticRouter } from "../../server/controllers/static";
 import {
   createBrowserRateLimiter,
   createBrowserRouter,
-  getRuntimeReleaseVersion,
   getInternalRedirectPath,
+  getRuntimeReleaseVersion,
   renderSeoHtml,
 } from "../../server/controllers/static/browser";
 import * as leaderboardFlags from "../../server/lib/leaderboardFlags";
