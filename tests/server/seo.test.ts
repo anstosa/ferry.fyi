@@ -30,6 +30,7 @@ import {
   getTerminalSeoMetadata,
   SEO_HOW_MANY_BOATS_BASE_URL,
   SEO_HOW_MANY_BOATS_HOST,
+  SEO_INDEXABLE_ROUTE_VIEWS,
 } from "../../shared/lib/seo";
 
 const bainbridge = {
@@ -193,13 +194,21 @@ describe("SEO metadata", () => {
     );
   });
 
-  it("noindexes dated and route-adjacent variants", () => {
+  it("indexes canonical route tabs and noindexes dated schedule variants", () => {
     expect(
       getRouteSeoMetadata(seattle, bainbridge, "schedule", true).robots
     ).toBe("noindex,follow");
-    expect(getRouteSeoMetadata(seattle, bainbridge, "cameras").robots).toBe(
-      "noindex,follow"
-    );
+    SEO_INDEXABLE_ROUTE_VIEWS.forEach((view) => {
+      expect(getRouteSeoMetadata(seattle, bainbridge, view).robots).toBe(
+        "index,follow"
+      );
+    });
+    expect(getRouteSeoMetadata(seattle, bainbridge, "cameras")).toMatchObject({
+      description:
+        "View Washington State Ferries traffic camera images and freshness details for the Seattle to Bainbridge Island route.",
+      robots: "index,follow",
+      title: "Seattle to Bainbridge Island Ferry Cameras - Ferry FYI",
+    });
   });
 
   it("creates howmanyboats host metadata for server/client parity", () => {
@@ -232,10 +241,43 @@ describe("SEO metadata", () => {
   it("keeps product pages indexable and private pages noindexed", () => {
     expect(getSeoMetadata("/forecasting").robots).toBe("index,follow");
     expect(getSeoMetadata("/data-sources").robots).toBe("index,follow");
+    expect(getSeoMetadata("/tickets")).toMatchObject({
+      robots: "index,follow",
+      title: "Washington State Ferry Tickets & Barcode Scanner - Ferry FYI",
+    });
+    expect(getSeoMetadata("/privacy")).toMatchObject({
+      robots: "index,follow",
+      title: "Privacy Policy - Ferry FYI",
+    });
+    expect(getSeoMetadata("/feedback")).toMatchObject({
+      robots: "index,follow",
+      title: "Ferry FYI Support & Feedback",
+    });
     expect(getSeoMetadata("/account").robots).toBe("noindex,follow");
     expect(getSeoUrl("https://ferry.fyi/", "/about")).toBe(
       "https://ferry.fyi/about"
     );
+  });
+
+  it("renders canonical metadata for newly indexable product pages", async () => {
+    for (const [pathname, title] of [
+      [
+        "/tickets",
+        "Washington State Ferry Tickets & Barcode Scanner - Ferry FYI",
+      ],
+      ["/privacy", "Privacy Policy - Ferry FYI"],
+      ["/feedback", "Ferry FYI Support & Feedback"],
+    ]) {
+      const response = await request(app).get(pathname).expect(200);
+
+      expect(response.text).toContain(
+        `<title data-seo-seed="true">${title.replace("&", "&amp;")}</title>`
+      );
+      expect(response.text).toContain('content="index,follow"');
+      expect(response.text).toContain(
+        `rel="canonical" href="https://ferry.fyi${pathname}"`
+      );
+    }
   });
 
   it("renders hermetic absolute crawler metadata for the homepage", () => {
@@ -324,11 +366,24 @@ describe("SEO metadata", () => {
     const fareResponse = await request(app)
       .get("/seattle/bremerton/fare")
       .expect(200);
-    expect(fareResponse.text).toContain("fare - Ferry FYI");
+    expect(fareResponse.text).toContain(
+      "Seattle to Bremerton Ferry Fares - Ferry FYI"
+    );
     expect(fareResponse.text).toContain(
       'rel="canonical" href="https://ferry.fyi/seattle/bremerton/fare"'
     );
-    expect(fareResponse.text).toContain('content="noindex,follow"');
+    expect(fareResponse.text).toContain('content="index,follow"');
+
+    for (const view of SEO_INDEXABLE_ROUTE_VIEWS) {
+      const response = await request(app)
+        .get(`/seattle/bremerton/${view}`)
+        .expect(200);
+
+      expect(response.text).toContain('content="index,follow"');
+      expect(response.text).toContain(
+        `rel="canonical" href="https://ferry.fyi/seattle/bremerton/${view}"`
+      );
+    }
 
     await request(app)
       .get("/sea/bremerton")
@@ -399,7 +454,7 @@ describe("SEO metadata", () => {
     }
   });
 
-  it("renders noindex metadata for dated and route-adjacent pages", async () => {
+  it("renders noindex metadata only for dated schedule variants", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-07-14T12:00:00-07:00"));
     process.env.BASE_URL = "https://ferry.fyi";
@@ -426,11 +481,10 @@ describe("SEO metadata", () => {
     for (const pathname of [
       "/seattle/bremerton/cameras",
       "/seattle/bremerton/map",
-      "/today",
     ]) {
       const response = await request(app).get(pathname).expect(200);
 
-      expect(response.text).toContain('content="noindex,follow"');
+      expect(response.text).toContain('content="index,follow"');
     }
   });
 

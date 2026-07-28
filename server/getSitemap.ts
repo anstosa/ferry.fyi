@@ -8,6 +8,7 @@ import {
   getTerminalSeoMetadata,
   SEO_CONTENT_LAST_MODIFIED,
   SEO_INDEXABLE_PATHS,
+  SEO_INDEXABLE_ROUTE_VIEWS,
 } from "shared/lib/seo";
 import { SitemapStream, streamToPromise } from "sitemap";
 
@@ -25,6 +26,11 @@ export const getSitemapUrls = (
     urls.push(
       ...terminal.mates.map(
         (mate) => getRouteSeoMetadata(terminal, mate).canonicalPath
+      ),
+      ...terminal.mates.flatMap((mate) =>
+        SEO_INDEXABLE_ROUTE_VIEWS.map(
+          (view) => getRouteSeoMetadata(terminal, mate, view).canonicalPath
+        )
       )
     );
     if (terminal.mates.length > 0) {

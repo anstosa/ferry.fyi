@@ -6,10 +6,12 @@ import {
   getRouteSeoMetadata,
   getTerminalSeoMetadata,
   SEO_CONTENT_LAST_MODIFIED,
+  SEO_INDEXABLE_PATHS,
+  SEO_INDEXABLE_ROUTE_VIEWS,
 } from "../../shared/lib/seo";
 
 describe("sitemap URLs", () => {
-  it("includes only indexable static, route, and renderable terminal pages", () => {
+  it("includes only indexable static, route-tab, and renderable terminal pages", () => {
     const bainbridge = {
       name: "Bainbridge Island",
       slug: "bainbridge-island",
@@ -23,16 +25,25 @@ describe("sitemap URLs", () => {
     bainbridge.mates = [seattle];
     const orphan = { name: "Orphan", slug: "orphan", mates: [] as any[] };
 
-    expect(getSitemapUrls([seattle, bainbridge, orphan] as any)).toEqual([
-      "/",
-      "/about",
-      "/forecasting",
-      "/data-sources",
-      "/seattle",
-      "/seattle/terminal",
-      "/bainbridge-island",
-      "/bainbridge-island/terminal",
-    ]);
+    expect(getSitemapUrls([seattle, bainbridge, orphan] as any)).toEqual(
+      expect.arrayContaining([
+        "/",
+        "/tickets",
+        "/privacy",
+        "/feedback",
+        "/seattle",
+        "/seattle/terminal",
+        "/bainbridge-island",
+        "/bainbridge-island/terminal",
+        ...SEO_INDEXABLE_ROUTE_VIEWS.map((view) => `/seattle/${view}`),
+        ...SEO_INDEXABLE_ROUTE_VIEWS.map(
+          (view) => `/bainbridge-island/${view}`
+        ),
+      ])
+    );
+    expect(getSitemapUrls([seattle, bainbridge, orphan] as any)).toHaveLength(
+      SEO_INDEXABLE_PATHS.length + 2 * (2 + SEO_INDEXABLE_ROUTE_VIEWS.length)
+    );
     expect(getSitemapUrls([seattle] as any)).toContain(
       getRouteSeoMetadata(seattle, bainbridge).canonicalPath
     );
@@ -42,11 +53,16 @@ describe("sitemap URLs", () => {
   });
 
   it("includes leaderboard entity URLs only when enabled", () => {
-    const terminal = { id: "seattle", mates: [], name: "Seattle", slug: "seattle" };
+    const terminal = {
+      id: "seattle",
+      mates: [],
+      name: "Seattle",
+      slug: "seattle",
+    };
     const vessel = { id: "kaleetan", name: "Kaleetan" };
-    expect(getSitemapUrls([terminal] as any, [vessel] as any, false)).not.toContain(
-      "/leaderboards/terminals/seattle"
-    );
+    expect(
+      getSitemapUrls([terminal] as any, [vessel] as any, false)
+    ).not.toContain("/leaderboards/terminals/seattle");
     expect(getSitemapUrls([terminal] as any, [vessel] as any, true)).toEqual(
       expect.arrayContaining([
         "/leaderboards/terminals/seattle",

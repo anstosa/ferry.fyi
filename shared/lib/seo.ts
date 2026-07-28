@@ -35,7 +35,7 @@ export const SEO_DEFAULT_DESCRIPTION =
 export const SEO_DEFAULT_TITLE =
   "Ferry FYI - Washington State Ferries Schedules & Tracker";
 // Update when the server-rendered indexable content changes substantially.
-export const SEO_CONTENT_LAST_MODIFIED = "2026-07-22";
+export const SEO_CONTENT_LAST_MODIFIED = "2026-07-28";
 export const SEO_HOW_MANY_BOATS_BASE_URL = "https://howmanyboats.today";
 export const SEO_HOW_MANY_BOATS_HOST = "howmanyboats.today";
 export const SEO_ROUTE_VIEWS: readonly SeoView[] = [
@@ -46,11 +46,21 @@ export const SEO_ROUTE_VIEWS: readonly SeoView[] = [
   "subscribe",
   "fare",
 ];
+export const SEO_INDEXABLE_ROUTE_VIEWS = [
+  "cameras",
+  "map",
+  "alerts",
+  "subscribe",
+  "fare",
+] as const satisfies readonly Exclude<SeoView, "terminal">[];
 export const SEO_INDEXABLE_PATHS = [
   "/",
   "/about",
   "/forecasting",
   "/data-sources",
+  "/tickets",
+  "/privacy",
+  "/feedback",
 ] as const;
 
 const fixedPages: Record<string, Pick<SeoMetadata, "title" | "description">> = {
@@ -68,6 +78,21 @@ const fixedPages: Record<string, Pick<SeoMetadata, "title" | "description">> = {
     title: "Ferry FYI Data Sources and API Guide",
     description:
       "Learn how Ferry FYI sources, timestamps, and explains Washington State Ferries schedules, vessel context, forecasts, cameras, weather, tide data, and public read-only APIs.",
+  },
+  "/tickets": {
+    title: "Washington State Ferry Tickets & Barcode Scanner - Ferry FYI",
+    description:
+      "Store eligible Washington State Ferry ticket details in Ferry FYI, refresh ticket status, and scan ticket barcodes when supported.",
+  },
+  "/privacy": {
+    title: "Privacy Policy - Ferry FYI",
+    description:
+      "Learn how Ferry FYI handles account, location, ticket, notification, analytics, and diagnostic information.",
+  },
+  "/feedback": {
+    title: "Ferry FYI Support & Feedback",
+    description:
+      "Get Ferry FYI support, report a problem, or request a feature for Washington State Ferries trip planning.",
   },
 };
 
@@ -219,19 +244,57 @@ export const getRouteSeoMetadata = (
   const routePath = `/${terminal.slug}${matePath}`;
   const isSchedule = view === "schedule";
   const canonicalPath = isSchedule ? routePath : `${routePath}/${view}`;
-  const title = isSchedule
-    ? `${terminal.name} to ${mate.name} Ferry Schedule - ${SEO_APP_NAME}`
-    : `${terminal.name} to ${mate.name} ${view} - ${SEO_APP_NAME}`;
-  const description = isSchedule
-    ? `Washington State Ferries schedules, sailing times, vehicle-capacity forecasts, and service information for the ${terminal.name} to ${mate.name} route.`
-    : `Current Washington State Ferries ${view} for the ${terminal.name} to ${mate.name} route.`;
+  const routeName = `${terminal.name} to ${mate.name}`;
+  const routePage = getRoutePageCopy(routeName, view);
   return {
     canonicalPath,
-    description,
-    robots: isSchedule && !isDated ? "index,follow" : "noindex,follow",
-    schema: getWebPageSchema(title, description, canonicalPath),
-    title,
+    description: routePage.description,
+    robots: isDated ? "noindex,follow" : "index,follow",
+    schema: getWebPageSchema(
+      routePage.title,
+      routePage.description,
+      canonicalPath
+    ),
+    title: routePage.title,
   };
+};
+
+const getRoutePageCopy = (
+  routeName: string,
+  view: Exclude<SeoView, "terminal">
+): Pick<SeoMetadata, "title" | "description"> => {
+  switch (view) {
+    case "cameras":
+      return {
+        title: `${routeName} Ferry Cameras - ${SEO_APP_NAME}`,
+        description: `View Washington State Ferries traffic camera images and freshness details for the ${routeName} route.`,
+      };
+    case "map":
+      return {
+        title: `${routeName} Ferry Map & Vessel Locations - ${SEO_APP_NAME}`,
+        description: `Explore ferry vessel locations, route context, and terminal geography for the ${routeName} route.`,
+      };
+    case "alerts":
+      return {
+        title: `${routeName} Ferry Service Alerts - ${SEO_APP_NAME}`,
+        description: `See current Washington State Ferries service bulletins, cancellations, and route alerts for ${routeName}.`,
+      };
+    case "subscribe":
+      return {
+        title: `${routeName} Ferry Alerts & Notifications - ${SEO_APP_NAME}`,
+        description: `Get Washington State Ferries service-alert and sailing notifications for the ${routeName} route.`,
+      };
+    case "fare":
+      return {
+        title: `${routeName} Ferry Fares - ${SEO_APP_NAME}`,
+        description: `Find Washington State Ferries fare information and plan a fare quote for the ${routeName} route.`,
+      };
+    case "schedule":
+      return {
+        title: `${routeName} Ferry Schedule - ${SEO_APP_NAME}`,
+        description: `Washington State Ferries schedules, sailing times, vehicle-capacity forecasts, and service information for the ${routeName} route.`,
+      };
+  }
 };
 
 export const getDatedSeoTitle = (

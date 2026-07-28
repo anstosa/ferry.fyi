@@ -3,9 +3,9 @@
 ## After an SEO release
 
 1. Verify `https://ferry.fyi/robots.txt` and `https://ferry.fyi/sitemap.xml` return
-   `200` and include only canonical, indexable URLs.
+   `200` and include only canonical, indexable URLs, including public route tabs.
 2. In Google Search Console and Bing Webmaster Tools, submit the sitemap and inspect
-   the home page, one terminal page, and one route page.
+   the home page, one terminal page, one route tab, and one informational page.
 3. Request recrawls for URLs that changed from `200` to `404` or a permanent
    redirect. Do not block those URLs in `robots.txt`; crawlers must be able to
    observe their status or `noindex` directive.
