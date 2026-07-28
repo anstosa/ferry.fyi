@@ -34,7 +34,7 @@ import { AppTeaser } from "~/components/AppTeaser";
 import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { Page } from "~/components/Page";
 import { SeoHelmet } from "~/components/SeoHelmet";
-import { Splash } from "~/components/Splash";
+import { Skeleton, SkeletonGroup } from "~/components/Skeleton";
 import { Toast } from "~/components/Toast";
 import { get } from "~/lib/api";
 import { useQuery } from "~/lib/browser";
@@ -149,6 +149,53 @@ const IMAGE_DECODE_CROP_CENTERS = [
   { x: 0.5, y: 0.7 },
   { x: 0.68, y: 0.7 },
 ];
+
+const TicketsLoadingState = (): ReactElement => (
+  <Page title="Tickets">
+    <SkeletonGroup className="space-y-5" label="Loading tickets">
+      <section className="overflow-hidden rounded-2xl bg-[linear-gradient(135deg,#016f52_0%,#004d61_100%)] p-5 sm:p-6">
+        <Skeleton className="h-4 w-20 bg-white/20" variant="text" />
+        <Skeleton className="mt-3 h-9 w-3/4 bg-white/20" variant="text" />
+        <div className="mt-6 grid gap-3 sm:grid-cols-3">
+          <Skeleton className="h-20 bg-white/20" />
+          <Skeleton className="h-20 bg-white/20" />
+          <Skeleton className="h-20 bg-white/20" />
+        </div>
+      </section>
+      {[0, 1].map((index) => (
+        <section
+          className="rounded-2xl border border-[rgba(0,0,0,0.08)] bg-white p-4 shadow-sm dark:border-[rgba(255,255,255,0.08)] dark:bg-[#00202a]"
+          key={index}
+        >
+          <Skeleton className="h-5 w-2/5" variant="text" />
+          <Skeleton className="mt-3 h-4 w-3/5" variant="text" />
+        </section>
+      ))}
+    </SkeletonGroup>
+  </Page>
+);
+
+const TicketOverlayLoadingState = (): ReactElement => (
+  <div className="fixed inset-0 z-20 flex items-center justify-center bg-[rgba(0,20,26,0.86)] px-4 py-8 backdrop-blur-md">
+    <SkeletonGroup
+      className="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl dark:bg-[#00202a]"
+      label="Loading ticket"
+    >
+      <div className="space-y-3 bg-green-dark p-5">
+        <Skeleton className="h-5 w-24 bg-white/20" variant="text" />
+        <Skeleton className="h-8 w-3/5 bg-white/20" variant="text" />
+      </div>
+      <div className="space-y-5 p-5">
+        <Skeleton className="mx-auto h-56 w-full max-w-xs" />
+        <Skeleton className="mx-auto h-4 w-3/4" variant="text" />
+        <div className="grid grid-cols-2 gap-3">
+          <Skeleton className="h-11" />
+          <Skeleton className="h-11" />
+        </div>
+      </div>
+    </SkeletonGroup>
+  </div>
+);
 const IMAGE_DECODE_CROP_SCALES = [0.24, 0.32, 0.42, 0.58, 0.74];
 const IMAGE_DECODE_MAX_VARIANTS = 72;
 const IMAGE_DECODE_MIN_CANVAS_SIZE = 900;
@@ -897,7 +944,7 @@ export const Tickets = (): ReactElement => {
   }, [openTicketId, tickets]);
 
   if (!device) {
-    return <Splash />;
+    return <TicketsLoadingState />;
   }
 
   // maximize screen brightness
@@ -1484,7 +1531,7 @@ export const Tickets = (): ReactElement => {
       ) : null}
 
       {expanded && (
-        <Suspense fallback={<Splash />}>
+        <Suspense fallback={<TicketOverlayLoadingState />}>
           <BarcodeOverlay
             ticket={expanded}
             onRefresh={

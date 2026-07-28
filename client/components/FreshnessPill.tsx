@@ -12,6 +12,7 @@ import { formatUpdatedAt } from "../../shared/lib/freshness";
 interface FreshnessPillBaseProps {
   className?: string;
   now?: number;
+  passive?: boolean;
   sourceUpdatedAt: number | null;
   verb?: "Checked" | "Updated";
 }
@@ -49,6 +50,7 @@ export const FreshnessPill = (
   const {
     className,
     now: fixedNow,
+    passive = false,
     sourceUpdatedAt,
     verb,
     ...elementProps
@@ -104,9 +106,9 @@ export const FreshnessPill = (
   return (
     <span
       {...elementProps}
-      aria-label={label}
+      aria-label={passive ? undefined : label}
       className={classes}
-      role="status"
+      role={passive ? undefined : "status"}
     >
       {label}
     </span>

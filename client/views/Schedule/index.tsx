@@ -14,7 +14,7 @@ import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { FreshnessPill } from "~/components/FreshnessPill";
 import { PageLoadError } from "~/components/PageLoadError";
 import { Prompt } from "~/components/Prompt";
-import { Skeleton, SkeletonGroup } from "~/components/Skeleton";
+import { ScheduleLoadingRows } from "~/components/ScheduleLoadingRows";
 import { Toast } from "~/components/Toast";
 import { useQuery } from "~/lib/browser";
 import { isWSFToday } from "~/lib/date";
@@ -294,20 +294,9 @@ export const Schedule = ({
 
 const ScheduleLoadingSkeleton = (): ReactElement => {
   return (
-    <SkeletonGroup className="space-y-2 p-2" label="Loading schedule">
-      {[0, 1, 2, 3, 4].map((index) => (
-        <div
-          className="flex items-center gap-4 rounded-lg border border-[rgba(0,0,0,0.08)] p-4 dark:border-[rgba(255,255,255,0.08)]"
-          key={index}
-        >
-          <Skeleton className="h-8 w-16 shrink-0" variant="text" />
-          <div className="min-w-0 flex-1 space-y-2">
-            <Skeleton className="h-5 w-2/5" variant="text" />
-            <Skeleton className="h-4 w-3/5" variant="text" />
-          </div>
-          <Skeleton className="h-8 w-8 shrink-0" variant="circle" />
-        </div>
-      ))}
-    </SkeletonGroup>
+    <ScheduleLoadingRows
+      className="h-[calc(100vh-8rem-var(--safe-area-inset-top)-var(--safe-area-inset-bottom))]"
+      label="Loading schedule"
+    />
   );
 };

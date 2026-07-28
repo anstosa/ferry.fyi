@@ -603,7 +603,9 @@ export const Route = ({
             className={`route-tab-motion route-tab-motion--${tabDirection}`}
             key={contentMotionKey}
           >
-            <Suspense fallback={<RouteLoadingState view={view} />}>
+            <Suspense
+              fallback={<RouteLoadingState hasRouteFooter view={view} />}
+            >
               {content}
             </Suspense>
           </div>

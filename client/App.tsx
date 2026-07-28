@@ -14,6 +14,7 @@ import {
   useRoutes,
 } from "react-router-dom";
 
+import { AppLoadingState } from "~/components/AppLoadingState";
 import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { InstallPromptToast } from "~/components/InstallPromptToast";
 import { LeaderboardForegroundCheckins } from "~/components/LeaderboardForegroundCheckins";
@@ -295,7 +296,7 @@ export const App = (): ReactElement => {
   if (element) {
     return (
       <>
-        <Suspense fallback={<Splash />}>{element}</Suspense>
+        <Suspense fallback={<AppLoadingState />}>{element}</Suspense>
         <AnimatePresence>
           {!isOnline && !offlineDismissed && (
             <Prompt
@@ -331,6 +332,6 @@ export const App = (): ReactElement => {
       </>
     );
   } else {
-    return <Splash />;
+    return <AppLoadingState />;
   }
 };

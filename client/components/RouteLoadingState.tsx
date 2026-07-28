@@ -2,9 +2,11 @@ import React, { type ReactElement } from "react";
 
 import type { RouteView } from "~/lib/routeViews";
 
+import { ScheduleLoadingRows } from "./ScheduleLoadingRows";
 import { Skeleton, SkeletonGroup } from "./Skeleton";
 
 interface Props {
+  hasRouteFooter?: boolean;
   view: RouteView;
 }
 
@@ -19,41 +21,50 @@ const routeLoadingLabels: Record<RouteView, string> = {
 };
 
 const RouteHeaderSkeleton = (): ReactElement => (
-  <header className="flex h-16 items-center gap-3 bg-green-dark px-4 dark:bg-blue-dark">
-    <Skeleton className="h-8 w-8 shrink-0 bg-white/20" variant="circle" />
-    <Skeleton className="mx-auto h-7 w-40 max-w-[45%] bg-white/20" />
-    <Skeleton className="h-10 w-10 shrink-0 bg-white/20" />
-  </header>
+  <>
+    <div className="h-safe-top bg-green-dark dark:bg-blue-dark" />
+    <header className="flex h-16 items-center gap-3 bg-green-dark px-4 dark:bg-blue-dark">
+      <Skeleton className="h-8 w-8 shrink-0 bg-white/20" variant="circle" />
+      <Skeleton className="mx-auto h-7 w-40 max-w-[45%] bg-white/20" />
+      <Skeleton className="h-10 w-10 shrink-0 bg-white/20" />
+    </header>
+  </>
 );
 
-const PageShell = ({ children }: { children: ReactElement }): ReactElement => (
-  <main className="flex min-h-screen flex-col bg-day-normal-light text-gray-dark dark:bg-night-normal-dark dark:text-[#e0f0f4]">
+const PageShell = ({
+  children,
+  hasRouteFooter = false,
+}: {
+  children: ReactElement;
+  hasRouteFooter?: boolean;
+}): ReactElement => (
+  <main
+    className={
+      hasRouteFooter
+        ? "flex min-h-[calc(100vh-4rem-var(--safe-area-inset-bottom))] flex-col bg-day-normal-light text-gray-dark dark:bg-night-normal-dark dark:text-[#e0f0f4]"
+        : "flex min-h-screen flex-col bg-day-normal-light text-gray-dark dark:bg-night-normal-dark dark:text-[#e0f0f4]"
+    }
+  >
     <RouteHeaderSkeleton />
     {children}
   </main>
 );
 
-const ScheduleLoadingState = (): ReactElement => (
-  <PageShell>
-    <div className="grid h-[calc(100vh-4rem)] grid-rows-8 gap-px p-1">
-      {Array.from({ length: 8 }, (_, index) => (
-        <div
-          className="relative min-h-0 bg-white dark:bg-gray-darkest"
-          key={index}
-        >
-          <Skeleton className="absolute right-3 top-3 h-10 w-10" />
-          <Skeleton
-            className="absolute bottom-3 left-3 h-3 w-2/5"
-            variant="text"
-          />
-        </div>
-      ))}
-    </div>
+const ScheduleLoadingState = ({ hasRouteFooter }: Props): ReactElement => (
+  <PageShell hasRouteFooter={hasRouteFooter}>
+    <ScheduleLoadingRows
+      className={
+        hasRouteFooter
+          ? "h-[calc(100vh-8rem-var(--safe-area-inset-top)-var(--safe-area-inset-bottom))]"
+          : "h-[calc(100vh-4rem-var(--safe-area-inset-top))]"
+      }
+      label="Loading route schedule"
+    />
   </PageShell>
 );
 
-const FareLoadingState = (): ReactElement => (
-  <PageShell>
+const FareLoadingState = ({ hasRouteFooter }: Props): ReactElement => (
+  <PageShell hasRouteFooter={hasRouteFooter}>
     <div className="mx-auto w-full max-w-6xl space-y-4 p-4">
       <section className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-blue-dark">
         <Skeleton className="h-7 w-40" variant="text" />
@@ -78,8 +89,8 @@ const FareLoadingState = (): ReactElement => (
   </PageShell>
 );
 
-const CamerasLoadingState = (): ReactElement => (
-  <PageShell>
+const CamerasLoadingState = ({ hasRouteFooter }: Props): ReactElement => (
+  <PageShell hasRouteFooter={hasRouteFooter}>
     <div className="mx-auto w-full max-w-6xl space-y-8 px-4 py-6 sm:pl-16">
       {[0, 1].map((index) => (
         <div className="w-full max-w-[480px]" key={index}>
@@ -94,8 +105,8 @@ const CamerasLoadingState = (): ReactElement => (
   </PageShell>
 );
 
-const TerminalLoadingState = (): ReactElement => (
-  <PageShell>
+const TerminalLoadingState = ({ hasRouteFooter }: Props): ReactElement => (
+  <PageShell hasRouteFooter={hasRouteFooter}>
     <div className="mx-auto w-full max-w-6xl space-y-6 p-4 pb-8">
       <section>
         <div className="flex items-center gap-4">
@@ -125,14 +136,23 @@ const TerminalLoadingState = (): ReactElement => (
   </PageShell>
 );
 
-const MapLoadingState = (): ReactElement => (
-  <PageShell>
-    <Skeleton className="min-h-[calc(100vh-4rem)] w-full flex-grow rounded-none" />
+const MapLoadingState = ({ hasRouteFooter }: Props): ReactElement => (
+  <PageShell hasRouteFooter={hasRouteFooter}>
+    <Skeleton
+      className={
+        hasRouteFooter
+          ? "h-[calc(100vh-8rem-var(--safe-area-inset-top)-var(--safe-area-inset-bottom))] w-full flex-grow rounded-none"
+          : "h-[calc(100vh-4rem-var(--safe-area-inset-top))] w-full flex-grow rounded-none"
+      }
+    />
   </PageShell>
 );
 
-const AlertsLoadingState = (): ReactElement => (
-  <PageShell>
+const skeletonCardClasses =
+  "rounded-2xl border border-[rgba(0,0,0,0.08)] bg-white shadow-sm dark:border-[rgba(255,255,255,0.08)] dark:bg-[#00202a]";
+
+const AlertsLoadingState = ({ hasRouteFooter }: Props): ReactElement => (
+  <PageShell hasRouteFooter={hasRouteFooter}>
     <div className="mx-auto w-full max-w-6xl space-y-4 px-4 py-5 sm:px-6">
       <section className="rounded-2xl bg-[#016f52] p-4 sm:p-5">
         <div className="flex items-start gap-3">
@@ -162,10 +182,10 @@ const AlertsLoadingState = (): ReactElement => (
   </PageShell>
 );
 
-const SubscribeLoadingState = (): ReactElement => (
-  <PageShell>
+const SubscribeLoadingState = ({ hasRouteFooter }: Props): ReactElement => (
+  <PageShell hasRouteFooter={hasRouteFooter}>
     <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-5 pb-24 sm:px-6">
-      <section className="rounded-2xl border border-[rgba(0,0,0,0.08)] bg-white p-5 shadow-sm dark:border-[rgba(255,255,255,0.08)] dark:bg-[#00202a]">
+      <section className={`${skeletonCardClasses} p-5`}>
         <div className="flex items-start gap-3">
           <Skeleton className="h-11 w-11 shrink-0" variant="circle" />
           <div className="flex-1 space-y-3">
@@ -175,14 +195,14 @@ const SubscribeLoadingState = (): ReactElement => (
           </div>
         </div>
       </section>
-      <section className="rounded-2xl border border-[rgba(0,0,0,0.08)] bg-white p-4 shadow-sm dark:border-[rgba(255,255,255,0.08)] dark:bg-[#00202a]">
+      <section className={`${skeletonCardClasses} p-4`}>
         <Skeleton className="h-6 w-32" variant="text" />
         <div className="mt-4 space-y-3">
           <Skeleton className="h-20 w-full" />
           <Skeleton className="h-20 w-full" />
         </div>
       </section>
-      <section className="rounded-2xl border border-[rgba(0,0,0,0.08)] bg-white p-4 shadow-sm dark:border-[rgba(255,255,255,0.08)] dark:bg-[#00202a]">
+      <section className={`${skeletonCardClasses} p-4`}>
         <Skeleton className="h-6 w-36" variant="text" />
         <div className="mt-4 grid gap-2 sm:grid-cols-2">
           <Skeleton className="h-20 w-full" />
@@ -193,7 +213,7 @@ const SubscribeLoadingState = (): ReactElement => (
   </PageShell>
 );
 
-const loadingContent: Record<RouteView, () => ReactElement> = {
+const loadingContent: Record<RouteView, (props: Props) => ReactElement> = {
   alerts: AlertsLoadingState,
   cameras: CamerasLoadingState,
   fare: FareLoadingState,
@@ -204,12 +224,15 @@ const loadingContent: Record<RouteView, () => ReactElement> = {
 };
 
 /** Layout-specific placeholder while a Route tab's lazy view is loading. */
-export const RouteLoadingState = ({ view }: Props): ReactElement => {
+export const RouteLoadingState = ({
+  hasRouteFooter = false,
+  view,
+}: Props): ReactElement => {
   const Content = loadingContent[view];
 
   return (
     <SkeletonGroup className="flex-grow" label={routeLoadingLabels[view]}>
-      <Content />
+      <Content hasRouteFooter={hasRouteFooter} view={view} />
     </SkeletonGroup>
   );
 };

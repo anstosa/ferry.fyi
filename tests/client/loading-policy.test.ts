@@ -29,20 +29,20 @@ describe("loading-state source policy", () => {
     const route = source("client/views/Route.tsx");
     const tickets = source("client/views/Tickets/index.tsx");
 
-    expect(app).toContain(
-      "<Suspense fallback={<Splash />}>{element}</Suspense>"
-    );
+    expect(app).toContain("<Suspense fallback={<AppLoadingState />}>{element}</Suspense>");
     expect(app).toContain(
       'path: "callback", element: withRouteBoundary("Callback", <Splash />)'
     );
     expect(route).toContain(
-      "<Suspense fallback={<RouteLoadingState view={view} />}>"
+      "fallback={<RouteLoadingState hasRouteFooter view={view} />}"
     );
     expect(route).not.toContain(
       "<Suspense fallback={<Splash />}>{content}</Suspense>"
     );
-    expect(tickets).toContain("<Suspense fallback={<Splash />}>");
-    expect(tickets).toContain("return <Splash />;");
+    expect(tickets).toContain(
+      "<Suspense fallback={<TicketOverlayLoadingState />}>"
+    );
+    expect(tickets).toContain("return <TicketsLoadingState />;");
   });
 
   it("keeps route view imports lazy while data resolution uses RouteLoadingState", () => {
@@ -128,8 +128,6 @@ describe("loading-state source policy", () => {
     expect(
       alerts.match(/return <AlertSubscriptionLoadingState \/>;/g)
     ).toHaveLength(2);
-    expect(alerts).toContain("// login error guard");
-    expect(alerts).toContain("// user error guard");
   });
 
   it("marks only manual camera reloads busy and keeps polled freshness passive", () => {

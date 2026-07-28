@@ -1,6 +1,5 @@
-import React, { type ReactElement, useEffect, useState } from "react";
+import React, { type ReactElement } from "react";
 import type { CameraFrameStatus } from "shared/contracts/cameraFrames";
-import { formatUpdatedAt } from "shared/lib/freshness";
 
 import { FreshnessPill } from "./FreshnessPill";
 
@@ -21,14 +20,14 @@ export const CameraFrameFreshness = ({
   now,
   passive = false,
 }: CameraFrameFreshnessProps): ReactElement => {
-  if (passive) {
-    return <PassiveCameraFrameFreshness frameStatus={frameStatus} now={now} />;
-  }
-
   // Initial fetch guard
   if (!frameStatus) {
     return (
-      <span aria-live="polite" className={className} role="status">
+      <span
+        aria-live={passive ? undefined : "polite"}
+        className={className}
+        role={passive ? undefined : "status"}
+      >
         Checking image…
       </span>
     );
@@ -41,6 +40,7 @@ export const CameraFrameFreshness = ({
       <FreshnessPill
         className={className}
         now={now}
+        passive={passive}
         sourceUpdatedAt={frameStatus.checkedAt}
         verb="Checked"
       />
@@ -51,50 +51,8 @@ export const CameraFrameFreshness = ({
     <FreshnessPill
       className={className}
       now={now}
+      passive={passive}
       sourceUpdatedAt={sourceUpdatedAt}
     />
   );
-};
-
-const PassiveCameraFrameFreshness = ({
-  frameStatus,
-  now: fixedNow,
-}: Omit<CameraFrameFreshnessProps, "passive">): ReactElement => {
-  const [currentNow, setCurrentNow] = useState(() => Date.now() / 1000);
-  const now = fixedNow ?? currentNow;
-
-  useEffect(() => {
-    if (fixedNow !== undefined) {
-      return undefined;
-    }
-
-    const updateClock = (): void => setCurrentNow(Date.now() / 1000);
-    const delay = 60_000 - (Date.now() % 60_000);
-    let interval: number | undefined;
-    const timeout = window.setTimeout(() => {
-      updateClock();
-      interval = window.setInterval(updateClock, 60_000);
-    }, delay);
-
-    return () => {
-      window.clearTimeout(timeout);
-      if (interval !== undefined) {
-        window.clearInterval(interval);
-      }
-    };
-  }, [fixedNow]);
-
-  if (!frameStatus) {
-    return <span className={className}>Checking image…</span>;
-  }
-
-  const sourceUpdatedAt = frameStatus.frameUpdatedAt;
-  const hasSourceUpdatedAt = Number.isFinite(sourceUpdatedAt);
-  const label = formatUpdatedAt(
-    hasSourceUpdatedAt ? sourceUpdatedAt : frameStatus.checkedAt,
-    now,
-    hasSourceUpdatedAt ? undefined : "Checked"
-  );
-
-  return <span className={className}>{label}</span>;
 };

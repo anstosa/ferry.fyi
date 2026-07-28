@@ -22,33 +22,21 @@ const SpinWrapper: FunctionComponent<PropsWithChildren<SpinWrapperProps>> = ({
   children,
   isLoading,
 }) => {
-  const [isLastSpin, setLastSpin] = useState(false);
-  const [isSpinning, setSpinning] = useState<boolean>(false);
-  const [spinInterval, setSpinInterval] = useState<number | null>(null);
+  const [isSpinning, setSpinning] = useState(isLoading);
 
   useEffect(() => {
     if (isLoading) {
-      setLastSpin(false);
       setSpinning(true);
-      let spinCount = 0;
-      const interval = window.setInterval(() => {
-        spinCount++;
-        if (isLastSpin || spinCount > 30) {
-          setSpinning(false);
-          if (interval) {
-            window.clearInterval(interval);
-          }
-        }
-      }, 1000);
-      setSpinInterval(interval);
-    } else {
-      setLastSpin(true);
+      return undefined;
     }
 
+    const stopAfterCurrentRotation = window.setTimeout(
+      () => setSpinning(false),
+      1000
+    );
+
     return () => {
-      if (spinInterval) {
-        window.clearInterval(spinInterval);
-      }
+      window.clearTimeout(stopAfterCurrentRotation);
     };
   }, [isLoading]);
 
