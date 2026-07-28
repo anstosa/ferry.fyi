@@ -8,6 +8,7 @@ import type {
 } from "shared/contracts/admin";
 
 import { Page } from "~/components/Page";
+import { Skeleton, SkeletonGroup } from "~/components/Skeleton";
 import { confirmationPhrase } from "~/lib/adminConfirmation";
 import { del, get, post, put } from "~/lib/api";
 
@@ -263,12 +264,28 @@ const NotificationUserSelector = ({
   </div>
 );
 
+const AdminLoadingSkeleton = ({
+  label,
+  rows = 3,
+}: {
+  label: string;
+  rows?: number;
+}): ReactElement => (
+  <SkeletonGroup className="mt-4 space-y-3" label={label}>
+    <Skeleton className="h-6 w-2/5" variant="text" />
+    {Array.from({ length: rows }, (_, index) => (
+      <Skeleton className="h-16 w-full" key={index} />
+    ))}
+  </SkeletonGroup>
+);
+
 const AdminSection = ({
   active,
   children,
   description,
   id,
   load,
+  loadingFallback,
   title,
 }: {
   active: boolean;
@@ -276,6 +293,7 @@ const AdminSection = ({
   description: string;
   id: string;
   load?: () => Promise<void>;
+  loadingFallback: ReactNode;
   title: string;
 }): ReactElement | null => {
   const [loaded, setLoaded] = useState(false);
@@ -288,10 +306,17 @@ const AdminSection = ({
     load()
       .then(() => setLoaded(true))
       .catch(() => setError(`Could not load ${title.toLowerCase()}.`));
-  }, [active, load, loaded, title]);
+  }, [active, error, load, loaded, title]);
 
   if (!active) {
     return null;
+  }
+
+  let sectionContent: ReactNode = loadingFallback;
+  if (error) {
+    sectionContent = <p className="mt-3 text-sm text-red-dark">{error}</p>;
+  } else if (loaded) {
+    sectionContent = children;
   }
 
   return (
@@ -305,8 +330,7 @@ const AdminSection = ({
       <p className="mt-2 text-sm text-gray-dark dark:text-gray-light">
         {description}
       </p>
-      {error && <p className="mt-3 text-sm text-red-dark">{error}</p>}
-      {!error && children}
+      {sectionContent}
     </section>
   );
 };
@@ -538,6 +562,9 @@ export const Admin = (): ReactElement => {
       setUserPage(directory.page);
     } catch {
       setUserDirectoryError("Could not load the user directory.");
+      if (!userDirectory) {
+        throw new Error("Could not load the user directory.");
+      }
     }
   };
   const selectUser = async (item: AdminUserListItem): Promise<void> => {
@@ -615,6 +642,9 @@ export const Admin = (): ReactElement => {
           description="Control public leaderboard availability, a server-enforced emergency kill switch, and explicit private subject access. Automatic check-ins remain disabled."
           id="access"
           load={loadFeatures}
+          loadingFallback={
+            <AdminLoadingSkeleton label="Loading feature flags" />
+          }
           title="Feature flags"
         >
           {features && detailedFeature ? (
@@ -702,9 +732,7 @@ export const Admin = (): ReactElement => {
                 <p className="text-sm text-red-dark">{featureError}</p>
               )}
             </div>
-          ) : (
-            <p className="mt-3">Loading…</p>
-          )}
+          ) : null}
         </AdminSection>
 
         <AdminSection
@@ -712,6 +740,9 @@ export const Admin = (): ReactElement => {
           description="Search the owner-only Auth0 directory, then select one user to load their Ferry FYI support data."
           id="users"
           load={loadUserDirectory}
+          loadingFallback={
+            <AdminLoadingSkeleton label="Loading user directory" rows={4} />
+          }
           title="User directory"
         >
           <div className="mt-4 space-y-4">
@@ -798,9 +829,7 @@ export const Admin = (): ReactElement => {
                   </button>
                 </div>
               </>
-            ) : (
-              <p className="text-sm">Loading user directory…</p>
-            )}
+            ) : null}
             {userError && (
               <p className="mt-2 text-sm text-red-dark" role="alert">
                 {userError}
@@ -966,6 +995,9 @@ export const Admin = (): ReactElement => {
           description="Run one supported data refresh at a time. Status is aggregate operational data only."
           id="operations"
           load={loadOperations}
+          loadingFallback={
+            <AdminLoadingSkeleton label="Loading data health operations" />
+          }
           title="Data health operations"
         >
           {operations ? (
@@ -1026,9 +1058,7 @@ export const Admin = (): ReactElement => {
                 );
               })}
             </ul>
-          ) : (
-            <p className="mt-3">Loading…</p>
-          )}
+          ) : null}
         </AdminSection>
 
         <AdminSection
@@ -1036,6 +1066,9 @@ export const Admin = (): ReactElement => {
           description="Pause all sends at the final policy boundary, or preview and send a one-off notification only to consenting recipients. Provider acceptance is never delivery confirmation."
           id="notifications"
           load={loadNotifications}
+          loadingFallback={
+            <AdminLoadingSkeleton label="Loading notification policy and status" />
+          }
           title="Notification policy and status"
         >
           {notifications ? (
@@ -1245,9 +1278,7 @@ export const Admin = (): ReactElement => {
                 )}
               </div>
             </div>
-          ) : (
-            <p className="mt-3">Loading…</p>
-          )}
+          ) : null}
         </AdminSection>
 
         <AdminSection
@@ -1255,6 +1286,9 @@ export const Admin = (): ReactElement => {
           description="Manage public maintenance, crawler, leaderboard discovery, and announcements."
           id="content"
           load={loadContent}
+          loadingFallback={
+            <AdminLoadingSkeleton label="Loading content and SEO" />
+          }
           title="Content and SEO"
         >
           {content ? (
@@ -1451,9 +1485,7 @@ export const Admin = (): ReactElement => {
                 )}
               </div>
             </div>
-          ) : (
-            <p className="mt-3">Loading…</p>
-          )}
+          ) : null}
         </AdminSection>
       </div>
     </Page>

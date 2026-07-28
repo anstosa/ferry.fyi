@@ -24,9 +24,6 @@ vi.mock("~/views/Header", () => ({
 vi.mock("~/components/DateButton", () => ({
   DateButton: () => React.createElement("div", null, "Date"),
 }));
-vi.mock("~/components/InlineLoader", () => ({
-  InlineLoader: () => React.createElement("div", null, "Loading"),
-}));
 vi.mock("~/components/ExternalPillLink", () => ({
   ExternalPillLink: ({ children, href }: { children: React.ReactNode; href: string }) =>
     React.createElement("a", { href }, children),
@@ -191,5 +188,30 @@ describe("Fares", () => {
       await Promise.resolve();
     });
     expect(fares.getFareQuote).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the route header and shows a wizard-shaped skeleton while the catalog loads", async () => {
+    fares.getFareCatalog.mockReturnValue(new Promise(() => undefined));
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root?.render(
+        React.createElement(Fares, {
+          date: DateTime.fromISO("2026-07-18"),
+          mate,
+          setDate: vi.fn(),
+          setRoute: vi.fn(),
+          terminal,
+        })
+      );
+      await Promise.resolve();
+    });
+
+    expect(container.textContent).toContain("Route selector");
+    const loading = container.querySelector('[role="status"]');
+    expect(loading?.getAttribute("aria-label")).toBe("Loading fare estimator");
+    expect(loading?.querySelectorAll('[aria-hidden="true"]')).toHaveLength(6);
   });
 });

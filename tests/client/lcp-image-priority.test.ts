@@ -13,6 +13,13 @@ describe("initial-load resources", () => {
     expect(homeSource).toContain('icon_monochrome-256.png');
   });
 
+  it("keeps the home hero below the native top safe area", () => {
+    expect(homeSource).toContain(
+      'h-[calc(16rem+var(--safe-area-inset-top))]'
+    );
+    expect(homeSource).toContain("pt-safe-top");
+  });
+
   it("defers route-only map and font styles", () => {
     expect(indexHtml).not.toContain("api.mapbox.com/mapbox-gl-js");
     expect(indexHtml).toContain('media="print"');

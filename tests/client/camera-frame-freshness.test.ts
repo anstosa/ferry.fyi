@@ -80,4 +80,26 @@ describe("CameraFrameFreshness", () => {
 
     expect(container.textContent).toBe("Checking image…");
   });
+
+  it("does not announce freshness that is updated by camera polling", () => {
+    const { container } = renderFreshness(
+      React.createElement(CameraFrameFreshness, {
+        frameStatus: {
+          cameraId: "9048",
+          checkedAt: 1_000,
+          error: null,
+          frameToken: '"image"',
+          frameUpdatedAt: 880,
+          imageUrl: "https://example.com/camera.jpg",
+          isStale: false,
+        },
+        now: 1_000,
+        passive: true,
+      })
+    );
+
+    expect(container.textContent).toBe("Updated 2 mins ago");
+    expect(container.querySelector("[role=status]")).toBeNull();
+    expect(container.querySelector("[aria-live]")).toBeNull();
+  });
 });

@@ -9,7 +9,7 @@ import { isNull } from "shared/lib/identity";
 import { getSeoMetadata } from "shared/lib/seo";
 
 import { SeoHelmet } from "~/components/SeoHelmet";
-import { Splash } from "~/components/Splash";
+import { Skeleton, SkeletonGroup } from "~/components/Skeleton";
 import { getSchedule, requireScheduleResponse } from "~/lib/schedule";
 import { getTerminal } from "~/lib/terminals";
 
@@ -73,7 +73,32 @@ export const Today = (): ReactElement => {
   }, [terminal, mate]);
 
   if (!schedule) {
-    return <Splash />;
+    return (
+      <main
+        className={clsx(
+          "fixed inset-0 h-full p-8",
+          "bg-green-dark text-white",
+          "flex flex-col items-center justify-between"
+        )}
+      >
+        <SkeletonGroup
+          className="flex h-full w-full flex-col items-center justify-between"
+          label="Loading today's boat count"
+        >
+          <div />
+          <div className="flex w-full flex-col items-center gap-2">
+            <Skeleton className="h-7 w-72 max-w-full" variant="text" />
+            <Skeleton className="h-4 w-40" variant="text" />
+          </div>
+          <Skeleton className="h-28 w-24" />
+          <div className="flex w-full flex-col items-center gap-2">
+            <Skeleton className="h-4 w-44" variant="text" />
+            <Skeleton className="h-4 w-56 max-w-full" variant="text" />
+          </div>
+          <div />
+        </SkeletonGroup>
+      </main>
+    );
   }
 
   const getBoatCount = (schedule: Schedule): number => {

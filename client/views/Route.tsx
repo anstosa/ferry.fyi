@@ -24,12 +24,13 @@ import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { Footer } from "~/components/Footer";
 import { Page } from "~/components/Page";
 import { PageLoadError } from "~/components/PageLoadError";
+import { RouteLoadingState } from "~/components/RouteLoadingState";
 import { RouteSelector } from "~/components/RouteSelector";
 import { SeoHelmet } from "~/components/SeoHelmet";
-import { Splash } from "~/components/Splash";
 import { useQuery } from "~/lib/browser";
 import { toShortDateString } from "~/lib/date";
 import { isFavoriteRoute, useFavoriteRoutes } from "~/lib/favoriteRoutes";
+import type { RouteView } from "~/lib/routeViews";
 import {
   getSchedule,
   refreshSchedule,
@@ -67,14 +68,9 @@ const TerminalDetails = React.lazy(() =>
   }))
 );
 
-export type View =
-  | "schedule"
-  | "cameras"
-  | "terminal"
-  | "fare"
-  | "map"
-  | "alerts"
-  | "subscribe";
+export type { RouteView as View } from "~/lib/routeViews";
+
+type View = RouteView;
 
 type TodayOnlyView = Exclude<
   View,
@@ -570,7 +566,7 @@ export const Route = ({
         </Page>
       );
     }
-    return <Splash />;
+    return <RouteLoadingState view={view} />;
   }
 
   const seoTerminal = {
@@ -607,7 +603,9 @@ export const Route = ({
             className={`route-tab-motion route-tab-motion--${tabDirection}`}
             key={contentMotionKey}
           >
-            <Suspense fallback={<Splash />}>{content}</Suspense>
+            <Suspense fallback={<RouteLoadingState view={view} />}>
+              {content}
+            </Suspense>
           </div>
         </ErrorBoundary>
       )}

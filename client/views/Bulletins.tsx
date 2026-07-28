@@ -10,8 +10,8 @@ import { isRuleForRoute } from "shared/lib/alertSubscriptions";
 import { ExternalPillLink } from "~/components/ExternalPillLink";
 import { FreshnessPill } from "~/components/FreshnessPill";
 import { HeaderDropdown } from "~/components/HeaderDropdown";
-import { InlineLoader } from "~/components/InlineLoader";
 import { NotificationPermissionWarning } from "~/components/NotificationPermissionWarning";
+import { Skeleton, SkeletonGroup } from "~/components/Skeleton";
 import { Toast } from "~/components/Toast";
 import { getBulletinTime, getRouteBulletins } from "~/lib/bulletins";
 import {
@@ -171,9 +171,9 @@ export const Bulletins = ({
       .catch(console.error);
   }, [terminal?.id]);
 
-  // route loading guard
+  // defensive isolated-render loading guard
   if (!terminal) {
-    return <InlineLoader>Loading alerts...</InlineLoader>;
+    return <BulletinsLoadingSkeleton />;
   }
   const displayTerminal = refreshedTerminal ?? terminal;
 
@@ -404,5 +404,38 @@ export const Bulletins = ({
         </Toast>
       ) : null}
     </>
+  );
+};
+
+const BulletinsLoadingSkeleton = (): ReactElement => {
+  return (
+    <main className="flex-grow overflow-y-scroll scrolling-touch bg-day-normal-light text-gray-dark dark:bg-night-normal-dark dark:text-[#e0f0f4]">
+      <SkeletonGroup
+        className="mx-auto w-full max-w-6xl space-y-4 px-4 py-5 sm:px-6"
+        label="Loading alerts"
+      >
+        <div className="space-y-3 rounded-2xl bg-[#016f52] p-4 sm:p-5">
+          <div className="flex items-start gap-3">
+            <Skeleton className="h-11 w-11 shrink-0" variant="circle" />
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-3 w-24" variant="text" />
+              <Skeleton className="h-8 w-2/3" variant="text" />
+              <Skeleton className="h-4 w-1/2" variant="text" />
+            </div>
+          </div>
+        </div>
+        {[0, 1].map((index) => (
+          <div
+            className="space-y-3 rounded-2xl border border-[rgba(0,0,0,0.08)] bg-white p-5 dark:border-[rgba(255,255,255,0.08)] dark:bg-[#00202a]"
+            key={index}
+          >
+            <Skeleton className="h-5 w-28" variant="text" />
+            <Skeleton className="h-6 w-3/4" variant="text" />
+            <Skeleton className="h-4 w-full" variant="text" />
+            <Skeleton className="h-4 w-5/6" variant="text" />
+          </div>
+        ))}
+      </SkeletonGroup>
+    </main>
   );
 };

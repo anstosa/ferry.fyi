@@ -15,7 +15,7 @@ import type { Terminal } from "shared/contracts/terminals";
 import { isNull } from "shared/lib/identity";
 
 import { CameraFrameFreshness } from "~/components/CameraFrameFreshness";
-import { InlineLoader } from "~/components/InlineLoader";
+import { Skeleton, SkeletonGroup } from "~/components/Skeleton";
 import { getCameraFrames } from "~/lib/cameras";
 import { locationToUrl } from "~/lib/maps";
 import { getSlug, useTerminals } from "~/lib/terminals";
@@ -51,11 +51,32 @@ const CAMERA_REFRESH_MS = 10 * 1000;
 const NO_CAMERAS_MESSAGE = "This terminal does not have cameras";
 
 export const Cameras = ({ mate, setRoute, terminal }: Props): ReactElement => {
-  // loading guard
+  // defensive isolated-render loading guard
   if (!terminal) {
-    return <InlineLoader>Loading cameras...</InlineLoader>;
+    return <CamerasLoadingSkeleton />;
   }
   return <CameraList mate={mate} setRoute={setRoute} terminal={terminal} />;
+};
+
+const CamerasLoadingSkeleton = (): ReactElement => {
+  return (
+    <main className="flex-grow overflow-y-scroll scrolling-touch bg-day-normal-light text-gray-dark dark:bg-night-normal-dark dark:text-[#e0f0f4]">
+      <SkeletonGroup
+        className="mx-auto w-full max-w-6xl space-y-8 py-6 pl-16 pr-4"
+        label="Loading cameras"
+      >
+        {[0, 1].map((index) => (
+          <div className="w-full max-w-[480px]" key={index}>
+            <Skeleton className="h-[300px] w-full" />
+            <div className="space-y-2 px-1 pt-3">
+              <Skeleton className="h-6 w-2/3" variant="text" />
+              <Skeleton className="h-4 w-1/2" variant="text" />
+            </div>
+          </div>
+        ))}
+      </SkeletonGroup>
+    </main>
+  );
 };
 
 // resolve camera count
@@ -115,6 +136,7 @@ const CameraList = ({
   const [revealedStaleImages, setRevealedStaleImages] = useState<
     Record<string, boolean>
   >({});
+  const [manualRefreshCount, setManualRefreshCount] = useState(0);
   const [isTouchDevice, setTouchDevice] = useState<boolean>(false);
   const firstMarker = useRef<HTMLDivElement | null>(null);
   const timeline = useRef<HTMLDivElement | null>(null);
@@ -188,8 +210,15 @@ const CameraList = ({
   }, [updateTimelineStart]);
 
   // manual freshness check
-  const reload = (): void => {
-    refreshFrameStatuses().catch(console.error);
+  const reload = async (): Promise<void> => {
+    setManualRefreshCount((count) => count + 1);
+    try {
+      await refreshFrameStatuses();
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setManualRefreshCount((count) => count - 1);
+    }
   };
 
   // track image load
@@ -288,7 +317,7 @@ const CameraList = ({
             <span className="min-w-0 truncate" title={owner?.name ?? "WSDOT"}>
               {owner?.name ?? "WSDOT"}
             </span>
-            <CameraFrameFreshness frameStatus={frameStatus} />
+            <CameraFrameFreshness frameStatus={frameStatus} passive />
           </div>
         </div>
         <span className="relative mt-3 mb-2 flex flex-col gap-1 px-1 text-lg font-bold">
@@ -391,9 +420,9 @@ const CameraList = ({
         <span className="ml-2 shrink-0">Cameras</span>
         <div className="flex-1 min-w-0" />
         <ReloadButton
-          onClick={() => reload()}
+          onClick={reload}
           ariaLabel="Reload Cameras"
-          isReloading={false}
+          isReloading={manualRefreshCount > 0}
         />
       </Header>
       <main className="flex-grow overflow-y-scroll scrolling-touch bg-day-normal-light text-gray-dark dark:bg-night-normal-dark dark:text-[#e0f0f4]">

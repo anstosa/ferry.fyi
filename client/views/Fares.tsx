@@ -19,8 +19,8 @@ import type { Terminal } from "shared/contracts/terminals";
 import { DateButton } from "~/components/DateButton";
 import { ExternalPillLink } from "~/components/ExternalPillLink";
 import { FareWizardIcon, fareWizardIcons } from "~/components/FareWizardIcons";
-import { InlineLoader } from "~/components/InlineLoader";
 import { RouteSelector } from "~/components/RouteSelector";
+import { Skeleton, SkeletonGroup } from "~/components/Skeleton";
 import { getFareCatalog, getFareQuote } from "~/lib/fares";
 import {
   createFareWizardSelections,
@@ -481,7 +481,20 @@ export const Fares = ({
       <>
         {header}
         <StateCard>
-          <InlineLoader />
+          <SkeletonGroup label="Loading fare estimator" className="space-y-5">
+            <div>
+              <Skeleton className="h-7 w-40" variant="text" />
+              <Skeleton className="mt-3 h-4 w-full max-w-2xl" variant="text" />
+            </div>
+            <div>
+              <Skeleton className="h-6 w-52" variant="text" />
+              <div className="mt-3 grid grid-cols-3 gap-3">
+                <Skeleton className="h-32 w-full" />
+                <Skeleton className="h-32 w-full" />
+                <Skeleton className="h-32 w-full" />
+              </div>
+            </div>
+          </SkeletonGroup>
         </StateCard>
       </>
     );

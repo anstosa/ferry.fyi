@@ -12,9 +12,9 @@ import type { SeoMetadata } from "shared/lib/seo";
 
 import { LeaderboardLocationEnrollment } from "~/components/LeaderboardLocationEnrollment";
 import { LeaderboardManualCheckIn } from "~/components/LeaderboardManualCheckIn";
-import { LoadingWaves } from "~/components/LoadingWaves";
 import { Page } from "~/components/Page";
 import { SeoHelmet } from "~/components/SeoHelmet";
+import { Skeleton, SkeletonGroup } from "~/components/Skeleton";
 import { ApiError } from "~/lib/api";
 import { useFavoriteRoutes } from "~/lib/favoriteRoutes";
 import { useFeatureFlags } from "~/lib/featureFlags";
@@ -128,23 +128,55 @@ const AllLeaderboardsBreadcrumb = (): ReactElement => (
   </nav>
 );
 
+const leaderboardKey = (entityId: string, period: LeaderboardPeriod): string =>
+  `${entityId}:${period}`;
+
+const LeaderboardRankSkeleton = (): ReactElement => (
+  <SkeletonGroup className="mt-4 space-y-2" label="Loading leaderboard">
+    {[0, 1, 2, 3, 4].map((index) => (
+      <div
+        className="flex items-center gap-3 rounded-xl border border-gray-light px-4 py-3 dark:border-gray-dark"
+        key={index}
+      >
+        <Skeleton className="h-6 w-6 shrink-0" variant="circle" />
+        <Skeleton className="h-5 flex-1" variant="text" />
+        <Skeleton className="h-5 w-8 shrink-0" variant="text" />
+      </div>
+    ))}
+  </SkeletonGroup>
+);
+
 const RankList = ({
+  entityId,
+  isLoading,
   leaderboard,
+  period,
 }: {
+  entityId: string;
+  isLoading: boolean;
   leaderboard: Leaderboard | null;
+  period: LeaderboardPeriod;
 }): ReactElement => {
-  if (!leaderboard) {
-    return <LoadingWaves />;
+  const isCurrent =
+    leaderboard !== null &&
+    leaderboardKey(leaderboard.entityId, leaderboard.period) ===
+      leaderboardKey(entityId, period);
+
+  if (!isCurrent) {
+    return <LeaderboardRankSkeleton />;
   }
   if (!leaderboard.ranks.length) {
     return (
-      <p className="mt-4 text-sm">
+      <p aria-busy={isLoading} className="mt-4 text-sm">
         No check-ins yet. Be the first to appear here.
       </p>
     );
   }
   return (
-    <ol className="mt-4 divide-y divide-gray-light overflow-hidden rounded-2xl border border-gray-light dark:divide-gray-dark dark:border-gray-dark">
+    <ol
+      aria-busy={isLoading}
+      className="mt-4 divide-y divide-gray-light overflow-hidden rounded-2xl border border-gray-light dark:divide-gray-dark dark:border-gray-dark"
+    >
       {leaderboard.ranks.map((rank) => {
         const isFirstPlace = rank.rank === 1;
         return (
@@ -330,7 +362,15 @@ const Preferences = (): ReactElement => {
     return error ? (
       <p className="text-sm text-stale-dark">{error}</p>
     ) : (
-      <LoadingWaves />
+      <SkeletonGroup
+        className="mt-4 space-y-3"
+        label="Loading leaderboard settings"
+      >
+        <Skeleton className="h-4 w-28" variant="text" />
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-10 w-48" />
+        <Skeleton className="h-10 w-32" />
+      </SkeletonGroup>
     );
   }
   const save = async (next: LeaderboardPreferences): Promise<boolean> => {
@@ -486,6 +526,7 @@ const TerminalLeaderboard = (): ReactElement => {
   const { terminals } = useTerminals();
   const terminal = terminals.find(({ id }) => id === terminalId);
   const [leaderboard, setLeaderboard] = useState<Leaderboard | null>(null);
+  const [isLoading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] =
     useState<LeaderboardPeriodSelection | null>(null);
   const [defaultPeriod, setDefaultPeriod] =
@@ -499,7 +540,7 @@ const TerminalLeaderboard = (): ReactElement => {
   useEffect(() => {
     let active = true;
     const load = async (): Promise<void> => {
-      setLeaderboard(null);
+      setLoading(true);
       if (explicitPeriod) {
         try {
           const next = await getTerminalLeaderboard(terminalId, explicitPeriod);
@@ -538,7 +579,13 @@ const TerminalLeaderboard = (): ReactElement => {
         }
       }
     };
-    load().catch(() => undefined);
+    load()
+      .catch(() => undefined)
+      .finally(() => {
+        if (active) {
+          setLoading(false);
+        }
+      });
     return () => {
       active = false;
     };
@@ -576,7 +623,13 @@ const TerminalLeaderboard = (): ReactElement => {
         }
         period={period}
       />
-      <RankList leaderboard={leaderboard} />
+      <RankList
+        entityId={terminalId}
+        isLoading={isLoading}
+        key={leaderboardKey(terminalId, period)}
+        leaderboard={leaderboard}
+        period={period}
+      />
     </Page>
   );
 };
@@ -586,6 +639,7 @@ const VesselLeaderboard = (): ReactElement => {
   const { leaderboardsEnabled } = useFeatureFlags();
   const [name, setName] = useState(vesselId);
   const [leaderboard, setLeaderboard] = useState<Leaderboard | null>(null);
+  const [isLoading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] =
     useState<LeaderboardPeriodSelection | null>(null);
   const [defaultPeriod, setDefaultPeriod] =
@@ -610,12 +664,12 @@ const VesselLeaderboard = (): ReactElement => {
       error instanceof ApiError &&
       (error.status === 404 || error.status === 503);
     const load = async (): Promise<void> => {
+      setLoading(true);
       if (!vesselCheckinsEnabled) {
         setUnavailable(true);
         return;
       }
       setUnavailable(false);
-      setLeaderboard(null);
       if (explicitPeriod) {
         try {
           const next = await getVesselLeaderboard(vesselId, explicitPeriod);
@@ -664,7 +718,13 @@ const VesselLeaderboard = (): ReactElement => {
         setLeaderboard({ entityId: vesselId, period: "week", ranks: [] });
       }
     };
-    load().catch(() => undefined);
+    load()
+      .catch(() => undefined)
+      .finally(() => {
+        if (active) {
+          setLoading(false);
+        }
+      });
     return () => {
       active = false;
     };
@@ -703,7 +763,13 @@ const VesselLeaderboard = (): ReactElement => {
             }
             period={period}
           />
-          <RankList leaderboard={leaderboard} />
+          <RankList
+            entityId={vesselId}
+            isLoading={isLoading}
+            key={leaderboardKey(vesselId, period)}
+            leaderboard={leaderboard}
+            period={period}
+          />
         </>
       )}
     </Page>

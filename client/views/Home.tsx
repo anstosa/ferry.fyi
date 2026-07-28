@@ -5,8 +5,8 @@ import { Terminal as TerminalClass } from "shared/contracts/terminals";
 import { isEmpty } from "shared/lib/arrays";
 import { getSeoMetadata } from "shared/lib/seo";
 
-import { LoadingWaves } from "~/components/LoadingWaves";
 import { SeoHelmet } from "~/components/SeoHelmet";
+import { Skeleton, SkeletonGroup } from "~/components/Skeleton";
 import { useFavoriteRoutes } from "~/lib/favoriteRoutes";
 import { useFeatureFlags } from "~/lib/featureFlags";
 import {
@@ -100,7 +100,7 @@ export const Home = (): ReactElement => {
       >
         <MenuIcon />
       </button>
-      <div className="flex h-64 w-full flex-col items-center justify-center">
+      <div className="flex h-[calc(16rem+var(--safe-area-inset-top))] w-full flex-col items-center justify-center pt-safe-top">
         <img
           alt="Ferry FYI"
           className="w-28"
@@ -132,19 +132,20 @@ export const Home = (): ReactElement => {
       <div className="w-full flex justify-center px-4 pb-8">
         <div className="grid w-full max-w-6xl grid-cols-2 gap-x-4 gap-y-6">
           {isEmpty(terminals) && (
-            <div
-              className={clsx(
-                LI_CLASSES,
-                "col-span-2 flex flex-col items-center justify-center gap-2 opacity-80"
-              )}
+            <SkeletonGroup
+              className="col-span-2 space-y-6"
+              label="Loading ferry routes and terminals"
             >
-              <LoadingWaves
-                className="h-10 w-28 text-yellow-lightest"
-                label="Loading terminals"
-                svgClassName="h-8 w-28"
-              />
-              <span>Loading terminals…</span>
-            </div>
+              {[0, 1, 2].map((routeIndex) => (
+                <section className="space-y-2" key={routeIndex}>
+                  <Skeleton className="mx-auto h-4 w-32" variant="text" />
+                  <div className={getTerminalGridClasses()}>
+                    <Skeleton className="m-2 h-10" />
+                    <Skeleton className="m-2 h-10" />
+                  </div>
+                </section>
+              ))}
+            </SkeletonGroup>
           )}
           {routeGroups.map((routeGroup) => (
             <section className="col-span-2 min-w-0" key={routeGroup.id}>

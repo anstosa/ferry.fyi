@@ -1,6 +1,14 @@
 @import "react-day-picker/style.css";
 
 .date-button-picker {
+  // Offset the calendar beyond the open trigger's bottom-right corner. Keep
+  // these rules after react-day-picker's stylesheet so its root positioning
+  // cannot turn the popup back into an in-flow element.
+  @apply absolute z-10;
+
+  right: -1px;
+  top: 100%;
+
   @apply bg-day-normal-light;
   @apply text-gray-dark;
   @apply rounded;

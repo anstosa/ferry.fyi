@@ -37,6 +37,98 @@ afterEach(() => {
 });
 
 describe("Admin", () => {
+  it("shows an accessible feature-flags skeleton until the initial request completes", async () => {
+    let resolveFeatures:
+      | ((value: {
+          automaticLeaderboardCheckinsEnabled: boolean;
+          leaderboardsEnabled: boolean;
+        }) => void)
+      | undefined;
+    let resolveDetailedFeature:
+      | ((value: {
+          enabled: boolean;
+          killSwitch: boolean;
+          name: string;
+          subjects: string[];
+        }) => void)
+      | undefined;
+    api.get.mockImplementation(
+      (path: string) =>
+        new Promise((resolve) => {
+          if (path === "/admin/features") {
+            resolveFeatures = resolve;
+          }
+          if (path === "/admin/features/leaderboards") {
+            resolveDetailedFeature = resolve;
+          }
+        })
+    );
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root?.render(React.createElement(Admin));
+    });
+
+    expect(
+      container.querySelector(
+        '[role="status"][aria-label="Loading feature flags"]'
+      )
+    ).not.toBeNull();
+    expect(container.textContent).not.toContain("Loading…");
+
+    await act(async () => {
+      resolveFeatures?.({
+        automaticLeaderboardCheckinsEnabled: false,
+        leaderboardsEnabled: false,
+      });
+      resolveDetailedFeature?.({
+        enabled: false,
+        killSwitch: false,
+        name: "Leaderboards",
+        subjects: [],
+      });
+      await Promise.resolve();
+    });
+
+    expect(
+      container.querySelector(
+        '[role="status"][aria-label="Loading feature flags"]'
+      )
+    ).toBeNull();
+    expect(container.textContent).toContain("Emergency kill switch:");
+  });
+
+  it("surfaces the first user-directory load failure in the section", async () => {
+    api.get.mockImplementation((path: string) => {
+      if (path.startsWith("/admin/users?")) {
+        return Promise.reject(new Error("Unavailable"));
+      }
+      return Promise.resolve({
+        automaticLeaderboardCheckinsEnabled: false,
+        leaderboardsEnabled: false,
+      });
+    });
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root?.render(React.createElement(Admin));
+    });
+    await act(async () => {
+      [...container.querySelectorAll("button")]
+        .find((button) => button.textContent === "Users")
+        ?.click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(container.textContent).toContain("Could not load user directory.");
+    expect(container.querySelector("#admin-user-search")).toBeNull();
+  });
+
   it("keeps the admin tab strip horizontally scrollable without vertical overflow", async () => {
     const container = document.createElement("div");
     document.body.appendChild(container);

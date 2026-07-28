@@ -25,7 +25,7 @@ import { NotificationPermissionWarning } from "~/components/NotificationPermissi
 import { Page } from "~/components/Page";
 import { PageLoadError } from "~/components/PageLoadError";
 import { SeoHelmet } from "~/components/SeoHelmet";
-import { Splash } from "~/components/Splash";
+import { Skeleton, SkeletonGroup } from "~/components/Skeleton";
 import { getConfiguredAuth0RedirectUri } from "~/lib/auth";
 import { useDevice } from "~/lib/device";
 import { getSlug, useTerminals } from "~/lib/terminals";
@@ -275,11 +275,43 @@ const getTicketSummary = ({
   return `${parts.join(" and ")} ready in Tickets.`;
 };
 
+export const AccountLoadingState = (): ReactElement => (
+  <Page title="Account">
+    <div className="mx-auto w-full max-w-6xl px-4 py-6">
+      <SkeletonGroup className="flex flex-col gap-6" label="Loading account">
+        <section className="rounded bg-white p-6 shadow dark:bg-black">
+          <Skeleton className="h-7 w-24" variant="text" />
+          <div className="mt-5 space-y-4">
+            <Skeleton className="h-5 w-full" variant="text" />
+            <Skeleton className="h-5 w-4/5" variant="text" />
+            <Skeleton className="h-5 w-3/5" variant="text" />
+          </div>
+        </section>
+        <section className="rounded bg-white p-6 shadow dark:bg-black">
+          <Skeleton className="h-7 w-28" variant="text" />
+          <Skeleton className="mt-4 h-4 w-2/5" variant="text" />
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-20 w-full" />
+          </div>
+        </section>
+        <section className="rounded bg-white p-6 shadow dark:bg-black">
+          <Skeleton className="h-7 w-20" variant="text" />
+          <Skeleton className="mt-4 h-4 w-1/2" variant="text" />
+        </section>
+      </SkeletonGroup>
+    </div>
+  </Page>
+);
+
 export const Account = withAuthenticationRequired(
   (): ReactElement => {
-    const { user, logout } = useAuth0();
-    const [{ alertRules, isUserLoading, tickets, userError }, { refreshUser }] =
-      useUser();
+    const { user: authUser, logout } = useAuth0();
+    const [
+      { alertRules, isUserLoading, tickets, user: accountUser, userError },
+      { refreshUser },
+    ] = useUser();
     const device = useDevice();
     const [themePreference, setThemePreference] = useThemePreference();
     const { terminals } = useTerminals();
@@ -289,7 +321,7 @@ export const Account = withAuthenticationRequired(
       reservationAccountCount: getReservationAccountCount(storedTickets),
       savedTicketCount: tickets?.length ?? 0,
     });
-    const userClaims = user as Record<string, unknown> | undefined;
+    const userClaims = authUser as Record<string, unknown> | undefined;
     const name =
       getStringClaim(userClaims, "name") ??
       getStringClaim(userClaims, "nickname") ??
@@ -329,13 +361,8 @@ export const Account = withAuthenticationRequired(
       });
     };
 
-    // account metadata loading
-    if (isUserLoading) {
-      return <Splash />;
-    }
-
-    // account metadata error
-    if (userError) {
+    // initial account metadata error
+    if (!accountUser && userError) {
       return (
         <Page title="Account">
           <PageLoadError
@@ -348,10 +375,33 @@ export const Account = withAuthenticationRequired(
       );
     }
 
+    // initial account metadata loading
+    if (!accountUser && isUserLoading) {
+      return <AccountLoadingState />;
+    }
+
     return (
       <Page title="Account">
         <SeoHelmet seo={getSeoMetadata("/account")} />
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6">
+          {userError && (
+            <section
+              className="rounded border border-stale-light bg-stale-light/10 p-4 text-sm text-gray-dark dark:border-[#ffb3b0] dark:text-[#ffb3b0]"
+              role="alert"
+            >
+              <p>
+                Account preferences could not be refreshed. Existing account
+                details are still available.
+              </p>
+              <button
+                className="link mt-2 font-bold text-blue-dark dark:text-[#6fb8c8]"
+                onClick={retryAccountSync}
+                type="button"
+              >
+                Try again
+              </button>
+            </section>
+          )}
           <section className="rounded bg-white p-6 shadow dark:bg-black">
             <h3 className="mb-3 text-xl font-bold">Profile</h3>
             <dl>
@@ -485,5 +535,5 @@ export const Account = withAuthenticationRequired(
       </Page>
     );
   },
-  { onRedirecting: () => <Splash /> }
+  { onRedirecting: () => <AccountLoadingState /> }
 );

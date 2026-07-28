@@ -13,16 +13,23 @@ export default defineConfig({
         replacement: path.resolve(__dirname, "client/components/Page"),
       },
       {
+        find: /^~\/components\/Skeleton$/,
+        replacement: path.resolve(__dirname, "client/components/Skeleton"),
+      },
+      {
+        find: /^~\/static\/images\/icons\/solid\/redo\.svg$/,
+        replacement: path.resolve(
+          __dirname,
+          "client/static/images/icons/solid/redo.svg"
+        ),
+      },
+      {
         find: /^~\/lib\/(api|adminConfirmation)$/,
         replacement: path.resolve(__dirname, "client/lib/$1"),
       },
       {
         find: /^~\/components\/DateButton$/,
         replacement: path.resolve(__dirname, "client/components/DateButton"),
-      },
-      {
-        find: /^~\/components\/InlineLoader$/,
-        replacement: path.resolve(__dirname, "client/components/InlineLoader"),
       },
       {
         find: /^~\/components\/FareWizardIcons$/,
@@ -92,6 +99,23 @@ export default defineConfig({
       {
         find: /^~\/views\/Header$/,
         replacement: path.resolve(__dirname, "client/views/Header"),
+      },
+      {
+        find: /^~\/components\/(.+)$/,
+        replacement: path.resolve(__dirname, "client/components/$1"),
+      },
+      {
+        find: /^~\/static\/(.+)$/,
+        replacement: path.resolve(__dirname, "client/static/$1"),
+      },
+      {
+        find: /^~\/views\/(.+)$/,
+        replacement: path.resolve(__dirname, "client/views/$1"),
+      },
+      // Keep server-only library namespaces on the default alias below.
+      {
+        find: /^~\/lib\/(?!(?:admin(?:\/|$)|alertMetadata$|auth0Admin$|cameraFrames$|cameraLineDetection$|cancellationNotifications$|db$|delayNotifications$|demandCalendar$|demandEvents(?:\/|$)|errors$|fareCache$|fares$|firebase$|forecast(?:$|\/)|forecastDaypart$|forecastRegressionThresholds$|holidays$|leaderboardFlags$|leaderboardPrivacy$|leaderboardSeo$|leaderboards$|logging$|noaaCoastline$|ota$|push$|pushSubscriptions$|safeScheduledJob$|sailingLifecycleNotifications$|serverRuntime$|tides(?:\/|$)|time$|weather(?:\/|$)|wsf(?:\/|$)))(.+)$/,
+        replacement: path.resolve(__dirname, "client/lib/$1"),
       },
       { find: "~", replacement: path.resolve(__dirname, "server") },
       { find: "shared", replacement: path.resolve(__dirname, "shared") },

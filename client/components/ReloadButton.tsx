@@ -11,7 +11,6 @@ import React, {
 import ReloadIcon from "~/static/images/icons/solid/redo.svg";
 
 interface SpinWrapperProps {
-  className?: string;
   isLoading: boolean;
 }
 
@@ -21,7 +20,6 @@ interface SpinWrapperProps {
  **/
 const SpinWrapper: FunctionComponent<PropsWithChildren<SpinWrapperProps>> = ({
   children,
-  className,
   isLoading,
 }) => {
   const [isLastSpin, setLastSpin] = useState(false);
@@ -59,7 +57,6 @@ const SpinWrapper: FunctionComponent<PropsWithChildren<SpinWrapperProps>> = ({
       <motion.div
         initial={{ transform: "rotate(0deg)" }}
         animate={{ transform: "rotate(360deg)" }}
-        className={className}
         transition={{
           duration: 1,
           ease: "linear",
@@ -86,11 +83,18 @@ export const ReloadButton = ({
   isReloading,
   onClick,
 }: Props): ReactElement => (
-  <SpinWrapper className={className} isLoading={isReloading}>
-    <ReloadIcon
-      className={clsx("text-xl cursor-pointer")}
-      aria-label={ariaLabel}
-      onClick={onClick}
-    />
-  </SpinWrapper>
+  <button
+    aria-busy={isReloading}
+    aria-label={ariaLabel}
+    className={clsx(
+      "inline-flex cursor-pointer appearance-none border-0 bg-transparent p-0 text-xl",
+      className
+    )}
+    onClick={onClick}
+    type="button"
+  >
+    <SpinWrapper isLoading={isReloading}>
+      <ReloadIcon />
+    </SpinWrapper>
+  </button>
 );

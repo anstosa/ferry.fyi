@@ -41,7 +41,7 @@ export const DateButton = ({
         "relative flex flex-col items-center justify-center p-3",
         "cursor-pointer w-10 h-10",
         {
-          "rounded-b-none": isOpen,
+          "border-b-0 rounded-b-none": isOpen,
         }
       )}
       aria-label="Set Date"
@@ -66,7 +66,7 @@ export const DateButton = ({
       <div onClick={(event) => event.stopPropagation()}>
         {isOpen && (
           <DayPicker
-            className="date-button-picker absolute right-0 top-full"
+            className="date-button-picker"
             showOutsideDays
             disabled={disabledDays}
             modifiers={{ past: pastDays }}

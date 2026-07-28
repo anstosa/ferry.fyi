@@ -34,9 +34,8 @@ import { without } from "shared/lib/arrays";
 
 import { AppTeaser } from "~/components/AppTeaser";
 import { HeaderDropdown } from "~/components/HeaderDropdown";
-import { LoadingWaves } from "~/components/LoadingWaves";
 import { NotificationPermissionWarning } from "~/components/NotificationPermissionWarning";
-import { Splash } from "~/components/Splash";
+import { Skeleton, SkeletonGroup } from "~/components/Skeleton";
 import { getConfiguredAuth0RedirectUri } from "~/lib/auth";
 import { useDevice } from "~/lib/device";
 import { getSchedule } from "~/lib/schedule";
@@ -99,6 +98,46 @@ interface SailingRow {
   terminalIds: string[];
   time: number;
 }
+
+export const AlertSubscriptionLoadingState = (): ReactElement => (
+  <>
+    <Header>
+      <span className="text-center flex-1">Alerts</span>
+    </Header>
+    <main className="flex-grow overflow-y-scroll scrolling-touch bg-day-normal-light text-gray-dark dark:bg-night-normal-dark dark:text-[#e0f0f4]">
+      <SkeletonGroup
+        className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-5 pb-24 sm:px-6"
+        label="Loading alert subscription"
+      >
+        <section className="rounded-2xl border border-[rgba(0,0,0,0.08)] bg-white p-5 shadow-sm dark:border-[rgba(255,255,255,0.08)] dark:bg-[#00202a]">
+          <div className="flex items-start gap-3">
+            <Skeleton className="h-11 w-11 shrink-0" variant="circle" />
+            <div className="min-w-0 flex-1 space-y-3">
+              <Skeleton className="h-3 w-24" variant="text" />
+              <Skeleton className="h-8 w-3/5" variant="text" />
+              <Skeleton className="h-4 w-full" variant="text" />
+            </div>
+          </div>
+        </section>
+        <section className="rounded-2xl border border-[rgba(0,0,0,0.08)] bg-white p-4 shadow-sm dark:border-[rgba(255,255,255,0.08)] dark:bg-[#00202a]">
+          <Skeleton className="h-6 w-32" variant="text" />
+          <div className="mt-4 space-y-3">
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-20 w-full" />
+          </div>
+        </section>
+        <section className="rounded-2xl border border-[rgba(0,0,0,0.08)] bg-white p-4 shadow-sm dark:border-[rgba(255,255,255,0.08)] dark:bg-[#00202a]">
+          <Skeleton className="h-6 w-36" variant="text" />
+          <Skeleton className="mt-3 h-4 w-3/4" variant="text" />
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            <Skeleton className="h-20 w-full" />
+            <Skeleton className="h-20 w-full" />
+          </div>
+        </section>
+      </SkeletonGroup>
+    </main>
+  </>
+);
 
 const DAY_OPTIONS = [
   { day: 1, label: "M" },
@@ -695,14 +734,13 @@ const AlertRuleEditor = ({
           start, then another to end.
         </p>
         {isLoadingSchedules && (
-          <div className="mb-3 flex items-center gap-3 rounded-xl bg-blue-dark/5 px-3 py-2 text-sm font-semibold text-gray-dark dark:bg-white/[0.04] dark:text-[#b8d5de]">
-            <LoadingWaves
-              className="h-8 w-20 text-blue-dark dark:text-[#6fb8c8]"
-              label="Loading sailings"
-              svgClassName="h-6 w-20"
-            />
+          <SkeletonGroup
+            className="mb-3 flex items-center gap-3 rounded-xl bg-blue-dark/5 px-3 py-2 text-sm font-semibold text-gray-dark dark:bg-white/[0.04] dark:text-[#b8d5de]"
+            label="Loading sailings"
+          >
+            <Skeleton className="h-4 w-20 shrink-0" variant="text" />
             <span>Loading sailings…</span>
-          </div>
+          </SkeletonGroup>
         )}
         <div>
           <div className="mb-2 grid grid-cols-[1fr_auto_1fr] items-center gap-3 text-xs font-bold uppercase tracking-[0.14em] text-blue-dark dark:text-[#6fb8c8]">
@@ -955,7 +993,7 @@ export const AlertSubscription = ({
 
   // auth loading guard
   if (isLoading || (!isAuthenticated && !loginError)) {
-    return <Splash />;
+    return <AlertSubscriptionLoadingState />;
   }
 
   // channel toggle
@@ -1146,7 +1184,7 @@ export const AlertSubscription = ({
 
   // user loading guard
   if (!user && isUserLoading) {
-    return <Splash />;
+    return <AlertSubscriptionLoadingState />;
   }
 
   // user error guard
