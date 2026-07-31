@@ -449,10 +449,10 @@ describe("public SSR snapshot loader", () => {
                 allowsPassengers: true,
                 allowsVehicles: true,
                 crossing: {
-                  arrivalId: "14",
+                  arrivalId: 14,
                   createdAt: "private persistence metadata",
                   departureDelta: 0,
-                  departureId: "5",
+                  departureId: 5,
                   departureTime: 1_785_000_000,
                   driveUpCapacity: 57,
                   hasDriveUp: true,
@@ -496,6 +496,7 @@ describe("public SSR snapshot loader", () => {
             {
               crossing: {
                 arrivalId: "14",
+                departureId: "5",
                 reservableCapacity: 0,
               },
               vessel: {

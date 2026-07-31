@@ -411,9 +411,9 @@ const toPublicSsrScheduleSlot = (
   ...(slot.crossing
     ? {
         crossing: {
-          arrivalId: slot.crossing.arrivalId,
+          arrivalId: String(slot.crossing.arrivalId),
           departureDelta: slot.crossing.departureDelta,
-          departureId: slot.crossing.departureId,
+          departureId: String(slot.crossing.departureId),
           departureTime: slot.crossing.departureTime,
           driveUpCapacity: slot.crossing.driveUpCapacity,
           hasDriveUp: slot.crossing.hasDriveUp,
