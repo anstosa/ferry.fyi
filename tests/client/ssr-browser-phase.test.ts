@@ -79,9 +79,7 @@ describe("deferred browser phase", () => {
         })
       );
     });
-    expect(
-      container.querySelector("[data-client-recovery-shell=true]")
-    ).not.toBeNull();
+    expect(container.querySelector("main[aria-busy=true]")).not.toBeNull();
     expect(authProvider).not.toHaveBeenCalled();
     expect(initializeTheme).not.toHaveBeenCalled();
     expect(initializeServiceWorker).not.toHaveBeenCalled();

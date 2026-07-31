@@ -30,7 +30,7 @@ const defaultRenderContext: AppRenderContextValue = {
   seoPathname: "/",
 };
 
-export const AppRenderContext =
+const AppRenderContext =
   createContext<AppRenderContextValue>(defaultRenderContext);
 
 export const AppRenderProvider = ({

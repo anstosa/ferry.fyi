@@ -22,7 +22,7 @@ export type PublicSsrSeedIntegrityCategory =
   | "public-ssr-integrity-missing-rendered-root"
   | "public-ssr-integrity-unexpected-snapshot";
 
-export type PublicSsrSeedReadResult =
+type PublicSsrSeedReadResult =
   | { category: PublicSsrSeedIntegrityCategory; snapshot: undefined }
   | { category: undefined; snapshot: PublicSsrSnapshot };
 
@@ -99,9 +99,9 @@ export const readPublicSsrSeed = (
  * browser storage or request side effects: consumers can use it during the
  * first render and their normal effects remain responsible for refreshing it.
  */
-export const PublicSsrSeedContext = createContext<
-  PublicSsrSnapshot | undefined
->(undefined);
+const PublicSsrSeedContext = createContext<PublicSsrSnapshot | undefined>(
+  undefined
+);
 
 export const PublicSsrSeedProvider = ({
   children,

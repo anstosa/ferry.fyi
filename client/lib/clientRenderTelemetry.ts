@@ -3,6 +3,7 @@ import type { PublicSsrSeedIntegrityCategory } from "./ssrSeed";
 export type ClientRenderDiagnostic = {
   category:
     | PublicSsrSeedIntegrityCategory
+    | "browser-phase-load-error"
     | "react-caught-error"
     | "react-recoverable-error"
     | "react-uncaught-error";

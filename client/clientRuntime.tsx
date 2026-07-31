@@ -117,10 +117,14 @@ export const InitialDocumentApp = ({
     if (isNotFoundSnapshot) {
       return;
     }
-    loadBrowserPhase().then(async ({ BrowserPhase, preloadBrowserRoute }) => {
-      await preloadBrowserRoute(location.pathname, hostProfile);
-      startTransition(() => setLivePhase(() => BrowserPhase));
-    });
+    loadBrowserPhase()
+      .then(async ({ BrowserPhase, preloadBrowserRoute }) => {
+        await preloadBrowserRoute(location.pathname, hostProfile);
+        startTransition(() => setLivePhase(() => BrowserPhase));
+      })
+      .catch(() => {
+        reportClientRenderDiagnostic({ category: "browser-phase-load-error" });
+      });
   }, [isNotFoundSnapshot, loadBrowserPhase]);
 
   const liveApp = LivePhase ? (
@@ -132,7 +136,7 @@ export const InitialDocumentApp = ({
     }
     return (
       <AppFrame context={context} snapshot={undefined}>
-        <main aria-busy="true" data-client-recovery-shell="true" />
+        <main aria-busy="true" />
       </AppFrame>
     );
   }

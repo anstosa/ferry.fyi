@@ -10,6 +10,7 @@ import {
   PUBLIC_SSR_SNAPSHOT_CONSUMED_ATTRIBUTE,
 } from "../../client/entry-client";
 import { createServerApp } from "../../client/entry-server";
+import { installClientRenderDiagnosticSink } from "../../client/lib/clientRenderTelemetry";
 import { renderPublicSsrDocument } from "../../server/ssr/document";
 import { PUBLIC_SSR_SNAPSHOT_VERSION } from "../../shared/contracts/ssr";
 import {
@@ -435,9 +436,7 @@ describe("client SSR document bootstrap", () => {
         })
       );
     });
-    expect(
-      container.querySelector("[data-client-recovery-shell=true]")
-    ).not.toBeNull();
+    expect(container.querySelector("main[aria-busy=true]")).not.toBeNull();
     expect(fullUrlRead).toBe(false);
     expect(baseUriReads).toBe(0);
     expect(container.innerHTML).not.toContain("base-canary");
@@ -470,4 +469,51 @@ describe("client SSR document bootstrap", () => {
     Reflect.deleteProperty(document, "baseURI");
     base.remove();
   });
+
+  it.each([
+    {
+      failure: "loading the browser module",
+      loadBrowserPhase: () =>
+        Promise.reject(new Error("browser module unavailable")),
+    },
+    {
+      failure: "preloading the browser route",
+      loadBrowserPhase: () =>
+        Promise.resolve({
+          BrowserPhase: () => React.createElement("main"),
+          preloadBrowserRoute: () =>
+            Promise.reject(new Error("browser route unavailable")),
+        }),
+    },
+  ])(
+    "keeps the recovery shell and reports a diagnostic after $failure fails",
+    async ({ loadBrowserPhase }) => {
+      const diagnostic = vi.fn();
+      const removeDiagnosticSink =
+        installClientRenderDiagnosticSink(diagnostic);
+      const container = document.createElement("div");
+      document.body.append(container);
+      const root = createRoot(container);
+
+      await act(async () => {
+        root.render(
+          React.createElement(InitialDocumentApp, {
+            documentMode: "failure",
+            loadBrowserPhase,
+            runtime: "browser",
+          })
+        );
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(diagnostic).toHaveBeenCalledWith({
+        category: "browser-phase-load-error",
+      });
+      expect(container.querySelector("main[aria-busy=true]")).not.toBeNull();
+
+      removeDiagnosticSink();
+      root.unmount();
+    }
+  );
 });
