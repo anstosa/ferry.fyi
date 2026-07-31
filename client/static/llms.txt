@@ -9,12 +9,21 @@ Ferry information changes quickly. Treat times, vehicle space, camera images, fo
 - [Home and ferry schedules](https://ferry.fyi/): Choose a terminal and route to view upcoming sailings, current service information, and route details.
 - [Forecasting](https://ferry.fyi/forecasting): Explains Ferry FYI's capacity, delay, weather, and tide-condition forecasts.
 - [Data sources and API guide](https://ferry.fyi/data-sources): Explains data provenance, source freshness, public read-only APIs, citation guidance, and forecast limitations.
-- [How Many Boats?](https://ferry.fyi/today): Shows whether the Clinton–Mukilteo route is operating one or two boats today.
+- [How Many Boats?](https://ferry.fyi/today): Shows the Clinton-to-Mukilteo operating context on Ferry FYI. This Ferry FYI URL is intentionally noindex; the indexable canonical profile is [howmanyboats.today](https://howmanyboats.today/).
 - [About Ferry FYI](https://ferry.fyi/about): App background, data credits, privacy, and version information.
 - [Tickets](https://ferry.fyi/tickets): Store eligible ticket details, refresh their status, and scan supported ticket barcodes. Ticket data is sensitive and requires the ticket holder's authorization.
 - [Privacy policy](https://ferry.fyi/privacy): Explains how Ferry FYI handles user information.
 - [Support and feedback](https://ferry.fyi/feedback): Report a problem or request a Ferry FYI feature.
 - [Sitemap](https://ferry.fyi/sitemap.xml): Indexable schedules, route tabs, terminal pages, and informational pages.
+
+Canonical schedule pages are directional: the first terminal is the departure
+side and the second terminal, when present, is the arrival side. A one-mate
+terminal may use only its departure-terminal slug. Terminal-detail pages describe
+one terminal rather than a route direction. Route tabs have distinct purposes:
+`/cameras` shows camera observations and freshness, `/map` shows vessel and
+terminal geography, `/alerts` shows public service bulletins, `/subscribe`
+explains personal notification setup, and `/fare` provides fare planning.
+Date-selected schedule URLs are noindex variants of the undated route canonical.
 
 ## Features
 
@@ -80,7 +89,15 @@ Fare responses include a `state` such as `current`, `no-fare`, `stale`, or `unav
 <!-- LEADERBOARDS:START -->
 ### Leaderboards (feature-flagged public reads)
 
-Leaderboard pages and read APIs are available only when Ferry FYI has enabled the leaderboard feature. When disabled, leaderboard pages, `llms.txt`, and leaderboard routes intentionally return `404` and must not be cited.
+Leaderboard rankings and read APIs are public only when Ferry FYI has enabled
+the leaderboard feature. When disabled, public leaderboard APIs return `404`;
+leaderboard page paths serve only a noindex client shell for eligible signed-in
+rollouts, and this section is omitted from the served `llms.txt`.
+
+Leaderboard discovery is also controlled by a separate persisted indexing
+setting. When public leaderboards remain available but indexing is disabled,
+their pages are `noindex,follow`, their URLs are omitted from the sitemap, and
+this leaderboard section is omitted from the served `llms.txt`.
 
 - `GET /api/leaderboards/terminals/:terminalId?period=all|month|week` — Public, sanitized terminal ranking. Each row contains only `rank`, `label`, and `score`; it never exposes account identifiers or precise locations.
 - `GET /api/leaderboards/vessels/:vesselId` — Public vessel page/read route when enabled. Vessel check-ins are currently unavailable pending an approved shoreline dataset, so do not infer vessel presence or award vessel credit.

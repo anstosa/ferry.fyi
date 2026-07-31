@@ -1,4 +1,5 @@
-# Ferry FYI welcomes search and AI crawlers.
+# Build fallback only. The server-generated crawler policy is authoritative.
+# Ferry FYI welcomes search and AI crawlers under the default public policy.
 User-agent: *
 Allow: /
 

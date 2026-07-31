@@ -13,6 +13,7 @@ import {
 import { get, post } from "~/lib/api";
 
 import { getDistance, Point, useGeo } from "./geo";
+import { usePublicSsrSource } from "./ssrSeed";
 
 // create mapping of terminal ids to slugs
 const terminalIdByCanonicalSlug: Record<string, string> = {};
@@ -62,9 +63,14 @@ export const getTerminals = async (): Promise<Terminal[]> => {
   return values(terminalCache).sort(compareTerminalsByName);
 };
 
+export interface TerminalBulletinResult {
+  sourceUpdatedAt: number | null;
+  terminal: Terminal;
+}
+
 export const refreshBulletins = async (
   terminalId: string
-): Promise<{ sourceUpdatedAt: number | null; terminal: Terminal }> => {
+): Promise<TerminalBulletinResult> => {
   const result = await post<{ sourceUpdatedAt: number | null }>(
     "/terminals/bulletins/refresh",
     {}
@@ -73,10 +79,6 @@ export const refreshBulletins = async (
   terminalCache[terminalId] = terminal;
   return { ...result, terminal };
 };
-
-export const getBulletinFreshness = (): Promise<{
-  sourceUpdatedAt: number | null;
-}> => get("/terminals/bulletins/freshness");
 
 interface TerminalState {
   terminals: Terminal[];
@@ -92,6 +94,8 @@ const terminalsAtom = atom<Terminal[] | null>(null);
  */
 export const useTerminalList = (): Terminal[] => {
   const [terminals, setTerminals] = useAtom(terminalsAtom);
+  const seed = usePublicSsrSource("terminals") as Terminal[] | undefined;
+  const visibleTerminals = terminals ?? seed;
 
   useEffect(() => {
     if (terminals) {
@@ -103,16 +107,20 @@ export const useTerminalList = (): Terminal[] => {
         // Terminal metadata remains available to location-free callers even
         // when the API is temporarily unavailable.
         console.error(error);
-        setTerminals([]);
+        if (!seed) {
+          setTerminals([]);
+        }
       });
-  }, [setTerminals, terminals]);
+  }, [seed, setTerminals, terminals]);
 
-  return terminals ?? [];
+  return visibleTerminals ?? [];
 };
 
 export const useTerminals = (): TerminalState => {
   const [location] = useGeo();
   const [terminals, setTerminals] = useAtom(terminalsAtom);
+  const seed = usePublicSsrSource("terminals") as Terminal[] | undefined;
+  const visibleTerminals = terminals ?? seed;
   const [closestTerminal, setClosestTerminal] =
     useState<TerminalState["closestTerminal"]>(null);
 
@@ -123,11 +131,16 @@ export const useTerminals = (): TerminalState => {
     } catch (error) {
       // terminal fetch failure
       console.error(error);
-      setTerminals([]);
+      // Retain document terminals when an anonymous post-commit refresh fails.
+      if (!seed) {
+        setTerminals([]);
+      }
     }
   };
 
   useEffect(() => {
+    // A snapshot is only first-render data. Refresh through the existing
+    // anonymous endpoint after commit without clearing the visible seed.
     if (!terminals) {
       fetchTerminals();
     }
@@ -135,13 +148,13 @@ export const useTerminals = (): TerminalState => {
 
   useEffect(() => {
     // location readiness guard
-    if (isNull(location) || !terminals || isEmpty(terminals)) {
+    if (isNull(location) || !visibleTerminals || isEmpty(visibleTerminals)) {
       return;
     }
     let closestTerminal: Terminal | undefined;
     let closestDistance: number = Infinity;
     // compare terminal distance
-    terminals.forEach((terminal) => {
+    visibleTerminals.forEach((terminal) => {
       const { latitude, longitude } = terminal.location;
       // coordinate guard
       if (!latitude || !longitude) {
@@ -158,13 +171,13 @@ export const useTerminals = (): TerminalState => {
     if (closestTerminal) {
       setClosestTerminal(closestTerminal);
     }
-  }, [location, terminals]);
+  }, [location, visibleTerminals]);
 
   useEffect(() => {
-    setTerminals([
-      ...(terminals ?? []).sort(getTerminalSorter(closestTerminal)),
-    ]);
+    setTerminals(
+      [...(visibleTerminals ?? [])].sort(getTerminalSorter(closestTerminal))
+    );
   }, [closestTerminal]);
 
-  return { terminals: terminals ?? [], closestTerminal };
+  return { terminals: visibleTerminals ?? [], closestTerminal };
 };

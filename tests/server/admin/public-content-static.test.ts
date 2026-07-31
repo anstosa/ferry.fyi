@@ -18,7 +18,7 @@ const content = vi.hoisted(() => ({
 }));
 const sitemap = vi.hoisted(() => ({ getSitemap: vi.fn() }));
 
-vi.mock("~/lib/admin/content", () => content);
+vi.mock("~/services/public/content", () => content);
 vi.mock("~/lib/leaderboardFlags", () => ({
   isPublicFeatureEnabled: vi.fn().mockResolvedValue(true),
 }));

@@ -3,7 +3,7 @@ import {
   normalizeFavoriteRouteIds,
   toggleFavoriteRoute,
 } from "./favoriteRouteHelpers";
-import { useUser } from "./user";
+import { useUser } from "./userContext";
 
 export { isFavoriteRoute, normalizeFavoriteRouteIds, toggleFavoriteRoute };
 

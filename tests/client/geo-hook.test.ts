@@ -101,11 +101,13 @@ describe("useGeo", () => {
       await Promise.resolve();
     });
 
-    expect(geolocation.getCurrentPosition).toHaveBeenCalledWith({
-      enableHighAccuracy: false,
-      maximumAge: 5 * 60 * 1000,
-      timeout: 30 * 1000,
-    });
+    await vi.waitFor(() =>
+      expect(geolocation.getCurrentPosition).toHaveBeenCalledWith({
+        enableHighAccuracy: false,
+        maximumAge: 5 * 60 * 1000,
+        timeout: 30 * 1000,
+      })
+    );
     expect(readerLocation).toEqual({ latitude: 47.7, longitude: -122.4 });
   });
 });

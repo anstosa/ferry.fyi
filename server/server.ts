@@ -4,7 +4,7 @@ import logger from "heroku-logger";
 import { scheduleJob } from "node-schedule";
 
 import { apiRouter } from "~/controllers/api";
-import { staticRouter } from "~/controllers/static";
+import { createStaticRouter, staticRouter } from "~/controllers/static";
 import {
   type AdminOperationName,
   runAdminOperation,
@@ -17,11 +17,24 @@ import {
   shouldRunScheduler,
 } from "~/lib/serverRuntime";
 import { initializeWsfSeed } from "~/lib/wsf";
+import { loadProductionSsrArtifacts } from "~/ssr/artifacts";
+import { createSsrRuntime } from "~/ssr/composition";
 
 const STARTUP_MAINTENANCE_DELAY_MS = 60_000;
 
 // create main app
-export function createApp(): express.Express {
+export function createApp({
+  apiHandler = apiRouter,
+  staticHandler = staticRouter,
+  publicMiddleware,
+  webMiddleware,
+}: {
+  apiHandler?: express.RequestHandler;
+  staticHandler?: express.RequestHandler;
+  /** Dynamic policy documents that must precede Vite in development. */
+  publicMiddleware?: express.RequestHandler;
+  webMiddleware?: express.RequestHandler;
+} = {}): express.Express {
   const app = express();
   app.use(healthRouter);
   // use SSL in production
@@ -31,8 +44,14 @@ export function createApp(): express.Express {
   app.use(express.json());
   app.use(cors());
   // mount routes
-  app.use("/api", apiRouter);
-  app.use("/", staticRouter);
+  app.use("/api", apiHandler);
+  if (publicMiddleware) {
+    app.use(publicMiddleware);
+  }
+  if (webMiddleware) {
+    app.use(webMiddleware);
+  }
+  app.use("/", staticHandler);
   return app;
 }
 
@@ -208,9 +227,15 @@ export function startScheduler(): void {
 
 // start server
 export async function startServer(): Promise<void> {
+  const artifacts = await loadProductionSsrArtifacts();
+  const documentRuntime = await createSsrRuntime({ artifacts });
+  const app = createApp({
+    staticHandler: createStaticRouter(undefined, {
+      browserDependencies: { documentRuntime },
+    }),
+  });
   await dbInit;
   initializeWsfSeed();
-  const app = createApp();
   // start server before initializing WSF since that can take a couple minutes
   const server = app.listen(process.env.PORT, () =>
     logger.info(`Server started on port ${process.env.PORT ?? "default"}`)
@@ -229,12 +254,4 @@ export async function startServer(): Promise<void> {
   }
   startWsfCacheRefreshJobs();
   logger.info("Scheduler-only WSF jobs disabled for this process");
-}
-
-// test import guard
-if (process.env.NODE_ENV !== "test") {
-  startServer().catch((error: Error) => {
-    logger.error(`Server startup failed: ${error.message}`, error);
-    process.exit(1);
-  });
 }

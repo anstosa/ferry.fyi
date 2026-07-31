@@ -16,14 +16,19 @@ export default defineConfig({
     preserveSymlinks: true,
   },
   build: {
-    emptyOutDir: false,
+    emptyOutDir: true,
     minify: true,
     outDir: path.resolve(repoRoot, "dist/server"),
-    ssr: path.resolve(configDir, "server.ts"),
+    sourcemap: true,
+    ssr: true,
     target: "node24",
     rollupOptions: {
+      input: {
+        "artifact-smoke": path.resolve(configDir, "ssr/artifactSmokeEntry.ts"),
+        server: path.resolve(configDir, "main.ts"),
+      },
       output: {
-        entryFileNames: "server.js",
+        entryFileNames: "[name].js",
         format: "cjs",
       },
     },

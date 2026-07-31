@@ -1,3 +1,5 @@
+const path = require("node:path");
+
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 const borderPlugin = ({ addUtilities }) => {
   const newUtilities = {};
@@ -22,7 +24,10 @@ module.exports = {
   important: false,
   plugins: [borderPlugin],
   prefix: "",
-  content: ["./client/**/*.{ts,tsx}", "./client/**/*.html"],
+  content: [
+    path.resolve(__dirname, "client/**/*.{ts,tsx}"),
+    path.resolve(__dirname, "client/**/*.html"),
+  ],
   separator: ":",
   theme: {
     extend: {

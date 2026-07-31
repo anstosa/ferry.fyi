@@ -31,11 +31,25 @@ export interface SeoProfile {
 
 export const SEO_APP_NAME = "Ferry FYI";
 export const SEO_DEFAULT_DESCRIPTION =
-  "Washington State Ferries schedules, sailing times, traffic cameras, and vehicle-capacity forecasts.";
+  "Plan Washington State Ferries trips with route schedules, sailing times, service alerts, traffic cameras, fares, and vehicle-capacity forecasts.";
 export const SEO_DEFAULT_TITLE =
   "Ferry FYI - Washington State Ferries Schedules & Tracker";
 // Update when the server-rendered indexable content changes substantially.
-export const SEO_CONTENT_LAST_MODIFIED = "2026-07-28";
+export const SEO_CONTENT_LAST_MODIFIED = "2026-07-29";
+export const SEO_DESCRIPTION_FAILURE_LENGTH = 100;
+export const SEO_DESCRIPTION_TARGET_MIN_LENGTH = 120;
+export const SEO_DESCRIPTION_TARGET_MAX_LENGTH = 160;
+export const SEO_DESCRIPTION_EDITORIAL_REVIEW_LENGTH = 180;
+/**
+ * Exceptions are keyed by canonical URL path and require an editorial reason.
+ * Keep these empty when every generated description is in the preferred range.
+ */
+export const SEO_DESCRIPTION_SHORT_RATIONALES: Readonly<
+  Record<string, string>
+> = {};
+export const SEO_DESCRIPTION_LONG_REVIEW_NOTES: Readonly<
+  Record<string, string>
+> = {};
 export const SEO_HOW_MANY_BOATS_BASE_URL = "https://howmanyboats.today";
 export const SEO_HOW_MANY_BOATS_HOST = "howmanyboats.today";
 export const SEO_ROUTE_VIEWS: readonly SeoView[] = [
@@ -67,7 +81,7 @@ const fixedPages: Record<string, Pick<SeoMetadata, "title" | "description">> = {
   "/about": {
     title: "About Ferry FYI - Washington State Ferries Schedules",
     description:
-      "Learn about Ferry FYI, an independent Washington State Ferries schedule and tracker covering every WSF route.",
+      "Learn how Ferry FYI independently helps riders plan Washington State Ferries trips with schedules, service context, forecasts, and route tools.",
   },
   "/forecasting": {
     title: "Ferry Capacity, Delay, and Tide Forecasting - Ferry FYI",
@@ -77,22 +91,22 @@ const fixedPages: Record<string, Pick<SeoMetadata, "title" | "description">> = {
   "/data-sources": {
     title: "Ferry FYI Data Sources and API Guide",
     description:
-      "Learn how Ferry FYI sources, timestamps, and explains Washington State Ferries schedules, vessel context, forecasts, cameras, weather, tide data, and public read-only APIs.",
+      "Learn how Ferry FYI sources and timestamps Washington State Ferries schedules, vessels, forecasts, cameras, weather, tides, and public read-only APIs.",
   },
   "/tickets": {
     title: "Washington State Ferry Tickets & Barcode Scanner - Ferry FYI",
     description:
-      "Store eligible Washington State Ferry ticket details in Ferry FYI, refresh ticket status, and scan ticket barcodes when supported.",
+      "Use Ferry FYI to save eligible Washington State Ferry tickets, refresh ticket status, and scan supported barcodes without exposing ticket details publicly.",
   },
   "/privacy": {
     title: "Privacy Policy - Ferry FYI",
     description:
-      "Learn how Ferry FYI handles account, location, ticket, notification, analytics, and diagnostic information.",
+      "Read how Ferry FYI handles account, foreground location, ticket, notification, analytics, and diagnostic data across the web and mobile apps.",
   },
   "/feedback": {
     title: "Ferry FYI Support & Feedback",
     description:
-      "Get Ferry FYI support, report a problem, or request a feature for Washington State Ferries trip planning.",
+      "Contact Ferry FYI support to report inaccurate ferry information, troubleshoot the app, share feedback, or request a trip-planning feature.",
   },
 };
 
@@ -196,10 +210,24 @@ export const getSeoMetadata = (pathname: string): SeoMetadata => {
   };
 };
 
+/** Fixed anonymous metadata for the request-neutral public 404 document. */
+export const getNotFoundSeoMetadata = (): SeoMetadata => {
+  const canonicalPath = "/404";
+  const title = "Page Not Found - Ferry FYI";
+  const description = "The requested Ferry FYI page could not be found.";
+  return {
+    canonicalPath,
+    description,
+    robots: "noindex,follow",
+    schema: getWebPageSchema(title, description, canonicalPath),
+    title,
+  };
+};
+
 export const getTerminalSeoMetadata = (terminal: SeoTerminal): SeoMetadata => {
   const canonicalPath = `/${terminal.slug}/terminal`;
   const title = `${terminal.name} Ferry Terminal Information - ${SEO_APP_NAME}`;
-  const description = `Terminal information, amenities, and travel details for the Washington State Ferries ${terminal.name} terminal.`;
+  const description = `Plan a trip through the Washington State Ferries ${terminal.name} terminal with location details, amenities, route connections, and current travel context.`;
   return {
     canonicalPath,
     description,
@@ -213,7 +241,7 @@ export const getHowManyBoatsSeoMetadata = (): SeoMetadata => {
   const canonicalPath = "/";
   const title = `How Many Boats? - ${SEO_APP_NAME}`;
   const description =
-    "See whether the Clinton to Mukilteo ferry route is running one boat or two boats today.";
+    "Check whether the Clinton to Mukilteo Washington State Ferries route is operating with one boat or two today, with current sailing context.";
   return {
     canonicalPath,
     description,
@@ -267,32 +295,32 @@ const getRoutePageCopy = (
     case "cameras":
       return {
         title: `${routeName} Ferry Cameras - ${SEO_APP_NAME}`,
-        description: `View Washington State Ferries traffic camera images and freshness details for the ${routeName} route.`,
+        description: `View traffic camera images, source update times, and freshness details for the ${routeName} Washington State Ferries route before traveling.`,
       };
     case "map":
       return {
         title: `${routeName} Ferry Map & Vessel Locations - ${SEO_APP_NAME}`,
-        description: `Explore ferry vessel locations, route context, and terminal geography for the ${routeName} route.`,
+        description: `Explore vessel locations, terminal geography, and route context for the ${routeName} Washington State Ferries crossing before your trip.`,
       };
     case "alerts":
       return {
         title: `${routeName} Ferry Service Alerts - ${SEO_APP_NAME}`,
-        description: `See current Washington State Ferries service bulletins, cancellations, and route alerts for ${routeName}.`,
+        description: `Review current Washington State Ferries service bulletins, reported cancellations, and rider alerts for the ${routeName} route.`,
       };
     case "subscribe":
       return {
         title: `${routeName} Ferry Alerts & Notifications - ${SEO_APP_NAME}`,
-        description: `Get Washington State Ferries service-alert and sailing notifications for the ${routeName} route.`,
+        description: `Learn about and configure Ferry FYI sailing, capacity, and service-alert notifications for the ${routeName} Washington State Ferries route.`,
       };
     case "fare":
       return {
         title: `${routeName} Ferry Fares - ${SEO_APP_NAME}`,
-        description: `Find Washington State Ferries fare information and plan a fare quote for the ${routeName} route.`,
+        description: `Browse official Washington State Ferries fare options and build a trip estimate for the ${routeName} route, travel date, and rider mix.`,
       };
     case "schedule":
       return {
         title: `${routeName} Ferry Schedule - ${SEO_APP_NAME}`,
-        description: `Washington State Ferries schedules, sailing times, vehicle-capacity forecasts, and service information for the ${routeName} route.`,
+        description: `Plan the ${routeName} direction with Washington State Ferries sailing times, schedule details, service updates, and vehicle-capacity forecasts.`,
       };
   }
 };
@@ -319,7 +347,7 @@ export const getTerminalLeaderboardSeoMetadata = (terminal: {
 }): SeoMetadata => {
   const canonicalPath = `/leaderboards/terminals/${encodeURIComponent(terminal.id)}`;
   const title = `${terminal.name} Terminal Leaderboard - ${SEO_APP_NAME}`;
-  const description = `All-time and period leaderboard for foreground terminal check-ins at the ${terminal.name} Washington State Ferries terminal.`;
+  const description = `View public all-time, monthly, and weekly Ferry FYI rankings from eligible foreground check-ins at the ${terminal.name} Washington State Ferries terminal.`;
   return {
     canonicalPath,
     description,
@@ -335,7 +363,7 @@ export const getVesselLeaderboardSeoMetadata = (vessel: {
 }): SeoMetadata => {
   const canonicalPath = `/leaderboards/vessels/${encodeURIComponent(vessel.id)}`;
   const title = `${vessel.name} Vessel Leaderboard - ${SEO_APP_NAME}`;
-  const description = `Public Ferry FYI leaderboard page for the Washington State Ferries vessel ${vessel.name}. Vessel check-ins are not currently available.`;
+  const description = `See the public Ferry FYI information page for WSF vessel ${vessel.name}; vessel check-ins and leaderboard rankings are not currently available.`;
   return {
     canonicalPath,
     description,
@@ -349,7 +377,7 @@ export const getLeaderboardsSeoMetadata = (): SeoMetadata => {
   const canonicalPath = "/leaderboards";
   const title = `Washington State Ferries Leaderboards - ${SEO_APP_NAME}`;
   const description =
-    "Public Ferry FYI terminal and vessel leaderboards based on foreground location policy checks.";
+    "Browse public Ferry FYI terminal leaderboards based on eligible foreground check-ins, plus vessel pages where check-in rankings are not yet available.";
   return {
     canonicalPath,
     description,
@@ -357,4 +385,99 @@ export const getLeaderboardsSeoMetadata = (): SeoMetadata => {
     schema: getWebPageSchema(title, description, canonicalPath),
     title,
   };
+};
+
+export interface SeoDescriptionAuditEntry {
+  canonicalPath: string;
+  description: string;
+}
+
+export interface SeoDescriptionAuditResult {
+  reviewedLongUrls: string[];
+  shortRationaleUrls: string[];
+  targetUrls: string[];
+}
+
+export interface SeoDescriptionAuditReviews {
+  longReviewNotes?: Readonly<Record<string, string>>;
+  shortRationales?: Readonly<Record<string, string>>;
+}
+
+const normalizeSeoDescription = (description: string): string =>
+  description.trim().replace(/\s+/g, " ").toLocaleLowerCase("en-US");
+
+/**
+ * Enforces the release-owned description policy for a complete generated URL
+ * set. Callers must pass every canonical URL they intend to expose.
+ */
+export const auditIndexableSeoDescriptions = (
+  entries: readonly SeoDescriptionAuditEntry[],
+  reviews: SeoDescriptionAuditReviews = {}
+): SeoDescriptionAuditResult => {
+  const failures: string[] = [];
+  const normalizedOwners = new Map<string, string>();
+  const entryPaths = new Set(entries.map(({ canonicalPath }) => canonicalPath));
+  const longReviewNotes =
+    reviews.longReviewNotes ?? SEO_DESCRIPTION_LONG_REVIEW_NOTES;
+  const shortRationales =
+    reviews.shortRationales ?? SEO_DESCRIPTION_SHORT_RATIONALES;
+  const result: SeoDescriptionAuditResult = {
+    reviewedLongUrls: [],
+    shortRationaleUrls: [],
+    targetUrls: [],
+  };
+  Object.keys(shortRationales).forEach((canonicalPath) => {
+    if (!entryPaths.has(canonicalPath)) {
+      failures.push(`${canonicalPath}: stale short-description rationale`);
+    }
+  });
+  Object.keys(longReviewNotes).forEach((canonicalPath) => {
+    if (!entryPaths.has(canonicalPath)) {
+      failures.push(`${canonicalPath}: stale long-description review`);
+    }
+  });
+
+  entries.forEach(({ canonicalPath, description }) => {
+    const normalized = normalizeSeoDescription(description);
+    if (!normalized) {
+      failures.push(`${canonicalPath}: empty description`);
+      return;
+    }
+    const duplicateOwner = normalizedOwners.get(normalized);
+    if (duplicateOwner) {
+      failures.push(
+        `${canonicalPath}: normalized description duplicates ${duplicateOwner}`
+      );
+    } else {
+      normalizedOwners.set(normalized, canonicalPath);
+    }
+
+    const { length } = description.trim();
+    if (length < SEO_DESCRIPTION_FAILURE_LENGTH) {
+      failures.push(`${canonicalPath}: description is ${length} characters`);
+    } else if (length < SEO_DESCRIPTION_TARGET_MIN_LENGTH) {
+      if (shortRationales[canonicalPath]?.trim()) {
+        result.shortRationaleUrls.push(canonicalPath);
+      } else {
+        failures.push(
+          `${canonicalPath}: ${length}-character description needs a checked-in rationale`
+        );
+      }
+    } else if (length <= SEO_DESCRIPTION_TARGET_MAX_LENGTH) {
+      result.targetUrls.push(canonicalPath);
+    } else if (length > SEO_DESCRIPTION_EDITORIAL_REVIEW_LENGTH) {
+      if (longReviewNotes[canonicalPath]?.trim()) {
+        result.reviewedLongUrls.push(canonicalPath);
+      } else {
+        failures.push(
+          `${canonicalPath}: ${length}-character description needs editorial review`
+        );
+      }
+    }
+  });
+
+  if (failures.length) {
+    throw new Error(`SEO description audit failed:\n${failures.join("\n")}`);
+  }
+  return result;
 };

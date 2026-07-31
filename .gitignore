@@ -13,6 +13,10 @@ dist/
 # testing
 latest.dump
 .pytest_cache/
+test-results/
+
+# OMX recovery backups
+.omx.backup-*/
 
 # android
 android.keystore
@@ -48,4 +52,3 @@ infra/aws/terraform/crash.*.log
 # python
 __pycache__/
 *.py[cod]
-.pytest_cache/

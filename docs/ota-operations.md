@@ -1,6 +1,6 @@
 # OTA operations
 
-This runbook covers Android and iOS web-asset updates delivered by the Capacitor updater. The updater is configured in `capacitor.config.ts` with `autoUpdate: false`; `client/index.tsx` asks the server for an update at startup, downloads it in the background, and activates it on a later app start.
+This runbook covers Android and iOS web-asset updates delivered by the Capacitor updater. The updater is configured in `capacitor.config.ts` with `autoUpdate: false`; `client/entry-client.tsx` asks the server for an update at startup, downloads it in the background, and activates it on a later app start.
 
 ## Release boundaries
 

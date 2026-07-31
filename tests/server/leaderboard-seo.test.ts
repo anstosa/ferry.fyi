@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
 
 import { filterLeaderboardLlms } from "../../server/lib/leaderboardSeo";
@@ -28,5 +30,16 @@ describe("leaderboard discovery metadata", () => {
     expect(filterLeaderboardLlms(llms, false)).toBe("before\nafter");
     expect(filterLeaderboardLlms(llms, true)).toContain("leaderboard content");
     expect(filterLeaderboardLlms(llms, true)).not.toContain("LEADERBOARDS:");
+  });
+
+  it("keeps route-purpose guidance outside the leaderboard visibility gate", () => {
+    const source = readFileSync("client/static/llms.txt", "utf8");
+    const disabled = filterLeaderboardLlms(source, false);
+    expect(disabled).toContain("Canonical schedule pages are directional");
+    expect(disabled).toContain("`/cameras` shows camera observations");
+    expect(disabled).not.toContain("### Leaderboards");
+    expect(filterLeaderboardLlms(source, true)).toContain(
+      "separate persisted indexing"
+    );
   });
 });

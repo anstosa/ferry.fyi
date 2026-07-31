@@ -19,6 +19,7 @@ import {
   AppVersionInfo,
   getWebVersion,
 } from "../../client/components/AppVersionInfo";
+import { AppRenderProvider } from "../../client/lib/renderContext";
 
 let root: Root | undefined;
 
@@ -31,13 +32,32 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-const renderVersionInfo = async (): Promise<HTMLDivElement> => {
+const renderVersionInfo = async (
+  platform: "android" | "ios" | "web" = "web"
+): Promise<HTMLDivElement> => {
   const container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container);
 
   await act(async () => {
-    root?.render(React.createElement(AppVersionInfo));
+    root?.render(
+      React.createElement(
+        AppRenderProvider,
+        {
+          value: {
+            clock: () => 0,
+            hasInjectedRequest: true,
+            platform,
+            requestUrl: "https://ferry.fyi/about",
+            runtime: "browser",
+            seoBaseUrl: "https://ferry.fyi",
+            seoHost: "ferry.fyi",
+            seoPathname: "/about",
+          },
+        },
+        React.createElement(AppVersionInfo)
+      )
+    );
     await Promise.resolve();
   });
 
@@ -79,8 +99,6 @@ describe("getWebVersion", () => {
 
 describe("AppVersionInfo", () => {
   it("shows the web version without querying native plugins", async () => {
-    capacitor.isNativePlatform.mockReturnValue(false);
-
     const container = await renderVersionInfo();
 
     expect(container.textContent).toBe("DEVELOPMENT");
@@ -89,8 +107,6 @@ describe("AppVersionInfo", () => {
   });
 
   it("shows the Android build and OTA revision on one line", async () => {
-    capacitor.isNativePlatform.mockReturnValue(true);
-    capacitor.getPlatform.mockReturnValue("android");
     vi.stubEnv("NODE_ENV", "production");
     document.head.innerHTML =
       '<meta name="ferry-fyi-release" content="web-build-hash" />';
@@ -98,7 +114,7 @@ describe("AppVersionInfo", () => {
     updater.current.mockResolvedValue({
       bundle: { id: "ota-bundle", version: "3.0.1" },
     });
-    const container = await renderVersionInfo();
+    const container = await renderVersionInfo("android");
 
     expect(container.textContent).toBe(
       "Android 262012119 · OTA web-build-hash"
@@ -109,12 +125,10 @@ describe("AppVersionInfo", () => {
   });
 
   it("uses the iOS label with its canonical build version", async () => {
-    capacitor.isNativePlatform.mockReturnValue(true);
-    capacitor.getPlatform.mockReturnValue("ios");
     app.getInfo.mockResolvedValue({ build: "263", version: "3.0" });
     updater.current.mockResolvedValue({ bundle: { id: "builtin" } });
 
-    const container = await renderVersionInfo();
+    const container = await renderVersionInfo("ios");
 
     expect(container.textContent).toBe("iOS 263 · OTA Built-in");
   });

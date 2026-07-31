@@ -2,55 +2,74 @@ import logger from "heroku-logger";
 import { isEmpty } from "shared/lib/arrays";
 import { entries } from "shared/lib/objects";
 import {
+  auditIndexableSeoDescriptions,
   getLeaderboardsSeoMetadata,
   getRouteSeoMetadata,
+  getSeoMetadata,
   getTerminalLeaderboardSeoMetadata,
   getTerminalSeoMetadata,
+  getVesselLeaderboardSeoMetadata,
   SEO_CONTENT_LAST_MODIFIED,
   SEO_INDEXABLE_PATHS,
   SEO_INDEXABLE_ROUTE_VIEWS,
+  type SeoDescriptionAuditEntry,
 } from "shared/lib/seo";
 import { SitemapStream, streamToPromise } from "sitemap";
 
 import { Terminal } from "~/models/Terminal";
 import { Vessel } from "~/models/Vessel";
 
+export const getSitemapSeoEntries = (
+  terminals: Terminal[],
+  vessels: Vessel[] = [],
+  includeLeaderboards = false
+): SeoDescriptionAuditEntry[] => {
+  const metadata: SeoDescriptionAuditEntry[] = SEO_INDEXABLE_PATHS.map(
+    (canonicalPath) => ({
+      canonicalPath,
+      description: getSeoMetadata(canonicalPath).description,
+    })
+  );
+
+  terminals.forEach((terminal) => {
+    metadata.push(
+      ...terminal.mates.map((mate) => getRouteSeoMetadata(terminal, mate)),
+      ...terminal.mates.flatMap((mate) =>
+        SEO_INDEXABLE_ROUTE_VIEWS.map((view) =>
+          getRouteSeoMetadata(terminal, mate, view)
+        )
+      )
+    );
+    if (terminal.mates.length > 0) {
+      metadata.push(getTerminalSeoMetadata(terminal));
+    }
+  });
+
+  if (includeLeaderboards) {
+    metadata.push(
+      getLeaderboardsSeoMetadata(),
+      ...terminals.map((terminal) =>
+        getTerminalLeaderboardSeoMetadata(terminal)
+      ),
+      ...vessels.map((vessel) => getVesselLeaderboardSeoMetadata(vessel))
+    );
+  }
+
+  return metadata;
+};
+
 export const getSitemapUrls = (
   terminals: Terminal[],
   vessels: Vessel[] = [],
   includeLeaderboards = false
 ): string[] => {
-  const urls: string[] = [...SEO_INDEXABLE_PATHS];
-
-  terminals.forEach((terminal) => {
-    urls.push(
-      ...terminal.mates.map(
-        (mate) => getRouteSeoMetadata(terminal, mate).canonicalPath
-      ),
-      ...terminal.mates.flatMap((mate) =>
-        SEO_INDEXABLE_ROUTE_VIEWS.map(
-          (view) => getRouteSeoMetadata(terminal, mate, view).canonicalPath
-        )
-      )
-    );
-    if (terminal.mates.length > 0) {
-      urls.push(getTerminalSeoMetadata(terminal).canonicalPath);
-    }
-  });
-
-  if (includeLeaderboards) {
-    urls.push(
-      getLeaderboardsSeoMetadata().canonicalPath,
-      ...terminals.map(
-        (terminal) => getTerminalLeaderboardSeoMetadata(terminal).canonicalPath
-      ),
-      ...vessels.map(
-        (vessel) => `/leaderboards/vessels/${encodeURIComponent(vessel.id)}`
-      )
-    );
-  }
-
-  return urls;
+  const metadata = getSitemapSeoEntries(
+    terminals,
+    vessels,
+    includeLeaderboards
+  );
+  auditIndexableSeoDescriptions(metadata);
+  return metadata.map(({ canonicalPath }) => canonicalPath);
 };
 
 /**
@@ -73,7 +92,7 @@ const generateSitemap = async (): Promise<Buffer> => {
 
   logger.info("Generating sitemap...");
   const [{ getPublicContent }, { isPublicFeatureEnabled }] = await Promise.all([
-    import("~/lib/admin/content"),
+    import("~/services/public/content"),
     import("~/lib/leaderboardFlags"),
   ]);
   const [leaderboardsEnabled, publicContent] = await Promise.all([

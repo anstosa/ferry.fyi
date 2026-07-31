@@ -8,7 +8,12 @@ import type {
   LeaderboardPeriod,
   LeaderboardPreferences,
 } from "shared/contracts/leaderboards";
-import type { SeoMetadata } from "shared/lib/seo";
+import {
+  getLeaderboardsSeoMetadata,
+  getTerminalLeaderboardSeoMetadata,
+  getVesselLeaderboardSeoMetadata,
+  type SeoMetadata,
+} from "shared/lib/seo";
 
 import { LeaderboardLocationEnrollment } from "~/components/LeaderboardLocationEnrollment";
 import { LeaderboardManualCheckIn } from "~/components/LeaderboardManualCheckIn";
@@ -44,6 +49,7 @@ import ShareIcon from "~/static/images/icons/solid/share-alt.svg";
 import ShipIcon from "~/static/images/icons/solid/ship.svg";
 import StarFilledIcon from "~/static/images/icons/solid/star.svg";
 import TrophyIcon from "~/static/images/icons/solid/trophy.svg";
+import { SnapshotSeoHelmet } from "~/views/PublicSsrPages";
 
 const periodLabels: Record<LeaderboardPeriod, string> = {
   all: "All time",
@@ -599,12 +605,11 @@ const TerminalLeaderboard = (): ReactElement => {
       }
       title={`${name} leaderboard`}
     >
-      <SeoHelmet
-        seo={seoFor(
-          `/leaderboards/terminals/${terminalId}`,
-          `${name} ferry terminal leaderboard - Ferry FYI`,
-          `Check-in leaderboard for the Washington State Ferries ${name} terminal.`
-        )}
+      <SnapshotSeoHelmet
+        fallback={getTerminalLeaderboardSeoMetadata({
+          id: terminalId,
+          name,
+        })}
       />
       <AllLeaderboardsBreadcrumb />
       <LeaderboardHero eyebrow="Terminal leaderboard" title={name}>
@@ -735,12 +740,11 @@ const VesselLeaderboard = (): ReactElement => {
       headerAction={<ShareButton title={`${name} ferry leaderboard`} />}
       title={`${name} leaderboard`}
     >
-      <SeoHelmet
-        seo={seoFor(
-          `/leaderboards/vessels/${vesselId}`,
-          `${name} ferry leaderboard - Ferry FYI`,
-          `Check-in leaderboard for the Washington State Ferries vessel ${name}.`
-        )}
+      <SnapshotSeoHelmet
+        fallback={getVesselLeaderboardSeoMetadata({
+          id: vesselId,
+          name,
+        })}
       />
       <AllLeaderboardsBreadcrumb />
       <LeaderboardHero eyebrow="Vessel leaderboard" title={name}>
@@ -853,13 +857,7 @@ const LeaderboardHome = (): ReactElement => {
 
   return (
     <Page title="Leaderboards">
-      <SeoHelmet
-        seo={seoFor(
-          "/leaderboards",
-          "Washington State Ferries check-in leaderboards - Ferry FYI",
-          "See Ferry FYI terminal and vessel check-in leaderboards for Washington State Ferries."
-        )}
-      />
+      <SnapshotSeoHelmet fallback={getLeaderboardsSeoMetadata()} />
       <LeaderboardHero
         eyebrow="Ferry FYI"
         footer={<LeaderboardControls />}
@@ -942,18 +940,14 @@ const LeaderboardHome = (): ReactElement => {
 
 export const Leaderboards = (): ReactElement => {
   const disabledSeo = {
-    ...seoFor(
-      "/leaderboards",
-      "Ferry FYI leaderboards",
-      "Ferry FYI check-in leaderboards for Washington State Ferries."
-    ),
+    ...getLeaderboardsSeoMetadata(),
     robots: "noindex,follow" as const,
   };
   const { leaderboardsEnabled } = useFeatureFlags();
   if (!leaderboardsEnabled) {
     return (
       <Page title="Leaderboards">
-        <SeoHelmet seo={disabledSeo} />
+        <SnapshotSeoHelmet fallback={disabledSeo} />
         <p className="mt-4">Leaderboards are not available yet.</p>
       </Page>
     );

@@ -18,11 +18,10 @@ describe("API client base URL", () => {
   });
 
   // native absolute-origin case
-  it("preserves absolute API paths for native shells", () => {
+  it("keeps the public base path synchronous while native dispatch stays deferred", () => {
     vi.spyOn(Capacitor, "isNativePlatform").mockReturnValue(true);
     vi.stubEnv("BASE_URL", "https://ferry.fyi");
-
-    expect(getApiBaseUrl()).toBe("https://ferry.fyi/api");
+    expect(getApiBaseUrl()).toBe("/api");
   });
 });
 

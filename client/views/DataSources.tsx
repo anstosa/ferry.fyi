@@ -17,7 +17,7 @@ export const DataSources = (): ReactElement => (
     </p>
     <p className="mt-2 text-sm text-gray-700 dark:text-gray-400">
       Methodology last reviewed{" "}
-      <time dateTime={SEO_CONTENT_LAST_MODIFIED}>July 22, 2026</time>.
+      <time dateTime={SEO_CONTENT_LAST_MODIFIED}>July 29, 2026</time>.
     </p>
 
     <h2 className="font-bold text-lg mt-8">Data sources and freshness</h2>

@@ -1,5 +1,3 @@
-import { Capacitor } from "@capacitor/core";
-import { Geolocation } from "@capacitor/geolocation";
 import { type Dispatch, type SetStateAction, useEffect, useState } from "react";
 import { isUndefined } from "shared/lib/identity";
 
@@ -49,8 +47,20 @@ const LOCATION_OPTIONS = {
   timeout: 30 * 1000,
 };
 
+const nativeLocation = async () => {
+  const [{ Capacitor }, { Geolocation }] = await Promise.all([
+    import("@capacitor/core"),
+    import("@capacitor/geolocation"),
+  ]);
+  return { Capacitor, Geolocation };
+};
+
+const isNativeLocation = async (): Promise<boolean> =>
+  (await nativeLocation()).Capacitor.isNativePlatform();
+
 const fetchCurrentLocation = async (): Promise<Point | null> => {
   try {
+    const { Geolocation } = await nativeLocation();
     const {
       coords: { latitude, longitude },
     } = await Geolocation.getCurrentPosition(LOCATION_OPTIONS);
@@ -63,6 +73,7 @@ const fetchCurrentLocation = async (): Promise<Point | null> => {
 export const fetchForegroundLocation =
   async (): Promise<ForegroundLocation | null> => {
     try {
+      const { Geolocation } = await nativeLocation();
       // Credits require a fresh, high-accuracy fix acquired while this page is visible.
       const { coords, timestamp } = await Geolocation.getCurrentPosition({
         enableHighAccuracy: true,
@@ -83,11 +94,14 @@ export const fetchForegroundLocation =
 /** Request one foreground location after a user tap. The caller must discard it after use. */
 export const requestForegroundLocation = fetchForegroundLocation;
 
-const getLocation = (promptsForPermission: boolean): Promise<Point | null> => {
+const getLocation = async (
+  promptsForPermission: boolean
+): Promise<Point | null> => {
   // Android's checkPermissions() reaches the native location service and has
   // caused startup crashes on affected devices. Never invoke the plugin from a
   // background refresh; getCurrentPosition() owns the permission flow after an
   // explicit user action instead.
+  const { Capacitor } = await nativeLocation();
   if (Capacitor.isNativePlatform()) {
     if (!promptsForPermission) {
       return Promise.resolve(lastNativeLocation);
@@ -131,7 +145,7 @@ export const useGeo = (): [
         // without another permission prompt. New native users still need the
         // explicit RouteSelector action before the plugin is invoked.
         const location =
-          requestPermission || Capacitor.isNativePlatform()
+          requestPermission || (await isNativeLocation())
             ? await requestCurrentLocation()
             : await getCurrentLocation();
         if (location) {
@@ -156,7 +170,7 @@ export const useGeo = (): [
 
     // clear interval on unmount
     return clearInterval(interval);
-  }, []);
+  }, [savedNoLocation]);
 
   return [location, updateLocation];
 };

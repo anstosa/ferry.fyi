@@ -1,5 +1,4 @@
 import { useAuth0 } from "@auth0/auth0-react";
-import { Browser } from "@capacitor/browser";
 import clsx from "clsx";
 import { DateTime } from "luxon";
 import React, {
@@ -954,6 +953,7 @@ export const AlertSubscription = ({
           await loginWithRedirect({
             ...loginOptions,
             openUrl: async (url) => {
+              const { Browser } = await import("@capacitor/browser");
               await Browser.open({ url });
             },
           });

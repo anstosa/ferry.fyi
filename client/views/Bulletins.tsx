@@ -1,7 +1,13 @@
 import clsx from "clsx";
 import { DateTime } from "luxon";
-import React, { ReactElement, ReactNode, useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import React, {
+  type ReactElement,
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { Link, useLocation } from "react-router-dom";
 import { type Bulletin, Level } from "shared/contracts/bulletins";
 import type { Route } from "shared/contracts/routes";
 import type { Terminal } from "shared/contracts/terminals";
@@ -14,12 +20,8 @@ import { NotificationPermissionWarning } from "~/components/NotificationPermissi
 import { Skeleton, SkeletonGroup } from "~/components/Skeleton";
 import { Toast } from "~/components/Toast";
 import { getBulletinTime, getRouteBulletins } from "~/lib/bulletins";
-import {
-  getBulletinFreshness,
-  getSlug,
-  refreshBulletins,
-  useTerminals,
-} from "~/lib/terminals";
+import { getPublicSsrSourceOutcome, usePublicSsrSnapshot } from "~/lib/ssrSeed";
+import { getSlug, refreshBulletins, useTerminals } from "~/lib/terminals";
 import { useUser } from "~/lib/user";
 import UnsubscribedIcon from "~/static/images/icons/regular/bell.svg";
 import SubscribedIcon from "~/static/images/icons/solid/bell.svg";
@@ -44,9 +46,7 @@ interface BulletinLevelStyles {
   label: string;
 }
 
-// bulletin severity style
 const getBulletinLevelStyles = (level: Level): BulletinLevelStyles => {
-  // high severity guard
   if (level === Level.HIGH) {
     return {
       accent: "bg-stale-light dark:bg-stale-dark",
@@ -65,28 +65,19 @@ const getBulletinLevelStyles = (level: Level): BulletinLevelStyles => {
   };
 };
 
-// collect route choices
 const getRouteOptions = (terminals: Terminal[]): RouteOption[] => {
   const terminalsById = Object.fromEntries(
-    terminals.map((terminal) => {
-      return [terminal.id, terminal];
-    })
+    terminals.map((terminal) => [terminal.id, terminal])
   );
   const routesById = new Map<string, RouteOption>();
-  // terminal route loop
   terminals.forEach((terminal) => {
-    // route loop
     Object.values(terminal.routes ?? {}).forEach((route) => {
-      // duplicate route guard
       if (routesById.has(route.id)) {
         return;
       }
       const routeTerminals = route.terminalIds
-        .map((terminalId) => {
-          return terminalsById[terminalId];
-        })
+        .map((terminalId) => terminalsById[terminalId])
         .filter((terminal): terminal is Terminal => Boolean(terminal));
-      // incomplete route guard
       if (routeTerminals.length < 2) {
         return;
       }
@@ -97,10 +88,9 @@ const getRouteOptions = (terminals: Terminal[]): RouteOption[] => {
       });
     });
   });
-  return Array.from(routesById.values()).sort((left, right) => {
-    // alphabetical route order
-    return left.route.description.localeCompare(right.route.description);
-  });
+  return Array.from(routesById.values()).sort((left, right) =>
+    left.route.description.localeCompare(right.route.description)
+  );
 };
 
 interface SubscribeLinkProps {
@@ -116,10 +106,8 @@ const SubscribeLink = ({
 }: SubscribeLinkProps): ReactElement => {
   const [{ alertRules }] = useUser();
   const terminalIds = mate ? [terminal.id, mate.id] : [terminal.id];
-  const hasAlertRules = alertRules?.some((rule) => {
-    return isRuleForRoute(rule, terminalIds);
-  });
-  const isSubscribed = hasAlertRules;
+  const isSubscribed =
+    alertRules?.some((rule) => isRuleForRoute(rule, terminalIds)) ?? false;
   const label = isSubscribed ? "Edit alerts" : "Set up alerts";
 
   return (
@@ -146,6 +134,25 @@ interface Props {
   time: DateTime;
 }
 
+function normalizePath(path: string): string {
+  return path.replace(/\/+$/, "") || "/";
+}
+
+function snapshotTimestamp(
+  source:
+    | {
+        observedAt: string;
+        sourceUpdatedAt: string | null;
+      }
+    | undefined
+): number | null {
+  if (!source) {
+    return null;
+  }
+  const timestamp = Date.parse(source.sourceUpdatedAt ?? source.observedAt);
+  return Number.isFinite(timestamp) ? timestamp / 1000 : null;
+}
+
 export const Bulletins = ({
   getPath,
   mate,
@@ -153,44 +160,135 @@ export const Bulletins = ({
   terminal,
   time,
 }: Props): ReactElement => {
+  const location = useLocation();
+  const snapshot = usePublicSsrSnapshot();
+  const initialTerminalRef = useRef(terminal);
+  const activeTerminalIdRef = useRef(terminal?.id);
+  activeTerminalIdRef.current = terminal?.id;
   const { terminals } = useTerminals();
   const [isRouteOpen, setRouteOpen] = useState<boolean>(false);
-  const [sourceUpdatedAt, setSourceUpdatedAt] = useState<number | null>(null);
-  const [refreshedTerminal, setRefreshedTerminal] = useState<Terminal | null>(
-    null
-  );
+  const terminalSlug = terminal ? getSlug(terminal.id) : undefined;
+  const mateSlug = mate ? getSlug(mate.id) : undefined;
+  const seededRoutePath = terminalSlug
+    ? `/${terminalSlug}${
+        snapshot?.routeParams.mateSlug
+          ? `/${snapshot.routeParams.mateSlug}`
+          : ""
+      }/alerts`
+    : undefined;
+  const hasMatchingSeedRoute =
+    terminalSlug !== undefined &&
+    snapshot !== undefined &&
+    normalizePath(location.pathname) === seededRoutePath &&
+    snapshot.routeParams.terminalSlug === terminalSlug &&
+    (!snapshot.routeParams.mateSlug ||
+      snapshot.routeParams.mateSlug === mateSlug) &&
+    snapshot.routeId ===
+      (snapshot.routeParams.mateSlug ? "mate-alerts" : "terminal-alerts");
+  const seededBulletinsOutcome = hasMatchingSeedRoute
+    ? getPublicSsrSourceOutcome(snapshot, "bulletins")
+    : undefined;
+  const seededBulletins =
+    seededBulletinsOutcome?.outcome === "value" ||
+    seededBulletinsOutcome?.outcome === "empty" ||
+    seededBulletinsOutcome?.outcome === "stale-usable"
+      ? seededBulletinsOutcome.value
+      : undefined;
+  const seededSourceUpdatedAt = snapshotTimestamp(seededBulletinsOutcome);
+  const routeKey = `${normalizePath(location.pathname)}:${terminal?.id ?? ""}:${
+    mate?.id ?? ""
+  }`;
+  const activeRouteKeyRef = useRef(routeKey);
+  activeRouteKeyRef.current = routeKey;
+  const [refreshState, setRefreshState] = useState<{
+    routeKey: string;
+    sourceUpdatedAt: number | null;
+    terminal: Terminal | null;
+  }>(() => ({
+    routeKey,
+    sourceUpdatedAt: seededSourceUpdatedAt,
+    terminal: null,
+  }));
+  const currentRefreshState =
+    refreshState.routeKey === routeKey
+      ? refreshState
+      : {
+          routeKey,
+          sourceUpdatedAt: seededSourceUpdatedAt,
+          terminal: null,
+        };
   const [isRefreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState(false);
   const routeOptions = getRouteOptions(terminals);
   const [{ alertRules }] = useUser();
 
-  useEffect(() => setRefreshedTerminal(null), [terminal?.id]);
   useEffect(() => {
-    getBulletinFreshness()
-      .then(({ sourceUpdatedAt }) => setSourceUpdatedAt(sourceUpdatedAt))
+    setRefreshState({
+      routeKey,
+      sourceUpdatedAt: seededSourceUpdatedAt,
+      terminal: null,
+    });
+    setRefreshing(false);
+    setRefreshError(false);
+  }, [routeKey, seededSourceUpdatedAt]);
+  useEffect(() => {
+    const terminalId = terminal?.id;
+    if (!terminalId) {
+      return;
+    }
+    let isCurrent = true;
+    refreshBulletins(terminalId)
+      .then((result) => {
+        if (
+          isCurrent &&
+          activeRouteKeyRef.current === routeKey &&
+          activeTerminalIdRef.current === terminalId
+        ) {
+          setRefreshState({
+            routeKey,
+            sourceUpdatedAt: result.sourceUpdatedAt,
+            terminal: result.terminal,
+          });
+        }
+      })
       .catch(console.error);
-  }, [terminal?.id]);
+    return () => {
+      isCurrent = false;
+    };
+  }, [routeKey, terminal?.id]);
 
-  // defensive isolated-render loading guard
   if (!terminal) {
     return <BulletinsLoadingSkeleton />;
   }
-  const displayTerminal = refreshedTerminal ?? terminal;
+  let displayTerminal = terminal;
+  if (currentRefreshState.terminal?.id === terminal.id) {
+    displayTerminal = currentRefreshState.terminal;
+  } else if (
+    seededBulletins !== undefined &&
+    terminal === initialTerminalRef.current
+  ) {
+    displayTerminal = { ...terminal, bulletins: [...seededBulletins] };
+  }
+  const { sourceUpdatedAt } = currentRefreshState;
 
   const selectedRoute = mate
-    ? Object.values(displayTerminal.routes ?? {}).find((route) => {
-        // selected route match
-        return (
+    ? Object.values(displayTerminal.routes ?? {}).find(
+        (route) =>
           route.terminalIds.includes(displayTerminal.id) &&
           route.terminalIds.includes(mate.id)
-        );
-      })
+      )
     : undefined;
   const routeName =
     selectedRoute?.description ??
     (mate ? `${displayTerminal.name} / ${mate.name}` : displayTerminal.name);
   const routeShortName = selectedRoute?.abbreviation ?? routeName;
   const activeBulletins = getRouteBulletins(displayTerminal, mate);
+  const alertCount = activeBulletins.length;
+  let alertSummary = "No active service alerts right now";
+  if (alertCount > 0) {
+    const alertNoun = alertCount === 1 ? "alert" : "alerts";
+    alertSummary = `${alertCount} active ${alertNoun} from WSF`;
+  }
   const hasConfiguredAlerts = (alertRules ?? []).some((rule) =>
     isRuleForRoute(
       rule,
@@ -199,17 +297,30 @@ export const Bulletins = ({
   );
 
   const refresh = async (): Promise<void> => {
+    const terminalId = displayTerminal.id;
+    const isCurrentRequest = (): boolean =>
+      activeRouteKeyRef.current === routeKey &&
+      activeTerminalIdRef.current === terminalId;
     setRefreshing(true);
     setRefreshError(false);
     try {
-      const result = await refreshBulletins(displayTerminal.id);
-      setSourceUpdatedAt(result.sourceUpdatedAt);
-      setRefreshedTerminal(result.terminal);
+      const result = await refreshBulletins(terminalId);
+      if (isCurrentRequest()) {
+        setRefreshState({
+          routeKey,
+          sourceUpdatedAt: result.sourceUpdatedAt,
+          terminal: result.terminal,
+        });
+      }
     } catch (error) {
-      setRefreshError(true);
+      if (isCurrentRequest()) {
+        setRefreshError(true);
+      }
       throw error;
     } finally {
-      setRefreshing(false);
+      if (isCurrentRequest()) {
+        setRefreshing(false);
+      }
     }
   };
 
@@ -291,18 +402,9 @@ export const Bulletins = ({
         <div className="min-w-0 text-center">
           <HeaderDropdown
             ariaLabel="Expand routes"
-            getKey={(option) => {
-              // route option key
-              return option.route.id;
-            }}
-            getLabel={(option) => {
-              // route option label
-              return option.route.description;
-            }}
-            getShortLabel={(option) => {
-              // route option short label
-              return option.route.abbreviation;
-            }}
+            getKey={(option) => option.route.id}
+            getLabel={(option) => option.route.description}
+            getShortLabel={(option) => option.route.abbreviation}
             isOpen={isRouteOpen}
             onSelect={(event, option) => {
               event.preventDefault();
@@ -342,11 +444,7 @@ export const Bulletins = ({
                       {routeName}
                     </h1>
                     <p className="mt-2 text-sm leading-relaxed text-white/85">
-                      {activeBulletins.length > 0
-                        ? `${activeBulletins.length} active ${
-                            activeBulletins.length === 1 ? "alert" : "alerts"
-                          } from WSF`
-                        : "No active service alerts right now"}
+                      {alertSummary}
                     </p>
                   </div>
                 </div>
@@ -365,7 +463,11 @@ export const Bulletins = ({
             hasAlerts={hasConfiguredAlerts}
           />
           {sourceUpdatedAt ? (
-            <div className="mb-2 flex justify-center">
+            <div
+              className="mb-2 flex justify-center"
+              data-live-freshness="bulletins"
+              data-source-updated-at={sourceUpdatedAt}
+            >
               <FreshnessPill
                 isRefreshing={isRefreshing}
                 onClick={() => {

@@ -5,7 +5,7 @@ let isShuttingDown = false;
 nodemon({
   legacyWatch: process.env.CHOKIDAR_USEPOLLING === "true",
   watch: [".", "../shared"],
-  script: "server.ts",
+  script: "development.ts",
   exec: "node ../scripts/register-esbuild.js",
   ext: "ts",
 });

@@ -1,5 +1,3 @@
-import { Capacitor } from "@capacitor/core";
-
 type Auth0RedirectUriOptions = {
   domain: string;
   platform?: string;
@@ -8,7 +6,9 @@ type Auth0RedirectUriOptions = {
 
 export const getAuth0RedirectUri = ({
   domain,
-  platform = Capacitor.getPlatform(),
+  // Native callers pass their platform from the browser runtime adapter.
+  // Public render imports must remain independent of Capacitor.
+  platform = "web",
   redirectUri,
 }: Auth0RedirectUriOptions): string => {
   if (platform === "android") {
@@ -18,9 +18,10 @@ export const getAuth0RedirectUri = ({
   return redirectUri;
 };
 
-export const getConfiguredAuth0RedirectUri = (): string =>
+export const getConfiguredAuth0RedirectUri = (platform?: string): string =>
   getAuth0RedirectUri({
     domain: process.env.AUTH0_DOMAIN as string,
+    platform,
     redirectUri: process.env.AUTH0_CLIENT_REDIRECT as string,
   });
 

@@ -29,10 +29,12 @@ describe("loading-state source policy", () => {
     const route = source("client/views/Route.tsx");
     const tickets = source("client/views/Tickets/index.tsx");
 
-    expect(app).toContain("<Suspense fallback={<AppLoadingState />}>{element}</Suspense>");
     expect(app).toContain(
-      'path: "callback", element: withRouteBoundary("Callback", <Splash />)'
+      "<Suspense fallback={<AppLoadingState />}>{element}</Suspense>"
     );
+    const routes = source("client/routes.tsx");
+    expect(routes).toContain('case "callback":');
+    expect(routes).toContain("return <Splash />;");
     expect(route).toContain(
       "fallback={<RouteLoadingState hasRouteFooter view={view} />}"
     );
@@ -59,7 +61,8 @@ describe("loading-state source policy", () => {
     ];
 
     lazyViews.forEach(([view, module]) => {
-      expect(route).toContain(`const ${view} = React.lazy(() =>`);
+      expect(route).toContain(`const load${view} = () =>`);
+      expect(route).toContain(`const ${view} = React.lazy(load${view});`);
       expect(route).toContain(`import("${module}")`);
       expect(route).not.toMatch(
         new RegExp(`^import\\s+.*${module.replace(".", "\\.")}`, "m")

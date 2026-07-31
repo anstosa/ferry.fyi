@@ -9,39 +9,19 @@ import { defineConfig, Plugin } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 import svgr from "vite-plugin-svgr";
 
-import { OTA_CLIENT_ENV_KEYS } from "../shared/contracts/ota";
 import {
   SEO_APP_NAME,
   SEO_DEFAULT_DESCRIPTION,
   SEO_DEFAULT_TITLE,
 } from "../shared/lib/seo";
 import tailwindConfig from "../tailwind.config.js";
+import { clientBuildEnvDefines, clientViteAliases } from "./vite.shared";
 
 const configDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(configDir, "..");
 const staticDir = path.resolve(configDir, "static");
 const clientOutDir = path.resolve(repoRoot, "dist/client");
 const rootStaticFiles = ["llms.txt", "robots.txt"];
-const envKeys = [
-  "AUTH0_CLIENT_AUDIENCE",
-  "AUTH0_CLIENT_ID",
-  "AUTH0_CLIENT_REDIRECT",
-  "AUTH0_DOMAIN",
-  "BASE_URL",
-  "FIREBASE_API_KEY",
-  "FIREBASE_APP_ID",
-  "FIREBASE_PROJECT_ID",
-  "FIREBASE_SENDER_ID",
-  "FIREBASE_VAPID_KEY",
-  "GOOGLE_ANALYTICS",
-  "GTM_CONTAINER_ID",
-  "HEROKU_RELEASE_VERSION",
-  "LOG_LEVEL",
-  "MAPBOX_ACCESS_TOKEN",
-  "NODE_ENV",
-  "SENTRY_DSN",
-  ...OTA_CLIENT_ENV_KEYS,
-];
 const { theme } = resolveConfig(tailwindConfig as never);
 const colors = theme.colors as Record<string, Record<string, string>>;
 const COLOR = colors.green.dark;
@@ -50,20 +30,6 @@ const BACKGROUND_COLOR = colors.blue.dark;
 // read build env
 const getEnv = (key: string, fallback?: string): string | undefined => {
   return process.env[key] ?? fallback;
-};
-
-// preserve process.env access
-const buildEnvDefines = (): Record<string, string> => {
-  const defines: Record<string, string> = {};
-  // expose env keys
-  for (const key of envKeys) {
-    const value = getEnv(
-      key,
-      key === "HEROKU_RELEASE_VERSION" ? "DEVELOPMENT" : undefined
-    );
-    defines[`process.env.${key}`] = JSON.stringify(value);
-  }
-  return defines;
 };
 
 // copy static assets
@@ -188,13 +154,9 @@ const shouldUploadSentryRelease = (): boolean => {
 export default defineConfig(() => ({
   root: configDir,
   publicDir: false,
-  define: buildEnvDefines(),
+  define: clientBuildEnvDefines(),
   resolve: {
-    alias: {
-      "~": configDir,
-      lib: path.resolve(configDir, "lib"),
-      shared: path.resolve(repoRoot, "shared"),
-    },
+    alias: clientViteAliases,
     preserveSymlinks: true,
   },
   server: {
@@ -211,13 +173,21 @@ export default defineConfig(() => ({
         `http://localhost:${process.env.PORT ?? "4040"}`,
     },
   },
+  css: {
+    postcss: repoRoot,
+  },
   build: {
     outDir: clientOutDir,
     emptyOutDir: true,
     // Publish source maps with every client build for browser debugging.
     sourcemap: true,
     minify: getEnv("MINIMIZE") === "FALSE" ? false : "esbuild",
+    manifest: true,
     rollupOptions: {
+      input: {
+        main: path.resolve(configDir, "index.html"),
+        offline: path.resolve(configDir, "offline.html"),
+      },
       output: {
         assetFileNames: "assets/[name].[hash][extname]",
         chunkFileNames: "assets/[name].[hash].js",
@@ -288,9 +258,38 @@ export default defineConfig(() => ({
         ],
       },
       injectManifest: {
-        globIgnores: ["**/*.js", "**/*.css", "**/*.map"],
+        // Server-rendered documents and application bundles must never enter the
+        // precache. Only the dedicated offline document and its isolated hashed
+        // entry assets are available to failed navigations.
+        globPatterns: [
+          "offline.html",
+          "assets/{offline,modulepreload-polyfill}.*.{js,css}",
+        ],
+        globIgnores: ["index.html", "**/*.map"],
+        manifestTransforms: [
+          (entries) => ({
+            manifest: entries.filter(
+              ({ url }) =>
+                url === "offline.html" ||
+                /^assets\/(?:offline|modulepreload-polyfill)\..+\.(?:js|css)$/.test(
+                  url
+                )
+            ),
+            warnings: [],
+          }),
+        ],
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
         rollupFormat: "iife",
+      },
+      integration: {
+        beforeBuildServiceWorker: (options) => {
+          options.injectManifest.additionalManifestEntries =
+            options.injectManifest.additionalManifestEntries?.filter(
+              (entry) =>
+                (typeof entry === "string" ? entry : entry.url) !==
+                options.manifestFilename
+            );
+        },
       },
       devOptions: {
         enabled: true,

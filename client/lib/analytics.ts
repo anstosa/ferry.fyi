@@ -92,9 +92,9 @@ const activateAnalytics = (): void => {
 };
 
 /** Queue analytics until the visitor engages with the app. */
-export const deferAnalytics = (): void => {
+export const deferAnalytics = (): (() => void) => {
   if (analyticsDeferred || typeof window === "undefined") {
-    return;
+    return () => undefined;
   }
   analyticsDeferred = true;
   prepareGoogleTagManager();
@@ -110,6 +110,12 @@ export const deferAnalytics = (): void => {
       passive: true,
     })
   );
+  return () => {
+    engagementEvents.forEach((event) =>
+      window.removeEventListener(event, activateOnEngagement)
+    );
+    analyticsDeferred = false;
+  };
 };
 
 export const trackEvent = (category: string, label: string): void => {

@@ -1,41 +1,27 @@
 import { useAuth0 } from "@auth0/auth0-react";
-import { Browser } from "@capacitor/browser";
-import { Capacitor } from "@capacitor/core";
 import React, {
-  createContext,
   FunctionComponent,
   PropsWithChildren,
-  useContext,
   useEffect,
   useRef,
   useState,
 } from "react";
 import { useLocation } from "react-router-dom";
-import {
-  AppMetadata,
-  CurrentUser,
-  UserMetadata,
-  UserUpdatePayload,
-} from "shared/contracts/user";
+import { CurrentUser } from "shared/contracts/user";
 
 import { get, post } from "~/lib/api";
 import { getConfiguredAuth0RedirectUri } from "~/lib/auth";
 import { useDevice } from "~/lib/device";
+import {
+  type UserActions as Actions,
+  UserContext,
+  type UserResponse as Response,
+  type UserState as State,
+} from "~/lib/userContext";
+
+export { useUser } from "~/lib/userContext";
 
 const USER_AUTH_SCOPE = "openid profile email read:current_user offline_access";
-interface State extends AppMetadata, UserMetadata {
-  favoriteRouteIds: string[];
-  isAuthenticated: boolean;
-  isUserLoading: boolean;
-  userError: Error | null;
-  user: null | CurrentUser;
-}
-interface Actions {
-  updateUser: (data: UserUpdatePayload) => Promise<void>;
-  refreshUser: () => Promise<void>;
-}
-
-type Response = [State, Actions];
 interface GetAccessTokenOptions {
   forceInteractive?: boolean;
 }
@@ -187,13 +173,13 @@ const _useUser = (): Response => {
         scope: USER_AUTH_SCOPE,
       },
     };
-    const isNativeMobile =
-      device?.isNativeMobile || Capacitor.isNativePlatform();
+    const isNativeMobile = device?.isNativeMobile === true;
     // native browser guard
     if (isNativeMobile) {
       await loginWithRedirect({
         ...loginOptions,
         openUrl: async (url) => {
+          const { Browser } = await import("@capacitor/browser");
           await Browser.open({ url });
         },
       });
@@ -290,23 +276,10 @@ const _useUser = (): Response => {
   return [state, actions];
 };
 
-export const UserContext = createContext<Response>([
-  {
-    favoriteRouteIds: [],
-    isAuthenticated: false,
-    isUserLoading: false,
-    user: null,
-    userError: null,
-  },
-  {
-    updateUser: async () => await Promise.resolve(),
-    refreshUser: async () => await Promise.resolve(),
-  },
-]);
+export { UserContext } from "~/lib/userContext";
 export const UserProvider: FunctionComponent<PropsWithChildren> = ({
   children,
 }) => {
   const user = _useUser();
   return <UserContext.Provider value={user}>{children}</UserContext.Provider>;
 };
-export const useUser = () => useContext(UserContext);

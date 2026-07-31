@@ -1,7 +1,6 @@
-import { App } from "@capacitor/app";
-import { Capacitor } from "@capacitor/core";
-import { CapacitorUpdater } from "@capgo/capacitor-updater";
 import React, { FunctionComponent, useEffect, useState } from "react";
+
+import { useAppRenderContext } from "~/lib/renderContext";
 
 interface Versions {
   app?: string;
@@ -29,26 +28,29 @@ export const getNativePlatformLabel = (platform: string): string => {
 // Show native builds and active OTA source revisions for support requests.
 export const AppVersionInfo: FunctionComponent = () => {
   const [versions, setVersions] = useState<Versions>({});
-  const isNative = Capacitor.isNativePlatform();
+  const { platform, runtime } = useAppRenderContext();
+  const isNative = platform === "android" || platform === "ios";
 
   useEffect(() => {
-    if (!isNative) {
+    if (!isNative || runtime !== "browser") {
       return;
     }
     let isMounted = true;
 
-    App.getInfo()
+    import("@capacitor/app")
+      .then(({ App }) => App.getInfo())
       .then(({ build }) => {
         if (isMounted) {
           setVersions((current) => ({
             ...current,
-            app: `${getNativePlatformLabel(Capacitor.getPlatform())} ${build}`,
+            app: `${getNativePlatformLabel(platform)} ${build}`,
           }));
         }
       })
       .catch(() => undefined);
 
-    CapacitorUpdater.current()
+    import("@capgo/capacitor-updater")
+      .then(({ CapacitorUpdater }) => CapacitorUpdater.current())
       .then(({ bundle }) => {
         if (isMounted) {
           setVersions((current) => ({
@@ -62,7 +64,7 @@ export const AppVersionInfo: FunctionComponent = () => {
     return () => {
       isMounted = false;
     };
-  }, [isNative]);
+  }, [isNative, platform, runtime]);
 
   if (!isNative) {
     const webVersion = getWebVersion();

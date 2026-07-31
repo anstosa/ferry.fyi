@@ -5,14 +5,8 @@ import { useAuth0 } from "@auth0/auth0-react";
 import { App as Native } from "@capacitor/app";
 import { Browser } from "@capacitor/browser";
 import { AnimatePresence } from "framer-motion";
-import { Settings } from "luxon";
-import React, { lazy, ReactElement, Suspense, useEffect } from "react";
-import {
-  Navigate,
-  useLocation,
-  useNavigate,
-  useRoutes,
-} from "react-router-dom";
+import React, { ReactElement, Suspense, useEffect, useRef } from "react";
+import { useLocation, useNavigate, useRoutes } from "react-router-dom";
 
 import { AppLoadingState } from "~/components/AppLoadingState";
 import { ErrorBoundary } from "~/components/ErrorBoundary";
@@ -20,7 +14,6 @@ import { InstallPromptToast } from "~/components/InstallPromptToast";
 import { LeaderboardForegroundCheckins } from "~/components/LeaderboardForegroundCheckins";
 import { NearbyTicketNotifications } from "~/components/NearbyTicketNotifications";
 import { Prompt } from "~/components/Prompt";
-import { Splash } from "~/components/Splash";
 import { deferAnalytics, useRecordPageViews } from "~/lib/analytics";
 import { useOnline, useWSF } from "~/lib/api";
 import { isAuth0CallbackUrl } from "~/lib/auth";
@@ -29,61 +22,26 @@ import { initializeOtaUpdater } from "~/lib/ota";
 import { usePush } from "~/lib/push";
 import { slugs } from "~/lib/terminals";
 import { useUser } from "~/lib/user";
+import { createAppRoutes } from "~/routes";
 import DumpsterFireIcon from "~/static/images/icons/solid/dumpster-fire.svg";
 import OfflineIcon from "~/static/images/icons/solid/signal-alt-slash.svg";
 
-const Admin = lazy(() =>
-  import("~/views/Admin").then(({ Admin }) => ({ default: Admin }))
-);
-const About = lazy(() =>
-  import("~/views/About").then(({ About }) => ({ default: About }))
-);
-const Account = lazy(() =>
-  import("~/views/Account").then(({ Account }) => ({ default: Account }))
-);
-const DataSources = lazy(() =>
-  import("~/views/DataSources").then(({ DataSources }) => ({
-    default: DataSources,
-  }))
-);
-const Feedback = lazy(() =>
-  import("~/views/Feedback").then(({ Feedback }) => ({ default: Feedback }))
-);
-const ForecastingExplained = lazy(() =>
-  import("~/views/ForecastingExplained").then(({ ForecastingExplained }) => ({
-    default: ForecastingExplained,
-  }))
-);
-const Home = lazy(() =>
-  import("~/views/Home").then(({ Home }) => ({ default: Home }))
-);
-const Leaderboards = lazy(() =>
-  import("~/views/Leaderboards").then(({ Leaderboards }) => ({
-    default: Leaderboards,
-  }))
-);
-const PrivacyPolicy = lazy(() =>
-  import("~/views/PrivacyPolicy").then(({ PrivacyPolicy }) => ({
-    default: PrivacyPolicy,
-  }))
-);
-const Route = lazy(() =>
-  import("~/views/Route").then(({ Route }) => ({ default: Route }))
-);
-const Tickets = lazy(() =>
-  import("~/views/Tickets").then(({ Tickets }) => ({ default: Tickets }))
-);
-const Today = lazy(() =>
-  import("~/views/Today").then(({ Today }) => ({ default: Today }))
-);
+const InitialRouteReady = ({
+  children,
+  onReady,
+}: React.PropsWithChildren<{ onReady: () => void }>): ReactElement => {
+  useEffect(() => {
+    onReady();
+  }, [onReady]);
+  return <>{children}</>;
+};
 
-Settings.defaultZone = "America/Los_Angeles";
-
-if (!process.env.AUTH0_DOMAIN) {
-  throw Error("AUTH0_DOMAIN environment variable is not set");
-}
-
-export const App = (): ReactElement => {
+export const App = ({
+  suspendInitialRoute = false,
+}: {
+  suspendInitialRoute?: boolean;
+}): ReactElement => {
+  const initialRoutePending = useRef(suspendInitialRoute);
   useEffect(() => {
     // Acknowledge the bundle only after the app has rendered successfully.
     initializeOtaUpdater({
@@ -138,7 +96,7 @@ export const App = (): ReactElement => {
     }
   }, [alertRules]);
 
-  const handleCallback = async (url = window.location.href) => {
+  const handleCallback = async (url: string) => {
     let appUrl: URL;
     try {
       appUrl = new URL(url);
@@ -188,115 +146,34 @@ export const App = (): ReactElement => {
     }
   }, [handleRedirectCallback, device?.isNativeMobile]);
 
-  Native.addListener("backButton", () => {
-    navigate(-1);
-  });
+  useEffect(() => {
+    const listener = Native.addListener("backButton", () => {
+      navigate(-1);
+    });
+    return () => {
+      listener.then((handle) => handle.remove()).catch(() => undefined);
+    };
+  }, [navigate]);
 
   useEffect(() => {
-    handleCallback();
+    handleCallback(window.location.href).catch((error) =>
+      console.error("Auth redirect callback failed", error)
+    );
   }, [location.pathname]);
 
-  const element = useRoutes([
-    { path: "", element: withRouteBoundary("Home", <Home />) },
-    { path: "today", element: withRouteBoundary("Today", <Today />) },
-    { path: "callback", element: withRouteBoundary("Callback", <Splash />) },
-    { path: "account", element: withRouteBoundary("Account", <Account />) },
-    { path: "tickets", element: withRouteBoundary("Tickets", <Tickets />) },
-    { path: "about", element: withRouteBoundary("About", <About />) },
-    { path: "admin", element: withRouteBoundary("Admin", <Admin />) },
-    {
-      path: "leaderboards/*",
-      element: withRouteBoundary("Leaderboards", <Leaderboards />),
-    },
-    {
-      path: "data-sources",
-      element: withRouteBoundary("Data sources and API guide", <DataSources />),
-    },
-    {
-      path: "privacy",
-      element: withRouteBoundary("Privacy Policy", <PrivacyPolicy />),
-    },
-    {
-      path: "forecasting",
-      element: withRouteBoundary("Forecasting", <ForecastingExplained />),
-    },
-    {
-      path: "forecasting-explained",
-      element: <Navigate replace to="/forecasting" />,
-    },
-    { path: "feedback", element: withRouteBoundary("Feedback", <Feedback />) },
-    {
-      path: ":terminalSlug",
-      children: [
-        {
-          path: "",
-          element: withRouteBoundary("Schedule", <Route view="schedule" />),
-        },
-        {
-          path: "cameras",
-          element: withRouteBoundary("Cameras", <Route view="cameras" />),
-        },
-        {
-          path: "terminal",
-          element: withRouteBoundary("Terminal", <Route view="terminal" />),
-        },
-        {
-          path: "fare",
-          element: withRouteBoundary("Fares", <Route view="fare" />),
-        },
-        {
-          path: "map",
-          element: withRouteBoundary("Map", <Route view="map" />),
-        },
-        {
-          path: "alerts",
-          element: withRouteBoundary("Alerts", <Route view="alerts" />),
-        },
-        {
-          path: "subscribe",
-          element: withRouteBoundary("Alerts", <Route view="subscribe" />),
-        },
-        {
-          path: ":mateSlug",
-          children: [
-            {
-              path: "",
-              element: withRouteBoundary("Schedule", <Route view="schedule" />),
-            },
-            {
-              path: "cameras",
-              element: withRouteBoundary("Cameras", <Route view="cameras" />),
-            },
-            {
-              path: "terminal",
-              element: withRouteBoundary("Terminal", <Route view="terminal" />),
-            },
-            {
-              path: "fare",
-              element: withRouteBoundary("Fares", <Route view="fare" />),
-            },
-            {
-              path: "map",
-              element: withRouteBoundary("Map", <Route view="map" />),
-            },
-            {
-              path: "alerts",
-              element: withRouteBoundary("Alerts", <Route view="alerts" />),
-            },
-            {
-              path: "subscribe",
-              element: withRouteBoundary("Alerts", <Route view="subscribe" />),
-            },
-          ],
-        },
-      ],
-    },
-  ]);
+  const element = useRoutes(createAppRoutes(withRouteBoundary));
 
   if (element) {
+    const routeElement = initialRoutePending.current ? (
+      <InitialRouteReady onReady={() => (initialRoutePending.current = false)}>
+        {element}
+      </InitialRouteReady>
+    ) : (
+      <Suspense fallback={<AppLoadingState />}>{element}</Suspense>
+    );
     return (
       <>
-        <Suspense fallback={<AppLoadingState />}>{element}</Suspense>
+        {routeElement}
         <AnimatePresence>
           {!isOnline && !offlineDismissed && (
             <Prompt

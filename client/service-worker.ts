@@ -11,7 +11,11 @@ import {
 import { clientsClaim } from "workbox-core";
 import { ExpirationPlugin } from "workbox-expiration";
 import * as googleAnalytics from "workbox-google-analytics";
-import { cleanupOutdatedCaches, precacheAndRoute } from "workbox-precaching";
+import {
+  cleanupOutdatedCaches,
+  matchPrecache,
+  precacheAndRoute,
+} from "workbox-precaching";
 import { registerRoute } from "workbox-routing";
 import {
   CacheFirst,
@@ -19,6 +23,8 @@ import {
   NetworkOnly,
   StaleWhileRevalidate,
 } from "workbox-strategies";
+
+import { registerNetworkOnlyNavigationRoute } from "./lib/serviceWorkerNavigation";
 
 const app = initializeApp({
   apiKey: process.env.FIREBASE_API_KEY,
@@ -94,6 +100,14 @@ self.addEventListener("notificationclick", (event: NotificationEvent) => {
 
 self.skipWaiting();
 clientsClaim();
+
+// Always ask the server for documents so an installed PWA receives the current
+// SSR response. Only a failed navigation may use the dedicated offline shell.
+registerNetworkOnlyNavigationRoute({
+  matchPrecache,
+  NetworkOnly,
+  registerRoute,
+});
 
 precacheAndRoute((self as any).__WB_MANIFEST);
 cleanupOutdatedCaches();

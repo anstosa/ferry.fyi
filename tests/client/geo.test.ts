@@ -148,8 +148,9 @@ describe("getCurrentLocation", () => {
     const firstLookup = getCurrentLocation();
     const secondLookup = getCurrentLocation();
 
-    await Promise.resolve();
-    expect(geolocation.getCurrentPosition).toHaveBeenCalledOnce();
+    await vi.waitFor(() =>
+      expect(geolocation.getCurrentPosition).toHaveBeenCalledOnce()
+    );
     resolvePosition({ coords: { latitude: 47.6, longitude: -122.3 } });
 
     await expect(firstLookup).resolves.toEqual({

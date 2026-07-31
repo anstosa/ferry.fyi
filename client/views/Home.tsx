@@ -9,6 +9,7 @@ import { SeoHelmet } from "~/components/SeoHelmet";
 import { Skeleton, SkeletonGroup } from "~/components/Skeleton";
 import { useFavoriteRoutes } from "~/lib/favoriteRoutes";
 import { useFeatureFlags } from "~/lib/featureFlags";
+import { useAppRenderContext } from "~/lib/renderContext";
 import {
   getRouteGroups,
   hasFavoriteRoute,
@@ -71,7 +72,8 @@ export const Terminal = ({
 // homepage route groups
 export const Home = (): ReactElement => {
   // alternate host guard
-  if (location.host === "howmanyboats.today") {
+  const { seoHost } = useAppRenderContext();
+  if (seoHost === "howmanyboats.today") {
     return <Today />;
   }
   const { terminals, closestTerminal } = useTerminals();

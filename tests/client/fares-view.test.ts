@@ -2,6 +2,7 @@
 import { DateTime } from "luxon";
 import React, { act } from "react";
 import { createRoot, Root } from "react-dom/client";
+import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -52,10 +53,36 @@ vi.mock("~/static/images/icons/solid/share-alt.svg", () => ({
   default: () => React.createElement("svg"),
 }));
 import { Fares } from "../../client/views/Fares";
+import { PublicSsrSeedProvider } from "../../client/lib/ssrSeed";
+vi.mock("react-router-dom", () => ({
+  useLocation: () => ({ search: window.location.search }),
+}));
 
 let root: Root | undefined;
-const terminal = { id: "1", name: "Seattle", terminalUrl: null } as never;
-const mate = { id: "2", name: "Bainbridge", terminalUrl: null } as never;
+const terminal = {
+  abbreviation: "SEA",
+  bulletins: [],
+  cameras: [],
+  hasElevator: false,
+  hasFood: false,
+  hasOverheadLoading: false,
+  hasRestroom: true,
+  hasWaitingRoom: true,
+  id: "1",
+  info: {},
+  location: { address: {}, latitude: 47.6, longitude: -122.3 },
+  name: "Seattle",
+  popularity: 0,
+  routes: {},
+  terminalUrl: null,
+  waitTimes: [],
+} satisfies import("../../shared/contracts/terminals").Terminal;
+const mate = {
+  ...terminal,
+  abbreviation: "BAI",
+  id: "2",
+  name: "Bainbridge",
+} satisfies import("../../shared/contracts/terminals").Terminal;
 afterEach(() => {
   act(() => root?.unmount());
   root = undefined;
@@ -213,5 +240,103 @@ describe("Fares", () => {
     const loading = container.querySelector('[role="status"]');
     expect(loading?.getAttribute("aria-label")).toBe("Loading fare estimator");
     expect(loading?.querySelectorAll('[aria-hidden="true"]')).toHaveLength(6);
+  });
+
+  it("retains a seeded catalog when its first post-commit refresh fails", async () => {
+    fares.getFareCatalog.mockRejectedValue(new Error("refresh unavailable"));
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+    const snapshot = {
+      sources: {
+        fares: {
+          outcome: "value",
+          value: {
+            state: "current",
+            catalog: {
+              fares: [{ id: 1, label: "Seeded walk-on fare" }],
+            },
+          },
+        },
+      },
+    } as import("../../shared/contracts/ssr").PublicSsrSnapshot;
+
+    const seededElement = React.createElement(
+      PublicSsrSeedProvider,
+      { snapshot },
+      React.createElement(Fares, {
+        date: DateTime.fromISO("2026-07-18"),
+        mate,
+        setDate: vi.fn(),
+        setRoute: vi.fn(),
+        terminal,
+      })
+    );
+    renderToStaticMarkup(seededElement);
+    expect(fares.getFareCatalog).not.toHaveBeenCalled();
+
+    await act(async () => {
+      root?.render(
+        seededElement
+      );
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(fares.getFareCatalog).toHaveBeenCalledTimes(1);
+    expect(container.textContent).toContain("Fare estimator");
+    expect(container.textContent).not.toContain("Fares unavailable");
+    expect(container.textContent).toContain("Seeded walk-on fare");
+  });
+
+  it("replaces the seeded catalog after a successful post-commit refresh", async () => {
+    let resolveCatalog: ((value: unknown) => void) | undefined;
+    fares.getFareCatalog.mockReturnValue(
+      new Promise((resolve) => {
+        resolveCatalog = resolve;
+      })
+    );
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+    const snapshot = {
+      sources: {
+        fares: {
+          outcome: "value",
+          value: {
+            state: "current",
+            catalog: { fares: [{ id: 1, label: "Old seeded fare" }] },
+          },
+        },
+      },
+    } as import("../../shared/contracts/ssr").PublicSsrSnapshot;
+
+    await act(async () => {
+      root?.render(
+        React.createElement(
+          PublicSsrSeedProvider,
+          { snapshot },
+          React.createElement(Fares, {
+            date: DateTime.fromISO("2026-07-18"),
+            mate,
+            setDate: vi.fn(),
+            setRoute: vi.fn(),
+            terminal,
+          })
+        )
+      );
+      await Promise.resolve();
+    });
+    expect(container.textContent).toContain("Old seeded fare");
+
+    await act(async () => {
+      resolveCatalog?.({
+        state: "current",
+        catalog: { fares: [{ id: 2, label: "Fresh refreshed fare" }] },
+      });
+      await Promise.resolve();
+    });
+    expect(container.textContent).toContain("Fresh refreshed fare");
+    expect(container.textContent).not.toContain("Old seeded fare");
   });
 });

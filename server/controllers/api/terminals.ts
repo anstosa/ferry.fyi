@@ -1,27 +1,27 @@
 import { Router } from "express";
-import { Terminal as TerminalClass } from "shared/contracts/terminals";
-import { entries } from "shared/lib/objects";
 
-import { getWsfStatus } from "~/lib/wsf/api";
 import {
-  getBulletinSourceUpdatedAt,
-  updateTerminals,
-} from "~/lib/wsf/updateTerminals";
-import { Terminal } from "~/models/Terminal";
+  getPublicBulletinFreshness,
+  refreshPublicBulletins,
+} from "~/services/public/bulletins";
+import {
+  getPublicTerminal,
+  getPublicTerminals,
+} from "~/services/public/terminals";
 
 const terminalRouter = Router();
 let bulletinRefresh: Promise<void> | null = null;
 
 terminalRouter.get("/bulletins/freshness", (request, response) =>
-  response.send({ sourceUpdatedAt: getBulletinSourceUpdatedAt() })
+  response.send(getPublicBulletinFreshness())
 );
 
 terminalRouter.post("/bulletins/refresh", async (request, response) => {
   const now = Date.now() / 1000;
-  const sourceUpdatedAt = getBulletinSourceUpdatedAt();
+  const { sourceUpdatedAt } = getPublicBulletinFreshness();
   if (sourceUpdatedAt === null || now - sourceUpdatedAt > 60) {
     if (!bulletinRefresh) {
-      bulletinRefresh = updateTerminals({ forceBulletins: true })
+      bulletinRefresh = refreshPublicBulletins()
         .then(() => undefined)
         .finally(() => {
           bulletinRefresh = null;
@@ -35,28 +35,21 @@ terminalRouter.post("/bulletins/refresh", async (request, response) => {
         .send({ error: "Unable to refresh bulletins" });
     }
   }
-  return response.send({ sourceUpdatedAt: getBulletinSourceUpdatedAt() });
+  return response.send(getPublicBulletinFreshness());
 });
 
 terminalRouter.get("/", async (request, response) => {
-  const terminals = await Terminal.getAll();
-  const results: Record<string, TerminalClass> = {};
-  entries(terminals).forEach(([key, terminal]) => {
-    results[key] = terminal.serialize();
-  });
-  return response.send(results);
+  return response.send(await getPublicTerminals());
 });
 
 terminalRouter.get("/:terminalId", async (request, response) => {
   const { terminalId } = request.params;
-  const terminal = await Terminal.getByIndex(terminalId);
-  // terminal found guard
-  if (terminal) {
-    return response.send(terminal.serialize());
+  const result = await getPublicTerminal(terminalId);
+  if (result.status === "available") {
+    return response.send(result.terminal);
   }
-  // warming guard
-  if (!getWsfStatus().coreReady) {
-    return response.status(503).send({ status: "warming" });
+  if (result.status === "warming") {
+    return response.status(503).send({ status: result.status });
   }
   return response.status(404).send();
 });

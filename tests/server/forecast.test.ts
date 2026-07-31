@@ -195,6 +195,8 @@ describe("forecast estimates", () => {
   });
 
   // historical copy behavior
+  // Processing 1,234 deliberately distinct historical rows is CPU-bound and
+  // can exceed 20s while the broad suite's workers contend for the host.
   it("formats historical pattern volume and database history", async () => {
     const schedule = createSchedule({});
     scheduleModel.getAll.mockReturnValue({ [schedule.key]: schedule });
@@ -225,7 +227,7 @@ describe("forecast estimates", () => {
     expect(historicalPattern?.detail).toBe(
       "1,234 comparable past sailings are weighted by date, time, route, and vessel capacity. 4,567 total sailings over 8 years recorded for this route."
     );
-  }, 20_000);
+  }, 30_000);
 
   // weather detail copy
   it("includes concise weather details in weather factors", async () => {

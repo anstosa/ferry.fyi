@@ -11,7 +11,10 @@ import path from "path";
 import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createStaticRouter } from "../../server/controllers/static";
+import {
+  createStaticPolicyRouter,
+  createStaticRouter,
+} from "../../server/controllers/static";
 import {
   createBrowserRateLimiter,
   createBrowserRouter,
@@ -30,6 +33,7 @@ import {
   getTerminalSeoMetadata,
   SEO_HOW_MANY_BOATS_BASE_URL,
   SEO_HOW_MANY_BOATS_HOST,
+  SEO_INDEXABLE_PATHS,
   SEO_INDEXABLE_ROUTE_VIEWS,
 } from "../../shared/lib/seo";
 
@@ -58,7 +62,7 @@ beforeEach(() => {
   copyFileSync("client/static/llms.txt", path.join(clientDist, "llms.txt"));
   copyFileSync("client/static/robots.txt", path.join(clientDist, "robots.txt"));
   app = express();
-  app.use(createBrowserRouter(clientDist));
+  app.use(createStaticRouter(clientDist));
 });
 
 afterEach(() => {
@@ -107,22 +111,33 @@ describe("SEO metadata", () => {
     );
   });
 
-  it("rate limits filesystem-backed browser documents", async () => {
+  it("rate limits browser endpoints", async () => {
     const rateLimitedApp = express();
-    rateLimitedApp.use(
-      createBrowserRouter(clientDist, {
-        rateLimiter: createBrowserRateLimiter({ limit: 1 }),
-      })
-    );
+    rateLimitedApp.use(createBrowserRateLimiter({ limit: 1 }));
+    rateLimitedApp.use(createBrowserRouter(clientDist));
 
-    await request(rateLimitedApp).get("/robots.txt").expect(200);
-    await request(rateLimitedApp).get("/llms.txt").expect(429);
+    await request(rateLimitedApp)
+      .get("/.well-known/assetlinks.json")
+      .expect(200);
+    await request(rateLimitedApp).get("/about").expect(429);
   });
 
   it("rate limits policy-controlled static documents before they query state", async () => {
     const rateLimitedApp = express();
     rateLimitedApp.use(
       createStaticRouter(clientDist, {
+        rateLimiter: createBrowserRateLimiter({ limit: 1 }),
+      })
+    );
+
+    await request(rateLimitedApp).get("/robots.txt").expect(200);
+    await request(rateLimitedApp).get("/sitemap.xml").expect(429);
+  });
+
+  it("can rate limit the standalone policy router used before Vite", async () => {
+    const rateLimitedApp = express();
+    rateLimitedApp.use(
+      createStaticPolicyRouter(clientDist, {
         rateLimiter: createBrowserRateLimiter({ limit: 1 }),
       })
     );
@@ -190,7 +205,7 @@ describe("SEO metadata", () => {
       title: "Seattle to Bainbridge Island Ferry Schedule - Ferry FYI",
     });
     expect(metadata.description).toContain(
-      "Washington State Ferries schedules"
+      "Washington State Ferries sailing times"
     );
   });
 
@@ -205,7 +220,7 @@ describe("SEO metadata", () => {
     });
     expect(getRouteSeoMetadata(seattle, bainbridge, "cameras")).toMatchObject({
       description:
-        "View Washington State Ferries traffic camera images and freshness details for the Seattle to Bainbridge Island route.",
+        "View traffic camera images, source update times, and freshness details for the Seattle to Bainbridge Island Washington State Ferries route before traveling.",
       robots: "index,follow",
       title: "Seattle to Bainbridge Island Ferry Cameras - Ferry FYI",
     });
@@ -230,12 +245,15 @@ describe("SEO metadata", () => {
   });
 
   it("creates terminal-owned metadata without a mate dependency", () => {
-    expect(
-      getTerminalSeoMetadata({ name: "Seattle", slug: "seattle" })
-    ).toMatchObject({
+    const metadata = getTerminalSeoMetadata({
+      name: "Seattle",
+      slug: "seattle",
+    });
+    expect(metadata).toMatchObject({
       canonicalPath: "/seattle/terminal",
       robots: "index,follow",
     });
+    expect(metadata.description).toContain("Seattle terminal");
   });
 
   it("keeps product pages indexable and private pages noindexed", () => {
@@ -257,6 +275,45 @@ describe("SEO metadata", () => {
     expect(getSeoUrl("https://ferry.fyi/", "/about")).toBe(
       "https://ferry.fyi/about"
     );
+    const distinctProductDescriptions = [
+      "/tickets",
+      "/privacy",
+      "/feedback",
+    ].map((pathname) => getSeoMetadata(pathname).description);
+    expect(new Set(distinctProductDescriptions).size).toBe(3);
+    expect(distinctProductDescriptions[0]).toContain("tickets");
+    expect(distinctProductDescriptions[1]).toContain("data");
+    expect(distinctProductDescriptions[2]).toContain("support");
+  });
+
+  it("keeps every route description directional and purpose-specific", () => {
+    const expectedPurpose = {
+      alerts: "service bulletins",
+      cameras: "camera images",
+      fare: "fare options",
+      map: "vessel locations",
+      schedule: "sailing times",
+      subscribe: "notifications",
+    } as const;
+    Object.entries(expectedPurpose).forEach(([view, purpose]) => {
+      const metadata = getRouteSeoMetadata(
+        seattle,
+        bainbridge,
+        view as keyof typeof expectedPurpose
+      );
+      expect(metadata.description).toContain("Seattle to Bainbridge Island");
+      expect(metadata.description).toContain(purpose);
+      expect(metadata.robots).toBe("index,follow");
+    });
+  });
+
+  it("keeps the fixed sitemap policy represented by public route metadata", () => {
+    SEO_INDEXABLE_PATHS.forEach((pathname) => {
+      expect(getSeoMetadata(pathname)).toMatchObject({
+        canonicalPath: pathname,
+        robots: "index,follow",
+      });
+    });
   });
 
   it("renders canonical metadata for newly indexable product pages", async () => {

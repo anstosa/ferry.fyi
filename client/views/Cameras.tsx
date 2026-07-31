@@ -18,6 +18,7 @@ import { CameraFrameFreshness } from "~/components/CameraFrameFreshness";
 import { Skeleton, SkeletonGroup } from "~/components/Skeleton";
 import { getCameraFrames } from "~/lib/cameras";
 import { locationToUrl } from "~/lib/maps";
+import { usePublicSsrSource } from "~/lib/ssrSeed";
 import { getSlug, useTerminals } from "~/lib/terminals";
 import CarIcon from "~/static/images/icons/solid/car.svg";
 import LocationIcon from "~/static/images/icons/solid/location.svg";
@@ -116,6 +117,7 @@ const CameraList = ({
   setRoute,
   terminal,
 }: CameraListProps): ReactElement => {
+  const seededFrames = usePublicSsrSource("cameraFrames");
   const { cameras } = terminal;
   const hasCameras = cameras.length > 0;
   const activeRoute = mate
@@ -130,7 +132,14 @@ const CameraList = ({
     activeRoute?.normalVehicleCapacity ?? activeRoute?.averageVehicleCapacity;
   const [frameStatuses, setFrameStatuses] = useState<
     Record<string, CameraFrameStatus>
-  >({});
+  >(() =>
+    Object.fromEntries(
+      Object.entries(seededFrames?.frames ?? {}).map(([id, frame]) => [
+        id,
+        { ...frame, error: null },
+      ])
+    )
+  );
   const [timelineStart, setTimelineStart] = useState<number | null>(null);
   const [loadedImages, setLoadedImages] = useState<Record<string, boolean>>({});
   const [revealedStaleImages, setRevealedStaleImages] = useState<

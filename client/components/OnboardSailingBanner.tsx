@@ -24,6 +24,7 @@ import {
   useSimulatedVesselId,
 } from "~/lib/onboardSimulation";
 import { useTrackedVessel } from "~/lib/onboardTracking";
+import { useAppRenderContext } from "~/lib/renderContext";
 import { getSlug, useTerminals } from "~/lib/terminals";
 import { useLiveVessels } from "~/lib/vessels";
 import MapMarkerIcon from "~/static/images/icons/solid/map-marker.svg";
@@ -500,9 +501,10 @@ const SailingCard = ({
 export const OnboardSailingBanner: FunctionComponent<Props> = ({
   onVisibilityChange,
 }) => {
+  const { clock } = useAppRenderContext();
   const [location] = useGeo();
   const { terminals } = useTerminals();
-  const [now, setNow] = useState<number>(() => Date.now() / 1000);
+  const [now, setNow] = useState<number>(() => clock() / 1000);
   const [lastSailing, setLastSailing] = useState<OnboardSailingMatch | null>(
     null
   );

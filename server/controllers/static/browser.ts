@@ -21,11 +21,8 @@ import {
   type SeoView,
 } from "shared/lib/seo";
 
-import { getSitemap } from "~/getSitemap";
-import type { PublicContent } from "~/lib/admin/content";
-import { filterLeaderboardLlms } from "~/lib/leaderboardSeo";
-import { Terminal } from "~/models/Terminal";
-import { Vessel } from "~/models/Vessel";
+import type { PublicContent } from "~/services/public/content";
+import type { SsrDocumentResponse } from "~/ssr/documentRuntime";
 
 // published Play signing certificates
 const ANDROID_APP_LINK_CERT_FINGERPRINTS = [
@@ -38,6 +35,13 @@ const HTML_ENTITIES: Record<string, string> = {
   ">": "&gt;",
   '"': "&quot;",
   "'": "&#39;",
+};
+const EMPTY_PUBLIC_CONTENT: PublicContent = {
+  announcements: [],
+  crawlerPolicy: { aiCrawlers: "allow", disallowPaths: [] },
+  leaderboardIndexingEnabled: false,
+  leaderboardSharingEnabled: false,
+  maintenance: { enabled: false, message: "" },
 };
 const bundledClientDist = path.resolve(__dirname, "../client");
 const sourceClientDist = path.resolve(__dirname, "../../../dist/client");
@@ -55,7 +59,8 @@ const APP_PATHS = new Set([
 ]);
 
 export interface BrowserRouterDependencies {
-  rateLimiter?: RequestHandler;
+  /** Injected by the SSR composition root; this module never loads renderer artifacts. */
+  documentRuntime?: (absoluteUrl: string) => Promise<SsrDocumentResponse>;
 }
 
 export const createBrowserRateLimiter = ({
@@ -211,7 +216,7 @@ export const renderSeoHtml = (
     ],
     [
       /<div\b(?=[^>]*\bid="seo-content")[^>]*><\/div>/,
-      `<div data-seo-seed="true" id="seo-content">${getPublicContentHtml(publicContent ?? { announcements: [], crawlerPolicy: { aiCrawlers: "allow", disallowPaths: [] }, leaderboardIndexingEnabled: true, leaderboardSharingEnabled: true, maintenance: { enabled: false, message: "" } })}${getSeoFallbackHtml(seo, canonicalUrl)}</div>`,
+      `<div data-seo-seed="true" id="seo-content">${getPublicContentHtml(publicContent ?? EMPTY_PUBLIC_CONTENT)}${getSeoFallbackHtml(seo, canonicalUrl)}</div>`,
     ],
   ];
 
@@ -228,37 +233,14 @@ export const createBrowserRouter = (
   const browserRouter = Router();
   const indexHtml = readFileSync(path.resolve(dist, "index.html"), "utf-8");
 
-  browserRouter.use(dependencies.rateLimiter ?? createBrowserRateLimiter());
-
-  browserRouter.get("/robots.txt", async (_request, response) => {
-    const { getPublicContent, getRobotsTxt } =
-      await import("~/lib/admin/content");
-    const content = await getPublicContent();
-    return response
-      .type("text/plain")
-      .send(getRobotsTxt(content.crawlerPolicy));
-  });
-
-  browserRouter.get("/llms.txt", async (request, response) => {
-    const { getPublicContent } = await import("~/lib/admin/content");
-    const { isPublicFeatureEnabled } = await import("~/lib/leaderboardFlags");
-    const llms = readFileSync(path.resolve(dist, "llms.txt"), "utf-8");
-    const content = await getPublicContent();
-    return response
-      .type("text/plain")
-      .send(
-        filterLeaderboardLlms(
-          llms,
-          (await isPublicFeatureEnabled("leaderboards")) &&
-            content.leaderboardIndexingEnabled
-        )
-      );
-  });
-
-  browserRouter.get("/sitemap.xml", async (request, response) => {
-    const sitemap = await getSitemap();
-    response.type("text/xml");
-    return response.send(sitemap);
+  browserRouter.get("/index.html", (request, response) => {
+    response.set({
+      "Cache-Control": "no-store, no-transform",
+      "CDN-Cache-Control": "no-store",
+      "Surrogate-Control": "no-store",
+      Vary: "Host",
+    });
+    return response.redirect(301, "/");
   });
 
   browserRouter.get("/.well-known/assetlinks.json", (request, response) => {
@@ -277,6 +259,25 @@ export const createBrowserRouter = (
   });
 
   browserRouter.get(/.*/, async (request, response) => {
+    response.set({
+      "Cache-Control": "no-store, no-transform",
+      "CDN-Cache-Control": "no-store",
+      "Surrogate-Control": "no-store",
+      Vary: "Host",
+    });
+    if (dependencies.documentRuntime) {
+      const rendered = await dependencies.documentRuntime(
+        `${request.protocol}://${request.get("host")}${request.originalUrl}`
+      );
+      response.set(rendered.headers);
+      if (rendered.redirect) {
+        return response.redirect(rendered.status, rendered.redirect);
+      }
+      return response
+        .status(rendered.status)
+        .type("text/html")
+        .send(rendered.html);
+    }
     const requestHost = request.hostname;
     const terminalMatch = request.path.match(
       /^\/([^/]+)(?:\/([^/]+))?(?:\/([^/]+))?\/?$/
@@ -295,7 +296,9 @@ export const createBrowserRouter = (
     const leaderboardMatch = request.path.match(
       /^\/leaderboards\/(terminals|vessels)\/([^/]+)\/?$/
     );
-    const { getPublicContent } = await import("~/lib/admin/content");
+    const { getPublicContent } = await import("~/services/public/content");
+    const { Terminal } = await import("~/models/Terminal");
+    const { Vessel } = await import("~/models/Vessel");
     const { isPublicFeatureEnabled } = await import("~/lib/leaderboardFlags");
     const publicContent = await getPublicContent();
     const isLeaderboardPath = request.path.startsWith("/leaderboards");
@@ -326,7 +329,7 @@ export const createBrowserRouter = (
       }
     } else if (terminalMatch) {
       const [, terminalSlug, secondSegment, thirdSegment] = terminalMatch;
-      const terminals: Terminal[] = entries(Terminal.getAll()).map(
+      const terminals = entries(Terminal.getAll()).map(
         ([, terminal]) => terminal
       );
       const terminal = terminals.find(

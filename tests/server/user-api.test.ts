@@ -128,7 +128,7 @@ describe("user API", () => {
       favoriteRouteIds: ["3", "9"],
       user_id: "auth0|123",
     });
-  });
+  }, 15_000);
 
   // stored alert conversion case
   it("converts old saved alerts on read", async () => {

@@ -1,9 +1,14 @@
-import { Capacitor } from "@capacitor/core";
-import type { DeviceInfo as CapacitorDevice } from "@capacitor/device";
 import { useEffect, useState } from "react";
 
-interface DeviceInfo extends CapacitorDevice {
+interface DeviceInfo {
   isNativeMobile: boolean;
+  isVirtual: boolean;
+  manufacturer: string;
+  model: string;
+  operatingSystem: string;
+  osVersion: string;
+  platform: string;
+  webViewVersion: string;
 }
 
 const webDevice: DeviceInfo = {
@@ -18,7 +23,15 @@ const webDevice: DeviceInfo = {
 };
 
 // synchronous guard for UI that must never flash inside a native app
-export const isNativeMobileApp = (): boolean => Capacitor.isNativePlatform();
+export const isNativeMobileApp = (): boolean =>
+  typeof window !== "undefined" &&
+  Boolean(
+    (
+      window as Window & {
+        Capacitor?: { isNativePlatform?: () => boolean };
+      }
+    ).Capacitor?.isNativePlatform?.()
+  );
 
 type StandaloneNavigator = Navigator & { standalone?: boolean };
 
@@ -39,9 +52,7 @@ export const isInstalledApp = (): boolean =>
 
 // Hook to get user's device info
 export const useDevice = (): DeviceInfo | null => {
-  const [device, setDevice] = useState<DeviceInfo | null>(
-    isNativeMobileApp() ? null : webDevice
-  );
+  const [device, setDevice] = useState<DeviceInfo | null>(webDevice);
 
   const updateDevice = async () => {
     const { Device } = await import("@capacitor/device");
@@ -55,7 +66,10 @@ export const useDevice = (): DeviceInfo | null => {
 
   useEffect(() => {
     if (isNativeMobileApp()) {
-      updateDevice();
+      updateDevice().catch(() => {
+        // Keep the synchronous web fallback when native device inspection is
+        // temporarily unavailable.
+      });
     }
   }, []);
 

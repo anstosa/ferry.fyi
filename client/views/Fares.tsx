@@ -1,4 +1,3 @@
-import { Share } from "@capacitor/share";
 import clsx from "clsx";
 import { DateTime } from "luxon";
 import React, {
@@ -8,6 +7,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { useLocation } from "react-router-dom";
 import type {
   FareCatalogApiResponse,
   FareQuoteApiResponse,
@@ -30,6 +30,7 @@ import {
   parseFareWizardConfig,
   withFareWizardConfig,
 } from "~/lib/fareWizard";
+import { usePublicSsrSource } from "~/lib/ssrSeed";
 import ShareIcon from "~/static/images/icons/solid/share-alt.svg";
 import WSDOTIcon from "~/static/images/icons/wsdot.svg";
 import { Header } from "~/views/Header";
@@ -285,22 +286,25 @@ export const Fares = ({
   setRoute,
   terminal,
 }: Props): ReactElement => {
+  const seededCatalog = usePublicSsrSource("fares");
+  const { search } = useLocation();
   const [catalogResponse, setCatalogResponse] =
-    useState<FareCatalogApiResponse | null>(null);
+    useState<FareCatalogApiResponse | null>(() => seededCatalog ?? null);
   const [catalogError, setCatalogError] = useState<Error | null>(null);
-  const [isLoadingCatalog, setLoadingCatalog] = useState(true);
+  const [isLoadingCatalog, setLoadingCatalog] = useState(!seededCatalog);
   const [isQuoting, setQuoting] = useState(false);
   const [quoteError, setQuoteError] = useState<Error | null>(null);
   const [quoteResponse, setQuoteResponse] =
     useState<FareQuoteApiResponse | null>(null);
   const [config, setConfig] = useState<FareWizardConfig>(() =>
-    parseFareWizardConfig(window.location.search)
+    parseFareWizardConfig(search)
   );
   const [isShareCopied, setShareCopied] = useState(false);
   const [wizardStep, setWizardStep] = useState(() =>
-    getWizardStep(parseFareWizardConfig(window.location.search))
+    getWizardStep(parseFareWizardConfig(search))
   );
   const catalogRequestRef = useRef(0);
+  const catalogScopeRef = useRef<string | null>(null);
   const catalogRetryRef = useRef({ attempts: 0, scope: "" });
   const quoteRequestRef = useRef(0);
   const [catalogRetry, setCatalogRetry] = useState(0);
@@ -308,14 +312,22 @@ export const Fares = ({
 
   useEffect(() => {
     const scope = `${terminal.id}:${mate.id}:${date.toISODate() ?? ""}`;
+    const isInitialSeedScope = catalogScopeRef.current === null;
+    catalogScopeRef.current = scope;
     if (catalogRetryRef.current.scope !== scope) {
       catalogRetryRef.current = { attempts: 0, scope };
     }
     const requestId = catalogRequestRef.current + 1;
     catalogRequestRef.current = requestId;
-    setLoadingCatalog(true);
+    if (!isInitialSeedScope) {
+      setLoadingCatalog(true);
+    }
     setCatalogError(null);
-    setCatalogResponse(null);
+    // Keep the server-provided catalog visible during the first post-commit
+    // refresh. A failed refresh must not replace a usable anonymous seed.
+    if (!isInitialSeedScope) {
+      setCatalogResponse(null);
+    }
     getFareCatalog(terminal, mate, date)
       .then(
         (response) =>
@@ -395,6 +407,8 @@ export const Fares = ({
     [catalog, config]
   );
 
+  const catalogLabels = catalog?.fares.map((fare) => fare.label).join(", ");
+
   useEffect(() => {
     quoteRequestRef.current += 1;
     const requestId = quoteRequestRef.current;
@@ -433,6 +447,7 @@ export const Fares = ({
   const share = async (): Promise<void> => {
     const title = `Fare estimate for ${terminal.name} to ${mate.name}`;
     try {
+      const { Share } = await import("@capacitor/share");
       const { value: canShare } = await Share.canShare();
       if (canShare) {
         await Share.share({
@@ -499,7 +514,7 @@ export const Fares = ({
       </>
     );
   }
-  if (catalogError) {
+  if (catalogError && !catalogResponse) {
     return (
       <>
         {header}
@@ -563,6 +578,11 @@ export const Fares = ({
     <>
       {header}
       <main className="flex-grow overflow-y-auto bg-day-normal-light text-gray-dark dark:bg-night-normal-dark dark:text-[#e0f0f4]">
+        {catalogLabels ? (
+          <p className="sr-only" data-testid="fare-catalog-labels">
+            Available fare catalog: {catalogLabels}
+          </p>
+        ) : null}
         <div className="mx-auto w-full max-w-6xl space-y-4 p-4 pb-8">
           <section className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-blue-dark">
             <div className="flex items-center justify-between gap-3">

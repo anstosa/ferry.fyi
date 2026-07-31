@@ -76,7 +76,7 @@ Ferry FYI is a TypeScript web and Android app for Washington State Ferries sched
 - WSF, weather, tide, and schedule refresh jobs start from `server/server.ts` after `dbInit`.
 - Shared ferry data lives in `shared/data`; prefer updating these canonical files instead of duplicating route, terminal, vessel, or camera facts in client/server code.
 - Time and ferry-domain helpers are mostly in `shared/lib`; prefer pure shared helpers for logic that needs tests.
-- Auth0 browser/native redirect handling is in `client/index.tsx` and `client/App.tsx`; native login also depends on Capacitor `App` and `Browser` plugins.
+- Auth0 browser/native redirect handling is in `client/entry-client.tsx`, `client/clientRuntime.tsx`, and `client/App.tsx`; native login also depends on Capacitor `App` and `Browser` plugins.
 
 ## Development guidance for agents
 

@@ -7,6 +7,7 @@ import {
   type SeoMetadata,
 } from "shared/lib/seo";
 
+import { useAppRenderContext } from "../lib/renderContext";
 import { removeSeedSeoTags } from "../lib/seo";
 
 interface Props {
@@ -18,14 +19,32 @@ export const SeoHelmet = ({
   seo,
   title: titleOverride,
 }: Props): ReactElement => {
-  useInsertionEffect(removeSeedSeoTags, []);
+  const { hasInjectedRequest, seoBaseUrl, seoHost, seoPathname } =
+    useAppRenderContext();
+  useInsertionEffect(() => {
+    if (typeof document !== "undefined") {
+      removeSeedSeoTags();
+    }
+  }, []);
 
-  const profile = getSeoProfile(location.host, location.pathname);
-  const activeSeo = profile.baseUrl ? profile.metadata : seo;
+  const browserHost =
+    hasInjectedRequest || typeof location === "undefined" ? "" : location.host;
+  const browserPathname =
+    hasInjectedRequest || typeof location === "undefined"
+      ? "/"
+      : location.pathname;
+  const profile = getSeoProfile(
+    seoHost || browserHost,
+    seoPathname || browserPathname
+  );
+  let activeSeo = seo;
+  if (seo.canonicalPath !== "/404" && profile.baseUrl) {
+    activeSeo = profile.metadata;
+  }
   const title = profile.baseUrl
     ? activeSeo.title
     : (titleOverride ?? activeSeo.title);
-  const baseUrl = profile.baseUrl ?? process.env.BASE_URL ?? "";
+  const baseUrl = profile.baseUrl ?? (seoBaseUrl || process.env.BASE_URL || "");
   const canonicalUrl = getSeoUrl(baseUrl, activeSeo.canonicalPath);
   const schema = getSeoSchema(activeSeo, baseUrl, title);
 

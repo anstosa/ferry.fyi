@@ -1,16 +1,41 @@
-import { Capacitor, CapacitorHttp, HttpResponse } from "@capacitor/core";
 import { useEffect, useState } from "react";
 import type { WSFStatus } from "shared/contracts/api";
 import { isEqual } from "shared/lib/objects";
 
-// resolve api origin
+interface HttpResponse {
+  data: unknown;
+  status: number;
+}
+
+interface HttpRequest {
+  data?: Record<string, unknown>;
+  headers?: Record<string, string | undefined>;
+  method: "DELETE" | "GET" | "POST" | "PUT";
+  url: string;
+}
+
+// resolve api origin. Native bridge detection happens inside the post-commit
+// request adapter so importing a public view never loads Capacitor.
 export function getApiBaseUrl(): string {
-  // native bridge guard
-  if (Capacitor.isNativePlatform()) {
-    return `${process.env.BASE_URL}/api`;
-  }
   return "/api";
 }
+
+const request = async (input: HttpRequest): Promise<HttpResponse> => {
+  const { Capacitor, CapacitorHttp } = await import("@capacitor/core");
+  const baseUrl = Capacitor.isNativePlatform()
+    ? `${process.env.BASE_URL}/api`
+    : getApiBaseUrl();
+  const headers = Object.fromEntries(
+    Object.entries(input.headers ?? {}).filter(
+      (entry): entry is [string, string] => typeof entry[1] === "string"
+    )
+  );
+  return await CapacitorHttp.request({
+    ...input,
+    headers,
+    url: `${baseUrl}${input.url}`,
+  });
+};
 
 const defaultWsfStatus: WSFStatus = { offline: false };
 
@@ -105,12 +130,12 @@ export const get = async <T = Record<string, unknown>>(
   if (requestKey in inProgress) {
     return await inProgress[requestKey];
   }
-  const promise = CapacitorHttp.request({
+  const promise = request({
     headers: {
       ...getAuthHeader(accessToken),
     },
     method: "GET",
-    url: `${getApiBaseUrl()}${path}`,
+    url: path,
   }).then(processResponse);
   // eslint-disable-next-line require-atomic-updates
   inProgress[requestKey] = promise;
@@ -126,9 +151,9 @@ export const post = async <T = Record<string, unknown>>(
   data: Record<string, unknown>,
   accessToken?: string
 ): Promise<T> => {
-  const response = await CapacitorHttp.request({
+  const response = await request({
     method: "POST",
-    url: `${getApiBaseUrl()}${path}`,
+    url: path,
     headers: {
       "Content-Type": "application/json",
       ...getAuthHeader(accessToken),
@@ -143,9 +168,9 @@ export const put = async <T = Record<string, unknown>>(
   data: Record<string, unknown>,
   accessToken?: string
 ): Promise<T> => {
-  const response = await CapacitorHttp.request({
+  const response = await request({
     method: "PUT",
-    url: `${getApiBaseUrl()}${path}`,
+    url: path,
     headers: {
       "Content-Type": "application/json",
       ...getAuthHeader(accessToken),
@@ -161,9 +186,9 @@ export const del = async <T = Record<string, unknown>>(
   data: Record<string, unknown>,
   accessToken?: string
 ): Promise<T> => {
-  const response = await CapacitorHttp.request({
+  const response = await request({
     method: "DELETE",
-    url: `${getApiBaseUrl()}${path}`,
+    url: path,
     headers: {
       "Content-Type": "application/json",
       ...getAuthHeader(accessToken),
@@ -174,10 +199,18 @@ export const del = async <T = Record<string, unknown>>(
 };
 
 export const useOnline = (): boolean => {
-  const isOnline = window?.navigator?.onLine ?? true;
-  const [online, setOnline] = useState<boolean>(isOnline);
+  // Keep the first render anonymous and deterministic; browser state follows
+  // after commit so document rendering never reads navigator.
+  const [online, setOnline] = useState<boolean>(true);
   useEffect(() => {
-    setOnline(isOnline);
-  }, [isOnline]);
+    const updateOnline = () => setOnline(navigator.onLine);
+    updateOnline();
+    window.addEventListener("online", updateOnline);
+    window.addEventListener("offline", updateOnline);
+    return () => {
+      window.removeEventListener("online", updateOnline);
+      window.removeEventListener("offline", updateOnline);
+    };
+  }, []);
   return online;
 };

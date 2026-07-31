@@ -13,10 +13,12 @@ import React, {
   MouseEvent,
   ReactElement,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
 import { createRoot } from "react-dom/client";
+import { useLocation } from "react-router-dom";
 import type { Route } from "shared/contracts/routes";
 import type { Terminal } from "shared/contracts/terminals";
 import type { Vessel } from "shared/contracts/vessels";
@@ -28,8 +30,10 @@ import { ReloadButton } from "~/components/ReloadButton";
 import { Toast } from "~/components/Toast";
 import { useGeo } from "~/lib/geo";
 import { knotsToMph } from "~/lib/speed";
+import { getPublicSsrSourceOutcome, usePublicSsrSnapshot } from "~/lib/ssrSeed";
 import { getSlug, useTerminals } from "~/lib/terminals";
 import { useResolvedTheme } from "~/lib/theme";
+import { selectVisibleVesselContent } from "~/lib/vesselAssignments";
 import { refreshVessels } from "~/lib/vessels";
 import { useWindowSize } from "~/lib/window";
 import CaretDownIcon from "~/static/images/icons/solid/caret-down.svg";
@@ -60,10 +64,44 @@ const MAP_LABEL_MARGIN = 4;
 const MAP_MARKER_SIZE = 30;
 const MAP_LABEL_HEIGHT = 26;
 
+function normalizePath(path: string): string {
+  return path.replace(/\/+$/, "") || "/";
+}
+
+function normalizeMapQuery(search: string): string {
+  const query = new URLSearchParams();
+  [...new URLSearchParams(search)]
+    .filter(([key]) => key === "date")
+    .sort(([leftKey, leftValue], [rightKey, rightValue]) =>
+      leftKey === rightKey
+        ? leftValue.localeCompare(rightValue)
+        : leftKey.localeCompare(rightKey)
+    )
+    .forEach(([key, value]) => query.append(key, value));
+  return query.toString();
+}
+
+function snapshotTimestamp(
+  source:
+    | {
+        observedAt: string;
+        sourceUpdatedAt: string | null;
+      }
+    | undefined
+): number | null {
+  if (!source) {
+    return null;
+  }
+  const timestamp = Date.parse(source.sourceUpdatedAt ?? source.observedAt);
+  return Number.isFinite(timestamp) ? timestamp / 1000 : null;
+}
+
 interface Props {
   mate: Terminal | null;
+  requestIdentity: string;
   setRoute: (target: string, mate?: string) => void;
   terminal: Terminal | null;
+  vesselIdentity: string;
   vessels: Vessel[];
 }
 
@@ -434,17 +472,78 @@ const getVesselLabel = (vessel: Vessel): string => {
 
 export const Map = ({
   mate,
+  requestIdentity,
   setRoute,
   terminal,
+  vesselIdentity,
   vessels,
 }: Props): ReactElement => {
+  const location = useLocation();
+  const snapshot = usePublicSsrSnapshot();
+  const terminalSlug = terminal ? getSlug(terminal.id) : undefined;
+  const mateSlug = mate ? getSlug(mate.id) : undefined;
+  const seededRoutePath = terminalSlug
+    ? `/${terminalSlug}${
+        snapshot?.routeParams.mateSlug
+          ? `/${snapshot.routeParams.mateSlug}`
+          : ""
+      }/map`
+    : undefined;
+  const hasMatchingSeedRoute =
+    terminalSlug !== undefined &&
+    snapshot !== undefined &&
+    normalizePath(location.pathname) === seededRoutePath &&
+    snapshot.routeParams.terminalSlug === terminalSlug &&
+    (!snapshot.routeParams.mateSlug ||
+      snapshot.routeParams.mateSlug === mateSlug) &&
+    normalizeMapQuery(location.search) ===
+      normalizeMapQuery(
+        new URLSearchParams(snapshot.normalizedUrl.query).toString()
+      ) &&
+    snapshot.routeId ===
+      (snapshot.routeParams.mateSlug ? "mate-map" : "terminal-map");
+  const seededVesselsOutcome = hasMatchingSeedRoute
+    ? getPublicSsrSourceOutcome(snapshot, "vessels")
+    : undefined;
+  const seededVessels = useMemo(
+    () =>
+      seededVesselsOutcome?.outcome === "value" ||
+      seededVesselsOutcome?.outcome === "empty" ||
+      seededVesselsOutcome?.outcome === "stale-usable"
+        ? ([...seededVesselsOutcome.value] as Vessel[])
+        : undefined,
+    [seededVesselsOutcome]
+  );
+  const routeKey = requestIdentity;
+  const hasLiveVesselAssignments = vesselIdentity !== "";
+  const initialVessels = hasLiveVesselAssignments
+    ? vessels
+    : (seededVessels ?? []);
+  const seededSourceUpdatedAt = snapshotTimestamp(seededVesselsOutcome);
   const mapRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<RenderedMarker[]>([]);
   const lastFittedVesselsRef = useRef<Vessel[] | null>(null);
-  const routeVesselIdsRef = useRef(new Set(vessels.map(({ id }) => id)));
-  const [displayedVessels, setDisplayedVessels] = useState(vessels);
-  const [animatedVessels, setAnimatedVessels] = useState(vessels);
-  const [sourceUpdatedAt, setSourceUpdatedAt] = useState<number | null>(null);
+  const routeVesselIdsRef = useRef(new Set(initialVessels.map(({ id }) => id)));
+  const activeRouteKeyRef = useRef(routeKey);
+  activeRouteKeyRef.current = routeKey;
+  const activeVesselIdentityRef = useRef(vesselIdentity);
+  activeVesselIdentityRef.current = vesselIdentity;
+  const [vesselState, setVesselState] = useState(() => ({
+    routeKey,
+    sourceUpdatedAt: hasLiveVesselAssignments ? null : seededSourceUpdatedAt,
+    vesselIdentity,
+    vessels: initialVessels,
+  }));
+  const { sourceUpdatedAt, vessels: displayedVessels } =
+    selectVisibleVesselContent({
+      current: vesselState,
+      routeKey,
+      seededSourceUpdatedAt,
+      seededVessels: seededVessels ?? [],
+      vesselIdentity,
+      vessels,
+    });
+  const [animatedVessels, setAnimatedVessels] = useState(initialVessels);
   const [isReloading, setReloading] = useState(false);
   const [refreshError, setRefreshError] = useState(false);
   const [map, setMap] = useState<Mapbox | null>(null);
@@ -459,9 +558,36 @@ export const Map = ({
     (terminal && mate ? `${terminal.name} / ${mate.name}` : "Route");
 
   useEffect(() => {
-    routeVesselIdsRef.current = new Set(vessels.map(({ id }) => id));
-    setDisplayedVessels(vessels);
-  }, [vessels]);
+    const nextVessels = hasLiveVesselAssignments
+      ? vessels
+      : (seededVessels ?? []);
+    routeVesselIdsRef.current = new Set(nextVessels.map(({ id }) => id));
+    setVesselState((current) => {
+      const hasSameLiveAssignments =
+        hasLiveVesselAssignments &&
+        current.routeKey === routeKey &&
+        current.vesselIdentity === vesselIdentity;
+      let nextSourceUpdatedAt = seededSourceUpdatedAt;
+      if (hasLiveVesselAssignments) {
+        nextSourceUpdatedAt = hasSameLiveAssignments
+          ? current.sourceUpdatedAt
+          : null;
+      }
+      return {
+        routeKey,
+        sourceUpdatedAt: nextSourceUpdatedAt,
+        vesselIdentity,
+        vessels: hasSameLiveAssignments ? current.vessels : nextVessels,
+      };
+    });
+  }, [
+    hasLiveVesselAssignments,
+    routeKey,
+    seededSourceUpdatedAt,
+    seededVessels,
+    vesselIdentity,
+    vessels,
+  ]);
   // Confirmed API positions replace any client-side prediction.
   useEffect(() => setAnimatedVessels(displayedVessels), [displayedVessels]);
 
@@ -473,29 +599,66 @@ export const Map = ({
   }, []);
 
   const reloadVessels = async (): Promise<void> => {
+    const requestRouteKey = activeRouteKeyRef.current;
+    const requestVesselIdentity = activeVesselIdentityRef.current;
+    const requestVesselIds = new Set(routeVesselIdsRef.current);
+    const requestHasLiveAssignments = requestVesselIdentity !== "";
     setReloading(true);
     setRefreshError(false);
     try {
       const refreshed = await refreshVessels();
-      setDisplayedVessels((current) => {
-        // A map can open before its schedule has populated `current`. Keep
-        // that empty startup state from replacing route vessels with an empty
-        // refresh result (or, worse, every vessel in the system).
-        const routeVesselIds = new Set([
-          ...current.map(({ id }) => id),
-          ...routeVesselIdsRef.current,
-        ]);
-        if (routeVesselIds.size === 0) {
+      if (
+        activeRouteKeyRef.current !== requestRouteKey ||
+        activeVesselIdentityRef.current !== requestVesselIdentity
+      ) {
+        return;
+      }
+      setVesselState((current) => {
+        if (
+          current.routeKey !== requestRouteKey ||
+          current.vesselIdentity !== requestVesselIdentity
+        ) {
           return current;
         }
-        return refreshed.vessels.filter(({ id }) => routeVesselIds.has(id));
+        if (requestVesselIds.size === 0) {
+          if (!requestHasLiveAssignments) {
+            return current;
+          }
+          return {
+            routeKey: requestRouteKey,
+            sourceUpdatedAt: refreshed.sourceUpdatedAt,
+            vesselIdentity: requestVesselIdentity,
+            vessels: [],
+          };
+        }
+        const matchingVessels = refreshed.vessels.filter(({ id }) =>
+          requestVesselIds.has(id)
+        );
+        if (matchingVessels.length === 0 && !requestHasLiveAssignments) {
+          return current;
+        }
+        return {
+          routeKey: requestRouteKey,
+          sourceUpdatedAt: refreshed.sourceUpdatedAt,
+          vesselIdentity: requestVesselIdentity,
+          vessels: matchingVessels,
+        };
       });
-      setSourceUpdatedAt(refreshed.sourceUpdatedAt);
     } catch (error) {
-      setRefreshError(true);
+      if (
+        activeRouteKeyRef.current === requestRouteKey &&
+        activeVesselIdentityRef.current === requestVesselIdentity
+      ) {
+        setRefreshError(true);
+      }
       throw error;
     } finally {
-      setReloading(false);
+      if (
+        activeRouteKeyRef.current === requestRouteKey &&
+        activeVesselIdentityRef.current === requestVesselIdentity
+      ) {
+        setReloading(false);
+      }
     }
   };
 
@@ -505,7 +668,7 @@ export const Map = ({
       reloadVessels().catch(console.error);
     }, VESSEL_REFRESH_MS);
     return () => window.clearInterval(interval);
-  }, []);
+  }, [routeKey, vesselIdentity]);
 
   const updateMarkers = (): void => {
     // default coords based on Puget Sound
@@ -813,7 +976,11 @@ export const Map = ({
         className="map-container flex-grow bg-day-normal-light dark:bg-night-normal-dark"
       />
       {sourceUpdatedAt && (
-        <div className="pointer-events-none fixed bottom-[calc(4rem+var(--safe-area-inset-bottom)+0.5rem)] left-0 right-0 z-20 flex justify-center">
+        <div
+          className="pointer-events-none fixed bottom-[calc(4rem+var(--safe-area-inset-bottom)+0.5rem)] left-0 right-0 z-20 flex justify-center"
+          data-live-freshness="vessels"
+          data-source-updated-at={sourceUpdatedAt}
+        >
           <FreshnessPill
             className="pointer-events-auto"
             isRefreshing={isReloading}

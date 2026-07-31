@@ -13,6 +13,10 @@ export default defineConfig({
         replacement: path.resolve(__dirname, "client/components/Page"),
       },
       {
+        find: /^~\/(AppRoot|App|routes|browserApp)$/,
+        replacement: path.resolve(__dirname, "client/$1"),
+      },
+      {
         find: /^~\/components\/Skeleton$/,
         replacement: path.resolve(__dirname, "client/components/Skeleton"),
       },
@@ -128,6 +132,6 @@ export default defineConfig({
       reporter: ["text", "lcov"],
     },
     environment: "node",
-    include: ["tests/**/*.test.ts"],
+    include: ["tests/**/*.test.{ts,tsx}"],
   },
 });

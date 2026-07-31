@@ -8,7 +8,6 @@ const args = new Set(process.argv.slice(2));
 const shouldStartCameraTools = args.has("--with-camera-tools");
 const isDryRun = args.has("--dry-run");
 const commands = [
-  ["client", "start:client"],
   ["server", "start:server"],
 ];
 const children = new Set();
@@ -63,7 +62,7 @@ function configureDetectorEnv() {
 // print local development URLs
 function printUrls() {
   console.log("[dev] app: http://localhost:4040");
-  console.log(`[dev] API: http://localhost:${env.PORT ?? "4041"}`);
+  console.log(`[dev] API: http://localhost:${env.PORT ?? "4040"}/api`);
   console.log(`[dev] database: ${env.DATABASE_URL}`);
   console.log(`[dev] detector: ${detectorUrl}`);
   // camera tool URL
@@ -191,6 +190,10 @@ function startScript(name, scriptName) {
     shutdown(exitCode);
   });
 }
+
+// The combined Express/Vite development server owns the documented app port.
+// Ignore a legacy API-only PORT from .envrc so browser and API URLs stay aligned.
+env.PORT = env.DEV_CLIENT_PORT || "4040";
 
 // configure and start shared infrastructure before launching app processes.
 // Both the server and camera tools inherit these local service endpoints.

@@ -4,6 +4,7 @@ import React, {
   ReactElement,
   Suspense,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -30,47 +31,92 @@ import { SeoHelmet } from "~/components/SeoHelmet";
 import { useQuery } from "~/lib/browser";
 import { toShortDateString } from "~/lib/date";
 import { isFavoriteRoute, useFavoriteRoutes } from "~/lib/favoriteRoutes";
+import { useAppRenderContext } from "~/lib/renderContext";
 import type { RouteView } from "~/lib/routeViews";
 import {
   getSchedule,
   refreshSchedule,
   requireScheduleResponse,
 } from "~/lib/schedule";
+import { getPublicSsrSource, usePublicSsrSnapshot } from "~/lib/ssrSeed";
 import { getSlug, getTerminal } from "~/lib/terminals";
+import { getVesselAssignmentSet } from "~/lib/vesselAssignments";
 import StarIcon from "~/static/images/icons/regular/star.svg";
 import StarFilledIcon from "~/static/images/icons/solid/star.svg";
 import WSDOTIcon from "~/static/images/icons/wsdot.svg";
 import { Header } from "~/views/Header";
 
-const AlertSubscription = React.lazy(() =>
+const loadAlertSubscription = () =>
   import("./AlertSubscription").then(({ AlertSubscription }) => ({
     default: AlertSubscription,
-  }))
-);
-const Bulletins = React.lazy(() =>
-  import("./Bulletins").then(({ Bulletins }) => ({ default: Bulletins }))
-);
-const Cameras = React.lazy(() =>
-  import("./Cameras").then(({ Cameras }) => ({ default: Cameras }))
-);
-const Fares = React.lazy(() =>
-  import("./Fares").then(({ Fares }) => ({ default: Fares }))
-);
-const Map = React.lazy(() =>
-  import("./Map").then(({ Map }) => ({ default: Map }))
-);
-const Schedule = React.lazy(() =>
-  import("./Schedule").then(({ Schedule }) => ({ default: Schedule }))
-);
-const TerminalDetails = React.lazy(() =>
+  }));
+const AlertSubscription = React.lazy(loadAlertSubscription);
+const loadBulletins = () =>
+  import("./Bulletins").then(({ Bulletins }) => ({ default: Bulletins }));
+const Bulletins = React.lazy(loadBulletins);
+const loadCameras = () =>
+  import("./Cameras").then(({ Cameras }) => ({ default: Cameras }));
+const Cameras = React.lazy(loadCameras);
+const loadFares = () =>
+  import("./Fares").then(({ Fares }) => ({ default: Fares }));
+const Fares = React.lazy(loadFares);
+const loadMap = () =>
+  import("./Map").then(({ Map }) => ({
+    default: Map,
+  }));
+const Map = React.lazy(loadMap);
+const loadSchedule = () =>
+  import("./Schedule").then(({ Schedule }) => ({ default: Schedule }));
+const Schedule = React.lazy(loadSchedule);
+const loadTerminalDetails = () =>
   import("./TerminalDetails").then(({ TerminalDetails }) => ({
     default: TerminalDetails,
-  }))
-);
+  }));
+const TerminalDetails = React.lazy(loadTerminalDetails);
 
 export type { RouteView as View } from "~/lib/routeViews";
 
 type View = RouteView;
+
+const normalizePath = (path: string): string => path.replace(/\/+$/, "") || "/";
+
+const routeViewForPath = (pathname: string): View => {
+  const view = pathname.split("/").filter(Boolean).at(-1);
+  return view === "cameras" ||
+    view === "terminal" ||
+    view === "fare" ||
+    view === "map" ||
+    view === "alerts" ||
+    view === "subscribe"
+    ? view
+    : "schedule";
+};
+
+/** Load the route shell and the selected tab before replacing a seeded page. */
+export const preloadRouteView = async (pathname: string): Promise<void> => {
+  switch (routeViewForPath(pathname)) {
+    case "cameras":
+      await loadCameras();
+      return;
+    case "terminal":
+      await loadTerminalDetails();
+      return;
+    case "fare":
+      await loadFares();
+      return;
+    case "map":
+      await loadMap();
+      return;
+    case "alerts":
+      await loadBulletins();
+      return;
+    case "subscribe":
+      await loadAlertSubscription();
+      return;
+    case "schedule":
+      await loadSchedule();
+  }
+};
 
 type TodayOnlyView = Exclude<
   View,
@@ -88,6 +134,42 @@ const TAB_ORDER: View[] = [
 ];
 
 type TabDirection = "to-left" | "to-right";
+
+const getNormalizedRouteQuery = (search: string, view: View): string => {
+  const query = new URLSearchParams();
+  [...new URLSearchParams(search)]
+    .filter(
+      ([key]) => key === "date" || (view === "fare" && key.startsWith("fare"))
+    )
+    .sort(([leftKey, leftValue], [rightKey, rightValue]) =>
+      leftKey === rightKey
+        ? leftValue.localeCompare(rightValue)
+        : leftKey.localeCompare(rightKey)
+    )
+    .forEach(([key, value]) => query.append(key, value));
+  return query.toString();
+};
+
+const getNavigationIdentity = ({
+  mateSlug,
+  pathname,
+  search,
+  terminalSlug,
+  view,
+}: {
+  mateSlug?: string;
+  pathname: string;
+  search: string;
+  terminalSlug?: string;
+  view: View;
+}): string =>
+  JSON.stringify([
+    normalizePath(pathname),
+    terminalSlug ?? "",
+    mateSlug ?? "",
+    view,
+    getNormalizedRouteQuery(search, view),
+  ]);
 
 // tab order index
 const getTabIndex = (input: View): number => TAB_ORDER.indexOf(input);
@@ -147,25 +229,108 @@ export const Route = ({
   onMateChange,
   view,
 }: Props): ReactElement => {
-  const today = DateTime.local();
+  const { clock } = useAppRenderContext();
+  const today = DateTime.fromMillis(clock());
   const { terminalSlug, mateSlug } = useParams();
   const { date: dateInput } = useQuery();
   const { pathname, search } = useLocation();
+  const navigationIdentity = getNavigationIdentity({
+    mateSlug,
+    pathname,
+    search,
+    terminalSlug,
+    view,
+  });
+  const activeNavigationIdentityRef = useRef(navigationIdentity);
+  activeNavigationIdentityRef.current = navigationIdentity;
+  const snapshot = usePublicSsrSnapshot();
+  const snapshotSearch = snapshot
+    ? new URLSearchParams(snapshot.normalizedUrl.query).toString()
+    : "";
+  const hasMatchingSnapshotRoute =
+    snapshot !== undefined &&
+    normalizePath(snapshot.canonicalPath) === normalizePath(pathname) &&
+    snapshot.routeParams.terminalSlug === terminalSlug &&
+    snapshot.routeParams.mateSlug === mateSlug &&
+    getNormalizedRouteQuery(snapshotSearch, view) ===
+      getNormalizedRouteQuery(search, view);
+  const seededRoute = hasMatchingSnapshotRoute
+    ? getPublicSsrSource(snapshot, "route")
+    : undefined;
+  const seededSchedule = hasMatchingSnapshotRoute
+    ? getPublicSsrSource(snapshot, "schedule")
+    : undefined;
+  const seededVessels = hasMatchingSnapshotRoute
+    ? getPublicSsrSource(snapshot, "vessels")
+    : undefined;
   const navigate = useNavigate();
-  const [schedule, setSchedule] = useState<ScheduleClass | null>(null);
-  const [scheduleError, setScheduleError] = useState<Error | null>(null);
-  const [routeError, setRouteError] = useState<Error | null>(null);
-  const [isUpdating, setUpdating] = useState<boolean>(false);
-  const [[terminal, mate], setTerminals] = useState<Array<Terminal | null>>([
-    null,
-  ]);
-  // schedule race guard
-  const scheduleRequestRef = useRef<number>(0);
-  const [time, setTime] = useState<DateTime>(today);
   const inputDate = dateInput ? DateTime.fromISO(dateInput) : null;
-  const [date, setDate] = useState<DateTime>(
-    inputDate?.isValid ? inputDate : today
-  );
+  const urlDate = inputDate?.isValid ? inputDate : today;
+  const [dateState, setDateState] = useState<{
+    date: DateTime;
+    identity: string;
+  }>(() => ({
+    date: urlDate,
+    identity: navigationIdentity,
+  }));
+  const date =
+    dateState.identity === navigationIdentity ? dateState.date : urlDate;
+  const scheduleIdentity = `${navigationIdentity}:${date.toISODate() ?? ""}`;
+  const activeScheduleIdentityRef = useRef(scheduleIdentity);
+  activeScheduleIdentityRef.current = scheduleIdentity;
+  const [scheduleState, setScheduleState] = useState<{
+    identity: string;
+    isLive: boolean;
+    schedule: ScheduleClass | null;
+  }>(() => ({
+    identity: scheduleIdentity,
+    isLive: false,
+    schedule: seededSchedule?.schedule ?? null,
+  }));
+  const schedule =
+    scheduleState.identity === scheduleIdentity ? scheduleState.schedule : null;
+  const scheduleIsLive =
+    scheduleState.identity === scheduleIdentity && scheduleState.isLive;
+  const [scheduleErrorState, setScheduleErrorState] = useState<{
+    error: Error | null;
+    identity: string;
+  }>({ error: null, identity: scheduleIdentity });
+  const scheduleError =
+    scheduleErrorState.identity === scheduleIdentity
+      ? scheduleErrorState.error
+      : null;
+  const [routeErrorState, setRouteErrorState] = useState<{
+    error: Error | null;
+    identity: string;
+  }>({ error: null, identity: navigationIdentity });
+  const routeError =
+    routeErrorState.identity === navigationIdentity
+      ? routeErrorState.error
+      : null;
+  const [updatingIdentity, setUpdatingIdentity] = useState<string | null>(null);
+  const isUpdating = updatingIdentity === scheduleIdentity;
+  const [terminalState, setTerminalState] = useState<{
+    identity: string;
+    terminals: Array<Terminal | null>;
+  }>(() => ({
+    identity: navigationIdentity,
+    terminals: seededRoute
+      ? ([seededRoute.terminal, seededRoute.mate] as Terminal[])
+      : [null],
+  }));
+  const resolvedTerminals =
+    terminalState.identity === navigationIdentity
+      ? terminalState.terminals
+      : [null];
+  const [resolvedTerminal, resolvedMate] = resolvedTerminals;
+  const resolvedRouteMatchesPath =
+    resolvedTerminal !== null &&
+    getSlug(resolvedTerminal.id) === terminalSlug &&
+    (!mateSlug ||
+      (resolvedMate !== null && getSlug(resolvedMate.id) === mateSlug));
+  const terminal = resolvedRouteMatchesPath ? resolvedTerminal : null;
+  const mate = resolvedRouteMatchesPath ? resolvedMate : null;
+  const [time, setTime] = useState<DateTime>(today);
   const previousViewRef = useRef<View>(view);
   const tabDirection = getTabDirection(previousViewRef.current, view);
   const [favoriteRouteIds, toggleFavoriteRoute] = useFavoriteRoutes();
@@ -175,13 +340,22 @@ export const Route = ({
     previousViewRef.current = view;
   }, [view]);
 
-  const vessels: Vessel[] = [];
-
-  schedule?.slots?.forEach(({ vessel }) => {
-    if (!vessels.find(({ id }) => id === vessel.id)) {
-      vessels.push(vessel);
+  const scheduleMatchesRoute =
+    schedule?.terminalId === terminal?.id &&
+    schedule?.mateId === mate?.id &&
+    schedule?.date === date.toISODate();
+  const displayedSchedule = scheduleMatchesRoute ? schedule : null;
+  const vesselAssignments = useMemo(() => {
+    if (scheduleIsLive && displayedSchedule) {
+      return getVesselAssignmentSet(
+        displayedSchedule.slots.map(({ vessel }) => vessel)
+      );
     }
-  });
+    return {
+      identity: "",
+      vessels: [...(seededVessels ?? [])] as Vessel[],
+    };
+  }, [displayedSchedule, scheduleIsLive, seededVessels]);
 
   // update clock
   useEffect(() => {
@@ -209,10 +383,15 @@ export const Route = ({
 
   // update route on parameter change
   useEffect(() => {
-    if (terminalSlug) {
+    const routeMatchesPath =
+      terminal &&
+      mate &&
+      getSlug(terminal.id) === terminalSlug &&
+      (!mateSlug || getSlug(mate.id) === mateSlug);
+    if (terminalSlug && !routeMatchesPath) {
       setRoute(terminalSlug, mateSlug);
     }
-  }, [terminalSlug, mateSlug, date]);
+  }, [mate, mateSlug, seededRoute, terminal, terminalSlug]);
 
   // update schedule on parameter change
   useEffect(() => {
@@ -273,6 +452,7 @@ export const Route = ({
     terminalSlug: string,
     mateSlug?: string
   ): Promise<void> => {
+    const requestIdentity = activeNavigationIdentityRef.current;
     try {
       const terminal = await getTerminal(terminalSlug);
       let mate: Terminal | null = null;
@@ -284,23 +464,29 @@ export const Route = ({
       if (!mate || !findWhere(terminal.mates, { id: mate.id })) {
         mate = terminal?.mates?.[0] ?? null;
       }
-      // invalidate stale schedule
-      scheduleRequestRef.current += 1;
-      setRouteError(null);
-      setTerminals([terminal, mate]);
+      if (activeNavigationIdentityRef.current !== requestIdentity) {
+        return;
+      }
 
       const path = getPath({ terminal, mate: mate ?? undefined });
-      setScheduleError(null);
-      setSchedule(null);
       // route sync guard
       if (`${pathname}${search}` !== path) {
         navigate(path);
+        return;
       }
+      setRouteErrorState({ error: null, identity: requestIdentity });
+      setTerminalState({
+        identity: requestIdentity,
+        terminals: [terminal, mate],
+      });
     } catch (error) {
+      if (activeNavigationIdentityRef.current !== requestIdentity) {
+        return;
+      }
       const nextError =
         error instanceof Error ? error : new Error(String(error));
       console.error(nextError);
-      setRouteError(nextError);
+      setRouteErrorState({ error: nextError, identity: requestIdentity });
     }
   };
 
@@ -319,7 +505,7 @@ export const Route = ({
 
   // reset selected date
   const goToToday = (): void => {
-    setDate(DateTime.local());
+    setDateState({ date: DateTime.local(), identity: navigationIdentity });
   };
 
   const updateSchedule = async (): Promise<void> => {
@@ -327,27 +513,34 @@ export const Route = ({
     if (!terminal || !mate) {
       return;
     }
-    const requestId = scheduleRequestRef.current + 1;
-    scheduleRequestRef.current = requestId;
+    const requestIdentity = scheduleIdentity;
     const isScheduleForRequest =
       schedule?.terminalId === terminal.id &&
       schedule?.mateId === mate.id &&
       schedule?.date === date.toISODate();
     // mismatched schedule guard
     if (!isScheduleForRequest) {
-      setSchedule(null);
+      setScheduleState({
+        identity: requestIdentity,
+        isLive: false,
+        schedule: null,
+      });
     }
-    setUpdating(true);
-    setScheduleError(null);
+    setUpdatingIdentity(requestIdentity);
+    setScheduleErrorState({ error: null, identity: requestIdentity });
     try {
       const { schedule, timestamp } = requireScheduleResponse(
         await getSchedule(terminal, mate, date)
       );
       // stale response guard
-      if (requestId !== scheduleRequestRef.current) {
+      if (requestIdentity !== activeScheduleIdentityRef.current) {
         return;
       }
-      setSchedule(schedule);
+      setScheduleState({
+        identity: requestIdentity,
+        isLive: true,
+        schedule,
+      });
       // Some cached legacy responses lack a timestamp. Keep the current clock
       // rather than crashing the route when that happens.
       if (Number.isFinite(timestamp)) {
@@ -355,17 +548,17 @@ export const Route = ({
       }
     } catch (error) {
       // stale error guard
-      if (requestId !== scheduleRequestRef.current) {
+      if (requestIdentity !== activeScheduleIdentityRef.current) {
         return;
       }
       const nextError =
         error instanceof Error ? error : new Error(String(error));
       console.error(nextError);
-      setScheduleError(nextError);
+      setScheduleErrorState({ error: nextError, identity: requestIdentity });
     } finally {
       // latest request guard
-      if (requestId === scheduleRequestRef.current) {
-        setUpdating(false);
+      if (requestIdentity === activeScheduleIdentityRef.current) {
+        setUpdatingIdentity(null);
       }
     }
   };
@@ -374,19 +567,32 @@ export const Route = ({
     if (!terminal || !mate) {
       return;
     }
-    setUpdating(true);
-    setScheduleError(null);
+    const requestIdentity = scheduleIdentity;
+    setUpdatingIdentity(requestIdentity);
+    setScheduleErrorState({ error: null, identity: requestIdentity });
     try {
       const { schedule: refreshedSchedule, timestamp } =
         requireScheduleResponse(await refreshSchedule(terminal, mate, date));
-      setSchedule({ ...refreshedSchedule, sourceUpdatedAt: timestamp });
+      if (requestIdentity !== activeScheduleIdentityRef.current) {
+        return;
+      }
+      setScheduleState({
+        identity: requestIdentity,
+        isLive: true,
+        schedule: { ...refreshedSchedule, sourceUpdatedAt: timestamp },
+      });
     } catch (error) {
+      if (requestIdentity !== activeScheduleIdentityRef.current) {
+        return;
+      }
       const nextError =
         error instanceof Error ? error : new Error(String(error));
       console.error(nextError);
-      setScheduleError(nextError);
+      setScheduleErrorState({ error: nextError, identity: requestIdentity });
     } finally {
-      setUpdating(false);
+      if (requestIdentity === activeScheduleIdentityRef.current) {
+        setUpdatingIdentity(null);
+      }
     }
   };
 
@@ -489,8 +695,10 @@ export const Route = ({
             <div className="flex-grow" />
             <DateButton
               defaultDate={date}
-              onDateChange={setDate}
-              validRange={schedule?.validRange || undefined}
+              onDateChange={(nextDate) =>
+                setDateState({ date: nextDate, identity: navigationIdentity })
+              }
+              validRange={displayedSchedule?.validRange || undefined}
             />
           </Header>
         )}
@@ -501,7 +709,7 @@ export const Route = ({
           onRefresh={refreshScheduleFromCache}
           route={selectedRoute}
           time={time}
-          schedule={schedule}
+          schedule={displayedSchedule}
         />
       </>
     );
@@ -521,7 +729,9 @@ export const Route = ({
       <Fares
         date={date}
         mate={mate}
-        setDate={setDate}
+        setDate={(nextDate) =>
+          setDateState({ date: nextDate, identity: navigationIdentity })
+        }
         setRoute={setRoute}
         terminal={terminal}
       />
@@ -540,9 +750,11 @@ export const Route = ({
     content = (
       <Map
         mate={mate}
+        requestIdentity={scheduleIdentity}
         setRoute={setRoute}
         terminal={terminal}
-        vessels={vessels}
+        vesselIdentity={vesselAssignments.identity}
+        vessels={vesselAssignments.vessels}
       />
     );
   } else if (view === "subscribe" && terminal && mate) {
@@ -599,16 +811,14 @@ export const Route = ({
           fallbackTitle="Route view crashed"
           fallbackMessage="This route section hit an unexpected error. Switch tabs or try again."
         >
-          <div
-            className={`route-tab-motion route-tab-motion--${tabDirection}`}
-            key={contentMotionKey}
-          >
-            <Suspense
-              fallback={<RouteLoadingState hasRouteFooter view={view} />}
+          <Suspense fallback={<RouteLoadingState hasRouteFooter view={view} />}>
+            <div
+              className={`route-tab-motion route-tab-motion--${tabDirection}`}
+              key={contentMotionKey}
             >
               {content}
-            </Suspense>
-          </div>
+            </div>
+          </Suspense>
         </ErrorBoundary>
       )}
       <Footer terminal={terminal} getPath={getPath} />
