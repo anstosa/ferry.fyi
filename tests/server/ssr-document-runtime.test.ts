@@ -353,7 +353,7 @@ describe("SSR document runtime", () => {
     expect(response.status).toBe(404);
     expect(other.status).toBe(404);
     expect(response.headers).toMatchObject({
-      "Cache-Control": "no-store, no-transform",
+      "Cache-Control": "no-store",
       "CDN-Cache-Control": "no-store",
       "Surrogate-Control": "no-store",
       Vary: "Host",

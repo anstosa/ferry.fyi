@@ -3,8 +3,8 @@ import type {
   PublicSsrRouteId,
   PublicSsrRouteParams,
 } from "../contracts/ssrRouting";
+import ROUTE_TERMINAL_IDS from "../data/route-terminal-ids.json";
 import TERMINAL_CATALOG from "../data/terminals.json";
-import WSF_CORE from "../data/wsf-core.json";
 import {
   type NormalizedPublicQuery,
   normalizePublicQuery,
@@ -52,11 +52,7 @@ export const createStaticPublicSsrTerminalResolver = (
     );
   });
   const mates = new Map<string, string[]>();
-  const routes =
-    (WSF_CORE as { routes?: Record<string, { terminalIds?: string[] }> })
-      .routes ?? {};
-  Object.values(routes).forEach((route) => {
-    const terminalIds = route.terminalIds ?? [];
+  Object.values(ROUTE_TERMINAL_IDS).forEach(({ terminalIds }) => {
     terminalIds.forEach((id) => {
       const list = mates.get(id) ?? [];
       terminalIds.forEach((mateId) => {

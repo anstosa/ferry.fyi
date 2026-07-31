@@ -142,6 +142,28 @@ const route = (value: unknown) =>
   );
 const identity = (value: unknown) =>
   fields(value, { abbreviation: string, id, name: string });
+const terminalLocation = (value: unknown) =>
+  fields(value, {
+    address: nullable((address) =>
+      fields(address, {
+        city: nullable(string),
+        line1: nullable(string),
+        line2: nullable(string),
+        state: nullable(string),
+        zip: nullable(string),
+      })
+    ),
+    latitude: finite,
+    link: nullable(string),
+    longitude: finite,
+  });
+const terminalSummary = (value: unknown) =>
+  fields(value, {
+    abbreviation: string,
+    id,
+    location: terminalLocation,
+    name: string,
+  });
 const terminal = (value: unknown): boolean =>
   fields(value, {
     abbreviation: string,
@@ -171,21 +193,7 @@ const terminal = (value: unknown): boolean =>
           truck: string,
         }
       ),
-    location: (item) =>
-      fields(item, {
-        address: nullable((address) =>
-          fields(address, {
-            city: nullable(string),
-            line1: nullable(string),
-            line2: nullable(string),
-            state: nullable(string),
-            zip: nullable(string),
-          })
-        ),
-        latitude: finite,
-        link: nullable(string),
-        longitude: finite,
-      }),
+    location: terminalLocation,
     mates: array(identity),
     name: string,
     popularity: finite,
@@ -407,7 +415,7 @@ const leaderboardEntity = (value: unknown) =>
   });
 const publicPayload = (key: PublicSsrSourceKey, value: unknown): boolean =>
   ({
-    terminals: array(terminal),
+    terminals: array(terminalSummary),
     features: (item: unknown) =>
       fields(item, {
         leaderboardsEnabled: (enabled) => typeof enabled === "boolean",

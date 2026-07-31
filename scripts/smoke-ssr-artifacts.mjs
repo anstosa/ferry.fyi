@@ -105,7 +105,7 @@ try {
         routeId: "unknown-public-path",
         routeParams: {},
         sources: {},
-        version: 3,
+        version: 4,
       },
       template:
         "<html><head></head><body><div id=\"root\"></div></body></html>",

@@ -98,7 +98,7 @@ export interface SsrDocumentResponse {
 }
 
 const documentHeaders = {
-  "Cache-Control": "no-store, no-transform",
+  "Cache-Control": "no-store",
   "CDN-Cache-Control": "no-store",
   "Surrogate-Control": "no-store",
   Vary: "Host",

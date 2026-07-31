@@ -22,6 +22,7 @@ import {
   type PublicSsrSnapshot,
   type PublicSsrSourceKey,
   type PublicSsrTerminal,
+  type PublicSsrTerminalSummary,
   type PublicSsrTicketGuidance,
   type PublicSsrVessel,
 } from "shared/contracts/ssr";
@@ -348,6 +349,26 @@ const toTerminal = (
     })),
   };
 };
+
+const toTerminalSummary = (terminal: Terminal): PublicSsrTerminalSummary => ({
+  abbreviation: terminal.abbreviation,
+  id: terminal.id,
+  location: {
+    address: terminal.location.address
+      ? {
+          city: terminal.location.address.city ?? null,
+          line1: terminal.location.address.line1 ?? null,
+          line2: terminal.location.address.line2 ?? null,
+          state: terminal.location.address.state ?? null,
+          zip: terminal.location.address.zip ?? null,
+        }
+      : null,
+    latitude: terminal.location.latitude,
+    link: terminal.location.link ?? null,
+    longitude: terminal.location.longitude,
+  },
+  name: terminal.name,
+});
 
 const cameraFrames = (value: CameraFrameStatusEnvelope) => ({
   frames: Object.fromEntries(
@@ -690,9 +711,7 @@ export const createPublicSsrSnapshotLoader = ({
           ]);
           sources.terminals = source(
             "terminals",
-            Object.values(all).map((terminal) =>
-              toTerminal(terminal, routeDate)
-            )
+            Object.values(all).map(toTerminalSummary)
           );
           if (Object.keys(all).length === 0) {
             sources.terminals = empty("terminals");

@@ -413,6 +413,9 @@ describe("AppRoot server rendering", () => {
       },
     };
     const home = await render("https://ferry.fyi/", homeSnapshot);
+    expect(home.markup).toContain('aria-label="Quick links"');
+    expect(home.markup).toContain('href="/tickets"');
+    expect(home.markup).toContain('href="/leaderboards"');
     expect(home.markup).toContain("Clinton");
     expect(home.markup).toContain('data-public-ssr-freshness="terminals"');
     expect(home.markup).toContain("<time");

@@ -1,0 +1,12 @@
+{
+  "1": { "terminalIds": ["16", "21"] },
+  "3": { "terminalIds": ["4", "7"] },
+  "5": { "terminalIds": ["3", "7"] },
+  "6": { "terminalIds": ["12", "8"] },
+  "7": { "terminalIds": ["14", "5"] },
+  "8": { "terminalIds": ["11", "17"] },
+  "9": { "terminalIds": ["1", "10", "13", "15", "18"] },
+  "13": { "terminalIds": ["20", "9"] },
+  "14": { "terminalIds": ["22", "9"] },
+  "15": { "terminalIds": ["20", "22"] }
+}

@@ -9,6 +9,7 @@ import type {
 import { getSeoMetadata, type SeoMetadata } from "shared/lib/seo";
 import { getStaticPublicSsrTerminalSlug } from "shared/lib/ssrRouteMatch";
 
+import { HomeHero } from "~/components/HomeHero";
 import { SeoHelmet } from "~/components/SeoHelmet";
 import { SsrPage } from "~/components/SsrPage";
 import { useAppRenderContext } from "~/lib/renderContext";
@@ -577,10 +578,11 @@ export const PublicTerminalDetails = (): ReactElement => {
 /** Anonymous terminal index, intentionally free of geolocation and preferences. */
 export const PublicHome = (): ReactElement => {
   const terminals = usePublicSsrSource("terminals") ?? [];
+  const features = usePublicSsrSource("features");
   return (
-    <main className="relative min-h-screen bg-ferry-gradient text-white">
+    <main className="relative min-h-screen min-h-[100dvh] overflow-y-scroll scrolling-touch bg-ferry-gradient text-white">
       <SnapshotSeoHelmet fallback={getSeoMetadata("/")} />
-      <h1 className="p-6 text-4xl font-bold">Ferry FYI</h1>
+      <HomeHero leaderboardsEnabled={features?.leaderboardsEnabled ?? false} />
       <div className="px-6">
         <SnapshotFreshness
           primarySource="terminals"

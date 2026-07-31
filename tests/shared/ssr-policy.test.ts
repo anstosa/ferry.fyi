@@ -65,6 +65,12 @@ const resolver = {
     return undefined;
   },
 };
+const terminalSummary = {
+  abbreviation: terminal.abbreviation,
+  id: terminal.id,
+  location: terminal.location,
+  name: terminal.name,
+} satisfies PublicSsrPayloadMap["terminals"][number];
 const at = "2026-07-28T12:00:00.000Z";
 const source = <T>(value: T) => ({
   outcome: "value" as const,
@@ -252,7 +258,7 @@ const home = (): PublicSsrSnapshot => ({
   routeId: "home",
   routeParams: {},
   sources: {
-    terminals: source([terminal]),
+    terminals: source([terminalSummary]),
     features: source({ leaderboardsEnabled: true }),
     notices: source({
       announcements: [{ id: "weather", title: "Weather", body: "Wind" }],
@@ -295,7 +301,9 @@ describe("SSR contracts", () => {
   it("round-trips realistic anonymous public data and rejects loader-only or private data", () => {
     expect(assertPublicSsrSnapshot(home())).toMatchObject({ routeId: "home" });
     const privateCanary = home() as any;
-    privateCanary.sources.terminals.value = [{ ...terminal, dataValues: {} }];
+    privateCanary.sources.terminals.value = [
+      { ...terminalSummary, dataValues: {} },
+    ];
     expect(() => assertPublicSsrSnapshot(privateCanary)).toThrow("dataValues");
     const transient = home() as any;
     transient.sources.notices = {

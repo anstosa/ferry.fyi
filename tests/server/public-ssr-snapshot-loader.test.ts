@@ -345,7 +345,7 @@ describe("public SSR snapshot loader", () => {
     expect(publicServices.getPublicLeaderboardsEnabled).toHaveBeenCalledOnce();
   });
 
-  it("normalizes nullable live terminal fields into the public snapshot", async () => {
+  it("projects compact terminal summaries into the home snapshot", async () => {
     const publicServices = services();
     publicServices.getTerminals.mockResolvedValue({
       "5": {
@@ -374,19 +374,27 @@ describe("public SSR snapshot loader", () => {
       outcome: "value",
       value: [
         {
-          info: {},
-          routes: { route: { date: "2026-07-28" } },
-          waitTimes: [{ description: "Arrive early", time: 1 }],
+          abbreviation: "CLI",
+          id: "5",
+          location: {
+            latitude: expect.any(Number),
+            longitude: expect.any(Number),
+          },
+          name: "Clinton",
         },
       ],
     });
-    expect(
-      (
-        snapshot.sources.terminals as {
-          value: { waitTimes: { title?: string }[] }[];
-        }
-      ).value[0].waitTimes[0]
-    ).not.toHaveProperty("title");
+    const terminalSource = snapshot.sources.terminals;
+    expect(terminalSource.outcome).toBe("value");
+    if (terminalSource.outcome !== "value") {
+      throw new Error("Expected a terminal summary value");
+    }
+    const [summary] = terminalSource.value;
+    expect(summary).not.toHaveProperty("bulletins");
+    expect(summary).not.toHaveProperty("cameras");
+    expect(summary).not.toHaveProperty("info");
+    expect(summary).not.toHaveProperty("routes");
+    expect(summary).not.toHaveProperty("waitTimes");
   });
 
   it("emits canonical empty outcomes for an empty home directory and notices", async () => {

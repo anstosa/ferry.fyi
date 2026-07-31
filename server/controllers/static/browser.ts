@@ -234,7 +234,7 @@ export const createBrowserRouter = (
 
   browserRouter.get("/index.html", (request, response) => {
     response.set({
-      "Cache-Control": "no-store, no-transform",
+      "Cache-Control": "no-store",
       "CDN-Cache-Control": "no-store",
       "Surrogate-Control": "no-store",
       Vary: "Host",
@@ -244,7 +244,7 @@ export const createBrowserRouter = (
 
   browserRouter.get(/.*/, async (request, response) => {
     response.set({
-      "Cache-Control": "no-store, no-transform",
+      "Cache-Control": "no-store",
       "CDN-Cache-Control": "no-store",
       "Surrogate-Control": "no-store",
       Vary: "Host",

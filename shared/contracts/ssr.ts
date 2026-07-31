@@ -21,7 +21,7 @@ export type {
 } from "./ssrRouting";
 
 /** Versioned anonymous document data, never an API DTO. */
-export const PUBLIC_SSR_SNAPSHOT_VERSION = 3 as const;
+export const PUBLIC_SSR_SNAPSHOT_VERSION = 4 as const;
 export const PUBLIC_SSR_FORBIDDEN_KEYS = [
   "accessToken",
   "idToken",
@@ -73,6 +73,10 @@ export interface PublicSsrTerminalLocation {
   latitude: number;
   link: string | null;
   longitude: number;
+}
+/** Compact home-directory data; detailed terminal data is route-scoped. */
+export interface PublicSsrTerminalSummary extends PublicSsrTerminalIdentity {
+  location: PublicSsrTerminalLocation;
 }
 export type PublicSsrRoute = Pick<
   Route,
@@ -169,7 +173,7 @@ export interface PublicSsrLeaderboardIndex {
   }[];
 }
 export interface PublicSsrPayloadMap {
-  terminals: readonly PublicSsrTerminal[];
+  terminals: readonly PublicSsrTerminalSummary[];
   features: PublicSsrFeatures;
   editorial: PublicSsrEditorial;
   ticketGuidance: PublicSsrTicketGuidance;
@@ -194,7 +198,7 @@ export interface PublicSsrEmptyPayloadMap {
   leaderboard: PublicSsrLeaderboard;
   leaderboardIndex: PublicSsrLeaderboardIndex;
   notices: PublicSsrNotices;
-  terminals: readonly PublicSsrTerminal[];
+  terminals: readonly PublicSsrTerminalSummary[];
   vessels: readonly PublicSsrVessel[];
 }
 export const PUBLIC_SSR_EMPTY_DATA: PublicSsrEmptyPayloadMap & {

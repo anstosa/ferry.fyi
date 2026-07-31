@@ -77,17 +77,10 @@ assert.ok(
   applicationStylesheetTag,
   "built index must link the application CSS"
 );
-assert.ok(
-  applicationStylesheetTag.includes(
-    `onload="document.documentElement.setAttribute('data-ferry-fyi-styles-ready', '')"`
-  ),
-  "built application stylesheet must release the SSR style gate on load"
-);
-assert.match(
-  indexHtml,
-  /html:not\(\[data-ferry-fyi-styles-ready\]\)[\s\S]*#root\[data-ferry-fyi-render-mode="snapshot"\]/,
-  "built index must include the SSR style gate"
-);
+assert.ok(!applicationStylesheetTag.includes("media="));
+assert.ok(!applicationStylesheetTag.includes("onload="));
+assert.ok(!indexHtml.includes("ferry-fyi-ssr-style-gate"));
+assert.ok(!indexHtml.includes("data-ferry-fyi-styles-ready"));
 assert.ok(!indexHtml.includes('href="/app.scss"'));
 
 assert.deepEqual(

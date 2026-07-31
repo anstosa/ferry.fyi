@@ -1,5 +1,6 @@
 import { atom, useAtom } from "jotai";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import type { PublicSsrTerminalSummary } from "shared/contracts/ssr";
 import type { Terminal } from "shared/contracts/terminals";
 import TERMINAL_DATA_OVERRIDES from "shared/data/terminals.json";
 import { isEmpty } from "shared/lib/arrays";
@@ -87,6 +88,40 @@ interface TerminalState {
 
 const terminalsAtom = atom<Terminal[] | null>(null);
 
+const toClientTerminal = (terminal: PublicSsrTerminalSummary): Terminal => ({
+  abbreviation: terminal.abbreviation,
+  bulletins: [],
+  cameras: [],
+  hasElevator: false,
+  hasFood: false,
+  hasOverheadLoading: false,
+  hasRestroom: false,
+  hasWaitingRoom: false,
+  id: terminal.id,
+  info: {},
+  location: {
+    address: terminal.location.address
+      ? Object.fromEntries(
+          Object.entries(terminal.location.address).filter(
+            (entry): entry is [string, string] => typeof entry[1] === "string"
+          )
+        )
+      : {},
+    latitude: terminal.location.latitude,
+    longitude: terminal.location.longitude,
+    ...(terminal.location.link ? { link: terminal.location.link } : {}),
+  },
+  name: terminal.name,
+  popularity: 0,
+  routes: {},
+  waitTimes: [],
+});
+
+const useTerminalSeed = (): Terminal[] | undefined => {
+  const seed = usePublicSsrSource("terminals");
+  return useMemo(() => seed?.map(toClientTerminal), [seed]);
+};
+
 /**
  * Loads the canonical terminal list without reading or requesting a location.
  * Use this for features that need terminal metadata but must not participate in
@@ -94,7 +129,7 @@ const terminalsAtom = atom<Terminal[] | null>(null);
  */
 export const useTerminalList = (): Terminal[] => {
   const [terminals, setTerminals] = useAtom(terminalsAtom);
-  const seed = usePublicSsrSource("terminals") as Terminal[] | undefined;
+  const seed = useTerminalSeed();
   const visibleTerminals = terminals ?? seed;
 
   useEffect(() => {
@@ -119,7 +154,7 @@ export const useTerminalList = (): Terminal[] => {
 export const useTerminals = (): TerminalState => {
   const [location] = useGeo();
   const [terminals, setTerminals] = useAtom(terminalsAtom);
-  const seed = usePublicSsrSource("terminals") as Terminal[] | undefined;
+  const seed = useTerminalSeed();
   const visibleTerminals = terminals ?? seed;
   const [closestTerminal, setClosestTerminal] =
     useState<TerminalState["closestTerminal"]>(null);

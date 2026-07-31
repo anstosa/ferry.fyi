@@ -24,28 +24,14 @@ const terminal = (
   name: string
 ): PublicSsrPayloadMap["terminals"][number] => ({
   abbreviation: name.slice(0, 3).toUpperCase(),
-  bulletins: [],
-  cameras: [],
-  hasElevator: false,
-  hasFood: false,
-  hasOverheadLoading: false,
-  hasRestroom: true,
-  hasWaitingRoom: true,
   id,
-  info: {},
   location: {
     address: { city: null, line1: null, line2: null, state: null, zip: null },
     latitude: 1,
     link: null,
     longitude: 1,
   },
-  mates: [],
   name,
-  popularity: 0,
-  routes: {},
-  terminalUrl: null,
-  vesselWatchUrl: null,
-  waitTimes: [],
 });
 const seed: PublicSsrPayloadMap["terminals"] = [
   terminal("b", "Beta"),

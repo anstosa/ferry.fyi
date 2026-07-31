@@ -5,6 +5,7 @@ import { Terminal as TerminalClass } from "shared/contracts/terminals";
 import { isEmpty } from "shared/lib/arrays";
 import { getSeoMetadata } from "shared/lib/seo";
 
+import { HomeHero } from "~/components/HomeHero";
 import { SeoHelmet } from "~/components/SeoHelmet";
 import { Skeleton, SkeletonGroup } from "~/components/Skeleton";
 import { useFavoriteRoutes } from "~/lib/favoriteRoutes";
@@ -16,7 +17,6 @@ import {
   sortRouteGroups,
 } from "~/lib/routeGroups";
 import { getSlug, useTerminals } from "~/lib/terminals";
-import logo from "~/static/images/icon_monochrome-256.png";
 import MenuIcon from "~/static/images/icons/solid/bars.svg";
 import GpsTargetIcon from "~/static/images/icons/solid/location.svg";
 import StarFilledIcon from "~/static/images/icons/solid/star.svg";
@@ -102,35 +102,11 @@ export const Home = (): ReactElement => {
       >
         <MenuIcon />
       </button>
-      <div className="flex h-[calc(16rem+var(--safe-area-inset-top))] w-full flex-col items-center justify-center pt-safe-top">
-        <img
-          alt="Ferry FYI"
-          className="w-28"
-          fetchPriority="high"
-          height={112}
-          src={logo}
-          width={112}
-        />
-        <h1 className="text-4xl font-bold">Ferry FYI</h1>
-        <nav aria-label="Quick links" className="mt-3 flex items-center gap-3">
-          <Link
-            className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-3 py-1.5 text-sm font-bold shadow-sm transition hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-            to="/tickets"
-          >
-            <TicketIcon aria-hidden className="h-4 w-4" />
-            Tickets
-          </Link>
-          {leaderboardsEnabled && (
-            <Link
-              className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-3 py-1.5 text-sm font-bold shadow-sm transition hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-              to="/leaderboards"
-            >
-              <TrophyIcon aria-hidden className="h-4 w-4" />
-              Leaderboards
-            </Link>
-          )}
-        </nav>
-      </div>
+      <HomeHero
+        leaderboardIcon={<TrophyIcon aria-hidden className="h-4 w-4" />}
+        leaderboardsEnabled={leaderboardsEnabled}
+        ticketIcon={<TicketIcon aria-hidden className="h-4 w-4" />}
+      />
       <div className="w-full flex justify-center px-4 pb-8">
         <div className="grid w-full max-w-6xl grid-cols-2 gap-x-4 gap-y-6">
           {isEmpty(terminals) && (

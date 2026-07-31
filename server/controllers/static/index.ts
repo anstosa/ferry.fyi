@@ -19,6 +19,8 @@ const ANDROID_APP_LINK_CERT_FINGERPRINTS = [
   "DA:FB:7E:B4:7F:20:3F:EF:78:F1:A5:DB:72:4B:1D:81:27:A8:0E:CA:4B:ED:0E:3D:03:60:0C:8D:40:0A:7A:D3",
 ];
 
+const IMMUTABLE_ASSET_CACHE_CONTROL = "public, max-age=31536000, immutable";
+
 export interface StaticPolicyRouterDependencies {
   llmsPath?: string;
 }
@@ -90,7 +92,7 @@ export const createStaticRouter = (
 
   staticRouter.get("/index.html", (_request, response) => {
     response.set({
-      "Cache-Control": "no-store, no-transform",
+      "Cache-Control": "no-store",
       "CDN-Cache-Control": "no-store",
       "Surrogate-Control": "no-store",
       Vary: "Host",
@@ -111,11 +113,15 @@ export const createStaticRouter = (
         setHeaders(response, filePath) {
           if (filePath.endsWith(".html")) {
             response.set({
-              "Cache-Control": "no-store, no-transform",
+              "Cache-Control": "no-store",
               "CDN-Cache-Control": "no-store",
               "Surrogate-Control": "no-store",
               Vary: "Host",
             });
+          } else if (
+            path.relative(dist, filePath).split(path.sep)[0] === "assets"
+          ) {
+            response.set("Cache-Control", IMMUTABLE_ASSET_CACHE_CONTROL);
           }
         },
       })

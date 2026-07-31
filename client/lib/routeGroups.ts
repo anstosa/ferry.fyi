@@ -1,4 +1,5 @@
 import { Terminal as TerminalClass } from "shared/contracts/terminals";
+import ROUTE_TERMINAL_IDS from "shared/data/route-terminal-ids.json";
 
 export interface RouteGroupConfig {
   annualTraffic: number;
@@ -20,6 +21,7 @@ export const ROUTE_GROUPS: RouteGroupConfig[] = [
     id: "bainbridge-island",
     label: "Bainbridge Island",
     routeIds: ["5"],
+    terminalIds: ROUTE_TERMINAL_IDS["5"].terminalIds,
   },
   {
     annualTraffic: 4_438_712,
@@ -34,6 +36,7 @@ export const ROUTE_GROUPS: RouteGroupConfig[] = [
     id: "kingston",
     label: "Kingston",
     routeIds: ["6"],
+    terminalIds: ROUTE_TERMINAL_IDS["6"].terminalIds,
   },
   {
     annualTraffic: 1_954_626,
@@ -56,18 +59,21 @@ export const ROUTE_GROUPS: RouteGroupConfig[] = [
     id: "bremerton",
     label: "Bremerton",
     routeIds: ["3"],
+    terminalIds: ROUTE_TERMINAL_IDS["3"].terminalIds,
   },
   {
     annualTraffic: 960_584,
     id: "point-defiance",
     label: "Point Defiance",
     routeIds: ["1"],
+    terminalIds: ROUTE_TERMINAL_IDS["1"].terminalIds,
   },
   {
     annualTraffic: 637_688,
     id: "west-seattle",
     label: "West Seattle",
     routeIds: ["13"],
+    terminalIds: ROUTE_TERMINAL_IDS["13"].terminalIds,
   },
 ];
 

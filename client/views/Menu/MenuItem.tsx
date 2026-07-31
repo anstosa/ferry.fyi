@@ -41,7 +41,7 @@ export type MenuItem =
 
 export const MenuItem = ({ item }: Props): ReactElement | null => {
   if ("isSpacer" in item) {
-    return <div className="flex-grow" />;
+    return <li aria-hidden="true" className="flex-grow" />;
   }
 
   const { Icon, label } = item;

@@ -7,19 +7,6 @@
       name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
-    <style id="ferry-fyi-ssr-style-gate">
-      @keyframes ferry-fyi-ssr-style-fallback {
-        to {
-          visibility: visible;
-        }
-      }
-
-      html:not([data-ferry-fyi-styles-ready])
-        #root[data-ferry-fyi-render-mode="snapshot"] {
-        animation: ferry-fyi-ssr-style-fallback 0s 5s forwards;
-        visibility: hidden;
-      }
-    </style>
     <link href="/app.scss" rel="stylesheet" />
 
     <title data-seo-seed="true">%APP_TITLE%</title>

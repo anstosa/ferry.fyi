@@ -1,5 +1,5 @@
 /* eslint-disable require-await -- document runtime is an intentionally async dependency. */
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -18,6 +18,11 @@ const createDist = async (): Promise<string> => {
     '<html><head></head><body><div id="root"></div></body></html>'
   );
   await writeFile(path.join(directory, "asset.js"), "console.log('asset')");
+  await mkdir(path.join(directory, "assets"));
+  await writeFile(
+    path.join(directory, "assets", "main.abc123.js"),
+    "console.log('hashed asset')"
+  );
   return directory;
 };
 
@@ -41,7 +46,7 @@ describe("SSR static router boundary", () => {
       const response = await request(app)[method]("/index.html");
       expect(response.status).toBe(301);
       expect(response.headers.location).toBe("/");
-      expect(response.headers["cache-control"]).toBe("no-store, no-transform");
+      expect(response.headers["cache-control"]).toBe("no-store");
       expect(response.headers["cdn-cache-control"]).toBe("no-store");
       expect(response.headers["surrogate-control"]).toBe("no-store");
       expect(response.headers.vary).toContain("Host");
@@ -78,6 +83,34 @@ describe("SSR static router boundary", () => {
     expect(asset.text).toContain("asset");
   });
 
+  it("compresses large HTML documents and caches hashed assets immutably", async () => {
+    const dist = await createDist();
+    const app = express().use(
+      createStaticRouter(dist, {
+        browserDependencies: {
+          documentRuntime: async () => ({
+            headers: {},
+            html: `<html><body>${"Ferry schedules ".repeat(200)}</body></html>`,
+            status: 200,
+          }),
+        },
+      })
+    );
+
+    const document = await request(app)
+      .get("/")
+      .set("Accept-Encoding", "gzip");
+    expect(document.status).toBe(200);
+    expect(document.headers["content-encoding"]).toBe("gzip");
+    expect(document.headers["cache-control"]).toBe("no-store");
+
+    const asset = await request(app).get("/assets/main.abc123.js");
+    expect(asset.status).toBe(200);
+    expect(asset.headers["cache-control"]).toBe(
+      "public, max-age=31536000, immutable"
+    );
+  });
+
   it("serves built assets before applying the browser navigation limiter", async () => {
     const dist = await createDist();
     const limiter = vi.fn((_request, response) => response.sendStatus(429));
@@ -106,7 +139,7 @@ describe("SSR static router boundary", () => {
       .set("Host", "ferry.fyi");
 
     expect(response.status).toBe(200);
-    expect(response.headers["cache-control"]).toBe("no-store, no-transform");
+    expect(response.headers["cache-control"]).toBe("no-store");
     expect(response.headers["x-robots-tag"]).toBe("noindex, noarchive");
     expect(response.text).toContain('data-ferry-fyi-render-mode="failure"');
     expect(documentRuntime).toHaveBeenCalledOnce();

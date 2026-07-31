@@ -26,7 +26,6 @@ const { theme } = resolveConfig(tailwindConfig as never);
 const colors = theme.colors as Record<string, Record<string, string>>;
 const COLOR = colors.green.dark;
 const BACKGROUND_COLOR = colors.blue.dark;
-const APP_STYLES_READY_ATTRIBUTE = "data-ferry-fyi-styles-ready";
 
 // read build env
 const getEnv = (key: string, fallback?: string): string | undefined => {
@@ -143,30 +142,6 @@ const htmlTemplatePlugin = (): Plugin => {
   };
 };
 
-/** Preserve a load signal on Vite's generated, hashed application stylesheet. */
-const appStylesReadyPlugin = (): Plugin => ({
-  name: "ferry-app-styles-ready",
-  transformIndexHtml: {
-    order: "post",
-    handler(html, context) {
-      if (path.basename(context.filename) !== "index.html") {
-        return html;
-      }
-      const appStylesheet =
-        /<link\b(?=[^>]*\brel=["']stylesheet["'])(?=[^>]*\bhref=["'](?:\/app\.scss|\/assets\/main\.[^"']+\.css)["'])[^>]*>/i;
-      const match = html.match(appStylesheet)?.[0];
-      if (!match) {
-        throw new Error("Client index is missing the application stylesheet");
-      }
-      const onLoad = `document.documentElement.setAttribute('${APP_STYLES_READY_ATTRIBUTE}', '')`;
-      return html.replace(
-        match,
-        match.replace("<link", `<link onload="${onLoad}"`)
-      );
-    },
-  },
-});
-
 // gate sentry upload
 const shouldUploadSentryRelease = (): boolean => {
   return (
@@ -230,7 +205,6 @@ export default defineConfig(() => ({
       },
     }),
     htmlTemplatePlugin(),
-    appStylesReadyPlugin(),
     copyStaticPlugin(),
     VitePWA({
       srcDir: ".",
