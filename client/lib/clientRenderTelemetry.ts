@@ -17,7 +17,7 @@ let sink: ClientRenderDiagnosticReporter | undefined;
 const pending: ClientRenderDiagnostic[] = [];
 
 /**
- * Hydration can report before the deferred browser runtime initializes Sentry.
+ * Hydration can report before asynchronous Sentry initialization completes.
  * Keep only the categorical, privacy-safe diagnostic until a sink is ready.
  */
 export const reportClientRenderDiagnostic: ClientRenderDiagnosticReporter = (

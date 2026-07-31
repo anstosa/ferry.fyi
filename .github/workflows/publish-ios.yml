@@ -186,10 +186,14 @@ jobs:
             clean archive
 
       - name: Upload iOS debug symbols to Sentry
-        if: ${{ secrets.SENTRY_AUTH_TOKEN != '' }}
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
         run: |
+          # GitHub secrets cannot be referenced directly by step conditions.
+          if [[ -z "${SENTRY_AUTH_TOKEN}" ]]; then
+            echo 'Skipping Sentry dSYM upload: SENTRY_AUTH_TOKEN is not configured'
+            exit 0
+          fi
           # upload dSYMs before the archive is exported and discarded
           npx sentry-cli debug-files upload \
             --org ferry-fyi \
