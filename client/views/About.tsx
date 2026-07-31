@@ -63,7 +63,7 @@ export const About = (): ReactElement => {
         Whidbey Island.
       </p>
       <a
-        href="https://ballydiean.farm/donate"
+        href="https://ballydidean.farm/donate"
         target="_blank"
         className="button button-primary flex-grow mt-4"
         rel="noreferrer"

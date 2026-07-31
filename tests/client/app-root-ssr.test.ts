@@ -220,6 +220,7 @@ describe("AppRoot server rendering", () => {
     expect(markup).toContain("A ferry schedule and tracker");
     expect(markup).toContain("Made with love by");
     expect(markup).toContain("Weather data and forecasts");
+    expect(markup).toContain('href="https://ballydidean.farm/donate"');
   }, 30_000);
 
   it("does not import native SDKs for the universal About tree", async () => {
