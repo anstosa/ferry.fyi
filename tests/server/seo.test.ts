@@ -11,10 +11,7 @@ import path from "path";
 import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  createStaticPolicyRouter,
-  createStaticRouter,
-} from "../../server/controllers/static";
+import { createStaticRouter } from "../../server/controllers/static";
 import {
   createBrowserRateLimiter,
   createBrowserRouter,
@@ -116,34 +113,8 @@ describe("SEO metadata", () => {
     rateLimitedApp.use(createBrowserRateLimiter({ limit: 1 }));
     rateLimitedApp.use(createBrowserRouter(clientDist));
 
-    await request(rateLimitedApp)
-      .get("/.well-known/assetlinks.json")
-      .expect(200);
-    await request(rateLimitedApp).get("/about").expect(429);
-  });
-
-  it("rate limits policy-controlled static documents before they query state", async () => {
-    const rateLimitedApp = express();
-    rateLimitedApp.use(
-      createStaticRouter(clientDist, {
-        rateLimiter: createBrowserRateLimiter({ limit: 1 }),
-      })
-    );
-
-    await request(rateLimitedApp).get("/robots.txt").expect(200);
-    await request(rateLimitedApp).get("/sitemap.xml").expect(429);
-  });
-
-  it("can rate limit the standalone policy router used before Vite", async () => {
-    const rateLimitedApp = express();
-    rateLimitedApp.use(
-      createStaticPolicyRouter(clientDist, {
-        rateLimiter: createBrowserRateLimiter({ limit: 1 }),
-      })
-    );
-
-    await request(rateLimitedApp).get("/robots.txt").expect(200);
-    await request(rateLimitedApp).get("/sitemap.xml").expect(429);
+    await request(rateLimitedApp).get("/about").expect(200);
+    await request(rateLimitedApp).get("/privacy").expect(429);
   });
 
   it("allows only same-origin canonical redirect paths", () => {

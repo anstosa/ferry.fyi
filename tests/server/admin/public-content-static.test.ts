@@ -65,6 +65,21 @@ beforeEach(() => {
 afterEach(() => rmSync(dist, { force: true, recursive: true }));
 
 describe("persisted public-content static delivery", () => {
+  it("serves every discovery document before the browser navigation limiter", async () => {
+    const limiter = vi.fn((_request, response) => response.sendStatus(429));
+    const app = express();
+    app.use(createStaticRouter(dist, { rateLimiter: limiter }));
+
+    await request(app).get("/robots.txt").expect(200, "dynamic robots allow");
+    await request(app).get("/sitemap.xml").expect(200, "sitemap index=true");
+    await request(app).get("/llms.txt").expect(200);
+    await request(app).get("/.well-known/assetlinks.json").expect(200);
+    expect(limiter).not.toHaveBeenCalled();
+
+    await request(app).get("/about").expect(429);
+    expect(limiter).toHaveBeenCalledOnce();
+  });
+
   it("reads changed persisted policy through a separate router before static fallback", async () => {
     const firstApp = express();
     firstApp.use(createStaticRouter(dist));

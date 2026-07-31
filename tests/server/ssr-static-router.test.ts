@@ -78,6 +78,20 @@ describe("SSR static router boundary", () => {
     expect(asset.text).toContain("asset");
   });
 
+  it("serves built assets before applying the browser navigation limiter", async () => {
+    const dist = await createDist();
+    const limiter = vi.fn((_request, response) => response.sendStatus(429));
+    const app = express().use(
+      createStaticRouter(dist, { rateLimiter: limiter })
+    );
+
+    await request(app).get("/asset.js").expect(200, "console.log('asset')");
+    expect(limiter).not.toHaveBeenCalled();
+
+    await request(app).get("/about").expect(429);
+    expect(limiter).toHaveBeenCalledOnce();
+  });
+
   it("serves a recoverable browser document when an SSR fill exceeds its deadline", async () => {
     const dist = await createDist();
     const documentRuntime = vi.fn(() => new Promise<never>(() => {}));

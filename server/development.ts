@@ -5,7 +5,6 @@ import {
   createStaticPolicyRouter,
   createStaticRouter,
 } from "~/controllers/static";
-import { createBrowserRateLimiter } from "~/controllers/static/browser";
 import { dbInit } from "~/lib/db";
 import { initializeWsfSeed } from "~/lib/wsf";
 import { createSsrRuntime } from "~/ssr/composition";
@@ -56,7 +55,6 @@ const startDevelopmentServer = async (): Promise<void> => {
   const app = createApp({
     publicMiddleware: createStaticPolicyRouter(clientDirectory, {
       llmsPath: path.join(clientDirectory, "static", "llms.txt"),
-      rateLimiter: createBrowserRateLimiter(),
     }),
     staticHandler: createStaticRouter(clientDirectory, {
       browserDependencies: { documentRuntime },

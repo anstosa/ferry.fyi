@@ -1,3 +1,4 @@
+/* global console */
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -6,13 +7,38 @@ const clientDirectory = path.resolve("dist/client");
 const readClientFile = (file) =>
   readFile(path.join(clientDirectory, file), "utf8");
 
-const [serviceWorker, indexHtml, offlineHtml, viteManifestJson] =
-  await Promise.all([
-    readClientFile("service-worker.js"),
-    readClientFile("index.html"),
-    readClientFile("offline.html"),
-    readClientFile(".vite/manifest.json"),
-  ]);
+const [
+  serviceWorker,
+  indexHtml,
+  offlineHtml,
+  viteManifestJson,
+  robotsTxt,
+  llmsTxt,
+] = await Promise.all([
+  readClientFile("service-worker.js"),
+  readClientFile("index.html"),
+  readClientFile("offline.html"),
+  readClientFile(".vite/manifest.json"),
+  readClientFile("robots.txt"),
+  readClientFile("llms.txt"),
+]);
+
+assert.match(
+  robotsTxt,
+  /^User-agent:/m,
+  "built robots.txt must contain crawler policy"
+);
+assert.match(
+  robotsTxt,
+  /^Sitemap: https:\/\/ferry\.fyi\/sitemap\.xml$/m,
+  "built robots.txt must advertise the canonical sitemap"
+);
+assert.match(llmsTxt, /^# Ferry FYI$/m, "built llms.txt must identify Ferry FYI");
+assert.match(
+  llmsTxt,
+  /^## AI API guide$/m,
+  "built llms.txt must include the public API guide"
+);
 
 const precacheUrls = [
   ...serviceWorker.matchAll(/["']url["']\s*:\s*["']([^"']+)["']/g),

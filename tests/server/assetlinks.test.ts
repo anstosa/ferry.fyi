@@ -2,12 +2,12 @@ import express from "express";
 import request from "supertest";
 import { describe, expect, it } from "vitest";
 
-import { browserRouter } from "../../server/controllers/static/browser";
+import { createStaticPolicyRouter } from "../../server/controllers/static";
 
 // create an isolated static app
 const createApp = (): express.Express => {
   const app = express();
-  app.use(browserRouter);
+  app.use(createStaticPolicyRouter());
   return app;
 };
 
