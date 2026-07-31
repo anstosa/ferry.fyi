@@ -196,7 +196,7 @@ export const saveSiteSettings = async (
 };
 
 /** Creates an unpublished announcement unless the caller explicitly publishes it. */
-export const createAnnouncement = async (
+export const createAnnouncement = (
   value: unknown
 ): Promise<PublicAnnouncement & { published: boolean }> =>
   saveAnnouncement(randomUUID(), value);

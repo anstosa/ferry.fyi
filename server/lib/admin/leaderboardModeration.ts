@@ -74,7 +74,7 @@ const ensureProfile = async (subject: string, transaction: Transaction) => {
 };
 
 /** Hiding is opt-out: retained check-ins are immediately excluded publicly. */
-export const setLeaderboardProfileHidden = async (
+export const setLeaderboardProfileHidden = (
   subject: string,
   hidden: boolean
 ): Promise<{ hidden: boolean; subject: string }> =>
@@ -85,7 +85,7 @@ export const setLeaderboardProfileHidden = async (
   });
 
 /** Reset deletes a subject's derived score inputs and live eligibility state. */
-export const resetLeaderboardProfile = async (
+export const resetLeaderboardProfile = (
   subject: string
 ): Promise<{ deletedCheckins: number; subject: string }> =>
   db.transaction(async (transaction) => {
@@ -101,7 +101,7 @@ export const resetLeaderboardProfile = async (
   });
 
 /** Deletion is deliberately repeat-safe, including an already removed check-in. */
-export const deleteLeaderboardCheckin = async (
+export const deleteLeaderboardCheckin = (
   id: string
 ): Promise<{ deleted: boolean; id: string }> =>
   db.transaction(async (transaction) => {

@@ -121,7 +121,7 @@ export const getNotificationDashboard = async (): Promise<{
   const row = await NotificationRuntimeStatus.findByPk("push");
   const expired = row && isExpired(row, now);
   if (expired && row) {
-    await db.transaction(async (transaction) => resetExpired(row, transaction));
+    await db.transaction((transaction) => resetExpired(row, transaction));
   }
   const push = toDashboard(expired ? null : row);
   return {
@@ -135,12 +135,12 @@ export const getNotificationDashboard = async (): Promise<{
   };
 };
 
-export const notificationQueued = async (
+export const notificationQueued = (
   channel: NotificationChannel = "push"
 ): Promise<void> =>
   updateStatus(channel, (row) => ({ queuedCount: row.queuedCount + 1 }));
 
-export const notificationDequeued = async (
+export const notificationDequeued = (
   channel: NotificationChannel = "push"
 ): Promise<void> =>
   updateStatus(channel, (row) => ({
@@ -148,7 +148,7 @@ export const notificationDequeued = async (
     queuedCount: Math.max(0, row.queuedCount - 1),
   }));
 
-export const notificationFinished = async (
+export const notificationFinished = (
   status: NotificationRequestResult,
   channel: NotificationChannel = "push"
 ): Promise<void> =>

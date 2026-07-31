@@ -105,7 +105,7 @@ export interface AdminSupportProfile {
   subject: string;
 }
 
-export const listFerryUsers = async ({
+export const listFerryUsers = ({
   page,
   query,
 }: {

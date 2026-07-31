@@ -7,6 +7,14 @@ const isUuid = (value: string): boolean =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
     value
   );
+const withoutConfirmationMetadata = (
+  body: Record<string, unknown>
+): Record<string, unknown> => {
+  const result = { ...body };
+  delete result.action;
+  delete result.target;
+  return result;
+};
 
 adminContentRouter.get("/", async (_request, response) =>
   response.send(await (await import("~/lib/admin/content")).getAdminContent())
@@ -20,11 +28,7 @@ adminContentRouter.post(
   }),
   async (request, response) => {
     try {
-      const {
-        action: _action,
-        target: _target,
-        ...announcement
-      } = request.body;
+      const announcement = withoutConfirmationMetadata(request.body);
       const { createAnnouncement } = await import("~/lib/admin/content");
       response.status(201).send(await createAnnouncement(announcement));
     } catch (error) {
@@ -83,7 +87,7 @@ adminContentRouter.put(
   }),
   async (request, response) => {
     try {
-      const { action: _action, target: _target, ...settings } = request.body;
+      const settings = withoutConfirmationMetadata(request.body);
       const { saveSiteSettings } = await import("~/lib/admin/content");
       response.send(await saveSiteSettings(settings));
     } catch (error) {

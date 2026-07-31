@@ -60,7 +60,7 @@ type OperationDefinition = {
   adminAllowed: boolean;
   description: string;
   destructive: boolean;
-  run: () => Promise<void>;
+  run: () => Promise<void> | void;
   trigger: string;
 };
 
@@ -80,7 +80,7 @@ const operationRegistry: Record<AdminOperationName, OperationDefinition> = {
     description:
       "Clears rebuildable in-memory WSF route and schedule caches. Core terminal, vessel, and camera catalogs stay available.",
     destructive: true,
-    run: async () => {
+    run: () => {
       // Terminal, vessel, and camera caches form the immediately available
       // baseline after startup. Clearing them can leave every terminal route
       // empty while an upstream refresh is delayed or unavailable.
@@ -283,7 +283,7 @@ const getLockedRow = async (
   return row;
 };
 
-const acquireOperationLease = async (
+const acquireOperationLease = (
   operation: AdminOperationName,
   now: Date
 ): Promise<{ state: AdminOperationState; token?: string }> =>
@@ -356,9 +356,7 @@ const finishOperation = async (
   return toState(operation, row);
 };
 
-export const getAdminOperationStates = async (): Promise<
-  AdminOperationState[]
-> =>
+export const getAdminOperationStates = (): Promise<AdminOperationState[]> =>
   Promise.all(
     allNames.map(async (operation) => {
       // WSF work intentionally shares one lease row so concurrent scheduled,

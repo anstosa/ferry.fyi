@@ -72,32 +72,15 @@ const source = <T>(value: T) => ({
   sourceUpdatedAt: at,
   value,
 });
-const fullVessel = {
+const scheduleVessel = {
   abbreviation: "KWS",
-  beam: "80",
-  classId: "1",
-  hasCarDeckRestroom: true,
-  hasElevator: true,
-  hasGalley: true,
-  hasRestroom: true,
-  hasWiFi: true,
-  horsepower: 1,
   id: "vessel-1",
-  inMaintenance: false,
-  inService: true,
-  info: {},
-  isAdaAccessible: true,
-  maxClearance: 1,
   name: "Kitsap",
-  passengerCapacity: 1,
   speed: 1,
   tallVehicleCapacity: 1,
   vesselWatchUrl: "https://example.test/vessel",
   vehicleCapacity: 1,
-  weight: 1,
-  yearBuilt: 2020,
-  yearRebuilt: 2021,
-} satisfies PublicSsrPayloadMap["schedule"]["schedule"]["slots"][number]["vessel"];
+} as PublicSsrPayloadMap["schedule"]["schedule"]["slots"][number]["vessel"];
 const schedulePayload = {
   schedule: {
     date: "2026-07-28",
@@ -110,7 +93,7 @@ const schedulePayload = {
         hasPassed: false,
         mateId: "2",
         time: 1,
-        vessel: fullVessel,
+        vessel: scheduleVessel,
         wuid: "wuid",
         crossing: {
           arrivalId: "2",

@@ -5,7 +5,7 @@ import {
   adminConfirmationActions,
   AdminConfirmationPayload,
 } from "shared/contracts/admin";
-import { isObject } from "shared/lib/objects";
+import { isObject, omit } from "shared/lib/objects";
 
 const confirmationError = { error: "Invalid typed confirmation" };
 const maxConfirmationLength = 300;
@@ -91,7 +91,7 @@ export const requireTypedConfirmation =
 
     // Do not carry the typed phrase into a domain handler where it could be
     // accidentally logged or persisted. Only the verified metadata survives.
-    const { confirmation: _confirmation, ...safeBody } = request.body;
+    const safeBody = omit(request.body, "confirmation");
     request.body = safeBody;
     response.locals.adminConfirmation = { action, target: expectedTarget };
     next();

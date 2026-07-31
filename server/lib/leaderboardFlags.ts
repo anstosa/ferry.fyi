@@ -111,9 +111,12 @@ export const setLeaderboardsEnabled = async (
 };
 
 /** Automatic/background check-ins are permanently unavailable in this release. */
-export const automaticLeaderboardCheckinsEnabled = async (): Promise<boolean> =>
-  false;
+export const automaticLeaderboardCheckinsEnabled = (): Promise<boolean> =>
+  Promise.resolve(false);
 export const setAutomaticLeaderboardCheckinsEnabled = async (
+  // The argument remains part of the admin contract even though this release
+  // permanently forces the feature off.
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _enabled: boolean
 ): Promise<boolean> => {
   const flag = await getFlag(AUTOMATIC_CHECKINS_FLAG);
