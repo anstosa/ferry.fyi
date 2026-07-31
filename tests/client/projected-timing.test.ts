@@ -30,6 +30,7 @@ const makeSlot = ({
   time,
   gpsDelayMins,
   horsepower,
+  totalCapacity,
   vesselDelayMins,
   vesselId = DEFAULT_VESSEL_ID,
   weather,
@@ -43,6 +44,7 @@ const makeSlot = ({
   hasPassed?: boolean;
   horsepower?: number;
   time: string;
+  totalCapacity?: number;
   vesselDelayMins?: number;
   vesselId?: string | null;
   weather?: Slot["weather"];
@@ -60,7 +62,7 @@ const makeSlot = ({
             driveUpCapacity: driveUpCapacity ?? 100,
             isCancelled: false,
             reservableCapacity: 0,
-            totalCapacity: 100,
+            totalCapacity: totalCapacity ?? 100,
           },
     estimate:
       estimateDriveUpCapacity === undefined
@@ -344,6 +346,21 @@ describe("projected schedule timing", () => {
     });
 
     expect(getDelayRecoveryMins(20, slot)).toBe(8);
+  });
+
+  it("ignores zero-capacity fullness data when projecting a later sailing", () => {
+    const current = makeSlot({
+      delayMins: 20,
+      driveUpCapacity: 0,
+      time: "2026-06-21T10:00:00",
+      totalCapacity: 0,
+    });
+    const next = makeSlot({ time: "2026-06-21T11:00:00" });
+
+    const timing = getProjectedTiming({ schedule: [current, next], slot: next });
+
+    expect(timing.delayMins).toBe(12);
+    expect(timing.departureTime.isValid).toBe(true);
   });
 
   it("recovers more delay after longer scheduled crossings", () => {

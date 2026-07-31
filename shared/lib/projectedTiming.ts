@@ -96,29 +96,40 @@ const getActiveDelayMins = (slot: Slot): number => {
   return Math.max(recordedDelayMins, vesselDelayMins, 0);
 };
 
+// usable fullness percentage
+const getFullnessPercent = (
+  totalCapacity: number,
+  spacesLeft: number
+): number | null => {
+  if (
+    !Number.isFinite(totalCapacity) ||
+    totalCapacity <= 0 ||
+    !Number.isFinite(spacesLeft)
+  ) {
+    return null;
+  }
+  return ((totalCapacity - spacesLeft) / totalCapacity) * 100;
+};
+
 // slot forecast fullness percent
 export const getSlotFullness = (slot: Slot): number | null => {
   const { crossing, estimate, vessel } = slot;
   // actual fullness first
   if (crossing && slot.hasPassed) {
     const spacesLeft = crossing.driveUpCapacity + crossing.reservableCapacity;
-    return (
-      ((crossing.totalCapacity - spacesLeft) / crossing.totalCapacity) * 100
-    );
+    return getFullnessPercent(crossing.totalCapacity, spacesLeft);
   }
   // future forecast fallback
   if (!slot.hasPassed && estimate) {
     const totalCapacity = vessel.vehicleCapacity - vessel.tallVehicleCapacity;
     const spacesLeft =
       estimate.driveUpCapacity + (estimate.reservableCapacity ?? 0);
-    return ((totalCapacity - spacesLeft) / totalCapacity) * 100;
+    return getFullnessPercent(totalCapacity, spacesLeft);
   }
   // live fullness fallback
   if (crossing) {
     const spacesLeft = crossing.driveUpCapacity + crossing.reservableCapacity;
-    return (
-      ((crossing.totalCapacity - spacesLeft) / crossing.totalCapacity) * 100
-    );
+    return getFullnessPercent(crossing.totalCapacity, spacesLeft);
   }
   return null;
 };
