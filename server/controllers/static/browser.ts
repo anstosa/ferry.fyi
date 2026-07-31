@@ -20,6 +20,7 @@ import {
   type SeoMetadata,
   type SeoView,
 } from "shared/lib/seo";
+import { assemblePublicSsrMarkerDocument } from "shared/lib/ssrDocumentTemplate";
 
 import type { PublicContent } from "~/services/public/content";
 import type { SsrDocumentResponse } from "~/ssr/documentRuntime";
@@ -43,6 +44,7 @@ const EMPTY_PUBLIC_CONTENT: PublicContent = {
   leaderboardSharingEnabled: false,
   maintenance: { enabled: false, message: "" },
 };
+const SSR_DOCUMENT_RESPONSE_TIMEOUT_MS = 15_000;
 const bundledClientDist = path.resolve(__dirname, "../client");
 const sourceClientDist = path.resolve(__dirname, "../../../dist/client");
 const APP_PATHS = new Set([
@@ -61,6 +63,8 @@ const APP_PATHS = new Set([
 export interface BrowserRouterDependencies {
   /** Injected by the SSR composition root; this module never loads renderer artifacts. */
   documentRuntime?: (absoluteUrl: string) => Promise<SsrDocumentResponse>;
+  /** Bounds navigation latency while an SSR cache fill continues in the background. */
+  documentTimeoutMs?: number;
 }
 
 export const createBrowserRateLimiter = ({
@@ -266,9 +270,26 @@ export const createBrowserRouter = (
       Vary: "Host",
     });
     if (dependencies.documentRuntime) {
-      const rendered = await dependencies.documentRuntime(
-        `${request.protocol}://${request.get("host")}${request.originalUrl}`
-      );
+      let timeout: NodeJS.Timeout | undefined;
+      const rendered = await Promise.race([
+        dependencies.documentRuntime(
+          `${request.protocol}://${request.get("host")}${request.originalUrl}`
+        ),
+        new Promise<undefined>((resolve) => {
+          timeout = setTimeout(
+            () => resolve(undefined),
+            dependencies.documentTimeoutMs ?? SSR_DOCUMENT_RESPONSE_TIMEOUT_MS
+          );
+          timeout.unref();
+        }),
+      ]).finally(() => clearTimeout(timeout));
+      if (!rendered) {
+        response.set("X-Robots-Tag", "noindex, noarchive");
+        return response
+          .status(200)
+          .type("text/html")
+          .send(assemblePublicSsrMarkerDocument(indexHtml, "failure"));
+      }
       response.set(rendered.headers);
       if (rendered.redirect) {
         return response.redirect(rendered.status, rendered.redirect);

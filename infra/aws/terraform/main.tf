@@ -75,6 +75,16 @@ locals {
     ]
     environment = local.web_environment
     secrets     = local.container_secrets
+    healthCheck = {
+      command = [
+        "CMD-SHELL",
+        "node -e \"fetch('http://127.0.0.1:${var.container_port}/healthz').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))\""
+      ]
+      interval    = 5
+      retries     = 3
+      startPeriod = 60
+      timeout     = 3
+    }
     logConfiguration = {
       logDriver = "awslogs"
       options = {
@@ -108,7 +118,7 @@ locals {
     dependsOn = [
       {
         containerName = "web"
-        condition     = "START"
+        condition     = "HEALTHY"
       }
     ]
     logConfiguration = {

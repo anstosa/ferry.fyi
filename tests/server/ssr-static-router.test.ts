@@ -15,7 +15,7 @@ const createDist = async (): Promise<string> => {
   temporaryDirectories.push(directory);
   await writeFile(
     path.join(directory, "index.html"),
-    "<html><body>legacy</body></html>"
+    '<html><head></head><body><div id="root"></div></body></html>'
   );
   await writeFile(path.join(directory, "asset.js"), "console.log('asset')");
   return directory;
@@ -76,5 +76,25 @@ describe("SSR static router boundary", () => {
     expect(asset.status).toBe(200);
     expect(asset.headers["x-ssr-test"]).toBeUndefined();
     expect(asset.text).toContain("asset");
+  });
+
+  it("serves a recoverable browser document when an SSR fill exceeds its deadline", async () => {
+    const dist = await createDist();
+    const documentRuntime = vi.fn(() => new Promise<never>(() => {}));
+    const app = express().use(
+      createStaticRouter(dist, {
+        browserDependencies: { documentRuntime, documentTimeoutMs: 5 },
+      })
+    );
+
+    const response = await request(app)
+      .get("/bainbridge")
+      .set("Host", "ferry.fyi");
+
+    expect(response.status).toBe(200);
+    expect(response.headers["cache-control"]).toBe("no-store, no-transform");
+    expect(response.headers["x-robots-tag"]).toBe("noindex, noarchive");
+    expect(response.text).toContain('data-ferry-fyi-render-mode="failure"');
+    expect(documentRuntime).toHaveBeenCalledOnce();
   });
 });
