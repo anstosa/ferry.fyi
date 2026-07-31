@@ -19,6 +19,7 @@ dependencies {
     implementation project(':capacitor-local-notifications')
     implementation project(':capacitor-share')
     implementation project(':capgo-capacitor-updater')
+    implementation project(':sentry-capacitor')
 
 }
 

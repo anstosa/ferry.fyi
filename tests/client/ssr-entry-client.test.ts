@@ -3,7 +3,6 @@ import React, { act } from "react";
 import { createRoot, hydrateRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { initializeSentry } from "../../client/browserApp";
 import {
   bootstrapClientApp,
   InitialDocumentApp,
@@ -11,6 +10,7 @@ import {
 } from "../../client/entry-client";
 import { createServerApp } from "../../client/entry-server";
 import { installClientRenderDiagnosticSink } from "../../client/lib/clientRenderTelemetry";
+import { initializeSentry } from "../../client/lib/sentry";
 import { renderPublicSsrDocument } from "../../server/ssr/document";
 import { PUBLIC_SSR_SNAPSHOT_VERSION } from "../../shared/contracts/ssr";
 import {
@@ -327,24 +327,74 @@ describe("client SSR document bootstrap", () => {
       { componentStack: "\n at App" }
     );
     const captureMessage = vi.fn();
+    let clientReady = false;
+    const capacitorInit = vi.fn(() => {
+      queueMicrotask(() => {
+        clientReady = true;
+      });
+    });
+    const reactInit = vi.fn();
     const cleanup = await initializeSentry({
       dsn: "https://public@example.invalid/1",
+      native: false,
       load: () =>
         Promise.resolve({
           browserTracingIntegration: () => ({ name: "browser-tracing" }),
           captureMessage,
-          init: vi.fn(),
+          getClient: () => (clientReady ? {} : undefined),
+          init: capacitorInit,
         }),
+      loadReact: () => Promise.resolve({ init: reactInit }),
     });
 
-    expect(captureMessage).toHaveBeenCalledWith("Client render diagnostic", {
-      level: "warning",
-      tags: { category: "react-recoverable-error" },
+    expect(capacitorInit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dsn: "https://public@example.invalid/1",
+        enableNative: false,
+        enableNativeCrashHandling: false,
+      }),
+      reactInit
+    );
+    await vi.waitFor(() => {
+      expect(captureMessage).toHaveBeenCalledWith("Client render diagnostic", {
+        level: "warning",
+        tags: { category: "react-recoverable-error" },
+      });
     });
     expect(JSON.stringify(captureMessage.mock.calls)).not.toContain(
       "private-canary"
     );
     cleanup();
+  });
+
+  it("enables native crash reporting for a Capacitor app", async () => {
+    const capacitorInit = vi.fn();
+    const reactInit = vi.fn();
+
+    await initializeSentry({
+      dsn: "https://public@example.invalid/1",
+      native: true,
+      load: () =>
+        Promise.resolve({
+          browserTracingIntegration: () => ({ name: "browser-tracing" }),
+          captureMessage: vi.fn(),
+          getClient: () => ({}),
+          init: capacitorInit,
+        }),
+      loadReact: () => Promise.resolve({ init: reactInit }),
+    });
+
+    expect(capacitorInit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        attachThreads: true,
+        dsn: "https://public@example.invalid/1",
+        enableAppHangTracking: true,
+        enableNative: true,
+        enableNativeCrashHandling: true,
+      }),
+      reactInit
+    );
+    expect(capacitorInit.mock.calls[0][0]).not.toHaveProperty("release");
   });
 
   it("consumes a compatible snapshot after a clean first commit", () => {

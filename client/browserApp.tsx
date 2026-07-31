@@ -8,7 +8,6 @@ import type { PublicSsrHostProfile } from "shared/lib/ssrRouteMatch";
 import { App } from "~/App";
 import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { getConfiguredAuth0RedirectUri } from "~/lib/auth";
-import { installClientRenderDiagnosticSink } from "~/lib/clientRenderTelemetry";
 import { FeatureFlagProvider } from "~/lib/featureFlags";
 import { AppRenderProvider } from "~/lib/renderContext";
 import { initializeTheme } from "~/lib/theme";
@@ -17,66 +16,12 @@ import { initializeServiceWorker } from "~/lib/worker";
 
 export { preloadBrowserRoute } from "~/routes";
 
-type SentryBrowserClient = {
-  browserTracingIntegration(): unknown;
-  captureMessage(
-    message: string,
-    context: { level: "warning"; tags: { category: string } }
-  ): unknown;
-  init(options: {
-    dsn: string;
-    environment: string | undefined;
-    integrations: unknown[];
-    release: string;
-    tracesSampleRate: number;
-  }): void;
-};
-
-export const initializeSentry = async ({
-  dsn = process.env.SENTRY_DSN,
-  load = () => import("@sentry/react") as Promise<SentryBrowserClient>,
-}: {
-  dsn?: string;
-  load?: () => Promise<SentryBrowserClient>;
-} = {}): Promise<() => void> => {
-  if (!dsn) {
-    return () => undefined;
-  }
-  const Sentry = await load();
-  Sentry.init({
-    dsn,
-    environment: process.env.NODE_ENV,
-    release: `web@${process.env.HEROKU_RELEASE_VERSION}`,
-    tracesSampleRate: 0.25,
-    integrations: [Sentry.browserTracingIntegration()],
-  });
-  return installClientRenderDiagnosticSink(({ category }) => {
-    Sentry.captureMessage("Client render diagnostic", {
-      level: "warning",
-      tags: { category },
-    });
-  });
-};
-
 const BrowserRuntimeEffects = (): null => {
   useEffect(() => {
     Settings.defaultZone = "America/Los_Angeles";
     const cleanupTheme = initializeTheme();
     const cleanupWorker = initializeServiceWorker();
-    let active = true;
-    let cleanupTelemetry: () => void = () => undefined;
-    initializeSentry()
-      .then((cleanup) => {
-        if (active) {
-          cleanupTelemetry = cleanup;
-          return;
-        }
-        cleanup();
-      })
-      .catch(() => undefined);
     return () => {
-      active = false;
-      cleanupTelemetry();
       cleanupWorker();
       cleanupTheme();
     };

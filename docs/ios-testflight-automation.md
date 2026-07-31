@@ -21,12 +21,21 @@ review or publishes directly to customers.
    - `IOS_DISTRIBUTION_CERTIFICATE_PASSWORD`: the `.p12` export password.
    - `IOS_PROVISIONING_PROFILE_BASE64`: the App Store profile encoded as one
      line: `base64 < ferry-fyi.mobileprovision | tr -d '\n'`
+   - `SENTRY_AUTH_TOKEN` (recommended): a Sentry organization token with
+     release artifact upload access. When present, the build uploads JavaScript
+     source maps and the archive's dSYMs for readable native crash reports.
 5. Ensure the repository Actions variables used by the production web build are
    set, including Auth0, Firebase, Mapbox, analytics, Sentry, and `BASE_URL`.
 
 The distribution certificate and profile must belong to the same Apple
 Developer team and profile the `fyi.ferry` App ID. Never store the `.p8`,
 `.p12`, profile, or passwords in Git.
+
+The app initializes the official Sentry Capacitor SDK with native crash and app
+hang reporting enabled. TestFlight builds upload dSYMs to the existing
+`ferry-fyi/web` Sentry project when `SENTRY_AUTH_TOKEN` is configured;
+`SENTRY_DSN` remains a repository Actions variable and the auth token remains a
+secret.
 
 ## Releasing
 

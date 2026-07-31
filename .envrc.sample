@@ -37,5 +37,7 @@ export AUTH0_CLIENT_REDIRECT="http://localhost:4040/callback"
 
 # Sentry
 export SENTRY_DSN="<get from sentry>"
+# Required only for release builds that upload source maps and native symbols.
+export SENTRY_AUTH_TOKEN="<get from sentry>"
 
 # Leaderboards are disabled unless explicitly enabled together.

@@ -21,7 +21,8 @@ let package = Package(
         .package(name: "CapacitorGeolocation", path: "../../../node_modules/@capacitor/geolocation"),
         .package(name: "CapacitorLocalNotifications", path: "../../../node_modules/@capacitor/local-notifications"),
         .package(name: "CapacitorShare", path: "../../../node_modules/@capacitor/share"),
-        .package(name: "CapgoCapacitorUpdater", path: "../../../node_modules/@capgo/capacitor-updater")
+        .package(name: "CapgoCapacitorUpdater", path: "../../../node_modules/@capgo/capacitor-updater"),
+        .package(name: "SentryCapacitor", path: "../../../node_modules/@sentry/capacitor")
     ],
     targets: [
         .target(
@@ -38,7 +39,8 @@ let package = Package(
                 .product(name: "CapacitorGeolocation", package: "CapacitorGeolocation"),
                 .product(name: "CapacitorLocalNotifications", package: "CapacitorLocalNotifications"),
                 .product(name: "CapacitorShare", package: "CapacitorShare"),
-                .product(name: "CapgoCapacitorUpdater", package: "CapgoCapacitorUpdater")
+                .product(name: "CapgoCapacitorUpdater", package: "CapgoCapacitorUpdater"),
+                .product(name: "SentryCapacitor", package: "SentryCapacitor")
             ]
         )
     ]

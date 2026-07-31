@@ -1,4 +1,4 @@
-import * as Sentry from "@sentry/react";
+import { captureException } from "@sentry/capacitor";
 import React, { Component, ErrorInfo, ReactNode } from "react";
 
 interface Props {
@@ -33,7 +33,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   // report render failure
   componentDidCatch(error: Error, info: ErrorInfo): void {
-    Sentry.captureException(error);
+    captureException(error);
     console.error(error, info);
   }
 

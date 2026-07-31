@@ -16,12 +16,21 @@ publishes to production.
    - `ANDROID_UPLOAD_KEYSTORE_PASSWORD`
    - `ANDROID_UPLOAD_KEY_ALIAS`
    - `ANDROID_UPLOAD_KEY_PASSWORD`
+   - `SENTRY_AUTH_TOKEN` (recommended): a Sentry organization token with
+     release artifact upload access. When present, the build uploads JavaScript
+     source maps and the R8/ProGuard mapping for readable native crash reports.
 4. Ensure the repository Actions variables used by the production web build are
    set: Auth0, Firebase, Mapbox, analytics, Sentry, and `BASE_URL`. The workflow
    uses the same names as `.github/workflows/deploy-aws.yml`.
 
 The keystore must be the app's existing Play upload key. A different key cannot
 update the installed Android app.
+
+The app initializes the official Sentry Capacitor SDK with native crash
+handling enabled. Release builds upload obfuscation mappings to the existing
+`ferry-fyi/web` Sentry project when `SENTRY_AUTH_TOKEN` is configured;
+`SENTRY_DSN` remains a repository Actions variable and the auth token remains a
+secret.
 
 ## Releasing
 

@@ -1,4 +1,5 @@
 import { startClientAppWhenReady } from "./clientRuntime";
+import { startSentry } from "./lib/sentry";
 
 export * from "./clientRuntime";
 
@@ -10,5 +11,7 @@ if (
   (window as Window & { __FERRY_FYI_BOOTSTRAP__?: boolean })
     .__FERRY_FYI_BOOTSTRAP__
 ) {
+  // Begin native crash handling before the deferred live application loads.
+  startSentry().catch(() => undefined);
   startClientAppWhenReady();
 }

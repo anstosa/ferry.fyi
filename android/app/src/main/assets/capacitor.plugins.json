@@ -38,5 +38,9 @@
 	{
 		"pkg": "@capgo/capacitor-updater",
 		"classpath": "ee.forgr.capacitor_updater.CapacitorUpdaterPlugin"
+	},
+	{
+		"pkg": "@sentry/capacitor",
+		"classpath": "io.sentry.capacitor.SentryCapacitor"
 	}
 ]

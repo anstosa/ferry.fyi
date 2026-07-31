@@ -160,7 +160,7 @@ jobs:
           IOS_DEVELOPMENT_TEAM_ID: ${{ secrets.IOS_DEVELOPMENT_TEAM_ID }}
           VERSION_CODE: ${{ steps.version.outputs.code }}
           VERSION_NAME: ${{ steps.version.outputs.name }}
-          SENTRY_AUTH_TOKEN: ''
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
         run: |
           # fail on shell mistakes
           set -euo pipefail
@@ -184,6 +184,17 @@ jobs:
             MARKETING_VERSION="${VERSION_NAME}" \
             CURRENT_PROJECT_VERSION="${VERSION_CODE}" \
             clean archive
+
+      - name: Upload iOS debug symbols to Sentry
+        if: ${{ secrets.SENTRY_AUTH_TOKEN != '' }}
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        run: |
+          # upload dSYMs before the archive is exported and discarded
+          npx sentry-cli debug-files upload \
+            --org ferry-fyi \
+            --project web \
+            "${RUNNER_TEMP}/FerryFYI.xcarchive/dSYMs"
 
       - name: Export signed IPA
         env:

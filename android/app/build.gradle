@@ -1,4 +1,26 @@
 apply plugin: 'com.android.application'
+apply plugin: 'io.sentry.android.gradle'
+
+// Upload release mappings when CI provides the Sentry token. The Capacitor
+// plugin owns the SDK dependency, so the Gradle plugin is upload-only.
+def sentryAuthToken = System.getenv('SENTRY_AUTH_TOKEN')
+def canUploadSentryArtifacts = sentryAuthToken != null && !sentryAuthToken.isEmpty()
+sentry {
+    org = 'ferry-fyi'
+    projectName = 'web'
+    authToken = sentryAuthToken
+    includeProguardMapping = true
+    autoUploadProguardMapping = canUploadSentryArtifacts
+    includeSourceContext = false
+    autoUploadSourceContext = false
+    telemetry = false
+    autoInstallation {
+        enabled = false
+    }
+    tracingInstrumentation {
+        enabled = false
+    }
+}
 
 // read local release credentials
 def releaseSigningPropertiesFile = rootProject.file('keystore.properties')
