@@ -1,7 +1,9 @@
 import { DateTime } from "luxon";
+import type { GetScheduleResponse } from "shared/api/schedules";
 import type { CameraFrameStatusEnvelope } from "shared/contracts/cameraFrames";
 import type { FareTripRequest } from "shared/contracts/fares";
 import type { LeaderboardPeriod } from "shared/contracts/leaderboards";
+import type { Schedule } from "shared/contracts/schedules";
 import {
   PUBLIC_SSR_EMPTY_DATA,
   PUBLIC_SSR_SNAPSHOT_VERSION,
@@ -382,6 +384,93 @@ export const toPublicSsrVessel = (vessel: PublicSsrVessel): PublicSsrVessel => {
   return projected;
 };
 
+const toPublicSsrScheduleSlot = (
+  slot: Schedule["slots"][number]
+): Schedule["slots"][number] => ({
+  allowsPassengers: slot.allowsPassengers,
+  allowsVehicles: slot.allowsVehicles,
+  hasPassed: slot.hasPassed,
+  mateId: slot.mateId,
+  time: slot.time,
+  vessel: {
+    abbreviation: slot.vessel.abbreviation,
+    id: slot.vessel.id,
+    name: slot.vessel.name,
+    speed: slot.vessel.speed,
+    tallVehicleCapacity: slot.vessel.tallVehicleCapacity,
+    vehicleCapacity: slot.vessel.vehicleCapacity,
+    vesselWatchUrl: slot.vessel.vesselWatchUrl,
+  } as Schedule["slots"][number]["vessel"],
+  wuid: slot.wuid,
+  ...(Number.isFinite(slot.arrivalTime)
+    ? { arrivalTime: slot.arrivalTime }
+    : {}),
+  ...(slot.cancellationReason === "tidal"
+    ? { cancellationReason: slot.cancellationReason }
+    : {}),
+  ...(slot.crossing
+    ? {
+        crossing: {
+          arrivalId: slot.crossing.arrivalId,
+          departureDelta: slot.crossing.departureDelta,
+          departureId: slot.crossing.departureId,
+          departureTime: slot.crossing.departureTime,
+          driveUpCapacity: slot.crossing.driveUpCapacity,
+          hasDriveUp: slot.crossing.hasDriveUp,
+          hasReservations: slot.crossing.hasReservations,
+          isCancelled: slot.crossing.isCancelled,
+          reservableCapacity: slot.crossing.reservableCapacity ?? 0,
+          totalCapacity: slot.crossing.totalCapacity,
+          ...(Number.isFinite(slot.crossing.capacityReportUpdatedAt)
+            ? {
+                capacityReportUpdatedAt: slot.crossing.capacityReportUpdatedAt,
+              }
+            : {}),
+          ...(slot.crossing.vesselId === null ||
+          typeof slot.crossing.vesselId === "string"
+            ? { vesselId: slot.crossing.vesselId }
+            : {}),
+          ...(slot.crossing.vesselName === null ||
+          typeof slot.crossing.vesselName === "string"
+            ? { vesselName: slot.crossing.vesselName }
+            : {}),
+        },
+      }
+    : {}),
+  ...(slot.estimate ? { estimate: slot.estimate } : {}),
+  ...(slot.tide ? { tide: slot.tide } : {}),
+  ...(Number.isFinite(slot.vesselPosition)
+    ? { vesselPosition: slot.vesselPosition }
+    : {}),
+  ...(slot.weather ? { weather: slot.weather } : {}),
+});
+
+const toPublicSsrSchedule = ({
+  schedule,
+  timestamp,
+}: {
+  schedule: Schedule;
+  timestamp: number;
+}): GetScheduleResponse => {
+  const sourceUpdatedAt =
+    Number.isFinite(schedule.sourceUpdatedAt) ||
+    schedule.sourceUpdatedAt === null
+      ? { sourceUpdatedAt: schedule.sourceUpdatedAt }
+      : {};
+  return {
+    schedule: {
+      date: schedule.date,
+      key: schedule.key,
+      mateId: schedule.mateId,
+      slots: schedule.slots.map(toPublicSsrScheduleSlot),
+      terminalId: schedule.terminalId,
+      validRange: schedule.validRange,
+      ...sourceUpdatedAt,
+    },
+    timestamp,
+  };
+};
+
 function dateFor(clock: Date, offset = 0): string {
   return DateTime.fromISO(getSsrSailingDayId(clock))
     .plus({ days: offset })
@@ -619,12 +708,12 @@ export const createPublicSsrSnapshotLoader = ({
           });
           sources.schedule = source(
             "schedule",
-            { schedule: current.schedule, timestamp: current.timestamp },
+            toPublicSsrSchedule(current),
             current.schedule.sourceUpdatedAt
           );
           sources.nextSchedule = source(
             "nextSchedule",
-            { schedule: next.schedule, timestamp: next.timestamp },
+            toPublicSsrSchedule(next),
             next.schedule.sourceUpdatedAt
           );
           sources.wsf = source("wsf", status);

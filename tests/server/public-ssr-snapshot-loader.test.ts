@@ -436,6 +436,86 @@ describe("public SSR snapshot loader", () => {
     expect(snapshot.sources.nextSchedule.sourceUpdatedAt).toBe(sourceUpdatedAt);
   });
 
+  it("projects live schedule models to the public SSR allowlist", async () => {
+    const publicServices = services();
+    publicServices.getSchedule.mockImplementation(
+      ({ date }) =>
+        Promise.resolve({
+          ...schedule(date),
+          schedule: {
+            ...schedule(date).schedule,
+            slots: [
+              {
+                allowsPassengers: true,
+                allowsVehicles: true,
+                crossing: {
+                  arrivalId: "14",
+                  createdAt: "private persistence metadata",
+                  departureDelta: 0,
+                  departureId: "5",
+                  departureTime: 1_785_000_000,
+                  driveUpCapacity: 57,
+                  hasDriveUp: true,
+                  hasReservations: false,
+                  id: 123,
+                  isCancelled: false,
+                  reservableCapacity: null,
+                  totalCapacity: 141,
+                  updatedAt: "private persistence metadata",
+                },
+                hasPassed: false,
+                mateId: "14",
+                time: 1_785_000_000,
+                vessel: {
+                  abbreviation: "Suquamish",
+                  accessToken: "must-not-cross",
+                  id: "75",
+                  name: "Suquamish",
+                  speed: 0,
+                  tallVehicleCapacity: 0,
+                  vehicleCapacity: 0,
+                  vesselWatchUrl: "",
+                },
+                wuid: "slot-1",
+              },
+            ],
+          },
+        }) as never
+    );
+
+    const snapshot = await snapshotFor(
+      "https://howmanyboats.today/",
+      publicServices
+    );
+
+    expect(snapshot.sources.schedule).toMatchObject({
+      outcome: "value",
+      value: {
+        schedule: {
+          slots: [
+            {
+              crossing: {
+                arrivalId: "14",
+                reservableCapacity: 0,
+              },
+              vessel: {
+                abbreviation: "Suquamish",
+                id: "75",
+                name: "Suquamish",
+              },
+            },
+          ],
+        },
+      },
+    });
+    expect(snapshot.sources.schedule).not.toHaveProperty(
+      "value.schedule.slots.0.crossing.createdAt"
+    );
+    expect(snapshot.sources.schedule).not.toHaveProperty(
+      "value.schedule.slots.0.vessel.accessToken"
+    );
+  });
+
   it("loads canonical schedule details with a valid date query", async () => {
     const publicServices = services();
     const snapshot = await snapshotFor(

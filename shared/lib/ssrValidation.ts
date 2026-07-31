@@ -273,64 +273,16 @@ const tide = (value: unknown) =>
       lowestWaterLevelM: nullable(finite),
     }
   );
-const fullVessel = (value: unknown) =>
-  fields(
-    value,
-    {
-      abbreviation: string,
-      beam: string,
-      classId: string,
-      hasCarDeckRestroom: (item) => typeof item === "boolean",
-      hasElevator: (item) => typeof item === "boolean",
-      hasGalley: (item) => typeof item === "boolean",
-      hasRestroom: (item) => typeof item === "boolean",
-      hasWiFi: (item) => typeof item === "boolean",
-      horsepower: finite,
-      id,
-      inMaintenance: (item) => typeof item === "boolean",
-      inService: (item) => typeof item === "boolean",
-      info: (item) => fields(item, {}, { ada: string, crossing: string }),
-      isAdaAccessible: (item) => typeof item === "boolean",
-      maxClearance: finite,
-      name: string,
-      passengerCapacity: finite,
-      speed: finite,
-      tallVehicleCapacity: finite,
-      vesselWatchUrl: string,
-      vehicleCapacity: finite,
-      weight: finite,
-      yearBuilt: finite,
-      yearRebuilt: finite,
-    },
-    {
-      arrivingTerminalId: finite,
-      departingTerminalId: finite,
-      departedTime: finite,
-      departureDelta: finite,
-      dockedTime: finite,
-      estimatedArrivalTime: finite,
-      gpsDelay: (item) =>
-        fields(item, {
-          confidence: oneOf(["low", "medium", "high"]),
-          delaySeconds: finite,
-          explanation: string,
-          signals: (signals) =>
-            fields(signals, {
-              dockDelaySeconds: nullable(finite),
-              etaDelaySeconds: nullable(finite),
-              progress: finite,
-              scheduledArrivalTime: finite,
-              scheduledDepartureTime: finite,
-            }),
-          source: (source) => source === "gps",
-        }),
-      heading: finite,
-      isAtDock: (item) => typeof item === "boolean",
-      length: string,
-      location: point,
-      mmsi: finite,
-    }
-  );
+const scheduleVessel = (value: unknown) =>
+  fields(value, {
+    abbreviation: string,
+    id,
+    name: string,
+    speed: finite,
+    tallVehicleCapacity: finite,
+    vehicleCapacity: finite,
+    vesselWatchUrl: string,
+  });
 const slot = (value: unknown) =>
   fields(
     value,
@@ -340,7 +292,7 @@ const slot = (value: unknown) =>
       hasPassed: (item) => typeof item === "boolean",
       mateId: string,
       time: finite,
-      vessel: fullVessel,
+      vessel: scheduleVessel,
       wuid: string,
     },
     {
