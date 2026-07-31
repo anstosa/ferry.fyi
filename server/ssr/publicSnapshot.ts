@@ -265,7 +265,10 @@ export const createPublicSsrCanonicalResolver = ({
   };
 };
 
-const toTerminal = (terminal: Terminal): PublicSsrTerminal => {
+const toTerminal = (
+  terminal: Terminal,
+  routeDate: string
+): PublicSsrTerminal => {
   const identity = (value: Terminal) => ({
     abbreviation: value.abbreviation,
     id: value.id,
@@ -280,7 +283,11 @@ const toTerminal = (terminal: Terminal): PublicSsrTerminal => {
     hasOverheadLoading: terminal.hasOverheadLoading,
     hasRestroom: terminal.hasRestroom,
     hasWaitingRoom: terminal.hasWaitingRoom,
-    info: terminal.info,
+    info: Object.fromEntries(
+      Object.entries(terminal.info).filter(
+        (entry): entry is [string, string] => typeof entry[1] === "string"
+      )
+    ),
     location: {
       address: terminal.location.address
         ? {
@@ -297,10 +304,25 @@ const toTerminal = (terminal: Terminal): PublicSsrTerminal => {
     },
     mates: (terminal.mates ?? []).map(identity),
     popularity: terminal.popularity,
-    routes: terminal.routes ?? {},
+    routes: Object.fromEntries(
+      Object.entries(terminal.routes ?? {}).map(([id, route]) => [
+        id,
+        {
+          ...route,
+          date:
+            /^\d{4}-\d{2}-\d{2}$/.test(route.date) &&
+            DateTime.fromISO(route.date, { zone: "utc" }).isValid
+              ? route.date
+              : routeDate,
+        },
+      ])
+    ),
     terminalUrl: terminal.terminalUrl ?? null,
     vesselWatchUrl: terminal.vesselWatchUrl ?? null,
-    waitTimes: terminal.waitTimes,
+    waitTimes: terminal.waitTimes.map(({ title, ...waitTime }) => ({
+      ...waitTime,
+      ...(typeof title === "string" ? { title } : {}),
+    })),
   };
 };
 
@@ -379,6 +401,7 @@ export const createPublicSsrSnapshotLoader = ({
       };
     }
     const observedAt = input.fixedClock.toISOString();
+    const routeDate = dateFor(input.fixedClock);
     if (match.route.kind === "not-found") {
       const metadata = getNotFoundSeoMetadata();
       const snapshot = assertPublicSsrSnapshot(
@@ -485,8 +508,8 @@ export const createPublicSsrSnapshotLoader = ({
       return {
         mate,
         payload: {
-          mate: toTerminal(mate),
-          terminal: toTerminal(terminal),
+          mate: toTerminal(mate, routeDate),
+          terminal: toTerminal(terminal, routeDate),
         },
         terminal,
       };
@@ -507,7 +530,9 @@ export const createPublicSsrSnapshotLoader = ({
           ]);
           sources.terminals = source(
             "terminals",
-            Object.values(all).map(toTerminal)
+            Object.values(all).map((terminal) =>
+              toTerminal(terminal, routeDate)
+            )
           );
           if (Object.keys(all).length === 0) {
             sources.terminals = empty("terminals");
@@ -573,8 +598,8 @@ export const createPublicSsrSnapshotLoader = ({
             throw new PublicSsrTransientFailure("nextSchedule");
           }
           sources.route = source("route", {
-            mate: toTerminal(mate),
-            terminal: toTerminal(terminal),
+            mate: toTerminal(mate, routeDate),
+            terminal: toTerminal(terminal, routeDate),
           });
           sources.schedule = source(
             "schedule",

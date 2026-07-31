@@ -345,6 +345,46 @@ describe("public SSR snapshot loader", () => {
     expect(publicServices.getPublicLeaderboardsEnabled).toHaveBeenCalledOnce();
   });
 
+  it("normalizes nullable live terminal fields into the public snapshot", async () => {
+    const publicServices = services();
+    publicServices.getTerminals.mockResolvedValue({
+      "5": {
+        ...terminal("5", "Clinton", ["14"]),
+        info: { construction: null },
+        routes: {
+          route: {
+            abbreviation: "cli-muk",
+            crossingTime: 20,
+            date: "",
+            description: "Clinton / Mukilteo",
+            id: "route",
+            terminalIds: ["5", "14"],
+          },
+        },
+        waitTimes: [{ description: "Arrive early", time: 1, title: null }],
+      } as never,
+    });
+
+    const snapshot = await snapshotFor("https://ferry.fyi/", publicServices);
+    expect(snapshot.sources.terminals).toMatchObject({
+      outcome: "value",
+      value: [
+        {
+          info: {},
+          routes: { route: { date: "2026-07-28" } },
+          waitTimes: [{ description: "Arrive early", time: 1 }],
+        },
+      ],
+    });
+    expect(
+      (
+        snapshot.sources.terminals as {
+          value: { waitTimes: { title?: string }[] }[];
+        }
+      ).value[0].waitTimes[0]
+    ).not.toHaveProperty("title");
+  });
+
   it("emits canonical empty outcomes for an empty home directory and notices", async () => {
     const publicServices = services();
     publicServices.getTerminals.mockResolvedValue({});

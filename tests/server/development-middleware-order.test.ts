@@ -33,6 +33,17 @@ const replyOn =
     request.path === path ? response.send(body) : next();
 
 describe("development middleware composition", () => {
+  it("trusts forwarded client addresses only from the local sidecar", () => {
+    const app = createApp();
+    const trustProxy = app.get("trust proxy fn") as (
+      address: string
+    ) => boolean;
+
+    expect(trustProxy("127.0.0.1")).toBe(true);
+    expect(trustProxy("::1")).toBe(true);
+    expect(trustProxy("10.0.0.1")).toBe(false);
+  });
+
   it("keeps API, policy, Vite, and static handling in that order", async () => {
     const app = createApp({
       apiHandler: replyOn("/ping", "api"),

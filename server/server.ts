@@ -36,6 +36,10 @@ export function createApp({
   webMiddleware?: express.RequestHandler;
 } = {}): express.Express {
   const app = express();
+  // Production traffic reaches Express through the cloudflared sidecar on the
+  // task loopback interface. Trust only that hop so rate limiting can use the
+  // client address without accepting forwarded headers from direct callers.
+  app.set("trust proxy", "loopback");
   app.use(healthRouter);
   // use SSL in production
   if (process.env.NODE_ENV === "production") {
