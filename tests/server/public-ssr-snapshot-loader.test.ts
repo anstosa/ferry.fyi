@@ -463,8 +463,26 @@ describe("public SSR snapshot loader", () => {
                   totalCapacity: 141,
                   updatedAt: "private persistence metadata",
                 },
+                estimate: {
+                  driveUpCapacity: 57,
+                  error: "must-not-cross",
+                  factors: [
+                    {
+                      detail: "Historical sailings",
+                      impact: "neutral",
+                      label: "Historical pattern",
+                      updatedAt: "must-not-cross",
+                    },
+                  ],
+                  reservableCapacity: 0,
+                },
                 hasPassed: false,
                 mateId: "14",
+                tide: {
+                  createdAt: "must-not-cross",
+                  stationId: "9447659",
+                  waterLevelM: 2.7,
+                },
                 time: 1_785_000_000,
                 vessel: {
                   abbreviation: "Suquamish",
@@ -475,6 +493,15 @@ describe("public SSR snapshot loader", () => {
                   tallVehicleCapacity: 0,
                   vehicleCapacity: 0,
                   vesselWatchUrl: "",
+                },
+                weather: {
+                  cloudCoverPercent: 3,
+                  highTemperatureC: 24,
+                  precipitationMm: 0,
+                  temperatureC: 11.3,
+                  updatedAt: "must-not-cross",
+                  windGustKmh: 6.8,
+                  windSpeedKmh: 4.1,
                 },
                 wuid: "slot-1",
               },
@@ -514,6 +541,18 @@ describe("public SSR snapshot loader", () => {
     );
     expect(snapshot.sources.schedule).not.toHaveProperty(
       "value.schedule.slots.0.vessel.accessToken"
+    );
+    expect(snapshot.sources.schedule).not.toHaveProperty(
+      "value.schedule.slots.0.estimate.error"
+    );
+    expect(snapshot.sources.schedule).not.toHaveProperty(
+      "value.schedule.slots.0.estimate.factors.0.updatedAt"
+    );
+    expect(snapshot.sources.schedule).not.toHaveProperty(
+      "value.schedule.slots.0.tide.createdAt"
+    );
+    expect(snapshot.sources.schedule).not.toHaveProperty(
+      "value.schedule.slots.0.weather.updatedAt"
     );
   });
 

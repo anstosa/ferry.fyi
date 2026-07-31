@@ -3,7 +3,12 @@ import type { GetScheduleResponse } from "shared/api/schedules";
 import type { CameraFrameStatusEnvelope } from "shared/contracts/cameraFrames";
 import type { FareTripRequest } from "shared/contracts/fares";
 import type { LeaderboardPeriod } from "shared/contracts/leaderboards";
-import type { Schedule } from "shared/contracts/schedules";
+import type {
+  CrossingEstimate,
+  Schedule,
+  SlotTide,
+  SlotWeather,
+} from "shared/contracts/schedules";
 import {
   PUBLIC_SSR_EMPTY_DATA,
   PUBLIC_SSR_SNAPSHOT_VERSION,
@@ -384,6 +389,54 @@ export const toPublicSsrVessel = (vessel: PublicSsrVessel): PublicSsrVessel => {
   return projected;
 };
 
+const toPublicSsrEstimate = (estimate: CrossingEstimate): CrossingEstimate => ({
+  driveUpCapacity: estimate.driveUpCapacity,
+  reservableCapacity: estimate.reservableCapacity,
+  ...(estimate.confidence ? { confidence: estimate.confidence } : {}),
+  ...(estimate.factors
+    ? {
+        factors: estimate.factors.map(({ detail, impact, label }) => ({
+          detail,
+          impact,
+          label,
+        })),
+      }
+    : {}),
+  ...(Number.isFinite(estimate.fullProbability)
+    ? { fullProbability: estimate.fullProbability }
+    : {}),
+  ...(estimate.fullRisk ? { fullRisk: estimate.fullRisk } : {}),
+  ...(estimate.routeClass ? { routeClass: estimate.routeClass } : {}),
+  ...(Number.isFinite(estimate.sampleSize)
+    ? { sampleSize: estimate.sampleSize }
+    : {}),
+  ...(estimate.source ? { source: estimate.source } : {}),
+});
+
+const toPublicSsrTide = (tide: SlotTide): SlotTide => ({
+  stationId: tide.stationId,
+  waterLevelM: tide.waterLevelM,
+  ...(typeof tide.arrivalStationId === "string"
+    ? { arrivalStationId: tide.arrivalStationId }
+    : {}),
+  ...(tide.arrivalWaterLevelM === null ||
+  Number.isFinite(tide.arrivalWaterLevelM)
+    ? { arrivalWaterLevelM: tide.arrivalWaterLevelM }
+    : {}),
+  ...(tide.lowestWaterLevelM === null || Number.isFinite(tide.lowestWaterLevelM)
+    ? { lowestWaterLevelM: tide.lowestWaterLevelM }
+    : {}),
+});
+
+const toPublicSsrWeather = (weather: SlotWeather): SlotWeather => ({
+  cloudCoverPercent: weather.cloudCoverPercent,
+  highTemperatureC: weather.highTemperatureC,
+  precipitationMm: weather.precipitationMm,
+  temperatureC: weather.temperatureC,
+  windGustKmh: weather.windGustKmh,
+  windSpeedKmh: weather.windSpeedKmh,
+});
+
 const toPublicSsrScheduleSlot = (
   slot: Schedule["slots"][number]
 ): Schedule["slots"][number] => ({
@@ -437,12 +490,12 @@ const toPublicSsrScheduleSlot = (
         },
       }
     : {}),
-  ...(slot.estimate ? { estimate: slot.estimate } : {}),
-  ...(slot.tide ? { tide: slot.tide } : {}),
+  ...(slot.estimate ? { estimate: toPublicSsrEstimate(slot.estimate) } : {}),
+  ...(slot.tide ? { tide: toPublicSsrTide(slot.tide) } : {}),
   ...(Number.isFinite(slot.vesselPosition)
     ? { vesselPosition: slot.vesselPosition }
     : {}),
-  ...(slot.weather ? { weather: slot.weather } : {}),
+  ...(slot.weather ? { weather: toPublicSsrWeather(slot.weather) } : {}),
 });
 
 const toPublicSsrSchedule = ({
@@ -464,7 +517,9 @@ const toPublicSsrSchedule = ({
       mateId: schedule.mateId,
       slots: schedule.slots.map(toPublicSsrScheduleSlot),
       terminalId: schedule.terminalId,
-      validRange: schedule.validRange,
+      validRange: schedule.validRange
+        ? { from: schedule.validRange.from, to: schedule.validRange.to }
+        : null,
       ...sourceUpdatedAt,
     },
     timestamp,
