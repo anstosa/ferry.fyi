@@ -308,12 +308,28 @@ const toTerminal = (
       Object.entries(terminal.routes ?? {}).map(([id, route]) => [
         id,
         {
-          ...route,
+          abbreviation: route.abbreviation,
+          crossingTime: route.crossingTime,
           date:
             /^\d{4}-\d{2}-\d{2}$/.test(route.date) &&
             DateTime.fromISO(route.date, { zone: "utc" }).isValid
               ? route.date
               : routeDate,
+          description: route.description,
+          id: route.id,
+          terminalIds: route.terminalIds,
+          ...(Number.isFinite(route.averageVehicleCapacity)
+            ? { averageVehicleCapacity: route.averageVehicleCapacity }
+            : {}),
+          ...(Array.isArray(route.galleyHours)
+            ? { galleyHours: route.galleyHours }
+            : {}),
+          ...(Number.isFinite(route.normalVehicleCapacity)
+            ? { normalVehicleCapacity: route.normalVehicleCapacity }
+            : {}),
+          ...(Number.isFinite(route.normalVehicleMaxCapacity)
+            ? { normalVehicleMaxCapacity: route.normalVehicleMaxCapacity }
+            : {}),
         },
       ])
     ),

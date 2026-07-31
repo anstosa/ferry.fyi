@@ -354,10 +354,14 @@ describe("public SSR snapshot loader", () => {
         routes: {
           route: {
             abbreviation: "cli-muk",
+            averageVehicleCapacity: undefined,
             crossingTime: 20,
             date: "",
             description: "Clinton / Mukilteo",
+            galleyHours: undefined,
             id: "route",
+            normalVehicleCapacity: undefined,
+            normalVehicleMaxCapacity: undefined,
             terminalIds: ["5", "14"],
           },
         },
