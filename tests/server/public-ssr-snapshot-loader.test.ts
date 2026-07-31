@@ -514,6 +514,9 @@ describe("public SSR snapshot loader", () => {
       "https://howmanyboats.today/",
       publicServices
     );
+    await expect(
+      snapshotFor("https://ferry.fyi/clinton", publicServices)
+    ).resolves.toMatchObject({ routeId: "terminal-schedule" });
 
     expect(snapshot.sources.schedule).toMatchObject({
       outcome: "value",

@@ -931,12 +931,12 @@ export const createPublicSsrSnapshotLoader = ({
             }
             sources.schedule = source(
               "schedule",
-              { schedule: current.schedule, timestamp: current.timestamp },
+              toPublicSsrSchedule(current),
               current.schedule.sourceUpdatedAt
             );
             sources.nextSchedule = source(
               "nextSchedule",
-              { schedule: next.schedule, timestamp: next.timestamp },
+              toPublicSsrSchedule(next),
               next.schedule.sourceUpdatedAt
             );
             sources.wsf = source("wsf", status);
