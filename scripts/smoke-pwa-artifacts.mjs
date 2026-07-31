@@ -6,17 +6,21 @@ const clientDirectory = path.resolve("dist/client");
 const readClientFile = (file) =>
   readFile(path.join(clientDirectory, file), "utf8");
 
-const [serviceWorker, offlineHtml, viteManifestJson] = await Promise.all([
-  readClientFile("service-worker.js"),
-  readClientFile("offline.html"),
-  readClientFile(".vite/manifest.json"),
-]);
+const [serviceWorker, indexHtml, offlineHtml, viteManifestJson] =
+  await Promise.all([
+    readClientFile("service-worker.js"),
+    readClientFile("index.html"),
+    readClientFile("offline.html"),
+    readClientFile(".vite/manifest.json"),
+  ]);
 
 const precacheUrls = [
   ...serviceWorker.matchAll(/["']url["']\s*:\s*["']([^"']+)["']/g),
 ].map((match) => match[1]);
 const viteManifest = JSON.parse(viteManifestJson);
+const indexManifestEntry = viteManifest["index.html"];
 const offlineManifestEntry = viteManifest["offline.html"];
+assert.ok(indexManifestEntry, "index Vite manifest entry is required");
 assert.ok(offlineManifestEntry, "offline Vite manifest entry is required");
 const collectEntryAssets = (entryKey, collected = new Set()) => {
   const entry = viteManifest[entryKey];
@@ -31,6 +35,34 @@ const collectEntryAssets = (entryKey, collected = new Set()) => {
   return collected;
 };
 const offlineAssetClosure = [...collectEntryAssets("offline.html")];
+const [applicationStylesheet] = indexManifestEntry.css ?? [];
+
+assert.ok(applicationStylesheet, "application stylesheet is required");
+const escapedApplicationStylesheet = applicationStylesheet.replace(
+  /[.*+?^${}()|[\]\\]/g,
+  "\\$&"
+);
+const applicationStylesheetTag = indexHtml.match(
+  new RegExp(
+    `<link\\b[^>]*\\bhref=["']/${escapedApplicationStylesheet}["'][^>]*>`
+  )
+)?.[0];
+assert.ok(
+  applicationStylesheetTag,
+  "built index must link the application CSS"
+);
+assert.ok(
+  applicationStylesheetTag.includes(
+    `onload="document.documentElement.setAttribute('data-ferry-fyi-styles-ready', '')"`
+  ),
+  "built application stylesheet must release the SSR style gate on load"
+);
+assert.match(
+  indexHtml,
+  /html:not\(\[data-ferry-fyi-styles-ready\]\)[\s\S]*#root\[data-ferry-fyi-render-mode="snapshot"\]/,
+  "built index must include the SSR style gate"
+);
+assert.ok(!indexHtml.includes('href="/app.scss"'));
 
 assert.deepEqual(
   [...precacheUrls].sort(),

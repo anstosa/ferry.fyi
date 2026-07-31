@@ -1,5 +1,3 @@
-import "./app.scss";
-
 import React, { type ReactElement } from "react";
 import { HelmetProvider } from "react-helmet-async";
 import { MemoryRouter } from "react-router-dom";

@@ -137,8 +137,8 @@ describe("SSR document protocol", () => {
     expect(html.match(/id="root"/g)).toHaveLength(1);
     expect(html).toContain("<main>server complete</main></div>");
     expect(
-      html.match(
-        new RegExp(`${PUBLIC_SSR_DOCUMENT_MODE_ATTRIBUTE}="snapshot"`, "g")
+      new JSDOM(html).window.document.querySelectorAll(
+        `#root[${PUBLIC_SSR_DOCUMENT_MODE_ATTRIBUTE}="snapshot"]`
       )
     ).toHaveLength(1);
     expect(
