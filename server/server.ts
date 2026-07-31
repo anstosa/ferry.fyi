@@ -227,7 +227,7 @@ export function startScheduler(): void {
 
 // start server
 export async function startServer(): Promise<void> {
-  const artifacts = await loadProductionSsrArtifacts();
+  const artifacts = await loadProductionSsrArtifacts(__dirname);
   const documentRuntime = await createSsrRuntime({ artifacts });
   const app = createApp({
     staticHandler: createStaticRouter(undefined, {

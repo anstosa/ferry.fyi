@@ -229,7 +229,7 @@ export class SsrArtifacts {
 
 /** Loads artifacts relative to the compiled CJS server directory. */
 export const loadProductionSsrArtifacts = async (
-  serverDirectory = __dirname
+  serverDirectory: string
 ): Promise<SsrArtifacts> => {
   const distributionDirectory = path.resolve(serverDirectory, "..");
   const artifacts = new SsrArtifacts({
