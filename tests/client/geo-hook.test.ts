@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
-import React, { act, ReactElement } from "react";
-import { createRoot, Root } from "react-dom/client";
+import React, { act, type ReactElement } from "react";
+import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -19,19 +19,21 @@ vi.mock("../../client/lib/device", () => ({
   isNativeMobileApp: () => capacitor.isNativePlatform(),
 }));
 
-import { Point, useGeo } from "../../client/lib/geo";
+import { type Point, useGeo } from "../../client/lib/geo";
 
 let root: Root | undefined;
 
 interface HookProbeProps {
   onLocation: (location: Point | null) => void;
-  onReady?: (requestLocation: () => void) => void;
+  onReady?: (requestLocation: (requestPermission?: boolean) => void) => void;
 }
 
 const HookProbe = ({ onLocation, onReady }: HookProbeProps): ReactElement => {
   const [location, updateLocation] = useGeo();
   onLocation(location);
-  onReady?.(() => updateLocation(false, true));
+  onReady?.((requestPermission = true) =>
+    updateLocation(false, requestPermission)
+  );
   return React.createElement("div");
 };
 
@@ -92,6 +94,7 @@ describe("useGeo", () => {
           })
         )
       );
+      await Promise.resolve();
     });
 
     await act(async () => {
@@ -100,6 +103,46 @@ describe("useGeo", () => {
     });
 
     expect(readerLocation).toEqual({ latitude: 47.6, longitude: -122.3 });
+  });
+
+  it("shares an explicit opt-in with the first registered refresher", async () => {
+    vi.useFakeTimers();
+    geolocation.getCurrentPosition.mockResolvedValue({
+      coords: { latitude: 47.6, longitude: -122.3 },
+    });
+    let enableLocation = (): void => undefined;
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root?.render(
+        React.createElement(
+          React.Fragment,
+          null,
+          React.createElement(HookProbe, { onLocation: () => undefined }),
+          React.createElement(HookProbe, {
+            onLocation: () => undefined,
+            onReady: (request) => {
+              enableLocation = request;
+            },
+          })
+        )
+      );
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      enableLocation(false);
+      await Promise.resolve();
+    });
+    expect(geolocation.getCurrentPosition).toHaveBeenCalledOnce();
+
+    await act(async () => {
+      vi.advanceTimersByTime(30_000);
+      await Promise.resolve();
+    });
+    expect(geolocation.getCurrentPosition).toHaveBeenCalledTimes(2);
   });
 
   it("uses one shared refresh timer for multiple mounted consumers", async () => {

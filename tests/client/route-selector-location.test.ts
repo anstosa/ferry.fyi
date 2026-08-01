@@ -5,7 +5,7 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  hasGeoPermissions: vi.fn<() => Promise<boolean | undefined>>(),
+  hasGeoPermissions: vi.fn<() => Promise<boolean>>(),
   saveNoLocation: vi.fn(),
   updateGeo: vi.fn(),
 }));

@@ -19,6 +19,7 @@ const EARTH_RADIUS = 3956;
 const toRadians = (degrees: number): number => (degrees * Math.PI) / 180;
 let locationRequest: Promise<Point | null> | undefined;
 let lastNativeLocation: Point | null = null;
+let sharedNoLocation: boolean | undefined;
 const locationSubscribers = new Set<Dispatch<SetStateAction<Point | null>>>();
 const locationRefreshers = new Map<symbol, () => Promise<void>>();
 let locationRefreshInterval: number | undefined;
@@ -74,6 +75,7 @@ const stopLocationPolling = (): void => {
     );
     isListeningForVisibility = false;
   }
+  sharedNoLocation = undefined;
 };
 
 // Gets distance between two points in miles using Haversine formula
@@ -194,11 +196,26 @@ export const useGeo = (): [
     undefined
   );
 
+  useEffect(() => {
+    if (!isUndefined(savedNoLocation)) {
+      sharedNoLocation = savedNoLocation;
+    }
+  }, [savedNoLocation]);
+
   const updateLocation = async (
-    noLocation = savedNoLocation,
+    noLocation = sharedNoLocation,
     requestPermission = false
   ) => {
-    if ((isUndefined(noLocation) ? savedNoLocation : noLocation) === false) {
+    const resolvedNoLocation = isUndefined(noLocation)
+      ? sharedNoLocation
+      : noLocation;
+    if (!isUndefined(resolvedNoLocation)) {
+      // Location polling is shared across every useGeo consumer, so an opt-in
+      // from any one of them must be visible to whichever refresher registered
+      // first.
+      sharedNoLocation = resolvedNoLocation;
+    }
+    if (resolvedNoLocation === false) {
       try {
         // A native user who has already opted in can refresh their location
         // without another permission prompt. New native users still need the
@@ -239,7 +256,7 @@ export const useGeo = (): [
   return [location, updateLocation];
 };
 
-export const hasGeoPermissions = async (): Promise<boolean | undefined> => {
+export const hasGeoPermissions = async (): Promise<boolean> => {
   if (navigator.permissions) {
     try {
       const { state } = await navigator.permissions.query({
@@ -251,4 +268,5 @@ export const hasGeoPermissions = async (): Promise<boolean | undefined> => {
       // geolocation queries. Let the caller fall back to asking the user.
     }
   }
+  return false;
 };

@@ -1,7 +1,7 @@
 import { AnimatePresence } from "framer-motion";
 import React, {
-  ReactElement,
-  ReactNode,
+  type ReactElement,
+  type ReactNode,
   useEffect,
   useRef,
   useState,

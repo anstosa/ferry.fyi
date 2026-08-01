@@ -93,7 +93,7 @@ describe("getCurrentLocation", () => {
   it("falls back when a browser cannot query geolocation permission", async () => {
     browserPermissions.query.mockRejectedValue(new Error("unsupported"));
 
-    await expect(hasGeoPermissions()).resolves.toBeUndefined();
+    await expect(hasGeoPermissions()).resolves.toBe(false);
   });
 
   it("uses a fresh high-accuracy position for an explicit foreground check-in", async () => {
