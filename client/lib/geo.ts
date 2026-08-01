@@ -98,12 +98,12 @@ const LOCATION_OPTIONS = {
   timeout: 30 * 1000,
 };
 
-const nativeLocation = async () =>
-  (await import("@capacitor/geolocation")).Geolocation;
-
 const fetchNativeLocation = async (): Promise<Point | null> => {
   try {
-    const Geolocation = await nativeLocation();
+    // Keep the Capacitor plugin proxy inside the imported module. Returning
+    // that proxy from an async helper makes Promise resolution probe `.then`,
+    // which Capacitor interprets as an unimplemented `Geolocation.then()` call.
+    const { Geolocation } = await import("@capacitor/geolocation");
     const {
       coords: { latitude, longitude },
     } = await Geolocation.getCurrentPosition(LOCATION_OPTIONS);
@@ -129,7 +129,7 @@ const fetchBrowserLocation = (): Promise<Point | null> =>
 export const fetchForegroundLocation =
   async (): Promise<ForegroundLocation | null> => {
     try {
-      const Geolocation = await nativeLocation();
+      const { Geolocation } = await import("@capacitor/geolocation");
       // Credits require a fresh, high-accuracy fix acquired while this page is visible.
       const { coords, timestamp } = await Geolocation.getCurrentPosition({
         enableHighAccuracy: true,
@@ -241,9 +241,14 @@ export const useGeo = (): [
 
 export const hasGeoPermissions = async (): Promise<boolean | undefined> => {
   if (navigator.permissions) {
-    const { state } = await navigator.permissions.query({
-      name: "geolocation",
-    });
-    return state === "granted";
+    try {
+      const { state } = await navigator.permissions.query({
+        name: "geolocation",
+      });
+      return state === "granted";
+    } catch {
+      // Some browsers expose the Permissions API without supporting
+      // geolocation queries. Let the caller fall back to asking the user.
+    }
   }
 };

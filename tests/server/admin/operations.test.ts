@@ -214,12 +214,12 @@ describe("admin operation leases", () => {
     expect(operations.updateScheduleCache).toHaveBeenCalledTimes(1);
   });
 
-  it("preserves core terminal data while clearing rebuildable WSF caches", async () => {
+  it("preserves the route catalog while clearing the schedule cache", async () => {
     const result = await runAdminOperation("clear-wsf-memory-cache");
 
     expect(result.operation.status).toBe("succeeded");
     expect(cacheModels.Schedule.purge).toHaveBeenCalledOnce();
-    expect(cacheModels.Route.purge).toHaveBeenCalledOnce();
+    expect(cacheModels.Route.purge).not.toHaveBeenCalled();
     expect(operations.updateLong).not.toHaveBeenCalled();
   });
 

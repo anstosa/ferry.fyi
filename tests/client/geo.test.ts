@@ -4,12 +4,18 @@ const geolocation = vi.hoisted(() => ({
   checkPermissions: vi.fn(),
   getCurrentPosition: vi.fn(),
   requestPermissions: vi.fn(),
+  then: vi.fn(() => {
+    throw new Error('"Geolocation.then()" is not implemented on web');
+  }),
 }));
 const capacitor = vi.hoisted(() => ({
   isNativePlatform: vi.fn(),
 }));
 const browserGeolocation = vi.hoisted(() => ({
   getCurrentPosition: vi.fn(),
+}));
+const browserPermissions = vi.hoisted(() => ({
+  query: vi.fn(),
 }));
 
 vi.mock("@capacitor/core", () => ({ Capacitor: capacitor }));
@@ -20,6 +26,7 @@ vi.mock("../../client/lib/device", () => ({
 
 import {
   getCurrentLocation,
+  hasGeoPermissions,
   requestCurrentLocation,
   requestForegroundLocation,
 } from "../../client/lib/geo";
@@ -31,6 +38,11 @@ describe("getCurrentLocation", () => {
       configurable: true,
       value: browserGeolocation,
     });
+    Object.defineProperty(navigator, "permissions", {
+      configurable: true,
+      value: browserPermissions,
+    });
+    browserPermissions.query.mockResolvedValue({ state: "prompt" });
   });
 
   afterEach(() => {
@@ -69,6 +81,21 @@ describe("getCurrentLocation", () => {
     expect(geolocation.requestPermissions).not.toHaveBeenCalled();
   });
 
+  it("recognizes an existing browser geolocation grant", async () => {
+    browserPermissions.query.mockResolvedValue({ state: "granted" });
+
+    await expect(hasGeoPermissions()).resolves.toBe(true);
+    expect(browserPermissions.query).toHaveBeenCalledWith({
+      name: "geolocation",
+    });
+  });
+
+  it("falls back when a browser cannot query geolocation permission", async () => {
+    browserPermissions.query.mockRejectedValue(new Error("unsupported"));
+
+    await expect(hasGeoPermissions()).resolves.toBeUndefined();
+  });
+
   it("uses a fresh high-accuracy position for an explicit foreground check-in", async () => {
     geolocation.getCurrentPosition.mockResolvedValue({
       coords: { accuracy: 8, latitude: 47.6, longitude: -122.3 },
@@ -96,7 +123,8 @@ describe("getCurrentLocation", () => {
   });
 
   it("starts browser geolocation before returning from the user action", async () => {
-    let resolvePosition = (_position: GeolocationPosition): void => undefined;
+    let resolvePosition: (position: GeolocationPosition) => void = () =>
+      undefined;
     browserGeolocation.getCurrentPosition.mockImplementation((success) => {
       resolvePosition = success;
     });
@@ -136,6 +164,7 @@ describe("getCurrentLocation", () => {
       maximumAge: 5 * 60 * 1000,
       timeout: 30 * 1000,
     });
+    expect(geolocation.then).not.toHaveBeenCalled();
     expect(geolocation.checkPermissions).not.toHaveBeenCalled();
     expect(geolocation.requestPermissions).not.toHaveBeenCalled();
   });

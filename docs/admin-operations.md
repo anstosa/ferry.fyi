@@ -79,7 +79,7 @@ data-health API.
 | Operation                                            | Effect                                                                    | Normal trigger                                                                   |
 | ---------------------------------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
 | `camera-line-detection-refresh`                      | Refreshes camera line-detection results used by camera views.             | Every minute at `:30`; also deferred after scheduler startup.                    |
-| `clear-wsf-memory-cache`                             | Clears named in-memory WSF caches; it does not delete persisted data.     | Daily at 04:00 server time.                                                      |
+| `clear-wsf-memory-cache`                             | Clears the in-memory schedule cache while preserving core route data.     | Daily at 04:00 server time.                                                      |
 | `demand-events-refresh`                              | Refreshes school-break and major-sports forecast inputs.                  | Daily at 04:20; also deferred after scheduler startup.                           |
 | `fare-catalog-refresh`                               | Warms current ferry-day and due fare catalogs.                            | Hourly at `:15`, daily at 00:05 America/Los_Angeles, and deferred after startup. |
 | `leaderboard-rebuild`                                | Rebuilds leaderboard aggregates from retained check-ins.                  | Manual only.                                                                     |

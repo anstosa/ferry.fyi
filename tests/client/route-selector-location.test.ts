@@ -2,9 +2,10 @@
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  hasGeoPermissions: vi.fn<() => Promise<boolean | undefined>>(),
   saveNoLocation: vi.fn(),
   updateGeo: vi.fn(),
 }));
@@ -35,6 +36,7 @@ vi.mock("~/lib/browser", () => ({
   useLocalStorage: () => [undefined, mocks.saveNoLocation],
 }));
 vi.mock("~/lib/geo", () => ({
+  hasGeoPermissions: mocks.hasGeoPermissions,
   useGeo: () => [null, mocks.updateGeo],
 }));
 vi.mock("~/lib/terminals", () => ({
@@ -63,6 +65,10 @@ const terminal = (id: string, name: string) =>
 describe("RouteSelector location permission", () => {
   let root: Root | undefined;
 
+  beforeEach(() => {
+    mocks.hasGeoPermissions.mockResolvedValue(false);
+  });
+
   afterEach(() => {
     act(() => root?.unmount());
     root = undefined;
@@ -70,7 +76,7 @@ describe("RouteSelector location permission", () => {
     vi.clearAllMocks();
   });
 
-  const renderSelector = async (): Promise<HTMLButtonElement> => {
+  const renderSelector = async (): Promise<HTMLDivElement> => {
     const container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);
@@ -86,26 +92,44 @@ describe("RouteSelector location permission", () => {
           })
         )
       );
+      await Promise.resolve();
     });
-    return Array.from(container.querySelectorAll("button")).find(
-      (button) => button.textContent === "Sure!"
-    )!;
+    return container;
   };
 
-  it("requests browser permission synchronously from the click handler", async () => {
-    const button = await renderSelector();
+  const findAllowButton = (
+    container: HTMLDivElement
+  ): HTMLButtonElement | undefined =>
+    Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent === "Sure!"
+    );
 
-    act(() => button.click());
+  it("does not show the prompt when location permission is already granted", async () => {
+    mocks.hasGeoPermissions.mockResolvedValue(true);
+
+    const container = await renderSelector();
+
+    expect(findAllowButton(container)).toBeUndefined();
+    expect(mocks.saveNoLocation).toHaveBeenCalledWith(false);
+    expect(mocks.updateGeo).toHaveBeenCalledWith(false);
+  });
+
+  it("requests browser permission synchronously from the click handler", async () => {
+    const container = await renderSelector();
+    const button = findAllowButton(container);
+
+    act(() => button?.click());
 
     expect(mocks.saveNoLocation).toHaveBeenCalledWith(false);
     expect(mocks.updateGeo).toHaveBeenCalledWith(false, true);
   });
 
   it("does not start overlapping permission requests from repeated taps", async () => {
-    const button = await renderSelector();
+    const container = await renderSelector();
+    const button = findAllowButton(container);
 
-    act(() => button.click());
-    act(() => button.click());
+    act(() => button?.click());
+    act(() => button?.click());
 
     expect(mocks.updateGeo).toHaveBeenCalledOnce();
   });

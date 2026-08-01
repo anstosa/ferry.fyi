@@ -15,7 +15,7 @@ import { getTerminalSorter } from "shared/lib/terminalSorting";
 import { Prompt } from "~/components/Prompt";
 import { trackEvent } from "~/lib/analytics";
 import { useLocalStorage } from "~/lib/browser";
-import { useGeo } from "~/lib/geo";
+import { hasGeoPermissions, useGeo } from "~/lib/geo";
 import { getSlug, useTerminals } from "~/lib/terminals";
 import ArrowRightIcon from "~/static/images/icons/solid/arrow-right.svg";
 import ExchangeIcon from "~/static/images/icons/solid/exchange.svg";
@@ -36,6 +36,8 @@ export const RouteSelector = (props: Props): ReactElement => {
   const [isMateOpen, setMateOpen] = useState<boolean>(false);
   const [isSwapHovering, setSwapHovering] = useState<boolean>(false);
   const [closestDismissed, setClosestDismissed] = useState<boolean>(false);
+  const [locationPromptEligible, setLocationPromptEligible] =
+    useState<boolean>(false);
   const locationRequestStarted = useRef(false);
   const { terminals, closestTerminal } = useTerminals();
   const [noLocation, saveNoLocation] = useLocalStorage<boolean | undefined>(
@@ -48,6 +50,32 @@ export const RouteSelector = (props: Props): ReactElement => {
       setClosestDismissed(true);
     }
   }, [location, terminals]);
+
+  useEffect(() => {
+    if (!isUndefined(noLocation)) {
+      setLocationPromptEligible(false);
+      return;
+    }
+
+    let active = true;
+    hasGeoPermissions().then((permissionGranted) => {
+      if (!active) {
+        return;
+      }
+      if (permissionGranted) {
+        saveNoLocation(false);
+        // The system grant is already present, so activate location features
+        // without showing an app-level permission prompt.
+        updateGeo(false);
+        return;
+      }
+      setLocationPromptEligible(true);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [noLocation]);
 
   const renderTerminal = (): ReactNode => {
     return (
@@ -146,7 +174,7 @@ export const RouteSelector = (props: Props): ReactElement => {
               Looks like your closest terminal is {closestTerminal.name}.
             </Prompt>
           )}
-        {isUndefined(noLocation) && (
+        {isUndefined(noLocation) && locationPromptEligible && (
           <Prompt
             key="location-permission"
             footerDocked
