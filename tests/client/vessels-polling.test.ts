@@ -13,7 +13,11 @@ const api = vi.hoisted(() => ({
 
 vi.mock("~/lib/api", () => api);
 
-import { refreshVessels, useLiveVessels } from "../../client/lib/vessels";
+import {
+  getVesselSnapshot,
+  refreshVessels,
+  useLiveVessels,
+} from "../../client/lib/vessels";
 
 let root: Root | undefined;
 let visibilityState: DocumentVisibilityState = "visible";
@@ -55,6 +59,23 @@ describe("vessel polling", () => {
     expect(api.post).toHaveBeenCalledOnce();
     expect(api.post).toHaveBeenCalledWith("/vessels/refresh", {});
     expect(api.get).not.toHaveBeenCalled();
+  });
+
+  it("removes vessels omitted from a newer full-fleet snapshot", async () => {
+    const retiredVessel = { id: "2", name: "Retired" };
+    api.get
+      .mockResolvedValueOnce({
+        ...snapshot,
+        vessels: { "1": vessel, "2": retiredVessel },
+      })
+      .mockResolvedValueOnce(snapshot);
+
+    const first = await getVesselSnapshot();
+    expect(first.vessels).toHaveLength(2);
+    expect(first.vessels).toEqual(expect.arrayContaining([vessel, retiredVessel]));
+    await expect(getVesselSnapshot()).resolves.toMatchObject({
+      vessels: [vessel],
+    });
   });
 
   it("polls the fleet once per minute and pauses while hidden", async () => {

@@ -260,23 +260,19 @@ const getSailingNotificationTypes = (
 };
 
 // show local notification
-const showSailingNotification = async ({
+export const showSailingNotification = ({
   body,
   title,
   url,
-}: SailingNotificationContent): Promise<void> => {
+}: SailingNotificationContent): boolean => {
   // notification support guard
   if (!("Notification" in window)) {
-    return;
+    return false;
   }
-  let { permission } = window.Notification;
-  // permission prompt guard
-  if (permission === "default") {
-    permission = await window.Notification.requestPermission();
-  }
-  // permission guard
-  if (permission !== "granted") {
-    return;
+  // Timer-driven notifications cannot request permission: browsers require an
+  // explicit user gesture. Alert setup owns that prompt.
+  if (window.Notification.permission !== "granted") {
+    return false;
   }
   const notification = new window.Notification(title, {
     badge: "/static/images/notification-badge.png",
@@ -288,6 +284,7 @@ const showSailingNotification = async ({
     window.location.href = url;
     notification.close();
   });
+  return true;
 };
 
 // centered sailing status
@@ -594,11 +591,13 @@ export const OnboardSailingBanner: FunctionComponent<Props> = ({
       if (sentNotificationKeys.current.has(content.key)) {
         return;
       }
-      sentNotificationKeys.current.add(content.key);
-      showSailingNotification(content).catch((error) => {
-        // notification failure
+      try {
+        if (showSailingNotification(content)) {
+          sentNotificationKeys.current.add(content.key);
+        }
+      } catch (error) {
         console.warn("Failed to show sailing notification", error);
-      });
+      }
     });
   }, [now, visibleSailing]);
 

@@ -71,7 +71,9 @@ isSupported()
       console.warn("Unhandled background message: ", payload);
     });
   })
-  .catch(() => undefined);
+  .catch((error) => {
+    console.warn("Failed to initialize background messaging", error);
+  });
 
 // normalize notification target
 const getNotificationUrl = (event: NotificationEvent): string => {
@@ -127,6 +129,9 @@ const CACHE_OTHER = "other";
 
 // keep camera freshness live
 registerRoute(new RegExp("/api/cameras/frames.*"), new NetworkOnly());
+// Vessel positions are live data. Serving a stale snapshot would make the
+// client treat an old service-worker response as fresh for another poll cycle.
+registerRoute(new RegExp("/api/vessels/snapshot$"), new NetworkOnly());
 
 // Prefer faster load for rarely changing data
 registerRoute(

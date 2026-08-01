@@ -44,7 +44,10 @@ import {
   setSimulatedVessel,
 } from "~/lib/onboardSimulation";
 import { useTrackedVessel } from "~/lib/onboardTracking";
-import { requestNotificationPermission, usePush } from "~/lib/push";
+import {
+  requestNotificationPermission,
+  requestPushInitialization,
+} from "~/lib/push";
 import type { DetailTab } from "~/lib/sailingDeepLink";
 import { useUser } from "~/lib/user";
 import BellIcon from "~/static/images/icons/regular/bell.svg";
@@ -263,7 +266,6 @@ export const SlotInfo = (props: Props): ReactElement => {
   const locationRoute = useLocation();
   const { isAuthenticated, isLoading, loginWithRedirect } = useAuth0();
   const [{ alertRules, isUserLoading }, { updateUser }] = useUser();
-  const initializePush = usePush(false);
   const { leaderboardsEnabled: showLeaderboardLink } = useFeatureFlags();
   const [isSailingAlertSaving, setSailingAlertSaving] =
     useState<boolean>(false);
@@ -481,7 +483,7 @@ export const SlotInfo = (props: Props): ReactElement => {
       });
       // push permission guard
       if (permissionGranted) {
-        initializePush();
+        requestPushInitialization();
       }
     } catch (error) {
       setSailingAlertError(

@@ -4,7 +4,7 @@ import React, { FunctionComponent, useEffect, useState } from "react";
 import {
   getNotificationPermission,
   requestNotificationPermission,
-  usePush,
+  requestPushInitialization,
 } from "~/lib/push";
 import BellSlashIcon from "~/static/images/icons/solid/bell-slash.svg";
 
@@ -17,7 +17,6 @@ export const NotificationPermissionWarning: FunctionComponent<Props> = ({
   className,
   hasAlerts,
 }) => {
-  const initializePush = usePush(false);
   const [permission, setPermission] = useState(getNotificationPermission);
   const [isRequesting, setRequesting] = useState(false);
 
@@ -26,12 +25,12 @@ export const NotificationPermissionWarning: FunctionComponent<Props> = ({
       const nextPermission = getNotificationPermission();
       setPermission(nextPermission);
       if (nextPermission === "granted") {
-        initializePush();
+        requestPushInitialization();
       }
     };
     window.addEventListener("focus", refreshPermission);
     return () => window.removeEventListener("focus", refreshPermission);
-  }, [initializePush]);
+  }, []);
 
   if (!hasAlerts || permission === "granted" || permission === null) {
     return null;
@@ -43,7 +42,7 @@ export const NotificationPermissionWarning: FunctionComponent<Props> = ({
       const granted = await requestNotificationPermission();
       setPermission(getNotificationPermission());
       if (granted) {
-        initializePush();
+        requestPushInitialization();
       }
     } finally {
       setPermission(getNotificationPermission());

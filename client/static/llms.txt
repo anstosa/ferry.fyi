@@ -50,6 +50,7 @@ The read-oriented API base is `https://ferry.fyi/api`. Responses from the endpoi
 - `GET /api/schedule/:departingId/:arrivingId` — Today's route schedule.
 - `GET /api/schedule/:departingId/:arrivingId/:YYYY-MM-DD` — A route schedule for a specific service date.
 - `GET /api/vessels` — All known vessels and current status data.
+- `GET /api/vessels/snapshot` — All known vessels plus `sourceUpdatedAt`, the oldest vessel-status observation represented in the fleet snapshot.
 - `GET /api/vessels/:vesselId` — One vessel by id.
 
 Use terminal ids returned by `/api/terminals` when constructing schedule and fare requests. A schedule can return `503` with `body.status` of `warming` or `refreshing` while data is being prepared.

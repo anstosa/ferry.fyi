@@ -12,7 +12,7 @@ const push = vi.hoisted(() => ({
 vi.mock("~/lib/push", () => ({
   getNotificationPermission: () => push.permission,
   requestNotificationPermission: push.request,
-  usePush: () => push.initialize,
+  requestPushInitialization: push.initialize,
 }));
 vi.mock("~/static/images/icons/solid/bell-slash.svg", () => ({
   default: () => null,

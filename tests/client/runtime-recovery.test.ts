@@ -33,6 +33,31 @@ describe("client runtime recovery", () => {
     expect(reload).toHaveBeenCalledOnce();
   });
 
+  it("does not suppress the preload error when recovery state is unavailable", () => {
+    let listener: EventListener | undefined;
+    const reload = vi.fn();
+    installPreloadRecovery({
+      location: { pathname: "/tickets", reload, search: "" },
+      storage: {
+        getItem: () => {
+          throw new Error("storage blocked");
+        },
+        setItem: vi.fn(),
+      },
+      target: {
+        addEventListener: (_type, nextListener) => {
+          listener = nextListener as EventListener;
+        },
+      },
+    });
+    const event = new Event("vite:preloadError", { cancelable: true });
+
+    listener?.(event);
+
+    expect(event.defaultPrevented).toBe(false);
+    expect(reload).not.toHaveBeenCalled();
+  });
+
   it("polyfills Object.hasOwn for older Android WebViews", () => {
     const original = Object.hasOwn;
     Object.hasOwn = undefined as never;

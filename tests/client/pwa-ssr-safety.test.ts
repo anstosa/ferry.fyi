@@ -42,6 +42,20 @@ describe("installed PWA SSR safety", () => {
     );
   });
 
+  it("keeps live vessel snapshots out of stale-while-revalidate caching", async () => {
+    const source = await readRepoFile("client/service-worker.ts");
+    const liveSnapshotRoute = source.indexOf(
+      'registerRoute(new RegExp("/api/vessels/snapshot$"), new NetworkOnly())'
+    );
+    const staleVesselRoute = source.indexOf(
+      'new RegExp("/api/(vessels|terminals)/.*")'
+    );
+
+    expect(liveSnapshotRoute).toBeGreaterThan(-1);
+    expect(staleVesselRoute).toBeGreaterThan(-1);
+    expect(liveSnapshotRoute).toBeLessThan(staleVesselRoute);
+  });
+
   it("registers network-only navigations before Workbox precache routes", async () => {
     const source = await readRepoFile("client/service-worker.ts");
     const navigationRegistration = source.indexOf(

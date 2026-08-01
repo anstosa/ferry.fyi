@@ -43,6 +43,7 @@ const storeVesselSnapshot = ({
   sourceUpdatedAt,
   vessels,
 }: VesselSnapshot): { sourceUpdatedAt: number | null; vessels: Vessel[] } => {
+  Object.keys(vesselCache).forEach((id) => delete vesselCache[id]);
   Object.assign(vesselCache, vessels);
   hasAll = true;
   const stored = {

@@ -5,7 +5,7 @@ import {
   MessagePayload,
   onMessage,
 } from "firebase/messaging";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { firebaseApp } from "./firebase";
@@ -29,6 +29,12 @@ const isNotification = (payload: MessagePayload): payload is Notification =>
   );
 
 type InitializePush = () => void;
+const INITIALIZE_PUSH_EVENT = "ferryfyi:initialize-push";
+
+/** Ask the app-level push owner to complete FCM setup after permission changes. */
+export const requestPushInitialization = (): void => {
+  window.dispatchEvent(new Event(INITIALIZE_PUSH_EVENT));
+};
 
 export const getNotificationPermission = (): NotificationPermission | null => {
   if (typeof Notification === "undefined") {
@@ -64,9 +70,19 @@ export const usePush = (requestPermission: boolean): InitializePush => {
   const [{ user, isAuthenticated, fcmToken: savedFcmToken }, { updateUser }] =
     useUser();
   const [fcmToken, setFcmToken] = useState<string>("");
-  const [shouldRequestPermission, setRequestPermission] =
-    useState<boolean>(requestPermission);
+  const [initializationRequest, setInitializationRequest] = useState(
+    requestPermission ? 1 : 0
+  );
+  const shouldRequestPermission = initializationRequest > 0;
+  const initialization = useRef<Promise<void> | null>(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const initialize = (): void =>
+      setInitializationRequest((current) => current + 1);
+    window.addEventListener(INITIALIZE_PUSH_EVENT, initialize);
+    return () => window.removeEventListener(INITIALIZE_PUSH_EVENT, initialize);
+  }, []);
 
   useEffect(() => {
     if (
@@ -146,10 +162,15 @@ export const usePush = (requestPermission: boolean): InitializePush => {
         console.warn("Failed to get FCM Token: ", error);
       }
     };
-    if (!fcmToken && shouldRequestPermission) {
-      initialize();
+    if (!fcmToken && shouldRequestPermission && !initialization.current) {
+      const pending = initialize().finally(() => {
+        if (initialization.current === pending) {
+          initialization.current = null;
+        }
+      });
+      initialization.current = pending;
     }
-  }, [shouldRequestPermission]);
+  }, [initializationRequest]);
 
-  return useCallback(() => setRequestPermission(true), []);
+  return requestPushInitialization;
 };

@@ -37,7 +37,10 @@ import { NotificationPermissionWarning } from "~/components/NotificationPermissi
 import { Skeleton, SkeletonGroup } from "~/components/Skeleton";
 import { getConfiguredAuth0RedirectUri } from "~/lib/auth";
 import { useDevice } from "~/lib/device";
-import { requestNotificationPermission, usePush } from "~/lib/push";
+import {
+  requestNotificationPermission,
+  requestPushInitialization,
+} from "~/lib/push";
 import { getSchedule } from "~/lib/schedule";
 import { getSlug, useTerminals } from "~/lib/terminals";
 import { useUser } from "~/lib/user";
@@ -900,7 +903,6 @@ export const AlertSubscription = ({
     { alertRules, isUserLoading, user, userError },
     { refreshUser, updateUser },
   ] = useUser();
-  const initializePush = usePush(false);
   const [isRouteOpen, setRouteOpen] = useState<boolean>(false);
   const [loginError, setLoginError] = useState<Error | null>(null);
   const terminalIds = [terminal.id, mate.id];
@@ -1134,7 +1136,7 @@ export const AlertSubscription = ({
         },
       });
       if (permissionGranted) {
-        initializePush();
+        requestPushInitialization();
       }
       setWasSaved(true);
       setEditingRuleId(null);

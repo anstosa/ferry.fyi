@@ -39,7 +39,6 @@ export const installPreloadRecovery = ({
   target = window,
 }: PreloadRecoveryOptions = {}): void => {
   target.addEventListener("vite:preloadError", (event) => {
-    event.preventDefault();
     const recovery = `${build}:${location.pathname}${location.search}`;
     try {
       if (storage.getItem(PRELOAD_RECOVERY_STORAGE_KEY) === recovery) {
@@ -50,6 +49,7 @@ export const installPreloadRecovery = ({
       // Without durable per-tab state, reloading could loop forever.
       return;
     }
+    event.preventDefault();
     location.reload();
   });
 };
