@@ -77,7 +77,9 @@ describe("service worker runtime setup", () => {
       await import("../../client/lib/worker");
     const cleanup = initializeServiceWorker();
 
-    expect(workbox.Workbox).toHaveBeenCalledWith("/service-worker.js");
+    expect(workbox.Workbox).toHaveBeenCalledWith("/service-worker.js", {
+      updateViaCache: "none",
+    });
     expect(addWorkboxEventListener).toHaveBeenCalledWith(
       "installed",
       expect.any(Function)

@@ -111,7 +111,10 @@ export const createStaticRouter = (
       express.static(dist, {
         index: false,
         setHeaders(response, filePath) {
-          if (filePath.endsWith(".html")) {
+          if (
+            filePath.endsWith(".html") ||
+            path.basename(filePath) === "service-worker.js"
+          ) {
             response.set({
               "Cache-Control": "no-store",
               "CDN-Cache-Control": "no-store",

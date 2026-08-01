@@ -31,7 +31,9 @@ const registerServiceWorker = async () => {
     return registrationPromise;
   }
   registrationStarted = true;
-  const workbox = new Workbox("/service-worker.js");
+  const workbox = new Workbox("/service-worker.js", {
+    updateViaCache: "none",
+  });
 
   workbox.addEventListener("installed", (event) => {
     // reload updated app

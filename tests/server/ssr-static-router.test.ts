@@ -18,6 +18,10 @@ const createDist = async (): Promise<string> => {
     '<html><head></head><body><div id="root"></div></body></html>'
   );
   await writeFile(path.join(directory, "asset.js"), "console.log('asset')");
+  await writeFile(
+    path.join(directory, "service-worker.js"),
+    "console.log('service worker')"
+  );
   await mkdir(path.join(directory, "assets"));
   await writeFile(
     path.join(directory, "assets", "main.abc123.js"),
@@ -97,9 +101,7 @@ describe("SSR static router boundary", () => {
       })
     );
 
-    const document = await request(app)
-      .get("/")
-      .set("Accept-Encoding", "gzip");
+    const document = await request(app).get("/").set("Accept-Encoding", "gzip");
     expect(document.status).toBe(200);
     expect(document.headers["content-encoding"]).toBe("gzip");
     expect(document.headers["cache-control"]).toBe("no-store");
@@ -109,6 +111,18 @@ describe("SSR static router boundary", () => {
     expect(asset.headers["cache-control"]).toBe(
       "public, max-age=31536000, immutable"
     );
+  });
+
+  it("prevents service worker scripts from being cached across deploys", async () => {
+    const dist = await createDist();
+    const app = express().use(createStaticRouter(dist));
+
+    const response = await request(app).get("/service-worker.js");
+
+    expect(response.status).toBe(200);
+    expect(response.headers["cache-control"]).toBe("no-store");
+    expect(response.headers["cdn-cache-control"]).toBe("no-store");
+    expect(response.headers["surrogate-control"]).toBe("no-store");
   });
 
   it("serves built assets before applying the browser navigation limiter", async () => {
