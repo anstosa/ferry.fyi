@@ -1,7 +1,17 @@
 import path from "path";
 import { defineConfig } from "vitest/config";
+import svgr from "vite-plugin-svgr";
 
 export default defineConfig({
+  plugins: [
+    svgr({
+      include: "**/*.svg",
+      svgrOptions: {
+        icon: true,
+        svgProps: { fill: "currentColor", className: "inline-block" },
+      },
+    }),
+  ],
   resolve: {
     // repo aliases
     // Most `~` imports in this mixed client/server test suite point at server.

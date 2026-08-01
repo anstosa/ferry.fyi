@@ -1,5 +1,5 @@
 import { atom, useAtom } from "jotai";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import type { PublicSsrTerminalSummary } from "shared/contracts/ssr";
 import type { Terminal } from "shared/contracts/terminals";
 import TERMINAL_DATA_OVERRIDES from "shared/data/terminals.json";
@@ -86,40 +86,27 @@ interface TerminalState {
   closestTerminal: Terminal | null;
 }
 
+export interface TerminalDirectoryEntry {
+  id: string;
+  location: {
+    latitude: number;
+    longitude: number;
+  };
+  name: string;
+}
+
+interface TerminalDirectoryState {
+  terminals: TerminalDirectoryEntry[];
+  closestTerminal: TerminalDirectoryEntry | null;
+}
+
 const terminalsAtom = atom<Terminal[] | null>(null);
 
-const toClientTerminal = (terminal: PublicSsrTerminalSummary): Terminal => ({
-  abbreviation: terminal.abbreviation,
-  bulletins: [],
-  cameras: [],
-  hasElevator: false,
-  hasFood: false,
-  hasOverheadLoading: false,
-  hasRestroom: false,
-  hasWaitingRoom: false,
-  id: terminal.id,
-  info: {},
-  location: {
-    address: terminal.location.address
-      ? Object.fromEntries(
-          Object.entries(terminal.location.address).filter(
-            (entry): entry is [string, string] => typeof entry[1] === "string"
-          )
-        )
-      : {},
-    latitude: terminal.location.latitude,
-    longitude: terminal.location.longitude,
-    ...(terminal.location.link ? { link: terminal.location.link } : {}),
-  },
-  name: terminal.name,
-  popularity: 0,
-  routes: {},
-  waitTimes: [],
-});
-
-const useTerminalSeed = (): Terminal[] | undefined => {
+const useTerminalSeed = (
+  enabled: boolean
+): PublicSsrTerminalSummary[] | undefined => {
   const seed = usePublicSsrSource("terminals");
-  return useMemo(() => seed?.map(toClientTerminal), [seed]);
+  return enabled && seed ? [...seed] : undefined;
 };
 
 /**
@@ -129,8 +116,6 @@ const useTerminalSeed = (): Terminal[] | undefined => {
  */
 export const useTerminalList = (): Terminal[] => {
   const [terminals, setTerminals] = useAtom(terminalsAtom);
-  const seed = useTerminalSeed();
-  const visibleTerminals = terminals ?? seed;
 
   useEffect(() => {
     if (terminals) {
@@ -139,25 +124,30 @@ export const useTerminalList = (): Terminal[] => {
     getTerminals()
       .then(setTerminals)
       .catch((error: unknown) => {
-        // Terminal metadata remains available to location-free callers even
-        // when the API is temporarily unavailable.
+        // Keep the canonical value unresolved so directory-only consumers can
+        // continue using their document seed after a transient API failure.
         console.error(error);
-        if (!seed) {
-          setTerminals([]);
-        }
       });
-  }, [seed, setTerminals, terminals]);
+  }, [setTerminals, terminals]);
 
-  return visibleTerminals ?? [];
+  return terminals ?? [];
 };
 
-export const useTerminals = (): TerminalState => {
+export function useTerminals(options: {
+  usePublicDirectorySeed: true;
+}): TerminalDirectoryState;
+export function useTerminals(options?: {
+  usePublicDirectorySeed?: false;
+}): TerminalState;
+export function useTerminals(
+  options: { usePublicDirectorySeed?: boolean } = {}
+): TerminalDirectoryState | TerminalState {
   const [location] = useGeo();
   const [terminals, setTerminals] = useAtom(terminalsAtom);
-  const seed = useTerminalSeed();
+  const seed = useTerminalSeed(options.usePublicDirectorySeed === true);
   const visibleTerminals = terminals ?? seed;
   const [closestTerminal, setClosestTerminal] =
-    useState<TerminalState["closestTerminal"]>(null);
+    useState<TerminalDirectoryState["closestTerminal"]>(null);
 
   // terminal list fetch
   const fetchTerminals = async (): Promise<void> => {
@@ -166,10 +156,6 @@ export const useTerminals = (): TerminalState => {
     } catch (error) {
       // terminal fetch failure
       console.error(error);
-      // Retain document terminals when an anonymous post-commit refresh fails.
-      if (!seed) {
-        setTerminals([]);
-      }
     }
   };
 
@@ -186,7 +172,7 @@ export const useTerminals = (): TerminalState => {
     if (isNull(location) || !visibleTerminals || isEmpty(visibleTerminals)) {
       return;
     }
-    let closestTerminal: Terminal | undefined;
+    let closestTerminal: TerminalDirectoryEntry | undefined;
     let closestDistance: number = Infinity;
     // compare terminal distance
     visibleTerminals.forEach((terminal) => {
@@ -209,10 +195,11 @@ export const useTerminals = (): TerminalState => {
   }, [location, visibleTerminals]);
 
   useEffect(() => {
-    setTerminals(
-      [...(visibleTerminals ?? [])].sort(getTerminalSorter(closestTerminal))
-    );
+    if (!terminals) {
+      return;
+    }
+    setTerminals([...terminals].sort(getTerminalSorter(closestTerminal)));
   }, [closestTerminal]);
 
   return { terminals: visibleTerminals ?? [], closestTerminal };
-};
+}

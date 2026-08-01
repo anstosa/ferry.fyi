@@ -7,15 +7,21 @@ export interface RouteGroupConfig {
   label: string;
   routeIds: string[];
   terminalColumns?: 2 | 3;
-  terminalIds?: string[];
+  terminalIds: string[];
 }
 
-export interface RouteGroup extends RouteGroupConfig {
-  terminals: TerminalClass[];
+interface RouteGroupTerminal {
+  id: string;
+}
+
+export interface RouteGroup<
+  T extends RouteGroupTerminal = TerminalClass,
+> extends RouteGroupConfig {
+  terminals: T[];
 }
 
 // 2025 total riders order
-export const ROUTE_GROUPS: RouteGroupConfig[] = [
+const ROUTE_GROUPS: RouteGroupConfig[] = [
   {
     annualTraffic: 5_217_546,
     id: "bainbridge-island",
@@ -78,75 +84,46 @@ export const ROUTE_GROUPS: RouteGroupConfig[] = [
 ];
 
 // build terminal lookup
-const getTerminalsById = (
-  terminals: TerminalClass[]
-): Record<string, TerminalClass> =>
+const getTerminalsById = <T extends RouteGroupTerminal>(
+  terminals: T[]
+): Record<string, T> =>
   Object.fromEntries(terminals.map((terminal) => [terminal.id, terminal]));
 
-// collect terminal ids
-const getGroupTerminalIds = (
-  terminals: TerminalClass[],
-  config: RouteGroupConfig
-): string[] => {
-  // explicit order
-  if (config.terminalIds) {
-    return config.terminalIds;
-  }
-  const terminalIds: string[] = [];
-  // terminal rows
-  terminals.forEach((terminal) => {
-    // route ids
-    config.routeIds.forEach((routeId) => {
-      const route = terminal.routes?.[routeId];
-      // missing route guard
-      if (!route) {
-        return;
-      }
-      route.terminalIds.forEach((terminalId) => {
-        // duplicate terminal guard
-        if (terminalIds.includes(terminalId)) {
-          return;
-        }
-        terminalIds.push(terminalId);
-      });
-    });
-  });
-  return terminalIds;
-};
-
 // collect route groups
-export const getRouteGroups = (terminals: TerminalClass[]): RouteGroup[] => {
+export const getRouteGroups = <T extends RouteGroupTerminal>(
+  terminals: T[]
+): RouteGroup<T>[] => {
   const terminalsById = getTerminalsById(terminals);
   return ROUTE_GROUPS.map((config) => ({
     ...config,
-    terminals: getGroupTerminalIds(terminals, config)
+    terminals: config.terminalIds
       .map((terminalId) => terminalsById[terminalId])
-      .filter((terminal): terminal is TerminalClass => Boolean(terminal)),
+      .filter((terminal): terminal is T => Boolean(terminal)),
   })).filter((group) => group.terminals.length > 0);
 };
 
 // route has closest terminal
-export const hasClosestTerminal = (
-  group: RouteGroup,
-  closestTerminal: TerminalClass | null
+export const hasClosestTerminal = <T extends RouteGroupTerminal>(
+  group: RouteGroup<T>,
+  closestTerminal: RouteGroupTerminal | null
 ): boolean =>
   Boolean(
     closestTerminal &&
     group.terminals.some((terminal) => terminal.id === closestTerminal.id)
   );
 
-export const hasFavoriteRoute = (
-  group: RouteGroup,
+export const hasFavoriteRoute = <T extends RouteGroupTerminal>(
+  group: RouteGroup<T>,
   favoriteRouteIds: string[]
 ): boolean =>
   group.routeIds.some((routeId) => favoriteRouteIds.includes(routeId));
 
 // sort route groups
-export const sortRouteGroups = (
-  groups: RouteGroup[],
-  closestTerminal: TerminalClass | null,
+export const sortRouteGroups = <T extends RouteGroupTerminal>(
+  groups: RouteGroup<T>[],
+  closestTerminal: RouteGroupTerminal | null,
   favoriteRouteIds: string[] = []
-): RouteGroup[] => {
+): RouteGroup<T>[] => {
   const sortedGroups = [...groups].sort((left, right) => {
     const leftIsFavorite = hasFavoriteRoute(left, favoriteRouteIds);
     const rightIsFavorite = hasFavoriteRoute(right, favoriteRouteIds);

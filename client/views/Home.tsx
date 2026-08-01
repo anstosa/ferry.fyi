@@ -1,7 +1,6 @@
 import clsx from "clsx";
 import React, { ReactElement, useState } from "react";
 import { Link } from "react-router-dom";
-import { Terminal as TerminalClass } from "shared/contracts/terminals";
 import { isEmpty } from "shared/lib/arrays";
 import { getSeoMetadata } from "shared/lib/seo";
 
@@ -16,12 +15,14 @@ import {
   hasFavoriteRoute,
   sortRouteGroups,
 } from "~/lib/routeGroups";
-import { getSlug, useTerminals } from "~/lib/terminals";
+import {
+  getSlug,
+  type TerminalDirectoryEntry,
+  useTerminals,
+} from "~/lib/terminals";
 import MenuIcon from "~/static/images/icons/solid/bars.svg";
 import GpsTargetIcon from "~/static/images/icons/solid/location.svg";
 import StarFilledIcon from "~/static/images/icons/solid/star.svg";
-import TicketIcon from "~/static/images/icons/solid/ticket.svg";
-import TrophyIcon from "~/static/images/icons/solid/trophy.svg";
 import { Menu } from "~/views/Menu";
 
 import { Today } from "./Today";
@@ -36,8 +37,8 @@ const LI_CLASSES = clsx(
 );
 
 interface TerminalProps {
-  closestTerminal: TerminalClass | null;
-  terminal: TerminalClass;
+  closestTerminal: TerminalDirectoryEntry | null;
+  terminal: TerminalDirectoryEntry;
 }
 
 // terminal column classes
@@ -76,7 +77,9 @@ export const Home = (): ReactElement => {
   if (seoHost === "howmanyboats.today") {
     return <Today />;
   }
-  const { terminals, closestTerminal } = useTerminals();
+  const { terminals, closestTerminal } = useTerminals({
+    usePublicDirectorySeed: true,
+  });
   const [favoriteRouteIds] = useFavoriteRoutes();
   const [isMenuOpen, setMenuOpen] = useState(false);
   const { leaderboardsEnabled } = useFeatureFlags();
@@ -102,11 +105,7 @@ export const Home = (): ReactElement => {
       >
         <MenuIcon />
       </button>
-      <HomeHero
-        leaderboardIcon={<TrophyIcon aria-hidden className="h-4 w-4" />}
-        leaderboardsEnabled={leaderboardsEnabled}
-        ticketIcon={<TicketIcon aria-hidden className="h-4 w-4" />}
-      />
+      <HomeHero leaderboardsEnabled={leaderboardsEnabled} />
       <div className="w-full flex justify-center px-4 pb-8">
         <div className="grid w-full max-w-6xl grid-cols-2 gap-x-4 gap-y-6">
           {isEmpty(terminals) && (

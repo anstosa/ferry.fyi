@@ -1,5 +1,11 @@
 import { readFileSync } from "node:fs";
+import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { JSDOM } from "jsdom";
+import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
+
+import { HomeHero } from "../../client/components/HomeHero";
 
 const homeHeroSource = readFileSync("client/components/HomeHero.tsx", "utf-8");
 const indexHtml = readFileSync("client/index.html", "utf-8");
@@ -7,10 +13,22 @@ const mapSource = readFileSync("client/views/Map.tsx", "utf-8");
 
 describe("initial-load resources", () => {
   it("prioritizes and sizes the visible Ferry FYI logo", () => {
-    expect(homeHeroSource).toMatch(
-      /<img\s+alt="Ferry FYI"\s+className="w-28"\s+fetchPriority="high"\s+height=\{112\}\s+src=\{logo\}\s+width=\{112\}/
-    );
-    expect(homeHeroSource).toContain('icon_monochrome-256.png');
+    const document = new JSDOM(
+      renderToStaticMarkup(
+        React.createElement(
+          MemoryRouter,
+          { initialEntries: ["/"] },
+          React.createElement(HomeHero, { leaderboardsEnabled: true })
+        )
+      )
+    ).window.document;
+    const logo = document.querySelector<HTMLImageElement>("img[fetchpriority]");
+
+    expect(logo?.alt).toBe("");
+    expect(logo?.getAttribute("fetchpriority")).toBe("high");
+    expect(logo?.height).toBe(112);
+    expect(logo?.src).toContain("icon_monochrome-256");
+    expect(logo?.width).toBe(112);
   });
 
   it("keeps the home hero below the native top safe area", () => {

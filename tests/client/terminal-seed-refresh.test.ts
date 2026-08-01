@@ -12,7 +12,10 @@ vi.mock("~/lib/geo", () => ({
 }));
 
 import { PublicSsrSeedProvider } from "../../client/lib/ssrSeed";
-import { useTerminals } from "../../client/lib/terminals";
+import {
+  useTerminalList,
+  useTerminals,
+} from "../../client/lib/terminals";
 import {
   PUBLIC_SSR_SNAPSHOT_VERSION,
   type PublicSsrPayloadMap,
@@ -83,8 +86,17 @@ const Probe = () =>
   React.createElement(
     "output",
     null,
-    useTerminals()
+    useTerminals({ usePublicDirectorySeed: true })
       .terminals.map(({ id }) => id)
+      .join(",")
+  );
+
+const CanonicalProbe = () =>
+  React.createElement(
+    "output",
+    { "data-source": "canonical" },
+    useTerminalList()
+      .map(({ id }) => id)
       .join(",")
   );
 
@@ -97,7 +109,7 @@ describe("terminal SSR seed refresh", () => {
     vi.clearAllMocks();
   });
 
-  it("retains the exact seeded terminal order on a rejected refresh", async () => {
+  it("retains the seeded directory when concurrent canonical refreshes reject", async () => {
     api.get.mockRejectedValue(new Error("offline"));
     const container = document.createElement("div");
     document.body.append(container);
@@ -111,15 +123,56 @@ describe("terminal SSR seed refresh", () => {
           React.createElement(
             PublicSsrSeedProvider,
             { snapshot },
-            React.createElement(Probe)
+            React.createElement(
+              React.Fragment,
+              null,
+              React.createElement(Probe),
+              React.createElement(CanonicalProbe)
+            )
           )
         )
       );
       await Promise.resolve();
       await Promise.resolve();
     });
-    expect(container.textContent).toBe("a,b");
+    expect(container.querySelector("output")?.textContent).toBe("b,a");
+    expect(
+      container.querySelector('[data-source="canonical"]')?.textContent
+    ).toBe("");
     expect(seed.map(({ id }) => id)).toEqual(["b", "a"]);
+  });
+
+  it("does not expose compact directory seeds as canonical terminals", async () => {
+    api.get.mockReturnValue(new Promise(() => undefined));
+    const container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+    const store = createStore();
+
+    await act(async () => {
+      root?.render(
+        React.createElement(
+          Provider,
+          { store },
+          React.createElement(
+            PublicSsrSeedProvider,
+            { snapshot },
+            React.createElement(
+              React.Fragment,
+              null,
+              React.createElement(Probe),
+              React.createElement(CanonicalProbe)
+            )
+          )
+        )
+      );
+      await Promise.resolve();
+    });
+
+    expect(container.querySelector("output")?.textContent).toBe("b,a");
+    expect(
+      container.querySelector('[data-source="canonical"]')?.textContent
+    ).toBe("");
   });
 
   it("replaces the seed after a successful refresh without mutating it", async () => {

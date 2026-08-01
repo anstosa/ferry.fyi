@@ -117,6 +117,73 @@ try {
   if (rendered.mode !== "snapshot" || !rendered.html.includes("Page not found")) {
     throw new Error("SSR renderer did not produce a document from the isolated artifact");
   }
+  const homeRendered = await renderer.renderPublicSsrDocument({
+    renderedAt: Date.parse("2026-07-28T12:00:00.000Z"),
+    requestUrl: "https://ferry.fyi/",
+    seoBaseUrl: "https://ferry.fyi",
+    seoHost: "ferry.fyi",
+    seoPathname: "/",
+    snapshot: {
+      canonicalHost: "ferry.fyi",
+      canonicalPath: "/",
+      hostProfile: "ferry.fyi",
+      indexability: "indexable",
+      metadata: {
+        canonicalPath: "/",
+        description: "Washington State ferry schedules and terminal status.",
+        robots: "index,follow",
+        title: "Ferry FYI",
+      },
+      normalizedUrl: { path: "/", query: {} },
+      renderedAt: "2026-07-28T12:00:00.000Z",
+      routeId: "home",
+      routeParams: {},
+      sources: {
+        features: {
+          observedAt: "2026-07-28T12:00:00.000Z",
+          outcome: "value",
+          sourceUpdatedAt: null,
+          value: { leaderboardsEnabled: true },
+        },
+        notices: {
+          observedAt: "2026-07-28T12:00:00.000Z",
+          outcome: "empty",
+          sourceUpdatedAt: null,
+          value: {
+            announcements: [],
+            maintenance: { enabled: false, message: "" },
+          },
+        },
+        terminals: {
+          observedAt: "2026-07-28T12:00:00.000Z",
+          outcome: "empty",
+          sourceUpdatedAt: null,
+          value: [],
+        },
+      },
+      version: 4,
+    },
+    template:
+      "<html><head></head><body><div id=\"root\"></div></body></html>",
+  });
+  if (
+    homeRendered.mode !== "snapshot" ||
+    !homeRendered.html.includes('aria-label="Quick links"') ||
+    !homeRendered.html.includes(">Ferry FYI</h1>") ||
+    !/<img\b(?=[^>]*\balt="")(?=[^>]*\bsrc="\/assets\/icon_monochrome-256\.[^\"]+\.png")[^>]*>/.test(
+      homeRendered.html
+    )
+  ) {
+    throw new Error("SSR renderer did not produce the public home hero");
+  }
+  const homeAssetPaths = [
+    ...homeRendered.html.matchAll(/<img\b[^>]*\bsrc="(\/[^"]+)"/g),
+  ].map((match) => new URL(match[1], "https://ferry.fyi").pathname);
+  await Promise.all(
+    homeAssetPaths.map((assetPath) =>
+      requireFile(path.join(clientDir, assetPath.slice(1)))
+    )
+  );
 } finally {
   await rm(runtimeDir, { force: true, recursive: true });
 }

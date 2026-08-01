@@ -49,6 +49,7 @@ export default defineConfig({
     rollupOptions: {
       external: nodeBuiltins,
       output: {
+        assetFileNames: "assets/[name].[hash][extname]",
         entryFileNames: "entry-server.mjs",
         format: "es",
         inlineDynamicImports: true,

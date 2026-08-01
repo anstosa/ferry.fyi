@@ -41,7 +41,10 @@ export const FeatureFlagProvider: FunctionComponent<PropsWithChildren> = ({
   children,
 }) => {
   const { getAccessTokenSilently, isAuthenticated } = useAuth0();
-  const [flags, setFlags] = useState<FeatureFlags>(disabledFlags);
+  const seeded = usePublicSsrSource("features");
+  const [flags, setFlags] = useState<FeatureFlags>(() =>
+    seeded ? createFeatureFlags(seeded.leaderboardsEnabled) : disabledFlags
+  );
 
   useEffect(() => {
     let cancelled = false;

@@ -113,6 +113,32 @@ describe("feature flag hydration seed", () => {
     expect(container.textContent).toContain('"leaderboardsEnabled":false');
   });
 
+  it("keeps the public seed visible while browser flags are loading", async () => {
+    let resolveFlags:
+      | ((value: { leaderboardsEnabled: boolean }) => void)
+      | undefined;
+    mocks.get.mockReturnValue(
+      new Promise((resolve) => {
+        resolveFlags = resolve;
+      })
+    );
+    const container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root?.render(React.createElement(Tree, { runtime: "browser" }));
+      await Promise.resolve();
+    });
+    expect(container.textContent).toContain('"leaderboardsEnabled":true');
+
+    await act(async () => {
+      resolveFlags?.({ leaderboardsEnabled: false });
+      await Promise.resolve();
+    });
+    expect(container.textContent).toContain('"leaderboardsEnabled":false');
+  });
+
   it("accepts authenticated flags without widening the private allowlist", async () => {
     mocks.auth.isAuthenticated = true;
     mocks.auth.getAccessTokenSilently.mockResolvedValue("private-token");
