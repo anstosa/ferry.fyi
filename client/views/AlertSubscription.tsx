@@ -37,6 +37,7 @@ import { NotificationPermissionWarning } from "~/components/NotificationPermissi
 import { Skeleton, SkeletonGroup } from "~/components/Skeleton";
 import { getConfiguredAuth0RedirectUri } from "~/lib/auth";
 import { useDevice } from "~/lib/device";
+import { requestNotificationPermission, usePush } from "~/lib/push";
 import { getSchedule } from "~/lib/schedule";
 import { getSlug, useTerminals } from "~/lib/terminals";
 import { useUser } from "~/lib/user";
@@ -899,6 +900,7 @@ export const AlertSubscription = ({
     { alertRules, isUserLoading, user, userError },
     { refreshUser, updateUser },
   ] = useUser();
+  const initializePush = usePush(false);
   const [isRouteOpen, setRouteOpen] = useState<boolean>(false);
   const [loginError, setLoginError] = useState<Error | null>(null);
   const terminalIds = [terminal.id, mate.id];
@@ -1111,6 +1113,12 @@ export const AlertSubscription = ({
       setWasSaved(false);
       return;
     }
+    // Start the permission request directly in the Save button's user gesture.
+    // Waiting for the account request first causes browsers to suppress it.
+    const notificationPermission =
+      channels.length > 0
+        ? requestNotificationPermission()
+        : Promise.resolve(false);
     setSaveError(null);
     setSaving(true);
     const nextAlertRules = (alertRules ?? []).filter((rule) => {
@@ -1119,11 +1127,15 @@ export const AlertSubscription = ({
     });
     nextAlertRules.push(...getNextRouteRules(channels));
     try {
+      const permissionGranted = await notificationPermission;
       await updateUser({
         app_metadata: {
           alertRules: nextAlertRules,
         },
       });
+      if (permissionGranted) {
+        initializePush();
+      }
       setWasSaved(true);
       setEditingRuleId(null);
     } finally {

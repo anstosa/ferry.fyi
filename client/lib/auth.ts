@@ -44,3 +44,6 @@ export const isAuth0CallbackUrl = (
     return false;
   }
 };
+
+export const isStaleAuth0CallbackError = (error: unknown): boolean =>
+  error instanceof Error && error.message === "Invalid state";

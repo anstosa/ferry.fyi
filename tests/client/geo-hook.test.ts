@@ -15,6 +15,9 @@ const capacitor = vi.hoisted(() => ({
 
 vi.mock("@capacitor/core", () => ({ Capacitor: capacitor }));
 vi.mock("@capacitor/geolocation", () => ({ Geolocation: geolocation }));
+vi.mock("../../client/lib/device", () => ({
+  isNativeMobileApp: () => capacitor.isNativePlatform(),
+}));
 
 import { Point, useGeo } from "../../client/lib/geo";
 
@@ -33,6 +36,7 @@ const HookProbe = ({ onLocation, onReady }: HookProbeProps): ReactElement => {
 };
 
 afterEach(() => {
+  vi.useRealTimers();
   act(() => root?.unmount());
   root = undefined;
   document.body.innerHTML = "";
@@ -42,6 +46,24 @@ afterEach(() => {
 });
 
 describe("useGeo", () => {
+  it("clears its refresh interval when the last consumer unmounts", async () => {
+    vi.useFakeTimers();
+    const clearInterval = vi.spyOn(window, "clearInterval");
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root?.render(React.createElement(HookProbe, { onLocation: vi.fn() }));
+      await Promise.resolve();
+    });
+    act(() => root?.unmount());
+    root = undefined;
+
+    expect(clearInterval).toHaveBeenCalledOnce();
+    vi.useRealTimers();
+  });
+
   it("shares a location granted from one hook with other mounted consumers", async () => {
     geolocation.getCurrentPosition.mockResolvedValue({
       coords: { latitude: 47.6, longitude: -122.3 },
@@ -78,6 +100,42 @@ describe("useGeo", () => {
     });
 
     expect(readerLocation).toEqual({ latitude: 47.6, longitude: -122.3 });
+  });
+
+  it("uses one shared refresh timer for multiple mounted consumers", async () => {
+    vi.useFakeTimers();
+    window.localStorage.setItem("noLocation", "false");
+    geolocation.getCurrentPosition.mockResolvedValue({
+      coords: { latitude: 47.6, longitude: -122.3 },
+    });
+    const setInterval = vi.spyOn(window, "setInterval");
+    const clearInterval = vi.spyOn(window, "clearInterval");
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root?.render(
+        React.createElement(
+          React.Fragment,
+          null,
+          React.createElement(HookProbe, { onLocation: vi.fn() }),
+          React.createElement(HookProbe, { onLocation: vi.fn() })
+        )
+      );
+      await Promise.resolve();
+    });
+
+    expect(
+      setInterval.mock.calls.length - clearInterval.mock.calls.length
+    ).toBe(1);
+    expect(geolocation.getCurrentPosition).toHaveBeenCalledOnce();
+
+    await act(async () => {
+      vi.advanceTimersByTime(30_000);
+      await Promise.resolve();
+    });
+    expect(geolocation.getCurrentPosition).toHaveBeenCalledTimes(2);
   });
 
   it("refreshes a native location after the user has already opted in", async () => {

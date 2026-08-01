@@ -59,3 +59,9 @@ export interface Vessel {
   yearBuilt: number;
   yearRebuilt: number;
 }
+
+/** Current fleet data plus the oldest vessel-status observation in the set. */
+export interface VesselSnapshot {
+  sourceUpdatedAt: number | null;
+  vessels: Record<string, Vessel>;
+}

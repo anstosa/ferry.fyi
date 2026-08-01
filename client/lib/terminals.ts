@@ -1,5 +1,5 @@
 import { atom, useAtom } from "jotai";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { PublicSsrTerminalSummary } from "shared/contracts/ssr";
 import type { Terminal } from "shared/contracts/terminals";
 import TERMINAL_DATA_OVERRIDES from "shared/data/terminals.json";
@@ -194,12 +194,13 @@ export function useTerminals(
     }
   }, [location, visibleTerminals]);
 
-  useEffect(() => {
-    if (!terminals) {
-      return;
-    }
-    setTerminals([...terminals].sort(getTerminalSorter(closestTerminal)));
-  }, [closestTerminal]);
+  const orderedTerminals = useMemo(
+    () =>
+      visibleTerminals && closestTerminal
+        ? [...visibleTerminals].sort(getTerminalSorter(closestTerminal))
+        : (visibleTerminals ?? []),
+    [closestTerminal, visibleTerminals]
+  );
 
-  return { terminals: visibleTerminals ?? [], closestTerminal };
+  return { terminals: orderedTerminals, closestTerminal };
 }

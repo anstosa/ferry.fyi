@@ -720,7 +720,7 @@ const getPreferredCameraId = (
     /back|trás|rear|traseira|environment|ambiente/gi.test(label)
   );
 
-  return (rearCamera || cameras.at(-1))?.deviceId;
+  return (rearCamera || cameras[cameras.length - 1])?.deviceId;
 };
 
 // WSF expiration boundary

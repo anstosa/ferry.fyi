@@ -31,10 +31,10 @@ import { Toast } from "~/components/Toast";
 import { useGeo } from "~/lib/geo";
 import { knotsToMph } from "~/lib/speed";
 import { getPublicSsrSourceOutcome, usePublicSsrSnapshot } from "~/lib/ssrSeed";
-import { getSlug, useTerminals } from "~/lib/terminals";
+import { getSlug, useTerminalList } from "~/lib/terminals";
 import { useResolvedTheme } from "~/lib/theme";
 import { selectVisibleVesselContent } from "~/lib/vesselAssignments";
-import { refreshVessels } from "~/lib/vessels";
+import { getVesselSnapshot, refreshVessels } from "~/lib/vessels";
 import { useWindowSize } from "~/lib/window";
 import CaretDownIcon from "~/static/images/icons/solid/caret-down.svg";
 import CaretUpIcon from "~/static/images/icons/solid/caret-up.svg";
@@ -521,13 +521,20 @@ export const Map = ({
     : (seededVessels ?? []);
   const seededSourceUpdatedAt = snapshotTimestamp(seededVesselsOutcome);
   const mapRef = useRef<HTMLDivElement>(null);
+  const activeMapRef = useRef<Mapbox | null>(null);
   const markersRef = useRef<RenderedMarker[]>([]);
   const lastFittedVesselsRef = useRef<Vessel[] | null>(null);
   const routeVesselIdsRef = useRef(new Set(initialVessels.map(({ id }) => id)));
+  routeVesselIdsRef.current = new Set(
+    (hasLiveVesselAssignments ? vessels : (seededVessels ?? [])).map(
+      ({ id }) => id
+    )
+  );
   const activeRouteKeyRef = useRef(routeKey);
   activeRouteKeyRef.current = routeKey;
   const activeVesselIdentityRef = useRef(vesselIdentity);
   activeVesselIdentityRef.current = vesselIdentity;
+  const vesselRefreshRef = useRef<Promise<void> | null>(null);
   const [vesselState, setVesselState] = useState(() => ({
     routeKey,
     sourceUpdatedAt: hasLiveVesselAssignments ? null : seededSourceUpdatedAt,
@@ -550,7 +557,7 @@ export const Map = ({
   const [isRouteOpen, setRouteOpen] = useState<boolean>(false);
   const theme = useResolvedTheme();
   const [userLocation] = useGeo();
-  const { terminals } = useTerminals();
+  const terminals = useTerminalList();
   const activeRoute = getActiveRoute(terminal, mate);
   const routeOptions = getRouteOptions(terminals, activeRoute?.id);
   const routeLabel =
@@ -598,77 +605,100 @@ export const Map = ({
     return () => window.clearInterval(interval);
   }, []);
 
-  const reloadVessels = async (): Promise<void> => {
+  const loadVessels = (
+    loadSnapshot: () => ReturnType<typeof getVesselSnapshot>
+  ): Promise<void> => {
+    if (vesselRefreshRef.current) {
+      return vesselRefreshRef.current;
+    }
     const requestRouteKey = activeRouteKeyRef.current;
-    const requestVesselIdentity = activeVesselIdentityRef.current;
-    const requestVesselIds = new Set(routeVesselIdsRef.current);
-    const requestHasLiveAssignments = requestVesselIdentity !== "";
     setReloading(true);
     setRefreshError(false);
-    try {
-      const refreshed = await refreshVessels();
-      if (
-        activeRouteKeyRef.current !== requestRouteKey ||
-        activeVesselIdentityRef.current !== requestVesselIdentity
-      ) {
-        return;
-      }
-      setVesselState((current) => {
-        if (
-          current.routeKey !== requestRouteKey ||
-          current.vesselIdentity !== requestVesselIdentity
-        ) {
-          return current;
+    const refresh = (async (): Promise<void> => {
+      try {
+        const refreshed = await loadSnapshot();
+        if (activeRouteKeyRef.current !== requestRouteKey) {
+          return;
         }
-        if (requestVesselIds.size === 0) {
-          if (!requestHasLiveAssignments) {
+        const currentVesselIdentity = activeVesselIdentityRef.current;
+        const currentVesselIds = new Set(routeVesselIdsRef.current);
+        const currentHasLiveAssignments = currentVesselIdentity !== "";
+        setVesselState((current) => {
+          if (
+            current.routeKey !== requestRouteKey ||
+            current.vesselIdentity !== currentVesselIdentity
+          ) {
+            return current;
+          }
+          if (currentVesselIds.size === 0) {
+            if (!currentHasLiveAssignments) {
+              return current;
+            }
+            return {
+              routeKey: requestRouteKey,
+              sourceUpdatedAt: refreshed.sourceUpdatedAt,
+              vesselIdentity: currentVesselIdentity,
+              vessels: [],
+            };
+          }
+          const matchingVessels = refreshed.vessels.filter(({ id }) =>
+            currentVesselIds.has(id)
+          );
+          if (matchingVessels.length === 0) {
             return current;
           }
           return {
             routeKey: requestRouteKey,
             sourceUpdatedAt: refreshed.sourceUpdatedAt,
-            vesselIdentity: requestVesselIdentity,
-            vessels: [],
+            vesselIdentity: currentVesselIdentity,
+            vessels: matchingVessels,
           };
+        });
+      } catch (error) {
+        if (activeRouteKeyRef.current === requestRouteKey) {
+          setRefreshError(true);
         }
-        const matchingVessels = refreshed.vessels.filter(({ id }) =>
-          requestVesselIds.has(id)
-        );
-        if (matchingVessels.length === 0 && !requestHasLiveAssignments) {
-          return current;
+        throw error;
+      } finally {
+        if (activeRouteKeyRef.current === requestRouteKey) {
+          setReloading(false);
         }
-        return {
-          routeKey: requestRouteKey,
-          sourceUpdatedAt: refreshed.sourceUpdatedAt,
-          vesselIdentity: requestVesselIdentity,
-          vessels: matchingVessels,
-        };
-      });
-    } catch (error) {
-      if (
-        activeRouteKeyRef.current === requestRouteKey &&
-        activeVesselIdentityRef.current === requestVesselIdentity
-      ) {
-        setRefreshError(true);
       }
-      throw error;
-    } finally {
-      if (
-        activeRouteKeyRef.current === requestRouteKey &&
-        activeVesselIdentityRef.current === requestVesselIdentity
-      ) {
-        setReloading(false);
+    })();
+    vesselRefreshRef.current = refresh;
+    const clearRefresh = (): void => {
+      if (vesselRefreshRef.current === refresh) {
+        vesselRefreshRef.current = null;
       }
-    }
+    };
+    refresh.then(clearRefresh, clearRefresh);
+    return refresh;
   };
+  const pollVessels = (): Promise<void> =>
+    loadVessels(() =>
+      getVesselSnapshot({ maxAgeMs: VESSEL_REFRESH_MS - 5000 })
+    );
+  const forceRefreshVessels = (): Promise<void> => loadVessels(refreshVessels);
 
   useEffect(() => {
-    reloadVessels().catch(console.error);
+    const refreshVisibleVessels = (): void => {
+      if (document.visibilityState === "visible") {
+        pollVessels().catch(console.error);
+      }
+    };
+    refreshVisibleVessels();
     const interval = window.setInterval(() => {
-      reloadVessels().catch(console.error);
+      refreshVisibleVessels();
     }, VESSEL_REFRESH_MS);
-    return () => window.clearInterval(interval);
-  }, [routeKey, vesselIdentity]);
+    const handleVisibilityChange = (): void => {
+      refreshVisibleVessels();
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [routeKey]);
 
   const updateMarkers = (): void => {
     // default coords based on Puget Sound
@@ -705,7 +735,7 @@ export const Map = ({
     const newMarkers: RenderedMarker[] = [];
 
     // map readiness guard
-    if (!map || !terminal || !mate) {
+    if (!map || map !== activeMapRef.current || !terminal || !mate) {
       return;
     }
 
@@ -904,15 +934,21 @@ export const Map = ({
           ? "mapbox://styles/ferryfyi/ckvzb5jy11hmj14o4imlemf5h"
           : "mapbox://styles/ferryfyi/ckvzbpoh21ggd14pdjorf1z5x",
     });
+    activeMapRef.current = map;
     map.addControl(new NavigationControl({ showCompass: false }));
     // publish loaded map
     const handleLoad = (): void => {
-      setMap(map);
+      if (activeMapRef.current === map) {
+        setMap(map);
+      }
     };
     map.on("load", handleLoad);
     return () => {
       // cleanup map instance
       map.off("load", handleLoad);
+      if (activeMapRef.current === map) {
+        activeMapRef.current = null;
+      }
       removeRenderedMarkers(markersRef.current);
       markersRef.current = [];
       map.remove();
@@ -964,7 +1000,7 @@ export const Map = ({
           className="ml-4"
           isReloading={isReloading}
           onClick={() => {
-            reloadVessels().catch((error) => {
+            forceRefreshVessels().catch((error) => {
               // manual refresh failure
               console.error(error);
             });
@@ -985,7 +1021,7 @@ export const Map = ({
             className="pointer-events-auto"
             isRefreshing={isReloading}
             onClick={() => {
-              reloadVessels().catch(console.error);
+              forceRefreshVessels().catch(console.error);
             }}
             sourceUpdatedAt={sourceUpdatedAt}
           />

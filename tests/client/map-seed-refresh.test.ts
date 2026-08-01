@@ -5,16 +5,26 @@ import { MemoryRouter, useNavigate } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  deferMapLoad: false,
+  maps: [] as Array<{
+    removed: boolean;
+    triggerLoad: () => void;
+  }>,
+  getVesselSnapshot: vi.fn(),
   refreshVessels: vi.fn(),
+  theme: "light",
 }));
 
 vi.mock("mapbox-gl", () => {
   class Bounds {}
   class Mapbox {
     container: HTMLElement;
+    loadCallbacks: Array<() => void> = [];
     points = new globalThis.Map<string, { x: number; y: number }>();
+    removed = false;
     constructor({ container }: { container: HTMLElement }) {
       this.container = container;
+      mocks.maps.push(this);
       this.container.getBoundingClientRect = () =>
         ({
           bottom: 800,
@@ -31,11 +41,19 @@ vi.mock("mapbox-gl", () => {
 
     addControl = vi.fn();
     fitBounds = vi.fn();
-    getContainer = () => this.container;
+    getContainer = () => {
+      if (this.removed) {
+        throw new Error("Map has been removed");
+      }
+      return this.container;
+    };
     off = vi.fn();
     on = vi.fn((event: string, callback: () => void) => {
       if (event === "load") {
-        callback();
+        this.loadCallbacks.push(callback);
+        if (!mocks.deferMapLoad) {
+          callback();
+        }
       }
     });
 
@@ -49,7 +67,10 @@ vi.mock("mapbox-gl", () => {
       return point;
     };
 
-    remove = vi.fn();
+    remove = vi.fn(() => {
+      this.removed = true;
+    });
+    triggerLoad = () => this.loadCallbacks.forEach((callback) => callback());
   }
   class Marker {
     element: HTMLElement;
@@ -73,6 +94,7 @@ vi.mock("mapbox-gl", () => {
   };
 });
 vi.mock("~/lib/vessels", () => ({
+  getVesselSnapshot: mocks.getVesselSnapshot,
   refreshVessels: mocks.refreshVessels,
 }));
 vi.mock("~/lib/geo", () => ({
@@ -83,11 +105,11 @@ vi.mock("~/lib/terminals", async (importOriginal) => {
     await importOriginal<typeof import("../../client/lib/terminals")>();
   return {
     ...original,
-    useTerminals: () => ({ closestTerminal: null, terminals: [] }),
+    useTerminalList: () => [],
   };
 });
 vi.mock("~/lib/theme", () => ({
-  useResolvedTheme: () => "light",
+  useResolvedTheme: () => mocks.theme,
 }));
 vi.mock("~/lib/window", () => ({
   useWindowSize: () => ({ height: 800, width: 1200 }),
@@ -393,11 +415,41 @@ describe("map hydration seed freshness", () => {
     root = undefined;
     document.body.innerHTML = "";
     vi.clearAllMocks();
+    mocks.deferMapLoad = false;
+    mocks.maps.length = 0;
+    mocks.theme = "light";
+  });
+
+  it("ignores a late load event from a map removed during a theme change", async () => {
+    mocks.deferMapLoad = true;
+    mocks.getVesselSnapshot.mockReturnValue(new Promise(() => undefined));
+    const container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root?.render(view());
+      await Promise.resolve();
+    });
+    const firstMap = mocks.maps[0];
+
+    mocks.theme = "dark";
+    await act(async () => {
+      root?.render(view());
+      await Promise.resolve();
+    });
+    const secondMap = mocks.maps[1];
+
+    expect(firstMap.removed).toBe(true);
+    expect(secondMap.removed).toBe(false);
+    await act(async () => firstMap.triggerLoad());
+    await act(async () => secondMap.triggerLoad());
+    expect(container.textContent).toContain(seededVessel.name);
   });
 
   it("retains the matching snapshot timestamp while vessel refresh is pending and rejected", async () => {
     let rejectRefresh: (error: Error) => void = () => undefined;
-    mocks.refreshVessels.mockReturnValue(
+    mocks.getVesselSnapshot.mockReturnValue(
       new Promise((_, reject) => {
         rejectRefresh = reject;
       })
@@ -426,7 +478,7 @@ describe("map hydration seed freshness", () => {
     let resolveRefresh:
       | ((value: { sourceUpdatedAt: number; vessels: Vessel[] }) => void)
       | undefined;
-    mocks.refreshVessels.mockReturnValue(
+    mocks.getVesselSnapshot.mockReturnValue(
       new Promise((resolve) => {
         resolveRefresh = resolve;
       })
@@ -450,7 +502,7 @@ describe("map hydration seed freshness", () => {
   });
 
   it("keeps a subsequent whole-fleet refresh scoped to seeded route vessel identities", async () => {
-    mocks.refreshVessels.mockResolvedValue({
+    mocks.getVesselSnapshot.mockResolvedValue({
       sourceUpdatedAt: 2_000_000_000,
       vessels: [{ ...seededVessel, name: "Sealth refreshed" }, offRouteVessel],
     });
@@ -473,7 +525,7 @@ describe("map hydration seed freshness", () => {
     let resolveRefresh:
       | ((value: { sourceUpdatedAt: number; vessels: Vessel[] }) => void)
       | undefined;
-    mocks.refreshVessels.mockReturnValue(
+    mocks.getVesselSnapshot.mockReturnValue(
       new Promise((resolve) => {
         resolveRefresh = resolve;
       })
@@ -522,7 +574,7 @@ describe("map hydration seed freshness", () => {
     let resolveRefresh:
       | ((value: { sourceUpdatedAt: number; vessels: Vessel[] }) => void)
       | undefined;
-    mocks.refreshVessels.mockReturnValue(
+    mocks.getVesselSnapshot.mockReturnValue(
       new Promise((resolve) => {
         resolveRefresh = resolve;
       })
@@ -554,6 +606,8 @@ describe("map hydration seed freshness", () => {
     await act(async () => {
       controller.assign([freshVessel]);
       await Promise.resolve();
+    });
+    await act(async () => {
       resolveRefresh?.({
         sourceUpdatedAt: 2_000_000_000,
         vessels: [seededVessel, freshVessel, offRouteVessel],
@@ -580,6 +634,30 @@ describe("map hydration seed freshness", () => {
     expect(
       getVesselAssignmentSet([replacementVessel, freshVessel]).identity
     ).toBe(assignments.identity);
+  });
+
+  it("does not force or restart vessel polling when assignments change", async () => {
+    mocks.getVesselSnapshot.mockReturnValue(new Promise(() => undefined));
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+    const controller: AssignmentController = {
+      assign: () => undefined,
+    };
+
+    await act(async () => {
+      root?.render(assignmentView(controller, snapshot));
+      await Promise.resolve();
+    });
+    expect(mocks.getVesselSnapshot).toHaveBeenCalledOnce();
+    expect(mocks.refreshVessels).not.toHaveBeenCalled();
+
+    await act(async () => {
+      controller.assign([freshVessel]);
+      await Promise.resolve();
+    });
+    expect(mocks.getVesselSnapshot).toHaveBeenCalledOnce();
+    expect(mocks.refreshVessels).not.toHaveBeenCalled();
   });
 
   it("selects a new same-route assignment with null freshness before state reconciliation", () => {
@@ -612,7 +690,7 @@ describe("map hydration seed freshness", () => {
     const refreshResolvers: Array<
       (value: { sourceUpdatedAt: number; vessels: Vessel[] }) => void
     > = [];
-    mocks.refreshVessels.mockImplementation(
+    mocks.getVesselSnapshot.mockImplementation(
       () =>
         new Promise((resolve) => {
           refreshResolvers.push(resolve);
@@ -634,7 +712,7 @@ describe("map hydration seed freshness", () => {
       await Promise.resolve();
     });
     await act(async () => {
-      refreshResolvers[1]?.({
+      refreshResolvers[0]?.({
         sourceUpdatedAt: 2_000_000_001,
         vessels: [freshVessel],
       });
@@ -658,7 +736,7 @@ describe("map hydration seed freshness", () => {
     const refreshResolvers: Array<
       (value: { sourceUpdatedAt: number; vessels: Vessel[] }) => void
     > = [];
-    mocks.refreshVessels.mockImplementation(
+    mocks.getVesselSnapshot.mockImplementation(
       () =>
         new Promise((resolve) => {
           refreshResolvers.push(resolve);
@@ -680,7 +758,7 @@ describe("map hydration seed freshness", () => {
       await Promise.resolve();
     });
     await act(async () => {
-      refreshResolvers[1]?.({
+      refreshResolvers[0]?.({
         sourceUpdatedAt: 2_000_000_001,
         vessels: [{ ...freshVessel, name: "Fleet-refreshed B" }],
       });
@@ -704,7 +782,7 @@ describe("map hydration seed freshness", () => {
     const refreshResolvers: Array<
       (value: { sourceUpdatedAt: number; vessels: Vessel[] }) => void
     > = [];
-    mocks.refreshVessels.mockImplementation(
+    mocks.getVesselSnapshot.mockImplementation(
       () =>
         new Promise((resolve) => {
           refreshResolvers.push(resolve);
@@ -732,7 +810,7 @@ describe("map hydration seed freshness", () => {
     expect(container.textContent).toContain(replacementVessel.name);
 
     await act(async () => {
-      refreshResolvers[1]?.({
+      refreshResolvers[0]?.({
         sourceUpdatedAt: 2_000_000_001,
         vessels: [{ ...freshVessel, name: "Stale refreshed B" }],
       });
@@ -746,7 +824,7 @@ describe("map hydration seed freshness", () => {
   });
 
   it("does not expose a snapshot timestamp on a mismatched route", async () => {
-    mocks.refreshVessels.mockReturnValue(new Promise(() => undefined));
+    mocks.getVesselSnapshot.mockReturnValue(new Promise(() => undefined));
     const container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);
@@ -760,7 +838,7 @@ describe("map hydration seed freshness", () => {
   });
 
   it("accepts a terminal map snapshot when the browser supplies its default mate", async () => {
-    mocks.refreshVessels.mockReturnValue(new Promise(() => undefined));
+    mocks.getVesselSnapshot.mockReturnValue(new Promise(() => undefined));
     const terminalSnapshot = {
       ...snapshot,
       canonicalPath: "/clinton/map",
@@ -781,7 +859,7 @@ describe("map hydration seed freshness", () => {
   });
 
   it("synchronously discards prior vessel content and freshness on same-tree route navigation", async () => {
-    mocks.refreshVessels.mockReturnValue(new Promise(() => undefined));
+    mocks.getVesselSnapshot.mockReturnValue(new Promise(() => undefined));
     const container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);
@@ -809,7 +887,7 @@ describe("map hydration seed freshness", () => {
   });
 
   it("synchronously discards prior vessel content and freshness on query navigation", async () => {
-    mocks.refreshVessels.mockReturnValue(new Promise(() => undefined));
+    mocks.getVesselSnapshot.mockReturnValue(new Promise(() => undefined));
     const container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);

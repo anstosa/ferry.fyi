@@ -81,7 +81,8 @@ type View = RouteView;
 const normalizePath = (path: string): string => path.replace(/\/+$/, "") || "/";
 
 const routeViewForPath = (pathname: string): View => {
-  const view = pathname.split("/").filter(Boolean).at(-1);
+  const parts = pathname.split("/").filter(Boolean);
+  const view = parts[parts.length - 1];
   return view === "cameras" ||
     view === "terminal" ||
     view === "fare" ||
@@ -134,6 +135,16 @@ const TAB_ORDER: View[] = [
 ];
 
 type TabDirection = "to-left" | "to-right";
+
+export const getRouteTabClassName = (
+  view: View,
+  direction: TabDirection
+): string =>
+  clsx(
+    "route-tab-motion",
+    `route-tab-motion--${direction}`,
+    view === "fare" && "bg-day-normal-light dark:bg-night-normal-dark"
+  );
 
 const getNormalizedRouteQuery = (search: string, view: View): string => {
   const query = new URLSearchParams();
@@ -230,7 +241,8 @@ export const Route = ({
   view,
 }: Props): ReactElement => {
   const { clock } = useAppRenderContext();
-  const today = DateTime.fromMillis(clock());
+  const todayKey = DateTime.fromMillis(clock()).toISODate() ?? "";
+  const today = useMemo(() => DateTime.fromISO(todayKey), [todayKey]);
   const { terminalSlug, mateSlug } = useParams();
   const { date: dateInput } = useQuery();
   const { pathname, search } = useLocation();
@@ -264,8 +276,11 @@ export const Route = ({
     ? getPublicSsrSource(snapshot, "vessels")
     : undefined;
   const navigate = useNavigate();
-  const inputDate = dateInput ? DateTime.fromISO(dateInput) : null;
-  const urlDate = inputDate?.isValid ? inputDate : today;
+  const urlDateKey = useMemo(() => {
+    const inputDate = dateInput ? DateTime.fromISO(dateInput) : null;
+    return inputDate?.isValid ? (inputDate.toISODate() ?? todayKey) : todayKey;
+  }, [dateInput, todayKey]);
+  const urlDate = useMemo(() => DateTime.fromISO(urlDateKey), [urlDateKey]);
   const [dateState, setDateState] = useState<{
     date: DateTime;
     identity: string;
@@ -813,7 +828,7 @@ export const Route = ({
         >
           <Suspense fallback={<RouteLoadingState hasRouteFooter view={view} />}>
             <div
-              className={`route-tab-motion route-tab-motion--${tabDirection}`}
+              className={getRouteTabClassName(view, tabDirection)}
               key={contentMotionKey}
             >
               {content}

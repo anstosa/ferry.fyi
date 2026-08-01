@@ -33,6 +33,15 @@ class TestNetworkOnly {
 }
 
 describe("installed PWA SSR safety", () => {
+  it("initializes Firebase messaging only in supported service workers", async () => {
+    const source = await readRepoFile("client/service-worker.ts");
+
+    expect(source).toContain("isSupported()");
+    expect(source.indexOf("isSupported()")).toBeLessThan(
+      source.indexOf("getMessaging(app)")
+    );
+  });
+
   it("registers network-only navigations before Workbox precache routes", async () => {
     const source = await readRepoFile("client/service-worker.ts");
     const navigationRegistration = source.indexOf(

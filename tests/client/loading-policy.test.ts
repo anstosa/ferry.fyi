@@ -138,8 +138,6 @@ describe("loading-state source policy", () => {
 
     expect(cameras).toContain("isReloading={manualRefreshCount > 0}");
     expect(cameras).toContain("passive");
-    expect(cameras).toContain("CAMERA_REFRESH_MS");
-    expect(cameras).toContain("setInterval");
   });
 
   it("uses page-specific skeletons for Today, Admin, and Fares", () => {

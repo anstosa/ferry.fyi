@@ -8,9 +8,15 @@ const geolocation = vi.hoisted(() => ({
 const capacitor = vi.hoisted(() => ({
   isNativePlatform: vi.fn(),
 }));
+const browserGeolocation = vi.hoisted(() => ({
+  getCurrentPosition: vi.fn(),
+}));
 
 vi.mock("@capacitor/core", () => ({ Capacitor: capacitor }));
 vi.mock("@capacitor/geolocation", () => ({ Geolocation: geolocation }));
+vi.mock("../../client/lib/device", () => ({
+  isNativeMobileApp: () => capacitor.isNativePlatform(),
+}));
 
 import {
   getCurrentLocation,
@@ -21,6 +27,10 @@ import {
 describe("getCurrentLocation", () => {
   beforeEach(() => {
     capacitor.isNativePlatform.mockReturnValue(false);
+    Object.defineProperty(navigator, "geolocation", {
+      configurable: true,
+      value: browserGeolocation,
+    });
   });
 
   afterEach(() => {
@@ -29,8 +39,8 @@ describe("getCurrentLocation", () => {
   });
 
   it("gets the browser position without invoking native permission APIs", async () => {
-    const getCurrentPosition = geolocation.getCurrentPosition.mockResolvedValue(
-      {
+    browserGeolocation.getCurrentPosition.mockImplementation((success) =>
+      success({
         coords: {
           accuracy: 10,
           altitude: null,
@@ -41,18 +51,20 @@ describe("getCurrentLocation", () => {
           speed: null,
         },
         timestamp: 0,
-      }
+      })
     );
 
     await expect(getCurrentLocation()).resolves.toEqual({
       latitude: 47.6,
       longitude: -122.3,
     });
-    expect(getCurrentPosition).toHaveBeenCalledWith({
+    expect(browserGeolocation.getCurrentPosition).toHaveBeenCalledOnce();
+    expect(browserGeolocation.getCurrentPosition.mock.calls[0][2]).toEqual({
       enableHighAccuracy: false,
       maximumAge: 5 * 60 * 1000,
       timeout: 30 * 1000,
     });
+    expect(geolocation.getCurrentPosition).not.toHaveBeenCalled();
     expect(geolocation.checkPermissions).not.toHaveBeenCalled();
     expect(geolocation.requestPermissions).not.toHaveBeenCalled();
   });
@@ -76,11 +88,26 @@ describe("getCurrentLocation", () => {
     });
   });
 
-  it("returns no location when the native lookup is rejected", async () => {
-    geolocation.getCurrentPosition.mockRejectedValue(
-      new Error("Location permission denied")
+  it("returns no location when the browser lookup is rejected", async () => {
+    browserGeolocation.getCurrentPosition.mockImplementation(
+      (_success, error) => error(new Error("Location permission denied"))
     );
     await expect(getCurrentLocation()).resolves.toBeNull();
+  });
+
+  it("starts browser geolocation before returning from the user action", async () => {
+    let resolvePosition = (_position: GeolocationPosition): void => undefined;
+    browserGeolocation.getCurrentPosition.mockImplementation((success) => {
+      resolvePosition = success;
+    });
+
+    const request = requestCurrentLocation();
+
+    expect(browserGeolocation.getCurrentPosition).toHaveBeenCalledOnce();
+    resolvePosition({
+      coords: { latitude: 47.6, longitude: -122.3 },
+    } as GeolocationPosition);
+    await request;
   });
 
   it("does not open an Android permission dialog during a background refresh", async () => {
@@ -114,24 +141,23 @@ describe("getCurrentLocation", () => {
   });
 
   it("allows a new lookup after a denied permission request", async () => {
-    geolocation.getCurrentPosition
-      .mockRejectedValueOnce(new Error("Location permission denied"))
-      .mockResolvedValueOnce({
-        coords: {
-          latitude: 47.6,
-          longitude: -122.3,
-        },
-      });
+    browserGeolocation.getCurrentPosition
+      .mockImplementationOnce((_success, error) =>
+        error(new Error("Location permission denied"))
+      )
+      .mockImplementationOnce((success) =>
+        success({ coords: { latitude: 47.6, longitude: -122.3 } })
+      );
 
     await expect(getCurrentLocation()).resolves.toBeNull();
     await expect(getCurrentLocation()).resolves.toEqual({
       latitude: 47.6,
       longitude: -122.3,
     });
-    expect(geolocation.getCurrentPosition).toHaveBeenCalledTimes(2);
+    expect(browserGeolocation.getCurrentPosition).toHaveBeenCalledTimes(2);
   });
 
-  it("shares simultaneous location lookups while Android handles permission", async () => {
+  it("shares simultaneous browser location lookups", async () => {
     const uninitializedResolver = (): never => {
       throw new Error("Expected the location resolver to be initialized");
     };
@@ -143,13 +169,15 @@ describe("getCurrentLocation", () => {
     }>((resolve) => {
       resolvePosition = resolve;
     });
-    geolocation.getCurrentPosition.mockReturnValue(position);
+    browserGeolocation.getCurrentPosition.mockImplementation((success) => {
+      position.then(success);
+    });
 
     const firstLookup = getCurrentLocation();
     const secondLookup = getCurrentLocation();
 
     await vi.waitFor(() =>
-      expect(geolocation.getCurrentPosition).toHaveBeenCalledOnce()
+      expect(browserGeolocation.getCurrentPosition).toHaveBeenCalledOnce()
     );
     resolvePosition({ coords: { latitude: 47.6, longitude: -122.3 } });
 

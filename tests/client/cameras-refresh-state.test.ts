@@ -18,19 +18,41 @@ vi.mock("~/lib/terminals", () => ({
 }));
 vi.mock("~/lib/maps", () => ({ locationToUrl: () => "#" }));
 vi.mock("../../client/components/ReloadButton", () => ({
-  ReloadButton: ({ isReloading, onClick }: { isReloading: boolean; onClick: () => void }) =>
-    React.createElement("button", { "aria-busy": isReloading, onClick }, "Reload Cameras"),
+  ReloadButton: ({
+    isReloading,
+    onClick,
+  }: {
+    isReloading: boolean;
+    onClick: () => void;
+  }) =>
+    React.createElement(
+      "button",
+      { "aria-busy": isReloading, onClick },
+      "Reload Cameras"
+    ),
 }));
 vi.mock("~/components/CameraFrameFreshness", () => ({
   CameraFrameFreshness: () => null,
 }));
-vi.mock("~/components/TerminalDropdown", () => ({ TerminalDropdown: () => null }));
-vi.mock("~/views/Header", () => ({ Header: ({ children }: { children: React.ReactNode }) => children }));
+vi.mock("~/components/TerminalDropdown", () => ({
+  TerminalDropdown: () => null,
+}));
+vi.mock("~/views/Header", () => ({
+  Header: ({ children }: { children: React.ReactNode }) => children,
+}));
 vi.mock("~/static/images/icons/solid/car.svg", () => ({ default: () => null }));
-vi.mock("~/static/images/icons/solid/location.svg", () => ({ default: () => null }));
-vi.mock("~/static/images/icons/solid/map-marked.svg", () => ({ default: () => null }));
-vi.mock("~/static/images/icons/solid/map-marker.svg", () => ({ default: () => null }));
-vi.mock("~/static/images/icons/solid/ship.svg", () => ({ default: () => null }));
+vi.mock("~/static/images/icons/solid/location.svg", () => ({
+  default: () => null,
+}));
+vi.mock("~/static/images/icons/solid/map-marked.svg", () => ({
+  default: () => null,
+}));
+vi.mock("~/static/images/icons/solid/map-marker.svg", () => ({
+  default: () => null,
+}));
+vi.mock("~/static/images/icons/solid/ship.svg", () => ({
+  default: () => null,
+}));
 vi.mock("~/static/images/icons/wsdot.svg", () => ({ default: () => null }));
 
 import { Cameras } from "../../client/views/Cameras";
@@ -45,7 +67,14 @@ afterEach(() => {
 });
 
 const terminal = {
-  cameras: [{ id: "camera-1", image: { url: "https://example.test/camera.jpg" }, location: {}, title: "Dock" }],
+  cameras: [
+    {
+      id: "camera-1",
+      image: { url: "https://example.test/camera.jpg" },
+      location: {},
+      title: "Dock",
+    },
+  ],
   id: "terminal-1",
   mates: [],
   name: "Terminal",
@@ -59,16 +88,25 @@ describe("Cameras refresh state", () => {
     getCameraFrames
       .mockResolvedValueOnce({ frames: {} })
       .mockResolvedValueOnce({ frames: {} })
-      .mockImplementationOnce(() => new Promise((resolve) => { resolveManual = resolve; }));
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveManual = resolve;
+          })
+      );
     const container = document.createElement("div");
     document.body.appendChild(container);
     root = createRoot(container);
 
     await act(async () => {
-      root?.render(React.createElement(Cameras, { setRoute: vi.fn(), terminal }));
+      root?.render(
+        React.createElement(Cameras, { setRoute: vi.fn(), terminal })
+      );
       await Promise.resolve();
     });
-    const button = [...container.querySelectorAll("button")].find((element) => element.textContent === "Reload Cameras");
+    const button = [...container.querySelectorAll("button")].find(
+      (element) => element.textContent === "Reload Cameras"
+    );
     expect(button?.getAttribute("aria-busy")).toBe("false");
 
     await act(async () => {
@@ -88,5 +126,41 @@ describe("Cameras refresh state", () => {
       await Promise.resolve();
     });
     expect(button?.getAttribute("aria-busy")).toBe("false");
+  });
+
+  it("pauses camera polling while the page is hidden", async () => {
+    vi.useFakeTimers();
+    let visibilityState: DocumentVisibilityState = "visible";
+    Object.defineProperty(document, "visibilityState", {
+      configurable: true,
+      get: () => visibilityState,
+    });
+    getCameraFrames.mockResolvedValue({ frames: {} });
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root?.render(
+        React.createElement(Cameras, { setRoute: vi.fn(), terminal })
+      );
+      await Promise.resolve();
+    });
+    expect(getCameraFrames).toHaveBeenCalledOnce();
+
+    visibilityState = "hidden";
+    document.dispatchEvent(new Event("visibilitychange"));
+    await act(async () => {
+      vi.advanceTimersByTime(30_000);
+      await Promise.resolve();
+    });
+    expect(getCameraFrames).toHaveBeenCalledOnce();
+
+    visibilityState = "visible";
+    await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"));
+      await Promise.resolve();
+    });
+    expect(getCameraFrames).toHaveBeenCalledTimes(2);
   });
 });

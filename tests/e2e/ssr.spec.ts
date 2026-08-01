@@ -163,6 +163,62 @@ test.beforeEach(async () => {
   await fixture("/__fixture__/reset", {});
 });
 
+for (const [label, path] of [
+  ["home", "/"],
+  ["today", "/today"],
+  ["tickets", "/tickets"],
+  ["account", "/account"],
+  ["admin", "/admin"],
+  ["leaderboards", "/leaderboards"],
+  ["leaderboard settings", "/leaderboards/settings"],
+  ["terminal leaderboard", "/leaderboards/terminals/7"],
+  ["vessel leaderboard", "/leaderboards/vessels/fixture-vessel"],
+  ["about", "/about"],
+  ["data sources", "/data-sources"],
+  ["privacy", "/privacy"],
+  ["forecasting", "/forecasting"],
+  ["feedback", "/feedback"],
+  ["schedule", "/seattle/bainbridge"],
+  ["cameras", "/seattle/bainbridge/cameras"],
+  ["terminal details", "/seattle/bainbridge/terminal"],
+  ["fares", "/seattle/bainbridge/fare"],
+  ["map", "/seattle/bainbridge/map"],
+  ["alerts", "/seattle/bainbridge/alerts"],
+  ["alert subscription", "/seattle/bainbridge/subscribe"],
+] as const) {
+  test(`loads ${label} without duplicate initial API requests`, async ({
+    context,
+    page,
+  }) => {
+    await context.addInitScript(() => {
+      navigator.serviceWorker?.getRegistrations().then((registrations) =>
+        registrations.forEach((registration) => registration.unregister())
+      );
+    });
+    const apiRequests: string[] = [];
+    page.on("request", (request) => {
+      const url = new URL(request.url());
+      if (url.pathname.startsWith("/api/")) {
+        apiRequests.push(`${request.method()} ${url.pathname}${url.search}`);
+      }
+    });
+
+    const response = await page.goto(`https://ferry.fyi:4177${path}`, {
+      waitUntil: "domcontentloaded",
+    });
+    expect(response?.status(), `${label} document`).toBe(200);
+    await expect(page.locator("#root"), `${label} root`).toHaveCount(1);
+    await page.waitForTimeout(750);
+
+    const counts = new Map<string, number>();
+    apiRequests.forEach((request) =>
+      counts.set(request, (counts.get(request) ?? 0) + 1)
+    );
+    const duplicates = [...counts.entries()].filter(([, count]) => count > 1);
+    expect(duplicates, `${label} duplicate requests`).toEqual([]);
+  });
+}
+
 for (const [label, url] of [
   ["static About", "https://ferry.fyi:4177/about"],
   ["host-profile Today", "https://howmanyboats.today:4177/"],

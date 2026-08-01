@@ -5,6 +5,7 @@ declare let self: ServiceWorkerGlobalScope;
 import { initializeApp } from "firebase/app";
 import {
   getMessaging,
+  isSupported,
   MessagePayload,
   onBackgroundMessage,
 } from "firebase/messaging/sw";
@@ -33,9 +34,6 @@ const app = initializeApp({
   appId: process.env.FIREBASE_APP_ID,
 });
 
-const messaging = getMessaging(app); // the getMessaging return type is wrong...
-// messaging.useServiceWorker(self.registration);
-
 interface Notification extends MessagePayload {
   data: {
     title: string;
@@ -52,21 +50,28 @@ const isNotification = (payload: MessagePayload): payload is Notification =>
     "url" in payload.data
   );
 
-onBackgroundMessage(messaging, (payload) => {
-  if (isNotification(payload)) {
-    console.log("Background notification: ", payload.data);
-    return self.registration.showNotification(payload.data.title, {
-      body: payload.data.body,
-      badge: "/static/images/notification-badge.png",
-      icon: "/static/images/icon-192x192.png",
-      data: {
-        url: payload.data.url,
-      },
+isSupported()
+  .then((supported) => {
+    if (!supported) {
+      return;
+    }
+    const messaging = getMessaging(app);
+    onBackgroundMessage(messaging, (payload) => {
+      if (isNotification(payload)) {
+        console.log("Background notification: ", payload.data);
+        return self.registration.showNotification(payload.data.title, {
+          body: payload.data.body,
+          badge: "/static/images/notification-badge.png",
+          icon: "/static/images/icon-192x192.png",
+          data: {
+            url: payload.data.url,
+          },
+        });
+      }
+      console.warn("Unhandled background message: ", payload);
     });
-  } else {
-    console.warn("Unhandled background message: ", payload);
-  }
-});
+  })
+  .catch(() => undefined);
 
 // normalize notification target
 const getNotificationUrl = (event: NotificationEvent): string => {

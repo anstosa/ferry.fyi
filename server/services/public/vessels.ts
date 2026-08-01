@@ -1,4 +1,7 @@
-import type { Vessel as VesselContract } from "shared/contracts/vessels";
+import type {
+  Vessel as VesselContract,
+  VesselSnapshot,
+} from "shared/contracts/vessels";
 import { entries } from "shared/lib/objects";
 
 import { getWsfStatus } from "~/lib/wsf/api";
@@ -10,13 +13,23 @@ export type PublicVesselResult =
 
 export const getPublicVessels = async (): Promise<
   Record<string, VesselContract>
-> => {
+> => (await getPublicVesselSnapshot()).vessels;
+
+/** Return one coherent fleet snapshot without exposing per-vessel internals. */
+export const getPublicVesselSnapshot = async (): Promise<VesselSnapshot> => {
   const vessels = await Vessel.getAll();
   const results: Record<string, VesselContract> = {};
+  const sourceTimes: number[] = [];
   entries(vessels).forEach(([key, vessel]) => {
     results[key] = vessel.serialize();
+    if (Number.isFinite(vessel.statusUpdatedAt)) {
+      sourceTimes.push(vessel.statusUpdatedAt / 1000);
+    }
   });
-  return results;
+  return {
+    sourceUpdatedAt: sourceTimes.length ? Math.min(...sourceTimes) : null,
+    vessels: results,
+  };
 };
 
 export const getPublicVessel = async (

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Vessel } from "shared/contracts/vessels";
+import { Vessel, VesselSnapshot } from "shared/contracts/vessels";
 import { sortBy } from "shared/lib/arrays";
 import { values } from "shared/lib/objects";
 
@@ -7,9 +7,13 @@ import { get, post } from "~/lib/api";
 
 const API_VESSELS = "/vessels";
 const getApiVessel = (id: string): string => `/vessels/${id}`;
+const LIVE_VESSEL_SNAPSHOT_MAX_AGE_MS = 55 * 1000;
 
 let hasAll = false;
 const vesselCache: Record<string, Vessel> = {};
+let latestVesselSnapshot:
+  | { receivedAt: number; sourceUpdatedAt: number | null; vessels: Vessel[] }
+  | undefined;
 
 // get vessel data by id
 // loads from cache if possible
@@ -35,15 +39,47 @@ export const getVessels = async (
   return sortBy(values(vesselCache), "name");
 };
 
+const storeVesselSnapshot = ({
+  sourceUpdatedAt,
+  vessels,
+}: VesselSnapshot): { sourceUpdatedAt: number | null; vessels: Vessel[] } => {
+  Object.assign(vesselCache, vessels);
+  hasAll = true;
+  const stored = {
+    sourceUpdatedAt,
+    vessels: sortBy(values(vesselCache), "name"),
+  };
+  latestVesselSnapshot = { ...stored, receivedAt: Date.now() };
+  return stored;
+};
+
+export const getVesselSnapshot = async (
+  options: { maxAgeMs?: number } = {}
+): Promise<{
+  sourceUpdatedAt: number | null;
+  vessels: Vessel[];
+}> => {
+  const snapshotAge = latestVesselSnapshot
+    ? Date.now() - latestVesselSnapshot.receivedAt
+    : null;
+  if (
+    latestVesselSnapshot &&
+    snapshotAge !== null &&
+    snapshotAge >= 0 &&
+    snapshotAge < (options.maxAgeMs ?? 0)
+  ) {
+    return latestVesselSnapshot;
+  }
+  return storeVesselSnapshot(await get<VesselSnapshot>("/vessels/snapshot"));
+};
+
 export const refreshVessels = async (): Promise<{
   sourceUpdatedAt: number | null;
   vessels: Vessel[];
 }> => {
-  const { sourceUpdatedAt } = await post<{ sourceUpdatedAt: number | null }>(
-    "/vessels/refresh",
-    {}
+  return storeVesselSnapshot(
+    await post<VesselSnapshot>("/vessels/refresh", {})
   );
-  return { sourceUpdatedAt, vessels: await getVessels({ force: true }) };
 };
 
 export const useLiveVessels = (
@@ -59,19 +95,38 @@ export const useLiveVessels = (
       return;
     }
     let isMounted = true;
+    let isRefreshing = false;
     const updateVessels = async (): Promise<void> => {
-      const vessels = await getVessels({ force: true });
-      // mount guard
-      if (isMounted) {
-        setVessels(vessels);
+      if (isRefreshing || document.visibilityState !== "visible") {
+        return;
+      }
+      isRefreshing = true;
+      try {
+        const { vessels } = await getVesselSnapshot({
+          maxAgeMs: LIVE_VESSEL_SNAPSHOT_MAX_AGE_MS,
+        });
+        // mount guard
+        if (isMounted) {
+          setVessels(vessels);
+        }
+      } finally {
+        // eslint-disable-next-line require-atomic-updates -- this effect owns the flag.
+        isRefreshing = false;
       }
     };
 
-    updateVessels();
-    const interval = window.setInterval(updateVessels, refreshMs);
+    updateVessels().catch(console.error);
+    const interval = window.setInterval(() => {
+      updateVessels().catch(console.error);
+    }, refreshMs);
+    const handleVisibilityChange = (): void => {
+      updateVessels().catch(console.error);
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
       isMounted = false;
       window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [isEnabled, refreshMs]);
 

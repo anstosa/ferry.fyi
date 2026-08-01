@@ -44,7 +44,7 @@ import {
   setSimulatedVessel,
 } from "~/lib/onboardSimulation";
 import { useTrackedVessel } from "~/lib/onboardTracking";
-import { usePush } from "~/lib/push";
+import { requestNotificationPermission, usePush } from "~/lib/push";
 import type { DetailTab } from "~/lib/sailingDeepLink";
 import { useUser } from "~/lib/user";
 import BellIcon from "~/static/images/icons/regular/bell.svg";
@@ -458,6 +458,11 @@ export const SlotInfo = (props: Props): ReactElement => {
     if (isLoading || isUserLoading || isSailingAlertSaving) {
       return;
     }
+    // Invoke the permission API before the first await so the browser retains
+    // the click gesture required to display its notification prompt.
+    const notificationPermission = isSailingAlertSubscribed
+      ? Promise.resolve(false)
+      : requestNotificationPermission();
     setSailingAlertSaving(true);
     const currentAlertRules = alertRules ?? [];
     const nextAlertRules = isSailingAlertSubscribed
@@ -468,13 +473,14 @@ export const SlotInfo = (props: Props): ReactElement => {
         })
       : [...currentAlertRules, sailingAlertRule];
     try {
+      const permissionGranted = await notificationPermission;
       await updateUser({
         app_metadata: {
           alertRules: nextAlertRules,
         },
       });
       // push permission guard
-      if (!isSailingAlertSubscribed) {
+      if (permissionGranted) {
         initializePush();
       }
     } catch (error) {

@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import React, { FunctionComponent, useState } from "react";
+import React, { FunctionComponent, useEffect, useState } from "react";
 
 import {
   getNotificationPermission,
@@ -21,14 +21,28 @@ export const NotificationPermissionWarning: FunctionComponent<Props> = ({
   const [permission, setPermission] = useState(getNotificationPermission);
   const [isRequesting, setRequesting] = useState(false);
 
-  if (!hasAlerts || permission !== "denied") {
+  useEffect(() => {
+    const refreshPermission = (): void => {
+      const nextPermission = getNotificationPermission();
+      setPermission(nextPermission);
+      if (nextPermission === "granted") {
+        initializePush();
+      }
+    };
+    window.addEventListener("focus", refreshPermission);
+    return () => window.removeEventListener("focus", refreshPermission);
+  }, [initializePush]);
+
+  if (!hasAlerts || permission === "granted" || permission === null) {
     return null;
   }
 
-  const requestPermissionsAgain = async (): Promise<void> => {
+  const requestPermissions = async (): Promise<void> => {
     setRequesting(true);
     try {
-      if (await requestNotificationPermission(true)) {
+      const granted = await requestNotificationPermission();
+      setPermission(getNotificationPermission());
+      if (granted) {
         initializePush();
       }
     } finally {
@@ -48,25 +62,30 @@ export const NotificationPermissionWarning: FunctionComponent<Props> = ({
       <div className="flex items-start gap-3">
         <BellSlashIcon className="mt-0.5 h-5 w-5 shrink-0 text-stale-dark dark:text-stale-light" />
         <div className="min-w-0 flex-1">
-          <h2 className="font-bold">Notifications are blocked</h2>
+          <h2 className="font-bold">
+            {permission === "denied"
+              ? "Notifications are blocked"
+              : "Enable notifications"}
+          </h2>
           <p className="mt-1 text-sm leading-relaxed">
-            Your alerts are saved, but Ferry FYI cannot notify you until
-            notification permission is allowed.
+            {permission === "denied"
+              ? "Your alerts are saved, but Ferry FYI cannot notify you until notification permission is allowed in your app or browser settings."
+              : "Your alerts are saved. Allow notifications so Ferry FYI can deliver them."}
           </p>
-          <button
-            className="button button-primary mt-3 hover:bg-green-dark"
-            disabled={isRequesting}
-            onClick={() => requestPermissionsAgain()}
-            type="button"
-          >
-            {isRequesting
-              ? "Requesting permission…"
-              : "Request permission again"}
-          </button>
-          <p className="mt-2 text-xs opacity-80">
-            If your device does not show a prompt, enable notifications in its
-            app or browser settings.
-          </p>
+          {permission === "default" ? (
+            <button
+              className="button button-primary mt-3 hover:bg-green-dark"
+              disabled={isRequesting}
+              onClick={() => requestPermissions()}
+              type="button"
+            >
+              {isRequesting ? "Requesting permission…" : "Allow notifications"}
+            </button>
+          ) : (
+            <p className="mt-2 text-xs opacity-80">
+              After changing the permission in settings, return to Ferry FYI.
+            </p>
+          )}
         </div>
       </div>
     </section>

@@ -15,7 +15,7 @@ import { NearbyTicketNotifications } from "~/components/NearbyTicketNotification
 import { Prompt } from "~/components/Prompt";
 import { deferAnalytics, useRecordPageViews } from "~/lib/analytics";
 import { useOnline, useWSF } from "~/lib/api";
-import { isAuth0CallbackUrl } from "~/lib/auth";
+import { isAuth0CallbackUrl, isStaleAuth0CallbackError } from "~/lib/auth";
 import { useDevice } from "~/lib/device";
 import { initializeOtaUpdater } from "~/lib/ota";
 import { usePush } from "~/lib/push";
@@ -107,10 +107,18 @@ export const App = ({
         appUrl.searchParams.has("state") &&
         (appUrl.searchParams.has("code") || appUrl.searchParams.has("error"))
       ) {
-        const { appState } = await handleRedirectCallback(url);
-        if (appState?.redirectPath) {
-          navigate(appState.redirectPath);
-          return;
+        try {
+          const { appState } = await handleRedirectCallback(url);
+          if (appState?.redirectPath) {
+            navigate(appState.redirectPath);
+            return;
+          }
+        } catch (error) {
+          // A callback URL can be replayed by browser restoration or a second
+          // native app-open event after Auth0 has already consumed its state.
+          if (!isStaleAuth0CallbackError(error)) {
+            throw error;
+          }
         }
       }
       navigate("/");

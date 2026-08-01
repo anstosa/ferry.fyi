@@ -41,6 +41,7 @@ import {
 import {
   getPublicVessel,
   getPublicVessels,
+  getPublicVesselSnapshot,
 } from "../../server/services/public/vessels";
 
 describe("public query services", () => {
@@ -141,7 +142,9 @@ describe("public query services", () => {
     routeModel.getByTerminalId.mockReturnValue({
       "7": { serialize: () => route },
     });
-    vesselModel.getAll.mockResolvedValue({ "66": { serialize: () => vessel } });
+    vesselModel.getAll.mockResolvedValue({
+      "66": { serialize: () => vessel, statusUpdatedAt: 2_000_000_000_000 },
+    });
     vesselModel.getByIndex.mockResolvedValue({ serialize: () => vessel });
 
     await expect(getPublicTerminals()).resolves.toEqual({ "1": terminal });
@@ -152,6 +155,10 @@ describe("public query services", () => {
     expect(getPublicRoute("7")).toEqual(route);
     expect(getPublicRoutesForTerminal("1")).toEqual({ "7": route });
     await expect(getPublicVessels()).resolves.toEqual({ "66": vessel });
+    await expect(getPublicVesselSnapshot()).resolves.toEqual({
+      sourceUpdatedAt: 2_000_000_000,
+      vessels: { "66": vessel },
+    });
     await expect(getPublicVessel("66")).resolves.toEqual({
       status: "available",
       vessel,

@@ -11,6 +11,11 @@ interface UsersResponse {
   users?: unknown;
 }
 
+export interface Auth0UserIdentity {
+  email?: string;
+  subject: string;
+}
+
 let token: string | undefined;
 let tokenExpiresAt = 0;
 
@@ -76,10 +81,36 @@ export const getAuth0UserEmail = async (
   return typeof body.email === "string" ? body.email : undefined;
 };
 
-export interface Auth0UserIdentity {
-  email?: string;
-  subject: string;
-}
+/**
+ * Resolves the profile attached to an already validated user access token.
+ * Tokens requested with `openid` are also valid for Auth0's `/userinfo`
+ * audience, so owner authorization does not require Management API access.
+ */
+export const getAuth0UserInfo = async (
+  accessToken: string
+): Promise<Auth0UserIdentity> => {
+  const domain = process.env.AUTH0_DOMAIN;
+  if (!domain) {
+    throw new Error("Auth0 domain is not configured");
+  }
+  const response = await fetch(`https://${domain}/userinfo`, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!response.ok) {
+    throw new Error(`Auth0 user info request failed: ${response.status}`);
+  }
+  const body = (await response.json()) as {
+    email?: unknown;
+    sub?: unknown;
+  };
+  if (typeof body.sub !== "string") {
+    throw new Error("Auth0 user info subject was missing");
+  }
+  return {
+    ...(typeof body.email === "string" ? { email: body.email } : {}),
+    subject: body.sub,
+  };
+};
 
 export interface Auth0UserPage {
   items: Auth0UserIdentity[];

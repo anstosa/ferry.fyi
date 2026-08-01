@@ -43,15 +43,15 @@ describe("requestNotificationPermission", () => {
     expect(requestPermission).not.toHaveBeenCalled();
   });
 
-  it("re-requests a denied permission from an explicit retry", async () => {
-    const requestPermission = vi.fn().mockResolvedValue("granted");
+  it("does not offer an ineffective retry after permission was denied", async () => {
+    const requestPermission = vi.fn();
     vi.stubGlobal("Notification", {
       permission: "denied",
       requestPermission,
     });
 
-    await expect(requestNotificationPermission(true)).resolves.toBe(true);
-    expect(requestPermission).toHaveBeenCalledOnce();
+    await expect(requestNotificationPermission()).resolves.toBe(false);
+    expect(requestPermission).not.toHaveBeenCalled();
   });
 
   it("reports that notifications are unavailable without the browser API", () => {

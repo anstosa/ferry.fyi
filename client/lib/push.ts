@@ -5,7 +5,7 @@ import {
   MessagePayload,
   onMessage,
 } from "firebase/messaging";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { firebaseApp } from "./firebase";
@@ -37,14 +37,15 @@ export const getNotificationPermission = (): NotificationPermission | null => {
   return Notification.permission;
 };
 
-export const requestNotificationPermission = async (
-  requestAgain = false
-): Promise<boolean> => {
+export const requestNotificationPermission = async (): Promise<boolean> => {
   const permission = getNotificationPermission();
   if (permission === "granted") {
     return true;
   }
-  if (!requestAgain && permission !== "default") {
+  // Browsers do not show another permission prompt after the user has denied
+  // notifications. Calling requestPermission() again in that state only looks
+  // like a broken button, so recovery belongs in browser/app settings.
+  if (permission !== "default") {
     return false;
   }
   return (await Notification.requestPermission()) === "granted";
@@ -93,7 +94,10 @@ export const usePush = (requestPermission: boolean): InitializePush => {
     // push initializer
     const initialize = async () => {
       try {
-        if (!(await requestNotificationPermission())) {
+        // Permission prompts must originate in a user gesture. Callers request
+        // permission in their button handlers; this effect only completes FCM
+        // setup after permission has already been granted.
+        if (getNotificationPermission() !== "granted") {
           return;
         }
         const messaging = await getSupportedMessaging();
@@ -147,5 +151,5 @@ export const usePush = (requestPermission: boolean): InitializePush => {
     }
   }, [shouldRequestPermission]);
 
-  return () => setRequestPermission(true);
+  return useCallback(() => setRequestPermission(true), []);
 };

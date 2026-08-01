@@ -457,6 +457,67 @@ describe("Route route-load errors", () => {
     }
   );
 
+  it("updates the schedule once per tab navigation without entering a render loop", async () => {
+    const terminal = {
+      id: "terminal-a",
+      mates: [
+        { id: "terminal-b", name: "B" },
+        { id: "terminal-c", name: "C" },
+      ],
+      name: "A",
+      routes: {},
+    };
+    const mate = {
+      id: "terminal-b",
+      mates: [{ id: "terminal-a", name: "A" }],
+      name: "B",
+      routes: {},
+    };
+    getTerminal.mockImplementation((id: string) =>
+      Promise.resolve(id === terminal.id ? terminal : mate)
+    );
+    getSchedule.mockResolvedValue({
+      schedule: {
+        date: getLocalScheduleDate(),
+        mateId: mate.id,
+        slots: [],
+        terminalId: terminal.id,
+      },
+      timestamp: 0,
+    });
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const controller: NavigationController = {
+      navigate: () => undefined,
+    };
+    const container = await renderNavigableRoute(controller);
+
+    await act(async () => {
+      controller.navigate("/terminal-a/terminal-b/map");
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(container.textContent).toContain("Map A");
+
+    await act(async () => {
+      controller.navigate("/terminal-a/terminal-b");
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(container.textContent).toContain("Schedule terminal-a");
+    expect(getSchedule).toHaveBeenCalledTimes(3);
+    expect(
+      consoleError.mock.calls.some(([message]) =>
+        String(message).includes("Maximum update depth exceeded")
+      )
+    ).toBe(false);
+    consoleError.mockRestore();
+  });
+
   it("synchronously hides prior schedule on normalized date-query navigation", async () => {
     const terminal = {
       id: "terminal-a",

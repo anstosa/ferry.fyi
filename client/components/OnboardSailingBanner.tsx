@@ -80,7 +80,7 @@ type VisibleSailing = OnboardSailingMatch & {
   isTracking?: boolean;
 };
 
-const VESSEL_REFRESH_MS = 15 * 1000;
+const VESSEL_REFRESH_MS = 60 * 1000;
 const PIN_CENTER_INSET_REM = 0.5625;
 const NOTABLE_DELAY_SECONDS = 3 * 60;
 const RECENT_DEPARTURE_SECONDS = 10 * 60;

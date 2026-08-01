@@ -2,6 +2,7 @@ import { type Dispatch, type SetStateAction, useEffect, useState } from "react";
 import { isUndefined } from "shared/lib/identity";
 
 import { useLocalStorage } from "./browser";
+import { isNativeMobileApp } from "./device";
 
 export interface Point {
   latitude: number;
@@ -19,10 +20,60 @@ const toRadians = (degrees: number): number => (degrees * Math.PI) / 180;
 let locationRequest: Promise<Point | null> | undefined;
 let lastNativeLocation: Point | null = null;
 const locationSubscribers = new Set<Dispatch<SetStateAction<Point | null>>>();
+const locationRefreshers = new Map<symbol, () => Promise<void>>();
+let locationRefreshInterval: number | undefined;
+let isListeningForVisibility = false;
 
 const shareLocation = (location: Point): void => {
   lastNativeLocation = location;
   locationSubscribers.forEach((setLocation) => setLocation(location));
+};
+
+const refreshSharedLocation = (): void => {
+  const refresh = locationRefreshers.values().next().value;
+  if (refresh && document.visibilityState === "visible") {
+    refresh().catch(() => undefined);
+  }
+};
+
+const stopLocationRefreshInterval = (): void => {
+  if (locationRefreshInterval !== undefined) {
+    window.clearInterval(locationRefreshInterval);
+    locationRefreshInterval = undefined;
+  }
+};
+
+const handleLocationVisibilityChange = (): void => {
+  stopLocationRefreshInterval();
+  if (locationRefreshers.size > 0 && document.visibilityState === "visible") {
+    refreshSharedLocation();
+    locationRefreshInterval = window.setInterval(
+      refreshSharedLocation,
+      30 * 1000
+    );
+  }
+};
+
+const startLocationPolling = (): void => {
+  if (!isListeningForVisibility) {
+    document.addEventListener(
+      "visibilitychange",
+      handleLocationVisibilityChange
+    );
+    isListeningForVisibility = true;
+  }
+  handleLocationVisibilityChange();
+};
+
+const stopLocationPolling = (): void => {
+  stopLocationRefreshInterval();
+  if (isListeningForVisibility) {
+    document.removeEventListener(
+      "visibilitychange",
+      handleLocationVisibilityChange
+    );
+    isListeningForVisibility = false;
+  }
 };
 
 // Gets distance between two points in miles using Haversine formula
@@ -47,20 +98,12 @@ const LOCATION_OPTIONS = {
   timeout: 30 * 1000,
 };
 
-const nativeLocation = async () => {
-  const [{ Capacitor }, { Geolocation }] = await Promise.all([
-    import("@capacitor/core"),
-    import("@capacitor/geolocation"),
-  ]);
-  return { Capacitor, Geolocation };
-};
+const nativeLocation = async () =>
+  (await import("@capacitor/geolocation")).Geolocation;
 
-const isNativeLocation = async (): Promise<boolean> =>
-  (await nativeLocation()).Capacitor.isNativePlatform();
-
-const fetchCurrentLocation = async (): Promise<Point | null> => {
+const fetchNativeLocation = async (): Promise<Point | null> => {
   try {
-    const { Geolocation } = await nativeLocation();
+    const Geolocation = await nativeLocation();
     const {
       coords: { latitude, longitude },
     } = await Geolocation.getCurrentPosition(LOCATION_OPTIONS);
@@ -70,10 +113,23 @@ const fetchCurrentLocation = async (): Promise<Point | null> => {
   }
 };
 
+const fetchBrowserLocation = (): Promise<Point | null> =>
+  new Promise((resolve) => {
+    if (!navigator.geolocation) {
+      resolve(null);
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      ({ coords: { latitude, longitude } }) => resolve({ latitude, longitude }),
+      () => resolve(null),
+      LOCATION_OPTIONS
+    );
+  });
+
 export const fetchForegroundLocation =
   async (): Promise<ForegroundLocation | null> => {
     try {
-      const { Geolocation } = await nativeLocation();
+      const Geolocation = await nativeLocation();
       // Credits require a fresh, high-accuracy fix acquired while this page is visible.
       const { coords, timestamp } = await Geolocation.getCurrentPosition({
         enableHighAccuracy: true,
@@ -94,22 +150,25 @@ export const fetchForegroundLocation =
 /** Request one foreground location after a user tap. The caller must discard it after use. */
 export const requestForegroundLocation = fetchForegroundLocation;
 
-const getLocation = async (
-  promptsForPermission: boolean
-): Promise<Point | null> => {
+const getLocation = (promptsForPermission: boolean): Promise<Point | null> => {
   // Android's checkPermissions() reaches the native location service and has
   // caused startup crashes on affected devices. Never invoke the plugin from a
   // background refresh; getCurrentPosition() owns the permission flow after an
   // explicit user action instead.
-  const { Capacitor } = await nativeLocation();
-  if (Capacitor.isNativePlatform()) {
+  const native = isNativeMobileApp();
+  if (native) {
     if (!promptsForPermission) {
       return Promise.resolve(lastNativeLocation);
     }
   }
 
   if (!locationRequest) {
-    locationRequest = fetchCurrentLocation().finally(() => {
+    // Browser geolocation must be invoked synchronously from the user's click
+    // handler. Native plugin loading can remain deferred after that platform
+    // has been identified synchronously.
+    locationRequest = (
+      native ? fetchNativeLocation() : fetchBrowserLocation()
+    ).finally(() => {
       locationRequest = undefined;
     });
   }
@@ -145,7 +204,7 @@ export const useGeo = (): [
         // without another permission prompt. New native users still need the
         // explicit RouteSelector action before the plugin is invoked.
         const location =
-          requestPermission || (await isNativeLocation())
+          requestPermission || isNativeMobileApp()
             ? await requestCurrentLocation()
             : await getCurrentLocation();
         if (location) {
@@ -163,13 +222,18 @@ export const useGeo = (): [
   }, []);
 
   useEffect(() => {
-    // get location
-    updateLocation();
-    // update location every 30 seconds
-    const interval = setInterval(updateLocation, 30 * 1000);
-
-    // clear interval on unmount
-    return clearInterval(interval);
+    const subscriber = Symbol("location refresher");
+    const wasEmpty = locationRefreshers.size === 0;
+    locationRefreshers.set(subscriber, updateLocation);
+    if (wasEmpty) {
+      startLocationPolling();
+    }
+    return () => {
+      locationRefreshers.delete(subscriber);
+      if (locationRefreshers.size === 0) {
+        stopLocationPolling();
+      }
+    };
   }, [savedNoLocation]);
 
   return [location, updateLocation];

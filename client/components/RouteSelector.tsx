@@ -160,10 +160,10 @@ export const RouteSelector = (props: Props): ReactElement => {
                   }
                   locationRequestStarted.current = true;
                   saveNoLocation(false);
-                  // Let the exit animation finish before Android opens its
-                  // native permission activity. Capacitor's geolocation
-                  // plugin cannot handle overlapping permission requests.
-                  window.setTimeout(() => updateGeo(false, true), 350);
+                  // Browser and native permission APIs must be invoked by the
+                  // click itself. Deferring until after the toast transition
+                  // can be rejected without ever showing a system prompt.
+                  updateGeo(false, true);
                 },
                 primary: true,
               },

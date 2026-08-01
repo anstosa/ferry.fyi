@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const auth0 = vi.hoisted(() => ({
   getAuth0UserEmail: vi.fn(),
+  getAuth0UserInfo: vi.fn(),
 }));
 const flags = vi.hoisted(() => ({
   getLeaderboardFlags: vi.fn(),
@@ -17,21 +18,29 @@ vi.mock("express-oauth2-jwt-bearer", () => ({
   auth:
     () =>
     (
-      expressRequest: Request & { auth?: { payload: { sub?: string } } },
+      expressRequest: Request & {
+        auth?: { payload: { sub?: string }; token: string };
+      },
       response: Response,
       next: NextFunction
     ): void => {
       switch (expressRequest.get("authorization")) {
         case "Bearer owner":
-          expressRequest.auth = { payload: { sub: "auth0|owner" } };
+          expressRequest.auth = {
+            payload: { sub: "auth0|owner" },
+            token: "owner-token",
+          };
           next();
           return;
         case "Bearer non-owner":
-          expressRequest.auth = { payload: { sub: "auth0|other" } };
+          expressRequest.auth = {
+            payload: { sub: "auth0|other" },
+            token: "non-owner-token",
+          };
           next();
           return;
         case "Bearer no-sub":
-          expressRequest.auth = { payload: {} };
+          expressRequest.auth = { payload: {}, token: "no-sub-token" };
           next();
           return;
         default:
@@ -56,6 +65,9 @@ const createApp = (): express.Express => {
 describe("owner admin authorization", () => {
   beforeEach(() => {
     auth0.getAuth0UserEmail.mockReset();
+    auth0.getAuth0UserInfo
+      .mockReset()
+      .mockRejectedValue(new Error("User info unavailable"));
     flags.getLeaderboardFlags.mockReset().mockResolvedValue({
       automaticLeaderboardCheckinsEnabled: false,
       leaderboardsEnabled: false,
@@ -141,6 +153,35 @@ describe("owner admin authorization", () => {
       leaderboardsEnabled: false,
     });
     expect(response.headers["cache-control"]).toBe("no-store");
+  });
+
+  it("authorizes the matching owner token without Management API access", async () => {
+    auth0.getAuth0UserInfo.mockResolvedValueOnce({
+      email: "ANSTOSA@gmail.com",
+      subject: "auth0|owner",
+    });
+
+    await request(createApp())
+      .get("/api/admin/features")
+      .set("Authorization", "Bearer owner")
+      .expect(200);
+
+    expect(auth0.getAuth0UserInfo).toHaveBeenCalledWith("owner-token");
+    expect(auth0.getAuth0UserEmail).not.toHaveBeenCalled();
+  });
+
+  it("rejects user info that does not match the validated token subject", async () => {
+    auth0.getAuth0UserInfo.mockResolvedValueOnce({
+      email: "anstosa@gmail.com",
+      subject: "auth0|someone-else",
+    });
+
+    await request(createApp())
+      .get("/api/admin/features")
+      .set("Authorization", "Bearer owner")
+      .expect(403);
+
+    expect(auth0.getAuth0UserEmail).not.toHaveBeenCalled();
   });
   it("rejects attempts to enable automatic check-ins while allowing leaderboard updates", async () => {
     auth0.getAuth0UserEmail.mockResolvedValue("anstosa@gmail.com");

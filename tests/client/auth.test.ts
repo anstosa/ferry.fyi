@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   getAuth0RedirectUri,
   isAuth0CallbackUrl,
+  isStaleAuth0CallbackError,
 } from "../../client/lib/auth";
 
 describe("getAuth0RedirectUri", () => {
@@ -26,6 +27,14 @@ describe("getAuth0RedirectUri", () => {
         redirectUri: "fyi.ferry://callback",
       })
     ).toBe("fyi.ferry://callback");
+  });
+});
+
+describe("isStaleAuth0CallbackError", () => {
+  it("recognizes only Auth0's consumed-state replay error", () => {
+    expect(isStaleAuth0CallbackError(new Error("Invalid state"))).toBe(true);
+    expect(isStaleAuth0CallbackError(new Error("Login failed"))).toBe(false);
+    expect(isStaleAuth0CallbackError("Invalid state")).toBe(false);
   });
 });
 

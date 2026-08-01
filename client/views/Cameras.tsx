@@ -191,13 +191,46 @@ const CameraList = ({
 
   // poll frame metadata
   useEffect(() => {
-    refreshFrameStatuses().catch(console.error);
-    const interval = window.setInterval(() => {
-      refreshFrameStatuses().catch(console.error);
-    }, CAMERA_REFRESH_MS);
+    let active = true;
+    let inFlight = false;
+    let timeout: number | undefined;
+    const schedule = (): void => {
+      if (active && document.visibilityState === "visible") {
+        timeout = window.setTimeout(poll, CAMERA_REFRESH_MS);
+      }
+    };
+    const poll = async (): Promise<void> => {
+      if (!active || inFlight || document.visibilityState !== "visible") {
+        return;
+      }
+      inFlight = true;
+      try {
+        await refreshFrameStatuses();
+      } catch (error) {
+        console.error(error);
+      } finally {
+        // eslint-disable-next-line require-atomic-updates -- this effect owns the flag.
+        inFlight = false;
+        schedule();
+      }
+    };
+    const handleVisibilityChange = (): void => {
+      if (timeout !== undefined) {
+        window.clearTimeout(timeout);
+        timeout = undefined;
+      }
+      if (document.visibilityState === "visible") {
+        poll().catch(console.error);
+      }
+    };
+    poll().catch(console.error);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
-      // remove refresh interval
-      window.clearInterval(interval);
+      active = false;
+      if (timeout !== undefined) {
+        window.clearTimeout(timeout);
+      }
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [refreshFrameStatuses]);
 

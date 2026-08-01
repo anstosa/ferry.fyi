@@ -5,17 +5,17 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const api = vi.hoisted(() => ({ get: vi.fn() }));
+const geo = vi.hoisted(() => ({
+  location: null as null | { latitude: number; longitude: number },
+}));
 vi.mock("~/lib/api", () => api);
 vi.mock("~/lib/geo", () => ({
-  getDistance: () => 0,
-  useGeo: () => [null],
+  getDistance: (_from: unknown, to: { latitude: number }) => to.latitude,
+  useGeo: () => [geo.location],
 }));
 
 import { PublicSsrSeedProvider } from "../../client/lib/ssrSeed";
-import {
-  useTerminalList,
-  useTerminals,
-} from "../../client/lib/terminals";
+import { useTerminalList, useTerminals } from "../../client/lib/terminals";
 import {
   PUBLIC_SSR_SNAPSHOT_VERSION,
   type PublicSsrPayloadMap,
@@ -24,13 +24,14 @@ import {
 
 const terminal = (
   id: string,
-  name: string
+  name: string,
+  latitude = 1
 ): PublicSsrPayloadMap["terminals"][number] => ({
   abbreviation: name.slice(0, 3).toUpperCase(),
   id,
   location: {
     address: { city: null, line1: null, line2: null, state: null, zip: null },
-    latitude: 1,
+    latitude,
     link: null,
     longitude: 1,
   },
@@ -106,6 +107,7 @@ describe("terminal SSR seed refresh", () => {
     act(() => root?.unmount());
     root = undefined;
     document.body.innerHTML = "";
+    geo.location = null;
     vi.clearAllMocks();
   });
 
@@ -170,6 +172,56 @@ describe("terminal SSR seed refresh", () => {
     });
 
     expect(container.querySelector("output")?.textContent).toBe("b,a");
+    expect(
+      container.querySelector('[data-source="canonical"]')?.textContent
+    ).toBe("");
+  });
+
+  it("derives proximity order without rewriting the canonical terminal atom", async () => {
+    geo.location = { latitude: 0, longitude: 0 };
+    api.get.mockReturnValue(new Promise(() => undefined));
+    const proximitySnapshot = {
+      ...snapshot,
+      sources: {
+        ...snapshot.sources,
+        terminals: {
+          ...snapshot.sources.terminals,
+          value: [terminal("a", "Alpha", 2), terminal("b", "Beta", 1)],
+        },
+      },
+    } satisfies PublicSsrSnapshot;
+    const container = document.createElement("div");
+    document.body.append(container);
+    const store = createStore();
+    root = createRoot(container);
+
+    await act(async () => {
+      root?.render(
+        React.createElement(
+          Provider,
+          { store },
+          React.createElement(
+            PublicSsrSeedProvider,
+            { snapshot: proximitySnapshot },
+            React.createElement(
+              React.Fragment,
+              null,
+              React.createElement(Probe),
+              React.createElement(Probe),
+              React.createElement(CanonicalProbe)
+            )
+          )
+        )
+      );
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(
+      Array.from(container.querySelectorAll("output:not([data-source])")).map(
+        ({ textContent }) => textContent
+      )
+    ).toEqual(["b,a", "b,a"]);
     expect(
       container.querySelector('[data-source="canonical"]')?.textContent
     ).toBe("");
