@@ -198,6 +198,13 @@ const createTodaySnapshot = (
 describe("AppRoot server rendering", () => {
   afterEach(() => vi.unstubAllGlobals());
 
+  it("keeps the transition shell constrained to the scroll viewport", async () => {
+    const { markup } = await render("https://ferry.fyi/about");
+
+    expect(markup).toContain('class="flex h-full min-h-0 flex-col"');
+    expect(markup).toContain('data-app-transition-shell="true"');
+  }, 30_000);
+
   // The cold Vite module graph import runs under browser-global canaries.
   it("imports and renders the real public About view without browser globals", async () => {
     vi.resetModules();

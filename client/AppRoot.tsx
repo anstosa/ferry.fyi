@@ -35,7 +35,12 @@ export const AppFrame = ({
         <FeatureFlagContext.Provider value={disabledFlags}>
           <UserContext.Provider value={anonymousUser}>
             <HelmetProvider context={helmetContext}>
-              <div data-app-transition-shell="true">{children}</div>
+              <div
+                className="flex h-full min-h-0 flex-col"
+                data-app-transition-shell="true"
+              >
+                {children}
+              </div>
             </HelmetProvider>
           </UserContext.Provider>
         </FeatureFlagContext.Provider>
