@@ -177,7 +177,7 @@ describe("SSR document cache", () => {
     await expect(
       cache.getOrCreate({
         ...request(dynamicKey(), async () => "old"),
-        mayCommit: () => current,
+        mayCommit: (document) => current && document === "old",
       })
     ).resolves.toMatchObject({ document: "old" });
     current = false;

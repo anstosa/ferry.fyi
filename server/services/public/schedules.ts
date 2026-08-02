@@ -211,6 +211,29 @@ export const getCachedPublicSchedule = ({
   return { status: "not-found" };
 };
 
+/**
+ * Reads the in-memory schedule cache for SSR without starting provider work.
+ * Browser hydration may use getPublicSchedule to refresh a miss, but document
+ * requests must stay side-effect free so crawler traffic cannot fan out into
+ * concurrent WSDOT refreshes.
+ */
+export const getPublicSsrSchedule = (input: {
+  arrivingId: string;
+  date: string;
+  departingId: string;
+}): Promise<PublicScheduleResult> => {
+  const cachedResult = getCachedPublicSchedule(input);
+  if (cachedResult.status === "available") {
+    return Promise.resolve(cachedResult);
+  }
+  const refreshKey = `${input.date}:${input.departingId}:${input.arrivingId}`;
+  return Promise.resolve(
+    backgroundScheduleRefreshes.has(refreshKey)
+      ? { status: "refreshing" }
+      : { status: "warming" }
+  );
+};
+
 export const getPublicSchedule = async ({
   arrivingId,
   date,

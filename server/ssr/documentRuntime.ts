@@ -85,6 +85,7 @@ export interface SsrDocumentRuntimeDependencies {
 }
 
 export type SsrRuntimeFill = {
+  cacheable: boolean;
   completedAt: number;
   renderedAt: number;
   result: PublicSsrRenderDocumentResult;
@@ -436,6 +437,9 @@ export const createSsrDocumentRuntime = (
             snapshot,
           });
           return {
+            cacheable: !Object.values(snapshot.sources).some(
+              (source) => source.outcome === "transiently-unavailable"
+            ),
             completedAt: dependencies.clock().getTime(),
             renderedAt: now.getTime(),
             result,
@@ -445,9 +449,10 @@ export const createSsrDocumentRuntime = (
           throw error;
         }
       },
-      mayCommit: () =>
-        match.route.kind === "static" ||
-        dependencies.clock() < getNextSsrSailingDayBoundary(now),
+      mayCommit: (document) =>
+        document.cacheable &&
+        (match.route.kind === "static" ||
+          dependencies.clock() < getNextSsrSailingDayBoundary(now)),
     });
     if (!cached.document) {
       emit(

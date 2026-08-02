@@ -410,29 +410,42 @@ export const toPublicSsrVessel = (vessel: PublicSsrVessel): PublicSsrVessel => {
   return projected;
 };
 
-const toPublicSsrEstimate = (estimate: CrossingEstimate): CrossingEstimate => ({
-  driveUpCapacity: estimate.driveUpCapacity,
-  reservableCapacity: estimate.reservableCapacity,
-  ...(estimate.confidence ? { confidence: estimate.confidence } : {}),
-  ...(estimate.factors
-    ? {
-        factors: estimate.factors.map(({ detail, impact, label }) => ({
-          detail,
-          impact,
-          label,
-        })),
-      }
-    : {}),
-  ...(Number.isFinite(estimate.fullProbability)
-    ? { fullProbability: estimate.fullProbability }
-    : {}),
-  ...(estimate.fullRisk ? { fullRisk: estimate.fullRisk } : {}),
-  ...(estimate.routeClass ? { routeClass: estimate.routeClass } : {}),
-  ...(Number.isFinite(estimate.sampleSize)
-    ? { sampleSize: estimate.sampleSize }
-    : {}),
-  ...(estimate.source ? { source: estimate.source } : {}),
-});
+const toPublicSsrEstimate = (
+  estimate: CrossingEstimate
+): CrossingEstimate | undefined => {
+  if (
+    !Number.isFinite(estimate.driveUpCapacity) ||
+    !(
+      estimate.reservableCapacity === null ||
+      Number.isFinite(estimate.reservableCapacity)
+    )
+  ) {
+    return undefined;
+  }
+  return {
+    driveUpCapacity: estimate.driveUpCapacity,
+    reservableCapacity: estimate.reservableCapacity,
+    ...(estimate.confidence ? { confidence: estimate.confidence } : {}),
+    ...(estimate.factors
+      ? {
+          factors: estimate.factors.map(({ detail, impact, label }) => ({
+            detail,
+            impact,
+            label,
+          })),
+        }
+      : {}),
+    ...(Number.isFinite(estimate.fullProbability)
+      ? { fullProbability: estimate.fullProbability }
+      : {}),
+    ...(estimate.fullRisk ? { fullRisk: estimate.fullRisk } : {}),
+    ...(estimate.routeClass ? { routeClass: estimate.routeClass } : {}),
+    ...(Number.isFinite(estimate.sampleSize)
+      ? { sampleSize: estimate.sampleSize }
+      : {}),
+    ...(estimate.source ? { source: estimate.source } : {}),
+  };
+};
 
 const toPublicSsrTide = (tide: SlotTide): SlotTide => ({
   stationId: tide.stationId,
@@ -460,64 +473,70 @@ const toPublicSsrWeather = (weather: SlotWeather): SlotWeather => ({
 
 const toPublicSsrScheduleSlot = (
   slot: Schedule["slots"][number]
-): Schedule["slots"][number] => ({
-  allowsPassengers: slot.allowsPassengers,
-  allowsVehicles: slot.allowsVehicles,
-  hasPassed: slot.hasPassed,
-  mateId: slot.mateId,
-  time: slot.time,
-  vessel: {
-    abbreviation: slot.vessel.abbreviation,
-    id: slot.vessel.id,
-    name: slot.vessel.name,
-    speed: slot.vessel.speed,
-    tallVehicleCapacity: slot.vessel.tallVehicleCapacity,
-    vehicleCapacity: slot.vessel.vehicleCapacity,
-    vesselWatchUrl: slot.vessel.vesselWatchUrl,
-  } as Schedule["slots"][number]["vessel"],
-  wuid: slot.wuid,
-  ...(Number.isFinite(slot.arrivalTime)
-    ? { arrivalTime: slot.arrivalTime }
-    : {}),
-  ...(slot.cancellationReason === "tidal"
-    ? { cancellationReason: slot.cancellationReason }
-    : {}),
-  ...(slot.crossing
-    ? {
-        crossing: {
-          arrivalId: String(slot.crossing.arrivalId),
-          departureDelta: slot.crossing.departureDelta,
-          departureId: String(slot.crossing.departureId),
-          departureTime: slot.crossing.departureTime,
-          driveUpCapacity: slot.crossing.driveUpCapacity,
-          hasDriveUp: slot.crossing.hasDriveUp,
-          hasReservations: slot.crossing.hasReservations,
-          isCancelled: slot.crossing.isCancelled,
-          reservableCapacity: slot.crossing.reservableCapacity ?? 0,
-          totalCapacity: slot.crossing.totalCapacity,
-          ...(Number.isFinite(slot.crossing.capacityReportUpdatedAt)
-            ? {
-                capacityReportUpdatedAt: slot.crossing.capacityReportUpdatedAt,
-              }
-            : {}),
-          ...(slot.crossing.vesselId === null ||
-          typeof slot.crossing.vesselId === "string"
-            ? { vesselId: slot.crossing.vesselId }
-            : {}),
-          ...(slot.crossing.vesselName === null ||
-          typeof slot.crossing.vesselName === "string"
-            ? { vesselName: slot.crossing.vesselName }
-            : {}),
-        },
-      }
-    : {}),
-  ...(slot.estimate ? { estimate: toPublicSsrEstimate(slot.estimate) } : {}),
-  ...(slot.tide ? { tide: toPublicSsrTide(slot.tide) } : {}),
-  ...(Number.isFinite(slot.vesselPosition)
-    ? { vesselPosition: slot.vesselPosition }
-    : {}),
-  ...(slot.weather ? { weather: toPublicSsrWeather(slot.weather) } : {}),
-});
+): Schedule["slots"][number] => {
+  const estimate = slot.estimate
+    ? toPublicSsrEstimate(slot.estimate)
+    : undefined;
+  return {
+    allowsPassengers: slot.allowsPassengers,
+    allowsVehicles: slot.allowsVehicles,
+    hasPassed: slot.hasPassed,
+    mateId: slot.mateId,
+    time: slot.time,
+    vessel: {
+      abbreviation: slot.vessel.abbreviation,
+      id: slot.vessel.id,
+      name: slot.vessel.name,
+      speed: slot.vessel.speed,
+      tallVehicleCapacity: slot.vessel.tallVehicleCapacity,
+      vehicleCapacity: slot.vessel.vehicleCapacity,
+      vesselWatchUrl: slot.vessel.vesselWatchUrl,
+    } as Schedule["slots"][number]["vessel"],
+    wuid: slot.wuid,
+    ...(Number.isFinite(slot.arrivalTime)
+      ? { arrivalTime: slot.arrivalTime }
+      : {}),
+    ...(slot.cancellationReason === "tidal"
+      ? { cancellationReason: slot.cancellationReason }
+      : {}),
+    ...(slot.crossing
+      ? {
+          crossing: {
+            arrivalId: String(slot.crossing.arrivalId),
+            departureDelta: slot.crossing.departureDelta,
+            departureId: String(slot.crossing.departureId),
+            departureTime: slot.crossing.departureTime,
+            driveUpCapacity: slot.crossing.driveUpCapacity,
+            hasDriveUp: slot.crossing.hasDriveUp,
+            hasReservations: slot.crossing.hasReservations,
+            isCancelled: slot.crossing.isCancelled,
+            reservableCapacity: slot.crossing.reservableCapacity ?? 0,
+            totalCapacity: slot.crossing.totalCapacity,
+            ...(Number.isFinite(slot.crossing.capacityReportUpdatedAt)
+              ? {
+                  capacityReportUpdatedAt:
+                    slot.crossing.capacityReportUpdatedAt,
+                }
+              : {}),
+            ...(slot.crossing.vesselId === null ||
+            typeof slot.crossing.vesselId === "string"
+              ? { vesselId: slot.crossing.vesselId }
+              : {}),
+            ...(slot.crossing.vesselName === null ||
+            typeof slot.crossing.vesselName === "string"
+              ? { vesselName: slot.crossing.vesselName }
+              : {}),
+          },
+        }
+      : {}),
+    ...(estimate ? { estimate } : {}),
+    ...(slot.tide ? { tide: toPublicSsrTide(slot.tide) } : {}),
+    ...(Number.isFinite(slot.vesselPosition)
+      ? { vesselPosition: slot.vesselPosition }
+      : {}),
+    ...(slot.weather ? { weather: toPublicSsrWeather(slot.weather) } : {}),
+  };
+};
 
 const toPublicSsrSchedule = ({
   schedule,
@@ -638,6 +657,33 @@ export const createPublicSsrSnapshotLoader = ({
       sourceUpdatedAt: null,
       value: PUBLIC_SSR_EMPTY_DATA[key],
     });
+    const unavailable = () => ({
+      outcome: "authoritatively-unavailable" as const,
+      observedAt,
+      reason: "source-unavailable" as const,
+      sourceUpdatedAt: null,
+    });
+    const transientlyUnavailable = (reason: "refreshing" | "warming") => ({
+      outcome: "transiently-unavailable" as const,
+      observedAt,
+      reason,
+      sourceUpdatedAt: null,
+    });
+    const scheduleSource = (
+      key: "nextSchedule" | "schedule",
+      result: PublicScheduleResult
+    ) => {
+      if (result.status === "available") {
+        return source(
+          key,
+          toPublicSsrSchedule(result),
+          result.schedule.sourceUpdatedAt
+        );
+      }
+      return result.status === "not-found"
+        ? unavailable()
+        : transientlyUnavailable(result.status);
+    };
     const sources: Record<string, unknown> = {};
     let leaderboardIndexingEnabled = true;
     const notices = async () => {
@@ -770,26 +816,12 @@ export const createPublicSsrSnapshotLoader = ({
             from("wsf", () => services.getWsfStatus()),
             notices(),
           ]);
-          if (current.status !== "available") {
-            throw new PublicSsrTransientFailure("schedule");
-          }
-          if (next.status !== "available") {
-            throw new PublicSsrTransientFailure("nextSchedule");
-          }
           sources.route = source("route", {
             mate: toTerminal(mate, routeDate),
             terminal: toTerminal(terminal, routeDate),
           });
-          sources.schedule = source(
-            "schedule",
-            toPublicSsrSchedule(current),
-            current.schedule.sourceUpdatedAt
-          );
-          sources.nextSchedule = source(
-            "nextSchedule",
-            toPublicSsrSchedule(next),
-            next.schedule.sourceUpdatedAt
-          );
+          sources.schedule = scheduleSource("schedule", current);
+          sources.nextSchedule = scheduleSource("nextSchedule", next);
           sources.wsf = source("wsf", status);
           sources.notices = noticeSource(publicNotices);
           break;
@@ -942,22 +974,8 @@ export const createPublicSsrSnapshotLoader = ({
               from("wsf", () => services.getWsfStatus()),
               notices(),
             ]);
-            if (current.status !== "available") {
-              throw new PublicSsrTransientFailure("schedule");
-            }
-            if (next.status !== "available") {
-              throw new PublicSsrTransientFailure("nextSchedule");
-            }
-            sources.schedule = source(
-              "schedule",
-              toPublicSsrSchedule(current),
-              current.schedule.sourceUpdatedAt
-            );
-            sources.nextSchedule = source(
-              "nextSchedule",
-              toPublicSsrSchedule(next),
-              next.schedule.sourceUpdatedAt
-            );
+            sources.schedule = scheduleSource("schedule", current);
+            sources.nextSchedule = scheduleSource("nextSchedule", next);
             sources.wsf = source("wsf", status);
             sources.bulletins = selected.terminal.bulletins.length
               ? source("bulletins", selected.terminal.bulletins)
@@ -1041,14 +1059,9 @@ export const createPublicSsrSnapshotLoader = ({
                 ? source("vessels", assignedVessels.map(toPublicSsrVessel))
                 : empty("vessels");
             } else if (routeSchedule.status === "not-found") {
-              sources.vessels = {
-                outcome: "authoritatively-unavailable",
-                observedAt,
-                reason: "source-unavailable",
-                sourceUpdatedAt: null,
-              };
+              sources.vessels = unavailable();
             } else {
-              throw new PublicSsrTransientFailure("vessels");
+              sources.vessels = transientlyUnavailable(routeSchedule.status);
             }
             sources.notices = noticeSource(await notices());
           } else if (match.route.view === "alerts") {

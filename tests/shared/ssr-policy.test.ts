@@ -307,10 +307,10 @@ describe("SSR contracts", () => {
     expect(() => assertPublicSsrSnapshot(privateCanary)).toThrow("dataValues");
     const transient = home() as any;
     transient.sources.notices = {
-      outcome: "transient-failure",
+      outcome: "transiently-unavailable",
       observedAt: at,
       sourceUpdatedAt: null,
-      reason: "timeout",
+      reason: "warming",
     };
     expect(() => assertPublicSsrSnapshot(transient)).toThrow("sources");
     const missingTime = home() as any;

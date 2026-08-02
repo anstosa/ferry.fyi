@@ -18,6 +18,7 @@ const routeModel = vi.hoisted(() => ({
   getByTerminalId: vi.fn(),
 }));
 const wsfApi = vi.hoisted(() => ({ getWsfStatus: vi.fn() }));
+const wsfSchedules = vi.hoisted(() => ({ updateSchedules: vi.fn() }));
 
 vi.mock("~/models/Schedule", () => ({ Schedule: scheduleModel }));
 vi.mock("~/models/Crossing", () => ({ default: crossingModel }));
@@ -25,12 +26,13 @@ vi.mock("~/models/Vessel", () => ({ Vessel: vesselModel }));
 vi.mock("~/models/Terminal", () => ({ Terminal: terminalModel }));
 vi.mock("~/models/Route", () => ({ Route: routeModel }));
 vi.mock("~/lib/wsf/api", () => wsfApi);
-vi.mock("~/lib/wsf/updateSchedules", () => ({ updateSchedules: vi.fn() }));
+vi.mock("~/lib/wsf/updateSchedules", () => wsfSchedules);
 vi.mock("~/lib/forecast", () => ({ updateEstimates: vi.fn() }));
 
 import {
   getCachedPublicSchedule,
   getPublicSchedule,
+  getPublicSsrSchedule,
 } from "../../server/services/public/schedules";
 import {
   getPublicRoute,
@@ -61,6 +63,20 @@ describe("public query services", () => {
       status: "available",
       timestamp: expect.any(Number),
     });
+  });
+
+  it("keeps SSR schedule misses cache-only", async () => {
+    scheduleModel.generateKey.mockReturnValue("1-2-2026-06-21");
+    scheduleModel.getByIndex.mockReturnValue(null);
+
+    await expect(
+      getPublicSsrSchedule({
+        arrivingId: "2",
+        date: "2026-06-21",
+        departingId: "1",
+      })
+    ).resolves.toEqual({ status: "warming" });
+    expect(wsfSchedules.updateSchedules).not.toHaveBeenCalled();
   });
 
   it("returns persisted crossings for historical schedule lookups", async () => {

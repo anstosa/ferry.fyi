@@ -6,7 +6,7 @@ import {
   getPublicLeaderboard,
   publicLeaderboardsEnabled,
 } from "~/services/public/leaderboards";
-import { getPublicSchedule } from "~/services/public/schedules";
+import { getPublicSsrSchedule } from "~/services/public/schedules";
 import { getPublicTerminals } from "~/services/public/terminals";
 import { getPublicVessels } from "~/services/public/vessels";
 
@@ -53,7 +53,7 @@ export const createSsrRuntime = async ({
     getFareCatalog: fareQueries.getCatalog,
     getLeaderboard: getPublicLeaderboard,
     getPublicLeaderboardsEnabled: publicLeaderboardsEnabled,
-    getSchedule: getPublicSchedule,
+    getSchedule: getPublicSsrSchedule,
     getTerminals: getPublicTerminals,
     getVessels: async () => {
       const vessels = await getPublicVessels();

@@ -69,6 +69,8 @@ function getTodaySourceDescription(
   switch (source.outcome) {
     case "authoritatively-unavailable":
       return `${label}: ${UNAVAILABLE_REASON_LABELS[source.reason]}; checked`;
+    case "transiently-unavailable":
+      return `${label}: ${source.reason}; checked`;
     case "empty":
       return `${label}: no current public results; checked`;
     case "stale-usable":

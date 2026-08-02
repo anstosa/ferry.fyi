@@ -510,6 +510,17 @@ const source = (key: PublicSsrSourceKey, value: unknown): boolean => {
       sourceUpdatedAt: nullable(iso),
     });
   }
+  if (value.outcome === "transiently-unavailable") {
+    return (
+      (key === "nextSchedule" || key === "schedule" || key === "vessels") &&
+      fields(value, {
+        observedAt: iso,
+        outcome: (item) => item === "transiently-unavailable",
+        reason: oneOf(["refreshing", "warming"]),
+        sourceUpdatedAt: (item) => item === null,
+      })
+    );
+  }
   return (
     value.outcome === "stale-usable" &&
     fields(value, {
@@ -609,16 +620,21 @@ export const assertPublicSsrSnapshot = (
   }
   const sources = snapshot.sources as RecordValue;
   const keys = Object.keys(sources);
+  const invalidSource = route.requiredSources.find(
+    (key) => !hasOwn(sources, key) || !source(key, sources[key])
+  );
   if (
     keys.length !== route.requiredSources.length ||
-    !route.requiredSources.every(
-      (key) => hasOwn(sources, key) && source(key, sources[key])
-    ) ||
+    invalidSource !== undefined ||
     keys.some(
       (key) => !route.requiredSources.includes(key as PublicSsrSourceKey)
     )
   ) {
-    throw new Error("Invalid public SSR snapshot sources");
+    throw new Error(
+      invalidSource
+        ? `Invalid public SSR snapshot sources: ${invalidSource}`
+        : "Invalid public SSR snapshot sources"
+    );
   }
   assertPublicSsrRouteCoherence(
     {

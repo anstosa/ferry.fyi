@@ -73,6 +73,8 @@ const SnapshotFreshness = ({
         let sourceLead = `${label} checked `;
         if (source.outcome === "authoritatively-unavailable") {
           sourceLead = `${label}: ${UNAVAILABLE_REASON_LABELS[source.reason]}; checked `;
+        } else if (source.outcome === "transiently-unavailable") {
+          sourceLead = `${label}: ${source.reason}; checked `;
         } else if (source.outcome === "empty") {
           sourceLead = `${label}: no current public results; checked `;
         } else if (source.outcome === "stale-usable") {

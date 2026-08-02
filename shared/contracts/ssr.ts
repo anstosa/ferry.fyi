@@ -21,7 +21,7 @@ export type {
 } from "./ssrRouting";
 
 /** Versioned anonymous document data, never an API DTO. */
-export const PUBLIC_SSR_SNAPSHOT_VERSION = 4 as const;
+export const PUBLIC_SSR_SNAPSHOT_VERSION = 5 as const;
 export const PUBLIC_SSR_FORBIDDEN_KEYS = [
   "accessToken",
   "idToken",
@@ -54,6 +54,7 @@ export type PublicSsrUnavailableReason =
   | "not-published"
   | "not-supported"
   | "source-unavailable";
+export type PublicSsrTransientUnavailableReason = "refreshing" | "warming";
 export type PublicSsrLoaderOnlyOutcome = "not-applicable" | "transient-failure";
 /** A terminal reference used for mates; intentionally does not recurse. */
 export interface PublicSsrTerminalIdentity {
@@ -241,6 +242,14 @@ export type PublicSsrSourceOutcome<K extends PublicSsrSourceKey> =
       sourceUpdatedAt: string | null;
       reason: PublicSsrUnavailableReason;
     }
+  | (K extends "nextSchedule" | "schedule" | "vessels"
+      ? {
+          outcome: "transiently-unavailable";
+          observedAt: string;
+          sourceUpdatedAt: null;
+          reason: PublicSsrTransientUnavailableReason;
+        }
+      : never)
   | {
       outcome: "stale-usable";
       observedAt: string;

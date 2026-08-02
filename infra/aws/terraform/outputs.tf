@@ -95,8 +95,8 @@ output "web_security_group_id" {
 }
 
 output "detector_task_subnet_ids" {
-  description = "Private subnet IDs used by the internal detector ECS service."
-  value       = aws_subnet.private_app[*].id
+  description = "Public subnet IDs used by the locked-down detector ECS service."
+  value       = aws_subnet.public[*].id
 }
 
 output "detector_security_group_id" {

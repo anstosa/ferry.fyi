@@ -29,8 +29,8 @@ export interface SsrDocumentCacheRequest<T> {
   readonly enabled: boolean;
   readonly key: SsrDocumentCacheKey;
   readonly load: () => Promise<T>;
-  /** Prevents a completed dynamic fill crossing its captured service-day boundary. */
-  readonly mayCommit?: () => boolean;
+  /** Prevents a completed fill from being persisted after its result is known. */
+  readonly mayCommit?: (document: T) => boolean;
 }
 
 export interface SsrDocumentCacheResult<T> {
@@ -159,7 +159,7 @@ export class SsrDocumentCache<T> {
       if (
         request.cacheEnabled &&
         generation === this.#generation &&
-        (request.mayCommit?.() ?? true)
+        (request.mayCommit?.(document) ?? true)
       ) {
         if (request.key.kind === "dynamic") {
           this.pruneDynamic(request.key.serviceDayId ?? "");

@@ -1,19 +1,19 @@
 # Ferry FYI production AWS Terraform
 
 This directory defines the single production AWS stack for Ferry FYI in account `333401878534`, region `us-west-2`.
-It is intentionally small and reviewable: no third-party Terraform modules, no NAT gateway, optional public ALB, public-IP web/scheduler ECS tasks, a private internal detector ECS task, optional Cloudflare Tunnel sidecar, and private RDS subnets.
+It is intentionally small and reviewable: no third-party Terraform modules, no NAT gateway, optional public ALB, public-IP ECS tasks, a security-group-isolated internal detector service, optional Cloudflare Tunnel sidecar, and private RDS subnets.
 
 ## What it creates
 
 - ECR repositories for the app image and detector image.
-- VPC with two public subnets, two private app subnets, two private DB subnets, an internet gateway, private AWS endpoints for detector image pulls/logs, and no NAT gateway.
+- VPC with two public subnets, two reserved private app subnets, two private DB subnets, an internet gateway, a free S3 gateway endpoint, and no NAT gateway.
 - Optional public ALB with `/healthz` target-group checks on container port `4040`.
 - ACM DNS-validated certificate outputs for manual Cloudflare records.
-- ECS Fargate cluster, web service, singleton scheduler service, and always-on private detector service.
+- ECS Fargate cluster without paid Container Insights, ARM64 web and scheduler services, and an always-on x86 detector service.
 - Web task env: `PROCESS_ROLE=web`, `RUN_SCHEDULER=false`, and `CAR_DETECTION_ENDPOINT` pointing at private Cloud Map service discovery.
 - Optional `cloudflared` sidecar in the web task for Cloudflare Tunnel ingress.
 - Scheduler task env: `PROCESS_ROLE=scheduler`, `RUN_SCHEDULER=true`.
-- Detector task: CPU-only Fargate, desired count 1, no public IP, no public ALB/listener/target group, and ingress allowed only from the web ECS service security group.
+- Detector task: CPU-only Fargate, desired count 1, public-subnet egress, no public ALB/listener/target group, and ingress allowed only from the web ECS service security group.
 - RDS PostgreSQL `17.9` by default, `db.t4g.small`, Single-AZ, gp3 20 GiB with autoscaling, 7-day backups.
 - Secrets Manager plumbing for generated `DATABASE_URL` and manual app config keys.
 - SSM String parameters for non-secret deployment metadata such as base URL, ECR URL, and ECS service names.
@@ -130,7 +130,7 @@ Use the CloudFront HTTPS URLs in release JSON; do not expose S3 object URLs. Bun
 The production deployment workflow is `.github/workflows/deploy-aws.yml`.
 It runs only from the `production` branch or manual `workflow_dispatch`, assumes the `github_deploy_role_arn` role through OIDC, pushes immutable image tags to the app and detector ECR repositories, runs `yarn db:migrate` as a one-off ECS task, then updates the web, detector, and scheduler services.
 
-The workflow builds the CPU-only detector image from `detector-runtime` by default, using `detector-runtime/Dockerfile`. The detector runtime listens on `detector_container_port`, which defaults to `8000`, and accepts the web service's raw image POST contract.
+The workflow builds the application image for ARM64 and the CPU-only detector image for x86_64 from `detector-runtime` by default, using `detector-runtime/Dockerfile`. The detector runtime listens on `detector_container_port`, which defaults to `8000`, and accepts the web service's raw image POST contract.
 
 Configure these non-secret GitHub variables at the repository or organization level before enabling the workflow. Do not set `environment: production` on this workflow for the current branch-scoped trust because that changes the GitHub OIDC `sub` claim. If a GitHub Environment is added later, change the IAM `sub` condition to `repo:anstosa/ferry.fyi:environment:production` and enforce branch restrictions in the Environment settings:
 

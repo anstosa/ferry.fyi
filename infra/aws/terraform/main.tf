@@ -30,7 +30,7 @@ locals {
     { name = "NODE_ENV", value = "production" },
     # provide the server-side OTA release index
     { name = "OTA_RELEASES_URL", value = "https://${aws_cloudfront_distribution.ota.domain_name}/releases.json" },
-    # read the index privately from the S3 gateway
+    # read the private index with the task role
     { name = "OTA_RELEASES_BUCKET", value = aws_s3_bucket.ota_artifacts.id },
     # select the channel for manifest fallback
     { name = "OTA_DEFAULT_CHANNEL", value = var.ota_default_channel },
@@ -80,10 +80,10 @@ locals {
         "CMD-SHELL",
         "node -e \"fetch('http://127.0.0.1:${var.container_port}/healthz').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))\""
       ]
-      interval    = 5
-      retries     = 3
+      interval    = 10
+      retries     = 6
       startPeriod = 60
-      timeout     = 3
+      timeout     = 5
     }
     logConfiguration = {
       logDriver = "awslogs"
@@ -387,47 +387,10 @@ resource "aws_vpc_security_group_ingress_rule" "detector_from_web" {
   to_port                      = var.detector_container_port
 }
 
-resource "aws_vpc_security_group_egress_rule" "detector_to_vpc_endpoints" {
-  security_group_id            = aws_security_group.detector.id
-  referenced_security_group_id = aws_security_group.vpc_endpoints.id
-  from_port                    = 443
-  ip_protocol                  = "tcp"
-  to_port                      = 443
-}
-
-resource "aws_security_group" "vpc_endpoints" {
-  name        = "${local.name_prefix}-vpc-endpoints"
-  description = "Allow private detector tasks to reach AWS control-plane endpoints."
-  vpc_id      = aws_vpc.main.id
-
-  tags = {
-    Name = "${local.name_prefix}-vpc-endpoints"
-  }
-}
-
-resource "aws_vpc_security_group_ingress_rule" "vpc_endpoints_from_detector" {
-  security_group_id            = aws_security_group.vpc_endpoints.id
-  referenced_security_group_id = aws_security_group.detector.id
-  from_port                    = 443
-  ip_protocol                  = "tcp"
-  to_port                      = 443
-}
-
-resource "aws_vpc_security_group_ingress_rule" "vpc_endpoints_from_web" {
-  security_group_id            = aws_security_group.vpc_endpoints.id
-  referenced_security_group_id = aws_security_group.web.id
-  from_port                    = 443
-  ip_protocol                  = "tcp"
-  to_port                      = 443
-}
-
-resource "aws_vpc_security_group_ingress_rule" "vpc_endpoints_from_ecs" {
-  # allow one-off migration tasks through private DNS
-  security_group_id            = aws_security_group.vpc_endpoints.id
-  referenced_security_group_id = aws_security_group.ecs.id
-  from_port                    = 443
-  ip_protocol                  = "tcp"
-  to_port                      = 443
+resource "aws_vpc_security_group_egress_rule" "detector_all_egress" {
+  security_group_id = aws_security_group.detector.id
+  cidr_ipv4         = "0.0.0.0/0"
+  ip_protocol       = "-1"
 }
 
 resource "aws_security_group" "rds" {
@@ -495,11 +458,11 @@ resource "aws_ecr_lifecycle_policy" "app" {
     rules = [
       {
         rulePriority = 1
-        description  = "Keep the most recent 30 production images."
+        description  = "Keep the most recent 10 production images."
         selection = {
           tagStatus   = "any"
           countType   = "imageCountMoreThan"
-          countNumber = 30
+          countNumber = 10
         }
         action = {
           type = "expire"
@@ -516,11 +479,11 @@ resource "aws_ecr_lifecycle_policy" "detector" {
     rules = [
       {
         rulePriority = 1
-        description  = "Keep the most recent 30 detector images."
+        description  = "Keep the most recent 5 detector images."
         selection = {
           tagStatus   = "any"
           countType   = "imageCountMoreThan"
-          countNumber = 30
+          countNumber = 5
         }
         action = {
           type = "expire"
@@ -528,45 +491,6 @@ resource "aws_ecr_lifecycle_policy" "detector" {
       }
     ]
   })
-}
-
-resource "aws_vpc_endpoint" "ecr_api" {
-  private_dns_enabled = true
-  security_group_ids  = [aws_security_group.vpc_endpoints.id]
-  service_name        = "com.amazonaws.${var.aws_region}.ecr.api"
-  subnet_ids          = aws_subnet.private_app[*].id
-  vpc_endpoint_type   = "Interface"
-  vpc_id              = aws_vpc.main.id
-
-  tags = {
-    Name = "${local.name_prefix}-ecr-api"
-  }
-}
-
-resource "aws_vpc_endpoint" "ecr_dkr" {
-  private_dns_enabled = true
-  security_group_ids  = [aws_security_group.vpc_endpoints.id]
-  service_name        = "com.amazonaws.${var.aws_region}.ecr.dkr"
-  subnet_ids          = aws_subnet.private_app[*].id
-  vpc_endpoint_type   = "Interface"
-  vpc_id              = aws_vpc.main.id
-
-  tags = {
-    Name = "${local.name_prefix}-ecr-dkr"
-  }
-}
-
-resource "aws_vpc_endpoint" "logs" {
-  private_dns_enabled = true
-  security_group_ids  = [aws_security_group.vpc_endpoints.id]
-  service_name        = "com.amazonaws.${var.aws_region}.logs"
-  subnet_ids          = aws_subnet.private_app[*].id
-  vpc_endpoint_type   = "Interface"
-  vpc_id              = aws_vpc.main.id
-
-  tags = {
-    Name = "${local.name_prefix}-logs"
-  }
 }
 
 resource "aws_vpc_endpoint" "s3" {
@@ -578,14 +502,6 @@ resource "aws_vpc_endpoint" "s3" {
   tags = {
     Name = "${local.name_prefix}-s3"
   }
-}
-
-resource "aws_vpc_security_group_egress_rule" "detector_to_s3_gateway" {
-  security_group_id = aws_security_group.detector.id
-  prefix_list_id    = aws_vpc_endpoint.s3.prefix_list_id
-  from_port         = 443
-  ip_protocol       = "tcp"
-  to_port           = 443
 }
 
 resource "aws_acm_certificate" "app" {
@@ -740,7 +656,7 @@ resource "aws_ecs_cluster" "app" {
 
   setting {
     name  = "containerInsights"
-    value = "enabled"
+    value = "disabled"
   }
 }
 
@@ -832,6 +748,11 @@ resource "aws_ecs_task_definition" "web" {
   execution_role_arn       = aws_iam_role.ecs_task_execution.arn
   task_role_arn            = aws_iam_role.ecs_task.arn
 
+  runtime_platform {
+    cpu_architecture        = "ARM64"
+    operating_system_family = "LINUX"
+  }
+
   container_definitions = jsonencode(concat([local.web_container_definition], local.cloudflare_tunnel_container_definitions))
 }
 
@@ -896,6 +817,11 @@ resource "aws_ecs_task_definition" "scheduler" {
   execution_role_arn       = aws_iam_role.ecs_task_execution.arn
   task_role_arn            = aws_iam_role.ecs_task.arn
 
+  runtime_platform {
+    cpu_architecture        = "ARM64"
+    operating_system_family = "LINUX"
+  }
+
   container_definitions = jsonencode([
     {
       name        = "scheduler"
@@ -955,9 +881,9 @@ resource "aws_ecs_service" "detector" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    assign_public_ip = false
+    assign_public_ip = true
     security_groups  = [aws_security_group.detector.id]
-    subnets          = aws_subnet.private_app[*].id
+    subnets          = aws_subnet.public[*].id
   }
 
   service_registries {

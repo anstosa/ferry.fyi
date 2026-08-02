@@ -93,13 +93,13 @@ variable "detector_desired_count" {
 variable "web_cpu" {
   description = "Fargate CPU units for the web task."
   type        = number
-  default     = 512
+  default     = 1024
 }
 
 variable "web_memory" {
   description = "Fargate memory MiB for the web task."
   type        = number
-  default     = 1024
+  default     = 2048
 }
 
 variable "scheduler_cpu" {

@@ -2,7 +2,7 @@
 # check=skip=SecretsUsedInArgOrEnv
 
 # Public browser config names include KEY/TOKEN but values are client-visible.
-FROM node:24-bookworm-slim AS build
+FROM --platform=$BUILDPLATFORM node:24-bookworm-slim AS build
 
 WORKDIR /app
 ENV CI=true
@@ -51,6 +51,16 @@ ENV AUTH0_CLIENT_AUDIENCE=${AUTH0_CLIENT_AUDIENCE} \
     SENTRY_DSN=${SENTRY_DSN}
 RUN yarn build
 
+FROM --platform=$BUILDPLATFORM node:24-bookworm-slim AS production-dependencies
+
+WORKDIR /app
+
+RUN corepack enable && corepack prepare yarn@1.22.22 --activate
+
+COPY package.json yarn.lock ./
+RUN yarn install --frozen-lockfile --production=true --ignore-platform --network-timeout 600000 \
+    && yarn cache clean
+
 FROM node:24-bookworm-slim AS development
 
 WORKDIR /app
@@ -75,7 +85,7 @@ COPY .sequelizerc sequelize.config.json ./
 COPY server/migrations ./server/migrations
 COPY shared/data/wsf-core.json ./shared/data/wsf-core.json
 COPY scripts/smoke-ssr-artifacts.mjs ./scripts/smoke-ssr-artifacts.mjs
-RUN yarn install --frozen-lockfile --production=true --network-timeout 600000 && yarn cache clean
+COPY --from=production-dependencies /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 RUN node dist/server/artifact-smoke.js && node scripts/smoke-ssr-artifacts.mjs
 

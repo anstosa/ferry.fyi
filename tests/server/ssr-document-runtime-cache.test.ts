@@ -379,6 +379,56 @@ describe("SSR document runtime cache integration", () => {
     expect(load).toHaveBeenCalledTimes(2);
   });
 
+  it("returns but does not cache a document with transient source outcomes", async () => {
+    const today = match(new URL("https://ferry.fyi/today"));
+    if (!today) {
+      throw new Error("Today route must be present");
+    }
+    const warming = {
+      ...todaySnapshot(),
+      sources: {
+        ...todaySnapshot().sources,
+        schedule: {
+          observedAt: "2026-07-28T12:00:00.000Z",
+          outcome: "transiently-unavailable" as const,
+          reason: "warming" as const,
+          sourceUpdatedAt: null,
+        },
+      },
+    };
+    const settled = todaySnapshot();
+    const load = vi
+      .fn<() => Promise<PublicSsrLoadResult>>()
+      .mockResolvedValueOnce({
+        classification: "snapshot",
+        match: today,
+        snapshot: warming,
+      })
+      .mockResolvedValue({
+        classification: "snapshot",
+        match: today,
+        snapshot: settled,
+      });
+    const runtime = createRuntime({ load });
+
+    await expect(runtime.run("https://ferry.fyi/today")).resolves.toMatchObject(
+      { status: 200 }
+    );
+    await expect(runtime.run("https://ferry.fyi/today")).resolves.toMatchObject(
+      { status: 200 }
+    );
+    await expect(runtime.run("https://ferry.fyi/today")).resolves.toMatchObject(
+      { status: 200 }
+    );
+
+    expect(load).toHaveBeenCalledTimes(2);
+    const cacheOutcomes = runtime.telemetry.mock.calls
+      .map(([event]) => event)
+      .filter(({ event }) => event === "ssr_document")
+      .map(({ cacheOutcome }) => cacheOutcome);
+    expect(cacheOutcomes).toEqual(["miss", "miss", "hit"]);
+  });
+
   it("coalesces cache-disabled documents without persistence and marks every event", async () => {
     let resolve!: (value: PublicSsrLoadResult) => void;
     const pending = new Promise<PublicSsrLoadResult>(

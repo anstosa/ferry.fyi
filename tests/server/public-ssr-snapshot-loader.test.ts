@@ -567,6 +567,50 @@ describe("public SSR snapshot loader", () => {
     );
   });
 
+  it("omits an incomplete next-day forecast instead of failing the schedule document", async () => {
+    const publicServices = services();
+    publicServices.getSchedule
+      .mockResolvedValueOnce(schedule("2026-07-28"))
+      .mockResolvedValueOnce({
+        ...schedule("2026-07-29"),
+        schedule: {
+          ...schedule("2026-07-29").schedule,
+          slots: [
+            {
+              allowsPassengers: true,
+              allowsVehicles: true,
+              estimate: {
+                driveUpCapacity: null,
+                reservableCapacity: null,
+              },
+              hasPassed: false,
+              mateId: "14",
+              time: 1_785_000_000,
+              vessel: {
+                abbreviation: "SUQ",
+                id: "75",
+                name: "Suquamish",
+                speed: 0,
+                tallVehicleCapacity: 0,
+                vehicleCapacity: 0,
+                vesselWatchUrl: "",
+              },
+              wuid: "slot-1",
+            },
+          ],
+        },
+      } as never);
+
+    const snapshot = await snapshotFor(
+      "https://ferry.fyi/clinton",
+      publicServices
+    );
+
+    expect(snapshot.sources.nextSchedule).not.toHaveProperty(
+      "value.schedule.slots.0.estimate"
+    );
+  });
+
   it("loads canonical schedule details with a valid date query", async () => {
     const publicServices = services();
     const snapshot = await snapshotFor(
@@ -808,28 +852,34 @@ describe("public SSR snapshot loader", () => {
     expect(publicServices.getVessels).not.toHaveBeenCalled();
   });
 
-  it("fails a warming map schedule as a transient vessels source without widening to the whole fleet", async () => {
+  it("publishes a warming map schedule as a transient vessels source without widening to the whole fleet", async () => {
     const publicServices = services();
     publicServices.getSchedule.mockResolvedValue({ status: "warming" });
-    const { loader } = loaderFor(publicServices);
-    await expect(
-      loader(input("https://ferry.fyi/clinton/map"))
-    ).rejects.toMatchObject({
-      code: "public-ssr-transient-failure",
-      source: "vessels",
+    const snapshot = await snapshotFor(
+      "https://ferry.fyi/clinton/map",
+      publicServices
+    );
+    expect(snapshot.sources.vessels).toEqual({
+      observedAt,
+      outcome: "transiently-unavailable",
+      reason: "warming",
+      sourceUpdatedAt: null,
     });
     expect(publicServices.getVessels).not.toHaveBeenCalled();
   });
 
-  it("fails a refreshing map schedule as a transient vessels source without widening to the whole fleet", async () => {
+  it("publishes a refreshing map schedule as a transient vessels source without widening to the whole fleet", async () => {
     const publicServices = services();
     publicServices.getSchedule.mockResolvedValue({ status: "refreshing" });
-    const { loader } = loaderFor(publicServices);
-    await expect(
-      loader(input("https://ferry.fyi/clinton/map"))
-    ).rejects.toMatchObject({
-      code: "public-ssr-transient-failure",
-      source: "vessels",
+    const snapshot = await snapshotFor(
+      "https://ferry.fyi/clinton/map",
+      publicServices
+    );
+    expect(snapshot.sources.vessels).toEqual({
+      observedAt,
+      outcome: "transiently-unavailable",
+      reason: "refreshing",
+      sourceUpdatedAt: null,
     });
     expect(publicServices.getVessels).not.toHaveBeenCalled();
   });
@@ -1095,24 +1145,36 @@ describe("public SSR snapshot loader", () => {
     }
   );
 
-  it("maps an unavailable current schedule to the schedule transient failure", async () => {
+  it("publishes an unavailable current schedule as a transient source", async () => {
     const publicServices = services();
     publicServices.getSchedule.mockResolvedValue({ status: "warming" });
-    const { loader } = loaderFor(publicServices);
-    await expect(
-      loader(input("https://ferry.fyi/clinton"))
-    ).rejects.toMatchObject({ source: "schedule" });
+    const snapshot = await snapshotFor(
+      "https://ferry.fyi/clinton",
+      publicServices
+    );
+    expect(snapshot.sources.schedule).toEqual({
+      observedAt,
+      outcome: "transiently-unavailable",
+      reason: "warming",
+      sourceUpdatedAt: null,
+    });
   });
 
-  it("maps an unavailable next schedule to the nextSchedule transient failure", async () => {
+  it("publishes an unavailable next schedule as a transient source", async () => {
     const publicServices = services();
     publicServices.getSchedule
       .mockResolvedValueOnce(schedule("2026-07-28"))
       .mockResolvedValueOnce({ status: "warming" });
-    const { loader } = loaderFor(publicServices);
-    await expect(
-      loader(input("https://ferry.fyi/clinton"))
-    ).rejects.toMatchObject({ source: "nextSchedule" });
+    const snapshot = await snapshotFor(
+      "https://ferry.fyi/clinton",
+      publicServices
+    );
+    expect(snapshot.sources.nextSchedule).toEqual({
+      observedAt,
+      outcome: "transiently-unavailable",
+      reason: "warming",
+      sourceUpdatedAt: null,
+    });
   });
 
   it("maps an invalid content payload to the notices transient failure without a partial snapshot", async () => {
