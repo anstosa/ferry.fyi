@@ -66,13 +66,13 @@ describe("public query services", () => {
   });
 
   it("keeps SSR schedule misses cache-only", async () => {
-    scheduleModel.generateKey.mockReturnValue("1-2-2026-06-21");
+    scheduleModel.generateKey.mockReturnValue("1-2-2099-06-21");
     scheduleModel.getByIndex.mockReturnValue(null);
 
     await expect(
       getPublicSsrSchedule({
         arrivingId: "2",
-        date: "2026-06-21",
+        date: "2099-06-21",
         departingId: "1",
       })
     ).resolves.toEqual({ status: "warming" });
@@ -106,44 +106,47 @@ describe("public query services", () => {
       },
     ]);
 
-    const result = await getPublicSchedule({
-      arrivingId: "2",
-      date: "2020-01-01",
-      departingId: "1",
-    });
+    for (const lookup of [getPublicSsrSchedule, getPublicSchedule]) {
+      const result = await lookup({
+        arrivingId: "2",
+        date: "2020-01-01",
+        departingId: "1",
+      });
 
-    expect(result).toMatchObject({
-      schedule: {
-        slots: [
-          {
-            hasPassed: true,
-            vessel: { name: "Unknown vessel", vehicleCapacity: 100 },
-          },
-        ],
-      },
-      status: "available",
-    });
-    if (result.status !== "available") {
-      throw new Error("Expected historical schedule to be available");
+      expect(result).toMatchObject({
+        schedule: {
+          slots: [
+            {
+              hasPassed: true,
+              vessel: { name: "Unknown vessel", vehicleCapacity: 100 },
+            },
+          ],
+        },
+        status: "available",
+      });
+      if (result.status !== "available") {
+        throw new Error("Expected historical schedule to be available");
+      }
+      expect(result.schedule.slots[0].crossing).toEqual({
+        arrivalId: "2",
+        capacityReportUpdatedAt: 1577890000,
+        departureDelta: null,
+        departureId: "1",
+        departureTime: 1577890800,
+        driveUpCapacity: 42,
+        hasDriveUp: true,
+        hasReservations: false,
+        isCancelled: false,
+        reservableCapacity: 0,
+        totalCapacity: 100,
+        vesselId: null,
+        vesselName: null,
+      });
+      expect(result.schedule.slots[0].crossing).not.toHaveProperty("id");
+      expect(result.schedule.slots[0].crossing).not.toHaveProperty("createdAt");
+      expect(result.schedule.slots[0].crossing).not.toHaveProperty("updatedAt");
     }
-    expect(result.schedule.slots[0].crossing).toEqual({
-      arrivalId: "2",
-      capacityReportUpdatedAt: 1577890000,
-      departureDelta: null,
-      departureId: "1",
-      departureTime: 1577890800,
-      driveUpCapacity: 42,
-      hasDriveUp: true,
-      hasReservations: false,
-      isCancelled: false,
-      reservableCapacity: 0,
-      totalCapacity: 100,
-      vesselId: null,
-      vesselName: null,
-    });
-    expect(result.schedule.slots[0].crossing).not.toHaveProperty("id");
-    expect(result.schedule.slots[0].crossing).not.toHaveProperty("createdAt");
-    expect(result.schedule.slots[0].crossing).not.toHaveProperty("updatedAt");
+    expect(wsfSchedules.updateSchedules).not.toHaveBeenCalled();
   });
 
   it("serializes public terminal, route, and vessel DTOs", async () => {

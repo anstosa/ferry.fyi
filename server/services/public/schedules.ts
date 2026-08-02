@@ -212,26 +212,41 @@ export const getCachedPublicSchedule = ({
 };
 
 /**
- * Reads the in-memory schedule cache for SSR without starting provider work.
- * Browser hydration may use getPublicSchedule to refresh a miss, but document
- * requests must stay side-effect free so crawler traffic cannot fan out into
- * concurrent WSDOT refreshes.
+ * Reads the in-memory schedule cache or persisted historical crossings for
+ * SSR without starting provider work. Browser hydration may use
+ * getPublicSchedule to refresh a current miss, but document requests stay
+ * side-effect free so crawler traffic cannot fan out into WSDOT refreshes.
  */
-export const getPublicSsrSchedule = (input: {
+export const getPublicSsrSchedule = async (input: {
   arrivingId: string;
   date: string;
   departingId: string;
 }): Promise<PublicScheduleResult> => {
   const cachedResult = getCachedPublicSchedule(input);
   if (cachedResult.status === "available") {
-    return Promise.resolve(cachedResult);
+    return cachedResult;
+  }
+  if (isHistoricalDate(input.date)) {
+    const historicalSchedule = await getHistoricalSchedule(
+      input.departingId,
+      input.arrivingId,
+      input.date
+    );
+    if (historicalSchedule) {
+      return {
+        schedule: historicalSchedule,
+        status: "available",
+        timestamp: timestamp(),
+      };
+    }
+    return getWsfStatus().coreReady
+      ? { status: "not-found" }
+      : { status: "warming" };
   }
   const refreshKey = `${input.date}:${input.departingId}:${input.arrivingId}`;
-  return Promise.resolve(
-    backgroundScheduleRefreshes.has(refreshKey)
-      ? { status: "refreshing" }
-      : { status: "warming" }
-  );
+  return backgroundScheduleRefreshes.has(refreshKey)
+    ? { status: "refreshing" }
+    : { status: "warming" };
 };
 
 export const getPublicSchedule = async ({
