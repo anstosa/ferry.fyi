@@ -90,3 +90,9 @@ export const requireScheduleResponse = (
   }
   return response;
 };
+
+/** Epoch seconds when Ferry FYI last checked this schedule response. */
+export const getScheduleCheckedAt = (
+  response: GetScheduleResponse
+): number | null =>
+  Number.isFinite(response.timestamp) ? response.timestamp : null;

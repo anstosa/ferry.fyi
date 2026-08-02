@@ -35,6 +35,7 @@ import { useAppRenderContext } from "~/lib/renderContext";
 import type { RouteView } from "~/lib/routeViews";
 import {
   getSchedule,
+  getScheduleCheckedAt,
   refreshSchedule,
   requireScheduleResponse,
 } from "~/lib/schedule";
@@ -235,14 +236,6 @@ interface Props {
   view: View;
 }
 
-const withScheduleCheckTime = (
-  schedule: ScheduleClass,
-  checkedAt: number | null | undefined
-): ScheduleClass =>
-  typeof checkedAt === "number" && Number.isFinite(checkedAt)
-    ? { ...schedule, sourceUpdatedAt: checkedAt }
-    : schedule;
-
 export const Route = ({
   onTerminalChange,
   onMateChange,
@@ -302,18 +295,22 @@ export const Route = ({
   const activeScheduleIdentityRef = useRef(scheduleIdentity);
   activeScheduleIdentityRef.current = scheduleIdentity;
   const [scheduleState, setScheduleState] = useState<{
+    checkedAt: number | null;
     identity: string;
     isLive: boolean;
     schedule: ScheduleClass | null;
   }>(() => ({
+    checkedAt: seededSchedule ? getScheduleCheckedAt(seededSchedule) : null,
     identity: scheduleIdentity,
     isLive: false,
-    schedule: seededSchedule
-      ? withScheduleCheckTime(seededSchedule.schedule, seededSchedule.timestamp)
-      : null,
+    schedule: seededSchedule?.schedule ?? null,
   }));
   const schedule =
     scheduleState.identity === scheduleIdentity ? scheduleState.schedule : null;
+  const scheduleCheckedAt =
+    scheduleState.identity === scheduleIdentity
+      ? scheduleState.checkedAt
+      : null;
   const scheduleIsLive =
     scheduleState.identity === scheduleIdentity && scheduleState.isLive;
   const [scheduleErrorState, setScheduleErrorState] = useState<{
@@ -546,6 +543,7 @@ export const Route = ({
     // mismatched schedule guard
     if (!isScheduleForRequest) {
       setScheduleState({
+        checkedAt: null,
         identity: requestIdentity,
         isLive: false,
         schedule: null,
@@ -554,16 +552,19 @@ export const Route = ({
     setUpdatingIdentity(requestIdentity);
     setScheduleErrorState({ error: null, identity: requestIdentity });
     try {
-      const { schedule: refreshedSchedule, timestamp } =
-        requireScheduleResponse(await getSchedule(terminal, mate, date));
+      const response = requireScheduleResponse(
+        await getSchedule(terminal, mate, date)
+      );
+      const { schedule, timestamp } = response;
       // stale response guard
       if (requestIdentity !== activeScheduleIdentityRef.current) {
         return;
       }
       setScheduleState({
+        checkedAt: getScheduleCheckedAt(response),
         identity: requestIdentity,
         isLive: true,
-        schedule: withScheduleCheckTime(refreshedSchedule, timestamp),
+        schedule,
       });
       // Some cached legacy responses lack a timestamp. Keep the current clock
       // rather than crashing the route when that happens.
@@ -595,15 +596,18 @@ export const Route = ({
     setUpdatingIdentity(requestIdentity);
     setScheduleErrorState({ error: null, identity: requestIdentity });
     try {
-      const { schedule: refreshedSchedule, timestamp } =
-        requireScheduleResponse(await refreshSchedule(terminal, mate, date));
+      const response = requireScheduleResponse(
+        await refreshSchedule(terminal, mate, date)
+      );
+      const { schedule: refreshedSchedule } = response;
       if (requestIdentity !== activeScheduleIdentityRef.current) {
         return;
       }
       setScheduleState({
+        checkedAt: getScheduleCheckedAt(response),
         identity: requestIdentity,
         isLive: true,
-        schedule: withScheduleCheckTime(refreshedSchedule, timestamp),
+        schedule: refreshedSchedule,
       });
     } catch (error) {
       if (requestIdentity !== activeScheduleIdentityRef.current) {
@@ -727,6 +731,7 @@ export const Route = ({
           </Header>
         )}
         <Schedule
+          checkedAt={scheduleCheckedAt}
           isRefreshing={isUpdating}
           loadError={scheduleError}
           onReload={updateSchedule}

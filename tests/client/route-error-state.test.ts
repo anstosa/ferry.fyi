@@ -15,13 +15,16 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const getTerminal = vi.hoisted(() => vi.fn());
 const getSchedule = vi.hoisted(() => vi.fn());
+const refreshSchedule = vi.hoisted(() => vi.fn());
 vi.mock("~/lib/terminals", () => ({
   getSlug: (id: string) => id,
   getTerminal,
 }));
 vi.mock("~/lib/schedule", () => ({
   getSchedule,
-  refreshSchedule: vi.fn(),
+  getScheduleCheckedAt: ({ timestamp }: { timestamp?: number }) =>
+    Number.isFinite(timestamp) ? timestamp : null,
+  refreshSchedule,
   requireScheduleResponse: (value: unknown) => value,
 }));
 vi.mock("~/lib/favoriteRoutes", () => ({
@@ -58,8 +61,12 @@ vi.mock("~/views/Header", () => ({
 }));
 vi.mock("../../client/views/Schedule", () => ({
   Schedule: ({
+    checkedAt,
+    onRefresh,
     schedule,
   }: {
+    checkedAt?: number | null;
+    onRefresh?: () => Promise<void>;
     schedule: {
       date: string;
       sourceUpdatedAt?: number | null;
@@ -67,13 +74,25 @@ vi.mock("../../client/views/Schedule", () => ({
     } | null;
   }) =>
     React.createElement(
-      "p",
+      React.Fragment,
       undefined,
-      schedule
-        ? `Schedule ${schedule.terminalId} ${schedule.date} checked ${
-            schedule.sourceUpdatedAt ?? "unknown"
-          }`
-        : "Empty schedule"
+      React.createElement(
+        "p",
+        {
+          "data-checked-at": checkedAt ?? "",
+          "data-source-updated-at": schedule?.sourceUpdatedAt ?? "",
+        },
+        schedule
+          ? `Schedule ${schedule.terminalId} ${schedule.date}`
+          : "Empty schedule"
+      ),
+      onRefresh
+        ? React.createElement(
+            "button",
+            { onClick: () => onRefresh().catch(() => undefined) },
+            "Check schedule"
+          )
+        : null
     ),
 }));
 vi.mock("../../client/views/Map", () => ({
@@ -197,7 +216,15 @@ const renderNavigableRoute = async (controller: NavigationController) => {
   return container;
 };
 
-const renderSeededMapRoute = async (seededVessels: unknown[]) => {
+const renderSeededRoute = async ({
+  scheduleTimestamp = 0,
+  seededVessels = [],
+  view,
+}: {
+  scheduleTimestamp?: number;
+  seededVessels?: unknown[];
+  view: "map" | "schedule";
+}) => {
   const date = getLocalScheduleDate();
   const terminal = {
     id: "terminal-a",
@@ -217,23 +244,24 @@ const renderSeededMapRoute = async (seededVessels: unknown[]) => {
     sourceUpdatedAt: "2026-07-30T12:00:00.000Z",
     value,
   });
+  const pathSuffix = view === "map" ? "/map" : "";
   const snapshot = {
     canonicalHost: "ferry.fyi",
-    canonicalPath: "/terminal-a/terminal-b/map",
+    canonicalPath: `/terminal-a/terminal-b${pathSuffix}`,
     hostProfile: "ferry.fyi",
     indexability: "indexable",
     metadata: {
-      canonicalPath: "/terminal-a/terminal-b/map",
-      description: "Map",
+      canonicalPath: `/terminal-a/terminal-b${pathSuffix}`,
+      description: view === "map" ? "Map" : "Schedule",
       robots: "index,follow",
-      title: "Map",
+      title: view === "map" ? "Map" : "Schedule",
     },
     normalizedUrl: {
-      path: "/terminal-a/terminal-b/map",
+      path: `/terminal-a/terminal-b${pathSuffix}`,
       query: {},
     },
     renderedAt: "2026-07-30T12:00:00.000Z",
-    routeId: "mate-map",
+    routeId: view === "map" ? "mate-map" : "mate-schedule",
     routeParams: {
       mateSlug: "terminal-b",
       terminalSlug: "terminal-a",
@@ -245,9 +273,10 @@ const renderSeededMapRoute = async (seededVessels: unknown[]) => {
           date,
           mateId: mate.id,
           slots: seededVessels.map((vessel) => ({ vessel })),
+          sourceUpdatedAt: 1,
           terminalId: terminal.id,
         },
-        timestamp: 0,
+        timestamp: scheduleTimestamp,
       }),
       vessels: source(seededVessels),
     },
@@ -263,13 +292,13 @@ const renderSeededMapRoute = async (seededVessels: unknown[]) => {
         { snapshot },
         React.createElement(
           MemoryRouter,
-          { initialEntries: ["/terminal-a/terminal-b/map"] },
+          { initialEntries: [`/terminal-a/terminal-b${pathSuffix}`] },
           React.createElement(
             Routes,
             undefined,
             React.createElement(RouterRoute, {
-              path: "/:terminalSlug/:mateSlug/map",
-              element: React.createElement(Route, { view: "map" }),
+              path: `/:terminalSlug/:mateSlug${pathSuffix}`,
+              element: React.createElement(Route, { view }),
             })
           )
         )
@@ -281,8 +310,24 @@ const renderSeededMapRoute = async (seededVessels: unknown[]) => {
   return { container, date };
 };
 
+const renderSeededMapRoute = (seededVessels: unknown[]) =>
+  renderSeededRoute({ seededVessels, view: "map" });
+
 describe("Route route-load errors", () => {
-  it("uses the response timestamp as schedule check freshness", async () => {
+  it("uses the seeded response check time during hydration", async () => {
+    getSchedule.mockReturnValue(deferred().promise);
+
+    const { container } = await renderSeededRoute({
+      scheduleTimestamp: 2_000_000_000,
+      view: "schedule",
+    });
+    const scheduleView = container.querySelector("[data-checked-at]");
+
+    expect(scheduleView?.getAttribute("data-checked-at")).toBe("2000000000");
+    expect(scheduleView?.getAttribute("data-source-updated-at")).toBe("1");
+  });
+
+  it("tracks GET and manual POST check times without changing source freshness", async () => {
     const terminal = {
       id: "terminal-a",
       mates: [
@@ -298,25 +343,38 @@ describe("Route route-load errors", () => {
       name: "B",
       routes: {},
     };
+    const schedule = {
+      date: getLocalScheduleDate(),
+      mateId: mate.id,
+      slots: [],
+      sourceUpdatedAt: 1,
+      terminalId: terminal.id,
+    };
     getTerminal.mockImplementation((id: string) =>
       Promise.resolve(id === terminal.id ? terminal : mate)
     );
-    getSchedule.mockResolvedValue({
-      schedule: {
-        date: getLocalScheduleDate(),
-        mateId: mate.id,
-        slots: [],
-        sourceUpdatedAt: 1,
-        terminalId: terminal.id,
-      },
-      timestamp: 2_000_000_000,
+    getSchedule.mockResolvedValue({ schedule, timestamp: 2_000_000_000 });
+    refreshSchedule.mockResolvedValue({ schedule, timestamp: 2_000_000_001 });
+
+    const container = await renderNavigableRoute({
+      navigate: () => undefined,
+    });
+    const scheduleView = container.querySelector("[data-checked-at]");
+
+    expect(scheduleView?.getAttribute("data-checked-at")).toBe("2000000000");
+    expect(scheduleView?.getAttribute("data-source-updated-at")).toBe("1");
+
+    const checkButton = [...container.querySelectorAll("button")].find(
+      (button) => button.textContent === "Check schedule"
+    );
+    await act(async () => {
+      checkButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await Promise.resolve();
+      await Promise.resolve();
     });
 
-    const controller: NavigationController = { navigate: () => undefined };
-    const container = await renderNavigableRoute(controller);
-
-    expect(container.textContent).toContain("checked 2000000000");
-    expect(container.textContent).not.toContain("checked 1");
+    expect(scheduleView?.getAttribute("data-checked-at")).toBe("2000000001");
+    expect(scheduleView?.getAttribute("data-source-updated-at")).toBe("1");
   });
 
   it("retains seeded assignment A when the exact-route live schedule fails", async () => {

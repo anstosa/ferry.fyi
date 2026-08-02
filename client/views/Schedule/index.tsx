@@ -35,6 +35,7 @@ import {
 } from "./smallBoat";
 
 interface Props {
+  checkedAt?: number | null;
   isRefreshing?: boolean;
   loadError?: Error | null;
   onReload?: () => void;
@@ -55,6 +56,7 @@ const getLinkedSailingTime = (input?: string): number | null => {
 };
 
 export const Schedule = ({
+  checkedAt = null,
   isRefreshing = false,
   loadError,
   onReload,
@@ -276,14 +278,14 @@ export const Schedule = ({
             Could not refresh the schedule. Showing saved data.
           </Toast>
         ) : null}
-        {onRefresh && schedule?.sourceUpdatedAt ? (
+        {onRefresh && schedule && Number.isFinite(checkedAt) ? (
           <div className="sticky bottom-1 z-10 mt-2 flex justify-center pb-1">
             <FreshnessPill
               isRefreshing={isRefreshing}
               onClick={() => {
                 onRefresh().catch(console.error);
               }}
-              sourceUpdatedAt={schedule.sourceUpdatedAt}
+              sourceUpdatedAt={checkedAt}
               verb="Checked"
             />
           </div>
