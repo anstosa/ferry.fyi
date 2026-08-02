@@ -66,7 +66,6 @@ describe("Schedule load states", () => {
     expect(freshnessPill.mock.calls.at(-1)?.[0]).toEqual(
       expect.objectContaining({
         sourceUpdatedAt: 2_000_000_000,
-        verb: "Checked",
       })
     );
   });

@@ -33,6 +33,15 @@ class TestNetworkOnly {
 }
 
 describe("installed PWA SSR safety", () => {
+  it("keeps server-rendered content visible on the first animation frame", async () => {
+    const source = await readRepoFile("client/app.scss");
+    const entranceAnimation = source.match(
+      /@keyframes app-content-enter\s*{([\s\S]*?)\n}/
+    );
+
+    expect(entranceAnimation?.[1]).not.toContain("opacity: 0");
+  });
+
   it("initializes Firebase messaging only in supported service workers", async () => {
     const source = await readRepoFile("client/service-worker.ts");
 

@@ -24,7 +24,7 @@ html {
 
 @keyframes app-content-enter {
   from {
-    opacity: 0;
+    // Keep SSR content paintable if a background tab pauses this animation.
     transform: translateY(6px);
   }
 

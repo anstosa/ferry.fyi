@@ -35,7 +35,7 @@ describe("CameraFrameFreshness", () => {
     document.body.innerHTML = "";
   });
 
-  it("shows the source image update time", () => {
+  it("shows the latest successful camera check time", () => {
     const { container } = renderFreshness(
       React.createElement(CameraFrameFreshness, {
         frameStatus: {
@@ -51,7 +51,7 @@ describe("CameraFrameFreshness", () => {
       })
     );
 
-    expect(container.textContent).toBe("Updated 2 mins ago");
+    expect(container.textContent).toBe("Updated just now");
   });
 
   it("shows the check time when the source does not provide an update time", () => {
@@ -70,7 +70,26 @@ describe("CameraFrameFreshness", () => {
       })
     );
 
-    expect(container.textContent).toBe("Checked 1 min ago");
+    expect(container.textContent).toBe("Updated 1 min ago");
+  });
+
+  it("does not expose an implausibly old source timestamp", () => {
+    const { container } = renderFreshness(
+      React.createElement(CameraFrameFreshness, {
+        frameStatus: {
+          cameraId: "9035",
+          checkedAt: 1_785_685_969,
+          error: null,
+          frameToken: '"stale"',
+          frameUpdatedAt: 1_063_043_729,
+          imageUrl: "https://example.com/stale-camera.jpg",
+          isStale: true,
+        },
+        now: 1_785_685_969,
+      })
+    );
+
+    expect(container.textContent).toBe("Updated just now");
   });
 
   it("shows a loading status before camera metadata arrives", () => {
@@ -98,7 +117,7 @@ describe("CameraFrameFreshness", () => {
       })
     );
 
-    expect(container.textContent).toBe("Updated 2 mins ago");
+    expect(container.textContent).toBe("Updated just now");
     expect(container.querySelector("[role=status]")).toBeNull();
     expect(container.querySelector("[aria-live]")).toBeNull();
   });
