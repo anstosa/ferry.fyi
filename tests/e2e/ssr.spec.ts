@@ -163,6 +163,64 @@ test.beforeEach(async () => {
   await fixture("/__fixture__/reset", {});
 });
 
+test("keeps SSR content visible at the start of its entrance animation", async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const style = document.createElement("style");
+    style.textContent =
+      "main { animation-duration: 3600s !important; animation-play-state: paused !important; }";
+    const installStyle = () => {
+      if (!document.head) {
+        return false;
+      }
+      document.head.appendChild(style);
+      return true;
+    };
+    if (!installStyle()) {
+      const observer = new MutationObserver(() => {
+        if (installStyle()) {
+          observer.disconnect();
+        }
+      });
+      observer.observe(document, { childList: true, subtree: true });
+    }
+  });
+  const response = await page.goto("https://ferry.fyi:4177/", {
+    waitUntil: "domcontentloaded",
+  });
+  expect(response?.status()).toBe(200);
+  const main = page.locator("#root main").first();
+  await expect(main).toContainText("Ferry FYI");
+
+  const initialStyle = await main.evaluate((element) => {
+    const entranceAnimation = element
+      .getAnimations()
+      .find(
+        (animation) =>
+          animation instanceof CSSAnimation &&
+          animation.animationName === "app-content-enter"
+      );
+    if (!entranceAnimation) {
+      throw new Error("App entrance animation is not available");
+    }
+    const style = getComputedStyle(element);
+    return {
+      display: style.display,
+      opacity: style.opacity,
+      transform: style.transform,
+      visibility: style.visibility,
+    };
+  });
+
+  expect(initialStyle).toMatchObject({
+    display: "block",
+    opacity: "1",
+    visibility: "visible",
+  });
+  expect(initialStyle.transform).not.toBe("none");
+});
+
 for (const [label, path] of [
   ["home", "/"],
   ["today", "/today"],

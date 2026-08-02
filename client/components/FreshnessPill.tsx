@@ -32,9 +32,7 @@ interface FreshnessPillStatusProps
   onClick?: never;
 }
 
-export type FreshnessPillProps =
-  | FreshnessPillButtonProps
-  | FreshnessPillStatusProps;
+type FreshnessPillProps = FreshnessPillButtonProps | FreshnessPillStatusProps;
 
 const baseClassName =
   "inline-flex w-fit items-center rounded-full border px-2 py-1 text-2xs font-bold " +
