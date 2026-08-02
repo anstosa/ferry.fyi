@@ -10,6 +10,7 @@ import {
 } from "../../client/entry-client";
 import { createServerApp } from "../../client/entry-server";
 import { installClientRenderDiagnosticSink } from "../../client/lib/clientRenderTelemetry";
+import { captureReportedException } from "../../client/lib/errorReporting";
 import { initializeSentry } from "../../client/lib/sentry";
 import { renderPublicSsrDocument } from "../../server/ssr/document";
 import { PUBLIC_SSR_SNAPSHOT_VERSION } from "../../shared/contracts/ssr";
@@ -327,33 +328,33 @@ describe("client SSR document bootstrap", () => {
       { componentStack: "\n at App" }
     );
     const captureMessage = vi.fn();
+    const captureException = vi.fn();
+    const bufferedError = new Error("buffered boundary failure");
+    captureReportedException(bufferedError);
     let clientReady = false;
-    const capacitorInit = vi.fn(() => {
+    const webInit = vi.fn(() => {
       queueMicrotask(() => {
         clientReady = true;
       });
     });
-    const reactInit = vi.fn();
     const cleanup = await initializeSentry({
       dsn: "https://public@example.invalid/1",
       native: false,
-      load: () =>
+      loadWeb: () =>
         Promise.resolve({
           browserTracingIntegration: () => ({ name: "browser-tracing" }),
+          captureException,
           captureMessage,
           getClient: () => (clientReady ? {} : undefined),
-          init: capacitorInit,
+          init: webInit,
         }),
-      loadReact: () => Promise.resolve({ init: reactInit }),
     });
 
-    expect(capacitorInit).toHaveBeenCalledWith(
+    expect(webInit).toHaveBeenCalledWith(
       expect.objectContaining({
         dsn: "https://public@example.invalid/1",
-        enableNative: false,
-        enableNativeCrashHandling: false,
-      }),
-      reactInit
+        release: expect.stringMatching(/^web@/),
+      })
     );
     await vi.waitFor(() => {
       expect(captureMessage).toHaveBeenCalledWith("Client render diagnostic", {
@@ -364,6 +365,7 @@ describe("client SSR document bootstrap", () => {
     expect(JSON.stringify(captureMessage.mock.calls)).not.toContain(
       "private-canary"
     );
+    expect(captureException).toHaveBeenCalledWith(bufferedError);
     cleanup();
   });
 
@@ -374,14 +376,15 @@ describe("client SSR document bootstrap", () => {
     await initializeSentry({
       dsn: "https://public@example.invalid/1",
       native: true,
-      load: () =>
+      loadNative: () =>
         Promise.resolve({
           browserTracingIntegration: () => ({ name: "browser-tracing" }),
+          captureException: vi.fn(),
           captureMessage: vi.fn(),
           getClient: () => ({}),
           init: capacitorInit,
         }),
-      loadReact: () => Promise.resolve({ init: reactInit }),
+      loadNativeReact: () => Promise.resolve({ init: reactInit }),
     });
 
     expect(capacitorInit).toHaveBeenCalledWith(

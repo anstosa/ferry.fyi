@@ -189,12 +189,14 @@ export const bootstrapClientApp = ({
   createRootFactory = createRoot,
   document = window.document,
   hydrateRootFactory = hydrateRoot,
+  onCompatibleCommit,
   reporter = defaultDiagnosticReporter,
 }: {
   createApp?: (input: InitialAppInput) => React.ReactNode;
   createRootFactory?: RootFactory;
   document?: Document;
   hydrateRootFactory?: HydrateFactory;
+  onCompatibleCommit?: () => void;
   reporter?: ClientRenderDiagnosticReporter;
 } = {}): "create" | "hydrate" => {
   const root = document.querySelector("#root");
@@ -242,6 +244,7 @@ export const bootstrapClientApp = ({
     const hydratedApp = createApp({
       documentMode: mode,
       onCompatibleCommit: () => {
+        onCompatibleCommit?.();
         if (hydrationFailed) {
           return;
         }
@@ -260,7 +263,7 @@ export const bootstrapClientApp = ({
   }
   const app = createApp({
     documentMode: mode,
-    onCompatibleCommit: undefined,
+    onCompatibleCommit,
     runtime: "browser",
     snapshot: seed?.snapshot,
   });
@@ -270,11 +273,13 @@ export const bootstrapClientApp = ({
 
 export const startClientAppWhenReady = (
   document: Document = window.document
-): void => {
-  const start = () => bootstrapClientApp({ document });
-  if (document.readyState !== "loading") {
-    start();
-    return;
-  }
-  document.addEventListener("DOMContentLoaded", start, { once: true });
-};
+): Promise<void> =>
+  new Promise((resolve) => {
+    const start = () =>
+      bootstrapClientApp({ document, onCompatibleCommit: resolve });
+    if (document.readyState !== "loading") {
+      start();
+      return;
+    }
+    document.addEventListener("DOMContentLoaded", start, { once: true });
+  });

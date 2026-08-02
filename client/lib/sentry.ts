@@ -1,15 +1,33 @@
 import { Capacitor } from "@capacitor/core";
 
 import { installClientRenderDiagnosticSink } from "~/lib/clientRenderTelemetry";
+import { installExceptionReporter } from "~/lib/errorReporting";
+
+type DiagnosticClient = {
+  captureException: (typeof import("@sentry/react"))["captureException"];
+  captureMessage: (typeof import("@sentry/react"))["captureMessage"];
+  getClient: (typeof import("@sentry/react"))["getClient"];
+};
 
 type SentryCapacitorClient = Pick<
   typeof import("@sentry/capacitor"),
-  "browserTracingIntegration" | "captureMessage" | "init"
-> & {
-  getClient(): unknown;
-};
+  | "browserTracingIntegration"
+  | "captureException"
+  | "captureMessage"
+  | "getClient"
+  | "init"
+>;
 
-type SentryReactClient = Pick<typeof import("@sentry/react"), "init">;
+type SentryWebClient = Pick<
+  typeof import("~/lib/sentry-web"),
+  | "browserTracingIntegration"
+  | "captureException"
+  | "captureMessage"
+  | "getClient"
+  | "init"
+>;
+
+type SentryReactInit = Pick<typeof import("@sentry/react"), "init">;
 
 const SENTRY_CLIENT_READY_POLL_MS = 25;
 const SENTRY_CLIENT_READY_ATTEMPTS = 100;
@@ -28,37 +46,7 @@ const waitForSentryClient = async (
   return false;
 };
 
-export const initializeSentry = async ({
-  dsn = process.env.SENTRY_DSN,
-  native = Capacitor.isNativePlatform(),
-  load = () => import("@sentry/capacitor"),
-  loadReact = () => import("@sentry/react"),
-}: {
-  dsn?: string;
-  native?: boolean;
-  load?: () => Promise<SentryCapacitorClient>;
-  loadReact?: () => Promise<SentryReactClient>;
-} = {}): Promise<() => void> => {
-  if (!dsn) {
-    return () => undefined;
-  }
-  const [Sentry, SentryReact] = await Promise.all([load(), loadReact()]);
-  Sentry.init(
-    {
-      attachThreads: native,
-      dsn,
-      enableAppHangTracking: native,
-      enableNative: native,
-      enableNativeCrashHandling: native,
-      environment: process.env.NODE_ENV,
-      ...(!native && {
-        release: `web@${process.env.HEROKU_RELEASE_VERSION || "DEVELOPMENT"}`,
-      }),
-      tracesSampleRate: 0.25,
-      integrations: [Sentry.browserTracingIntegration()],
-    },
-    SentryReact.init
-  );
+const installDiagnosticSink = (Sentry: DiagnosticClient): (() => void) => {
   const clientReady = waitForSentryClient(Sentry.getClient).catch(() => false);
   return installClientRenderDiagnosticSink(({ category }) => {
     clientReady.then((ready) => {
@@ -71,6 +59,66 @@ export const initializeSentry = async ({
       });
     });
   });
+};
+
+const installSentrySinks = (Sentry: DiagnosticClient): (() => void) => {
+  const removeDiagnosticSink = installDiagnosticSink(Sentry);
+  const removeExceptionReporter = installExceptionReporter(
+    Sentry.captureException
+  );
+  return () => {
+    removeDiagnosticSink();
+    removeExceptionReporter();
+  };
+};
+
+export const initializeSentry = async ({
+  dsn = process.env.SENTRY_DSN,
+  loadNative = () => import("@sentry/capacitor"),
+  loadNativeReact = () => import("@sentry/react"),
+  loadWeb = () => import("~/lib/sentry-web"),
+  native = Capacitor.isNativePlatform(),
+}: {
+  dsn?: string;
+  loadNative?: () => Promise<SentryCapacitorClient>;
+  loadNativeReact?: () => Promise<SentryReactInit>;
+  loadWeb?: () => Promise<SentryWebClient>;
+  native?: boolean;
+} = {}): Promise<() => void> => {
+  if (!dsn) {
+    return installExceptionReporter(() => undefined);
+  }
+  const commonOptions = {
+    dsn,
+    environment: process.env.NODE_ENV,
+    tracesSampleRate: 0.25,
+  };
+  if (!native) {
+    const Sentry = await loadWeb();
+    Sentry.init({
+      ...commonOptions,
+      integrations: [Sentry.browserTracingIntegration()],
+      release: `web@${process.env.HEROKU_RELEASE_VERSION || "DEVELOPMENT"}`,
+    });
+    return installSentrySinks(Sentry);
+  }
+
+  const [Sentry, SentryReact] = await Promise.all([
+    loadNative(),
+    loadNativeReact(),
+  ]);
+  Sentry.init(
+    {
+      ...commonOptions,
+      attachThreads: true,
+      enableAppHangTracking: true,
+      enableNative: true,
+      enableNativeCrashHandling: true,
+      integrations: [Sentry.browserTracingIntegration()],
+    },
+    SentryReact.init
+  );
+  return installSentrySinks(Sentry);
 };
 
 let sentryStartup: Promise<() => void> | undefined;

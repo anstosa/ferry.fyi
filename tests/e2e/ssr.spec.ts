@@ -163,29 +163,9 @@ test.beforeEach(async () => {
   await fixture("/__fixture__/reset", {});
 });
 
-test("keeps SSR content visible at the start of its entrance animation", async ({
+test("keeps initial SSR content visible without an entrance animation", async ({
   page,
 }) => {
-  await page.addInitScript(() => {
-    const style = document.createElement("style");
-    style.textContent =
-      "main { animation-duration: 3600s !important; animation-play-state: paused !important; }";
-    const installStyle = () => {
-      if (!document.head) {
-        return false;
-      }
-      document.head.appendChild(style);
-      return true;
-    };
-    if (!installStyle()) {
-      const observer = new MutationObserver(() => {
-        if (installStyle()) {
-          observer.disconnect();
-        }
-      });
-      observer.observe(document, { childList: true, subtree: true });
-    }
-  });
   const response = await page.goto("https://ferry.fyi:4177/", {
     waitUntil: "domcontentloaded",
   });
@@ -201,12 +181,10 @@ test("keeps SSR content visible at the start of its entrance animation", async (
           animation instanceof CSSAnimation &&
           animation.animationName === "app-content-enter"
       );
-    if (!entranceAnimation) {
-      throw new Error("App entrance animation is not available");
-    }
     const style = getComputedStyle(element);
     return {
       display: style.display,
+      hasEntranceAnimation: Boolean(entranceAnimation),
       opacity: style.opacity,
       transform: style.transform,
       visibility: style.visibility,
@@ -215,10 +193,56 @@ test("keeps SSR content visible at the start of its entrance animation", async (
 
   expect(initialStyle).toMatchObject({
     display: "block",
+    hasEntranceAnimation: false,
     opacity: "1",
+    transform: "none",
     visibility: "visible",
   });
-  expect(initialStyle.transform).not.toBe("none");
+});
+
+test("replays an early in-root button click exactly once after startup", async ({
+  page,
+}) => {
+  await page.route(/\/assets\/entry-client\.[^/]+\.js$/, async (route) => {
+    await route.fulfill({
+      body: "export const clientReady = new Promise((resolve) => setTimeout(resolve, 50));",
+      contentType: "text/javascript",
+    });
+  });
+  await page.goto("https://ferry.fyi:4177/", {
+    waitUntil: "load",
+  });
+  await page.evaluate(() => {
+    const button = document.createElement("button");
+    button.id = "early-action-probe";
+    button.textContent = "Early action";
+    button.addEventListener("click", () => {
+      const browserWindow = window as Window & { earlyActionCount?: number };
+      browserWindow.earlyActionCount =
+        (browserWindow.earlyActionCount ?? 0) + 1;
+    });
+    document.querySelector("#root")?.append(button);
+  });
+
+  const probe = page.locator("#early-action-probe");
+  await probe.dispatchEvent("pointerdown");
+  await probe.dispatchEvent("click");
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as Window & { earlyActionCount?: number }).earlyActionCount ??
+          0
+      )
+    )
+    .toBe(1);
+  await page.waitForTimeout(250);
+  expect(
+    await page.evaluate(
+      () =>
+        (window as Window & { earlyActionCount?: number }).earlyActionCount ?? 0
+    )
+  ).toBe(1);
 });
 
 for (const [label, path] of [
@@ -249,9 +273,11 @@ for (const [label, path] of [
     page,
   }) => {
     await context.addInitScript(() => {
-      navigator.serviceWorker?.getRegistrations().then((registrations) =>
-        registrations.forEach((registration) => registration.unregister())
-      );
+      navigator.serviceWorker
+        ?.getRegistrations()
+        .then((registrations) =>
+          registrations.forEach((registration) => registration.unregister())
+        );
     });
     const apiRequests: string[] = [];
     page.on("request", (request) => {
@@ -265,8 +291,17 @@ for (const [label, path] of [
       waitUntil: "domcontentloaded",
     });
     expect(response?.status(), `${label} document`).toBe(200);
-    await expect(page.locator("#root"), `${label} root`).toHaveCount(1);
-    await page.waitForTimeout(750);
+    const root = page.locator("#root");
+    await expect(root, `${label} root`).toHaveCount(1);
+    if (
+      (await root.getAttribute("data-ferry-fyi-render-mode")) === "snapshot"
+    ) {
+      await expect(root, `${label} hydration`).toHaveAttribute(
+        "data-ferry-fyi-snapshot-consumed",
+        "true"
+      );
+    }
+    await page.waitForLoadState("networkidle");
 
     const counts = new Map<string, number>();
     apiRequests.forEach((request) =>
@@ -487,7 +522,7 @@ test("hydrates without replacing the root and refreshes anonymous data", async (
   await page.waitForLoadState("networkidle");
   expect(pageErrors).toEqual([]);
   await expect(
-    page.getByText("Seattle refreshed", { exact: true })
+    page.getByText("Seattle refreshed", { exact: true }).first()
   ).toBeVisible();
   expect(
     await page.evaluate(

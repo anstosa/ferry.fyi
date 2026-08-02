@@ -1,7 +1,7 @@
 import React, { type ReactElement } from "react";
 import { Link } from "react-router-dom";
 
-import logo from "~/static/images/icon_monochrome-256.png";
+import logo from "~/static/images/icon_monochrome-256.png?inline";
 import TicketIcon from "~/static/images/icons/solid/ticket.svg";
 import TrophyIcon from "~/static/images/icons/solid/trophy.svg";
 

@@ -108,6 +108,9 @@ const getContentType = (filePath: string): string => {
   if (extension === ".html") {
     return "text/html";
   }
+  if (extension === ".woff2") {
+    return "font/woff2";
+  }
   return "application/octet-stream";
 };
 

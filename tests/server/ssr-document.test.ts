@@ -248,7 +248,7 @@ describe("SSR document protocol", () => {
     expect(snapshotScript?.parentElement).toBe(document.body);
     expect(JSON.parse(snapshotScript?.textContent ?? "")).toEqual(snapshot);
     expect(
-      document.querySelector('script[type="module"][src="/entry-client.tsx"]')
+      document.querySelector('script[type="module"][src="/entry-bootstrap.ts"]')
     ).not.toBeNull();
   }, 30_000);
 

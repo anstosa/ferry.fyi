@@ -61,6 +61,34 @@ const collectEntryAssets = (entryKey, collected = new Set()) => {
   return collected;
 };
 const offlineAssetClosure = [...collectEntryAssets("offline.html")];
+const collectStaticManifestEntries = (entryKey, collected = new Set()) => {
+  if (collected.has(entryKey)) {
+    return collected;
+  }
+  const entry = viteManifest[entryKey];
+  assert.ok(entry, `manifest import is missing: ${entryKey}`);
+  collected.add(entryKey);
+  for (const importedEntry of entry.imports ?? []) {
+    collectStaticManifestEntries(importedEntry, collected);
+  }
+  return collected;
+};
+const browserAppClosure = collectStaticManifestEntries("browserApp.tsx");
+const sentryDynamicEntries = viteManifest["lib/sentry.ts"]?.dynamicImports ?? [];
+for (const sentryEntry of sentryDynamicEntries) {
+  assert.ok(
+    !browserAppClosure.has(sentryEntry),
+    `browser app static closure must exclude deferred Sentry entry: ${sentryEntry}`
+  );
+}
+assert.ok(
+  ![...browserAppClosure].some((entryKey) =>
+    /sentry|spotlight/i.test(
+      `${entryKey} ${viteManifest[entryKey]?.file ?? ""}`
+    )
+  ),
+  "browser app static closure must exclude Sentry chunks"
+);
 const [applicationStylesheet] = indexManifestEntry.css ?? [];
 
 assert.ok(applicationStylesheet, "application stylesheet is required");
@@ -82,6 +110,22 @@ assert.ok(!applicationStylesheetTag.includes("onload="));
 assert.ok(!indexHtml.includes("ferry-fyi-ssr-style-gate"));
 assert.ok(!indexHtml.includes("data-ferry-fyi-styles-ready"));
 assert.ok(!indexHtml.includes('href="/app.scss"'));
+
+const applicationCss = await readClientFile(applicationStylesheet);
+const fontAssets = [
+  ...applicationCss.matchAll(
+    /url\(\/(assets\/ferry-sans-flex-[^)]+\.woff2)\)/g
+  ),
+].map((match) => match[1]);
+assert.equal(fontAssets.length, 2, "application CSS must reference both fonts");
+for (const fontAsset of fontAssets) {
+  const font = await readFile(path.join(clientDirectory, fontAsset));
+  assert.equal(
+    font.subarray(0, 4).toString("ascii"),
+    "wOF2",
+    `${fontAsset} must be a valid WOFF2 container`
+  );
+}
 
 assert.deepEqual(
   [...precacheUrls].sort(),

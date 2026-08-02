@@ -7,3 +7,7 @@ declare module "*.svg" {
 declare module "*.png" {
   export default string;
 }
+
+declare module "*.png?inline" {
+  export default string;
+}

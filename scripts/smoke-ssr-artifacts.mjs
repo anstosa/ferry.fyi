@@ -170,7 +170,7 @@ try {
     homeRendered.mode !== "snapshot" ||
     !homeRendered.html.includes('aria-label="Quick links"') ||
     !homeRendered.html.includes(">Ferry FYI</h1>") ||
-    !/<img\b(?=[^>]*\balt="")(?=[^>]*\bsrc="\/assets\/icon_monochrome-256\.[^\"]+\.png")[^>]*>/.test(
+    !/<img\b(?=[^>]*\balt="")(?=[^>]*\bsrc="data:image\/png;base64,[^"]+")[^>]*>/.test(
       homeRendered.html
     )
   ) {
