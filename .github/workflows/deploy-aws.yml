@@ -170,11 +170,35 @@ jobs:
           container-name: web
           image: ${{ steps.image.outputs.image }}
 
+      - name: Render migration task definition
+        id: render-migration
+        env:
+          WEB_TASK_DEFINITION: ${{ steps.render-web.outputs.task-definition }}
+        run: |
+          # fail on shell mistakes
+          set -euo pipefail
+          # run migrations without the long-lived tunnel sidecar or web health check
+          MIGRATION_TASK_DEFINITION="${RUNNER_TEMP}/migration-task-definition.json"
+          jq '
+            .containerDefinitions |= [
+              .[]
+              | select(.name == "web")
+              | del(.healthCheck)
+            ]
+          ' "${WEB_TASK_DEFINITION}" > "${MIGRATION_TASK_DEFINITION}"
+          # require exactly one standalone web container
+          jq -e '
+            (.containerDefinitions | length) == 1 and
+            .containerDefinitions[0].name == "web" and
+            (.containerDefinitions[0] | has("healthCheck") | not)
+          ' "${MIGRATION_TASK_DEFINITION}" > /dev/null
+          echo "task-definition=${MIGRATION_TASK_DEFINITION}" >> "${GITHUB_OUTPUT}"
+
       - name: Run database migrations
         id: migrate
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
-          task-definition: ${{ steps.render-web.outputs.task-definition }}
+          task-definition: ${{ steps.render-migration.outputs.task-definition }}
           cluster: ${{ env.ECS_CLUSTER }}
           run-task: true
           wait-for-task-stopped: true
