@@ -31,6 +31,8 @@ export interface SsrDocumentCacheRequest<T> {
   readonly load: () => Promise<T>;
   /** Prevents a completed fill from being persisted after its result is known. */
   readonly mayCommit?: (document: T) => boolean;
+  /** Rejects a persisted document that is no longer fresh enough to reuse. */
+  readonly mayReuse?: (document: T) => boolean;
 }
 
 export interface SsrDocumentCacheResult<T> {
@@ -130,7 +132,10 @@ export class SsrDocumentCache<T> {
     if (request.cacheEnabled) {
       const cached = cache.get(key);
       if (cached !== undefined) {
-        return { document: cached, outcome: "hit" };
+        if (request.mayReuse?.(cached) ?? true) {
+          return { document: cached, outcome: "hit" };
+        }
+        cache.delete(key);
       }
     }
     const existing = this.#inFlight.get(key);

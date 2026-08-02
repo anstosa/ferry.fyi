@@ -429,6 +429,34 @@ describe("SSR document runtime cache integration", () => {
     expect(cacheOutcomes).toEqual(["miss", "miss", "hit"]);
   });
 
+  it("expires dynamic documents after one minute", async () => {
+    let now = new Date("2026-07-28T12:00:00.000Z");
+    const today = match(new URL("https://ferry.fyi/today"));
+    if (!today) {
+      throw new Error("Today route must be present");
+    }
+    const load = vi.fn(async () => ({
+      classification: "snapshot" as const,
+      match: today,
+      snapshot: todaySnapshot(),
+    }));
+    const runtime = createRuntime({ clock: () => now, load });
+
+    await runtime.run("https://ferry.fyi/today");
+    now = new Date("2026-07-28T12:00:59.999Z");
+    await runtime.run("https://ferry.fyi/today");
+    now = new Date("2026-07-28T12:01:00.000Z");
+    await runtime.run("https://ferry.fyi/today");
+
+    expect(load).toHaveBeenCalledTimes(2);
+    expect(
+      runtime.telemetry.mock.calls
+        .map(([event]) => event)
+        .filter(({ event }) => event === "ssr_document")
+        .map(({ cacheOutcome }) => cacheOutcome)
+    ).toEqual(["miss", "hit", "miss"]);
+  });
+
   it("coalesces cache-disabled documents without persistence and marks every event", async () => {
     let resolve!: (value: PublicSsrLoadResult) => void;
     const pending = new Promise<PublicSsrLoadResult>(

@@ -105,6 +105,31 @@ describe("SSR document cache", () => {
     ).resolves.toMatchObject({ document: "retry", outcome: "miss" });
   });
 
+  it("reloads a persisted document when its reuse policy expires", async () => {
+    const cache = new SsrDocumentCache<string>();
+    let reusable = true;
+    const first = await cache.getOrCreate({
+      ...request(dynamicKey(), async () => "first"),
+      mayReuse: () => reusable,
+    });
+    expect(first).toMatchObject({ document: "first", outcome: "miss" });
+    await expect(
+      cache.getOrCreate({
+        ...request(dynamicKey(), async () => "wrong"),
+        mayReuse: () => reusable,
+      })
+    ).resolves.toMatchObject({ document: "first", outcome: "hit" });
+
+    reusable = false;
+    await expect(
+      cache.getOrCreate({
+        ...request(dynamicKey(), async () => "fresh"),
+        mayReuse: () => reusable,
+      })
+    ).resolves.toMatchObject({ document: "fresh", outcome: "miss" });
+    expect(cache.sizes.dynamic).toBe(1);
+  });
+
   it("bypasses successful persistence while still coalescing cache-disabled work", async () => {
     const cache = new SsrDocumentCache<string>();
     await cache.getOrCreate(request(staticKey(), async () => "old-success"));

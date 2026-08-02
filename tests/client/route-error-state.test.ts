@@ -60,13 +60,19 @@ vi.mock("../../client/views/Schedule", () => ({
   Schedule: ({
     schedule,
   }: {
-    schedule: { date: string; terminalId: string } | null;
+    schedule: {
+      date: string;
+      sourceUpdatedAt?: number | null;
+      terminalId: string;
+    } | null;
   }) =>
     React.createElement(
       "p",
       undefined,
       schedule
-        ? `Schedule ${schedule.terminalId} ${schedule.date}`
+        ? `Schedule ${schedule.terminalId} ${schedule.date} checked ${
+            schedule.sourceUpdatedAt ?? "unknown"
+          }`
         : "Empty schedule"
     ),
 }));
@@ -276,6 +282,43 @@ const renderSeededMapRoute = async (seededVessels: unknown[]) => {
 };
 
 describe("Route route-load errors", () => {
+  it("uses the response timestamp as schedule check freshness", async () => {
+    const terminal = {
+      id: "terminal-a",
+      mates: [
+        { id: "terminal-b", name: "B" },
+        { id: "terminal-c", name: "C" },
+      ],
+      name: "A",
+      routes: {},
+    };
+    const mate = {
+      id: "terminal-b",
+      mates: [{ id: "terminal-a", name: "A" }],
+      name: "B",
+      routes: {},
+    };
+    getTerminal.mockImplementation((id: string) =>
+      Promise.resolve(id === terminal.id ? terminal : mate)
+    );
+    getSchedule.mockResolvedValue({
+      schedule: {
+        date: getLocalScheduleDate(),
+        mateId: mate.id,
+        slots: [],
+        sourceUpdatedAt: 1,
+        terminalId: terminal.id,
+      },
+      timestamp: 2_000_000_000,
+    });
+
+    const controller: NavigationController = { navigate: () => undefined };
+    const container = await renderNavigableRoute(controller);
+
+    expect(container.textContent).toContain("checked 2000000000");
+    expect(container.textContent).not.toContain("checked 1");
+  });
+
   it("retains seeded assignment A when the exact-route live schedule fails", async () => {
     const liveSchedule = deferred<never>();
     getSchedule.mockReturnValue(liveSchedule.promise);

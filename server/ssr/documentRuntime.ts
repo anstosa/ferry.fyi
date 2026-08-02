@@ -91,6 +91,8 @@ export type SsrRuntimeFill = {
   result: PublicSsrRenderDocumentResult;
 };
 
+const DYNAMIC_DOCUMENT_CACHE_TTL_MS = 60_000;
+
 export interface SsrDocumentResponse {
   readonly html: string;
   readonly headers: Readonly<Record<string, string>>;
@@ -453,6 +455,10 @@ export const createSsrDocumentRuntime = (
         document.cacheable &&
         (match.route.kind === "static" ||
           dependencies.clock() < getNextSsrSailingDayBoundary(now)),
+      mayReuse: (document) =>
+        match.route.kind === "static" ||
+        dependencies.clock().getTime() - document.completedAt <
+          DYNAMIC_DOCUMENT_CACHE_TTL_MS,
     });
     if (!cached.document) {
       emit(

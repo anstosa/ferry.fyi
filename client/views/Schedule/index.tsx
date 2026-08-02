@@ -284,6 +284,7 @@ export const Schedule = ({
                 onRefresh().catch(console.error);
               }}
               sourceUpdatedAt={schedule.sourceUpdatedAt}
+              verb="Checked"
             />
           </div>
         ) : null}

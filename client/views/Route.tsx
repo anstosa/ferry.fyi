@@ -235,6 +235,14 @@ interface Props {
   view: View;
 }
 
+const withScheduleCheckTime = (
+  schedule: ScheduleClass,
+  checkedAt: number | null | undefined
+): ScheduleClass =>
+  typeof checkedAt === "number" && Number.isFinite(checkedAt)
+    ? { ...schedule, sourceUpdatedAt: checkedAt }
+    : schedule;
+
 export const Route = ({
   onTerminalChange,
   onMateChange,
@@ -300,7 +308,9 @@ export const Route = ({
   }>(() => ({
     identity: scheduleIdentity,
     isLive: false,
-    schedule: seededSchedule?.schedule ?? null,
+    schedule: seededSchedule
+      ? withScheduleCheckTime(seededSchedule.schedule, seededSchedule.timestamp)
+      : null,
   }));
   const schedule =
     scheduleState.identity === scheduleIdentity ? scheduleState.schedule : null;
@@ -544,9 +554,8 @@ export const Route = ({
     setUpdatingIdentity(requestIdentity);
     setScheduleErrorState({ error: null, identity: requestIdentity });
     try {
-      const { schedule, timestamp } = requireScheduleResponse(
-        await getSchedule(terminal, mate, date)
-      );
+      const { schedule: refreshedSchedule, timestamp } =
+        requireScheduleResponse(await getSchedule(terminal, mate, date));
       // stale response guard
       if (requestIdentity !== activeScheduleIdentityRef.current) {
         return;
@@ -554,7 +563,7 @@ export const Route = ({
       setScheduleState({
         identity: requestIdentity,
         isLive: true,
-        schedule,
+        schedule: withScheduleCheckTime(refreshedSchedule, timestamp),
       });
       // Some cached legacy responses lack a timestamp. Keep the current clock
       // rather than crashing the route when that happens.
@@ -594,7 +603,7 @@ export const Route = ({
       setScheduleState({
         identity: requestIdentity,
         isLive: true,
-        schedule: { ...refreshedSchedule, sourceUpdatedAt: timestamp },
+        schedule: withScheduleCheckTime(refreshedSchedule, timestamp),
       });
     } catch (error) {
       if (requestIdentity !== activeScheduleIdentityRef.current) {
