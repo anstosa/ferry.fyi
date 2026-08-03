@@ -2,7 +2,7 @@
 
 import React, { act } from "react";
 import { createRoot, Root } from "react-dom/client";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const app = vi.hoisted(() => ({ getInfo: vi.fn() }));
 const capacitor = vi.hoisted(() => ({
@@ -23,6 +23,10 @@ import { AppRenderProvider } from "../../client/lib/renderContext";
 
 let root: Root | undefined;
 
+beforeEach(() => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+});
+
 afterEach(() => {
   act(() => root?.unmount());
   root = undefined;
@@ -30,6 +34,8 @@ afterEach(() => {
   document.head.innerHTML = "";
   vi.clearAllMocks();
   vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
+  vi.useRealTimers();
 });
 
 const renderVersionInfo = async (
@@ -117,10 +123,10 @@ describe("AppVersionInfo", () => {
     const container = await renderVersionInfo("android");
 
     expect(container.textContent).toBe(
-      "Android 262012119 · OTA web-build-hash"
+      "Android 3.0 (262012119) · OTA web-build-hash"
     );
     expect(
-      container.firstElementChild?.classList.contains("whitespace-nowrap")
+      container.querySelector("button")?.classList.contains("whitespace-nowrap")
     ).toBe(true);
   });
 
@@ -130,6 +136,32 @@ describe("AppVersionInfo", () => {
 
     const container = await renderVersionInfo("ios");
 
-    expect(container.textContent).toBe("iOS 263 · OTA Built-in");
+    expect(container.textContent).toBe("iOS 3.0 (263) · OTA Built-in");
+  });
+
+  it("copies the complete version string and briefly confirms success", async () => {
+    vi.useFakeTimers();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("navigator", {
+      ...navigator,
+      clipboard: { writeText },
+    });
+    app.getInfo.mockResolvedValue({ build: "262150814", version: "3.3" });
+    updater.current.mockResolvedValue({ bundle: { id: "builtin" } });
+    const container = await renderVersionInfo("android");
+    const button = container.querySelector("button");
+
+    await act(async () => button?.click());
+
+    expect(writeText).toHaveBeenCalledWith(
+      "Android 3.3 (262150814) · OTA Built-in"
+    );
+    expect(container.textContent).toContain("Copied to clipboard!");
+    expect(button?.classList.contains("bg-green-100")).toBe(true);
+
+    await act(async () => vi.advanceTimersByTime(2_000));
+
+    expect(container.textContent).not.toContain("Copied to clipboard!");
+    expect(button?.classList.contains("bg-green-100")).toBe(false);
   });
 });

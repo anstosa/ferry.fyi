@@ -10,7 +10,7 @@ Ferry information changes quickly. Treat times, vehicle space, camera images, fo
 - [Forecasting](https://ferry.fyi/forecasting): Explains Ferry FYI's capacity, delay, weather, and tide-condition forecasts.
 - [Data sources and API guide](https://ferry.fyi/data-sources): Explains data provenance, source freshness, public read-only APIs, citation guidance, and forecast limitations.
 - [How Many Boats?](https://ferry.fyi/today): Shows the Clinton-to-Mukilteo operating context on Ferry FYI. This Ferry FYI URL is intentionally noindex; the indexable canonical profile is [howmanyboats.today](https://howmanyboats.today/).
-- [About Ferry FYI](https://ferry.fyi/about): App background, data credits, privacy, and version information.
+- [About Ferry FYI](https://ferry.fyi/about): App background, data credits, privacy, and tap-to-copy web, native-build, and OTA version information.
 - [Tickets](https://ferry.fyi/tickets): Store eligible ticket details, refresh their status, and scan supported ticket barcodes. Ticket data is sensitive and requires the ticket holder's authorization.
 - [Privacy policy](https://ferry.fyi/privacy): Explains how Ferry FYI handles user information.
 - [Support and feedback](https://ferry.fyi/feedback): Report a problem or request a Ferry FYI feature.
