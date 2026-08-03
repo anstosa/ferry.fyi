@@ -3,7 +3,11 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { AppRenderContextValue } from "../../client/lib/renderContext";
-import { PUBLIC_SSR_SNAPSHOT_VERSION } from "../../shared/contracts/ssr";
+import type { Camera } from "../../shared/contracts/cameras";
+import {
+  type PublicSsrSnapshot,
+  PUBLIC_SSR_SNAPSHOT_VERSION,
+} from "../../shared/contracts/ssr";
 import {
   createStaticPublicSsrTerminalResolver,
   matchPublicSsrRoute,
@@ -16,7 +20,7 @@ type HelmetContext = Record<string, unknown> & {
 
 const render = async (
   requestUrl: string,
-  snapshot?: import("../../shared/contracts/ssr").PublicSsrSnapshot
+  snapshot?: PublicSsrSnapshot
 ): Promise<{ helmet: string; markup: string }> => {
   const { AppRoot } = await import("../../client/AppRoot");
   const context: AppRenderContextValue = {
@@ -405,6 +409,8 @@ describe("AppRoot server rendering", () => {
   it("renders camera freshness in the server-rendered image footer", async () => {
     const { snapshot, source, terminal } = createPublicSsrFixtures();
     const camera = {
+      carCapacity: null,
+      carsToBoat: null,
       id: "camera-1",
       image: {
         height: 245,
@@ -414,10 +420,12 @@ describe("AppRoot server rendering", () => {
       isActive: true,
       location: { latitude: 47.9, longitude: -122.3 },
       owner: null,
+      orderFromTerminal: 1,
+      terminalId: terminal.id,
       title: "Holding lane",
-    };
+    } satisfies Camera;
     const renderedAt = Date.parse(snapshot.renderedAt) / 1000;
-    const cameraSnapshot = {
+    const cameraSnapshot: PublicSsrSnapshot = {
       ...snapshot,
       canonicalPath: "/clinton/mukilteo/cameras",
       metadata: {
@@ -450,7 +458,7 @@ describe("AppRoot server rendering", () => {
           terminal: { ...terminal, cameras: [camera] },
         }),
       },
-    } as import("../../shared/contracts/ssr").PublicSsrSnapshot;
+    };
 
     const { markup } = await render(
       "https://ferry.fyi/clinton/mukilteo/cameras",
@@ -459,7 +467,6 @@ describe("AppRoot server rendering", () => {
 
     expect(markup).toContain("Updated just now");
     expect(markup).toContain("WSDOT");
-    expect(markup).toContain('data-camera-image-footer="true"');
   });
 
   it("renders the public home route from its anonymous seed", async () => {

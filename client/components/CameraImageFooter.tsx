@@ -17,10 +17,7 @@ export const CameraImageFooter = ({
   ownerName,
   passive = false,
 }: CameraImageFooterProps): ReactElement => (
-  <div
-    className="absolute inset-x-0 bottom-0 z-10 flex justify-between gap-2 border border-black bg-white p-[3px] text-xs font-bold text-[#0e1e2a]"
-    data-camera-image-footer="true"
-  >
+  <div className="absolute inset-x-0 bottom-0 z-10 flex justify-between gap-2 border border-black bg-white p-[3px] text-xs font-bold text-[#0e1e2a]">
     <span className="min-w-0 truncate" title={ownerName ?? "WSDOT"}>
       {ownerName ?? "WSDOT"}
     </span>
