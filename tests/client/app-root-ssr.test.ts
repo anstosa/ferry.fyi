@@ -402,6 +402,66 @@ describe("AppRoot server rendering", () => {
     }
   }, 15_000);
 
+  it("renders camera freshness in the server-rendered image footer", async () => {
+    const { snapshot, source, terminal } = createPublicSsrFixtures();
+    const camera = {
+      id: "camera-1",
+      image: {
+        height: 245,
+        url: "https://example.com/camera.jpg",
+        width: 400,
+      },
+      isActive: true,
+      location: { latitude: 47.9, longitude: -122.3 },
+      owner: null,
+      title: "Holding lane",
+    };
+    const renderedAt = Date.parse(snapshot.renderedAt) / 1000;
+    const cameraSnapshot = {
+      ...snapshot,
+      canonicalPath: "/clinton/mukilteo/cameras",
+      metadata: {
+        ...snapshot.metadata,
+        canonicalPath: "/clinton/mukilteo/cameras",
+      },
+      normalizedUrl: {
+        path: "/clinton/mukilteo/cameras",
+        query: {},
+      },
+      routeId: "mate-cameras",
+      sources: {
+        ...snapshot.sources,
+        cameraFrames: source({
+          frames: {
+            "camera-1": {
+              cameraId: "camera-1",
+              checkedAt: renderedAt,
+              frameToken: "frame-1",
+              frameUpdatedAt: renderedAt - 60,
+              imageUrl: camera.image.url,
+              isStale: false,
+              status: "available",
+            },
+          },
+          sourceUpdatedAt: renderedAt - 60,
+        }),
+        route: source({
+          mate: snapshot.sources.route?.value?.mate,
+          terminal: { ...terminal, cameras: [camera] },
+        }),
+      },
+    } as import("../../shared/contracts/ssr").PublicSsrSnapshot;
+
+    const { markup } = await render(
+      "https://ferry.fyi/clinton/mukilteo/cameras",
+      cameraSnapshot
+    );
+
+    expect(markup).toContain("Updated just now");
+    expect(markup).toContain("WSDOT");
+    expect(markup).toContain('data-camera-image-footer="true"');
+  });
+
   it("renders the public home route from its anonymous seed", async () => {
     const { mate, snapshot, source, terminal } = createPublicSsrFixtures();
     const homeSnapshot = {

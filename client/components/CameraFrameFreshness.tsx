@@ -4,7 +4,7 @@ import type { CameraFrameStatus } from "shared/contracts/cameraFrames";
 import { FreshnessPill } from "./FreshnessPill";
 
 interface CameraFrameFreshnessProps {
-  frameStatus?: CameraFrameStatus;
+  frameStatus?: Pick<CameraFrameStatus, "checkedAt">;
   now?: number;
   /** Avoid live-region announcements for automatically-polled camera rows. */
   passive?: boolean;

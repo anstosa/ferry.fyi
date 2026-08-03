@@ -14,7 +14,7 @@ import type { Camera } from "shared/contracts/cameras";
 import type { Terminal } from "shared/contracts/terminals";
 import { isNull } from "shared/lib/identity";
 
-import { CameraFrameFreshness } from "~/components/CameraFrameFreshness";
+import { CameraImageFooter } from "~/components/CameraImageFooter";
 import { Skeleton, SkeletonGroup } from "~/components/Skeleton";
 import { getCameraFrames } from "~/lib/cameras";
 import { locationToUrl } from "~/lib/maps";
@@ -355,12 +355,11 @@ const CameraList = ({
               anyway.
             </div>
           )}
-          <div className="absolute inset-x-0 bottom-0 z-10 flex justify-between gap-2 border border-black bg-white p-[3px] text-xs font-bold text-[#0e1e2a]">
-            <span className="min-w-0 truncate" title={owner?.name ?? "WSDOT"}>
-              {owner?.name ?? "WSDOT"}
-            </span>
-            <CameraFrameFreshness frameStatus={frameStatus} passive />
-          </div>
+          <CameraImageFooter
+            frameStatus={frameStatus}
+            ownerName={owner?.name}
+            passive
+          />
         </div>
         <span className="relative mt-3 mb-2 flex flex-col gap-1 px-1 text-lg font-bold">
           <div

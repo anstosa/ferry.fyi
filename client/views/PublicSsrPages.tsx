@@ -9,6 +9,7 @@ import type {
 import { getSeoMetadata, type SeoMetadata } from "shared/lib/seo";
 import { getStaticPublicSsrTerminalSlug } from "shared/lib/ssrRouteMatch";
 
+import { CameraImageFooter } from "~/components/CameraImageFooter";
 import { HomeHero } from "~/components/HomeHero";
 import { SeoHelmet } from "~/components/SeoHelmet";
 import { SsrPage } from "~/components/SsrPage";
@@ -438,10 +439,12 @@ export const PublicSchedule = (): ReactElement => {
 };
 
 export const PublicCameras = (): ReactElement => {
+  const snapshot = usePublicSsrSnapshot();
   const route = usePublicSsrSource("route");
   const frames = usePublicSsrSource("cameraFrames");
   const framesOutcome = usePublicSsrSourceOutcome("cameraFrames");
   const cameras = route?.terminal.cameras ?? [];
+  const renderedAt = snapshot ? Date.parse(snapshot.renderedAt) / 1000 : NaN;
   return (
     <SsrPage>
       <SnapshotSeoHelmet fallback={getSeoMetadata("/")} />
@@ -475,10 +478,19 @@ export const PublicCameras = (): ReactElement => {
             return (
               <li key={camera.id}>
                 <h2>{camera.title}</h2>
-                <img
-                  alt={camera.title}
-                  src={frame?.imageUrl ?? camera.image.url}
-                />
+                <div className="relative w-full max-w-[480px] overflow-hidden">
+                  <img
+                    alt={camera.title}
+                    className="block w-full max-w-[480px]"
+                    src={frame?.imageUrl ?? camera.image.url}
+                  />
+                  <CameraImageFooter
+                    frameStatus={frame}
+                    now={renderedAt}
+                    ownerName={camera.owner?.name}
+                    passive
+                  />
+                </div>
                 <p>{frameStatus}</p>
               </li>
             );
