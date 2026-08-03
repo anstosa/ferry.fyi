@@ -7,10 +7,10 @@ import type {
   PublicSsrSourceKey,
 } from "shared/contracts/ssr";
 import { getSeoMetadata, type SeoMetadata } from "shared/lib/seo";
-import { getStaticPublicSsrTerminalSlug } from "shared/lib/ssrRouteMatch";
 
 import { CameraImageFooter } from "~/components/CameraImageFooter";
 import { HomeHero } from "~/components/HomeHero";
+import { HomeTerminalDirectory } from "~/components/HomeTerminalDirectory";
 import { SeoHelmet } from "~/components/SeoHelmet";
 import { SsrPage } from "~/components/SsrPage";
 import { useAppRenderContext } from "~/lib/renderContext";
@@ -597,7 +597,7 @@ export const PublicHome = (): ReactElement => {
     <main className="relative min-h-screen min-h-[100dvh] overflow-y-scroll scrolling-touch bg-ferry-gradient text-white">
       <SnapshotSeoHelmet fallback={getSeoMetadata("/")} />
       <HomeHero leaderboardsEnabled={features?.leaderboardsEnabled ?? false} />
-      <div className="px-6">
+      <div className="sr-only">
         <SnapshotFreshness
           primarySource="terminals"
           sources={[
@@ -606,24 +606,11 @@ export const PublicHome = (): ReactElement => {
             { key: "notices", label: "Service notices" },
           ]}
         />
+      </div>
+      <div className="px-6">
         <PublicNotices />
       </div>
-      <nav aria-label="Ferry terminals">
-        <ul>
-          {terminals.map((terminal) => {
-            const slug = getStaticPublicSsrTerminalSlug(terminal.id);
-            return (
-              <li key={terminal.id}>
-                {slug ? (
-                  <Link to={`/${slug}`}>{terminal.name}</Link>
-                ) : (
-                  terminal.name
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      </nav>
+      <HomeTerminalDirectory terminals={[...terminals]} />
     </main>
   );
 };

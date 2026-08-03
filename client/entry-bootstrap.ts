@@ -21,7 +21,7 @@ type DeferredStartupOptions = {
   window?: BrowserWindow;
 };
 
-const CLIENT_STARTUP_DELAY_MS = 5_000;
+const CLIENT_STARTUP_RETRY_DELAY_MS = 5_000;
 const CLIENT_STARTUP_EVENTS = [
   "focusin",
   "keydown",
@@ -31,19 +31,11 @@ const CLIENT_STARTUP_EVENTS = [
 
 const afterInitialPaint = (
   callback: () => void,
-  document: Document,
   window: BrowserWindow
 ): void => {
-  const afterLoad = () => {
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(callback);
-    });
-  };
-  if (document.readyState === "complete") {
-    afterLoad();
-    return;
-  }
-  window.addEventListener("load", afterLoad, { once: true });
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(callback);
+  });
 };
 
 const afterStartupSettles = (
@@ -92,7 +84,7 @@ const scheduleClientStartup = (
         console.error("Ferry FYI client startup failed", error);
         if (!recoveryScheduled) {
           recoveryScheduled = true;
-          window.setTimeout(start, CLIENT_STARTUP_DELAY_MS);
+          window.setTimeout(start, CLIENT_STARTUP_RETRY_DELAY_MS);
         }
       });
     return startup;
@@ -130,9 +122,9 @@ const scheduleClientStartup = (
     window.addEventListener(eventName, startOnIntent, { passive: true });
   });
   window.addEventListener("click", replayDeferredClick, true);
-  // Preserve a quiet post-paint window on idle pages, but never make an active
-  // user wait for the fallback. Native links continue working before startup.
-  window.setTimeout(start, CLIENT_STARTUP_DELAY_MS);
+  // Begin loading immediately after the server-rendered first paint. Intent
+  // listeners preserve interactions while the browser phase is still loading.
+  start();
 };
 
 export const scheduleDeferredStartup = (
@@ -152,18 +144,14 @@ export const scheduleDeferredStartup = (
 
   if (!hasDeferredSnapshot(document)) {
     scheduleClientStartup(document, loadClient, browserWindow);
-    afterInitialPaint(scheduleSentry, document, browserWindow);
+    afterInitialPaint(scheduleSentry, browserWindow);
     return;
   }
 
-  afterInitialPaint(
-    () => {
-      scheduleClientStartup(document, loadClient, browserWindow);
-      scheduleSentry();
-    },
-    document,
-    browserWindow
-  );
+  afterInitialPaint(() => {
+    scheduleClientStartup(document, loadClient, browserWindow);
+    scheduleSentry();
+  }, browserWindow);
 };
 
 if (

@@ -260,4 +260,34 @@ describe("public SSR seeds", () => {
       "Official fare data is not available"
     );
   });
+
+  it("renders the public home terminal directory in route groups", () => {
+    const homeSnapshot = {
+      ...snapshot,
+      canonicalPath: "/",
+      normalizedUrl: { path: "/", query: {} },
+      routeId: "home",
+      sources: {
+        features: source({ leaderboardsEnabled: false }),
+        terminals: source([
+          { id: "3", name: "Bainbridge Island" },
+          { id: "7", name: "Seattle" },
+        ]),
+      },
+    } as import("../../shared/contracts/ssr").PublicSsrSnapshot;
+    const markup = renderToStaticMarkup(
+      React.createElement(
+        MemoryRouter,
+        null,
+        React.createElement(
+          PublicSsrSeedProvider,
+          { snapshot: homeSnapshot },
+          React.createElement(PublicHome)
+        )
+      )
+    );
+
+    expect(markup).toContain('aria-label="Ferry terminals"');
+    expect(markup).toContain("Bainbridge Island");
+  });
 });

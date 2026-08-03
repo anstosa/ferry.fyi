@@ -4,14 +4,17 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { scheduleDeferredStartup } from "../../client/entry-bootstrap";
 
-const snapshotDocument = (contains = () => true): Document =>
+const snapshotDocument = (
+  contains = () => true,
+  readyState: DocumentReadyState = "complete"
+): Document =>
   ({
     querySelector: () => ({
       contains,
       getAttribute: () => "snapshot",
       hasChildNodes: () => true,
     }),
-    readyState: "complete",
+    readyState,
   }) as unknown as Document;
 
 afterEach(() => {
@@ -19,7 +22,7 @@ afterEach(() => {
 });
 
 describe("deferred client startup", () => {
-  it("loads hydration after two paint frames and telemetry after idle", async () => {
+  it("loads hydration after two paint frames without waiting for window load", async () => {
     const frames: FrameRequestCallback[] = [];
     const timers: Array<{ callback: () => void; delay: number }> = [];
     const idleCallbacks: IdleRequestCallback[] = [];
@@ -45,7 +48,7 @@ describe("deferred client startup", () => {
     };
 
     scheduleDeferredStartup({
-      document: snapshotDocument(),
+      document: snapshotDocument(() => true, "loading"),
       loadClient,
       loadSentry,
       window: browserWindow as never,
@@ -55,13 +58,9 @@ describe("deferred client startup", () => {
     frames.shift()?.(0);
     expect(loadClient).not.toHaveBeenCalled();
     frames.shift()?.(16);
-    expect(loadClient).not.toHaveBeenCalled();
-    expect(loadSentry).not.toHaveBeenCalled();
-
-    expect(timers[0]?.delay).toBe(5_000);
-    timers.shift()?.callback();
     await Promise.resolve();
     expect(loadClient).toHaveBeenCalledOnce();
+    expect(loadSentry).not.toHaveBeenCalled();
 
     expect(timers[0]?.delay).toBe(10_000);
     timers.shift()?.callback();
@@ -193,7 +192,7 @@ describe("deferred client startup", () => {
     expect(click).not.toHaveBeenCalled();
 
     const recoveryTimers = timers.filter(({ delay }) => delay === 5_000);
-    expect(recoveryTimers).toHaveLength(2);
+    expect(recoveryTimers).toHaveLength(1);
     const recoveryTimer = recoveryTimers.at(-1);
     expect(recoveryTimer).toBeDefined();
     recoveryTimer?.callback();

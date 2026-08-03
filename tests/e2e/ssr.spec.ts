@@ -166,12 +166,23 @@ test.beforeEach(async () => {
 test("keeps initial SSR content visible without an entrance animation", async ({
   page,
 }) => {
+  const clientStartup = page.waitForRequest(
+    /\/assets\/entry-client\.[^/]+\.js$/,
+    { timeout: 3_000 }
+  );
   const response = await page.goto("https://ferry.fyi:4177/", {
     waitUntil: "domcontentloaded",
   });
   expect(response?.status()).toBe(200);
+  await clientStartup;
   const main = page.locator("#root main").first();
   await expect(main).toContainText("Ferry FYI");
+  await expect(
+    page.getByRole("navigation", { name: "Ferry terminals" })
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Bainbridge Island" })
+  ).toBeVisible();
 
   const initialStyle = await main.evaluate((element) => {
     const entranceAnimation = element
