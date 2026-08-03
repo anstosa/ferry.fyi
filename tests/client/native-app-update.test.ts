@@ -22,10 +22,11 @@ describe("native app update store integration", () => {
 
     await expect(
       checkForNativeAppUpdate({
-        loadPlugin: async () => ({
-          getAppUpdateInfo,
-          openAppStore: vi.fn(),
-        }),
+        loadPlugin: () =>
+          Promise.resolve({
+            getAppUpdateInfo,
+            openAppStore: vi.fn(),
+          }),
         platform: "android",
       })
     ).resolves.toEqual({
@@ -35,6 +36,65 @@ describe("native app update store integration", () => {
       versionKey: "android:21",
     });
     expect(getAppUpdateInfo).toHaveBeenCalledWith(undefined);
+  });
+
+  it("keeps an Android update actionable while Play reports it in progress", async () => {
+    const getAppUpdateInfo = vi.fn().mockResolvedValue({
+      ...info,
+      availableVersionCode: "21",
+      updateAvailability: 3,
+    });
+
+    await expect(
+      checkForNativeAppUpdate({
+        loadPlugin: () =>
+          Promise.resolve({
+            getAppUpdateInfo,
+            openAppStore: vi.fn(),
+          }),
+        platform: "android",
+      })
+    ).resolves.toEqual({
+      availableVersion: "21",
+      currentVersion: "20",
+      platform: "android",
+      versionKey: "android:21",
+    });
+  });
+
+  it("ignores stale Android availability for the installed version code", async () => {
+    const getAppUpdateInfo = vi.fn().mockResolvedValue({
+      ...info,
+      availableVersionCode: "20",
+    });
+
+    await expect(
+      checkForNativeAppUpdate({
+        loadPlugin: async () => ({
+          getAppUpdateInfo,
+          openAppStore: vi.fn(),
+        }),
+        platform: "android",
+      })
+    ).resolves.toBeNull();
+  });
+
+  it("ignores malformed Android version codes", async () => {
+    const getAppUpdateInfo = vi.fn().mockResolvedValue({
+      ...info,
+      availableVersionCode: "newest",
+    });
+
+    await expect(
+      checkForNativeAppUpdate({
+        loadPlugin: () =>
+          Promise.resolve({
+            getAppUpdateInfo,
+            openAppStore: vi.fn(),
+          }),
+        platform: "android",
+      })
+    ).resolves.toBeNull();
   });
 
   it("uses the US storefront and version names on iOS", async () => {
@@ -58,6 +118,25 @@ describe("native app update store integration", () => {
       versionKey: "ios:2.9",
     });
     expect(getAppUpdateInfo).toHaveBeenCalledWith({ country: "US" });
+  });
+
+  it("does not apply Android's in-progress state to iOS", async () => {
+    const getAppUpdateInfo = vi.fn().mockResolvedValue({
+      ...info,
+      availableVersionName: "2.9",
+      updateAvailability: 3,
+    });
+
+    await expect(
+      checkForNativeAppUpdate({
+        loadPlugin: () =>
+          Promise.resolve({
+            getAppUpdateInfo,
+            openAppStore: vi.fn(),
+          }),
+        platform: "ios",
+      })
+    ).resolves.toBeNull();
   });
 
   it("ignores missing and unavailable store versions", async () => {

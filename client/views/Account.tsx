@@ -3,7 +3,7 @@ import { Browser } from "@capacitor/browser";
 import clsx from "clsx";
 import { useAtomValue } from "jotai";
 import { DateTime } from "luxon";
-import React, { ReactElement, ReactNode } from "react";
+import React, { ReactElement } from "react";
 import { Link } from "react-router-dom";
 import type {
   AlertRule,
@@ -21,6 +21,7 @@ import {
 import { getSeoMetadata } from "shared/lib/seo";
 import { pluralize } from "shared/lib/strings";
 
+import { AccountProfileHeader } from "~/components/AccountProfileHeader";
 import { NotificationPermissionWarning } from "~/components/NotificationPermissionWarning";
 import { Page } from "~/components/Page";
 import { PageLoadError } from "~/components/PageLoadError";
@@ -35,11 +36,6 @@ import {
   getReservationAccountCount,
   ticketsAtom,
 } from "~/views/Tickets/storage";
-
-interface DetailRowProps {
-  label: string;
-  value?: ReactNode;
-}
 
 interface SubscriptionSummary {
   channels: AlertSubscriptionChannel[];
@@ -116,22 +112,6 @@ const getSailingDateLabel = (date: string): string => {
 // sailing time label
 const getSailingTimeLabel = (time: string): string => {
   return DateTime.fromFormat(time, "HH:mm").toFormat("h:mm a");
-};
-
-// account detail row
-const DetailRow = ({ label, value }: DetailRowProps): ReactElement | null => {
-  // empty value guard
-  if (!value) {
-    return null;
-  }
-  return (
-    <div className="grid grid-cols-[8rem_1fr] gap-4 border-b border-gray-200 py-3 last:border-b-0 dark:border-gray-dark">
-      <dt className="font-medium text-gray-dark dark:text-gray-medium">
-        {label}
-      </dt>
-      <dd className="min-w-0 break-words">{value}</dd>
-    </div>
-  );
 };
 
 // string claim helper
@@ -279,12 +259,24 @@ export const AccountLoadingState = (): ReactElement => (
   <Page title="Account">
     <div className="mx-auto w-full max-w-6xl px-4 py-6">
       <SkeletonGroup className="flex flex-col gap-6" label="Loading account">
-        <section className="rounded bg-white p-6 shadow dark:bg-black">
-          <Skeleton className="h-7 w-24" variant="text" />
-          <div className="mt-5 space-y-4">
-            <Skeleton className="h-5 w-full" variant="text" />
-            <Skeleton className="h-5 w-4/5" variant="text" />
-            <Skeleton className="h-5 w-3/5" variant="text" />
+        <section className="overflow-hidden rounded-2xl bg-white shadow dark:bg-black">
+          <div className="flex flex-col items-stretch gap-4 p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+            <div className="flex min-w-0 items-start gap-4 sm:items-center">
+              <Skeleton className="h-14 w-14 shrink-0 rounded-full" />
+              <div className="min-w-0 space-y-2">
+                <Skeleton className="h-6 w-40" variant="text" />
+                <Skeleton className="h-4 w-52 max-w-full" variant="text" />
+              </div>
+            </div>
+            <Skeleton className="h-8 w-20 shrink-0 self-end rounded-xl sm:self-auto" />
+          </div>
+          <div className="grid gap-px bg-gray-200 sm:grid-cols-2 lg:grid-cols-3 dark:bg-gray-dark">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <div className="bg-white px-6 py-4 dark:bg-black" key={index}>
+                <Skeleton className="h-3 w-16" variant="text" />
+                <Skeleton className="mt-2 h-4 w-28" variant="text" />
+              </div>
+            ))}
           </div>
         </section>
         <section className="rounded bg-white p-6 shadow dark:bg-black">
@@ -402,19 +394,17 @@ export const Account = withAuthenticationRequired(
               </button>
             </section>
           )}
-          <section className="rounded bg-white p-6 shadow dark:bg-black">
-            <h3 className="mb-3 text-xl font-bold">Profile</h3>
-            <dl>
-              <DetailRow label="Name" value={name} />
-              <DetailRow label="Email" value={email} />
-              <DetailRow label="ID" value={accountId} />
-              <DetailRow label="Nickname" value={nickname} />
-              <DetailRow label="Username" value={username} />
-              <DetailRow label="Language" value={locale} />
-              <DetailRow label="Logged in with" value={provider} />
-              <DetailRow label="Updated" value={updatedAt} />
-            </dl>
-          </section>
+          <AccountProfileHeader
+            accountId={accountId}
+            email={email}
+            locale={locale}
+            name={name}
+            nickname={nickname}
+            onLogout={() => onLogout()}
+            provider={provider}
+            updatedAt={updatedAt}
+            username={username}
+          />
 
           <section className="rounded bg-white p-6 shadow dark:bg-black">
             <h3 className="text-xl font-bold">Appearance</h3>
@@ -524,13 +514,6 @@ export const Account = withAuthenticationRequired(
               </p>
             )}
           </section>
-
-          <button
-            className="button button-invert mb-8 self-center"
-            onClick={() => onLogout()}
-          >
-            Log Out
-          </button>
         </div>
       </Page>
     );

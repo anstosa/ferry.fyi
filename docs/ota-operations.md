@@ -12,8 +12,9 @@ An OTA release cannot change a native app binary. Changes to Capacitor plugins, 
 
 Signed Android and iOS builds check their platform store for a newer native
 binary after the browser application mounts and when an app session returns to
-the foreground after the six-hour check interval. A reported update displays a
-dismissible Ferry FYI prompt whose action opens Google Play or the App Store.
+the foreground. A reported update displays a dismissible Ferry FYI prompt whose
+action opens Google Play or the App Store. Android treats both Play's available
+and in-progress states as actionable when the reported version code is newer.
 Dismissal suppresses the same store version for 24 hours; a later version is
 eligible immediately. Store lookup and launch failures are non-fatal.
 
@@ -24,7 +25,10 @@ availability through a Play testing track or Internal App Sharing with a
 higher published version code; a sideloaded APK cannot validate Play update
 behavior. Validate iOS lookup and App Store navigation on a physical device
 against the live App Store listing. TestFlight-only builds may not have a newer
-public App Store version to report.
+public App Store version to report. Apple's public lookup API exposes the App
+Store marketing version, not TestFlight build numbers, so TestFlight owns
+same-version build update prompts; Ferry FYI's prompt applies to public App
+Store version changes.
 
 ## Configuration
 
@@ -112,7 +116,7 @@ The generated CloudFront hostname uses AWS's default certificate, which AWS fixe
 
 ## Publishing workflow
 
-Every successful `production` deployment automatically builds and publishes a `production` OTA bundle after the web, detector, and scheduler services are stable. The publisher is idempotent for the same source revision: it verifies and reuses the existing immutable ZIP on a deployment retry.
+Every successful `production` deployment automatically builds and publishes a `production` OTA bundle after the combined web/scheduler service and detector service are stable. The publisher is idempotent for the same source revision: it verifies and reuses the existing immutable ZIP on a deployment retry.
 
 OTA publication is deployment-owned; do not publish a bundle separately.
 

@@ -20,7 +20,7 @@ The target RDS storage headroom is roughly 21x the current 963 MB data size befo
 - Confirm Cloudflare has the ACM validation records from Terraform and that ACM is issued before enabling HTTPS.
 - Confirm `staging.ferry.fyi` points to the production ALB before validating ECS.
 - Confirm RDS deletion protection is enabled before final production DNS cutover, not merely before staging validation.
-- Confirm Heroku scheduler-like jobs remain single-owner during the migration window; AWS has separate `web` and `scheduler` ECS services with `RUN_SCHEDULER=false` and `RUN_SCHEDULER=true` respectively.
+- Confirm Heroku scheduler-like jobs remain single-owner during the migration window; the singleton AWS web service runs both HTTP traffic and recurring jobs with `RUN_SCHEDULER=true`.
 - Confirm the production deploy workflow is configured with GitHub repository or organization-level variables from Terraform outputs and that application runtime secrets are in AWS Secrets Manager, not GitHub secrets. The current branch-scoped OIDC trust does not use a GitHub Environment, so do not add `environment: production` unless Terraform trust is changed to the environment-scoped subject and GitHub Environment branch restrictions are enforced.
 
 ## Local secret-handling workspace
@@ -198,7 +198,6 @@ Use this when the application image has `pg_restore`, `psql`, and `curl` availab
 
    ```sh
    aws ecs update-service --cluster ferry-fyi-prod --service ferry-fyi-prod-web --desired-count 0
-   aws ecs update-service --cluster ferry-fyi-prod --service ferry-fyi-prod-scheduler --desired-count 0
    ```
 
 2. Register or render a one-off task definition that uses the web task execution role, ECS task role, `DATABASE_URL` secret reference, public subnets, and ECS security group from Terraform outputs.
@@ -283,16 +282,14 @@ Browser smoke checks:
 ECS and scheduler checks:
 
 ```sh
-aws ecs describe-services --cluster ferry-fyi-prod --services ferry-fyi-prod-web ferry-fyi-prod-scheduler \
+aws ecs describe-services --cluster ferry-fyi-prod --services ferry-fyi-prod-web \
   --query 'services[].{service:serviceName,desired:desiredCount,running:runningCount,pending:pendingCount,taskDefinition:taskDefinition}'
 aws logs tail /ecs/ferry-fyi-prod/web --since 30m --filter-pattern 'ERROR OR Error OR error OR failed OR scheduler'
-aws logs tail /ecs/ferry-fyi-prod/scheduler --since 30m --filter-pattern 'scheduler OR scheduled OR ERROR OR Error OR error OR failed'
 ```
 
 Expected scheduler ownership:
 
-- Web task logs should identify `PROCESS_ROLE=web` / `RUN_SCHEDULER=false` behavior and should not run recurring jobs.
-- Scheduler task logs should identify `PROCESS_ROLE=scheduler` / `RUN_SCHEDULER=true` behavior and should be the only recurring job owner.
+- The singleton web task should identify `PROCESS_ROLE=web` / `RUN_SCHEDULER=true` behavior and should be the only recurring job owner.
 
 ## Enable deletion protection before cutover
 
@@ -330,7 +327,7 @@ Cloudflare remains manual.
 5. Pause Heroku writes/scheduler if still running.
 6. Capture final Heroku backup, restore to RDS, run migrations, and validate counts.
 7. In Cloudflare, point `ferry.fyi` and `www.ferry.fyi` to the same ALB target already proven by `staging.ferry.fyi`.
-8. Re-run `/healthz`, terminal API, schedule API, browser same-origin checks, and ECS scheduler singleton log checks.
+8. Re-run `/healthz`, terminal API, schedule API, browser same-origin checks, and the web task's scheduler singleton log checks.
 9. Keep Heroku app and database intact until the rollback window has passed.
 
 ## Cloudflare Tunnel ALB cost reduction
@@ -361,10 +358,10 @@ Rollback is DNS-first while Heroku remains intact:
 
 1. Repoint Cloudflare `ferry.fyi` and `www.ferry.fyi` to the previous Heroku targets.
 2. Confirm Heroku web dynos and scheduler/jobs are running as the sole production writers.
-3. Stop or scale down AWS scheduler to avoid double writes:
+3. Scale down the combined AWS web/scheduler service to avoid double writes:
 
    ```sh
-   aws ecs update-service --cluster ferry-fyi-prod --service ferry-fyi-prod-scheduler --desired-count 0
+   aws ecs update-service --cluster ferry-fyi-prod --service ferry-fyi-prod-web --desired-count 0
    ```
 
 4. Preserve RDS for forensic comparison. Do not destroy the AWS stack during rollback.

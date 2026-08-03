@@ -255,23 +255,6 @@ jobs:
           wait-for-service-stability: true
           wait-max-delay-seconds: 15
 
-      - name: Render scheduler task definition
-        id: render-scheduler
-        uses: aws-actions/amazon-ecs-render-task-definition@v1
-        with:
-          task-definition-family: ${{ vars.ECS_SCHEDULER_TASK_DEFINITION_FAMILY }}
-          container-name: scheduler
-          image: ${{ steps.image.outputs.image }}
-
-      - name: Deploy scheduler service
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
-        with:
-          task-definition: ${{ steps.render-scheduler.outputs.task-definition }}
-          service: ${{ vars.ECS_SCHEDULER_SERVICE }}
-          cluster: ${{ env.ECS_CLUSTER }}
-          wait-for-service-stability: true
-          wait-max-delay-seconds: 15
-
   publish-production-ota:
     name: Publish production OTA
     needs: validate-build-deploy

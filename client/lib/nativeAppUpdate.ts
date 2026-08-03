@@ -28,19 +28,30 @@ type LoadNativeAppUpdatePlugin = () => Promise<NativeAppUpdatePlugin>;
 
 // Mirror the plugin enum without eagerly importing its native runtime on the web.
 const UPDATE_AVAILABLE = 2;
+const UPDATE_IN_PROGRESS = 3;
 const IOS_STORE_COUNTRY = "US";
 
-export const NATIVE_APP_UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
 export const NATIVE_APP_UPDATE_REPROMPT_MS = 24 * 60 * 60 * 1000;
 
 const loadNativeAppUpdatePlugin: LoadNativeAppUpdatePlugin = async () =>
   (await import("@capawesome/capacitor-app-update")).AppUpdate;
 
+const parseAndroidVersionCode = (value: string): number | undefined => {
+  if (!/^\d+$/u.test(value)) {
+    return;
+  }
+  const versionCode = Number(value);
+  return Number.isSafeInteger(versionCode) ? versionCode : undefined;
+};
+
 const getCandidate = (
   platform: NativeAppUpdatePlatform,
   info: AppUpdateInfo
 ): NativeAppUpdateCandidate | null => {
-  if (info.updateAvailability !== UPDATE_AVAILABLE) {
+  const updateIsActionable =
+    info.updateAvailability === UPDATE_AVAILABLE ||
+    (platform === "android" && info.updateAvailability === UPDATE_IN_PROGRESS);
+  if (!updateIsActionable) {
     return null;
   }
 
@@ -52,6 +63,18 @@ const getCandidate = (
     platform === "android" ? info.currentVersionCode : info.currentVersionName;
   if (!availableVersion) {
     return null;
+  }
+
+  if (platform === "android") {
+    const availableVersionCode = parseAndroidVersionCode(availableVersion);
+    const currentVersionCode = parseAndroidVersionCode(currentVersion);
+    if (
+      availableVersionCode === undefined ||
+      currentVersionCode === undefined ||
+      availableVersionCode <= currentVersionCode
+    ) {
+      return null;
+    }
   }
 
   return {

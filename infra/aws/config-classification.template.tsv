@@ -23,8 +23,8 @@ GTM_CONTAINER_ID	build-time public	GitHub variable / Docker build arg	value come
 MAPBOX_ACCESS_TOKEN	build-time public	GitHub variable / Docker build arg	value comes from Heroku classification or provider public config; do not commit
 NODE_ENV	AWS/ECS platform config	Terraform task environment	production
 PORT	AWS/ECS platform config	Terraform task environment	4040
-PROCESS_ROLE	AWS/ECS platform config	Terraform task environment	web or scheduler
-RUN_SCHEDULER	AWS/ECS platform config	Terraform task environment	false for web, true for scheduler
+PROCESS_ROLE	AWS/ECS platform config	Terraform task environment	web
+RUN_SCHEDULER	AWS/ECS platform config	Terraform task environment	true; the singleton web process owns recurring jobs and route notifications
 SENTRY_AUTH_TOKEN	build-time secret	GitHub secret or build-only secret if sourcemaps are uploaded	do not expose to ECS runtime
 SENTRY_DSN	build-time public	GitHub variable / Docker build arg and AWS Secrets Manager app config JSON if server runtime requires it	value comes from Heroku classification or provider public config; do not commit
 WSDOT_API_KEY	runtime server secret/config	AWS Secrets Manager app config JSON	value redacted

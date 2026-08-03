@@ -2,7 +2,6 @@ import { NextFunction, Request, Response, Router } from "express";
 
 const DISABLED_ENV_PATTERN = /^(0|false|no|off)$/i;
 const ENABLED_ENV_PATTERN = /^(1|true|yes|on)$/i;
-const WEB_PROCESS_ROLE = "web";
 
 // normalize optional env flag
 function readEnvFlag(value: string | undefined): boolean | undefined {
@@ -28,11 +27,8 @@ export function shouldRunScheduler(): boolean {
   if (schedulerFlag !== undefined) {
     return schedulerFlag;
   }
-  const processRole = process.env.PROCESS_ROLE?.toLowerCase();
-  // web role guard
-  if (processRole === WEB_PROCESS_ROLE) {
-    return false;
-  }
+  // The production web process owns scheduled work unless explicitly disabled.
+  // This keeps notifications and cache refreshes alive without a second task.
   return true;
 }
 

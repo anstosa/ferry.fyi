@@ -36,14 +36,6 @@ locals {
     { name = "OTA_DEFAULT_CHANNEL", value = var.ota_default_channel },
     { name = "PORT", value = tostring(var.container_port) },
     { name = "PROCESS_ROLE", value = "web" },
-    { name = "RUN_SCHEDULER", value = "false" }
-  ]
-
-  scheduler_environment = [
-    { name = "BASE_URL", value = var.base_url },
-    { name = "NODE_ENV", value = "production" },
-    { name = "PORT", value = tostring(var.container_port) },
-    { name = "PROCESS_ROLE", value = "scheduler" },
     { name = "RUN_SCHEDULER", value = "true" }
   ]
 
@@ -617,11 +609,6 @@ resource "aws_cloudwatch_log_group" "web" {
   retention_in_days = 30
 }
 
-resource "aws_cloudwatch_log_group" "scheduler" {
-  name              = "/ecs/${local.name_prefix}/scheduler"
-  retention_in_days = 30
-}
-
 resource "aws_cloudwatch_log_group" "detector" {
   name              = "/ecs/${local.name_prefix}/detector"
   retention_in_days = 30
@@ -808,39 +795,6 @@ resource "aws_ecs_task_definition" "detector" {
   ])
 }
 
-resource "aws_ecs_task_definition" "scheduler" {
-  family                   = "${local.name_prefix}-scheduler"
-  requires_compatibilities = ["FARGATE"]
-  network_mode             = "awsvpc"
-  cpu                      = var.scheduler_cpu
-  memory                   = var.scheduler_memory
-  execution_role_arn       = aws_iam_role.ecs_task_execution.arn
-  task_role_arn            = aws_iam_role.ecs_task.arn
-
-  runtime_platform {
-    cpu_architecture        = "ARM64"
-    operating_system_family = "LINUX"
-  }
-
-  container_definitions = jsonencode([
-    {
-      name        = "scheduler"
-      image       = local.image_uri
-      essential   = true
-      environment = local.scheduler_environment
-      secrets     = local.container_secrets
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          awslogs-group         = aws_cloudwatch_log_group.scheduler.name
-          awslogs-region        = var.aws_region
-          awslogs-stream-prefix = "ecs"
-        }
-      }
-    }
-  ])
-}
-
 resource "aws_ecs_service" "web" {
   name            = "${local.name_prefix}-web"
   cluster         = aws_ecs_cluster.app.id
@@ -888,28 +842,6 @@ resource "aws_ecs_service" "detector" {
 
   service_registries {
     registry_arn = aws_service_discovery_service.detector.arn
-  }
-
-  lifecycle {
-    ignore_changes = [task_definition]
-  }
-}
-
-resource "aws_ecs_service" "scheduler" {
-  name            = "${local.name_prefix}-scheduler"
-  cluster         = aws_ecs_cluster.app.id
-  task_definition = aws_ecs_task_definition.scheduler.arn
-  desired_count   = var.scheduler_desired_count
-  launch_type     = "FARGATE"
-
-  # stop before start
-  deployment_minimum_healthy_percent = 0
-  deployment_maximum_percent         = 100
-
-  network_configuration {
-    assign_public_ip = true
-    security_groups  = [aws_security_group.ecs.id]
-    subnets          = aws_subnet.public[*].id
   }
 
   lifecycle {
@@ -1050,13 +982,6 @@ resource "aws_ssm_parameter" "web_service_name" {
   description = "ECS web service name for Ferry FYI ${var.environment} deployments."
   type        = "String"
   value       = aws_ecs_service.web.name
-}
-
-resource "aws_ssm_parameter" "scheduler_service_name" {
-  name        = "/${var.project}/${var.environment}/deploy/SCHEDULER_SERVICE_NAME"
-  description = "ECS scheduler service name for Ferry FYI ${var.environment} deployments."
-  type        = "String"
-  value       = aws_ecs_service.scheduler.name
 }
 
 resource "aws_ssm_parameter" "detector_service_name" {

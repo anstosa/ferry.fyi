@@ -49,11 +49,6 @@ output "web_service_name" {
   value       = aws_ecs_service.web.name
 }
 
-output "scheduler_service_name" {
-  description = "ECS scheduler service name."
-  value       = aws_ecs_service.scheduler.name
-}
-
 output "detector_service_name" {
   description = "ECS detector service name."
   value       = aws_ecs_service.detector.name
@@ -62,11 +57,6 @@ output "detector_service_name" {
 output "web_task_definition_family" {
   description = "ECS web task definition family for GitHub Actions render/deploy."
   value       = aws_ecs_task_definition.web.family
-}
-
-output "scheduler_task_definition_family" {
-  description = "ECS scheduler task definition family for GitHub Actions render/deploy."
-  value       = aws_ecs_task_definition.scheduler.family
 }
 
 output "detector_task_definition_family" {

@@ -78,19 +78,19 @@ data-health API.
 
 | Operation                                            | Effect                                                                    | Normal trigger                                                                   |
 | ---------------------------------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| `camera-line-detection-refresh`                      | Refreshes camera line-detection results used by camera views.             | Every minute at `:30`; also deferred after scheduler startup.                    |
+| `camera-line-detection-refresh`                      | Refreshes camera line-detection results used by camera views.             | Every minute at `:30`; also deferred after web server startup.                   |
 | `clear-wsf-memory-cache`                             | Clears the in-memory schedule cache while preserving core route data.     | Daily at 04:00 server time.                                                      |
-| `demand-events-refresh`                              | Refreshes school-break and major-sports forecast inputs.                  | Daily at 04:20; also deferred after scheduler startup.                           |
+| `demand-events-refresh`                              | Refreshes school-break and major-sports forecast inputs.                  | Daily at 04:20; also deferred after web server startup.                          |
 | `fare-catalog-refresh`                               | Warms current ferry-day and due fare catalogs.                            | Hourly at `:15`, daily at 00:05 America/Los_Angeles, and deferred after startup. |
 | `leaderboard-rebuild`                                | Rebuilds leaderboard aggregates from retained check-ins.                  | Manual only.                                                                     |
 | `schedule-refresh`                                   | Refreshes WSF sailing schedules and schedule cache data.                  | Daily at 04:05 server time.                                                      |
 | `tide-forecast-refresh` / `weather-forecast-refresh` | Forces forecast inputs used by route forecasting.                         | Best-effort after short WSF refreshes, rate-limited by the environment.          |
 | `wsf-daily-refresh`                                  | Runs daily WSF route-to-vessel inference.                                 | Daily at 04:10 server time.                                                      |
 | `wsf-long-refresh`                                   | Refreshes WSF cameras, vessels, routes, and terminals.                    | Every 5 minutes.                                                                 |
-| `wsf-refresh`                                        | Runs full WSF long/status/schedule refresh without notification dispatch. | Web-cache startup and manual runs.                                               |
-| `wsf-short-refresh`                                  | Refreshes WSF vessel status and capacity without notifications.           | Every minute on the web-cache process.                                           |
-| `wsf-short-notifying-refresh`                        | Refreshes vessel status/capacity and sends eligible notifications.        | Every minute on the scheduler process; scheduled only.                           |
-| `wsf-notifying-refresh`                              | Performs full WSF cache warmup with notification-capable status refresh.  | Scheduler startup; scheduled only.                                               |
+| `wsf-refresh`                                        | Runs full WSF long/status/schedule refresh without notification dispatch. | Non-notifying fallback startup and manual runs.                                  |
+| `wsf-short-refresh`                                  | Refreshes WSF vessel status and capacity without notifications.           | Every minute only in non-notifying fallback mode.                                |
+| `wsf-short-notifying-refresh`                        | Refreshes vessel status/capacity and sends eligible notifications.        | Every minute on the singleton web process; scheduled only.                       |
+| `wsf-notifying-refresh`                              | Performs full WSF cache warmup with notification-capable status refresh.  | Web server startup; scheduled only.                                              |
 
 An operation has one persisted current-status row, not an execution history.
 States are `idle`, `running`, `succeeded`, or `failed`, with sanitized result or

@@ -36,7 +36,7 @@ variable "enable_https_listener" {
 }
 
 variable "base_url" {
-  description = "Canonical app URL injected into the web and scheduler containers."
+  description = "Canonical app URL injected into the web container."
   type        = string
   default     = "https://ferry.fyi"
 }
@@ -72,16 +72,14 @@ variable "cloudflare_tunnel_metrics_port" {
 }
 
 variable "web_desired_count" {
-  description = "Desired production web task count."
+  description = "Desired singleton web task count. The web process also owns scheduled work."
   type        = number
   default     = 1
-}
 
-variable "scheduler_desired_count" {
-  description = "Desired singleton scheduler task count. Set to 0 to pause jobs."
-  type        = number
-  # pre-cutover paused
-  default = 0
+  validation {
+    condition     = var.web_desired_count == 1
+    error_message = "web_desired_count must remain 1 while the web process owns notification transition state."
+  }
 }
 
 variable "detector_desired_count" {
@@ -100,18 +98,6 @@ variable "web_memory" {
   description = "Fargate memory MiB for the web task."
   type        = number
   default     = 2048
-}
-
-variable "scheduler_cpu" {
-  description = "Fargate CPU units for the scheduler task."
-  type        = number
-  default     = 512
-}
-
-variable "scheduler_memory" {
-  description = "Fargate memory MiB for the scheduler task."
-  type        = number
-  default     = 1024
 }
 
 variable "detector_cpu" {

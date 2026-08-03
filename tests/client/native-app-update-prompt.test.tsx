@@ -15,7 +15,9 @@ vi.mock("@capacitor/app", () => ({
   App: { addListener: mocks.addListener },
 }));
 vi.mock("~/lib/nativeAppUpdate", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("../../client/lib/nativeAppUpdate")>()),
+  ...(await importOriginal<
+    typeof import("../../client/lib/nativeAppUpdate")
+  >()),
   checkForNativeAppUpdate: mocks.checkForNativeAppUpdate,
   openNativeAppStore: mocks.openNativeAppStore,
 }));
@@ -25,8 +27,8 @@ vi.mock("framer-motion", () => ({
 
 import { NativeAppUpdatePrompt } from "../../client/components/NativeAppUpdatePrompt";
 import {
-  AppRenderProvider,
   type AppRenderContextValue,
+  AppRenderProvider,
 } from "../../client/lib/renderContext";
 
 let root: Root | undefined;
@@ -148,7 +150,7 @@ describe("NativeAppUpdatePrompt", () => {
     expect(container.textContent).not.toContain("Update Ferry FYI");
   });
 
-  it("checks again on a later active transition", async () => {
+  it("checks again on every active transition", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-08-01T00:00:00Z"));
     mocks.checkForNativeAppUpdate.mockResolvedValue(null);
@@ -159,7 +161,6 @@ describe("NativeAppUpdatePrompt", () => {
     expect(listener).toBeDefined();
     expect(mocks.checkForNativeAppUpdate).toHaveBeenCalledOnce();
 
-    vi.advanceTimersByTime(6 * 60 * 60 * 1000);
     await act(async () => {
       listener?.({ isActive: true });
       await Promise.resolve();

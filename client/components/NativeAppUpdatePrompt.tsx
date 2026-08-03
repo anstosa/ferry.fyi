@@ -3,7 +3,6 @@ import React, { type ReactElement, useEffect, useRef, useState } from "react";
 
 import {
   checkForNativeAppUpdate,
-  NATIVE_APP_UPDATE_CHECK_INTERVAL_MS,
   type NativeAppUpdateCandidate,
   type NativeAppUpdateDismissal,
   openNativeAppStore,
@@ -67,7 +66,6 @@ export const NativeAppUpdatePrompt = ({
   const [update, setUpdate] = useState<NativeAppUpdateCandidate | null>(null);
   const dismissalRef = useRef<NativeAppUpdateDismissal | null>(null);
   const checkInFlightRef = useRef(false);
-  const lastCheckedAtRef = useRef<number | null>(null);
 
   useEffect(() => {
     dismissalRef.current = readDismissal();
@@ -81,18 +79,12 @@ export const NativeAppUpdatePrompt = ({
     let mounted = true;
     const check = async (): Promise<void> => {
       const now = Date.now();
-      if (
-        checkInFlightRef.current ||
-        (lastCheckedAtRef.current !== null &&
-          now - lastCheckedAtRef.current < NATIVE_APP_UPDATE_CHECK_INTERVAL_MS)
-      ) {
+      if (checkInFlightRef.current) {
         return;
       }
       checkInFlightRef.current = true;
       try {
         const candidate = await checkForNativeAppUpdate({ platform });
-        // eslint-disable-next-line require-atomic-updates -- this effect owns the check timestamp.
-        lastCheckedAtRef.current = now;
         if (!mounted) {
           return;
         }

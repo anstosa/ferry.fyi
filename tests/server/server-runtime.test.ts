@@ -57,11 +57,11 @@ describe("server runtime scheduler ownership", () => {
     expect(shouldRunScheduler()).toBe(true);
   });
 
-  // ecs web case
-  it("disables schedulers for web process role", () => {
+  // combined production owner case
+  it("runs schedulers for the web process role by default", () => {
     vi.stubEnv("PROCESS_ROLE", "web");
 
-    expect(shouldRunScheduler()).toBe(false);
+    expect(shouldRunScheduler()).toBe(true);
   });
 
   // scheduler role case

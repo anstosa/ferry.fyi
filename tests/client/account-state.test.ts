@@ -132,4 +132,34 @@ describe("Account state predicates", () => {
     expect(container.textContent).toContain("rider@example.com");
     expect(container.textContent).not.toContain("Account could not load");
   });
+
+  it("renders profile details in a header card with an outline logout action", () => {
+    auth.user = {
+      email: "rider@example.com",
+      locale: "en-US",
+      name: "Rider",
+      nickname: "ferry-rider",
+      sub: "google-oauth2|rider",
+    };
+    userState.user = {};
+    const container = render();
+    const profile = container.querySelector(
+      'section[aria-labelledby="account-profile-name"]'
+    );
+    const logout = [...(profile?.querySelectorAll("button") ?? [])].find(
+      (button) => button.textContent === "Log Out"
+    );
+
+    expect(profile?.querySelector("header")?.contains(logout ?? null)).toBe(
+      true
+    );
+    expect(logout?.classList.contains("button-outline")).toBe(true);
+    expect(profile?.textContent).toContain("Rider");
+    expect(profile?.textContent).toContain("rider@example.com");
+    expect(profile?.textContent).toContain("Google");
+    expect(profile?.textContent).toContain("en-US");
+
+    act(() => logout?.click());
+    expect(auth.logout).toHaveBeenCalledOnce();
+  });
 });

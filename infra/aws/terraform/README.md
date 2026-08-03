@@ -9,10 +9,9 @@ It is intentionally small and reviewable: no third-party Terraform modules, no N
 - VPC with two public subnets, two reserved private app subnets, two private DB subnets, an internet gateway, a free S3 gateway endpoint, and no NAT gateway.
 - Optional public ALB with `/healthz` target-group checks on container port `4040`.
 - ACM DNS-validated certificate outputs for manual Cloudflare records.
-- ECS Fargate cluster without paid Container Insights, ARM64 web and scheduler services, and an always-on x86 detector service.
-- Web task env: `PROCESS_ROLE=web`, `RUN_SCHEDULER=false`, and `CAR_DETECTION_ENDPOINT` pointing at private Cloud Map service discovery.
+- ECS Fargate cluster without paid Container Insights, a singleton ARM64 web service, and an always-on x86 detector service.
+- Web task env: `PROCESS_ROLE=web`, `RUN_SCHEDULER=true`, and `CAR_DETECTION_ENDPOINT` pointing at private Cloud Map service discovery. The web process owns route notifications and recurring refresh jobs.
 - Optional `cloudflared` sidecar in the web task for Cloudflare Tunnel ingress.
-- Scheduler task env: `PROCESS_ROLE=scheduler`, `RUN_SCHEDULER=true`.
 - Detector task: CPU-only Fargate, desired count 1, public-subnet egress, no public ALB/listener/target group, and ingress allowed only from the web ECS service security group.
 - RDS PostgreSQL `17.9` by default, `db.t4g.small`, Single-AZ, gp3 20 GiB with autoscaling, 7-day backups.
 - Secrets Manager plumbing for generated `DATABASE_URL` and manual app config keys.
@@ -128,7 +127,7 @@ Use the CloudFront HTTPS URLs in release JSON; do not expose S3 object URLs. Bun
 ## GitHub Actions deployment variables
 
 The production deployment workflow is `.github/workflows/deploy-aws.yml`.
-It runs only from the `production` branch or manual `workflow_dispatch`, assumes the `github_deploy_role_arn` role through OIDC, pushes immutable image tags to the app and detector ECR repositories, runs `yarn db:migrate` as a one-off ECS task, then updates the web, detector, and scheduler services.
+It runs only from the `production` branch or manual `workflow_dispatch`, assumes the `github_deploy_role_arn` role through OIDC, pushes immutable image tags to the app and detector ECR repositories, runs `yarn db:migrate` as a one-off ECS task, then updates the web and detector services.
 
 The workflow builds the application image for ARM64 and the CPU-only detector image for x86_64 from `detector-runtime` by default, using `detector-runtime/Dockerfile`. The detector runtime listens on `detector_container_port`, which defaults to `8000`, and accepts the web service's raw image POST contract.
 
@@ -150,10 +149,8 @@ Configure these non-secret GitHub variables at the repository or organization le
 | `ECR_REPOSITORY_URL` | `ecr_repository_url` output |
 | `ECS_CLUSTER` | `ecs_cluster_name` output |
 | `ECS_WEB_SERVICE` | `web_service_name` output |
-| `ECS_SCHEDULER_SERVICE` | `scheduler_service_name` output |
 | `ECS_DETECTOR_SERVICE` | `detector_service_name` output |
 | `ECS_WEB_TASK_DEFINITION_FAMILY` | `web_task_definition_family` output |
-| `ECS_SCHEDULER_TASK_DEFINITION_FAMILY` | `scheduler_task_definition_family` output |
 | `ECS_DETECTOR_TASK_DEFINITION_FAMILY` | `detector_task_definition_family` output |
 | `ECS_TASK_SUBNETS` | Comma-separated `ecs_task_subnet_ids` output |
 | `ECS_TASK_SECURITY_GROUPS` | `ecs_task_security_group_id` output |
@@ -171,4 +168,4 @@ Configure these non-secret GitHub variables at the repository or organization le
 Keep application runtime secrets in AWS Secrets Manager.
 Do not copy `DATABASE_URL`, Firebase service account JSON, Auth0 server secret, WSDOT API key, or `SENTRY_AUTH_TOKEN` into GitHub variables for ECS runtime deployment. If sourcemap upload is enabled later, store `SENTRY_AUTH_TOKEN` only as a GitHub build secret and do not pass it to ECS runtime.
 
-The scheduler ECS service is intentionally configured with `deployment_minimum_healthy_percent = 0` and `deployment_maximum_percent = 100` so rolling deploys stop the singleton scheduler before starting the replacement task. Preserve this invariant while `scheduler_desired_count = 1` to avoid overlapping refresh jobs.
+Keep `web_desired_count = 1` while the web process owns scheduled work. The shared database operation leases prevent deploy/startup overlap, but multiple long-lived web schedulers would maintain independent notification transition state.

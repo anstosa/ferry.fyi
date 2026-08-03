@@ -77,7 +77,6 @@ resource "aws_iam_role_policy" "github_deploy" {
         ]
         Resource = [
           "${aws_ecs_task_definition.web.arn_without_revision}:*",
-          "${aws_ecs_task_definition.scheduler.arn_without_revision}:*",
           "${aws_ecs_task_definition.detector.arn_without_revision}:*"
         ]
       },
@@ -90,7 +89,6 @@ resource "aws_iam_role_policy" "github_deploy" {
         ]
         Resource = [
           aws_ecs_service.web.arn,
-          aws_ecs_service.scheduler.arn,
           aws_ecs_service.detector.arn
         ]
       },

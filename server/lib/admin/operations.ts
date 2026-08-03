@@ -72,7 +72,7 @@ const operationRegistry: Record<AdminOperationName, OperationDefinition> = {
     destructive: false,
     run: refreshCameraLineDetectionCache,
     trigger:
-      "Every minute at :30 on the scheduler process; also warmed after scheduler startup.",
+      "Every minute at :30 on the web process; also warmed after server startup.",
   },
   "clear-wsf-memory-cache": {
     adminAllowed: true,
@@ -177,7 +177,7 @@ const operationRegistry: Record<AdminOperationName, OperationDefinition> = {
       await updateScheduleCache();
     },
     trigger:
-      "At web-cache process startup and when run manually; shares one lease with all WSF refreshes.",
+      "At non-notifying fallback startup and when run manually; shares one lease with all WSF refreshes.",
   },
   "wsf-short-notifying-refresh": {
     adminAllowed: false,
@@ -185,7 +185,7 @@ const operationRegistry: Record<AdminOperationName, OperationDefinition> = {
       "Refreshes WSF vessel status and capacity and sends eligible notifications.",
     destructive: false,
     run: updateShort,
-    trigger: "Every minute on the scheduler process.",
+    trigger: "Every minute on the web process.",
   },
   "wsf-short-refresh": {
     adminAllowed: true,
@@ -194,7 +194,7 @@ const operationRegistry: Record<AdminOperationName, OperationDefinition> = {
     destructive: false,
     run: updateUserFacingStatus,
     trigger:
-      "Every minute on the web-cache process; shares one lease with all WSF refreshes.",
+      "Every minute in non-notifying fallback mode; shares one lease with all WSF refreshes.",
   },
   "wsf-notifying-refresh": {
     adminAllowed: false,
@@ -206,7 +206,7 @@ const operationRegistry: Record<AdminOperationName, OperationDefinition> = {
       await updateShort();
       await updateScheduleCache();
     },
-    trigger: "At scheduler process startup.",
+    trigger: "At web server startup.",
   },
 };
 
