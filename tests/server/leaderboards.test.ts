@@ -121,10 +121,10 @@ describe("leaderboard eligibility helpers", () => {
     ).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
   });
 
-  it("keeps public labels anonymous by default", () => {
-    expect(leaderboardLabel("Ada Lovelace", false)).toBe("AL");
-    expect(leaderboardLabel("Ada Lovelace", true)).toBe("Ada Lovelace");
-    expect(leaderboardLabel("", false)).toBe("Anonymous");
+  it("uses the moderated display name as the public label", () => {
+    expect(leaderboardLabel(" Ada   Lovelace ")).toBe("Ada Lovelace");
+    expect(leaderboardLabel("AL")).toBe("AL");
+    expect(leaderboardLabel("")).toBe("Anonymous");
   });
 
   it("accepts only fresh underway WSF sailing identities", () => {

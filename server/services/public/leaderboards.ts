@@ -72,9 +72,7 @@ export const getPublicLeaderboard = async ({
         return null;
       }
       return {
-        label: profile
-          ? leaderboardLabel(profile.displayName, profile.useFullName)
-          : "Anonymous",
+        label: profile ? leaderboardLabel(profile.displayName) : "Anonymous",
         score: Number(row.score),
       };
     })

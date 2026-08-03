@@ -87,6 +87,7 @@ export interface LeaderboardPreferences {
   displayName: string;
   notificationsEnabled: boolean;
   optedOut: boolean;
+  /** @deprecated Retained for wire compatibility; displayName is the chosen public label. */
   useFullName: boolean;
   verboseNotificationsEnabled: boolean;
 }

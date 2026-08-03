@@ -911,10 +911,6 @@ export const Admin = (): ReactElement => {
                           {userProfile.leaderboard.profile.optedOut
                             ? "yes"
                             : "no"}
-                          ; full name:{" "}
-                          {userProfile.leaderboard.profile.useFullName
-                            ? "yes"
-                            : "no"}
                           ; automatic check-ins:{" "}
                           {userProfile.leaderboard.profile
                             .automaticCheckinsEnabled

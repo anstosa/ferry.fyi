@@ -75,7 +75,7 @@ describe("public leaderboard query service", () => {
       entityId: "terminal-1",
       period: "all",
       ranks: [
-        { label: "AL", rank: 1, score: 20 },
+        { label: "Ada Lovelace", rank: 1, score: 20 },
         ...Array.from({ length: 9 }, (_, index) => ({
           label: "Anonymous",
           rank: index + 2,

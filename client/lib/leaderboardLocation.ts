@@ -84,7 +84,7 @@ export const notifyLeaderboardEnrollmentChanged = (
 /**
  * Turns an authenticated profile name into a safe default leaderboard label.
  * Only initials are returned, so the caller never sends the full profile name
- * unless the user explicitly opts into full-name display later.
+ * unless the user explicitly enters it as their chosen display name.
  */
 export const leaderboardInitials = (profile?: {
   family_name?: string;

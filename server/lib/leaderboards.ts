@@ -73,24 +73,9 @@ export const periodStart = (
   return zonedNow.startOf("week").toUTC().toJSDate();
 };
 
-export const leaderboardLabel = (
-  displayName: string,
-  useFullName: boolean
-): string => {
+export const leaderboardLabel = (displayName: string): string => {
   const trimmed = displayName.trim().replace(/\s+/g, " ");
-  if (!trimmed) {
-    return "Anonymous";
-  }
-  if (useFullName) {
-    return trimmed;
-  }
-  return (
-    trimmed
-      .split(" ")
-      .slice(0, 2)
-      .map((part) => part[0]?.toUpperCase())
-      .join("") || "Anonymous"
-  );
+  return trimmed || "Anonymous";
 };
 
 /** Maintained, deliberately small policy for public leaderboard labels. */
