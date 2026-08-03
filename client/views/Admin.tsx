@@ -79,7 +79,6 @@ type UserSupportProfile = {
       displayName: string;
       notificationsEnabled: boolean;
       optedOut: boolean;
-      useFullName: boolean;
       verboseNotificationsEnabled: boolean;
     } | null;
     profileExists: boolean;
