@@ -3,8 +3,8 @@ export type InstallPlatform = "android" | "ios" | "web";
 export const GOOGLE_PLAY_URL =
   "https://play.google.com/store/apps/details?id=fyi.ferry";
 
-export const APPLE_APP_STORE_URL =
-  "https://apps.apple.com/us/app/ferry-fyi/id6790176506";
+export const APPLE_APP_STORE_ID = "6790176506";
+export const APPLE_APP_STORE_URL = `https://apps.apple.com/us/app/ferry-fyi/id${APPLE_APP_STORE_ID}`;
 
 const INSTALL_PROMPT_REQUEST_EVENT = "ferry-fyi:request-install-prompt";
 

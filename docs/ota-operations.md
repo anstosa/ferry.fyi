@@ -1,12 +1,30 @@
 # OTA operations
 
-This runbook covers Android and iOS web-asset updates delivered by the Capacitor updater. The updater is configured in `capacitor.config.ts` with `autoUpdate: false`; `client/entry-client.tsx` asks the server for an update at startup, downloads it in the background, and activates it on a later app start.
+This runbook covers Android and iOS web-asset updates delivered by the Capacitor updater. The updater is configured in `capacitor.config.ts` with `autoUpdate: false`; `client/App.tsx` asks the server for an update at startup, downloads it in the background, and activates it on a later app start.
 
 ## Release boundaries
 
 An OTA release contains only the web application assets. It can update React, TypeScript output, styles, and other files produced in `dist/client`.
 
 An OTA release cannot change a native app binary. Changes to Capacitor plugins, plugin configuration, Android or iOS permissions, `android/`, `ios/`, `capacitor.config.ts`, or native code require a signed store release. Follow the Android or iOS release procedure in `README.md`; use internal testing before production rollout. Do not use OTA to distribute native/plugin/permission changes.
+
+## Native store updates
+
+Signed Android and iOS builds check their platform store for a newer native
+binary after the browser application mounts and when an app session returns to
+the foreground after the six-hour check interval. A reported update displays a
+dismissible Ferry FYI prompt whose action opens Google Play or the App Store.
+Dismissal suppresses the same store version for 24 hours; a later version is
+eligible immediately. Store lookup and launch failures are non-fatal.
+
+The initial implementation intentionally does not start Android flexible or
+immediate in-app update flows. Those flows require additional download,
+restart, cancellation, and interrupted-update recovery UX. Test Android update
+availability through a Play testing track or Internal App Sharing with a
+higher published version code; a sideloaded APK cannot validate Play update
+behavior. Validate iOS lookup and App Store navigation on a physical device
+against the live App Store listing. TestFlight-only builds may not have a newer
+public App Store version to report.
 
 ## Configuration
 

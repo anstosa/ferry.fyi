@@ -36,7 +36,7 @@ Date-selected schedule URLs are noindex variants of the undated route canonical.
 - **Tickets:** Sign in to view eligible ticket and reservation details, barcodes, and refresh status. Do not guess or request another person's ticket identifier.
 - **Alerts and favorites:** Signed-in users can save favorite routes and configure service, capacity, or sailing alerts.
 - **Forecast explanations:** Learn how weather, tide conditions, and observed data inform capacity and delay forecasts.
-- **Mobile and PWA support:** Install Ferry FYI as a web app or use the native mobile app for device-aware features and OTA updates.
+- **Mobile and PWA support:** Install Ferry FYI as a web app or use the native mobile app for device-aware features, OTA web-asset updates, and prompts when a newer native build is available from Google Play or the App Store.
 
 ## AI API guide
 

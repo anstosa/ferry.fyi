@@ -11,6 +11,7 @@ import { AppLoadingState } from "~/components/AppLoadingState";
 import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { InstallPromptToast } from "~/components/InstallPromptToast";
 import { LeaderboardForegroundCheckins } from "~/components/LeaderboardForegroundCheckins";
+import { NativeAppUpdatePrompt } from "~/components/NativeAppUpdatePrompt";
 import { NearbyTicketNotifications } from "~/components/NearbyTicketNotifications";
 import { Prompt } from "~/components/Prompt";
 import { deferAnalytics, useRecordPageViews } from "~/lib/analytics";
@@ -209,6 +210,10 @@ export const App = ({
           <InstallPromptToast
             footerDocked={hasBottomBar}
             key="install-prompt"
+          />
+          <NativeAppUpdatePrompt
+            footerDocked={hasBottomBar}
+            key="native-app-update-prompt"
           />
         </AnimatePresence>
         <NearbyTicketNotifications />
