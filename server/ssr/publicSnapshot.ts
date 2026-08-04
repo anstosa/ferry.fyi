@@ -76,6 +76,7 @@ export type PublicSsrLoadResult =
       classification: "snapshot";
       match: PublicSsrRouteMatch;
       snapshot: PublicSsrSnapshot;
+      sourceDurationsMs?: Readonly<Partial<Record<PublicSsrSourceKey, number>>>;
     }
   | {
       classification: "private";
@@ -131,6 +132,7 @@ export interface PublicSsrSnapshotLoaderInput {
 }
 
 export interface PublicSsrSnapshotLoaderDependencies {
+  monotonicClock?: () => number;
   services: PublicSsrSnapshotServices;
   terminalCatalog?: PublicTerminalCatalog;
 }
@@ -573,6 +575,7 @@ function dateFor(clock: Date, offset = 0): string {
 }
 
 export const createPublicSsrSnapshotLoader = ({
+  monotonicClock = () => performance.now(),
   services,
   terminalCatalog = TERMINAL_CATALOG as PublicTerminalCatalog,
 }: PublicSsrSnapshotLoaderDependencies) => {
@@ -625,12 +628,19 @@ export const createPublicSsrSnapshotLoader = ({
         },
         resolver
       );
-      return { classification: "snapshot", match, snapshot };
+      return {
+        classification: "snapshot",
+        match,
+        snapshot,
+        sourceDurationsMs: {},
+      };
     }
+    const sourceDurationsMs: Partial<Record<PublicSsrSourceKey, number>> = {};
     const from = async <T>(
       sourceKey: PublicSsrSourceKey,
       operation: () => Promise<T>
     ) => {
+      const started = monotonicClock();
       try {
         return required(await operation(), sourceKey);
       } catch (error) {
@@ -638,6 +648,10 @@ export const createPublicSsrSnapshotLoader = ({
           throw error;
         }
         throw new PublicSsrTransientFailure(sourceKey);
+      } finally {
+        sourceDurationsMs[sourceKey] =
+          (sourceDurationsMs[sourceKey] ?? 0) +
+          Math.max(0, monotonicClock() - started);
       }
     };
     const content = () => from("notices", () => services.getContent());
@@ -1170,6 +1184,6 @@ export const createPublicSsrSnapshotLoader = ({
       },
       resolver
     );
-    return { classification: "snapshot", match, snapshot };
+    return { classification: "snapshot", match, snapshot, sourceDurationsMs };
   };
 };

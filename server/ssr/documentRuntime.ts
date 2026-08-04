@@ -2,6 +2,7 @@ import type {
   PublicSsrRenderDocumentResult,
   PublicSsrRendererArtifact,
 } from "shared/contracts/ssrRenderer";
+import type { PublicSsrSourceKey } from "shared/contracts/ssrRouting";
 import { assemblePublicSsrMarkerDocument } from "shared/lib/ssrDocumentTemplate";
 import { publicQueryCacheKey } from "shared/lib/ssrQueryPolicy";
 import {
@@ -39,6 +40,16 @@ export type SsrTelemetryEvent =
       durationMs: number;
       errorClass?: "capacity" | "integrity" | "loader" | "render" | "unknown";
       event: "ssr_document";
+      phases: Readonly<{
+        cache: number;
+        render: number;
+        routeResolve: number;
+        snapshotLoad: number;
+        snapshotValidation: number;
+        sourceGroups: Readonly<Partial<Record<PublicSsrSourceKey, number>>>;
+        total: number;
+        unit: "milliseconds";
+      }>;
       routeId?: string;
       safeQuery?: string;
       controlReason?: "cache_bypassed" | "ssr_disabled";
@@ -64,6 +75,7 @@ export interface SsrDocumentRuntimeDependencies {
     fixedClock: Date;
     release: { publishedAt: string | null; version: string };
   }) => Promise<PublicSsrLoadResult>;
+  readonly monotonicClock?: () => number;
   readonly resolve: (
     url: URL,
     options?: { pureOnly?: boolean }
@@ -178,6 +190,8 @@ const expectedSnapshotCanonicalPath = (
 export const createSsrDocumentRuntime = (
   dependencies: SsrDocumentRuntimeDependencies
 ) => {
+  const monotonicClock =
+    dependencies.monotonicClock ?? (() => performance.now());
   dependencies.cache.beginSession();
   dependencies.telemetry?.({
     cacheEnabled: dependencies.config.cacheEnabled,
@@ -187,22 +201,45 @@ export const createSsrDocumentRuntime = (
   const emit = (
     event: Omit<
       Extract<SsrTelemetryEvent, { event: "ssr_document" }>,
-      "durationMs" | "event"
+      "durationMs" | "event" | "phases"
     >,
-    started: number
+    started: number,
+    phases: Extract<SsrTelemetryEvent, { event: "ssr_document" }>["phases"]
   ) =>
     dependencies.telemetry?.({
       ...event,
       durationMs: Math.max(0, dependencies.clock().getTime() - started),
       event: "ssr_document",
+      phases,
     });
 
   return async (absoluteUrl: string): Promise<SsrDocumentResponse> => {
     const started = dependencies.clock().getTime();
+    const monotonicStarted = monotonicClock();
+    const phaseValues = {
+      cache: 0,
+      render: 0,
+      routeResolve: 0,
+      snapshotLoad: 0,
+      snapshotValidation: 0,
+      sourceGroups: {} as Partial<Record<PublicSsrSourceKey, number>>,
+    };
+    const phases = () => ({
+      ...phaseValues,
+      sourceGroups: { ...phaseValues.sourceGroups },
+      total: Math.max(0, monotonicClock() - monotonicStarted),
+      unit: "milliseconds" as const,
+    });
+    const emitRequest = (
+      event: Omit<
+        Extract<SsrTelemetryEvent, { event: "ssr_document" }>,
+        "durationMs" | "event" | "phases"
+      >
+    ) => emit(event, started, phases());
     const url = new URL(absoluteUrl);
     const host = getPublicSsrHostProfile(url.hostname);
     if (!host) {
-      emit({ category: "unknown" }, started);
+      emitRequest({ category: "unknown" });
       return {
         html: noindex(dependencies.template, "private"),
         headers: noindexHeaders,
@@ -212,16 +249,19 @@ export const createSsrDocumentRuntime = (
     let resolved: Awaited<
       ReturnType<SsrDocumentRuntimeDependencies["resolve"]>
     >;
+    const resolveStarted = monotonicClock();
     try {
       resolved = await dependencies.resolve(url, {
         pureOnly: !dependencies.config.enabled,
       });
     } catch {
-      emit({ category: "failure", errorClass: "loader" }, started);
+      phaseValues.routeResolve = Math.max(0, monotonicClock() - resolveStarted);
+      emitRequest({ category: "failure", errorClass: "loader" });
       return failureResponse(dependencies.template);
     }
+    phaseValues.routeResolve = Math.max(0, monotonicClock() - resolveStarted);
     if (resolved.classification === "unknown") {
-      emit({ category: "unknown" }, started);
+      emitRequest({ category: "unknown" });
       return {
         html: noindex(dependencies.template, "private"),
         headers: noindexHeaders,
@@ -236,7 +276,7 @@ export const createSsrDocumentRuntime = (
       safeQuery: publicQueryCacheKey(match.query),
     };
     if (match.route.id === "callback") {
-      emit({ ...safe, category: "callback" }, started);
+      emitRequest({ ...safe, category: "callback" });
       return {
         html: noindex(dependencies.template, "callback"),
         headers: noindexHeaders,
@@ -247,7 +287,7 @@ export const createSsrDocumentRuntime = (
       resolved.classification === "private" ||
       match.route.kind === "private"
     ) {
-      emit({ ...safe, category: "private" }, started);
+      emitRequest({ ...safe, category: "private" });
       return {
         html: noindex(dependencies.template, "private"),
         headers: noindexHeaders,
@@ -255,7 +295,7 @@ export const createSsrDocumentRuntime = (
       };
     }
     if (resolved.classification === "redirect") {
-      emit({ ...safe, category: "redirect" }, started);
+      emitRequest({ ...safe, category: "redirect" });
       return {
         html: "",
         headers: noindexHeaders,
@@ -273,40 +313,59 @@ export const createSsrDocumentRuntime = (
       >["errorClass"] = "loader";
       let snapshot;
       try {
-        const loaded = await dependencies.load({
-          absoluteUrl: canonicalUrl.toString(),
-          contentRevision: dependencies.contentRevision(),
-          fixedClock: now,
-          release,
-        });
-        if (
-          loaded.classification !== "snapshot" ||
-          !sameRouteMatch(match, loaded.match)
-        ) {
-          errorClass = "integrity";
-          throw new Error("SSR not-found loader identity mismatch");
-        }
+        const loadStarted = monotonicClock();
+        let loaded: PublicSsrLoadResult;
         try {
-          snapshot = assertPublicSsrSnapshot(loaded.snapshot);
-        } catch (error) {
-          errorClass = "integrity";
-          throw error;
+          loaded = await dependencies.load({
+            absoluteUrl: canonicalUrl.toString(),
+            contentRevision: dependencies.contentRevision(),
+            fixedClock: now,
+            release,
+          });
+        } finally {
+          phaseValues.snapshotLoad = Math.max(
+            0,
+            monotonicClock() - loadStarted
+          );
         }
-        if (
-          snapshot.canonicalHost !== host ||
-          snapshot.hostProfile !== host ||
-          snapshot.canonicalPath !== "/404" ||
-          snapshot.routeId !== "unknown-public-path" ||
-          publicQueryCacheKey({
-            rejected: [],
-            values: snapshot.normalizedUrl.query,
-          }) !== "" ||
-          Object.keys(snapshot.routeParams).length !== 0
-        ) {
-          errorClass = "integrity";
-          throw new Error("SSR not-found snapshot identity mismatch");
+        const validationStarted = monotonicClock();
+        try {
+          if (
+            loaded.classification !== "snapshot" ||
+            !sameRouteMatch(match, loaded.match)
+          ) {
+            errorClass = "integrity";
+            throw new Error("SSR not-found loader identity mismatch");
+          }
+          phaseValues.sourceGroups = { ...(loaded.sourceDurationsMs ?? {}) };
+          try {
+            snapshot = assertPublicSsrSnapshot(loaded.snapshot);
+          } catch (error) {
+            errorClass = "integrity";
+            throw error;
+          }
+          if (
+            snapshot.canonicalHost !== host ||
+            snapshot.hostProfile !== host ||
+            snapshot.canonicalPath !== "/404" ||
+            snapshot.routeId !== "unknown-public-path" ||
+            publicQueryCacheKey({
+              rejected: [],
+              values: snapshot.normalizedUrl.query,
+            }) !== "" ||
+            Object.keys(snapshot.routeParams).length !== 0
+          ) {
+            errorClass = "integrity";
+            throw new Error("SSR not-found snapshot identity mismatch");
+          }
+        } finally {
+          phaseValues.snapshotValidation = Math.max(
+            0,
+            monotonicClock() - validationStarted
+          );
         }
         let result;
+        const renderStarted = monotonicClock();
         try {
           result = await renderSnapshotDocument(dependencies, {
             now,
@@ -319,38 +378,35 @@ export const createSsrDocumentRuntime = (
         } catch (error) {
           errorClass = "render";
           throw error;
+        } finally {
+          phaseValues.render = Math.max(0, monotonicClock() - renderStarted);
         }
-        emit(
-          {
-            ...safe,
-            canonicalPath: "/404",
-            category: "not-found",
-            completedAt: now.getTime(),
-            release: release.version,
-            renderedAt: now.getTime(),
-          },
-          started
-        );
+        emitRequest({
+          ...safe,
+          canonicalPath: "/404",
+          category: "not-found",
+          completedAt: now.getTime(),
+          release: release.version,
+          renderedAt: now.getTime(),
+        });
         return { html: result.html, headers: noindexHeaders, status: 404 };
       } catch {
-        emit(
-          {
-            ...safe,
-            canonicalPath: "/404",
-            category: "failure",
-            errorClass,
-            release: release.version,
-          },
-          started
-        );
+        emitRequest({
+          ...safe,
+          canonicalPath: "/404",
+          category: "failure",
+          errorClass,
+          release: release.version,
+        });
         return failureResponse(dependencies.template);
       }
     }
     if (!dependencies.config.enabled) {
-      emit(
-        { ...safe, category: "disabled", controlReason: "ssr_disabled" },
-        started
-      );
+      emitRequest({
+        ...safe,
+        category: "disabled",
+        controlReason: "ssr_disabled",
+      });
       return {
         html: noindex(dependencies.template, "disabled"),
         headers: noindexHeaders,
@@ -358,7 +414,7 @@ export const createSsrDocumentRuntime = (
       };
     }
     if (match.route.kind !== "static" && match.route.kind !== "dynamic") {
-      emit({ ...safe, category: "failure", errorClass: "loader" }, started);
+      emitRequest({ ...safe, category: "failure", errorClass: "loader" });
       return failureResponse(dependencies.template);
     }
     const now = dependencies.clock();
@@ -376,6 +432,7 @@ export const createSsrDocumentRuntime = (
       SsrTelemetryEvent,
       { event: "ssr_document" }
     >["errorClass"] = "unknown";
+    const cacheStarted = monotonicClock();
     const cached = await dependencies.cache.getOrCreate({
       cacheEnabled: dependencies.config.cacheEnabled,
       enabled: true,
@@ -385,6 +442,7 @@ export const createSsrDocumentRuntime = (
         const canonicalUrl = new URL(match.canonicalPath, url.origin);
         canonicalUrl.search = safeQuery;
         let loaded: PublicSsrLoadResult;
+        const loadStarted = monotonicClock();
         try {
           loaded = await dependencies.load({
             absoluteUrl: canonicalUrl.toString(),
@@ -392,16 +450,25 @@ export const createSsrDocumentRuntime = (
             fixedClock: now,
             release,
           });
+          if (loaded.classification === "snapshot") {
+            phaseValues.sourceGroups = { ...(loaded.sourceDurationsMs ?? {}) };
+          }
         } catch (error) {
           failureClass = "loader";
           throw error;
+        } finally {
+          phaseValues.snapshotLoad = Math.max(
+            0,
+            monotonicClock() - loadStarted
+          );
         }
-        if (loaded.classification !== "snapshot") {
-          failureClass = "loader";
-          throw new Error("SSR loader did not return a public snapshot");
-        }
+        const validationStarted = monotonicClock();
         let snapshot;
         try {
+          if (loaded.classification !== "snapshot") {
+            failureClass = "loader";
+            throw new Error("SSR loader did not return a public snapshot");
+          }
           if (!sameRouteMatch(match, loaded.match)) {
             failureClass = "integrity";
             throw new Error("SSR loader route identity mismatch");
@@ -428,7 +495,13 @@ export const createSsrDocumentRuntime = (
             failureClass = "integrity";
           }
           throw error;
+        } finally {
+          phaseValues.snapshotValidation = Math.max(
+            0,
+            monotonicClock() - validationStarted
+          );
         }
+        const renderStarted = monotonicClock();
         try {
           const result = await renderSnapshotDocument(dependencies, {
             now,
@@ -449,6 +522,8 @@ export const createSsrDocumentRuntime = (
         } catch (error) {
           failureClass = "render";
           throw error;
+        } finally {
+          phaseValues.render = Math.max(0, monotonicClock() - renderStarted);
         }
       },
       mayCommit: (document) =>
@@ -460,38 +535,40 @@ export const createSsrDocumentRuntime = (
         dependencies.clock().getTime() - document.completedAt <
           DYNAMIC_DOCUMENT_CACHE_TTL_MS,
     });
+    const cacheDuration = Math.max(0, monotonicClock() - cacheStarted);
+    phaseValues.cache = Math.max(
+      0,
+      cacheDuration -
+        phaseValues.snapshotLoad -
+        phaseValues.snapshotValidation -
+        phaseValues.render
+    );
     if (!cached.document) {
-      emit(
-        {
-          ...safe,
-          category: "failure",
-          cacheOutcome: cached.outcome,
-          errorClass: cached.failure === "capacity" ? "capacity" : failureClass,
-          controlReason: dependencies.config.cacheEnabled
-            ? undefined
-            : "cache_bypassed",
-          sailingDayId,
-          release: release.version,
-        },
-        started
-      );
-      return failureResponse(dependencies.template);
-    }
-    emit(
-      {
+      emitRequest({
         ...safe,
-        category: "snapshot",
+        category: "failure",
         cacheOutcome: cached.outcome,
-        completedAt: cached.document.completedAt,
+        errorClass: cached.failure === "capacity" ? "capacity" : failureClass,
         controlReason: dependencies.config.cacheEnabled
           ? undefined
           : "cache_bypassed",
-        renderedAt: cached.document.renderedAt,
         sailingDayId,
         release: release.version,
-      },
-      started
-    );
+      });
+      return failureResponse(dependencies.template);
+    }
+    emitRequest({
+      ...safe,
+      category: "snapshot",
+      cacheOutcome: cached.outcome,
+      completedAt: cached.document.completedAt,
+      controlReason: dependencies.config.cacheEnabled
+        ? undefined
+        : "cache_bypassed",
+      renderedAt: cached.document.renderedAt,
+      sailingDayId,
+      release: release.version,
+    });
     return {
       html: cached.document.result.html,
       headers: documentHeaders,

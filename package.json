@@ -142,6 +142,7 @@
   "repository": "anstosa/ferry.fyi.git",
   "scripts": {
     "android": "scripts/with-android-env.sh npx cap run android",
+    "benchmark:browser-runtime": "node scripts/benchmark-browser-runtime.mjs",
     "build": "yarn build:client && yarn build:ssr && yarn build:server && yarn smoke:ssr-artifacts",
     "build:android": "scripts/with-android-env.sh sh -c 'NODE_ENV=production CACHE_NAME=android vite build --config client/vite.config.ts && cap sync && direnv allow'",
     "build:android:ci": "scripts/with-android-env.sh sh -c 'NODE_ENV=production CACHE_NAME=android vite build --config client/vite.config.ts && cap sync android'",

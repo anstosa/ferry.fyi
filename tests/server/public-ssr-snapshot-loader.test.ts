@@ -197,6 +197,32 @@ const noCalls = (publicServices: PublicSsrSnapshotServices) =>
   ).toBe(true);
 
 describe("public SSR snapshot loader", () => {
+  it("attributes safe per-source load durations", async () => {
+    let monotonicNow = 0;
+    const result = await createPublicSsrSnapshotLoader({
+      monotonicClock: () => {
+        monotonicNow += 1;
+        return monotonicNow;
+      },
+      services: services(),
+    })(input("https://ferry.fyi/"));
+
+    expect(result.classification).toBe("snapshot");
+    if (result.classification !== "snapshot") {
+      throw new Error("Expected snapshot");
+    }
+    expect(result.sourceDurationsMs).toMatchObject({
+      features: expect.any(Number),
+      notices: expect.any(Number),
+      terminals: expect.any(Number),
+    });
+    expect(
+      Object.values(result.sourceDurationsMs ?? {}).every(
+        (duration) => duration >= 1
+      )
+    ).toBe(true);
+  });
+
   it("round-trips a terminal-and-mate snapshot through the document seed parser", async () => {
     const snapshot = await snapshotFor(
       "https://ferry.fyi/seattle/bainbridge?date=2026-07-28"

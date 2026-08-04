@@ -164,6 +164,7 @@ const createRuntime = (
     clock?: () => Date;
     config?: { cacheEnabled: boolean; enabled: boolean };
     load?: () => Promise<PublicSsrLoadResult>;
+    monotonicClock?: () => number;
   } = {}
 ) => {
   const matched = match(new URL("https://ferry.fyi/about"));
@@ -188,6 +189,7 @@ const createRuntime = (
         React.createElement("main", null, "server document"),
     }),
     load,
+    monotonicClock: overrides.monotonicClock,
     resolve,
     release: () => ({ publishedAt: null, version: "test" }),
     telemetry,
@@ -288,6 +290,42 @@ describe("SSR document runtime cache integration", () => {
     ]);
     expect(documentEvents.map(({ safeQuery }) => safeQuery)).toEqual(["", ""]);
     expect(JSON.stringify(telemetry.mock.calls)).not.toContain("canary");
+  });
+
+  it("attributes document and source phases with explicit millisecond units", async () => {
+    let monotonicNow = 0;
+    const matched = match(new URL("https://ferry.fyi/about"));
+    if (!matched) {
+      throw new Error("About route must be present");
+    }
+    const runtime = createRuntime({
+      load: vi.fn(async () => {
+        monotonicNow += 12;
+        return {
+          classification: "snapshot" as const,
+          match: matched,
+          snapshot: aboutSnapshot(),
+          sourceDurationsMs: { editorial: 7 },
+        };
+      }),
+      monotonicClock: () => monotonicNow,
+    });
+
+    await runtime.run("https://ferry.fyi/about");
+
+    const event = runtime.telemetry.mock.calls
+      .map(([value]) => value)
+      .find(({ event }) => event === "ssr_document");
+    expect(event?.phases).toEqual({
+      cache: 0,
+      render: 0,
+      routeResolve: 0,
+      snapshotLoad: 12,
+      snapshotValidation: 0,
+      sourceGroups: { editorial: 7 },
+      total: 12,
+      unit: "milliseconds",
+    });
   });
 
   it("coalesces twenty identical document requests and does not load while disabled", async () => {
