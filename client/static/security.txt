@@ -1,0 +1,5 @@
+Contact: mailto:dev@ferry.fyi
+Expires: 2027-06-30T23:59:59Z
+Preferred-Languages: en
+Canonical: https://ferry.fyi/.well-known/security.txt
+Policy: https://ferry.fyi/privacy

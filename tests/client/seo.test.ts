@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { SeoHelmet } from "../../client/components/SeoHelmet";
 import { removeSeedSeoTags } from "../../client/lib/seo";
-import { getSeoMetadata } from "../../shared/lib/seo";
+import { getSeoMetadata, getSeoSchema } from "../../shared/lib/seo";
 
 describe("client SEO", () => {
   let root: Root | undefined;
@@ -61,6 +61,22 @@ describe("client SEO", () => {
     )?.textContent;
     expect(schema).not.toContain('"@type":"BreadcrumbList"');
     expect(schema).toContain('"@type":"Organization"');
+  });
+
+  it("keeps Dataset claims factual without asserting a mixed-source license", () => {
+    const seo = getSeoMetadata("/data-sources");
+    const graph = getSeoSchema(seo, "https://ferry.fyi")["@graph"] as Array<
+      Record<string, unknown>
+    >;
+    const dataset = graph.find((entry) => entry["@type"] === "Dataset");
+
+    expect(dataset).toMatchObject({
+      isAccessibleForFree: true,
+      spatialCoverage: { name: "Washington State, United States" },
+    });
+    expect(dataset?.provider).toBeDefined();
+    expect(dataset?.measurementTechnique).toContain("timestamps");
+    expect(dataset).not.toHaveProperty("license");
   });
 
   it("keeps hydrated metadata host-aware on howmanyboats.today", () => {

@@ -1,0 +1,10 @@
+extends:
+  - recommended
+
+rules:
+  info-license: off
+  no-invalid-media-type-examples: error
+  no-unused-components: error
+  operation-operationId: error
+  operation-operationId-unique: error
+  security-defined: error

@@ -1,7 +1,10 @@
-import cors from "cors";
 import express from "express";
 import logger from "heroku-logger";
-import { scheduleJob } from "node-schedule";
+import {
+  type JobCallback,
+  scheduleJob as createScheduledJob,
+  type Spec,
+} from "node-schedule";
 
 import { apiRouter } from "~/controllers/api";
 import { createStaticRouter, staticRouter } from "~/controllers/static";
@@ -9,11 +12,26 @@ import {
   type AdminOperationName,
   runAdminOperation,
 } from "~/lib/admin/operations";
-import { dbInit } from "~/lib/db";
+import { db, dbInit } from "~/lib/db";
+import { apiErrorHandler } from "~/lib/httpApiPolicy";
+import { httpCachePolicy } from "~/lib/httpCachePolicy";
+import { createHttpSecurityMiddleware } from "~/lib/httpSecurity";
+import { createHttpTelemetryMiddleware } from "~/lib/httpTelemetry";
+import {
+  reportOperationTelemetry,
+  reportRuntimeLifecycleTelemetry,
+} from "~/lib/operationTelemetry";
 import { safeScheduledTask } from "~/lib/safeScheduledJob";
 import {
+  attachProcessSignalHandlers,
+  BackgroundRegistry,
+  createServerLifecycle,
+} from "~/lib/serverLifecycle";
+import {
+  createHealthRouter,
+  createReadinessController,
   forceHttps,
-  healthRouter,
+  type ReadinessController,
   shouldRunScheduler,
 } from "~/lib/serverRuntime";
 import { initializeWsfSeed } from "~/lib/wsf";
@@ -21,34 +39,46 @@ import { loadProductionSsrArtifacts } from "~/ssr/artifacts";
 import { createSsrRuntime } from "~/ssr/composition";
 
 const STARTUP_MAINTENANCE_DELAY_MS = 60_000;
+export const serverBackgroundRegistry = new BackgroundRegistry();
+const scheduleJob = (spec: Spec, callback: JobCallback) =>
+  serverBackgroundRegistry.trackJob(createScheduledJob(spec, callback));
 
 // create main app
 export function createApp({
   apiHandler = apiRouter,
   staticHandler = staticRouter,
   publicMiddleware,
+  readiness = createReadinessController({ probe: () => Promise.resolve(true) }),
   webMiddleware,
 }: {
   apiHandler?: express.RequestHandler;
   staticHandler?: express.RequestHandler;
   /** Dynamic policy documents that must precede Vite in development. */
   publicMiddleware?: express.RequestHandler;
+  readiness?: ReadinessController;
   webMiddleware?: express.RequestHandler;
 } = {}): express.Express {
   const app = express();
+  app.disable("x-powered-by");
+  app.set("etag", "strong");
   // Production traffic reaches Express through the cloudflared sidecar on the
   // task loopback interface. Trust only that hop so rate limiting can use the
   // client address without accepting forwarded headers from direct callers.
   app.set("trust proxy", "loopback");
-  app.use(healthRouter);
+  app.use(createHttpTelemetryMiddleware());
+  app.use(createHttpSecurityMiddleware());
+  app.use(httpCachePolicy);
+  app.use(createHealthRouter(readiness));
   // use SSL in production
   if (process.env.NODE_ENV === "production") {
     app.use(forceHttps);
   }
   app.use(express.json());
-  app.use(cors());
   // mount routes
   app.use("/api", apiHandler);
+  // Body-parser failures occur before the API router can install its own
+  // terminal handler. Keep those failures inside the same JSON trust boundary.
+  app.use("/api", apiErrorHandler);
   if (publicMiddleware) {
     app.use(publicMiddleware);
   }
@@ -62,10 +92,11 @@ export function createApp({
 // Scheduled and startup work shares the owner-admin registry.  Besides making
 // status truthful, this gives every process the same database lease as a
 // manual action, so a deploy/startup cannot overlap an admin refresh.
-const runOperationInBackground = async (
+const performOperationInBackground = async (
   operation: AdminOperationName
 ): Promise<void> => {
   const result = await runAdminOperation(operation);
+  reportOperationTelemetry(result.operation, operation);
   if (!result.started) {
     logger.info(
       `Skipped ${operation}; ${result.operation.operation} is already running`
@@ -74,6 +105,13 @@ const runOperationInBackground = async (
     logger.error(`Scheduled operation failed: ${operation}`);
   }
 };
+
+const runOperationInBackground = (
+  operation: AdminOperationName
+): Promise<void> =>
+  serverBackgroundRegistry.runTask(() =>
+    performOperationInBackground(operation)
+  );
 
 const beginOperationInBackground = (operation: AdminOperationName): void => {
   runOperationInBackground(operation).catch((error: unknown) => {
@@ -104,6 +142,7 @@ function deferStartupMaintenance(
     });
   }, STARTUP_MAINTENANCE_DELAY_MS);
   timeout.unref();
+  serverBackgroundRegistry.trackTimer(timeout);
 }
 
 // start web-safe WSF cache work
@@ -231,26 +270,36 @@ export function startScheduler(): void {
 
 // start server
 export async function startServer(): Promise<void> {
+  reportRuntimeLifecycleTelemetry("startup");
   const artifacts = await loadProductionSsrArtifacts(__dirname);
   const documentRuntime = await createSsrRuntime({ artifacts });
+  const readiness = createReadinessController({
+    probe: async () => await db.query("SELECT 1"),
+  });
   const app = createApp({
+    readiness,
     staticHandler: createStaticRouter(undefined, {
       browserDependencies: { documentRuntime },
     }),
   });
   await dbInit;
   initializeWsfSeed();
-  // start server before initializing WSF since that can take a couple minutes
-  const server = app.listen(process.env.PORT, () =>
-    logger.info(`Server started on port ${process.env.PORT ?? "default"}`)
-  );
-  process.once("SIGUSR2", () => {
-    logger.info("Gracefully shutting down server...");
-    server.close(() => {
-      logger.info("Done.");
-      process.kill(process.pid, "SIGUSR2");
-    });
+  readiness.markInitialized();
+  const server = app.listen(process.env.PORT, () => {
+    reportRuntimeLifecycleTelemetry("ready");
+    logger.info(`Server started on port ${process.env.PORT ?? "default"}`);
   });
+  attachProcessSignalHandlers(
+    createServerLifecycle({
+      background: serverBackgroundRegistry,
+      closeDatabase: async () => await db.close(),
+      exit: (code) => process.exit(code),
+      readiness,
+      restart: () => process.kill(process.pid, "SIGUSR2"),
+      server,
+      telemetry: reportRuntimeLifecycleTelemetry,
+    })
+  );
   // scheduler ownership guard
   if (shouldRunScheduler()) {
     startScheduler();

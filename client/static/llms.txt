@@ -42,6 +42,23 @@ Date-selected schedule URLs are noindex variants of the undated route canonical.
 
 The read-oriented API base is `https://ferry.fyi/api`. Responses from the endpoints below are JSON envelopes with a `body` field and a `wsfStatus` field; use `body` for the resource data and `wsfStatus` to detect upstream availability. API responses are operational data, not a promise of a stable third-party integration contract.
 
+- [OpenAPI contract](https://ferry.fyi/openapi.json) — Machine-readable methods, paths, authentication, schemas, statuses, freshness notes, cache classes, and rate classes for every operation advertised here.
+
+Live, private, authenticated, ticket, and mutation responses are `no-store`.
+Public browser reads allow cross-origin access; sensitive, authenticated, and
+upstream-triggering operations allow only same-origin or explicitly configured
+trusted browser origins. Native and server clients without an `Origin` header
+remain supported. CORS is not authentication.
+
+Anonymous reads use a generous shared-NAT-aware limit, upstream-triggering
+refreshes use a stricter limit, and sensitive ticket lookup has a separate
+limit. Successful limit responses publish standard `RateLimit` fields; rejected
+requests also publish `Retry-After`. Exact defaults are deployment-configurable.
+Unknown API routes return `404` with `body.error` of `api_not_found`; missing
+resources use `resource_not_found`; authentication failures use `unauthorized`;
+and unexpected failures use `internal_error`. Error responses are JSON,
+`no-store`, and `noindex` and do not include provider or stack details.
+
 ### Route and terminal discovery
 
 - `GET /api/terminals` — All terminals keyed by terminal id, including route relationships and terminal details.

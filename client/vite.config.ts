@@ -21,7 +21,7 @@ const configDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(configDir, "..");
 const staticDir = path.resolve(configDir, "static");
 const clientOutDir = path.resolve(repoRoot, "dist/client");
-const rootStaticFiles = ["llms.txt", "robots.txt"];
+const rootStaticFiles = ["llms.txt", "openapi.json", "robots.txt"];
 const { theme } = resolveConfig(tailwindConfig as never);
 const colors = theme.colors as Record<string, Record<string, string>>;
 const COLOR = colors.green.dark;
@@ -41,13 +41,23 @@ const copyStaticPlugin = (): Plugin => {
       server.middlewares.use(async (request, response, next) => {
         const requestPath = new URL(request.url ?? "/", "http://localhost")
           .pathname;
+        if (requestPath === "/.well-known/security.txt") {
+          response.setHeader("Content-Type", "text/plain; charset=utf-8");
+          response.end(
+            await fs.promises.readFile(path.resolve(staticDir, "security.txt"))
+          );
+          return;
+        }
         const rootStaticFile = requestPath.slice(1);
         if (!rootStaticFiles.includes(rootStaticFile)) {
           next();
           return;
         }
 
-        response.setHeader("Content-Type", "text/plain; charset=utf-8");
+        response.setHeader(
+          "Content-Type",
+          getContentType(path.resolve(staticDir, rootStaticFile))
+        );
         response.end(
           await fs.promises.readFile(path.resolve(staticDir, rootStaticFile))
         );
@@ -85,6 +95,13 @@ const copyStaticPlugin = (): Plugin => {
           path.resolve(clientOutDir, fileName)
         );
       });
+      fs.mkdirSync(path.resolve(clientOutDir, ".well-known"), {
+        recursive: true,
+      });
+      fs.copyFileSync(
+        path.resolve(staticDir, "security.txt"),
+        path.resolve(clientOutDir, ".well-known/security.txt")
+      );
     },
   };
 };
@@ -110,6 +127,12 @@ const getContentType = (filePath: string): string => {
   }
   if (extension === ".woff2") {
     return "font/woff2";
+  }
+  if (extension === ".json") {
+    return "application/json";
+  }
+  if (extension === ".txt") {
+    return "text/plain; charset=utf-8";
   }
   return "application/octet-stream";
 };

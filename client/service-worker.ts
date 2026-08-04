@@ -20,11 +20,11 @@ import {
 import { registerRoute } from "workbox-routing";
 import {
   CacheFirst,
-  NetworkFirst,
   NetworkOnly,
   StaleWhileRevalidate,
 } from "workbox-strategies";
 
+import { getServiceWorkerApiPolicy } from "./lib/serviceWorkerApiPolicy";
 import { registerNetworkOnlyNavigationRoute } from "./lib/serviceWorkerNavigation";
 
 const app = initializeApp({
@@ -121,42 +121,15 @@ cleanupOutdatedCaches();
 
 googleAnalytics.initialize();
 
-const CACHE_API = "api";
 const CACHE_FONTS = "fonts";
 const CACHE_OTHER = "other";
 
 // cache all first-party requests
 
-// keep camera freshness live
-registerRoute(new RegExp("/api/cameras/frames.*"), new NetworkOnly());
-// Vessel positions are live data. Serving a stale snapshot would make the
-// client treat an old service-worker response as fresh for another poll cycle.
-registerRoute(new RegExp("/api/vessels/snapshot$"), new NetworkOnly());
-
-// Prefer faster load for rarely changing data
 registerRoute(
-  new RegExp("/api/(vessels|terminals)/.*"),
-  new StaleWhileRevalidate({
-    cacheName: CACHE_API,
-    plugins: [
-      new ExpirationPlugin({
-        maxEntries: 100,
-      }),
-    ],
-  })
-);
-
-// Prefer more up to date data otherwise
-registerRoute(
-  new RegExp("/api/.*"),
-  new NetworkFirst({
-    cacheName: CACHE_API,
-    plugins: [
-      new ExpirationPlugin({
-        maxEntries: 100,
-      }),
-    ],
-  })
+  ({ request, url }) =>
+    getServiceWorkerApiPolicy({ request, url }) === "network-only",
+  new NetworkOnly()
 );
 
 // Aggresively cache fonts

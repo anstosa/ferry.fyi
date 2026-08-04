@@ -74,6 +74,26 @@ advance it for deployment-only changes. The same revision is emitted as sitemap
 `lastmod`, structured-data `dateModified`, and the legacy SEO fallback review
 date; it is release metadata, not the freshness timestamp for live ferry data.
 
+## Machine discovery contracts
+
+- `/llms.txt` is the plain-language AI-agent guide and links only to Ferry FYI
+  pages and machine documents.
+- `/openapi.json` is generated from
+  `shared/contracts/publicApiOperations.ts`. Run `yarn generate:openapi` after
+  an intentional operation-matrix change and `yarn test:openapi` before review.
+- `/data-sources` is an intentionally smaller public-read subset. It is not an
+  exhaustive API reference.
+- `robots.txt`, `sitemap.xml`, `llms.txt`, `openapi.json`, and
+  `/.well-known/security.txt` use bounded five-minute shared freshness plus
+  validators. Live HTML and live API data remain no-store.
+- The current shared `SEO_CONTENT_LAST_MODIFIED` is intentional. Do not invent
+  per-template precision without independently maintained revision histories.
+
+After deployment, retain hashes and headers from
+`scripts/smoke-public-contracts.mjs`. Search Console and Bing actions require
+verified operator credentials and are external-only; stop if served canonicals,
+robots directives, sitemap membership, or feature gates disagree.
+
 ## 2026-07-29 editorial review record
 
 The G009 review generated every fixed, terminal, directional schedule, route-tab,

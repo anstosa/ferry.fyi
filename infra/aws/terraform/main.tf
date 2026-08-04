@@ -55,9 +55,10 @@ locals {
 
   # shared web container
   web_container_definition = {
-    name      = "web"
-    image     = local.image_uri
-    essential = true
+    name        = "web"
+    image       = local.image_uri
+    essential   = true
+    stopTimeout = 30
     portMappings = [
       {
         containerPort = var.container_port
@@ -542,7 +543,7 @@ resource "aws_lb_target_group" "web" {
     healthy_threshold   = 2
     interval            = 30
     matcher             = "200"
-    path                = "/healthz"
+    path                = "/readyz"
     port                = "traffic-port"
     protocol            = "HTTP"
     timeout             = 5
@@ -804,6 +805,11 @@ resource "aws_ecs_service" "web" {
 
   # alb-only grace
   health_check_grace_period_seconds = var.enable_public_alb ? 60 : null
+
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = false
+  }
 
   # optional service attachment
   dynamic "load_balancer" {

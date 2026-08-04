@@ -84,6 +84,21 @@ describe("schedule color tokens", () => {
     );
   });
 
+  it("uses contrast-safe secondary time tokens", () => {
+    expect(getScheduleTimeMinorClassName("day", "normal")).toContain(
+      "text-[#5f5f5f]"
+    );
+    expect(getScheduleTimeMinorClassName("night", "normal")).toContain(
+      "text-[#4f6570]"
+    );
+  });
+
+  it("keeps confirmed night capacity readable in light mode", () => {
+    expect(getScheduleSpaceClassName("night", "confirmed")).toContain(
+      "text-[#1f5664]"
+    );
+  });
+
   // full capacity text
   it("uses full day badge text tokens", () => {
     expect(getScheduleSpaceClassName("day", "full")).toContain(

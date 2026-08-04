@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "scheduledAttempts": 4,
+  "readinessScheduledAttempts": 4,
+  "plannedMaintenanceAttempts": 1,
+  "evidencedMonitorOutageAttempts": 0,
+  "receipts": [
+    {
+      "outcome": "passed",
+      "checks": [
+        { "path": "/healthz", "status": 200 },
+        { "path": "/readyz", "status": 200 },
+        { "path": "/about", "status": 200 },
+        { "path": "/robots.txt", "status": 200 },
+        { "path": "/sitemap.xml", "status": 200 },
+        { "path": "/llms.txt", "status": 200 },
+        { "path": "/api/features", "status": 200 }
+      ],
+      "sourceSamples": [
+        {
+          "name": "schedule",
+          "retrievedAt": "2026-08-04T00:00:00.000Z",
+          "sourceTimestamp": "2026-08-03T23:59:00.000Z"
+        }
+      ]
+    },
+    {
+      "outcome": "passed",
+      "checks": [
+        { "path": "/healthz", "status": 200 },
+        { "path": "/readyz", "status": 200 },
+        { "path": "/about", "status": 200 },
+        { "path": "/robots.txt", "status": 200 },
+        { "path": "/sitemap.xml", "status": 200 },
+        { "path": "/llms.txt", "status": 200 },
+        { "path": "/api/features", "status": 200 }
+      ],
+      "sourceSamples": [
+        {
+          "name": "schedule",
+          "retrievedAt": "2026-08-04T00:01:00.000Z",
+          "sourceTimestamp": null
+        }
+      ]
+    },
+    {
+      "outcome": "failed",
+      "checks": [
+        { "path": "/healthz", "status": 200 },
+        { "path": "/readyz", "status": 503 }
+      ],
+      "sourceSamples": [
+        {
+          "name": "schedule",
+          "retrievedAt": "2026-08-04T00:02:00.000Z",
+          "sourceTimestamp": "2026-08-04T00:03:00.000Z"
+        }
+      ]
+    }
+  ]
+}

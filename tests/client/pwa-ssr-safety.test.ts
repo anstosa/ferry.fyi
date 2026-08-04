@@ -42,18 +42,11 @@ describe("installed PWA SSR safety", () => {
     );
   });
 
-  it("keeps live vessel snapshots out of stale-while-revalidate caching", async () => {
+  it("routes every API request through the explicit privacy policy", async () => {
     const source = await readRepoFile("client/service-worker.ts");
-    const liveSnapshotRoute = source.indexOf(
-      'registerRoute(new RegExp("/api/vessels/snapshot$"), new NetworkOnly())'
-    );
-    const staleVesselRoute = source.indexOf(
-      'new RegExp("/api/(vessels|terminals)/.*")'
-    );
-
-    expect(liveSnapshotRoute).toBeGreaterThan(-1);
-    expect(staleVesselRoute).toBeGreaterThan(-1);
-    expect(liveSnapshotRoute).toBeLessThan(staleVesselRoute);
+    expect(source).toContain("getServiceWorkerApiPolicy({ request, url })");
+    expect(source).not.toContain('cacheName: "api"');
+    expect(source).not.toContain('const CACHE_API = "api"');
   });
 
   it("registers network-only navigations before Workbox precache routes", async () => {
@@ -120,9 +113,9 @@ describe("installed PWA SSR safety", () => {
       },
     });
 
-    await expect(
-      strategy?.handle(async () => networkResponse)
-    ).resolves.toBe(networkResponse);
+    await expect(strategy?.handle(async () => networkResponse)).resolves.toBe(
+      networkResponse
+    );
     expect(matchPrecache).not.toHaveBeenCalled();
   });
 
@@ -154,9 +147,7 @@ describe("installed PWA SSR safety", () => {
       readRepoFile("client/offline.ts"),
     ]);
 
-    expect(html).toContain(
-      '<meta name="robots" content="noindex,nofollow" />'
-    );
+    expect(html).toContain('<meta name="robots" content="noindex,nofollow" />');
     expect(html).toContain('content="csr-offline"');
     expect(html).toContain('data-document-mode="csr-offline"');
     expect(html).not.toContain("ferry-fyi-public-ssr-snapshot");

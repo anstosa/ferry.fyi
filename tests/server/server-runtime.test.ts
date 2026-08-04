@@ -3,6 +3,8 @@ import request from "supertest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
+  createHealthRouter,
+  createReadinessController,
   forceHttps,
   healthRouter,
   shouldRunScheduler,
@@ -43,6 +45,65 @@ describe("server runtime health checks", () => {
       .set("x-forwarded-proto", "http")
       .expect("location", "https://staging.ferry.fyi/secure")
       .expect(301);
+  });
+
+  it("keeps readiness false until initialization and hides dependency detail", async () => {
+    const readiness = createReadinessController({
+      probe: async () => {
+        throw new Error("database hostname secret");
+      },
+    });
+    const app = express();
+    app.use(createHealthRouter(readiness));
+
+    const before = await request(app).get("/readyz").expect(503);
+    expect(before.text).toBe("not ready");
+    expect(before.text).not.toContain("database");
+    expect(before.headers["cache-control"]).toBe("no-store");
+    expect(before.headers["retry-after"]).toBe("5");
+
+    readiness.markInitialized();
+    const failed = await request(app).get("/readyz").expect(503);
+    expect(failed.text).toBe("not ready");
+  });
+
+  it("caches bounded probes and becomes unready while draining", async () => {
+    let now = 1_000;
+    const probe = vi.fn().mockResolvedValue(undefined);
+    const readiness = createReadinessController({
+      cacheMs: 100,
+      now: () => now,
+      probe,
+    });
+    readiness.markInitialized();
+
+    await expect(readiness.check()).resolves.toBe(true);
+    await expect(readiness.check()).resolves.toBe(true);
+    expect(probe).toHaveBeenCalledOnce();
+
+    now += 101;
+    await expect(readiness.check()).resolves.toBe(true);
+    expect(probe).toHaveBeenCalledTimes(2);
+
+    readiness.markDraining();
+    await expect(readiness.check()).resolves.toBe(false);
+  });
+
+  it("does not report a pending probe as ready after draining starts", async () => {
+    let resolveProbe = () => undefined;
+    const readiness = createReadinessController({
+      probe: () =>
+        new Promise<void>((resolve) => {
+          resolveProbe = resolve;
+        }),
+    });
+    readiness.markInitialized();
+
+    const pending = readiness.check();
+    readiness.markDraining();
+    resolveProbe();
+
+    await expect(pending).resolves.toBe(false);
   });
 });
 

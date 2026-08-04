@@ -99,9 +99,7 @@ describe("user API", () => {
       .set("Authorization", "Bearer no-sub")
       .expect(401);
 
-    expect(response.body).toEqual({
-      error: "Missing authenticated subject",
-    });
+    expect(response.body).toEqual({ error: "unauthorized" });
   });
 
   // current user case

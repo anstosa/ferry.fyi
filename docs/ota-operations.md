@@ -205,6 +205,11 @@ The IAM role is intentionally limited to `bundles/*`, `channels/*`, and `release
 
 ## Rollback
 
+OTA pointer recovery is separate from ECS web/task-definition and detector
+recovery. For migration-aware application rollback boundaries and the required
+deployment recovery artifact, also follow
+`docs/reliability-operations.md#incident-triage-and-recovery`.
+
 Rollback the pointer, not the immutable bundle:
 
 1. Select the prior known-good release record for the affected channel.

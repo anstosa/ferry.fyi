@@ -1,0 +1,9 @@
+{"schemaVersion":1,"event":"public_http_request","routeClass":"ssr.public","methodClass":"read","statusClass":"2xx","durationMs":10,"release":"v1","completionOutcome":"completed"}
+{"schemaVersion":1,"event":"public_http_request","routeClass":"ssr.public","methodClass":"read","statusClass":"2xx","durationMs":20,"release":"v1","completionOutcome":"completed"}
+{"schemaVersion":1,"event":"public_http_request","routeClass":"ssr.public","methodClass":"read","statusClass":"2xx","durationMs":30,"release":"v1","completionOutcome":"completed"}
+{"schemaVersion":1,"event":"public_http_request","routeClass":"ssr.public","methodClass":"read","statusClass":"5xx","durationMs":40,"release":"v1","completionOutcome":"failed"}
+{"schemaVersion":1,"event":"public_http_request","routeClass":"ssr.public","methodClass":"read","statusClass":"4xx","durationMs":50,"release":"v1","completionOutcome":"incomplete"}
+{"schemaVersion":1,"event":"public_http_request","routeClass":"api.anonymous-read","methodClass":"read","statusClass":"429","durationMs":15,"release":"v1","completionOutcome":"completed"}
+{"schemaVersion":1,"event":"scheduled_operation","operation":"wsf-short-refresh","outcome":"succeeded","lagMs":1000,"cadenceMs":60000,"observedAt":"2026-08-04T00:00:00.000Z","release":"v1"}
+{"schemaVersion":1,"event":"scheduled_operation","operation":"wsf-short-refresh","outcome":"overdue","lagMs":70000,"cadenceMs":60000,"observedAt":"2026-08-04T00:02:00.000Z","release":"v1"}
+{"schemaVersion":1,"event":"public_http_request","routeClass":"ssr.public","methodClass":"read","statusClass":"2xx","durationMs":1,"release":"v1","completionOutcome":"completed","authorization":"must-be-rejected"}

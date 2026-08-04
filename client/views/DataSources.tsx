@@ -96,6 +96,17 @@ export const DataSources = (): ReactElement => (
       Responses include a <code>body</code> payload and <code>wsfStatus</code>
       so callers can retain upstream availability and freshness context.
     </p>
+    <p className="mt-2">
+      The generated{" "}
+      <a className="link" href="/openapi.json">
+        OpenAPI contract
+      </a>{" "}
+      is the machine-readable operation reference. Live API responses are not
+      stored for offline reuse. Public reads use shared-NAT-aware limits;
+      sensitive ticket lookups and upstream-triggering refreshes use separate,
+      stricter classes. Errors retain the same top-level envelope and never
+      include stack or authentication-provider details.
+    </p>
     <ul className="list-disc pl-5 mt-2 space-y-2">
       <li>
         <code>GET /api/terminals</code> discovers terminal ids, route
@@ -114,6 +125,12 @@ export const DataSources = (): ReactElement => (
         <code>GET /api/cameras/frames?ids=:commaSeparatedCameraIds</code>
         returns camera freshness and image metadata. Do not infer an exact queue
         length or boarding availability from an image.
+      </li>
+      <li>
+        <code>GET /api/fares/catalog</code> returns the available fare items for
+        a terminal pair and service date; <code>POST /api/fares/quote</code>
+        calculates selected items. Preserve current, stale, no-fare, or
+        unavailable state in any summary.
       </li>
     </ul>
 

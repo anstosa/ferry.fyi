@@ -72,7 +72,9 @@ describe("owner admin authorization", () => {
       automaticLeaderboardCheckinsEnabled: false,
       leaderboardsEnabled: false,
     });
-    flags.setAutomaticLeaderboardCheckinsEnabled.mockReset().mockResolvedValue(false);
+    flags.setAutomaticLeaderboardCheckinsEnabled
+      .mockReset()
+      .mockResolvedValue(false);
     flags.setLeaderboardsEnabled.mockReset().mockResolvedValue(false);
   });
 
@@ -121,7 +123,7 @@ describe("owner admin authorization", () => {
       .set("Authorization", "Bearer no-sub")
       .expect(401);
 
-    expect(response.body).toEqual({ error: "Missing authenticated subject" });
+    expect(response.body).toEqual({ error: "unauthorized" });
     expect(response.headers["cache-control"]).toBe("no-store");
     expect(auth0.getAuth0UserEmail).not.toHaveBeenCalled();
   });
@@ -189,7 +191,10 @@ describe("owner admin authorization", () => {
     await request(createApp())
       .put("/api/admin/features")
       .set("Authorization", "Bearer owner")
-      .send({ automaticLeaderboardCheckinsEnabled: true, leaderboardsEnabled: true })
+      .send({
+        automaticLeaderboardCheckinsEnabled: true,
+        leaderboardsEnabled: true,
+      })
       .expect(400);
 
     expect(flags.setAutomaticLeaderboardCheckinsEnabled).not.toHaveBeenCalled();
@@ -204,8 +209,9 @@ describe("owner admin authorization", () => {
       automaticLeaderboardCheckinsEnabled: false,
       leaderboardsEnabled: false,
     });
-    expect(flags.setAutomaticLeaderboardCheckinsEnabled).toHaveBeenCalledWith(false);
+    expect(flags.setAutomaticLeaderboardCheckinsEnabled).toHaveBeenCalledWith(
+      false
+    );
     expect(flags.setLeaderboardsEnabled).toHaveBeenCalledWith(true);
   });
-
 });

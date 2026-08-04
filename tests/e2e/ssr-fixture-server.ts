@@ -449,7 +449,25 @@ apiRouter.get("/terminals/:id", (request, response) =>
     wsfStatus: { coreReady: true, offline: false },
   })
 );
+apiRouter.use((_request, response) => {
+  response.set({
+    "Cache-Control": "no-store",
+    "X-Robots-Tag": "noindex, noarchive",
+  });
+  response.status(404).json({
+    body: { error: "api_not_found" },
+    wsfStatus: { coreReady: true, offline: false },
+  });
+});
 const noRateLimit: RequestHandler = (_request, _response, next) => next();
+const fixturePolicyRouter = Router();
+fixturePolicyRouter.get("/sitemap.xml", (_request, response) =>
+  response
+    .type("text/xml")
+    .send(
+      '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://ferry.fyi/</loc></url></urlset>'
+    )
+);
 const staticRouter = createStaticRouter(clientDirectory, {
   browserDependencies: {
     documentRuntime: async (url) => {
@@ -461,6 +479,7 @@ const staticRouter = createStaticRouter(clientDirectory, {
 });
 const fixtureApp = createApp({
   apiHandler: apiRouter,
+  publicMiddleware: fixturePolicyRouter,
   staticHandler: staticRouter,
   webMiddleware: fixtureRouter,
 });

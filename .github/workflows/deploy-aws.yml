@@ -65,10 +65,18 @@ jobs:
       - name: Type-check
         run: yarn type-check
 
+      - name: Unit and integration tests
+        run: yarn test
+
       - name: Build application
         env:
           SENTRY_AUTH_TOKEN: ""
         run: yarn build
+
+      - name: Validate built public surfaces and budgets
+        run: |
+          yarn budget:client
+          yarn test -- tests/server/seo.test.ts tests/server/server-security.test.ts tests/server/openapi-contract.test.ts tests/server/security-txt.test.ts
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
@@ -194,6 +202,45 @@ jobs:
           ' "${MIGRATION_TASK_DEFINITION}" > /dev/null
           echo "task-definition=${MIGRATION_TASK_DEFINITION}" >> "${GITHUB_OUTPUT}"
 
+      - name: Capture compatibility recovery evidence
+        env:
+          DETECTOR_SERVICE: ${{ vars.ECS_DETECTOR_SERVICE }}
+          WEB_SERVICE: ${{ vars.ECS_WEB_SERVICE }}
+        run: |
+          set -euo pipefail
+          aws ecs describe-services \
+            --cluster "${ECS_CLUSTER}" \
+            --services "${WEB_SERVICE}" "${DETECTOR_SERVICE}" \
+            > current-services.json
+          TASK_ARNS="$(aws ecs list-tasks --cluster "${ECS_CLUSTER}" --service-name "${WEB_SERVICE}" --query 'taskArns' --output json)"
+          DETECTOR_TASK_ARNS="$(aws ecs list-tasks --cluster "${ECS_CLUSTER}" --service-name "${DETECTOR_SERVICE}" --query 'taskArns' --output json)"
+          jq -n \
+            --arg release "${GITHUB_SHA}" \
+            --argjson services "$(jq '.services | map({serviceName, taskDefinition})' current-services.json)" \
+            --argjson webTasks "${TASK_ARNS}" \
+            --argjson detectorTasks "${DETECTOR_TASK_ARNS}" \
+            --argjson migrations "$(git diff --name-only "${GITHUB_SHA}^" "${GITHUB_SHA}" -- server/migrations | jq -R -s 'split("\n") | map(select(length > 0))')" \
+            '{schemaVersion: 1, release: $release, capturedAt: (now | todate), services: $services, taskArns: {web: $webTasks, detector: $detectorTasks}, migrationFiles: $migrations}' \
+            > deployment-recovery.json
+          if [[ "$(jq '.taskArns.web | length' deployment-recovery.json)" -gt 0 ]]; then
+            aws ecs describe-tasks --cluster "${ECS_CLUSTER}" --tasks $(jq -r '.taskArns.web[]' deployment-recovery.json) > current-web-tasks.json
+            jq '. + {webContainers: [inputs.tasks[].containers[] | {name, image, imageDigest}]}' deployment-recovery.json current-web-tasks.json > deployment-recovery.next.json
+            mv deployment-recovery.next.json deployment-recovery.json
+          fi
+          if [[ "$(jq '.taskArns.detector | length' deployment-recovery.json)" -gt 0 ]]; then
+            aws ecs describe-tasks --cluster "${ECS_CLUSTER}" --tasks $(jq -r '.taskArns.detector[]' deployment-recovery.json) > current-detector-tasks.json
+            jq '. + {detectorContainers: [inputs.tasks[].containers[] | {name, image, imageDigest}]}' deployment-recovery.json current-detector-tasks.json > deployment-recovery.next.json
+            mv deployment-recovery.next.json deployment-recovery.json
+          fi
+
+      - name: Retain compatibility recovery evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-recovery-${{ github.sha }}
+          path: deployment-recovery.json
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Run database migrations
         id: migrate
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
@@ -230,6 +277,7 @@ jobs:
           jq -e '.tasks[0].containers[] | select(.name == "web") | .exitCode == 0' migration-task.json
 
       - name: Deploy web service
+        id: deploy-web
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
           task-definition: ${{ steps.render-web.outputs.task-definition }}
@@ -237,6 +285,31 @@ jobs:
           cluster: ${{ env.ECS_CLUSTER }}
           wait-for-service-stability: true
           wait-max-delay-seconds: 15
+
+      - name: Verify deployed release and public contracts
+        env:
+          INTENDED_TASK_DEFINITION: ${{ steps.deploy-web.outputs.task-definition-arn }}
+          WEB_SERVICE: ${{ vars.ECS_WEB_SERVICE }}
+        run: |
+          set -euo pipefail
+          RUNNING_TASK_DEFINITION="$(aws ecs describe-services --cluster "${ECS_CLUSTER}" --services "${WEB_SERVICE}" --query 'services[0].taskDefinition' --output text)"
+          if [[ -z "${INTENDED_TASK_DEFINITION}" ]]; then
+            echo "Semantic smoke blocked: deployment action did not report the intended task definition" >&2
+            exit 1
+          fi
+          if [[ "${INTENDED_TASK_DEFINITION}" != "${RUNNING_TASK_DEFINITION}" ]]; then
+            echo "Semantic smoke blocked: intended task definition is not serving" >&2
+            exit 1
+          fi
+          node scripts/smoke-public-contracts.mjs --base-url "${BASE_URL}" --phase final --output deployed-public-contract-receipt.json
+
+      - name: Retain deployed semantic-smoke receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployed-public-contracts-${{ github.sha }}
+          path: deployed-public-contract-receipt.json
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Render detector task definition
         id: render-detector

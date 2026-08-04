@@ -143,7 +143,21 @@ const getDatasetSchema = (baseUrl: string): Record<string, unknown> => ({
     contentUrl: getSeoUrl(baseUrl, "/api/terminals"),
     encodingFormat: "application/json",
   },
+  creator: { "@id": `${getSeoUrl(baseUrl, "/")}#organization` },
+  dateModified: SEO_CONTENT_LAST_MODIFIED,
+  isAccessibleForFree: true,
+  measurementTechnique:
+    "Ferry FYI combines source observations with documented schedule, capacity, delay, weather, and tide forecast methods; timestamps describe source freshness rather than guaranteed current conditions.",
   name: "Ferry FYI ferry planning data",
+  provider: [
+    { "@type": "Organization", name: "Washington State Ferries" },
+    { "@type": "Organization", name: "Open-Meteo" },
+    { "@type": "Organization", name: "NOAA" },
+  ],
+  spatialCoverage: {
+    "@type": "Place",
+    name: "Washington State, United States",
+  },
   url: getSeoUrl(baseUrl, "/data-sources"),
   variableMeasured: [
     "Ferry schedule",

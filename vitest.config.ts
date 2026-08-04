@@ -1,6 +1,6 @@
 import path from "path";
-import { defineConfig } from "vitest/config";
 import svgr from "vite-plugin-svgr";
+import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   plugins: [
@@ -128,7 +128,7 @@ export default defineConfig({
       },
       // Keep server-only library namespaces on the default alias below.
       {
-        find: /^~\/lib\/(?!(?:admin(?:\/|$)|alertMetadata$|auth0Admin$|cameraFrames$|cameraLineDetection$|cancellationNotifications$|db$|delayNotifications$|demandCalendar$|demandEvents(?:\/|$)|errors$|fareCache$|fares$|firebase$|forecast(?:$|\/)|forecastDaypart$|forecastRegressionThresholds$|holidays$|leaderboardFlags$|leaderboardPrivacy$|leaderboardSeo$|leaderboards$|logging$|noaaCoastline$|ota$|push$|pushSubscriptions$|safeScheduledJob$|sailingLifecycleNotifications$|serverRuntime$|tides(?:\/|$)|time$|weather(?:\/|$)|wsf(?:\/|$)))(.+)$/,
+        find: /^~\/lib\/(?!(?:admin(?:\/|$)|alertMetadata$|auth0Admin$|cameraFrames$|cameraLineDetection$|cancellationNotifications$|db$|delayNotifications$|demandCalendar$|demandEvents(?:\/|$)|errors$|fareCache$|fares$|firebase$|forecast(?:$|\/)|forecastDaypart$|forecastRegressionThresholds$|holidays$|httpApiPolicy$|httpCachePolicy$|httpSecurity$|httpTelemetry$|leaderboardFlags$|leaderboardPrivacy$|leaderboardSeo$|leaderboards$|logging$|noaaCoastline$|operationTelemetry$|ota$|push$|pushSubscriptions$|safeScheduledJob$|sailingLifecycleNotifications$|serverLifecycle$|serverRuntime$|tides(?:\/|$)|time$|weather(?:\/|$)|wsf(?:\/|$)))(.+)$/,
         replacement: path.resolve(__dirname, "client/lib/$1"),
       },
       { find: "~", replacement: path.resolve(__dirname, "server") },

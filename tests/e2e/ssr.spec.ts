@@ -642,6 +642,35 @@ test("serves a hydratable 404 document with intermediary headers", async () => {
   expectDocumentHeaders(notFound.response);
 });
 
+test("serves machine discovery and isolates unknown API paths", async () => {
+  for (const [path, type] of [
+    ["/robots.txt", "text/plain"],
+    ["/sitemap.xml", "text/xml"],
+    ["/llms.txt", "text/plain"],
+    ["/openapi.json", "application/json"],
+    ["/.well-known/security.txt", "text/plain"],
+  ]) {
+    const document = await raw(path, { authenticated: false });
+    expect(document.response.status).toBe(200);
+    expect(document.response.headers.get("content-type")).toContain(type);
+    expect(document.response.headers.get("cache-control")).toContain(
+      "public, max-age=300"
+    );
+  }
+
+  const unknownApi = await raw("/api/not-a-real-operation", {
+    authenticated: false,
+  });
+  expect(unknownApi.response.status).toBe(404);
+  expect(unknownApi.response.headers.get("content-type")).toContain(
+    "application/json"
+  );
+  expect(unknownApi.response.headers.get("cache-control")).toBe("no-store");
+  expect(JSON.parse(unknownApi.body)).toMatchObject({
+    body: { error: "api_not_found" },
+  });
+});
+
 test("retries a render failure without caching the failed response", async () => {
   await fixture("/__fixture__/reset", {});
   await fixture("/__fixture__/control", { failRenders: 1 });

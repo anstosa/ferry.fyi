@@ -1,5 +1,13 @@
 import { RequestHandler, Response, Router } from "express";
 
+import {
+  apiErrorHandler,
+  apiNotFound,
+  applyApiErrorHeaders,
+  createApiCorsMiddleware,
+  createApiRateLimitMiddleware,
+  denyUntrustedSensitivePreflight,
+} from "~/lib/httpApiPolicy";
 import { getWsfStatus } from "~/lib/wsf/api";
 
 import { adminRouter, preventAdminCaching } from "./admin";
@@ -19,6 +27,7 @@ import { vesselRouter } from "./vessels";
 const apiRouter = Router();
 
 // preserve the external updater response protocol
+apiRouter.use(createApiCorsMiddleware());
 apiRouter.use("/ota", otaRouter);
 
 const isWrappedApiBody = (body: unknown): boolean => {
@@ -52,7 +61,14 @@ export const wrapApiResponse: RequestHandler = (request, response, next) => {
   const wrapSend: (typeof response)["send"] = (body) => {
     // empty status guard
     if (typeof body === "undefined") {
+      if (response.statusCode === 404) {
+        applyApiErrorHeaders(response);
+        return sendJson({ error: "resource_not_found" });
+      }
       return defaultSend.call(response, body);
+    }
+    if (response.statusCode >= 400) {
+      applyApiErrorHeaders(response);
     }
     return sendJson(body);
   };
@@ -63,6 +79,8 @@ export const wrapApiResponse: RequestHandler = (request, response, next) => {
 
 // wrap all routes with wsf status middleware
 apiRouter.use(wrapApiResponse);
+apiRouter.use(denyUntrustedSensitivePreflight);
+apiRouter.use(createApiRateLimitMiddleware());
 
 apiRouter.use("/cameras", cameraRouter);
 apiRouter.use("/vessels", vesselRouter);
@@ -78,5 +96,8 @@ if (process.env.NODE_ENV === "development") {
 
 apiRouter.use("/admin", preventAdminCaching, requireAuth, adminRouter);
 apiRouter.use("/user", requireAuth, assignAuthUser, userRouter);
+
+apiRouter.use(apiNotFound);
+apiRouter.use(apiErrorHandler);
 
 export { apiRouter };

@@ -104,6 +104,7 @@ export const Footer = ({ terminal, getPath }: Props): ReactElement => {
 
     return (
       <NavLink
+        aria-label="Alerts and bulletins"
         className={({ isActive }) =>
           clsx(
             "relative flex h-16 min-w-0 flex-no-wrap cursor-pointer items-center justify-end border-y-4 border-transparent p-4",

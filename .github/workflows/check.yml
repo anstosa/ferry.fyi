@@ -1,26 +1,99 @@
 name: Checks
 
-on: [push]
+on:
+  pull_request:
+  push:
+    branches:
+      - production
 
 permissions:
   contents: read
 
-jobs:
-  checks:
-    runs-on: ubuntu-latest
+concurrency:
+  group: checks-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
+jobs:
+  static:
+    name: Lint and type-check
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-
-      - name: Use Node.js
-        uses: actions/setup-node@v6
+      - uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
           cache: yarn
           cache-dependency-path: yarn.lock
+      - run: yarn install --frozen-lockfile
+      - run: yarn lint
+      - run: yarn type-check
 
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
+  unit:
+    name: Unit and integration tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+          cache-dependency-path: yarn.lock
+      - run: yarn install --frozen-lockfile
+      - run: yarn test
 
-      - name: Checks
-        run: yarn lint && yarn type-check
+  build:
+    name: Production build and artifact smokes
+    runs-on: ubuntu-latest
+    env:
+      SENTRY_AUTH_TOKEN: ""
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+          cache-dependency-path: yarn.lock
+      - run: yarn install --frozen-lockfile
+      - run: yarn build
+      - run: yarn build:e2e:ssr
+      - run: yarn budget:client
+      - name: Record artifact identity
+        run: |
+          set -euo pipefail
+          MANIFEST="${RUNNER_TEMP}/artifact-files.sha256"
+          find dist -type f ! -name '*.map' -print0 \
+            | sort -z \
+            | xargs -0 sha256sum \
+            > "${MANIFEST}"
+          mv "${MANIFEST}" dist/artifact-files.sha256
+          sha256sum dist/artifact-files.sha256 | tee dist/artifact.sha256
+          printf '%s\n' "${GITHUB_SHA}" > dist/release.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: production-build-${{ github.sha }}
+          path: dist
+          if-no-files-found: error
+          retention-days: 7
+
+  browser:
+    name: Critical SSR and public surfaces
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+          cache-dependency-path: yarn.lock
+      - run: yarn install --frozen-lockfile
+      - uses: actions/download-artifact@v4
+        with:
+          name: production-build-${{ github.sha }}
+          path: dist
+      - run: sha256sum --check dist/artifact-files.sha256
+      - run: yarn playwright install --with-deps chromium
+      - name: Run the deterministic critical SSR sample
+        run: >-
+          yarn playwright test --config playwright.ssr.config.ts
+          --grep "serves page-specific React source|serves a hydratable 404 document|keeps static assets cacheable|serves machine discovery|@accessibility"

@@ -48,7 +48,7 @@ services:
       VITE_API_PROXY_TARGET: http://server:4040
     depends_on:
       server:
-        condition: service_started
+        condition: service_healthy
     ports:
       - "${APP_PORT:-4040}:4040"
     volumes:
@@ -91,6 +91,12 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:4040/readyz').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
     volumes:
       - .:/app
       - app-node-modules:/app/node_modules

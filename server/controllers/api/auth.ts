@@ -21,7 +21,7 @@ export const requireAuth: RequestHandler = (request, response, next): void => {
     const subject = request.auth?.payload.sub;
     const issuedAt = request.auth?.payload.iat;
     if (typeof subject !== "string") {
-      response.status(401).send({ error: "Missing authenticated subject" });
+      response.status(401).send({ error: "unauthorized" });
       return;
     }
     // `iat` is optional in JWTs. A missing value is treated as pre-watermark,
@@ -30,9 +30,7 @@ export const requireAuth: RequestHandler = (request, response, next): void => {
     isApplicationTokenRevoked(subject, issuedAtSeconds)
       .then((revoked) => {
         if (revoked) {
-          response
-            .status(401)
-            .send({ error: "Application session has been revoked" });
+          response.status(401).send({ error: "unauthorized" });
           return;
         }
         next();
@@ -49,7 +47,7 @@ export const assignAuthUser = (
   const subject = request.auth?.payload.sub;
   // auth subject guard
   if (!subject) {
-    response.status(401).send({ error: "Missing authenticated subject" });
+    response.status(401).send({ error: "unauthorized" });
     return;
   }
   response.locals.user = { sub: subject };

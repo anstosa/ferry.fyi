@@ -5,7 +5,7 @@ const baseURL = `https://ferry.fyi:${port}`;
 
 export default defineConfig({
   testDir: "./tests/e2e",
-  testMatch: "ssr.spec.ts",
+  testMatch: ["ssr.spec.ts", "ssr-accessibility.spec.ts"],
   timeout: 45_000,
   expect: { timeout: 10_000 },
   fullyParallel: false,

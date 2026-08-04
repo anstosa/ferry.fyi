@@ -7,7 +7,7 @@ It is intentionally small and reviewable: no third-party Terraform modules, no N
 
 - ECR repositories for the app image and detector image.
 - VPC with two public subnets, two reserved private app subnets, two private DB subnets, an internet gateway, a free S3 gateway endpoint, and no NAT gateway.
-- Optional public ALB with `/healthz` target-group checks on container port `4040`.
+- Optional public ALB with `/readyz` target-group checks on container port `4040`; ECS container liveness remains `/healthz`.
 - ACM DNS-validated certificate outputs for manual Cloudflare records.
 - ECS Fargate cluster without paid Container Insights, a singleton ARM64 web service, and an always-on x86 detector service.
 - Web task env: `PROCESS_ROLE=web`, `RUN_SCHEDULER=true`, and `CAR_DETECTION_ENDPOINT` pointing at private Cloud Map service discovery. The web process owns route notifications and recurring refresh jobs.
@@ -71,6 +71,17 @@ For rollback-safe changes, re-enable the ALB temporarily and use Cloudflare Tunn
 6. Set `enable_public_alb = false`, apply Terraform, and leave Cloudflare DNS pointing at the tunnel route.
 
 Keep `enable_public_alb = true` only while proving or rolling back the tunnel connector; disabling it removes the ALB, ALB security group ingress path, target group attachment, and listener resources.
+
+`/readyz` does not remove traffic in the production-default Cloudflare Tunnel
+topology. It is an observable synthetic signal there. Only the optional ALB
+uses readiness for target routing. The web task allows 30 seconds for ECS stop,
+strictly longer than the application's 25-second drain deadline.
+
+The ECS deployment circuit breaker detects failed deployments but automatic
+rollback is disabled. Database migrations run before service deployment, so an
+old task revision may be unsafe after a migration. Use the deployment workflow's
+captured task definitions, image digests, and migration-file range for a
+compatibility review before operator recovery.
 
 ## RDS notes
 

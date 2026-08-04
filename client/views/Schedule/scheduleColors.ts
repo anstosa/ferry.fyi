@@ -90,8 +90,8 @@ export const getScheduleTimeMinorClassName = (
       : "text-[#b8d5de] dark:text-[#6fb8c8]";
   }
   return context === "day"
-    ? "text-[#888888] dark:text-[#887a50]"
-    : "text-[#888888] dark:text-[#4a8090]";
+    ? "text-[#5f5f5f] dark:text-[#a69764]"
+    : "text-[#4f6570] dark:text-[#72a9b5]";
 };
 
 interface ScheduleLiveSpaceStateOptions {
@@ -124,13 +124,13 @@ export const getScheduleSpaceClassName = (
   if (state === "full") {
     return context === "day"
       ? "text-[#7a5400] dark:text-[#fce580]"
-      : "text-[#e0f2f7] dark:text-[#b8e4f0]";
+      : "text-[#1f5664] dark:text-[#b8e4f0]";
   }
   // live capacity label
   if (state === "confirmed") {
     return context === "day"
       ? "text-[#7a5400] dark:text-[#fce580]"
-      : "text-[#e0f2f7] dark:text-[#b8e4f0]";
+      : "text-[#1f5664] dark:text-[#b8e4f0]";
   }
   return context === "day"
     ? "text-[#a07c30] dark:text-[#c49a30]"

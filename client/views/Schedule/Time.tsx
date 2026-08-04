@@ -122,7 +122,7 @@ export const Time = ({
           "absolute -bottom-1 left-1/2 w-14 -translate-x-1/2",
           "text-center text-[8px] font-black uppercase leading-none",
           "tracking-[0.08em]",
-          "text-green-dark/65 dark:text-green-light/65"
+          "text-green-dark dark:text-green-light"
         )}
       >
         <span>Details</span>

@@ -1,6 +1,6 @@
 import compression from "compression";
 import express, { type RequestHandler, Router } from "express";
-import { readFileSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import path from "path";
 
 import { filterLeaderboardLlms } from "~/lib/leaderboardSeo";
@@ -30,6 +30,16 @@ export type StaticRouterDependencies = StaticPolicyRouterDependencies & {
   browserRouter?: Router;
   rateLimiter?: RequestHandler;
   serveStaticAssets?: boolean;
+};
+
+const readPolicyFile = (dist: string, candidates: string[]): string => {
+  const filePath = candidates
+    .map((candidate) => path.resolve(dist, candidate))
+    .find((candidate) => existsSync(candidate));
+  if (!filePath) {
+    throw new Error(`Missing public policy file: ${candidates[0]}`);
+  }
+  return readFileSync(filePath, "utf8");
 };
 
 /** Dynamic policy documents must be mounted before development Vite middleware. */
@@ -68,6 +78,20 @@ export const createStaticPolicyRouter = (
         contentState.leaderboardIndexingEnabled
     );
     return response.type("text/plain").send(content);
+  });
+  policyRouter.get("/openapi.json", (_request, response) => {
+    const openapi = readPolicyFile(dist, [
+      "openapi.json",
+      "static/openapi.json",
+    ]);
+    return response.type("application/json").send(openapi);
+  });
+  policyRouter.get("/.well-known/security.txt", (_request, response) => {
+    const security = readPolicyFile(dist, [
+      ".well-known/security.txt",
+      "static/security.txt",
+    ]);
+    return response.type("text/plain").send(security);
   });
   policyRouter.get("/.well-known/assetlinks.json", (_request, response) => {
     return response.type("application/json").send([
