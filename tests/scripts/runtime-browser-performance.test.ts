@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   categorizeRequest,
   createImmutableReceiptWriter,
+  harnessModesForSeries,
   RUNTIME_BROWSER_SCHEMA_VERSION,
   sha256,
   validateReceipt,
@@ -86,6 +87,11 @@ afterEach(() => {
 });
 
 describe("runtime browser performance receipt contract", () => {
+  it("balances observer and control ordering across independent series", () => {
+    expect(harnessModesForSeries(1)).toEqual(["observer", "control"]);
+    expect(harnessModesForSeries(2)).toEqual(["control", "observer"]);
+  });
+
   it("categorizes requests without retaining query or credential values", () => {
     expect(
       categorizeRequest(

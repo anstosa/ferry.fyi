@@ -119,6 +119,9 @@ export const normalizeCommit = (value, label = "commit") => {
   return value.toLowerCase();
 };
 
+export const harnessModesForSeries = (series) =>
+  series % 2 === 0 ? ["control", "observer"] : ["observer", "control"];
+
 export const assertArtifactHash = (value, label = "artifact hash") => {
   invariant(typeof value === "string" && HASH.test(value), `Invalid ${label}`);
 };

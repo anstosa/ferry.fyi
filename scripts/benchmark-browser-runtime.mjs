@@ -11,6 +11,7 @@ import process from "node:process";
 import {
   categorizeRequest,
   createImmutableReceiptWriter,
+  harnessModesForSeries,
   hashDirectory,
   hashFile,
   RUNTIME_BROWSER_CLOCK_SKEW,
@@ -1224,7 +1225,7 @@ const main = async () => {
                 scenario.id === "home" &&
                 deviceName === "mobile" &&
                 cacheState === "cold"
-                  ? ["observer", "control"]
+                  ? harnessModesForSeries(series)
                   : ["observer"];
               for (const harnessMode of harnessModes) {
                 let warmContext;
