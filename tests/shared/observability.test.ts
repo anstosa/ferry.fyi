@@ -56,6 +56,18 @@ describe("observability formulas", () => {
     });
   });
 
+  it("rejects overlapping exclusions that exceed scheduled attempts", () => {
+    expect(() =>
+      calculateAvailability({
+        evidencedMonitorOutageAttempts: 1,
+        observedAttempts: 0,
+        plannedMaintenanceAttempts: 1,
+        scheduledAttempts: 1,
+        successfulAttempts: 0,
+      })
+    ).toThrow("Availability exclusions exceed scheduled attempts");
+  });
+
   it("never turns unavailable, malformed, or future source times into ages", () => {
     expect(
       calculateSourceAge({ retrievedAt: now, sourceTimestamp: null })

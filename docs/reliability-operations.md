@@ -274,8 +274,9 @@ deployment and the repository has no enforceable expand/contract attestation.
 - Initial alert conditions: any semantic-smoke failure; any readiness failure;
   any coverage below 95%; any class with a nonzero 5xx rate in two consecutive
   five-minute windows; any unexpected 429 on `api.anonymous-read`; any stale,
-  failed, never-run, or overdue scheduled operation. Route alerts to the tested
-  `FERRY_FYI_OPS_ALERT_DESTINATION`.
+  failed, or overdue scheduled-operation event; or absence of a successful
+  operation event within its documented cadence, including an operation that
+  has never run. Route alerts to the tested `FERRY_FYI_OPS_ALERT_DESTINATION`.
 - Measurement window: retain daily summaries, but do not claim the proposed
   30-day availability objectives until one complete 30-day window is
   reportable. Latency/source-age thresholds require 14 complete days and an

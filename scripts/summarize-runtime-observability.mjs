@@ -168,7 +168,7 @@ const checkMap = (receipt) =>
   );
 
 const canonicalSucceeded = (receipt) => {
-  if (receipt?.outcome === "failed") return false;
+  if (receipt?.outcome !== "passed") return false;
   const checks = checkMap(receipt);
   return [...REQUIRED_CANONICAL_CHECKS].every(
     ([checkPath, status]) => checks.get(checkPath) === status
@@ -176,7 +176,7 @@ const canonicalSucceeded = (receipt) => {
 };
 
 const readinessSucceeded = (receipt) =>
-  receipt?.outcome !== "failed" && checkMap(receipt).get("/readyz") === 200;
+  receipt?.outcome === "passed" && checkMap(receipt).get("/readyz") === 200;
 
 const summarizeSynthetics = (bundle) => {
   const receipts = Array.isArray(bundle?.receipts) ? bundle.receipts : [];

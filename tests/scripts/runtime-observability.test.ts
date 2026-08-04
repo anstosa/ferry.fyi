@@ -81,4 +81,26 @@ describe("runtime observability summary", () => {
       sli: false,
     });
   });
+
+  it("treats receipts without an explicit passed outcome as failures", () => {
+    const checks = [
+      "/healthz",
+      "/readyz",
+      "/about",
+      "/robots.txt",
+      "/sitemap.xml",
+      "/llms.txt",
+      "/api/features",
+    ].map((checkPath) => ({ path: checkPath, status: 200 }));
+    const summary = summarizeRuntimeObservability({
+      events: [],
+      syntheticBundle: {
+        receipts: [{ checks }],
+        scheduledAttempts: 1,
+      },
+    });
+
+    expect(summary.synthetics.canonical.availability).toBe(0);
+    expect(summary.synthetics.readiness.availability).toBe(0);
+  });
 });

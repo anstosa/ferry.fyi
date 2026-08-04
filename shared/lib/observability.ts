@@ -98,6 +98,12 @@ export const calculateAvailability = ({
   if (counts.some((value) => !isNonNegativeInteger(value))) {
     throw new Error("Availability counts must be non-negative integers");
   }
+  if (
+    plannedMaintenanceAttempts + evidencedMonitorOutageAttempts >
+    scheduledAttempts
+  ) {
+    throw new Error("Availability exclusions exceed scheduled attempts");
+  }
   const denominator = Math.max(
     0,
     scheduledAttempts -
