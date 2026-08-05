@@ -18,11 +18,7 @@ import {
   getTrackedSailing,
   OnboardSailingMatch,
 } from "~/lib/onboardSailing";
-import {
-  clearSimulatedVessel,
-  isLocalhostSimulationEnabled,
-  useSimulatedVesselId,
-} from "~/lib/onboardSimulation";
+import { useSimulatedVesselId } from "~/lib/onboardSimulation";
 import { useTrackedVessel } from "~/lib/onboardTracking";
 import { useAppRenderContext } from "~/lib/renderContext";
 import { getSlug, useTerminals } from "~/lib/terminals";
@@ -502,9 +498,7 @@ export const OnboardSailingBanner: FunctionComponent<Props> = ({
   const [location] = useGeo();
   const { terminals } = useTerminals();
   const [now, setNow] = useState<number>(() => clock() / 1000);
-  const [lastSailing, setLastSailing] = useState<OnboardSailingMatch | null>(
-    null
-  );
+  const lastSailing = useRef<OnboardSailingMatch | null>(null);
   const sentNotificationKeys = useRef<Set<string>>(new Set());
   const simulatedVesselId = useSimulatedVesselId();
   const [trackedVesselId] = useTrackedVessel();
@@ -530,7 +524,7 @@ export const OnboardSailingBanner: FunctionComponent<Props> = ({
     ? null
     : getArrivedSailing({
         now,
-        previousSailing: lastSailing,
+        previousSailing: lastSailing.current,
         vessels,
       });
   const projectedProgress =
@@ -570,7 +564,7 @@ export const OnboardSailingBanner: FunctionComponent<Props> = ({
   useEffect(() => {
     // sailing guard
     if (sailing) {
-      setLastSailing(sailing);
+      lastSailing.current = sailing;
     }
   }, [sailing]);
 
@@ -615,20 +609,10 @@ export const OnboardSailingBanner: FunctionComponent<Props> = ({
   return (
     <aside
       className={clsx(
-        "fixed inset-x-0 top-0 z-30 mt-safe-top h-[80px]",
+        "pointer-events-none fixed inset-x-0 top-0 z-30 mt-safe-top h-[80px]",
         "pl-safe-left pr-safe-right"
       )}
       aria-live="polite"
-      onClick={(event) => {
-        // ctrl-click guard
-        if (!event.ctrlKey) {
-          return;
-        }
-        // localhost simulation clear
-        if (isLocalhostSimulationEnabled()) {
-          clearSimulatedVessel();
-        }
-      }}
     >
       <SailingCard {...visibleSailing} />
     </aside>

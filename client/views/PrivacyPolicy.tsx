@@ -9,7 +9,9 @@ export const PrivacyPolicy = (): ReactElement => (
   <Page title="Privacy Policy">
     <SeoHelmet seo={getSeoMetadata("/privacy")} />
 
-    <p className="mt-4 text-sm">Last updated: July 12, 2026</p>
+    <p className="mt-4 text-sm">
+      Last updated: <time dateTime="2026-08-04">August 4, 2026</time>
+    </p>
     <p className="mt-4">
       Ferry FYI provides Washington State Ferries schedules, service
       information, traffic cameras, ticket tools, and optional alerts. This
@@ -41,6 +43,15 @@ export const PrivacyPolicy = (): ReactElement => (
       address, and error details. Ferry FYI also uses local storage and cached
       data to remember app preferences and support offline use.
     </p>
+    <h3 className="font-bold mt-4">Advertising interactions</h3>
+    <p className="mt-2">
+      Ferry FYI may display advertisements selected from the route, terminal, or
+      page you are viewing. We may measure aggregate campaign activity such as
+      whether an advertisement was viewable and whether its website, directions,
+      call, or offer link was selected. We do not use account information,
+      precise location, saved tickets, notification settings, or activity across
+      other websites to select advertisements.
+    </p>
     <h3 className="font-bold mt-4">
       Third-party map and notification services
     </h3>
@@ -56,18 +67,84 @@ export const PrivacyPolicy = (): ReactElement => (
     <ul className="list-disc pl-6 mt-2 space-y-1">
       <li>provide schedules, route information, maps, and ticket features;</li>
       <li>save account settings and deliver alerts you request;</li>
-      <li>secure the service, troubleshoot errors, and prevent abuse; and</li>
-      <li>understand and improve Ferry FYI.</li>
+      <li>secure the service, troubleshoot errors, and prevent abuse;</li>
+      <li>understand and improve Ferry FYI; and</li>
+      <li>
+        display contextual advertisements and measure their aggregate
+        performance.
+      </li>
     </ul>
 
     <h2 className="font-bold text-lg mt-8">How we share information</h2>
     <p className="mt-2">
-      We share information only with service providers that help operate Ferry
-      FYI, including Auth0 for authentication, Google for analytics and
-      notifications, Sentry for error monitoring, and Mapbox for maps. We may
-      also disclose information when required by law or to protect Ferry FYI,
-      its users, or the public. We do not sell personal information or use it
-      for targeted advertising.
+      We share personal information only with service providers that help
+      operate Ferry FYI, including Auth0 for authentication, Google for
+      analytics and notifications, Sentry for error monitoring, and Mapbox for
+      maps. We may also disclose information when required by law or to protect
+      Ferry FYI, its users, or the public. Advertisers may receive aggregate
+      campaign reports, such as total viewable opportunities, served ads,
+      viewable impressions, and link selections. We do not provide advertisers
+      with personal information or individual browsing histories. We do not sell
+      personal information or use it for targeted advertising.
+    </p>
+    <p className="mt-2">
+      A viewable opportunity means the intended ad position remained visible for
+      one continuous second, whether or not an ad was active. A viewable
+      impression means at least half of an actual advertisement remained visible
+      for one continuous second. Ferry FYI stores these measurements as daily
+      totals. Short-lived anonymous validation tokens suppress duplicate counts
+      and expire automatically; they are not account, visitor, or session
+      histories. Campaign reports are informational and do not represent unique
+      people, audited fraud-free traffic, or billable delivery.
+    </p>
+
+    <h2 className="font-bold text-lg mt-8">
+      Advertising and sponsorship policy
+    </h2>
+    <p className="mt-2">
+      Advertisements are labeled &quot;Advertisement&quot; and visually
+      separated from schedules, alerts, forecasts, camera images, fares, and
+      other Ferry FYI content. Advertising does not influence ferry data,
+      editorial decisions, forecasts, or the order in which service information
+      appears. An advertisement does not imply endorsement by Ferry FYI,
+      Washington State Ferries, or the Washington State Department of
+      Transportation.
+    </p>
+    <p className="mt-2">
+      Ferry FYI does not place advertisements on saved-ticket or barcode
+      screens, account and sign-in screens, service alerts, or push
+      notifications. Ferry FYI does not accept advertisements that:
+    </p>
+    <ul className="list-disc pl-6 mt-2 space-y-1">
+      <li>promote illegal products, services, or conduct;</li>
+      <li>
+        contain deceptive claims, impersonation, malware, or misleading links;
+      </li>
+      <li>
+        promote discrimination, hate, harassment, exploitation, or sexually
+        explicit content;
+      </li>
+      <li>
+        promote tobacco, vaping, recreational drugs, weapons, gambling, or
+        unsafe alcohol use;
+      </li>
+      <li>
+        advocate for or against a political candidate, party, ballot measure, or
+        election outcome;
+      </li>
+      <li>
+        promote predatory lending, financial schemes, or unsubstantiated health
+        claims; or
+      </li>
+      <li>
+        resemble official ferry alerts, safety instructions, schedules, or
+        controls in a way that could confuse riders.
+      </li>
+    </ul>
+    <p className="mt-2">
+      Ferry FYI reviews advertisements before publication and may reject, pause,
+      or remove an advertisement that conflicts with this policy, creates a
+      safety or trust concern, or receives substantiated complaints.
     </p>
 
     <h2 className="font-bold text-lg mt-8">Your choices and retention</h2>

@@ -107,6 +107,17 @@ const createPublicSsrFixtures = () => {
     routeId: "terminal-schedule",
     routeParams: { terminalSlug: "clinton" },
     sources: {
+      ad: source({
+        creative: {
+          advertiserName: "Island Coffee",
+          body: "Coffee near the dock.",
+          campaignId: "5ed338e9-acbb-4cca-9380-1a923bfca5c8",
+          headline: "Fuel up before sailing",
+          placementKey: "schedule--5--14",
+          targetUrl: "https://example.com/menu",
+        },
+        placementKey: "schedule--5--14",
+      }),
       alertGuidance: source({
         body: "Choose alerts after sign-in.",
         title: "Ferry alerts",
@@ -201,6 +212,21 @@ const createTodaySnapshot = (
 
 describe("AppRoot server rendering", () => {
   afterEach(() => vi.unstubAllGlobals());
+
+  it(
+    "renders ad content into the initial route HTML",
+    async () => {
+      const { snapshot } = createPublicSsrFixtures();
+
+      const { markup } = await render("https://ferry.fyi/clinton", snapshot);
+
+      expect(markup).toContain(
+        'data-ad-campaign="5ed338e9-acbb-4cca-9380-1a923bfca5c8"'
+      );
+      expect(markup).toContain("Fuel up before sailing");
+    },
+    30_000
+  );
 
   it("keeps the transition shell constrained to the scroll viewport", async () => {
     const { markup } = await render("https://ferry.fyi/about");

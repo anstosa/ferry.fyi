@@ -19,7 +19,10 @@ import {
   SAILING_DAY_ZONE,
 } from "../../shared/lib/ssrCachePolicy";
 import { normalizePublicQuery } from "../../shared/lib/ssrQueryPolicy";
-import { matchPublicSsrRoute } from "../../shared/lib/ssrRouteMatch";
+import {
+  getPublicSsrHostProfile,
+  matchPublicSsrRoute,
+} from "../../shared/lib/ssrRouteMatch";
 import { PUBLIC_SSR_ROUTE_MANIFEST } from "../../shared/lib/ssrRoutes";
 import { assertPublicSsrSnapshot } from "../../shared/lib/ssrValidation";
 
@@ -218,6 +221,8 @@ const leaderboard = {
   period: "week",
   ranks: [{ label: "Seattle", rank: 1, score: 2 }],
 } satisfies PublicSsrPayloadMap["leaderboard"];
+const ad = (placementKey: string) =>
+  source({ creative: null, placementKey } satisfies PublicSsrPayloadMap["ad"]);
 const snapshot = (
   routeId: string,
   canonicalPath: string,
@@ -258,6 +263,7 @@ const home = (): PublicSsrSnapshot => ({
   routeId: "home",
   routeParams: {},
   sources: {
+    ad: ad("home"),
     terminals: source([terminalSummary]),
     features: source({ leaderboardsEnabled: true }),
     notices: source({
@@ -279,10 +285,10 @@ describe("SSR contracts", () => {
   });
   it("uses exact keyed payload maps for every manifest route", () => {
     const matrix = {
-      home: ["terminals", "features", "notices"],
+      home: ["ad", "terminals", "features", "notices"],
       today: ["route", "schedule", "nextSchedule", "wsf", "notices"],
-      "terminal-cameras": ["route", "cameraFrames", "notices"],
-      "terminal-fares": ["route", "fares", "notices"],
+      "terminal-cameras": ["ad", "route", "cameraFrames", "notices"],
+      "terminal-fares": ["ad", "route", "fares", "notices"],
       "terminal-map": ["route", "vessels", "notices"],
       "terminal-alerts": ["route", "bulletins", "notices"],
       "terminal-subscribe": ["route", "alertGuidance", "notices"],
@@ -295,7 +301,12 @@ describe("SSR contracts", () => {
         route.requiredSources.length
       );
     }
-    expect(matrix["terminal-fares"]).toEqual(["route", "fares", "notices"]);
+    expect(matrix["terminal-fares"]).toEqual([
+      "ad",
+      "route",
+      "fares",
+      "notices",
+    ]);
   });
 
   it("round-trips realistic anonymous public data and rejects loader-only or private data", () => {
@@ -349,6 +360,7 @@ describe("SSR contracts", () => {
       "mate-schedule",
       "/seattle/bainbridge-island",
       {
+        ad: ad("schedule--1--2"),
         route,
         schedule,
         nextSchedule: schedule,
@@ -364,14 +376,24 @@ describe("SSR contracts", () => {
     const cameras = snapshot(
       "terminal-cameras",
       "/seattle/cameras",
-      { route, cameraFrames: source(cameraPayload), notices },
+      {
+        ad: ad("cameras--1--2"),
+        route,
+        cameraFrames: source(cameraPayload),
+        notices,
+      },
       { terminalSlug: "seattle" }
     );
     expect(assertPublicSsrSnapshot(cameras, resolver)).toBe(cameras);
     const fares = snapshot(
       "terminal-fares",
       "/seattle/fare",
-      { route, fares: source(farePayload), notices },
+      {
+        ad: ad("fare--1--2"),
+        route,
+        fares: source(farePayload),
+        notices,
+      },
       { terminalSlug: "seattle" }
     );
     expect(assertPublicSsrSnapshot(fares, resolver)).toBe(fares);
@@ -545,6 +567,14 @@ describe("SSR contracts", () => {
 });
 
 describe("SSR matcher and query policy", () => {
+  it("uses the Ferry FYI host profile on the documented local origin", () => {
+    expect(getPublicSsrHostProfile("localhost")).toBe("ferry.fyi");
+    expect(getPublicSsrHostProfile("dev.ferry.fyi")).toBe("ferry.fyi");
+    expect(
+      matchPublicSsrRoute(new URL("http://localhost:4040/"), resolver)?.route.id
+    ).toBe("home");
+  });
+
   it("gives static paths precedence, canonicalizes aliases, and rejects malformed paths", () => {
     expect(
       matchPublicSsrRoute(new URL("https://ferry.fyi/today"), resolver)?.route

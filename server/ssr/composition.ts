@@ -1,4 +1,5 @@
 import { getWsfStatus } from "~/lib/wsf/api";
+import { getServableAdCreative } from "~/services/public/adTracking";
 import { getPublicCameraFrames } from "~/services/public/cameras";
 import { getPublicContent } from "~/services/public/content";
 import { createPublicFareQueryService } from "~/services/public/fares";
@@ -48,6 +49,7 @@ export const createSsrRuntime = async ({
   ]);
   const fareQueries = createPublicFareQueryService();
   const services: PublicSsrSnapshotServices = {
+    getAdCreative: getServableAdCreative,
     getCameraFrames: getPublicCameraFrames,
     getContent: getPublicContent,
     getFareCatalog: fareQueries.getCatalog,

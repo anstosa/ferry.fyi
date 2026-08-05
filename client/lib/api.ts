@@ -12,6 +12,7 @@ interface HttpRequest {
   headers?: Record<string, string | undefined>;
   method: "DELETE" | "GET" | "POST" | "PUT";
   url: string;
+  webFetchExtra?: RequestInit;
 }
 
 // resolve api origin. Native bridge detection happens inside the post-commit
@@ -159,6 +160,21 @@ export const post = async <T = Record<string, unknown>>(
       ...getAuthHeader(accessToken),
     },
     data,
+  });
+  return await processResponse(response);
+};
+
+/** Posts a small best-effort payload that may outlive a page transition. */
+export const postKeepalive = async <T = Record<string, unknown>>(
+  path: string,
+  data: Record<string, unknown>
+): Promise<T> => {
+  const response = await request({
+    data,
+    headers: { "Content-Type": "application/json" },
+    method: "POST",
+    url: path,
+    webFetchExtra: { keepalive: true },
   });
   return await processResponse(response);
 };

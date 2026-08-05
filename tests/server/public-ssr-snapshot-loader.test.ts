@@ -133,6 +133,16 @@ const catalog = (kind: "catalog" | "no-fare" = "catalog") =>
       };
 
 const services = (): PublicSsrSnapshotServices => ({
+  getAdCreative: vi.fn().mockImplementation((placementKey: string) =>
+    Promise.resolve({
+      advertiserName: "Island Coffee",
+      body: "Coffee near the dock.",
+      campaignId: "5ed338e9-acbb-4cca-9380-1a923bfca5c8",
+      headline: "Fuel up before sailing",
+      placementKey,
+      targetUrl: "https://example.com/menu",
+    })
+  ),
   getCameraFrames: vi.fn().mockResolvedValue({
     frames: {},
     sourceUpdatedAt: Math.floor(new Date(sourceUpdatedAt).getTime() / 1000),
@@ -197,6 +207,17 @@ const noCalls = (publicServices: PublicSsrSnapshotServices) =>
   ).toBe(true);
 
 describe("public SSR snapshot loader", () => {
+  it("builds a Ferry FYI snapshot for the documented local origin", async () => {
+    const snapshot = await snapshotFor("http://localhost:4040/");
+
+    expect(snapshot).toMatchObject({
+      canonicalHost: "ferry.fyi",
+      canonicalPath: "/",
+      hostProfile: "ferry.fyi",
+      routeId: "home",
+    });
+  });
+
   it("attributes safe per-source load durations", async () => {
     let monotonicNow = 0;
     const result = await createPublicSsrSnapshotLoader({
@@ -212,6 +233,7 @@ describe("public SSR snapshot loader", () => {
       throw new Error("Expected snapshot");
     }
     expect(result.sourceDurationsMs).toMatchObject({
+      ad: expect.any(Number),
       features: expect.any(Number),
       notices: expect.any(Number),
       terminals: expect.any(Number),
@@ -221,6 +243,21 @@ describe("public SSR snapshot loader", () => {
         (duration) => duration >= 1
       )
     ).toBe(true);
+  });
+
+  it("includes the active home creative in the SSR snapshot", async () => {
+    const snapshot = await snapshotFor("https://ferry.fyi/");
+
+    expect(snapshot.sources.ad).toMatchObject({
+      outcome: "value",
+      value: {
+        creative: {
+          advertiserName: "Island Coffee",
+          placementKey: "home",
+        },
+        placementKey: "home",
+      },
+    });
   });
 
   it("round-trips a terminal-and-mate snapshot through the document seed parser", async () => {

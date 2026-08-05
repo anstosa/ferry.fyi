@@ -1,5 +1,10 @@
 import { DateTime } from "luxon";
 import type { GetScheduleResponse } from "shared/api/schedules";
+import {
+  type AdCampaignCreative,
+  type AdSlotId,
+  getAdPlacementKey,
+} from "shared/contracts/ads";
 import type { CameraFrameStatusEnvelope } from "shared/contracts/cameraFrames";
 import type { FareTripRequest } from "shared/contracts/fares";
 import type { LeaderboardPeriod } from "shared/contracts/leaderboards";
@@ -95,6 +100,10 @@ export type PublicSsrLoadResult =
     };
 
 export interface PublicSsrSnapshotServices {
+  getAdCreative(
+    placementKey: string,
+    now: Date
+  ): Promise<AdCampaignCreative | null>;
   getCameraFrames(cameraIds: string[]): Promise<CameraFrameStatusEnvelope>;
   getContent(): Promise<PublicContent>;
   getFareCatalog(input: FareTripRequest): Promise<PublicFareCatalogOutcome>;
@@ -151,6 +160,14 @@ const DEFAULT_TICKET_GUIDANCE: PublicSsrTicketGuidance = {
 const DEFAULT_ALERT_GUIDANCE: PublicSsrAlertGuidance = {
   body: "Sign in after the page loads to manage personal ferry alert rules.",
   title: "Ferry alerts",
+};
+const AD_SLOT_FOR_VIEW: Partial<
+  Record<NonNullable<PublicSsrRouteMatch["route"]["view"]>, AdSlotId>
+> = {
+  cameras: "cameras",
+  fare: "fare",
+  schedule: "schedule",
+  terminal: "terminal",
 };
 const iso = (value: SourceUpdatedAt): string | null => {
   if (typeof value === "string") {
@@ -584,9 +601,9 @@ export const createPublicSsrSnapshotLoader = ({
     input: PublicSsrSnapshotLoaderInput
   ): Promise<PublicSsrLoadResult> => {
     const url = new URL(input.absoluteUrl);
-    const canonicalHost = url.hostname.toLowerCase();
+    const canonicalHost = getPublicSsrHostProfile(url.hostname);
     const match = matchPublicSsrRoute(url, resolver);
-    if (!match) {
+    if (!canonicalHost || !match) {
       return { classification: "unknown", snapshot: undefined };
     }
     if (match.route.kind === "private") {
@@ -713,6 +730,17 @@ export const createPublicSsrSnapshotLoader = ({
       value.maintenance.message === ""
         ? empty("notices")
         : source("notices", value);
+    const adSource = async (placementKey: string) =>
+      source(
+        "ad",
+        await from("ad", async () => ({
+          creative: await services.getAdCreative(
+            placementKey,
+            input.fixedClock
+          ),
+          placementKey,
+        }))
+      );
     const editorial = (): PublicSsrEditorial => ({
       contentRevision: input.contentRevision,
       release: input.release,
@@ -765,10 +793,12 @@ export const createPublicSsrSnapshotLoader = ({
     try {
       switch (match.route.id) {
         case "home": {
-          const [all, publicContent] = await Promise.all([
+          const [all, publicContent, ad] = await Promise.all([
             terminals(),
             content(),
+            adSource("home"),
           ]);
+          sources.ad = ad;
           sources.terminals = source(
             "terminals",
             Object.values(all).map(toTerminalSummary)
@@ -966,6 +996,18 @@ export const createPublicSsrSnapshotLoader = ({
             };
           }
           sources.route = source("route", selected.payload);
+          const adSlot = match.route.view
+            ? AD_SLOT_FOR_VIEW[match.route.view]
+            : undefined;
+          if (adSlot) {
+            sources.ad = await adSource(
+              getAdPlacementKey({
+                arrivalTerminalId: selected.mate.id,
+                departureTerminalId: selected.terminal.id,
+                slot: adSlot,
+              })
+            );
+          }
           if (match.route.view === "schedule") {
             const date = match.query.values.date ?? dateFor(input.fixedClock);
             const [current, next, status, publicNotices] = await Promise.all([

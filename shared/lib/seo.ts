@@ -101,7 +101,7 @@ const fixedPages: Record<string, Pick<SeoMetadata, "title" | "description">> = {
   "/privacy": {
     title: "Privacy Policy - Ferry FYI",
     description:
-      "Read how Ferry FYI handles account, foreground location, ticket, notification, analytics, and diagnostic data across the web and mobile apps.",
+      "Read how Ferry FYI handles account, location, ticket, notification, analytics, diagnostic, and contextual advertising data across the web and mobile apps.",
   },
   "/feedback": {
     title: "Ferry FYI Support & Feedback",

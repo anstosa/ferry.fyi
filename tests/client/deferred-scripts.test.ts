@@ -63,6 +63,7 @@ describe("client document loading", () => {
       '<script type="module" src="/entry-client.tsx"></script>'
     );
     expect(entryBootstrapSource).toContain('import("./entry-client")');
+    expect(entryBootstrapSource).toContain('import("./lib/worker")');
     expect(entryBootstrapSource).toContain('import("./lib/sentry")');
     expect(entryBootstrapSource).toContain("requestAnimationFrame");
     expect(entryClientSource).not.toContain("startSentry");

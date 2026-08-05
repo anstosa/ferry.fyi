@@ -18,6 +18,7 @@ vi.mock("@capacitor/share", () => ({
   },
 }));
 vi.mock("~/lib/fares", () => fares);
+vi.mock("~/components/AdSlot", () => ({ AdSlot: () => null }));
 vi.mock("~/views/Header", () => ({
   Header: ({ children }: { children: React.ReactNode }) =>
     React.createElement("header", null, children),

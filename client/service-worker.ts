@@ -2,7 +2,6 @@
 export default null;
 declare let self: ServiceWorkerGlobalScope;
 
-import { initializeApp } from "firebase/app";
 import {
   getMessaging,
   isSupported,
@@ -24,15 +23,9 @@ import {
   StaleWhileRevalidate,
 } from "workbox-strategies";
 
+import { firebaseApp } from "./lib/firebase";
 import { getServiceWorkerApiPolicy } from "./lib/serviceWorkerApiPolicy";
 import { registerNetworkOnlyNavigationRoute } from "./lib/serviceWorkerNavigation";
-
-const app = initializeApp({
-  apiKey: process.env.FIREBASE_API_KEY,
-  projectId: process.env.FIREBASE_PROJECT_ID,
-  messagingSenderId: process.env.FIREBASE_SENDER_ID,
-  appId: process.env.FIREBASE_APP_ID,
-});
 
 interface Notification extends MessagePayload {
   data: {
@@ -55,9 +48,14 @@ isSupported()
     if (!supported) {
       return;
     }
-    const messaging = getMessaging(app);
+    const messaging = getMessaging(firebaseApp);
     onBackgroundMessage(messaging, (payload) => {
       if (isNotification(payload)) {
+        // FCM automatically displays messages with a notification payload.
+        // Only data-only messages need a notification created here.
+        if (payload.notification) {
+          return;
+        }
         console.log("Background notification: ", payload.data);
         return self.registration.showNotification(payload.data.title, {
           body: payload.data.body,
@@ -77,7 +75,19 @@ isSupported()
 
 // normalize notification target
 const getNotificationUrl = (event: NotificationEvent): string => {
-  const rawUrl = event.notification.data?.url;
+  const notificationData = event.notification.data as
+    | {
+        FCM_MSG?: {
+          data?: { url?: unknown };
+          fcmOptions?: { link?: unknown };
+        };
+        url?: unknown;
+      }
+    | undefined;
+  const rawUrl =
+    notificationData?.url ??
+    notificationData?.FCM_MSG?.fcmOptions?.link ??
+    notificationData?.FCM_MSG?.data?.url;
   // missing url fallback
   if (typeof rawUrl !== "string") {
     return self.location.origin;
@@ -116,7 +126,12 @@ registerNetworkOnlyNavigationRoute({
   registerRoute,
 });
 
-precacheAndRoute((self as any).__WB_MANIFEST);
+const precacheManifest = (self as any).__WB_MANIFEST;
+// vite-plugin-pwa leaves the injection marker undefined in its module-based
+// development worker. Production builds replace it with the offline assets.
+if (Array.isArray(precacheManifest)) {
+  precacheAndRoute(precacheManifest);
+}
 cleanupOutdatedCaches();
 
 googleAnalytics.initialize();

@@ -179,4 +179,8 @@ Configure these non-secret GitHub variables at the repository or organization le
 Keep application runtime secrets in AWS Secrets Manager.
 Do not copy `DATABASE_URL`, Firebase service account JSON, Auth0 server secret, WSDOT API key, or `SENTRY_AUTH_TOKEN` into GitHub variables for ECS runtime deployment. If sourcemap upload is enabled later, store `SENTRY_AUTH_TOKEN` only as a GitHub build secret and do not pass it to ECS runtime.
 
+Set `REPORT_BASE_URL` in the runtime app-config secret to the dedicated HTTPS
+origin `https://reports.santosa.family`. The report hostname must route to the
+web service but remain separate from the main app origin.
+
 Keep `web_desired_count = 1` while the web process owns scheduled work. The shared database operation leases prevent deploy/startup overlap, but multiple long-lived web schedulers would maintain independent notification transition state.

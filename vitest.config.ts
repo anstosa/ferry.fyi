@@ -128,7 +128,7 @@ export default defineConfig({
       },
       // Keep server-only library namespaces on the default alias below.
       {
-        find: /^~\/lib\/(?!(?:admin(?:\/|$)|alertMetadata$|auth0Admin$|cameraFrames$|cameraLineDetection$|cancellationNotifications$|db$|delayNotifications$|demandCalendar$|demandEvents(?:\/|$)|errors$|fareCache$|fares$|firebase$|forecast(?:$|\/)|forecastDaypart$|forecastRegressionThresholds$|holidays$|httpApiPolicy$|httpCachePolicy$|httpSecurity$|httpTelemetry$|leaderboardFlags$|leaderboardPrivacy$|leaderboardSeo$|leaderboards$|logging$|noaaCoastline$|operationTelemetry$|ota$|push$|pushSubscriptions$|safeScheduledJob$|sailingLifecycleNotifications$|serverLifecycle$|serverRuntime$|tides(?:\/|$)|time$|weather(?:\/|$)|wsf(?:\/|$)))(.+)$/,
+        find: /^~\/lib\/(?!(?:admin(?:\/|$)|adOrigin$|alertMetadata$|auth0Admin$|cameraFrames$|cameraLineDetection$|cancellationNotifications$|db$|delayNotifications$|demandCalendar$|demandEvents(?:\/|$)|errors$|fareCache$|fares$|firebase$|forecast(?:$|\/)|forecastDaypart$|forecastRegressionThresholds$|holidays$|httpApiPolicy$|httpCachePolicy$|httpSecurity$|httpTelemetry$|leaderboardFlags$|leaderboardPrivacy$|leaderboardSeo$|leaderboards$|logging$|noaaCoastline$|operationTelemetry$|ota$|push$|pushSubscriptions$|safeScheduledJob$|sailingLifecycleNotifications$|serverLifecycle$|serverRuntime$|tides(?:\/|$)|time$|weather(?:\/|$)|wsf(?:\/|$)))(.+)$/,
         replacement: path.resolve(__dirname, "client/lib/$1"),
       },
       { find: "~", replacement: path.resolve(__dirname, "server") },

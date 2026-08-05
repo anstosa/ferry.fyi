@@ -15,6 +15,22 @@ const api = vi.hoisted(() => ({
   post: vi.fn(),
   put: vi.fn(),
 }));
+const terminals = vi.hoisted(() => ({
+  getTerminals: vi.fn(() =>
+    Promise.resolve([
+      {
+        id: "5",
+        mates: [{ id: "14", name: "Mukilteo" }],
+        name: "Clinton",
+      },
+      {
+        id: "14",
+        mates: [{ id: "5", name: "Clinton" }],
+        name: "Mukilteo",
+      },
+    ])
+  ),
+}));
 
 vi.mock("@auth0/auth0-react", () => ({ useAuth0: () => auth }));
 vi.mock("~/components/Page", () => ({
@@ -22,6 +38,7 @@ vi.mock("~/components/Page", () => ({
     React.createElement("main", undefined, children),
 }));
 vi.mock("~/lib/api", () => api);
+vi.mock("~/lib/terminals", () => terminals);
 
 import { Admin } from "../../client/views/Admin";
 
@@ -33,10 +50,49 @@ afterEach(() => {
   act(() => root?.unmount());
   root = undefined;
   document.body.innerHTML = "";
+  window.history.replaceState({}, "", "/");
   vi.clearAllMocks();
 });
 
 describe("Admin", () => {
+  it("opens a deep-linked directional ad placement", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/admin?placement=schedule--5--14&tab=ads#admin-ad-placement"
+    );
+    api.get.mockImplementation((path: string) => {
+      if (path === "/admin/ads") {
+        return Promise.resolve({ adsEnabled: true, placements: [] });
+      }
+      if (path === "/admin/ads/campaigns") {
+        return Promise.resolve([]);
+      }
+      return Promise.reject(new Error(`Unexpected request: ${path}`));
+    });
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root?.render(React.createElement(Admin));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(
+      container.querySelector('#admin-tab-ads[aria-selected="true"]')
+    ).not.toBeNull();
+    expect(
+      (container.querySelector("#admin-ad-slot") as HTMLSelectElement).value
+    ).toBe("schedule");
+    expect(
+      (container.querySelector("#admin-ad-direction") as HTMLSelectElement)
+        .value
+    ).toBe("5--14");
+    expect(document.activeElement?.id).toBe("admin-ad-slot");
+  });
+
   it("shows an accessible feature-flags skeleton until the initial request completes", async () => {
     let resolveFeatures:
       | ((value: {
@@ -364,5 +420,94 @@ describe("Admin", () => {
         ?.click();
     });
     expect(container.textContent).toContain("Selected: person@example.com");
+  });
+
+  it("edits route ad placements separately for each direction", async () => {
+    api.get.mockImplementation((path: string) => {
+      if (path === "/admin/ads") {
+        return Promise.resolve({
+          adsEnabled: true,
+          placements: [
+            {
+              advertiserName: "Island Coffee",
+              arrivalTerminalId: "14",
+              body: "",
+              departureTerminalId: "5",
+              enabled: true,
+              headline: "Clinton offer",
+              key: "schedule--5--14",
+              slot: "schedule",
+              targetUrl: "https://example.com/clinton",
+            },
+            {
+              advertiserName: "Mainland Coffee",
+              arrivalTerminalId: "5",
+              body: "",
+              departureTerminalId: "14",
+              enabled: true,
+              headline: "Mukilteo offer",
+              key: "schedule--14--5",
+              slot: "schedule",
+              targetUrl: "https://example.com/mukilteo",
+            },
+          ],
+        });
+      }
+      if (path === "/admin/ads/campaigns") {
+        return Promise.resolve([]);
+      }
+      return Promise.resolve({
+        automaticLeaderboardCheckinsEnabled: false,
+        leaderboardsEnabled: false,
+      });
+    });
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root?.render(React.createElement(Admin));
+    });
+    await act(async () => {
+      [...container.querySelectorAll("button")]
+        .find((button) => button.textContent === "Advertising")
+        ?.click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(api.get).toHaveBeenCalledWith("/admin/ads", "access-token");
+    expect(
+      container.querySelector(
+        '[role="switch"][aria-label="Show advertisements globally"]'
+      )
+    ).not.toBeNull();
+
+    const slot = container.querySelector<HTMLSelectElement>("#admin-ad-slot");
+    await act(async () => {
+      if (slot) {
+        slot.value = "schedule";
+        slot.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    });
+
+    const direction = container.querySelector<HTMLSelectElement>(
+      "#admin-ad-direction"
+    );
+    expect(direction?.textContent).toContain("Clinton → Mukilteo");
+    expect(direction?.textContent).toContain("Mukilteo → Clinton");
+    expect(
+      container.querySelector<HTMLInputElement>("#admin-ad-headline")?.value
+    ).toBe("Clinton offer");
+
+    await act(async () => {
+      if (direction) {
+        direction.value = "14--5";
+        direction.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    });
+    expect(
+      container.querySelector<HTMLInputElement>("#admin-ad-headline")?.value
+    ).toBe("Mukilteo offer");
   });
 });

@@ -162,5 +162,11 @@ if (
   installArrayAtPolyfill();
   installObjectHasOwnPolyfill();
   installPreloadRecovery();
+  // Push token setup must not wait for route preloading or authentication UI.
+  // Register the worker as soon as the browser bootstrap runs; the later
+  // browser phase safely shares the same registration attempt.
+  import("./lib/worker")
+    .then(({ initializeServiceWorker }) => initializeServiceWorker())
+    .catch(() => undefined);
   scheduleDeferredStartup();
 }

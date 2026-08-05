@@ -31,9 +31,14 @@ const registerServiceWorker = async () => {
     return registrationPromise;
   }
   registrationStarted = true;
-  const workbox = new Workbox("/service-worker.js", {
-    updateViaCache: "none",
-  });
+  const isProduction = process.env.NODE_ENV === "production";
+  const workbox = new Workbox(
+    isProduction ? "/service-worker.js" : "/dev-sw.js?dev-sw",
+    {
+      type: isProduction ? "classic" : "module",
+      updateViaCache: "none",
+    }
+  );
 
   workbox.addEventListener("installed", (event) => {
     // reload updated app
@@ -58,9 +63,7 @@ export const initializeServiceWorker = (): (() => void) => {
     return () => undefined;
   }
   const canRegisterServiceWorker =
-    "serviceWorker" in navigator &&
-    process.env.NODE_ENV === "production" &&
-    !Capacitor.isNativePlatform();
+    "serviceWorker" in navigator && !Capacitor.isNativePlatform();
 
   if (canRegisterServiceWorker) {
     planRegistration();
@@ -74,9 +77,9 @@ export const initializeServiceWorker = (): (() => void) => {
     window.addEventListener("load", register, { once: true });
     return () => window.removeEventListener("load", register);
   } else if ("serviceWorker" in navigator) {
-    // A production PWA worker can otherwise keep serving an old bundle when a
-    // mobile browser opens a development host. Remove it automatically so the
-    // source-mounted Vite server always owns the next reload.
+    // Native WebViews do not use the browser service worker. Remove any worker
+    // left behind by an older build instead of waiting forever for a browser
+    // registration that cannot exist in the native runtime.
     const unregister = () => {
       navigator.serviceWorker.getRegistrations().then((registrations) => {
         registrations.forEach((entry) => entry.unregister());

@@ -10,6 +10,7 @@ import type {
 } from "shared/contracts/schedules";
 import { isEmpty } from "shared/lib/arrays";
 
+import { AdSlot } from "~/components/AdSlot";
 import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { FreshnessPill } from "~/components/FreshnessPill";
 import { PageLoadError } from "~/components/PageLoadError";
@@ -35,7 +36,9 @@ import {
 } from "./smallBoat";
 
 interface Props {
+  arrivalTerminalId?: string;
   checkedAt?: number | null;
+  departureTerminalId?: string;
   isRefreshing?: boolean;
   loadError?: Error | null;
   onReload?: () => void;
@@ -56,7 +59,9 @@ const getLinkedSailingTime = (input?: string): number | null => {
 };
 
 export const Schedule = ({
+  arrivalTerminalId,
   checkedAt = null,
+  departureTerminalId,
   isRefreshing = false,
   loadError,
   onReload,
@@ -194,7 +199,22 @@ export const Schedule = ({
       return (
         <React.Fragment key={slotTime}>
           {/* current-time boundary */}
-          {showNowDivider && <NowDivider />}
+          {showNowDivider && (
+            <>
+              {arrivalTerminalId && departureTerminalId ? (
+                <li>
+                  <AdSlot
+                    arrivalTerminalId={arrivalTerminalId}
+                    className="p-2"
+                    contextLabel="Schedule"
+                    departureTerminalId={departureTerminalId}
+                    slot="schedule"
+                  />
+                </li>
+              ) : null}
+              <NowDivider />
+            </>
+          )}
           <ErrorBoundary
             className="m-2"
             fallbackTitle="Sailing crashed"

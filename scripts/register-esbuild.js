@@ -14,6 +14,11 @@ function registerExtension(extension) {
       format: "cjs",
       loader: extension === ".tsx" ? "tsx" : "ts",
       sourcemap: "inline",
+      supported: {
+        // CommonJS require calls pass through tsconfig-paths; native import()
+        // does not, so deferred server modules must use the same resolver.
+        "dynamic-import": false,
+      },
       sourcefile: filename,
       target: "es2020",
       tsconfigRaw: {

@@ -7,6 +7,7 @@ export const HTTP_TELEMETRY_SCHEMA_VERSION = 1 as const;
 
 export type HttpMethodClass = "other" | "preflight" | "read" | "write";
 export type HttpRouteClass =
+  | "api.ad-measurement"
   | "api.anonymous-read"
   | "api.authenticated"
   | "api.ota"
@@ -51,6 +52,7 @@ const METHOD_CLASSES = new Set<HttpMethodClass>([
   "write",
 ]);
 const ROUTE_CLASSES = new Set<HttpRouteClass>([
+  "api.ad-measurement",
   "api.anonymous-read",
   "api.authenticated",
   "api.ota",

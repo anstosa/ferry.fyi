@@ -105,7 +105,7 @@ try {
         routeId: "unknown-public-path",
         routeParams: {},
         sources: {},
-        version: 5,
+        version: 6,
       },
       template:
         "<html><head></head><body><div id=\"root\"></div></body></html>",
@@ -139,6 +139,12 @@ try {
       routeId: "home",
       routeParams: {},
       sources: {
+        ad: {
+          observedAt: "2026-07-28T12:00:00.000Z",
+          outcome: "value",
+          sourceUpdatedAt: null,
+          value: { creative: null, placementKey: "home" },
+        },
         features: {
           observedAt: "2026-07-28T12:00:00.000Z",
           outcome: "value",
@@ -161,7 +167,7 @@ try {
           value: [],
         },
       },
-      version: 5,
+      version: 6,
     },
     template:
       "<html><head></head><body><div id=\"root\"></div></body></html>",

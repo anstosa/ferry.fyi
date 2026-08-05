@@ -1,4 +1,5 @@
 import { useAuth0 } from "@auth0/auth0-react";
+import { DateTime } from "luxon";
 import React, { ReactElement, ReactNode, useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import type {
@@ -6,13 +7,49 @@ import type {
   AdminUserList,
   AdminUserListItem,
 } from "shared/contracts/admin";
+import {
+  AD_SLOT_IDS,
+  type AdCampaign,
+  type AdCampaignReport,
+  type AdConfiguration,
+  type AdInventoryReport,
+  type AdPlacement,
+  type AdReportShareCreated,
+  type AdReportShareSummary,
+  type AdSlotId,
+  getAdPlacementKey,
+} from "shared/contracts/ads";
+import type { Terminal } from "shared/contracts/terminals";
 
 import { Page } from "~/components/Page";
 import { Skeleton, SkeletonGroup } from "~/components/Skeleton";
 import { confirmationPhrase } from "~/lib/adminConfirmation";
+import { getAdAdminSelection } from "~/lib/ads";
 import { del, get, post, put } from "~/lib/api";
+import { getTerminals } from "~/lib/terminals";
 
 const ADMIN_EMAIL = "anstosa@gmail.com";
+const AD_TIME_ZONE = "America/Los_Angeles";
+const AD_LOCAL_TIME_FORMAT = "yyyy-MM-dd'T'HH:mm";
+
+const adCampaignTimestamp = (value: string): string => {
+  const parsed = DateTime.fromISO(value, { zone: AD_TIME_ZONE });
+  const timestamp = parsed.toUTC().toISO();
+  if (
+    !parsed.isValid ||
+    parsed.toFormat(AD_LOCAL_TIME_FORMAT) !== value ||
+    parsed.getPossibleOffsets().length !== 1 ||
+    !timestamp
+  ) {
+    throw new Error("Invalid or ambiguous Pacific campaign time");
+  }
+  return timestamp;
+};
+
+const formatAdCampaignTime = (value: string): string =>
+  DateTime.fromISO(value)
+    .setZone(AD_TIME_ZONE)
+    .toFormat("MMM d, yyyy, h:mm a ZZZZ");
 
 type FeatureSettings = {
   automaticLeaderboardCheckinsEnabled: boolean;
@@ -102,15 +139,81 @@ type UserSupportProfile = {
   } | null;
   subject: string;
 };
-type AdminTab = "access" | "users" | "operations" | "notifications" | "content";
+type AdminTab =
+  | "access"
+  | "users"
+  | "operations"
+  | "notifications"
+  | "ads"
+  | "content";
 
 const adminTabs: { id: AdminTab; label: string }[] = [
   { id: "access", label: "Access" },
   { id: "users", label: "Users" },
   { id: "operations", label: "Data operations" },
   { id: "notifications", label: "Notifications" },
+  { id: "ads", label: "Advertising" },
   { id: "content", label: "Content & SEO" },
 ];
+
+const adSlotLabels: Record<AdSlotId, string> = {
+  cameras: "Cameras",
+  fare: "Fares",
+  home: "Home",
+  schedule: "Schedule",
+  terminal: "Terminal details",
+};
+
+interface AdDirection {
+  arrivalTerminalId: string;
+  departureTerminalId: string;
+  key: string;
+  label: string;
+}
+
+const getAdDirections = (terminals: Terminal[]): AdDirection[] =>
+  terminals
+    .flatMap((terminal) =>
+      (terminal.mates ?? []).map((mate) => ({
+        arrivalTerminalId: mate.id,
+        departureTerminalId: terminal.id,
+        key: `${terminal.id}--${mate.id}`,
+        label: `${terminal.name} → ${mate.name}`,
+      }))
+    )
+    .filter(
+      (direction, index, directions) =>
+        directions.findIndex(
+          (candidate) =>
+            candidate.departureTerminalId === direction.departureTerminalId &&
+            candidate.arrivalTerminalId === direction.arrivalTerminalId
+        ) === index
+    )
+    .sort((left, right) => left.label.localeCompare(right.label));
+
+const emptyAdPlacement = ({
+  arrivalTerminalId,
+  departureTerminalId,
+  slot,
+}: {
+  arrivalTerminalId: string | null;
+  departureTerminalId: string | null;
+  slot: AdSlotId;
+}): AdPlacement => ({
+  advertiserName: "",
+  arrivalTerminalId,
+  body: "",
+  departureTerminalId,
+  enabled: false,
+  headline: "",
+  key: getAdPlacementKey({
+    arrivalTerminalId,
+    departureTerminalId,
+    slot,
+  }),
+  slot,
+  targetUrl: "",
+});
 
 const ToggleSwitch = ({
   checked,
@@ -445,7 +548,13 @@ const ConfirmButton = ({
 
 export const Admin = (): ReactElement => {
   const { getAccessTokenSilently, isAuthenticated, user } = useAuth0();
-  const [activeTab, setActiveTab] = useState<AdminTab>("access");
+  const adminSearch =
+    typeof window === "undefined" ? "" : window.location.search;
+  const requestedAdSelection = getAdAdminSelection(adminSearch);
+  const requestedAdminTab = new URLSearchParams(adminSearch).get("tab");
+  const [activeTab, setActiveTab] = useState<AdminTab>(() =>
+    requestedAdminTab === "ads" || requestedAdSelection ? "ads" : "access"
+  );
   const [features, setFeatures] = useState<FeatureSettings | null>(null);
   const [detailedFeature, setDetailedFeature] =
     useState<DetailedFeatureSettings | null>(null);
@@ -453,6 +562,36 @@ export const Admin = (): ReactElement => {
   const [operations, setOperations] = useState<Operation[] | null>(null);
   const [notifications, setNotifications] =
     useState<NotificationDashboard | null>(null);
+  const [ads, setAds] = useState<AdConfiguration | null>(null);
+  const [adTerminals, setAdTerminals] = useState<Terminal[]>([]);
+  const [selectedAdSlot, setSelectedAdSlot] = useState<AdSlotId>(
+    requestedAdSelection?.slot ?? "home"
+  );
+  const [selectedAdDirection, setSelectedAdDirection] = useState(
+    requestedAdSelection?.directionKey ?? ""
+  );
+  const [adDraft, setAdDraft] = useState<AdPlacement | null>(null);
+  const [adCampaigns, setAdCampaigns] = useState<AdCampaign[]>([]);
+  const [adCampaignReport, setAdCampaignReport] =
+    useState<AdCampaignReport | null>(null);
+  const [adInventoryReport, setAdInventoryReport] =
+    useState<AdInventoryReport | null>(null);
+  const [adReportShares, setAdReportShares] = useState<AdReportShareSummary[]>(
+    []
+  );
+  const [createdAdReportShare, setCreatedAdReportShare] =
+    useState<AdReportShareCreated | null>(null);
+  const [adReportName, setAdReportName] = useState("");
+  const [adStartsAt, setAdStartsAt] = useState("");
+  const [adEndsAt, setAdEndsAt] = useState("");
+  const [adInventoryEndDate, setAdInventoryEndDate] = useState(
+    () => DateTime.now().setZone(AD_TIME_ZONE).toISODate() ?? ""
+  );
+  const [adInventoryStartDate, setAdInventoryStartDate] = useState(() => {
+    return (
+      DateTime.now().setZone(AD_TIME_ZONE).minus({ days: 29 }).toISODate() ?? ""
+    );
+  });
   const [content, setContent] = useState<Content | null>(null);
   const [userDirectory, setUserDirectory] = useState<AdminUserList | null>(
     null
@@ -492,10 +631,6 @@ export const Admin = (): ReactElement => {
   const [notificationRecipientSearch, setNotificationRecipientSearch] =
     useState("");
 
-  if (!isAuthenticated || user?.email !== ADMIN_EMAIL) {
-    return <Navigate replace to="/" />;
-  }
-
   const currentNotification = notificationRequest(
     notificationMode,
     user?.sub ?? "",
@@ -521,6 +656,57 @@ export const Admin = (): ReactElement => {
   };
   const loadNotifications = async (): Promise<void> =>
     setNotifications(await get("/admin/notifications", await token()));
+  const loadAds = async (): Promise<void> => {
+    const [configuration, terminals, campaigns] = await Promise.all([
+      get<AdConfiguration>("/admin/ads", await token()),
+      getTerminals(),
+      get<AdCampaign[]>("/admin/ads/campaigns", await token()),
+    ]);
+    const directions = getAdDirections(terminals);
+    setAds(configuration);
+    setAdTerminals(terminals);
+    setAdCampaigns(campaigns);
+    setSelectedAdDirection((current) => current || directions[0]?.key || "");
+  };
+
+  const loadAdCampaignReport = async (campaignId: string): Promise<void> => {
+    const accessToken = await token();
+    const [report, shares] = await Promise.all([
+      get<AdCampaignReport>(
+        `/admin/ads/reports/campaigns/${encodeURIComponent(campaignId)}`,
+        accessToken
+      ),
+      get<AdReportShareSummary[]>(
+        `/admin/ads/campaigns/${encodeURIComponent(campaignId)}/shares`,
+        accessToken
+      ),
+    ]);
+    setAdCampaignReport(report);
+    setAdReportShares(shares);
+    setCreatedAdReportShare(null);
+  };
+
+  const loadAdInventoryReport = async (): Promise<void> => {
+    setAdInventoryReport(
+      await get<AdInventoryReport>(
+        `/admin/ads/reports/inventory?startDate=${adInventoryStartDate}&endDate=${adInventoryEndDate}`,
+        await token()
+      )
+    );
+  };
+
+  const downloadAdCampaignCsv = async (campaignId: string): Promise<void> => {
+    const csv = await get<string>(
+      `/admin/ads/reports/campaigns/${encodeURIComponent(campaignId)}.csv`,
+      await token()
+    );
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `ad-campaign-${campaignId}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
   const loadContent = async (): Promise<void> => {
     const value = await get<Content>("/admin/content", await token());
     setContent(value);
@@ -599,6 +785,49 @@ export const Admin = (): ReactElement => {
       setFeatureError("Could not save private feature access.");
     }
   };
+  const adDirections = getAdDirections(adTerminals);
+  const selectedDirection = adDirections.find(
+    ({ key }) => key === selectedAdDirection
+  );
+
+  useEffect(() => {
+    if (!ads) {
+      return;
+    }
+    const isHome = selectedAdSlot === "home";
+    if (!isHome && !selectedDirection) {
+      setAdDraft(null);
+      return;
+    }
+    const input = {
+      arrivalTerminalId: isHome
+        ? null
+        : (selectedDirection?.arrivalTerminalId ?? null),
+      departureTerminalId: isHome
+        ? null
+        : (selectedDirection?.departureTerminalId ?? null),
+      slot: selectedAdSlot,
+    };
+    const key = getAdPlacementKey(input);
+    setAdDraft(
+      ads.placements.find((placement) => placement.key === key) ??
+        emptyAdPlacement(input)
+    );
+  }, [adTerminals, ads, selectedAdDirection, selectedAdSlot]);
+
+  useEffect(() => {
+    if (!ads || !requestedAdSelection) {
+      return;
+    }
+    document
+      .getElementById("admin-ad-placement")
+      ?.scrollIntoView?.({ block: "start" });
+    document.getElementById("admin-ad-slot")?.focus();
+  }, [ads, requestedAdSelection?.placementKey]);
+
+  if (!isAuthenticated || user?.email !== ADMIN_EMAIL) {
+    return <Navigate replace to="/" />;
+  }
   return (
     <Page title="Admin">
       <p className="my-4 text-sm text-gray-dark dark:text-gray-light">
@@ -1272,6 +1501,585 @@ export const Admin = (): ReactElement => {
                   </p>
                 )}
               </div>
+            </div>
+          ) : null}
+        </AdminSection>
+
+        <AdminSection
+          active={activeTab === "ads"}
+          description="Configure direct, contextual advertisements. Route placements are stored separately for each travel direction."
+          id="ads"
+          load={loadAds}
+          loadingFallback={
+            <AdminLoadingSkeleton label="Loading advertising settings" />
+          }
+          title="Advertising"
+        >
+          {ads ? (
+            <div className="mt-4 space-y-5">
+              <section className="rounded-xl border border-gray-light p-4 dark:border-gray-dark">
+                <div className="flex items-center justify-between gap-4">
+                  <span>
+                    <strong>Show advertisements</strong>
+                    <span className="mt-1 block text-sm">
+                      This global switch overrides every individual placement.
+                    </span>
+                  </span>
+                  <ToggleSwitch
+                    checked={ads.adsEnabled}
+                    label="Show advertisements globally"
+                    onChange={(adsEnabled) => setAds({ ...ads, adsEnabled })}
+                  />
+                </div>
+                <ConfirmButton
+                  action="save-ad-settings"
+                  label="Save global ad switch"
+                  target="ads:global"
+                  onConfirm={async () => {
+                    const value = await put<AdConfiguration>(
+                      "/admin/ads/global",
+                      {
+                        action: "save-ad-settings",
+                        adsEnabled: ads.adsEnabled,
+                        confirmation: confirmationPhrase(
+                          "save-ad-settings",
+                          "ads:global"
+                        ),
+                        target: "ads:global",
+                      },
+                      await token()
+                    );
+                    setAds(value);
+                  }}
+                />
+              </section>
+
+              <section
+                className="rounded-xl border border-gray-light p-4 dark:border-gray-dark"
+                id="admin-ad-placement"
+              >
+                <h3 className="font-semibold">Placement</h3>
+                <p className="mt-1 text-sm text-gray-dark dark:text-gray-light">
+                  Empty or disabled placements stay hidden from riders. The
+                  owner sees a dashed placeholder on the corresponding page.
+                </p>
+                <label
+                  className="mt-3 block font-semibold"
+                  htmlFor="admin-ad-slot"
+                >
+                  Page slot
+                </label>
+                <select
+                  className="mt-1 w-full rounded border border-gray-medium bg-white p-2 text-gray-900 dark:bg-blue-darkest dark:text-gray-100"
+                  id="admin-ad-slot"
+                  onChange={(event) =>
+                    setSelectedAdSlot(event.target.value as AdSlotId)
+                  }
+                  value={selectedAdSlot}
+                >
+                  {AD_SLOT_IDS.map((slot) => (
+                    <option key={slot} value={slot}>
+                      {adSlotLabels[slot]}
+                    </option>
+                  ))}
+                </select>
+
+                {selectedAdSlot === "home" ? null : (
+                  <>
+                    <label
+                      className="mt-3 block font-semibold"
+                      htmlFor="admin-ad-direction"
+                    >
+                      Travel direction
+                    </label>
+                    <select
+                      className="mt-1 w-full rounded border border-gray-medium bg-white p-2 text-gray-900 dark:bg-blue-darkest dark:text-gray-100"
+                      id="admin-ad-direction"
+                      onChange={(event) =>
+                        setSelectedAdDirection(event.target.value)
+                      }
+                      value={selectedAdDirection}
+                    >
+                      {adDirections.map((direction) => (
+                        <option key={direction.key} value={direction.key}>
+                          {direction.label}
+                        </option>
+                      ))}
+                    </select>
+                  </>
+                )}
+
+                {adDraft ? (
+                  <div className="mt-4 space-y-3">
+                    <div className="flex items-center justify-between gap-4">
+                      <span>
+                        <strong>Enable this placement</strong>
+                        <span className="mt-1 block text-sm">
+                          The global advertising switch must also be on.
+                        </span>
+                      </span>
+                      <ToggleSwitch
+                        checked={adDraft.enabled}
+                        label="Enable this ad placement"
+                        onChange={(enabled) =>
+                          setAdDraft({ ...adDraft, enabled })
+                        }
+                      />
+                    </div>
+                    <label
+                      className="block font-semibold"
+                      htmlFor="admin-ad-advertiser"
+                    >
+                      Advertiser name
+                    </label>
+                    <input
+                      className="w-full rounded border border-gray-medium bg-white p-2 text-gray-900 dark:bg-blue-darkest dark:text-gray-100"
+                      id="admin-ad-advertiser"
+                      onChange={(event) =>
+                        setAdDraft({
+                          ...adDraft,
+                          advertiserName: event.target.value,
+                        })
+                      }
+                      value={adDraft.advertiserName}
+                    />
+                    <label
+                      className="block font-semibold"
+                      htmlFor="admin-ad-headline"
+                    >
+                      Headline
+                    </label>
+                    <input
+                      className="w-full rounded border border-gray-medium bg-white p-2 text-gray-900 dark:bg-blue-darkest dark:text-gray-100"
+                      id="admin-ad-headline"
+                      onChange={(event) =>
+                        setAdDraft({
+                          ...adDraft,
+                          headline: event.target.value,
+                        })
+                      }
+                      value={adDraft.headline}
+                    />
+                    <label
+                      className="block font-semibold"
+                      htmlFor="admin-ad-body"
+                    >
+                      Body
+                    </label>
+                    <textarea
+                      className="w-full rounded border border-gray-medium bg-white p-2 text-gray-900 dark:bg-blue-darkest dark:text-gray-100"
+                      id="admin-ad-body"
+                      onChange={(event) =>
+                        setAdDraft({ ...adDraft, body: event.target.value })
+                      }
+                      value={adDraft.body}
+                    />
+                    <label
+                      className="block font-semibold"
+                      htmlFor="admin-ad-url"
+                    >
+                      Destination URL
+                    </label>
+                    <input
+                      className="w-full rounded border border-gray-medium bg-white p-2 text-gray-900 dark:bg-blue-darkest dark:text-gray-100"
+                      id="admin-ad-url"
+                      inputMode="url"
+                      onChange={(event) =>
+                        setAdDraft({
+                          ...adDraft,
+                          targetUrl: event.target.value,
+                        })
+                      }
+                      placeholder="https://example.com/offer"
+                      type="url"
+                      value={adDraft.targetUrl}
+                    />
+                    <ConfirmButton
+                      action="save-ad-settings"
+                      disabled={
+                        !adDraft.advertiserName.trim() ||
+                        !adDraft.headline.trim() ||
+                        !adDraft.targetUrl.trim()
+                      }
+                      label="Save ad placement"
+                      target={`ad:${adDraft.key}`}
+                      onConfirm={async () => {
+                        const target = `ad:${adDraft.key}`;
+                        const value = await put<AdConfiguration>(
+                          `/admin/ads/placements/${encodeURIComponent(adDraft.key)}`,
+                          {
+                            ...adDraft,
+                            action: "save-ad-settings",
+                            confirmation: confirmationPhrase(
+                              "save-ad-settings",
+                              target
+                            ),
+                            target,
+                          },
+                          await token()
+                        );
+                        setAds(value);
+                      }}
+                    />
+                  </div>
+                ) : null}
+              </section>
+
+              {adDraft ? (
+                <section className="rounded-xl border border-gray-light p-4 dark:border-gray-dark">
+                  <h3 className="font-semibold">Schedule immutable campaign</h3>
+                  <p className="mt-1 text-sm text-gray-dark dark:text-gray-light">
+                    Scheduling snapshots the placement creative and direction.
+                    Later placement edits do not change campaign reports. Times
+                    use America/Los_Angeles; nonexistent or ambiguous DST times
+                    are rejected.
+                  </p>
+                  <label
+                    className="mt-3 block font-semibold"
+                    htmlFor="admin-ad-report-name"
+                  >
+                    Campaign/report name
+                  </label>
+                  <input
+                    className="mt-1 w-full rounded border border-gray-medium bg-white p-2 text-gray-900 dark:bg-blue-darkest dark:text-gray-100"
+                    id="admin-ad-report-name"
+                    maxLength={160}
+                    onChange={(event) => setAdReportName(event.target.value)}
+                    value={adReportName}
+                  />
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    <label
+                      className="font-semibold"
+                      htmlFor="admin-ad-starts-at"
+                    >
+                      Starts
+                      <input
+                        className="mt-1 block w-full rounded border border-gray-medium bg-white p-2 font-normal text-gray-900 dark:bg-blue-darkest dark:text-gray-100"
+                        id="admin-ad-starts-at"
+                        onChange={(event) => setAdStartsAt(event.target.value)}
+                        type="datetime-local"
+                        value={adStartsAt}
+                      />
+                    </label>
+                    <label className="font-semibold" htmlFor="admin-ad-ends-at">
+                      Ends
+                      <input
+                        className="mt-1 block w-full rounded border border-gray-medium bg-white p-2 font-normal text-gray-900 dark:bg-blue-darkest dark:text-gray-100"
+                        id="admin-ad-ends-at"
+                        onChange={(event) => setAdEndsAt(event.target.value)}
+                        type="datetime-local"
+                        value={adEndsAt}
+                      />
+                    </label>
+                  </div>
+                  <ConfirmButton
+                    action="schedule-ad-campaign"
+                    disabled={!adReportName.trim() || !adStartsAt || !adEndsAt}
+                    label="Schedule campaign"
+                    target={`ad-campaign:${adDraft.key}`}
+                    onConfirm={async () => {
+                      const target = `ad-campaign:${adDraft.key}`;
+                      const campaign = await post<AdCampaign>(
+                        "/admin/ads/campaigns",
+                        {
+                          action: "schedule-ad-campaign",
+                          confirmation: confirmationPhrase(
+                            "schedule-ad-campaign",
+                            target
+                          ),
+                          endsAt: adCampaignTimestamp(adEndsAt),
+                          placementKey: adDraft.key,
+                          reportName: adReportName.trim(),
+                          startsAt: adCampaignTimestamp(adStartsAt),
+                          target,
+                        },
+                        await token()
+                      );
+                      setAdCampaigns((current) => [campaign, ...current]);
+                      setAdReportName("");
+                      setAdStartsAt("");
+                      setAdEndsAt("");
+                    }}
+                  />
+                </section>
+              ) : null}
+
+              <section className="rounded-xl border border-gray-light p-4 dark:border-gray-dark">
+                <div>
+                  <div>
+                    <h3 className="font-semibold">Campaign reports</h3>
+                    <p className="mt-1 text-sm text-gray-dark dark:text-gray-light">
+                      Aggregate informational counts only; not unique people or
+                      billable delivery.
+                    </p>
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-end gap-3">
+                    <label className="text-sm font-semibold">
+                      Inventory start
+                      <input
+                        className="mt-1 block rounded border border-gray-medium bg-white p-2 font-normal text-gray-900 dark:bg-blue-darkest dark:text-gray-100"
+                        onChange={(event) =>
+                          setAdInventoryStartDate(event.target.value)
+                        }
+                        type="date"
+                        value={adInventoryStartDate}
+                      />
+                    </label>
+                    <label className="text-sm font-semibold">
+                      Inventory end
+                      <input
+                        className="mt-1 block rounded border border-gray-medium bg-white p-2 font-normal text-gray-900 dark:bg-blue-darkest dark:text-gray-100"
+                        onChange={(event) =>
+                          setAdInventoryEndDate(event.target.value)
+                        }
+                        type="date"
+                        value={adInventoryEndDate}
+                      />
+                    </label>
+                    <button
+                      className="button button-secondary"
+                      onClick={() =>
+                        loadAdInventoryReport().catch(() => undefined)
+                      }
+                      type="button"
+                    >
+                      Load inventory
+                    </button>
+                  </div>
+                </div>
+                {adInventoryReport ? (
+                  <div className="mt-3 overflow-x-auto text-sm">
+                    <p>
+                      {adInventoryReport.startDate}–{adInventoryReport.endDate}:{" "}
+                      <strong>{adInventoryReport.totalOpportunityCount}</strong>{" "}
+                      viewable slot opportunities.
+                    </p>
+                    <table className="mt-2 w-full text-left">
+                      <thead>
+                        <tr>
+                          <th>Date</th>
+                          <th>Placement/direction</th>
+                          <th>Opportunities</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {adInventoryReport.daily
+                          .filter(
+                            (row) =>
+                              !adDraft || row.placementKey === adDraft.key
+                          )
+                          .map((row) => (
+                            <tr key={`${row.businessDate}:${row.placementKey}`}>
+                              <td>{row.businessDate}</td>
+                              <td>{row.placementKey}</td>
+                              <td>{row.opportunityCount}</td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : null}
+                <ul className="mt-4 space-y-3">
+                  {adCampaigns
+                    .filter(
+                      (campaign) =>
+                        !adDraft || campaign.placementKey === adDraft.key
+                    )
+                    .map((campaign) => {
+                      const ended =
+                        Boolean(campaign.endedEarlyAt) ||
+                        new Date(campaign.endsAt) <= new Date();
+                      return (
+                        <li
+                          className="rounded border border-gray-light p-3 dark:border-gray-dark"
+                          key={campaign.id}
+                        >
+                          <strong>{campaign.reportName}</strong>
+                          <p className="mt-1 text-sm">
+                            {campaign.advertiserName} · {campaign.placementKey}
+                          </p>
+                          <p className="text-xs text-gray-dark dark:text-gray-light">
+                            {formatAdCampaignTime(campaign.startsAt)} –{" "}
+                            {formatAdCampaignTime(campaign.endsAt)}
+                            {campaign.endedEarlyAt
+                              ? ` · ended ${formatAdCampaignTime(campaign.endedEarlyAt)}`
+                              : ""}
+                          </p>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <button
+                              className="button button-secondary button-small"
+                              onClick={() =>
+                                loadAdCampaignReport(campaign.id).catch(
+                                  () => undefined
+                                )
+                              }
+                              type="button"
+                            >
+                              View report
+                            </button>
+                            <button
+                              className="button button-secondary button-small"
+                              onClick={() =>
+                                downloadAdCampaignCsv(campaign.id).catch(
+                                  () => undefined
+                                )
+                              }
+                              type="button"
+                            >
+                              Download CSV
+                            </button>
+                            {ended ? null : (
+                              <ConfirmButton
+                                action="end-ad-campaign"
+                                buttonClassName="button button-small border-red-dark bg-transparent text-red-dark"
+                                label="End now"
+                                target={`ad-campaign:${campaign.id}:end`}
+                                onConfirm={async () => {
+                                  const target = `ad-campaign:${campaign.id}:end`;
+                                  const updated = await post<AdCampaign>(
+                                    `/admin/ads/campaigns/${campaign.id}/end`,
+                                    {
+                                      action: "end-ad-campaign",
+                                      confirmation: confirmationPhrase(
+                                        "end-ad-campaign",
+                                        target
+                                      ),
+                                      target,
+                                    },
+                                    await token()
+                                  );
+                                  setAdCampaigns((current) =>
+                                    current.map((item) =>
+                                      item.id === updated.id ? updated : item
+                                    )
+                                  );
+                                }}
+                              />
+                            )}
+                          </div>
+                        </li>
+                      );
+                    })}
+                </ul>
+
+                {adCampaignReport ? (
+                  <div className="mt-5 rounded border border-gray-light p-3 dark:border-gray-dark">
+                    <h4 className="font-semibold">
+                      {adCampaignReport.campaign.reportName}
+                    </h4>
+                    <p className="mt-2 text-sm">
+                      Opportunities: {adCampaignReport.totals.opportunityCount};{" "}
+                      served: {adCampaignReport.totals.servedCount}; viewable:{" "}
+                      {adCampaignReport.totals.viewableCount} (
+                      {adCampaignReport.totals.viewabilityRate ?? "—"}); clicks:{" "}
+                      {adCampaignReport.totals.clickCount} (
+                      {adCampaignReport.totals.clickThroughRate ?? "—"}).
+                    </p>
+                    <p className="mt-2 text-xs text-gray-dark dark:text-gray-light">
+                      {adCampaignReport.methodology}
+                    </p>
+                    <div className="mt-3 overflow-x-auto text-sm">
+                      <table className="w-full text-left">
+                        <thead>
+                          <tr>
+                            <th>Date</th>
+                            <th>Opportunities</th>
+                            <th>Served</th>
+                            <th>Viewable</th>
+                            <th>Clicks</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {adCampaignReport.daily.map((row) => (
+                            <tr key={row.businessDate}>
+                              <td>{row.businessDate}</td>
+                              <td>{row.opportunityCount}</td>
+                              <td>{row.servedCount}</td>
+                              <td>{row.viewableCount}</td>
+                              <td>{row.clickCount}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <ConfirmButton
+                      action="create-ad-report-share"
+                      label="Create advertiser report link"
+                      target={`ad-campaign:${adCampaignReport.campaign.id}:share`}
+                      onConfirm={async () => {
+                        const target = `ad-campaign:${adCampaignReport.campaign.id}:share`;
+                        const created = await post<AdReportShareCreated>(
+                          `/admin/ads/campaigns/${adCampaignReport.campaign.id}/shares`,
+                          {
+                            action: "create-ad-report-share",
+                            confirmation: confirmationPhrase(
+                              "create-ad-report-share",
+                              target
+                            ),
+                            target,
+                          },
+                          await token()
+                        );
+                        setCreatedAdReportShare(created);
+                        setAdReportShares((current) => [created, ...current]);
+                      }}
+                    />
+                    {createdAdReportShare ? (
+                      <label className="mt-3 block text-sm">
+                        Copy this link now; the secret is not stored in readable
+                        form.
+                        <input
+                          className="mt-1 w-full rounded border border-gray-medium bg-white p-2 text-gray-900 dark:bg-blue-darkest dark:text-gray-100"
+                          readOnly
+                          value={createdAdReportShare.url}
+                        />
+                      </label>
+                    ) : null}
+                    <ul className="mt-3 space-y-2 text-sm">
+                      {adReportShares.map((share) => (
+                        <li
+                          className="flex flex-wrap items-center justify-between gap-2"
+                          key={share.id}
+                        >
+                          <span>
+                            Created {new Date(share.createdAt).toLocaleString()}{" "}
+                            · {share.revokedAt ? "revoked" : "active"}
+                          </span>
+                          {share.revokedAt ? null : (
+                            <ConfirmButton
+                              action="revoke-ad-report-share"
+                              buttonClassName="button button-small border-red-dark bg-transparent text-red-dark"
+                              label="Revoke"
+                              target={`ad-report-share:${share.id}`}
+                              onConfirm={async () => {
+                                const target = `ad-report-share:${share.id}`;
+                                const revoked =
+                                  await post<AdReportShareSummary>(
+                                    `/admin/ads/shares/${share.id}/revoke`,
+                                    {
+                                      action: "revoke-ad-report-share",
+                                      confirmation: confirmationPhrase(
+                                        "revoke-ad-report-share",
+                                        target
+                                      ),
+                                      target,
+                                    },
+                                    await token()
+                                  );
+                                setAdReportShares((current) =>
+                                  current.map((item) =>
+                                    item.id === revoked.id ? revoked : item
+                                  )
+                                );
+                              }}
+                            />
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </section>
             </div>
           ) : null}
         </AdminSection>

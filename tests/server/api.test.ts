@@ -139,9 +139,9 @@ describe("full API error boundary", () => {
   });
 
   it("keeps OTA body-parser failures outside the API envelope", async () => {
-    const fallback = express.Router().use((_request, response) =>
-      response.sendStatus(404)
-    );
+    const fallback = express
+      .Router()
+      .use((_request, response) => response.sendStatus(404));
     const app = createApp({
       apiHandler: express.Router(),
       staticHandler: fallback,
@@ -164,6 +164,10 @@ describe("API route policy", () => {
     ["GET", "/api/tickets/example", "sensitive-lookup"],
     ["GET", "/api/user", "authenticated"],
     ["GET", "/api/ota/channel", "ota"],
+    ["GET", "/api/ads", "anonymous-read"],
+    ["POST", "/api/ads/exposures", "ad-measurement"],
+    ["POST", "/api/ads/measure", "ad-measurement"],
+    ["POST", "/api/ads/click", "ad-measurement"],
   ])("classifies %s %s", (method, pathname, expected) => {
     expect(classifyApiRequest({ method, pathname })).toBe(expected);
   });

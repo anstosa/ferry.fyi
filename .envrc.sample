@@ -1,9 +1,16 @@
 export BASE_URL="http://localhost:4040"
+export REPORT_BASE_URL="http://reports.localhost:4040"
+export AD_MEASUREMENT_ENABLED="true"
 export DATABASE_URL="postgres://test:testing@localhost:5432/ferryfyi"
 
 # Firebase Cloud Messaging
-export FCM_PUBLIC_KEY="<get from firebase>"
-export GCM_SENDER_ID="<get from firebase>"
+export FIREBASE_API_KEY="<get from firebase web app>"
+export FIREBASE_APP_ID="<get from firebase web app>"
+export FIREBASE_PROJECT_ID="<get from firebase>"
+export FIREBASE_SENDER_ID="<get from firebase>"
+export FIREBASE_VAPID_KEY="<get from firebase web push certificates>"
+# Base64-encoded Firebase service-account JSON used by the server to send push.
+export FIREBASE_SERVICE_ACCOUNT="<base64 firebase service account json>"
 
 # Analytics
 export GOOGLE_ANALYTICS="<get from google analytics>"

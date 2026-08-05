@@ -246,6 +246,7 @@ const schedule = (departingId: string, arrivingId: string, date: string) => {
 };
 
 const services: PublicSsrSnapshotServices = {
+  getAdCreative: async () => null,
   getCameraFrames: async (cameraIds) => ({
     frames: Object.fromEntries(
       cameraIds.map((cameraId) => [

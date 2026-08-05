@@ -1,6 +1,7 @@
 import React, { type ReactElement, useState } from "react";
 import { getSeoMetadata } from "shared/lib/seo";
 
+import { AdSlot } from "~/components/AdSlot";
 import { HomeHero } from "~/components/HomeHero";
 import { HomeTerminalDirectory } from "~/components/HomeTerminalDirectory";
 import { SeoHelmet } from "~/components/SeoHelmet";
@@ -44,6 +45,11 @@ export const Home = (): ReactElement => {
         <MenuIcon />
       </button>
       <HomeHero leaderboardsEnabled={leaderboardsEnabled} />
+      <AdSlot
+        className="mx-auto w-full max-w-6xl px-4 pb-4"
+        contextLabel="Home"
+        slot="home"
+      />
       <HomeTerminalDirectory
         closestTerminal={closestTerminal}
         favoriteRouteIds={favoriteRouteIds}

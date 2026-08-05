@@ -1,0 +1,395 @@
+import { createHash, randomBytes, randomUUID } from "crypto";
+import { DateTime } from "luxon";
+import { Op, QueryTypes } from "sequelize";
+import type {
+  AdCampaign as AdCampaignContract,
+  AdCampaignReport,
+  AdDailyMetrics,
+  AdInventoryReport,
+  AdReportShareCreated,
+  AdReportShareSummary,
+} from "shared/contracts/ads";
+import { isObject } from "shared/lib/objects";
+
+import { db } from "~/lib/db";
+import { AdCampaign } from "~/models/AdCampaign";
+import { AdCampaignDailyMetric } from "~/models/AdCampaignDailyMetric";
+import { AdPlacement } from "~/models/AdPlacement";
+import { AdPlacementDailyMetric } from "~/models/AdPlacementDailyMetric";
+import { AdReportShare } from "~/models/AdReportShare";
+
+const REPORT_PREFIX = "adr_";
+const METHODOLOGY =
+  "Aggregate informational reporting by the exposure's America/Los_Angeles issuance date. An opportunity is a fully visible slot marker for one continuous second, including scheduled pauses when serving is switched off. A viewable impression is at least 50% of the creative for one continuous second. Counts are not unique people, audited fraud-free traffic, or billable units.";
+
+const hashSecret = (secret: string): string =>
+  createHash("sha256").update(secret).digest("hex");
+
+const iso = (date: Date | null): string | null => date?.toISOString() ?? null;
+
+const asCampaign = (campaign: AdCampaign): AdCampaignContract => ({
+  advertiserName: campaign.advertiserName,
+  arrivalTerminalId: campaign.arrivalTerminalId,
+  body: campaign.body,
+  departureTerminalId: campaign.departureTerminalId,
+  endedEarlyAt: iso(campaign.endedEarlyAt),
+  endsAt: campaign.endsAt.toISOString(),
+  headline: campaign.headline,
+  id: campaign.id,
+  placementKey: campaign.placementKey,
+  reportName: campaign.reportName,
+  slot: campaign.slot,
+  startsAt: campaign.startsAt.toISOString(),
+  targetUrl: campaign.targetUrl,
+});
+
+const normalizedDate = (value: unknown): Date | null => {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const parsed = new Date(value);
+  return Number.isFinite(parsed.getTime()) ? parsed : null;
+};
+
+const normalizedReportName = (value: unknown): string | null =>
+  typeof value === "string" && value.trim() && value.trim().length <= 160
+    ? value.trim()
+    : null;
+
+export const listAdCampaigns = async (
+  placementKey?: string
+): Promise<AdCampaignContract[]> =>
+  (
+    await AdCampaign.findAll({
+      order: [["startsAt", "DESC"]],
+      ...(placementKey ? { where: { placementKey } } : {}),
+    })
+  ).map(asCampaign);
+
+/** Snapshots one configured placement into an immutable scheduled campaign. */
+export const scheduleAdCampaign = async (
+  value: unknown
+): Promise<AdCampaignContract> => {
+  if (!isObject(value) || typeof value.placementKey !== "string") {
+    throw new Error("Invalid ad campaign");
+  }
+  const reportName = normalizedReportName(value.reportName);
+  const startsAt = normalizedDate(value.startsAt);
+  const endsAt = normalizedDate(value.endsAt);
+  if (!reportName || !startsAt || !endsAt || startsAt >= endsAt) {
+    throw new Error("Invalid ad campaign");
+  }
+  return await db.transaction(async (transaction) => {
+    const placement = await AdPlacement.findByPk(value.placementKey, {
+      lock: transaction.LOCK.UPDATE,
+      transaction,
+    });
+    if (
+      !placement ||
+      !placement.advertiserName ||
+      !placement.headline ||
+      !placement.targetUrl.startsWith("https://")
+    ) {
+      throw new Error("Configure this placement before scheduling a campaign");
+    }
+    const [overlap] = await db.query<{ id: string }>(
+      `SELECT "id" FROM "AdCampaigns"
+       WHERE "placementKey" = :placementKey
+         AND "startsAt" < :endsAt
+         AND LEAST("endsAt", COALESCE("endedEarlyAt", "endsAt")) > :startsAt
+       LIMIT 1`,
+      {
+        replacements: {
+          endsAt,
+          placementKey: placement.key,
+          startsAt,
+        },
+        transaction,
+        type: QueryTypes.SELECT,
+      }
+    );
+    if (overlap) {
+      throw new Error("Campaign schedule overlaps an existing campaign");
+    }
+    const campaign = await AdCampaign.create(
+      {
+        advertiserName: placement.advertiserName,
+        arrivalTerminalId: placement.arrivalTerminalId,
+        body: placement.body,
+        departureTerminalId: placement.departureTerminalId,
+        endsAt,
+        headline: placement.headline,
+        id: randomUUID(),
+        placementKey: placement.key,
+        reportName,
+        slot: placement.slot,
+        startsAt,
+        targetUrl: placement.targetUrl,
+      },
+      { transaction }
+    );
+    return asCampaign(campaign);
+  });
+};
+
+export const endAdCampaign = async (
+  campaignId: string,
+  now?: Date
+): Promise<AdCampaignContract> =>
+  await db.transaction(async (transaction) => {
+    const campaign = await AdCampaign.findByPk(campaignId, { transaction });
+    if (!campaign) {
+      throw new Error("Ad campaign not found");
+    }
+    await AdPlacement.findByPk(campaign.placementKey, {
+      lock: transaction.LOCK.UPDATE,
+      transaction,
+    });
+    await campaign.reload({ lock: transaction.LOCK.UPDATE, transaction });
+    if (!campaign.endedEarlyAt) {
+      const endedAt =
+        now ??
+        (
+          await db.query<{ now: Date }>('SELECT NOW() AS "now"', {
+            transaction,
+            type: QueryTypes.SELECT,
+          })
+        )[0]?.now;
+      if (!endedAt) {
+        throw new Error("Could not end ad campaign");
+      }
+      await campaign.update(
+        {
+          endedEarlyAt: endedAt > campaign.endsAt ? campaign.endsAt : endedAt,
+        },
+        { transaction }
+      );
+    }
+    return asCampaign(campaign);
+  });
+
+const asCount = (value: unknown): string => String(value ?? "0");
+
+const sum = (
+  rows: AdDailyMetrics[],
+  key: keyof Omit<AdDailyMetrics, "businessDate">
+): string =>
+  rows.reduce((total, row) => total + BigInt(row[key]), BigInt(0)).toString();
+
+const rate = (numerator: string, denominator: string): string | null => {
+  const bottom = BigInt(denominator);
+  if (bottom === BigInt(0)) {
+    return null;
+  }
+  const hundredths = (BigInt(numerator) * BigInt(10_000)) / bottom;
+  const hundred = BigInt(100);
+  return `${hundredths / hundred}.${String(hundredths % hundred).padStart(2, "0")}%`;
+};
+
+export const getAdCampaignReport = async (
+  campaignId: string
+): Promise<AdCampaignReport> => {
+  const campaign = await AdCampaign.findByPk(campaignId);
+  if (!campaign) {
+    throw Object.assign(new Error("Ad campaign not found"), { status: 404 });
+  }
+  const daily: AdDailyMetrics[] = (
+    await AdCampaignDailyMetric.findAll({
+      order: [["businessDate", "ASC"]],
+      where: { campaignId },
+    })
+  ).map((row) => ({
+    businessDate: row.businessDate,
+    clickCount: asCount(row.clickCount),
+    opportunityCount: asCount(row.opportunityCount),
+    servedCount: asCount(row.servedCount),
+    viewableCount: asCount(row.viewableCount),
+  }));
+  const clickCount = sum(daily, "clickCount");
+  const opportunityCount = sum(daily, "opportunityCount");
+  const servedCount = sum(daily, "servedCount");
+  const viewableCount = sum(daily, "viewableCount");
+  return {
+    campaign: asCampaign(campaign),
+    daily,
+    methodology: METHODOLOGY,
+    totals: {
+      clickCount,
+      clickThroughRate: rate(clickCount, viewableCount),
+      opportunityCount,
+      servedCount,
+      viewabilityRate: rate(viewableCount, servedCount),
+      viewableCount,
+    },
+  };
+};
+
+const parseBusinessDate = (value: unknown): string | null => {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const date = DateTime.fromISO(value, { zone: "America/Los_Angeles" });
+  return date.isValid && date.toISODate() === value ? value : null;
+};
+
+export const getAdInventoryReport = async ({
+  endDate: endValue,
+  startDate: startValue,
+}: {
+  endDate: unknown;
+  startDate: unknown;
+}): Promise<AdInventoryReport> => {
+  const startDate = parseBusinessDate(startValue);
+  const endDate = parseBusinessDate(endValue);
+  if (!startDate || !endDate || startDate > endDate) {
+    throw new Error("Invalid report range");
+  }
+  const { days } = DateTime.fromISO(endDate).diff(
+    DateTime.fromISO(startDate),
+    "days"
+  );
+  if (days > 366) {
+    throw new Error("Report range is too large");
+  }
+  const daily = (
+    await AdPlacementDailyMetric.findAll({
+      order: [
+        ["businessDate", "ASC"],
+        ["placementKey", "ASC"],
+      ],
+      where: { businessDate: { [Op.between]: [startDate, endDate] } },
+    })
+  ).map((row) => ({
+    businessDate: row.businessDate,
+    opportunityCount: asCount(row.opportunityCount),
+    placementKey: row.placementKey,
+  }));
+  return {
+    daily,
+    endDate,
+    startDate,
+    totalOpportunityCount: daily
+      .reduce((total, row) => total + BigInt(row.opportunityCount), BigInt(0))
+      .toString(),
+  };
+};
+
+const asShare = (share: AdReportShare): AdReportShareSummary => ({
+  campaignId: share.campaignId,
+  createdAt: share.createdAt.toISOString(),
+  id: share.id,
+  revokedAt: iso(share.revokedAt),
+});
+
+export const listAdReportShares = async (
+  campaignId: string
+): Promise<AdReportShareSummary[]> =>
+  (
+    await AdReportShare.findAll({
+      order: [["createdAt", "DESC"]],
+      where: { campaignId },
+    })
+  ).map(asShare);
+
+const reportBaseUrl = (): string => {
+  const configured = process.env.REPORT_BASE_URL;
+  if (!configured && process.env.NODE_ENV === "production") {
+    throw new Error("REPORT_BASE_URL is required");
+  }
+  const url = new URL(configured ?? "http://reports.localhost:4040");
+  if (process.env.NODE_ENV === "production" && url.protocol !== "https:") {
+    throw new Error("REPORT_BASE_URL must use HTTPS in production");
+  }
+  let appOrigin: string | null = null;
+  try {
+    appOrigin = process.env.BASE_URL
+      ? new URL(process.env.BASE_URL).origin
+      : null;
+  } catch {
+    // BASE_URL validation belongs to the main server configuration boundary.
+  }
+  if (url.origin === appOrigin) {
+    throw new Error("REPORT_BASE_URL must use a dedicated origin");
+  }
+  return url.origin;
+};
+
+export const createAdReportShare = async (
+  campaignId: string
+): Promise<AdReportShareCreated> => {
+  if (!(await AdCampaign.findByPk(campaignId, { attributes: ["id"] }))) {
+    throw new Error("Ad campaign not found");
+  }
+  const baseUrl = reportBaseUrl();
+  const token = `${REPORT_PREFIX}${randomBytes(32).toString("base64url")}`;
+  const share = await AdReportShare.create({
+    campaignId,
+    createdAt: new Date(),
+    id: randomUUID(),
+    tokenHash: hashSecret(token),
+  });
+  return { ...asShare(share), url: `${baseUrl}/#${token}` };
+};
+
+export const revokeAdReportShare = async (
+  shareId: string
+): Promise<AdReportShareSummary> => {
+  await db.query(
+    `UPDATE "AdReportShares"
+     SET "revokedAt" = COALESCE("revokedAt", NOW())
+     WHERE "id" = :shareId`,
+    {
+      replacements: { shareId },
+      type: QueryTypes.UPDATE,
+    }
+  );
+  const share = await AdReportShare.findByPk(shareId);
+  if (!share) {
+    throw new Error("Ad report share not found");
+  }
+  return asShare(share);
+};
+
+export const getSharedAdCampaignReport = async (
+  token: unknown
+): Promise<AdCampaignReport | null> => {
+  if (typeof token !== "string" || !token.startsWith(REPORT_PREFIX)) {
+    return null;
+  }
+  const share = await AdReportShare.findOne({
+    attributes: ["campaignId"],
+    where: { revokedAt: null, tokenHash: hashSecret(token) },
+  });
+  return share ? await getAdCampaignReport(share.campaignId) : null;
+};
+
+const csvCell = (value: string): string => {
+  const safe = /^[=+\-@]/.test(value) ? `'${value}` : value;
+  return `"${safe.replace(/"/g, '""')}"`;
+};
+
+export const campaignReportCsv = (report: AdCampaignReport): string => {
+  const header = [
+    "date",
+    "placement",
+    "opportunities",
+    "served",
+    "viewable",
+    "clicks",
+  ];
+  return [
+    header.map(csvCell).join(","),
+    ...report.daily.map((row) =>
+      [
+        row.businessDate,
+        report.campaign.placementKey,
+        row.opportunityCount,
+        row.servedCount,
+        row.viewableCount,
+        row.clickCount,
+      ]
+        .map(csvCell)
+        .join(",")
+    ),
+  ].join("\n");
+};

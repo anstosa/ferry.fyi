@@ -73,6 +73,9 @@ export function createApp({
   if (process.env.NODE_ENV === "production") {
     app.use(forceHttps);
   }
+  app.use("/api/ads", express.json({ limit: "2kb" }));
+  app.use("/report-data", express.json({ limit: "4kb" }));
+  app.use("/report-export", express.json({ limit: "4kb" }));
   app.use(express.json());
   // mount routes
   app.use("/api", apiHandler);
@@ -126,6 +129,24 @@ function scheduleTodayFareCatalogWarmup(): void {
     { hour: 0, minute: 5, second: 0, tz: "America/Los_Angeles" },
     safeScheduledTask("daily fare catalog warmup", () =>
       runOperationInBackground("fare-catalog-refresh")
+    )
+  );
+}
+
+export function scheduleAdExposureCleanup(): void {
+  scheduleJob(
+    { minute: 45, second: 0 },
+    safeScheduledTask("expired ad exposure cleanup", () =>
+      serverBackgroundRegistry.runTask(async () => {
+        const { cleanupExpiredAdExposures } =
+          await import("~/services/public/adTracking");
+        for (let batch = 0; batch < 20; batch += 1) {
+          const deleted = await cleanupExpiredAdExposures();
+          if (deleted < 5_000) {
+            break;
+          }
+        }
+      })
     )
   );
 }
@@ -284,6 +305,7 @@ export async function startServer(): Promise<void> {
   });
   await dbInit;
   initializeWsfSeed();
+  scheduleAdExposureCleanup();
   readiness.markInitialized();
   const server = app.listen(process.env.PORT, () => {
     reportRuntimeLifecycleTelemetry("ready");

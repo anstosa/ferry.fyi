@@ -5,6 +5,7 @@
  */
 export const adminConfirmationActions = [
   "clear-cache",
+  "create-ad-report-share",
   "delete-checkin",
   "delete-user-data",
   "force-sign-out",
@@ -12,15 +13,19 @@ export const adminConfirmationActions = [
   "opt-out-user",
   "pause-notifications",
   "publish-announcement",
+  "end-ad-campaign",
   "reset-leaderboard-profile",
   "resume-notifications",
+  "revoke-ad-report-share",
   "run-operation",
+  "save-ad-settings",
   "send-broadcast-notification",
   "send-targeted-notification",
   "send-test-notification",
   "set-maintenance-banner",
   "set-feature-kill-switch",
   "save-site-settings",
+  "schedule-ad-campaign",
   "test-safe-mutation",
   "update-crawler-policy",
 ] as const;

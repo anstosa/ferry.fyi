@@ -16,6 +16,7 @@ import type {
 } from "shared/contracts/fares";
 import type { Terminal } from "shared/contracts/terminals";
 
+import { AdSlot } from "~/components/AdSlot";
 import { DateButton } from "~/components/DateButton";
 import { ExternalPillLink } from "~/components/ExternalPillLink";
 import { FareWizardIcon, fareWizardIcons } from "~/components/FareWizardIcons";
@@ -584,6 +585,12 @@ export const Fares = ({
           </p>
         ) : null}
         <div className="mx-auto w-full max-w-6xl space-y-4 p-4 pb-8">
+          <AdSlot
+            arrivalTerminalId={mate.id}
+            contextLabel={`Fares · ${terminal.name} to ${mate.name}`}
+            departureTerminalId={terminal.id}
+            slot="fare"
+          />
           <section className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-blue-dark">
             <div className="flex items-center justify-between gap-3">
               <h1 className="text-xl font-bold">Fare estimator</h1>

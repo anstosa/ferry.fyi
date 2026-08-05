@@ -57,7 +57,7 @@ Classify every key into one of these categories before import:
 | --- | --- | --- |
 | Build-time public | `BASE_URL`, Auth0 browser client settings, Firebase browser IDs, analytics/container IDs, Mapbox public token, Sentry DSN | GitHub repository/org-level variable or Docker build arg; values come from Heroku config classification/public provider config and are never committed |
 | Build-time secret | `SENTRY_AUTH_TOKEN` for sourcemap upload if used | GitHub secret or a separate build-only secret; do not expose to ECS runtime unless needed |
-| Runtime server secret/config | Auth0 server config, Firebase service account, FCM/GCM, Sentry DSN if the server uses it, WSDOT API key | AWS Secrets Manager `app_config_secret_arn` JSON; excludes `SENTRY_AUTH_TOKEN` |
+| Runtime server secret/config | Auth0 server config, Firebase service account, advertiser report origin, Sentry DSN if the server uses it, WSDOT API key | AWS Secrets Manager `app_config_secret_arn` JSON; excludes `SENTRY_AUTH_TOKEN` |
 | AWS/ECS platform config | `BASE_URL`, `PORT`, `NODE_ENV`, `PROCESS_ROLE`, `RUN_SCHEDULER` | Terraform task environment / SSM parameters / GitHub deployment variables |
 | Migration-only | Heroku `DATABASE_URL`, Heroku-specific Postgres vars, one-time backup URLs | Do not import except as temporary local restore inputs |
 
@@ -93,17 +93,16 @@ jq '{
   AUTH0_SERVER_ID,
   AUTH0_SERVER_SECRET,
   AW_TAG_ID,
-  FCM_PUBLIC_KEY,
   FIREBASE_API_KEY,
   FIREBASE_APP_ID,
   FIREBASE_PROJECT_ID,
   FIREBASE_SENDER_ID,
   FIREBASE_SERVICE_ACCOUNT,
   FIREBASE_VAPID_KEY,
-  GCM_SENDER_ID,
   GOOGLE_ANALYTICS,
   GTM_CONTAINER_ID,
   MAPBOX_ACCESS_TOKEN,
+  REPORT_BASE_URL,
   SENTRY_DSN,
   WSDOT_API_KEY
 } | keys' \

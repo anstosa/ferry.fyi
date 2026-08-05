@@ -11,6 +11,7 @@ const sourceForView = (view: PublicSsrView): readonly PublicSsrSourceKey[] => {
   switch (view) {
     case "schedule":
       return [
+        "ad",
         "route",
         "schedule",
         "nextSchedule",
@@ -19,11 +20,11 @@ const sourceForView = (view: PublicSsrView): readonly PublicSsrSourceKey[] => {
         "notices",
       ];
     case "cameras":
-      return ["route", "cameraFrames", "notices"];
+      return ["ad", "route", "cameraFrames", "notices"];
     case "terminal":
-      return ["route", "notices"];
+      return ["ad", "route", "notices"];
     case "fare":
-      return ["route", "fares", "notices"];
+      return ["ad", "route", "fares", "notices"];
     case "map":
       return ["route", "vessels", "notices"];
     case "alerts":
@@ -140,7 +141,7 @@ export const PUBLIC_SSR_ROUTE_MANIFEST = [
     path: "/",
     placeholder: "none",
     refresh: "public-content",
-    requiredSources: ["terminals", "features", "notices"],
+    requiredSources: ["ad", "terminals", "features", "notices"],
   }),
   define({
     allowedQuery: [],

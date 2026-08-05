@@ -3,6 +3,7 @@ import { DataTypes, Model } from "sequelize";
 import { db } from "~/lib/db";
 
 export class SiteControl extends Model {
+  adsEnabled!: boolean;
   crawlerPolicy!: unknown;
   key!: string;
   leaderboardIndexingEnabled!: boolean;
@@ -13,6 +14,11 @@ export class SiteControl extends Model {
 
 SiteControl.init(
   {
+    adsEnabled: {
+      allowNull: false,
+      defaultValue: false,
+      type: DataTypes.BOOLEAN,
+    },
     crawlerPolicy: {
       allowNull: false,
       defaultValue: {},

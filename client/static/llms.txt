@@ -12,7 +12,7 @@ Ferry information changes quickly. Treat times, vehicle space, camera images, fo
 - [How Many Boats?](https://ferry.fyi/today): Shows the Clinton-to-Mukilteo operating context on Ferry FYI. This Ferry FYI URL is intentionally noindex; the indexable canonical profile is [howmanyboats.today](https://howmanyboats.today/).
 - [About Ferry FYI](https://ferry.fyi/about): App background, data credits, privacy, and tap-to-copy web, native-build, and OTA version information.
 - [Tickets](https://ferry.fyi/tickets): Store eligible ticket details, refresh their status, and scan supported ticket barcodes. Ticket data is sensitive and requires the ticket holder's authorization.
-- [Privacy policy](https://ferry.fyi/privacy): Explains how Ferry FYI handles user information.
+- [Privacy and advertising policy](https://ferry.fyi/privacy): Explains how Ferry FYI handles user information, limits contextual advertising, reports aggregate campaign results, and reviews prohibited ad categories.
 - [Support and feedback](https://ferry.fyi/feedback): Report a problem or request a Ferry FYI feature.
 - [Sitemap](https://ferry.fyi/sitemap.xml): Indexable schedules, route tabs, terminal pages, and informational pages.
 
@@ -36,6 +36,8 @@ Date-selected schedule URLs are noindex variants of the undated route canonical.
 - **Tickets:** Sign in to view eligible ticket and reservation details, barcodes, and refresh status. Do not guess or request another person's ticket identifier.
 - **Alerts and favorites:** Signed-in users can save favorite routes and configure service, capacity, or sailing alerts.
 - **Forecast explanations:** Learn how weather, tide conditions, and observed data inform capacity and delay forecasts.
+- **Contextual advertising:** Clearly labeled local ads may appear on home, schedule, camera, terminal-detail, and fare pages. Route ads can differ by travel direction; ad selection does not use account information, precise location, saved tickets, notification settings, or activity across other websites.
+- **Advertising measurement:** Ferry FYI may report daily aggregate viewable opportunities, served ads, viewable impressions (at least 50% visible for one continuous second), and ad clicks. These figures are not unique-person counts, audited fraud-free traffic, or billable delivery. Advertiser reports are private bearer links and are intentionally not listed here.
 - **Mobile and PWA support:** Install Ferry FYI as a web app or use the native mobile app for device-aware features, OTA web-asset updates, and prompts when a newer native build is available from Google Play or the App Store.
 
 ## AI API guide

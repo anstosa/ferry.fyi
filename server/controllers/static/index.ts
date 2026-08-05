@@ -5,6 +5,7 @@ import path from "path";
 
 import { filterLeaderboardLlms } from "~/lib/leaderboardSeo";
 
+import { createAdReportRouter } from "./adReports";
 import {
   browserRouter,
   type BrowserRouterDependencies,
@@ -113,6 +114,8 @@ export const createStaticRouter = (
   dependencies: StaticRouterDependencies = {}
 ): Router => {
   const staticRouter = Router();
+
+  staticRouter.use(createAdReportRouter());
 
   staticRouter.get("/index.html", (_request, response) => {
     response.set({

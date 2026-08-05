@@ -483,7 +483,7 @@ describe("SEO metadata", () => {
   });
 
   it("renders noindex metadata only for dated schedule variants", async () => {
-    vi.useFakeTimers();
+    vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-07-14T12:00:00-07:00"));
     process.env.BASE_URL = "https://ferry.fyi";
 

@@ -86,6 +86,13 @@ module.exports = {
           dark: "#7a5400",
         },
 
+        sponsor: {
+          lightest: "#f7eef8",
+          light: "#d8b7dc",
+          dark: "#6d3f73",
+          darkest: "#342238",
+        },
+
         "day-normal": { light: "#fef9eb", dark: "#261f00" },
         "day-confirmed": { light: "#f2b705", dark: "#7a5400" },
         "day-stripe-a": { light: "#f2b705", dark: "#7a5400" },

@@ -21,9 +21,10 @@ if (firebaseServiceAccount) {
 }
 
 const noOpFirebaseMessaging = {
-  // discard local push sends
+  // Never report a discarded local send as accepted. The final push boundary
+  // maps this explicit provider state to "unavailable" for the admin UI.
   send(): Promise<string> {
-    return Promise.resolve("");
+    return Promise.reject({ code: "messaging/provider-unavailable" });
   },
 };
 

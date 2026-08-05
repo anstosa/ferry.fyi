@@ -3,6 +3,8 @@ import { Message } from "firebase-admin/messaging";
 import { PushSendResult, sendPush } from "~/lib/push";
 import { UserSettings } from "~/models/UserSettings";
 
+import { createPushMessage } from "../pushMessage";
+
 export type AdminNotificationMode = "broadcast" | "targeted" | "test";
 
 export interface AdminNotificationInput {
@@ -67,11 +69,17 @@ export const previewAdminNotification = async (
 const messageFor = (
   user: UserSettings,
   input: Pick<AdminNotificationInput, "body" | "title">
-): Message => ({
-  data: { type: "admin-notice", userId: user.subject },
-  notification: { body: input.body, title: input.title },
-  token: user.appMetadata.fcmToken as string,
-});
+): Message =>
+  createPushMessage({
+    data: {
+      body: input.body,
+      title: input.title,
+      type: "admin-notice",
+      url: process.env.BASE_URL ?? "/",
+    },
+    token: user.appMetadata.fcmToken as string,
+    userId: user.subject,
+  });
 
 /**
  * Submits through the one final policy-aware provider gateway. A provider

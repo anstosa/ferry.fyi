@@ -8,6 +8,7 @@ import type {
 } from "shared/contracts/ssr";
 import { getSeoMetadata, type SeoMetadata } from "shared/lib/seo";
 
+import { AdCreativeCard } from "~/components/AdCreativeCard";
 import { CameraImageFooter } from "~/components/CameraImageFooter";
 import { HomeHero } from "~/components/HomeHero";
 import { HomeTerminalDirectory } from "~/components/HomeTerminalDirectory";
@@ -26,6 +27,19 @@ function formatSnapshotTime(value: string): string {
     "MMM d, h:mm a ZZZZ"
   );
 }
+
+const PublicAd = ({
+  className = "",
+}: {
+  className?: string;
+}): ReactElement | null => {
+  const ad = usePublicSsrSource("ad");
+  return ad?.creative ? (
+    <div className={className} data-ad-slot={ad.creative.placementKey}>
+      <AdCreativeCard creative={ad.creative} />
+    </div>
+  ) : null;
+};
 
 function formatForecast(estimate: CrossingEstimate | undefined): string {
   if (!estimate) {
@@ -371,6 +385,7 @@ export const PublicFares = (): ReactElement => {
         ]}
       />
       <PublicNotices />
+      <PublicAd className="my-4" />
       {fareOutcome?.outcome === "stale-usable" ? (
         <p>The displayed fare catalog is stale; verify prices with WSDOT.</p>
       ) : null}
@@ -415,6 +430,7 @@ export const PublicSchedule = (): ReactElement => {
       />
       <PublicNotices includeBulletins />
       {wsfNotice}
+      <PublicAd className="my-4" />
       {schedule ? (
         <ul>
           {schedule.slots.map((slot) => (
@@ -458,6 +474,7 @@ export const PublicCameras = (): ReactElement => {
         ]}
       />
       <PublicNotices />
+      <PublicAd className="my-4" />
       {cameras.length ? (
         <ul>
           {cameras.map((camera) => {
@@ -564,6 +581,7 @@ export const PublicTerminalDetails = (): ReactElement => {
         ]}
       />
       <PublicNotices />
+      <PublicAd className="my-4" />
       {terminal ? (
         <>
           <p>
@@ -597,6 +615,7 @@ export const PublicHome = (): ReactElement => {
     <main className="relative min-h-screen min-h-[100dvh] overflow-y-scroll scrolling-touch bg-ferry-gradient text-white">
       <SnapshotSeoHelmet fallback={getSeoMetadata("/")} />
       <HomeHero leaderboardsEnabled={features?.leaderboardsEnabled ?? false} />
+      <PublicAd className="mx-auto w-full max-w-6xl px-4 pb-4" />
       <div className="sr-only">
         <SnapshotFreshness
           primarySource="terminals"
@@ -635,7 +654,7 @@ const EDITORIAL_PAGES: Record<
     title: "Forecast methodology",
   },
   privacy: {
-    body: "Ferry FYI keeps account and notification controls private. Review the privacy policy before signing in or enabling alerts.",
+    body: "Ferry FYI keeps account and notification controls private. Contextual advertisements may use the route, terminal, or page being viewed, but not account information, precise location, saved tickets, notification settings, or activity across other websites.",
     path: "/privacy",
     title: "Privacy Policy",
   },

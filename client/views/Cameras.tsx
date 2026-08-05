@@ -14,6 +14,7 @@ import type { Camera } from "shared/contracts/cameras";
 import type { Terminal } from "shared/contracts/terminals";
 import { isNull } from "shared/lib/identity";
 
+import { AdSlot } from "~/components/AdSlot";
 import { CameraImageFooter } from "~/components/CameraImageFooter";
 import { Skeleton, SkeletonGroup } from "~/components/Skeleton";
 import { getCameraFrames } from "~/lib/cameras";
@@ -467,6 +468,13 @@ const CameraList = ({
         />
       </Header>
       <main className="flex-grow overflow-y-scroll scrolling-touch bg-day-normal-light text-gray-dark dark:bg-night-normal-dark dark:text-[#e0f0f4]">
+        <AdSlot
+          arrivalTerminalId={mate?.id}
+          className="mx-auto w-full max-w-6xl px-4 pt-4"
+          contextLabel={`Cameras · ${terminal.name}${mate ? ` to ${mate.name}` : ""}`}
+          departureTerminalId={terminal.id}
+          slot="cameras"
+        />
         <div
           className={clsx(
             "mx-auto relative w-full max-w-6xl",

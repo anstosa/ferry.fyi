@@ -3,6 +3,7 @@ import React, { ReactElement, ReactNode, useState } from "react";
 import { Link } from "react-router-dom";
 import type { Terminal, TerminalInfo } from "shared/contracts/terminals";
 
+import { AdSlot } from "~/components/AdSlot";
 import { ExternalPillLink } from "~/components/ExternalPillLink";
 import { TerminalDropdown } from "~/components/TerminalDropdown";
 import { useFeatureFlags } from "~/lib/featureFlags";
@@ -129,6 +130,7 @@ export const TerminalDetails = ({
     const Icon = isAvailable ? CheckIcon : UnavailableIcon;
     return (
       <li
+        key={label}
         className={clsx(
           "flex items-center gap-3 rounded-xl border px-3 py-2",
           isAvailable
@@ -229,6 +231,12 @@ export const TerminalDetails = ({
       </Header>
       <main className="flex-grow overflow-y-scroll scrolling-touch bg-day-normal-light text-gray-dark dark:bg-night-normal-dark dark:text-[#e0f0f4]">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 p-4 pb-8">
+          <AdSlot
+            arrivalTerminalId={mate?.id}
+            contextLabel={`Terminal · ${terminal.name}${mate ? ` to ${mate.name}` : ""}`}
+            departureTerminalId={terminal.id}
+            slot="terminal"
+          />
           <DetailCard>
             <div className="flex items-center gap-4">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-green-dark text-lg font-black text-white shadow-sm">

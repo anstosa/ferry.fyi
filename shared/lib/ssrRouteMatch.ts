@@ -21,6 +21,9 @@ export const getPublicSsrHostProfile = (
     .toLowerCase()
     .split(":")[0]
     .replace(/\.$/, "");
+  if (normalized === "localhost" || normalized === "dev.ferry.fyi") {
+    return "ferry.fyi";
+  }
   return normalized === "ferry.fyi" || normalized === "howmanyboats.today"
     ? normalized
     : undefined;

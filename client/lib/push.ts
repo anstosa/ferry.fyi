@@ -131,7 +131,7 @@ export const usePush = (requestPermission: boolean): InitializePush => {
         }
 
         const token = await getToken(messaging, {
-          vapidKey: process.env.FIREBASE_VAPID_KEY,
+          vapidKey: import.meta.env.VITE_FIREBASE_VAPID_KEY,
           serviceWorkerRegistration,
         });
 

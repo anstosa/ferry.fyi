@@ -27,6 +27,19 @@ const colors = theme.colors as Record<string, Record<string, string>>;
 const COLOR = colors.green.dark;
 const BACKGROUND_COLOR = colors.blue.dark;
 
+// Vite's development service-worker environment exposes only VITE_* values.
+// Mirror the established public Firebase variables before Vite resolves env so
+// both the page and the module service worker receive the same safe config.
+for (const key of [
+  "FIREBASE_API_KEY",
+  "FIREBASE_APP_ID",
+  "FIREBASE_PROJECT_ID",
+  "FIREBASE_SENDER_ID",
+  "FIREBASE_VAPID_KEY",
+] as const) {
+  process.env[`VITE_${key}`] ??= process.env[key];
+}
+
 // read build env
 const getEnv = (key: string, fallback?: string): string | undefined => {
   return process.env[key] ?? fallback;
@@ -186,7 +199,7 @@ export default defineConfig(() => ({
     preserveSymlinks: true,
   },
   server: {
-    allowedHosts: ["ferry-fyi.santosa.family"],
+    allowedHosts: ["dev.ferry.fyi"],
     host: "0.0.0.0",
     port: Number(process.env.DEV_CLIENT_PORT ?? "4040"),
     strictPort: true,

@@ -4,6 +4,11 @@ import { firebaseMessaging, hasFirebaseCode } from "./firebase";
 import { delay } from "./time";
 
 const MAX_RETRY_TIME = 10 * 1000;
+const PERMANENT_TOKEN_ERRORS = [
+  "messaging/invalid-registration-token",
+  "messaging/mismatched-credential",
+  "messaging/registration-token-not-registered",
+] as const;
 
 export type PushSendResult =
   | { providerSubmission: "accepted" }
@@ -23,6 +28,25 @@ let draining = false;
 const resultFor = (
   reason: "failed" | "paused" | "unavailable"
 ): PushSendResult => ({ providerSubmission: "not-submitted", reason });
+
+const isPermanentTokenError = (error: unknown): boolean =>
+  PERMANENT_TOKEN_ERRORS.some((code) => hasFirebaseCode(error, code));
+
+const clearRejectedToken = async (message: Message): Promise<void> => {
+  if (!message.data?.userId) {
+    return;
+  }
+  const { UserSettings } = await import("~/models/UserSettings");
+  const settings = await UserSettings.findByPk(message.data.userId);
+  if (settings) {
+    await settings.update({
+      appMetadata: {
+        ...(settings.appMetadata ?? {}),
+        fcmToken: null,
+      },
+    });
+  }
+};
 
 /**
  * The single final Firebase boundary. Policy is read immediately before every
@@ -46,21 +70,11 @@ const submitPush = async (message: Message): Promise<PushSendResult> => {
       await firebaseMessaging.send(message);
       return { providerSubmission: "accepted" };
     } catch (error: unknown) {
-      if (
-        hasFirebaseCode(error, "messaging/registration-token-not-registered")
-      ) {
-        if (message.data?.userId) {
-          const { UserSettings } = await import("~/models/UserSettings");
-          const settings = await UserSettings.findByPk(message.data.userId);
-          if (settings) {
-            await settings.update({
-              appMetadata: {
-                ...(settings.appMetadata ?? {}),
-                fcmToken: null,
-              },
-            });
-          }
-        }
+      if (hasFirebaseCode(error, "messaging/provider-unavailable")) {
+        return resultFor("unavailable");
+      }
+      if (isPermanentTokenError(error)) {
+        await clearRejectedToken(message);
         return resultFor("failed");
       }
       if (retryTime > MAX_RETRY_TIME) {

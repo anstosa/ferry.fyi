@@ -152,6 +152,51 @@ The persisted leaderboard sharing setting is returned with public/admin content
 state, but this release does not yet consume it in a public sharing route; do
 not treat it as an enforcement mechanism until such a route exists.
 
+## Advertising controls
+
+Advertising uses a persisted global switch plus one switch on each placement.
+The global switch overrides every placement. Route placements are keyed by the
+ordered departure and arrival terminal ids, so the reverse direction is a
+separate placement with separate creative and enabled state. The home placement
+has no route direction.
+
+The legacy public ads endpoint is intentionally empty. Current clients request a
+short-lived exposure envelope for each mounted placement; only that endpoint can
+return the immutable creative for a scheduled campaign. Disabled and draft
+creative remains owner-only. Riders see no empty ad container. The owner may see
+a dashed placeholder on the home, schedule, cameras, terminal-details, and fare
+surfaces when their matching placement is empty or inactive.
+
+Ad creative is plain text plus one HTTPS destination URL. The server validates
+bounded advertiser, headline, body, and call-to-action fields before storage.
+Every mutation uses the `save-ad-settings` confirmation action with either the
+global `ads:global` target or the exact `ad:<placement-key>` target. The admin
+surface does not provide arbitrary HTML, scripts, tracking tags, or image
+uploads.
+
+Scheduling creates an immutable campaign snapshot with an ordered placement,
+creative, HTTPS destination, start, and end. Overlapping campaigns for one
+placement are rejected. Ending a campaign early is irreversible; collected
+counters cannot be edited, reset, reassigned, or backfilled through the admin
+surface.
+
+Measurement stores daily placement/campaign aggregates for opportunities,
+served ads, viewable impressions, and ad clicks. One short-lived hashed
+exposure row suppresses duplicate claims and is removed after expiry. It stores
+no account subject, visitor/session id, IP address, user-agent history, precise
+location, ticket data, or notification state. The global and per-placement ad
+switches suppress delivery but not opportunity measurement. The separate
+`AD_MEASUREMENT_ENABLED=false` environment switch is incident-only and creates
+an explicit prospective measurement gap.
+
+Advertiser report links use `REPORT_BASE_URL`, which must be a report-only host
+not claimed by Android App Links. The bearer secret is in the URL fragment,
+stored only as a hash, removed from the browser location after load, and valid
+until the owner irrevocably revokes it. Report responses are campaign-scoped,
+aggregate-only, non-cacheable, non-indexable, and excluded from the main SPA and
+analytics. Never put report or exposure secrets in logs, analytics, query
+strings, support messages, `llms.txt`, OpenAPI, or sitemap entries.
+
 ## Deliberate no-audit policy
 
 This suite does not keep an actor/action audit history. It does not retain typed
@@ -174,6 +219,9 @@ When adding or changing an admin capability:
 4. Route all provider notifications through the final shared policy boundary.
 5. Put public crawler, sitemap, and `llms.txt` behavior behind the persisted
    content controls before static-file middleware.
-6. Update this guide, `docs/leaderboards.md` when leaderboard behavior changes,
+6. Keep draft/disabled advertising creative out of anonymous responses,
+   preserve ordered departure/arrival keys, and keep report hosts/secrets out of
+   discovery and the main app runtime.
+7. Update this guide, `docs/leaderboards.md` when leaderboard behavior changes,
    `client/static/llms.txt` when a public page or AI-useful API changes, and
    focused tests and migrations as applicable.

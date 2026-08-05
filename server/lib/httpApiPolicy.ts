@@ -11,6 +11,7 @@ import { rateLimit } from "express-rate-limit";
 import { getWsfStatus } from "./wsf/api";
 
 export type ApiRouteClass =
+  | "ad-measurement"
   | "anonymous-read"
   | "authenticated"
   | "ota"
@@ -18,6 +19,11 @@ export type ApiRouteClass =
   | "upstream-refresh";
 
 export const API_RATE_LIMITS = Object.freeze({
+  "ad-measurement": {
+    limitEnv: "API_AD_MEASUREMENT_LIMIT",
+    limit: 240,
+    windowMs: 60_000,
+  },
   "anonymous-read": {
     limitEnv: "API_ANONYMOUS_READ_LIMIT",
     limit: 600,
@@ -64,6 +70,14 @@ export const classifyApiRequest = ({
     return "upstream-refresh";
   }
   if (path === "/tickets" || path.startsWith("/tickets/")) {
+    return "sensitive-lookup";
+  }
+  if (path === "/ads" || path.startsWith("/ads/")) {
+    return normalizedMethod === "GET" || normalizedMethod === "HEAD"
+      ? "anonymous-read"
+      : "ad-measurement";
+  }
+  if (path === "/ad-reports" || path.startsWith("/ad-reports/")) {
     return "sensitive-lookup";
   }
   if (
@@ -170,6 +184,7 @@ const createLimiter = (
 
 export const createApiRateLimitMiddleware = (): RequestHandler => {
   const limiters = {
+    "ad-measurement": createLimiter("ad-measurement"),
     "anonymous-read": createLimiter("anonymous-read"),
     "sensitive-lookup": createLimiter("sensitive-lookup"),
     "upstream-refresh": createLimiter("upstream-refresh"),

@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response, Router } from "express";
 import { isObject } from "shared/lib/objects";
 
+import { adminAdsRouter } from "./admin/ads";
 import { requireOwnerAdmin } from "./admin/authorization";
 import { requireTypedConfirmation } from "./admin/confirmation";
 import { adminContentRouter } from "./admin/content";
@@ -30,6 +31,7 @@ adminRouter.use(preventAdminCaching);
 adminRouter.use(requireOwnerAdmin);
 
 adminRouter.use("/users", adminUsersRouter);
+adminRouter.use("/ads", adminAdsRouter);
 adminRouter.use("/leaderboards", adminLeaderboardsRouter);
 adminRouter.use("/operations", adminOperationsRouter);
 adminRouter.use("/notifications", adminNotificationsRouter);

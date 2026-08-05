@@ -1,4 +1,5 @@
 import type { GetScheduleResponse } from "../api/schedules";
+import type { AdCampaignCreative } from "./ads";
 import type { WSFStatus } from "./api";
 import type { Bulletin } from "./bulletins";
 import type { PublicSsrCameraFrameStatusEnvelope } from "./cameraFrames";
@@ -21,7 +22,7 @@ export type {
 } from "./ssrRouting";
 
 /** Versioned anonymous document data, never an API DTO. */
-export const PUBLIC_SSR_SNAPSHOT_VERSION = 5 as const;
+export const PUBLIC_SSR_SNAPSHOT_VERSION = 6 as const;
 export const PUBLIC_SSR_FORBIDDEN_KEYS = [
   "accessToken",
   "idToken",
@@ -160,6 +161,11 @@ export interface PublicSsrAlertGuidance {
   body: string;
   title: string;
 }
+/** Cache-safe ad content. Per-visitor measurement envelopes are never serialized. */
+export interface PublicSsrAd {
+  creative: AdCampaignCreative | null;
+  placementKey: string;
+}
 export interface PublicSsrLeaderboard extends Leaderboard {
   entity: { id: string; kind: "system" | "terminal" | "vessel"; label: string };
   period: LeaderboardPeriod;
@@ -174,6 +180,7 @@ export interface PublicSsrLeaderboardIndex {
   }[];
 }
 export interface PublicSsrPayloadMap {
+  ad: PublicSsrAd;
   terminals: readonly PublicSsrTerminalSummary[];
   features: PublicSsrFeatures;
   editorial: PublicSsrEditorial;
@@ -261,7 +268,7 @@ export type PublicSsrSourcesFor<K extends PublicSsrSourceKey> = {
 };
 export type PublicSsrRouteSourceMap = {
   "unknown-public-path": never;
-  home: "terminals" | "features" | "notices";
+  home: "ad" | "terminals" | "features" | "notices";
   today: "route" | "schedule" | "nextSchedule" | "wsf" | "notices";
   callback: never;
   account: never;
@@ -279,6 +286,7 @@ export type PublicSsrRouteSourceMap = {
   "forecasting-explained": never;
   feedback: "editorial";
   "terminal-schedule":
+    | "ad"
     | "route"
     | "schedule"
     | "nextSchedule"
@@ -286,18 +294,19 @@ export type PublicSsrRouteSourceMap = {
     | "bulletins"
     | "notices";
   "mate-schedule":
+    | "ad"
     | "route"
     | "schedule"
     | "nextSchedule"
     | "wsf"
     | "bulletins"
     | "notices";
-  "terminal-cameras": "route" | "cameraFrames" | "notices";
-  "mate-cameras": "route" | "cameraFrames" | "notices";
-  "terminal-details": "route" | "notices";
-  "mate-details": "route" | "notices";
-  "terminal-fares": "route" | "fares" | "notices";
-  "mate-fares": "route" | "fares" | "notices";
+  "terminal-cameras": "ad" | "route" | "cameraFrames" | "notices";
+  "mate-cameras": "ad" | "route" | "cameraFrames" | "notices";
+  "terminal-details": "ad" | "route" | "notices";
+  "mate-details": "ad" | "route" | "notices";
+  "terminal-fares": "ad" | "route" | "fares" | "notices";
+  "mate-fares": "ad" | "route" | "fares" | "notices";
   "terminal-map": "route" | "vessels" | "notices";
   "mate-map": "route" | "vessels" | "notices";
   "terminal-alerts": "route" | "bulletins" | "notices";

@@ -17,6 +17,7 @@ vi.mock("~/lib/terminals", () => ({
   useTerminals: () => ({ closestTerminal: null, terminals: [] }),
 }));
 vi.mock("~/lib/maps", () => ({ locationToUrl: () => "#" }));
+vi.mock("~/components/AdSlot", () => ({ AdSlot: () => null }));
 vi.mock("../../client/components/ReloadButton", () => ({
   ReloadButton: ({
     isReloading,

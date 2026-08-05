@@ -15,6 +15,8 @@ import {
 } from "~/lib/alertMetadata";
 import { UserSettings } from "~/models/UserSettings";
 
+import { createPushMessage } from "./pushMessage";
+
 interface SubscribedTerminalPushInput {
   channel?: AlertSubscriptionChannel;
   currentTime?: DateTime;
@@ -106,13 +108,13 @@ export const getSubscribedTerminalPushMessages = async ({
       console.warn("Subscribed user without FCM Token", user.subject);
       continue;
     }
-    messages.push({
-      token,
-      data: {
-        ...data,
+    messages.push(
+      createPushMessage({
+        data,
+        token,
         userId: user.subject,
-      },
-    });
+      })
+    );
   }
   return messages;
 };

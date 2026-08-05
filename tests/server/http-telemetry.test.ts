@@ -55,6 +55,7 @@ describe("public HTTP telemetry", () => {
     expect(classify("GET", "/openapi.json")).toBe("discovery");
     expect(classify("GET", "/api/features")).toBe("api.anonymous-read");
     expect(classify("POST", "/api/admin/jobs")).toBe("api.authenticated");
+    expect(classify("POST", "/api/ads/measure")).toBe("api.ad-measurement");
     expect(classify("GET", "/seattle/bainbridge?date=private")).toBe(
       "ssr.public"
     );

@@ -8,6 +8,7 @@
       "DOM.Iterable",
       "ESNext"
     ],
+    "module": "ESNext",
     "outDir": "../dist/client",
     "rootDir": "..",
     "sourceMap": true,

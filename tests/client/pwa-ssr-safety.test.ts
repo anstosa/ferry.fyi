@@ -38,7 +38,7 @@ describe("installed PWA SSR safety", () => {
 
     expect(source).toContain("isSupported()");
     expect(source.indexOf("isSupported()")).toBeLessThan(
-      source.indexOf("getMessaging(app)")
+      source.indexOf("getMessaging(firebaseApp)")
     );
   });
 
@@ -55,12 +55,13 @@ describe("installed PWA SSR safety", () => {
       "registerNetworkOnlyNavigationRoute({"
     );
     const precacheRegistration = source.indexOf(
-      "precacheAndRoute((self as any).__WB_MANIFEST)"
+      "precacheAndRoute(precacheManifest)"
     );
 
     expect(navigationRegistration).toBeGreaterThan(-1);
     expect(precacheRegistration).toBeGreaterThan(-1);
     expect(navigationRegistration).toBeLessThan(precacheRegistration);
+    expect(source).toContain("if (Array.isArray(precacheManifest))");
   });
 
   it("matches every document navigation and excludes non-navigations", () => {

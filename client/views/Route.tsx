@@ -731,7 +731,9 @@ export const Route = ({
           </Header>
         )}
         <Schedule
+          arrivalTerminalId={mate?.id}
           checkedAt={scheduleCheckedAt}
+          departureTerminalId={terminal?.id}
           isRefreshing={isUpdating}
           loadError={scheduleError}
           onReload={updateSchedule}

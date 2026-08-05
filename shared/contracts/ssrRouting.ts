@@ -49,6 +49,7 @@ export type PublicSsrQueryName =
   | "fareDriver"
   | "fareLength";
 export type PublicSsrSourceKey =
+  | "ad"
   | "terminals"
   | "features"
   | "editorial"

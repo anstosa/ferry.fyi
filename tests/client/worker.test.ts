@@ -78,6 +78,7 @@ describe("service worker runtime setup", () => {
     const cleanup = initializeServiceWorker();
 
     expect(workbox.Workbox).toHaveBeenCalledWith("/service-worker.js", {
+      type: "classic",
       updateViaCache: "none",
     });
     expect(addWorkboxEventListener).toHaveBeenCalledWith(
@@ -90,6 +91,37 @@ describe("service worker runtime setup", () => {
 
     cleanup();
     expect(removeEventListener).not.toHaveBeenCalled();
+  });
+
+  it("registers Vite's module service worker during local development", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    capacitor.isNativePlatform.mockReturnValue(false);
+    const registration = { scope: "https://dev.ferry.fyi/" };
+    const register = vi.fn().mockResolvedValue(registration);
+    workbox.Workbox.mockImplementation(
+      class {
+        addEventListener = vi.fn();
+        register = register;
+      }
+    );
+    vi.stubGlobal("window", {
+      addEventListener: vi.fn(),
+      location: { reload: vi.fn() },
+      removeEventListener: vi.fn(),
+    });
+    vi.stubGlobal("document", { readyState: "complete" });
+    vi.stubGlobal("navigator", { serviceWorker: {} });
+
+    const { getRegistration, initializeServiceWorker } =
+      await import("../../client/lib/worker");
+    initializeServiceWorker();
+
+    expect(workbox.Workbox).toHaveBeenCalledWith("/dev-sw.js?dev-sw", {
+      type: "module",
+      updateViaCache: "none",
+    });
+    expect(register).toHaveBeenCalledOnce();
+    await expect(getRegistration()).resolves.toBe(registration);
   });
 
   it("shares one registration attempt across repeated initialization", async () => {

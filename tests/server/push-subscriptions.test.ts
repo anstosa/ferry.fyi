@@ -61,6 +61,45 @@ describe("push subscriptions", () => {
     ]);
   });
 
+  it("adds display and deep-link fields to complete alert messages", async () => {
+    userSettings.findAll.mockResolvedValueOnce([
+      makeSettings("delay-user", {
+        alertSubscriptions: { "5:14": ["delays"] },
+        fcmToken: "delay-token",
+      }),
+    ]);
+
+    const messages = await getSubscribedTerminalPushMessages({
+      channel: "delays",
+      data: {
+        body: "Tokitae is delayed",
+        title: "Mukilteo/Clinton delay",
+        url: "https://ferry.fyi/mukilteo/clinton",
+      },
+      terminalIds: ["14", "5"],
+    });
+
+    expect(messages).toEqual([
+      {
+        android: { priority: "high" },
+        data: {
+          body: "Tokitae is delayed",
+          title: "Mukilteo/Clinton delay",
+          url: "https://ferry.fyi/mukilteo/clinton",
+          userId: "delay-user",
+        },
+        notification: {
+          body: "Tokitae is delayed",
+          title: "Mukilteo/Clinton delay",
+        },
+        token: "delay-token",
+        webpush: {
+          fcmOptions: { link: "https://ferry.fyi/mukilteo/clinton" },
+        },
+      },
+    ]);
+  });
+
   it("matches scheduled alert rules by direction, day, time, and channel", async () => {
     userSettings.findAll.mockResolvedValueOnce([
       makeSettings("commuter", {

@@ -22,6 +22,7 @@ const classify = (
 describe("service-worker API cache privacy", () => {
   it.each([
     "/api/user",
+    "/api/ads",
     "/api/admin/operations",
     "/api/tickets/example",
     "/api/leaderboards/checkins/terminals/7",

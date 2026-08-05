@@ -78,6 +78,7 @@ services:
       CAR_DETECTION_ENDPOINT: http://detector:8000/detect
       CHOKIDAR_USEPOLLING: "true"
       DATABASE_URL: postgres://test:testing@postgres:5432/ferryfyi
+      FIREBASE_SERVICE_ACCOUNT: ${FIREBASE_SERVICE_ACCOUNT:-}
       NODE_ENV: development
       PGSSLMODE: disable
       PORT: 4040

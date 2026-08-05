@@ -413,8 +413,22 @@ const leaderboardEntity = (value: unknown) =>
     kind: oneOf(["system", "terminal", "vessel"]),
     label: string,
   });
+const adCreative = (value: unknown) =>
+  fields(value, {
+    advertiserName: string,
+    body: string,
+    campaignId: string,
+    headline: string,
+    placementKey: string,
+    targetUrl: string,
+  });
 const publicPayload = (key: PublicSsrSourceKey, value: unknown): boolean =>
   ({
+    ad: (item: unknown) =>
+      fields(item, {
+        creative: nullable(adCreative),
+        placementKey: string,
+      }),
     terminals: array(terminalSummary),
     features: (item: unknown) =>
       fields(item, {

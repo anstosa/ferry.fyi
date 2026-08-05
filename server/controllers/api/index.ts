@@ -11,6 +11,7 @@ import {
 import { getWsfStatus } from "~/lib/wsf/api";
 
 import { adminRouter, preventAdminCaching } from "./admin";
+import { adsRouter } from "./ads";
 import { assignAuthUser, requireAuth } from "./auth";
 import { cameraRouter } from "./cameras";
 import { debugRouter } from "./debug";
@@ -83,6 +84,7 @@ apiRouter.use(denyUntrustedSensitivePreflight);
 apiRouter.use(createApiRateLimitMiddleware());
 
 apiRouter.use("/cameras", cameraRouter);
+apiRouter.use("/ads", adsRouter);
 apiRouter.use("/vessels", vesselRouter);
 apiRouter.use("/terminals", terminalRouter);
 apiRouter.use("/schedule", scheduleRouter);
