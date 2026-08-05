@@ -70,8 +70,8 @@ export const usePush = (requestPermission: boolean): InitializePush => {
   const [{ user, isAuthenticated, fcmToken: savedFcmToken }, { updateUser }] =
     useUser();
   const [fcmToken, setFcmToken] = useState<string>("");
-  const [initializationRequest, setInitializationRequest] = useState(
-    requestPermission ? 1 : 0
+  const [initializationRequest, setInitializationRequest] = useState(() =>
+    requestPermission || getNotificationPermission() === "granted" ? 1 : 0
   );
   const shouldRequestPermission = initializationRequest > 0;
   const initialization = useRef<Promise<void> | null>(null);

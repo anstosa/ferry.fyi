@@ -105,6 +105,18 @@ export type SsrRuntimeFill = {
 
 const DYNAMIC_DOCUMENT_CACHE_TTL_MS = 60_000;
 
+export const isPublicSsrDocumentCacheable = (snapshot: {
+  sources: Readonly<Record<string, unknown>>;
+}): boolean =>
+  !("ad" in snapshot.sources) &&
+  !Object.values(snapshot.sources).some(
+    (source) =>
+      typeof source === "object" &&
+      source !== null &&
+      "outcome" in source &&
+      source.outcome === "transiently-unavailable"
+  );
+
 export interface SsrDocumentResponse {
   readonly html: string;
   readonly headers: Readonly<Record<string, string>>;
@@ -512,9 +524,10 @@ export const createSsrDocumentRuntime = (
             snapshot,
           });
           return {
-            cacheable: !Object.values(snapshot.sources).some(
-              (source) => source.outcome === "transiently-unavailable"
-            ),
+            // Ad-bearing documents must reflect the persisted kill switches and
+            // campaign schedule on every request. In-flight requests may still
+            // coalesce, but a rendered creative is never persisted in this cache.
+            cacheable: isPublicSsrDocumentCacheable(snapshot),
             completedAt: dependencies.clock().getTime(),
             renderedAt: now.getTime(),
             result,

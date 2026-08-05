@@ -1,12 +1,45 @@
-import { App, cert, initializeApp } from "firebase-admin/app";
+import {
+  App,
+  cert,
+  initializeApp,
+  type ServiceAccount,
+} from "firebase-admin/app";
 import { getMessaging } from "firebase-admin/messaging";
 import { isKeyOf, isObject } from "shared/lib/objects";
 
 const firebaseServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
 
+export const parseFirebaseServiceAccount = (
+  encodedServiceAccount: string,
+  configuredProjectId = process.env.FIREBASE_PROJECT_ID
+): ServiceAccount => {
+  const serviceAccount: unknown = JSON.parse(
+    Buffer.from(encodedServiceAccount, "base64").toString()
+  );
+  if (
+    !isObject(serviceAccount) ||
+    !isKeyOf(serviceAccount, "project_id") ||
+    typeof serviceAccount.project_id !== "string"
+  ) {
+    throw new Error("FIREBASE_SERVICE_ACCOUNT has no project_id");
+  }
+  if (
+    configuredProjectId &&
+    serviceAccount.project_id !== configuredProjectId
+  ) {
+    throw new Error(
+      "FIREBASE_SERVICE_ACCOUNT project does not match FIREBASE_PROJECT_ID"
+    );
+  }
+  return serviceAccount as ServiceAccount;
+};
+
 // require credentials in production
 if (!firebaseServiceAccount && process.env.NODE_ENV === "production") {
   throw new Error("FIREBASE_SERVICE_ACCOUNT is not set");
+}
+if (!process.env.FIREBASE_PROJECT_ID && process.env.NODE_ENV === "production") {
+  throw new Error("FIREBASE_PROJECT_ID is not set");
 }
 
 let firebase: App | undefined;
@@ -14,9 +47,7 @@ let firebase: App | undefined;
 // initialize Firebase when configured
 if (firebaseServiceAccount) {
   firebase = initializeApp({
-    credential: cert(
-      JSON.parse(Buffer.from(firebaseServiceAccount, "base64").toString())
-    ),
+    credential: cert(parseFirebaseServiceAccount(firebaseServiceAccount)),
   });
 }
 

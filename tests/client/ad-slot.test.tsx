@@ -87,6 +87,32 @@ describe("AdSlot", () => {
     });
   });
 
+  it("removes a stale server-seeded creative when live serving is disabled", async () => {
+    seed.ad = {
+      creative: {
+        advertiserName: "Island Coffee",
+        body: "Coffee near the dock.",
+        campaignId: "5ed338e9-acbb-4cca-9380-1a923bfca5c8",
+        headline: "Fuel up before sailing",
+        placementKey: "schedule--5--14",
+        targetUrl: "https://example.com/menu",
+      },
+      placementKey: "schedule--5--14",
+    };
+    api.post.mockResolvedValue({
+      creative: null,
+      expiresAt: "2026-08-04T18:00:00.000Z",
+      token: "adx_test",
+    });
+
+    const container = await renderSlot();
+
+    await vi.waitFor(() =>
+      expect(container.textContent).not.toContain("Island Coffee")
+    );
+    expect(container.querySelector("[data-ad-placeholder]")).toBeNull();
+  });
+
   it("hides an unconfigured placement from riders", async () => {
     api.post.mockResolvedValue({
       creative: null,

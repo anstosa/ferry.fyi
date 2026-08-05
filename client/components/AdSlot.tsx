@@ -272,6 +272,7 @@ export const AdSlot = ({
   const navigate = useNavigate();
   const ssrAd = usePublicSsrSource("ad");
   const [exposure, setExposure] = useState<AdExposure | null>(null);
+  const [exposureResolved, setExposureResolved] = useState(false);
   const [loading, setLoading] = useState(true);
   const opportunityRef = useRef<HTMLSpanElement>(null);
   const isAdmin =
@@ -290,6 +291,7 @@ export const AdSlot = ({
   useEffect(() => {
     let active = true;
     setExposure(null);
+    setExposureResolved(false);
     setLoading(Boolean(key) && !hasSsrAd);
     if (!key) {
       return () => {
@@ -298,15 +300,14 @@ export const AdSlot = ({
     }
     issueAdExposure(key)
       .then((value) => {
-        const ssrCampaignId = ssrAd?.creative?.campaignId ?? null;
-        const exposureCampaignId = value.creative?.campaignId ?? null;
-        if (active && (!hasSsrAd || ssrCampaignId === exposureCampaignId)) {
+        if (active) {
           setExposure(value);
         }
       })
       .catch(() => undefined)
       .finally(() => {
         if (active) {
+          setExposureResolved(true);
           setLoading(false);
         }
       });
@@ -325,7 +326,10 @@ export const AdSlot = ({
   if (!key) {
     return null;
   }
-  const creative = hasSsrAd ? (ssrAd?.creative ?? null) : exposure?.creative;
+  let creative = exposure?.creative ?? null;
+  if (!exposureResolved && hasSsrAd) {
+    creative = ssrAd?.creative ?? null;
+  }
   const configure = (): void => {
     navigate(getAdAdminConfigurationPath(key));
   };

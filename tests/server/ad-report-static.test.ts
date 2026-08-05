@@ -13,14 +13,14 @@ import { createAdReportRouter } from "../../server/controllers/static/adReports"
 describe("advertiser report host", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.REPORT_BASE_URL = "https://reports.ferry.fyi";
+    process.env.REPORT_BASE_URL = "https://reports.santosa.family";
   });
 
   it("serves an analytics-free no-store shell only on the report host", async () => {
     const app = express().use(createAdReportRouter());
     const response = await request(app)
       .get("/")
-      .set("Host", "reports.ferry.fyi")
+      .set("Host", "reports.santosa.family")
       .expect(200);
 
     expect(response.text).toContain("Ferry FYI campaign report");
@@ -42,7 +42,7 @@ describe("advertiser report host", () => {
 
     const response = await request(app)
       .post("/report-data")
-      .set("Host", "reports.ferry.fyi")
+      .set("Host", "reports.santosa.family")
       .send({ token: "adr_secret" })
       .expect(200);
 
@@ -55,14 +55,14 @@ describe("advertiser report host", () => {
   it("blocks ordinary app paths on the report host", async () => {
     await request(express().use(createAdReportRouter()))
       .get("/schedule/3/7")
-      .set("Host", "reports.ferry.fyi")
+      .set("Host", "reports.santosa.family")
       .expect(404);
   });
 
   it("rejects a report origin that would replace the normal app", () => {
     const originalBaseUrl = process.env.BASE_URL;
     try {
-      process.env.BASE_URL = "https://reports.ferry.fyi";
+      process.env.BASE_URL = "https://reports.santosa.family";
       expect(() => createAdReportRouter()).toThrow("dedicated origin");
     } finally {
       if (originalBaseUrl === undefined) {

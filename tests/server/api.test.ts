@@ -118,6 +118,34 @@ describe("wrapApiResponse", () => {
 });
 
 describe("full API error boundary", () => {
+  it("does not expose the application API on the advertiser report host", async () => {
+    vi.stubEnv("REPORT_BASE_URL", "https://reports.santosa.family");
+    const api = vi.fn((_request, response) => response.send({ exposed: true }));
+    try {
+      const response = await request(
+        createApp({
+          apiHandler: api,
+          staticHandler: express
+            .Router()
+            .use((_request, fallbackResponse) =>
+              fallbackResponse.sendStatus(404)
+            ),
+        })
+      )
+        .get("/api/ads/exposures")
+        .set("Host", "reports.santosa.family")
+        .expect(404);
+
+      expect(response.text).toBe("Not found");
+      expect(api).not.toHaveBeenCalled();
+      expect(response.headers["x-robots-tag"]).toBe(
+        "noindex, noarchive, nofollow"
+      );
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("keeps body-parser failures in the JSON envelope", async () => {
     const api = express.Router();
     api.post("/echo", (apiRequest, response) => response.json(apiRequest.body));

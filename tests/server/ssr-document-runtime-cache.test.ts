@@ -9,6 +9,7 @@ import {
 import { SsrDocumentCache } from "../../server/ssr/documentCache";
 import {
   createSsrDocumentRuntime,
+  isPublicSsrDocumentCacheable,
   type SsrRuntimeFill,
 } from "../../server/ssr/documentRuntime";
 import {
@@ -222,6 +223,28 @@ const createCanonicalRuntime = (
 };
 
 describe("SSR document runtime cache integration", () => {
+  it("never persists a document that contains an ad source", () => {
+    expect(
+      isPublicSsrDocumentCacheable({
+        sources: {
+          ad: {
+            observedAt: "2026-08-04T12:00:00.000Z",
+            outcome: "authoritatively-unavailable",
+          },
+        },
+      })
+    ).toBe(false);
+    expect(
+      isPublicSsrDocumentCacheable({
+        sources: {
+          editorial: {
+            observedAt: "2026-08-04T12:00:00.000Z",
+            outcome: "value",
+          },
+        },
+      })
+    ).toBe(true);
+  });
   it("keeps real resolver redirects and failures outside the document cache", async () => {
     const noTerminals = vi.fn(async () => ({}));
     const { cache, load, run } = createCanonicalRuntime(noTerminals);

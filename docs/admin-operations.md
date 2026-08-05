@@ -160,15 +160,17 @@ ordered departure and arrival terminal ids, so the reverse direction is a
 separate placement with separate creative and enabled state. The home placement
 has no route direction.
 
-The legacy public ads endpoint is intentionally empty. Current clients request a
-short-lived exposure envelope for each mounted placement; only that endpoint can
-return the immutable creative for a scheduled campaign. Disabled and draft
-creative remains owner-only. Riders see no empty ad container. The owner may see
-a dashed placeholder on the home, schedule, cameras, terminal-details, and fare
-surfaces when their matching placement is empty or inactive.
+The legacy public ads endpoint is intentionally empty. Server-rendered public
+documents may contain the current immutable creative, while mounted clients
+request a short-lived exposure envelope before recording measurements. Ad-bearing
+documents are not retained in the server document cache, so global and placement
+switches take effect on the next request. Disabled and draft creative remains
+owner-only. Riders see no empty ad container. The owner may see a dashed
+placeholder on the home, schedule, cameras, terminal-details, and fare surfaces
+when their matching placement is empty or inactive.
 
 Ad creative is plain text plus one HTTPS destination URL. The server validates
-bounded advertiser, headline, body, and call-to-action fields before storage.
+bounded advertiser, headline, body, and destination fields before storage.
 Every mutation uses the `save-ad-settings` confirmation action with either the
 global `ads:global` target or the exact `ad:<placement-key>` target. The admin
 surface does not provide arbitrary HTML, scripts, tracking tags, or image

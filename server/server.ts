@@ -8,6 +8,7 @@ import {
 
 import { apiRouter } from "~/controllers/api";
 import { createStaticRouter, staticRouter } from "~/controllers/static";
+import { createAdReportRouter } from "~/controllers/static/adReports";
 import {
   type AdminOperationName,
   runAdminOperation,
@@ -73,6 +74,9 @@ export function createApp({
   if (process.env.NODE_ENV === "production") {
     app.use(forceHttps);
   }
+  // The dedicated advertiser-report origin is a separate, minimal surface.
+  // Gate it before API, development middleware, and the normal app.
+  app.use(createAdReportRouter());
   app.use("/api/ads", express.json({ limit: "2kb" }));
   app.use("/report-data", express.json({ limit: "4kb" }));
   app.use("/report-export", express.json({ limit: "4kb" }));
