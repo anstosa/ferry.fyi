@@ -20,6 +20,20 @@ jobs:
     runs-on: ubuntu-latest
     # keep branch-scoped oidc subject
     if: github.ref == 'refs/heads/production'
+    services:
+      postgres:
+        image: postgres:16-bookworm
+        env:
+          POSTGRES_DB: ferryfyi
+          POSTGRES_PASSWORD: testing
+          POSTGRES_USER: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U test -d ferryfyi"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     env:
       AUTH0_CLIENT_AUDIENCE: ${{ vars.AUTH0_CLIENT_AUDIENCE }}
       AUTH0_CLIENT_ID: ${{ vars.AUTH0_CLIENT_ID }}
@@ -31,6 +45,7 @@ jobs:
       DETECTOR_CONTEXT: ${{ vars.DETECTOR_CONTEXT || 'detector-runtime' }}
       DETECTOR_DOCKERFILE: ${{ vars.DETECTOR_DOCKERFILE || 'detector-runtime/Dockerfile' }}
       DETECTOR_ECR_REPOSITORY_URL: ${{ vars.DETECTOR_ECR_REPOSITORY_URL }}
+      DATABASE_URL: postgres://test:testing@localhost:5432/ferryfyi
       ECR_REPOSITORY_URL: ${{ vars.ECR_REPOSITORY_URL }}
       ECS_CLUSTER: ${{ vars.ECS_CLUSTER }}
       FIREBASE_API_KEY: ${{ vars.FIREBASE_API_KEY }}
@@ -43,6 +58,7 @@ jobs:
       HEROKU_RELEASE_VERSION: ${{ github.sha }}
       LOG_LEVEL: ${{ vars.LOG_LEVEL }}
       MAPBOX_ACCESS_TOKEN: ${{ vars.MAPBOX_ACCESS_TOKEN }}
+      PGSSLMODE: disable
       SENTRY_DSN: ${{ vars.SENTRY_DSN }}
 
     steps:
@@ -65,13 +81,16 @@ jobs:
       - name: Type-check
         run: yarn type-check
 
-      - name: Unit and integration tests
-        run: yarn test
-
       - name: Build application
         env:
           SENTRY_AUTH_TOKEN: ""
         run: yarn build
+
+      - name: Prepare test database
+        run: yarn db:migrate
+
+      - name: Unit and integration tests
+        run: yarn test
 
       - name: Validate built public surfaces and budgets
         run: |
