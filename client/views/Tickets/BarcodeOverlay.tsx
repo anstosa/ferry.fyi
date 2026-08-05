@@ -52,6 +52,8 @@ interface ConfirmationState {
 
 interface ConfirmationDialogProps {
   confirmation: ConfirmationState | null;
+  errorMessage: string | null;
+  isSubmitting: boolean;
   onCancel: () => void;
   onConfirm: () => Promise<void>;
 }
@@ -517,6 +519,8 @@ const ManualTicketLookup = ({
 // render confirmation dialog
 const ConfirmationDialog = ({
   confirmation,
+  errorMessage,
+  isSubmitting,
   onCancel,
   onConfirm,
 }: ConfirmationDialogProps): ReactElement | null => {
@@ -532,33 +536,63 @@ const ConfirmationDialog = ({
 
   return (
     <div
+      aria-labelledby="ticket-confirmation-title"
+      aria-modal="true"
       className="absolute inset-0 z-30 flex items-center justify-center bg-[rgba(0,20,26,0.86)] px-5 backdrop-blur-md"
       onClick={stopDialogClick}
+      role="dialog"
     >
       <div className="w-full max-w-sm rounded-3xl border border-white/15 bg-white p-5 text-gray-darkest shadow-2xl">
-        <h3 className="text-xl font-black text-green-dark">
+        <h3
+          className="text-xl font-black text-green-dark"
+          id="ticket-confirmation-title"
+        >
           {confirmation.title}
         </h3>
         <p className="mt-3 text-sm font-semibold leading-relaxed text-gray-dark">
           {confirmation.message}
         </p>
+        {errorMessage ? (
+          <p
+            aria-live="assertive"
+            className="mt-3 rounded-xl bg-red-light px-3 py-2 text-sm font-bold text-red-dark"
+            role="alert"
+          >
+            {errorMessage}
+          </p>
+        ) : null}
         <div className="mt-5 grid grid-cols-2 gap-3">
           <button
+            aria-label="Cancel confirmation"
             className={clsx("button", LIGHT_SURFACE_SECONDARY_BUTTON)}
+            disabled={isSubmitting}
             onClick={onCancel}
             type="button"
           >
             Cancel
           </button>
           <button
+            aria-label={
+              confirmation.action === "delete"
+                ? "Confirm removal"
+                : "Confirm sharing"
+            }
             className={clsx("button", {
               "button-primary": confirmation.action === "share",
               "button-danger": confirmation.action === "delete",
             })}
+            disabled={isSubmitting}
             onClick={onConfirm}
             type="button"
           >
-            {confirmation.primaryLabel}
+            {isSubmitting ? (
+              <>
+                <SpinnerIcon className="animate-spin" />
+                Removing…
+              </>
+            ) : (
+              confirmation.primaryLabel
+            )}
           </button>
         </div>
       </div>
@@ -591,6 +625,8 @@ export const BarcodeOverlay = ({
   const [confirmation, setConfirmation] = useState<ConfirmationState | null>(
     null
   );
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [isDeleting, setDeleting] = useState(false);
   const { isRefreshing, refresh, refreshError } = useTicketRefresh(
     ticket,
     onRefresh
@@ -685,6 +721,7 @@ export const BarcodeOverlay = ({
   // delete confirmation
   const deleteTicket = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
+    setDeleteError(null);
 
     if (ticket.type === "reservation") {
       setConfirmation({
@@ -708,7 +745,7 @@ export const BarcodeOverlay = ({
   // run confirmation action
   const confirmAction = async (): Promise<void> => {
     // missing confirmation guard
-    if (!confirmation) {
+    if (!confirmation || isDeleting) {
       return;
     }
 
@@ -719,12 +756,30 @@ export const BarcodeOverlay = ({
       return;
     }
 
-    setConfirmation(null);
-    await onDelete(ticket);
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await onDelete(ticket);
+      setDeleting(false);
+      setConfirmation(null);
+    } catch (error) {
+      setDeleting(false);
+      setDeleteError(
+        ticket.type === "reservation"
+          ? "Could not remove this reservation account. Try again."
+          : "Could not remove this ticket. Try again."
+      );
+      console.error("Failed to remove saved ticket", error);
+    }
   };
 
   // cancel confirmation
   const cancelConfirmation = (): void => {
+    // pending deletion guard
+    if (isDeleting) {
+      return;
+    }
+    setDeleteError(null);
     setConfirmation(null);
   };
 
@@ -905,6 +960,7 @@ export const BarcodeOverlay = ({
 
             <div className="mt-5 grid grid-cols-2 gap-3">
               <button
+                aria-label="Remove saved item"
                 className={clsx(
                   "button border-red-dark bg-transparent text-red-dark",
                   "hover:border-red-dark hover:bg-red-lightest hover:text-red-dark",
@@ -935,6 +991,8 @@ export const BarcodeOverlay = ({
       </div>
       <ConfirmationDialog
         confirmation={confirmation}
+        errorMessage={deleteError}
+        isSubmitting={isDeleting}
         onCancel={cancelConfirmation}
         onConfirm={confirmAction}
       />

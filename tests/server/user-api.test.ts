@@ -3,7 +3,6 @@ import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
-  assignAuthUser,
   assignOptionalAuthUser,
   requireAuth,
 } from "../../server/controllers/api/auth";
@@ -85,7 +84,7 @@ const makeSettings = (appMetadata = {}, favoriteRouteIds: string[] = []) => {
 const createApp = (): express.Express => {
   const app = express();
   app.use(express.json());
-  app.use("/api/user", requireAuth, assignAuthUser, userRouter);
+  app.use("/api/user", requireAuth, userRouter);
   return app;
 };
 

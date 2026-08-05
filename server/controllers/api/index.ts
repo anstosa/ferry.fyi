@@ -12,7 +12,7 @@ import { getWsfStatus } from "~/lib/wsf/api";
 
 import { adminRouter, preventAdminCaching } from "./admin";
 import { adsRouter } from "./ads";
-import { assignAuthUser, assignOptionalAuthUser, requireAuth } from "./auth";
+import { assignOptionalAuthUser, requireAuth } from "./auth";
 import { cameraRouter } from "./cameras";
 import { debugRouter } from "./debug";
 import { fareRouter } from "./fares";
@@ -97,7 +97,7 @@ if (process.env.NODE_ENV === "development") {
 }
 
 apiRouter.use("/admin", preventAdminCaching, requireAuth, adminRouter);
-apiRouter.use("/user", requireAuth, assignAuthUser, userRouter);
+apiRouter.use("/user", requireAuth, userRouter);
 
 apiRouter.use(apiNotFound);
 apiRouter.use(apiErrorHandler);

@@ -1,6 +1,6 @@
 import React from "react";
-import { HelmetProvider } from "react-helmet-async";
 import { renderToStaticMarkup } from "react-dom/server";
+import { HelmetProvider } from "react-helmet-async";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 
@@ -16,11 +16,10 @@ describe("privacy and advertising policy", () => {
       </HelmetProvider>
     );
 
-    expect(html).toContain(
-      '<time dateTime="2026-08-05">August 5, 2026</time>'
-    );
+    expect(html).toContain('<time dateTime="2026-08-05">August 5, 2026</time>');
     expect(html).toContain("cached with the account");
-    expect(html).toContain("Removing a ticket removes its account-scoped");
+    expect(html).toContain("a ticket looked up");
+    expect(html).toContain("Removing a saved ticket removes its");
     expect(html).toContain("Advertising interactions");
     expect(html).toContain(
       "We do not provide advertisers with personal information"

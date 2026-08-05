@@ -42,7 +42,7 @@ import {
   publicLeaderboardsEnabled,
 } from "~/services/public/leaderboards";
 
-import { assignAuthUser, requireAuth } from "./auth";
+import { requireAuth } from "./auth";
 
 const leaderboardRouter = Router();
 const MAX_FUTURE_LOCATION_MS = 60_000;
@@ -239,18 +239,16 @@ leaderboardRouter.get(
   }
 );
 
-leaderboardRouter.use(
-  requireAuth,
-  assignAuthUser,
-  async (request, response, next) => {
-    response.set("Cache-Control", "no-store");
-    if (!(await leaderboardsEnabledForSubject(response.locals.user.sub))) {
-      rejectDisabledLeaderboard(response);
-      return;
-    }
-    next();
+// enforce subject feature access
+leaderboardRouter.use(requireAuth, async (request, response, next) => {
+  response.set("Cache-Control", "no-store");
+  // subject feature guard
+  if (!(await leaderboardsEnabledForSubject(response.locals.user.sub))) {
+    rejectDisabledLeaderboard(response);
+    return;
   }
-);
+  next();
+});
 
 leaderboardRouter.delete("/account", async (request, response) => {
   await db.transaction((transaction: Transaction) =>

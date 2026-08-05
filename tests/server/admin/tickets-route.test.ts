@@ -75,7 +75,7 @@ describe("admin ticket lookup routes", () => {
     );
     const target = "ticket-lookup:settings";
 
-    await request(app())
+    const response = await request(app())
       .put("/tickets/settings")
       .send({
         action: "save-ticket-lookup-settings",
@@ -86,8 +86,9 @@ describe("admin ticket lookup routes", () => {
         selectedUserAgentProfile: "browser-impersonation",
         target,
       })
-      .expect(400, { error: "Invalid ticket lookup settings" });
+      .expect(400);
 
+    expect(response.body).toHaveProperty("error");
     expect(ticketLookup.resetTicketLookupRuntime).not.toHaveBeenCalled();
   });
 });

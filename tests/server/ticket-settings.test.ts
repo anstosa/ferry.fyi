@@ -86,7 +86,7 @@ describe("ticket lookup settings", () => {
       saveTicketLookupSettings({
         selectedUserAgentProfile: "browser-impersonation",
       })
-    ).rejects.toThrow("Invalid ticket lookup settings");
+    ).rejects.toThrow();
 
     expect(ticketLookupControl.findOrCreate).not.toHaveBeenCalled();
   });

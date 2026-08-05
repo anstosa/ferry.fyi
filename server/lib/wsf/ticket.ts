@@ -11,8 +11,6 @@ import { Ticket } from "shared/contracts/tickets";
 import { isKeyOf } from "shared/lib/objects";
 import { getTicketLookupId } from "shared/lib/tickets";
 
-export { getTicketLookupId } from "shared/lib/tickets";
-
 const WAVE2GO_LANDING =
   "https://wave2go.wsdot.com/webstore/landingPage?cg=21&c=76";
 const WAVE2GO_TICKET =

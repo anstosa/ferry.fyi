@@ -27,9 +27,9 @@ export const PrivacyPolicy = (): ReactElement => (
       name, email address, and account identifier. We store the account
       identifier with the settings you choose in Ferry FYI, including alert
       rules, saved terminals, notification tokens, and saved ticket information.
-      For signed-in users, the latest successful details for a saved ticket may
-      also be cached with the account so the same lookup does not need to be
-      repeated on each device.
+      For signed-in users, the latest successful details for a ticket looked up
+      while signed in may also be cached with the account so the same lookup
+      does not need to be repeated on each device.
     </p>
     <h3 className="font-bold mt-4">Location</h3>
     <p className="mt-2">
@@ -154,10 +154,10 @@ export const PrivacyPolicy = (): ReactElement => (
     <p className="mt-2">
       You may use Ferry FYI without signing in, decline location and
       notification permissions, and control cookies or local storage through
-      your browser or device settings. We retain account settings and cached
-      details for tickets you save for as long as your account is active or as
-      needed to provide Ferry FYI. Removing a ticket removes its account-scoped
-      cached details, and deleting Ferry FYI account data removes all such
+      your browser or device settings. We retain account settings and
+      account-scoped ticket lookup details for as long as your account is active
+      or as needed to provide Ferry FYI. Removing a saved ticket removes its
+      matching cached details, and deleting Ferry FYI account data removes all
       cached ticket details. To request access to or deletion of account
       information, email us at{" "}
       <a className="link" href="mailto:dev@ferry.fyi">

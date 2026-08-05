@@ -76,6 +76,23 @@ const toLookupResult = (
   ticket: cached.ticket,
 });
 
+// optional account cache read
+const readPersistedTicket = async (
+  subject: string,
+  lookupId: string
+): Promise<Awaited<ReturnType<typeof readUserTicket>> | undefined> => {
+  try {
+    return await readUserTicket(
+      subject,
+      lookupId,
+      TICKET_LOOKUP_CACHE_TTL_SECONDS
+    );
+  } catch (error) {
+    console.error("Failed to read account ticket cache", error);
+    return undefined;
+  }
+};
+
 // authenticated result persistence
 const persistLookupResult = async (
   subject: string | undefined,
@@ -84,10 +101,14 @@ const persistLookupResult = async (
 ): Promise<TicketLookupResult> => {
   // signed-in persistence guard
   if (subject && result.ticket) {
-    await writeUserTicket(subject, lookupId, {
-      sourceUpdatedAt: result.sourceUpdatedAt,
-      ticket: result.ticket,
-    });
+    try {
+      await writeUserTicket(subject, lookupId, {
+        sourceUpdatedAt: result.sourceUpdatedAt,
+        ticket: result.ticket,
+      });
+    } catch (error) {
+      console.error("Failed to write account ticket cache", error);
+    }
   }
   return result;
 };
@@ -111,11 +132,7 @@ export const lookupTicket = async (
   let persistedFallback: TicketLookupResult | undefined;
   // account cache guard
   if (subject) {
-    const persisted = await readUserTicket(
-      subject,
-      lookupId,
-      TICKET_LOOKUP_CACHE_TTL_SECONDS
-    );
+    const persisted = await readPersistedTicket(subject, lookupId);
     // fresh persisted result
     if (persisted?.fresh) {
       return {

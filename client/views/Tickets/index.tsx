@@ -36,7 +36,7 @@ import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { Page } from "~/components/Page";
 import { SeoHelmet } from "~/components/SeoHelmet";
 import { Skeleton, SkeletonGroup } from "~/components/Skeleton";
-import { del, get } from "~/lib/api";
+import { get } from "~/lib/api";
 import { useQuery } from "~/lib/browser";
 import { useDevice } from "~/lib/device";
 import { useFavoriteRoutes } from "~/lib/favoriteRoutes";
@@ -57,6 +57,7 @@ const BarcodeOverlay = React.lazy(() =>
     default: BarcodeOverlay,
   }))
 );
+import { commitTicketRemoval } from "./deletion";
 import { LoginPrompt } from "./LoginPrompt";
 import {
   normalizeTicketList,
@@ -916,6 +917,24 @@ export const Tickets = (): ReactElement => {
     } catch {}
   };
 
+  // persist and remove saved ticket
+  const removeTicket = async (
+    deleted: TicketStorage | ReservationAccount
+  ): Promise<void> => {
+    // remove local ticket
+    const removeLocal = (): void => {
+      setTickets((current) => removeStoredTicket(current, deleted));
+    };
+
+    await commitTicketRemoval({
+      closeOverlay,
+      deleted,
+      removeLocal,
+      savedTickets,
+      updateUser,
+    });
+  };
+
   // add ticket code
   async function addCode(
     code: string,
@@ -1440,26 +1459,7 @@ export const Tickets = (): ReactElement => {
                 : undefined
             }
             onClose={() => closeOverlay()}
-            onDelete={async (deleted) => {
-              setTickets((current) => removeStoredTicket(current, deleted));
-              const nextSavedTickets = savedTickets?.filter(
-                (savedCode) =>
-                  parseSavedTicketCode(savedCode).code !== deleted.id
-              );
-              await closeOverlay();
-              const accessToken =
-                deleted.type === "ticket"
-                  ? await getTicketAccessToken()
-                  : undefined;
-              await Promise.allSettled([
-                updateUser({
-                  app_metadata: { tickets: nextSavedTickets },
-                }),
-                deleted.type === "ticket" && accessToken
-                  ? del(getTicketLookupPath(deleted.id), {}, accessToken)
-                  : Promise.resolve(),
-              ]);
-            }}
+            onDelete={removeTicket}
           />
         </Suspense>
       )}

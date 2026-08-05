@@ -72,22 +72,6 @@ describe("Wave2Go ticket lookup", () => {
     ticketModule = await import("../../server/lib/wsf/ticket");
   }, 30_000);
 
-  // QR URL lookup id behavior
-  it("extracts visual IDs from QR URL payloads", () => {
-    expect(
-      ticketModule.getTicketLookupId(
-        "https://wave2go.wsdot.com/webstore/account/ticketLookup.aspx?VisualID=1234567890"
-      )
-    ).toBe("1234567890");
-  });
-
-  // QR query lookup id behavior
-  it("extracts visual IDs from raw QR query payloads", () => {
-    expect(ticketModule.getTicketLookupId("VisualID=1234567890&foo=bar")).toBe(
-      "1234567890"
-    );
-  });
-
   // QR URL lookup request behavior
   it("looks up multi-ride QR URL payloads by visual ID", async () => {
     mockCurlResponses([

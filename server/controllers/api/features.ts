@@ -5,7 +5,7 @@ import {
   getLeaderboardFlags,
 } from "~/lib/leaderboardFlags";
 
-import { assignAuthUser, requireAuth } from "./auth";
+import { requireAuth } from "./auth";
 
 export const featureRouter = Router();
 
@@ -15,10 +15,6 @@ featureRouter.get("/", async (_request, response) =>
 );
 
 /** Authenticated callers may receive a subject-specific feature decision. */
-featureRouter.get(
-  "/me",
-  requireAuth,
-  assignAuthUser,
-  async (_request, response) =>
-    response.send(await getFeatureFlagsForSubject(response.locals.user.sub))
+featureRouter.get("/me", requireAuth, async (_request, response) =>
+  response.send(await getFeatureFlagsForSubject(response.locals.user.sub))
 );

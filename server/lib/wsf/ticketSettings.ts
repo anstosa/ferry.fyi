@@ -29,17 +29,23 @@ const getControl = async (): Promise<TicketLookupControl> => {
 };
 
 // public settings projection
+const projectSettings = (
+  control: TicketLookupControl
+): TicketLookupAdminSettings => {
+  const selectedUserAgentProfile = isProfileId(control.userAgentProfile)
+    ? control.userAgentProfile
+    : DEFAULT_PROFILE_ID;
+  return {
+    cacheTtlSeconds: TICKET_LOOKUP_CACHE_TTL_SECONDS,
+    selectedUserAgentProfile,
+    userAgentProfiles: TICKET_LOOKUP_USER_AGENT_PROFILES,
+  };
+};
+
+// load public settings
 export const getTicketLookupSettings =
   async (): Promise<TicketLookupAdminSettings> => {
-    const control = await getControl();
-    const selectedUserAgentProfile = isProfileId(control.userAgentProfile)
-      ? control.userAgentProfile
-      : DEFAULT_PROFILE_ID;
-    return {
-      cacheTtlSeconds: TICKET_LOOKUP_CACHE_TTL_SECONDS,
-      selectedUserAgentProfile,
-      userAgentProfiles: TICKET_LOOKUP_USER_AGENT_PROFILES,
-    };
+    return projectSettings(await getControl());
   };
 
 // selected user agent lookup
@@ -64,5 +70,5 @@ export const saveTicketLookupSettings = async (
   await control.update({
     userAgentProfile: value.selectedUserAgentProfile,
   });
-  return await getTicketLookupSettings();
+  return projectSettings(control);
 };

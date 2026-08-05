@@ -1,4 +1,4 @@
-import { NextFunction, Request, RequestHandler, Response } from "express";
+import { NextFunction, RequestHandler, Response } from "express";
 import { auth } from "express-oauth2-jwt-bearer";
 
 import { isApplicationTokenRevoked } from "~/lib/admin/sessionRevocation";
@@ -78,19 +78,4 @@ export const assignOptionalAuthUser: RequestHandler = (
     }
     applyTokenRevocation(subject, request.auth?.payload.iat, response, next);
   });
-};
-
-export const assignAuthUser = (
-  request: Request,
-  response: Response,
-  next: NextFunction
-): void => {
-  const subject = request.auth?.payload.sub;
-  // auth subject guard
-  if (!subject) {
-    response.status(401).send({ error: "unauthorized" });
-    return;
-  }
-  response.locals.user = { sub: subject };
-  next();
 };

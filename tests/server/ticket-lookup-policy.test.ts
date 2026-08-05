@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const upstream = vi.hoisted(() => ({ fetchTicket: vi.fn() }));
 const settings = vi.hoisted(() => ({
@@ -43,6 +43,11 @@ describe("ticket lookup coordination", () => {
     userCache.writeUserTicket.mockResolvedValue(undefined);
     userCache.deleteUserTicket.mockResolvedValue(undefined);
     resetTicketLookupRuntime();
+  });
+
+  // restore global spies
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it("caches successful lookups with their original freshness timestamp", async () => {
@@ -163,6 +168,27 @@ describe("ticket lookup coordination", () => {
       sourceUpdatedAt: persisted.sourceUpdatedAt,
       ticket: persisted.ticket,
     });
+  });
+
+  it("continues when the optional account cache cannot be read", async () => {
+    userCache.readUserTicket.mockRejectedValueOnce(new Error("database down"));
+    upstream.fetchTicket.mockResolvedValue(ticket("ticket-1"));
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    await expect(
+      lookupTicket("ticket-1", "auth0|person")
+    ).resolves.toMatchObject({ ticket: { id: "ticket-1" } });
+    expect(upstream.fetchTicket).toHaveBeenCalledOnce();
+  });
+
+  it("returns acquired ticket data when optional persistence fails", async () => {
+    upstream.fetchTicket.mockResolvedValue(ticket("ticket-1"));
+    userCache.writeUserTicket.mockRejectedValueOnce(new Error("database down"));
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    await expect(
+      lookupTicket("ticket-1", "auth0|person")
+    ).resolves.toMatchObject({ ticket: { id: "ticket-1" } });
   });
 
   it("forgets only the selected account ticket", async () => {
