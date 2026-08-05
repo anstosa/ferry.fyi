@@ -60,6 +60,7 @@ jobs:
       MAPBOX_ACCESS_TOKEN: ${{ vars.MAPBOX_ACCESS_TOKEN }}
       PGSSLMODE: disable
       SENTRY_DSN: ${{ vars.SENTRY_DSN }}
+      TZ: America/Los_Angeles
 
     steps:
       - name: Check out repository
