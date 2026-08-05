@@ -114,6 +114,19 @@ resource "aws_iam_role_policy" "github_deploy" {
         Resource = "arn:aws:ecs:${var.aws_region}:${var.aws_account_id}:task/${aws_ecs_cluster.app.name}/*"
       },
       {
+        Sid    = "ListProductionTasks"
+        Effect = "Allow"
+        Action = [
+          "ecs:ListTasks"
+        ]
+        Resource = "*"
+        Condition = {
+          ArnEquals = {
+            "ecs:cluster" = aws_ecs_cluster.app.arn
+          }
+        }
+      },
+      {
         Sid    = "PassTaskRolesToEcs"
         Effect = "Allow"
         Action = [
