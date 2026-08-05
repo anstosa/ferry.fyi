@@ -2,7 +2,11 @@ import express, { NextFunction, Request, Response } from "express";
 import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { assignAuthUser, requireAuth } from "../../server/controllers/api/auth";
+import {
+  assignAuthUser,
+  assignOptionalAuthUser,
+  requireAuth,
+} from "../../server/controllers/api/auth";
 import {
   sanitizeUserUpdate,
   userRouter,
@@ -11,10 +15,18 @@ import {
 const userSettings = vi.hoisted(() => ({
   findOrCreate: vi.fn(),
 }));
+const ticketCache = vi.hoisted(() => ({
+  deleteUnsavedUserTickets: vi.fn(),
+}));
+const revocation = vi.hoisted(() => ({
+  isApplicationTokenRevoked: vi.fn(),
+}));
 
 vi.mock("~/models/UserSettings", () => ({
   UserSettings: userSettings,
 }));
+vi.mock("~/lib/wsf/userTicketCache", () => ticketCache);
+vi.mock("~/lib/admin/sessionRevocation", () => revocation);
 
 vi.mock("~/lib/wsf/api", () => ({
   getWsfStatus: () => {
@@ -53,15 +65,16 @@ const makeSettings = (appMetadata = {}, favoriteRouteIds: string[] = []) => {
     appMetadata,
     favoriteRouteIds,
     subject: "auth0|123",
+    // update settings fixture
     update: vi.fn(
-      async (data: {
+      (data: {
         appMetadata: Record<string, unknown>;
         favoriteRouteIds?: string[];
       }) => {
         settings.appMetadata = data.appMetadata;
         settings.favoriteRouteIds =
           data.favoriteRouteIds ?? settings.favoriteRouteIds;
-        return settings;
+        return Promise.resolve(settings);
       }
     ),
   };
@@ -81,6 +94,10 @@ const createApp = (): express.Express => {
 describe("user API", () => {
   beforeEach(() => {
     userSettings.findOrCreate.mockReset();
+    ticketCache.deleteUnsavedUserTickets
+      .mockReset()
+      .mockResolvedValue(undefined);
+    revocation.isApplicationTokenRevoked.mockReset().mockResolvedValue(false);
   });
 
   // missing token case
@@ -278,6 +295,76 @@ describe("user API", () => {
       favoriteRouteIds: ["3", "9"],
       user_id: "auth0|123",
     });
+    expect(ticketCache.deleteUnsavedUserTickets).toHaveBeenCalledWith(
+      "auth0|123",
+      ["abc"]
+    );
+  });
+});
+
+describe("optional API authentication", () => {
+  // reset revocation behavior
+  beforeEach(() => {
+    revocation.isApplicationTokenRevoked.mockReset().mockResolvedValue(false);
+  });
+
+  // create optional auth harness
+  const createOptionalApp = (): express.Express => {
+    const app = express();
+    app.use(assignOptionalAuthUser);
+    app.get("/", (_request, response) =>
+      response.send({ subject: response.locals.user?.sub ?? null })
+    );
+    return app;
+  };
+
+  it("continues anonymously when no bearer token is supplied", async () => {
+    await request(createOptionalApp()).get("/").expect(200, { subject: null });
+  });
+
+  it("assigns the validated subject when a bearer token is supplied", async () => {
+    await request(createOptionalApp())
+      .get("/")
+      .set("Authorization", "Bearer valid")
+      .expect(200, { subject: "auth0|123" });
+  });
+
+  // invalid bearer rejection
+  it("rejects an invalid bearer token", async () => {
+    await request(createOptionalApp())
+      .get("/")
+      .set("Authorization", "Bearer invalid")
+      .expect(401, { error: "Unauthorized" });
+  });
+
+  // missing subject fallback
+  it("continues anonymously when a validated token has no subject", async () => {
+    await request(createOptionalApp())
+      .get("/")
+      .set("Authorization", "Bearer no-sub")
+      .expect(200, { subject: null });
+  });
+
+  // revoked bearer rejection
+  it("rejects a revoked optional bearer token", async () => {
+    revocation.isApplicationTokenRevoked.mockResolvedValueOnce(true);
+
+    await request(createOptionalApp())
+      .get("/")
+      .set("Authorization", "Bearer valid")
+      .expect(401, { error: "unauthorized" });
+  });
+
+  // revocation error propagation
+  it("propagates revocation lookup errors", async () => {
+    revocation.isApplicationTokenRevoked.mockRejectedValueOnce(
+      new Error("revocation unavailable")
+    );
+
+    await request(createOptionalApp())
+      .get("/")
+      .set("Authorization", "Bearer valid")
+      .expect(500);
   });
 });
 

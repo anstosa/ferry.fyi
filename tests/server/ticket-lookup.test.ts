@@ -182,8 +182,8 @@ describe("Wave2Go ticket lookup", () => {
     });
   });
 
-  // browser header behavior
-  it("sends browser-like headers through curl", async () => {
+  // identified user agent behavior
+  it("identifies Ferry FYI instead of impersonating a browser", async () => {
     mockCurlResponses([
       {
         body: "ok",
@@ -199,9 +199,33 @@ describe("Wave2Go ticket lookup", () => {
 
     await ticketModule.fetchTicket("1234567890");
 
-    expect(execFileMock.mock.calls[0][1]).toContain(
-      "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+    const args = execFileMock.mock.calls[0][1] as string[];
+    expect(args[args.indexOf("--user-agent") + 1]).toBe(
+      "FerryFYI/1.0 (+https://ferry.fyi; dev@ferry.fyi)"
     );
+    expect(args.join(" ")).not.toContain("Mozilla/5.0");
+  });
+
+  it("uses an explicitly selected truthful User-Agent", async () => {
+    mockCurlResponses([
+      {
+        body: "ok",
+        headers: "HTTP/2 200\r\nset-cookie: session=test; path=/\r\n\r\n",
+        status: 200,
+      },
+      {
+        body: TICKET_LOOKUP_HTML,
+        headers: "HTTP/2 200\r\n\r\n",
+        status: 200,
+      },
+    ]);
+
+    await ticketModule.fetchTicket("1234567890", {
+      userAgent: "FerryFYI/1.0",
+    });
+
+    const args = execFileMock.mock.calls[0][1] as string[];
+    expect(args[args.indexOf("--user-agent") + 1]).toBe("FerryFYI/1.0");
   });
 
   // incomplete lookup behavior

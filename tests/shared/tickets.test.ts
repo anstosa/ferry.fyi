@@ -1,13 +1,67 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  getSavedTicketCode,
+  getSavedTicketLookupId,
   getTicketDisplayInfo,
+  getTicketLookupId,
+  getTicketProductKind,
+  getWave2GoTicketLookupUrl,
+  parseSavedTicketCode,
   parseTicketText,
 } from "../../shared/lib/tickets";
 
 // ticket display parsing
 
 describe("ticket display helpers", () => {
+  it("keeps unresolved ticket products unknown", () => {
+    expect(getTicketProductKind({})).toBe("unknown");
+  });
+
+  it("classifies a ticket only after identifying details load", () => {
+    expect(getTicketProductKind({ usesRemaining: 1 })).toBe("single-ride");
+    expect(getTicketProductKind({ usesRemaining: 10 })).toBe("multi-ride");
+    expect(
+      getTicketProductKind({
+        description: "Seattle / Bainbridge Multi-Ride",
+        usesRemaining: 1,
+      })
+    ).toBe("multi-ride");
+  });
+
+  it("extracts a lookup ID and links to the current manual lookup page", () => {
+    const scannedUrl =
+      "https://wave2go.wsdot.com/webstore/account/ticketLookup.aspx?VisualID=1234567890";
+    expect(getTicketLookupId(scannedUrl)).toBe("1234567890");
+    expect(getWave2GoTicketLookupUrl()).toBe(
+      "https://wave2go.wsdot.com/webstore/landingPage?c=76&cg=21"
+    );
+  });
+
+  it("extracts lookup IDs from account-synced QR references", () => {
+    const scannedUrl =
+      "https://wave2go.wsdot.com/webstore/account/ticketLookup.aspx?VisualID=1234567890";
+    expect(getSavedTicketLookupId(`qr:${encodeURIComponent(scannedUrl)}`)).toBe(
+      "1234567890"
+    );
+    expect(getSavedTicketLookupId("9876543210")).toBe("9876543210");
+  });
+
+  it("round-trips account-synced ticket references", () => {
+    const scannedUrl =
+      "https://wave2go.wsdot.com/webstore/account/ticketLookup.aspx?VisualID=1234567890";
+    const savedCode = getSavedTicketCode(scannedUrl, "qr");
+
+    expect(parseSavedTicketCode(savedCode)).toEqual({
+      code: scannedUrl,
+      codeFormat: "qr",
+    });
+    expect(parseSavedTicketCode("9876543210")).toEqual({
+      code: "9876543210",
+      codeFormat: "barcode",
+    });
+  });
+
   // bracket marker route case
   it("strips bracket markers and moves route prefixes into a route name", () => {
     expect(parseTicketText("[T] Mu-Cl Adult Passenger")).toEqual({

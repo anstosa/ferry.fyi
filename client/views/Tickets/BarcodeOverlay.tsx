@@ -4,20 +4,34 @@ import { EncodeHintType } from "@zxing/library";
 import clsx from "clsx";
 import JsBarcode from "jsbarcode";
 import { DateTime } from "luxon";
-import React, { ReactElement, useEffect, useRef, useState } from "react";
+import React, {
+  ReactElement,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   ReservationAccount,
   TicketCodeFormat,
   TicketStorage,
 } from "shared/contracts/tickets";
 import { pluralize } from "shared/lib/strings";
-import { getTicketDisplayInfo } from "shared/lib/tickets";
+import {
+  getTicketDisplayInfo,
+  getTicketLookupId,
+  getTicketProductKind,
+  getWave2GoTicketLookupUrl,
+} from "shared/lib/tickets";
 
 import { FreshnessPill } from "~/components/FreshnessPill";
-import { Toast } from "~/components/Toast";
+import { toAddedDateString } from "~/lib/date";
 import logo from "~/static/images/icon_monochrome.png";
-import RemoveConfirmIcon from "~/static/images/icons/solid/exclamation-square.svg";
+import CheckIcon from "~/static/images/icons/solid/check.svg";
+import CopyIcon from "~/static/images/icons/solid/copy.svg";
+import ExternalLinkIcon from "~/static/images/icons/solid/external-link-alt.svg";
 import ShareIcon from "~/static/images/icons/solid/share-alt.svg";
+import SpinnerIcon from "~/static/images/icons/solid/spinner-third.svg";
 import StopIcon from "~/static/images/icons/solid/times.svg";
 import RemoveIcon from "~/static/images/icons/solid/trash.svg";
 import WSDOTIcon from "~/static/images/icons/wsdot.svg";
@@ -36,6 +50,23 @@ interface ConfirmationState {
   title: string;
 }
 
+interface ConfirmationDialogProps {
+  confirmation: ConfirmationState | null;
+  onCancel: () => void;
+  onConfirm: () => Promise<void>;
+}
+
+interface ManualTicketLookupProps {
+  ticketId: string | undefined;
+  visible: boolean;
+}
+
+interface TicketRefreshState {
+  isRefreshing: boolean;
+  refresh: () => Promise<void>;
+  refreshError: boolean;
+}
+
 interface PassDetail {
   label: string;
   tone: "green" | "red" | "yellow";
@@ -48,29 +79,13 @@ const PASS_DETAIL_CLASSES: Record<PassDetail["tone"], string> = {
   red: "bg-red-light text-red-dark",
   yellow: "bg-yellow-lightest text-yellow-darkest",
 };
-const LIGHT_SURFACE_SECONDARY_BUTTON =
-  "button-secondary bg-gray-lightest text-gray-dark hover:bg-white hover:text-gray-darkest dark:bg-gray-lightest dark:text-gray-dark dark:hover:bg-white dark:hover:text-gray-darkest";
-
-// multi-ride text terms
-const MULTI_RIDE_PATTERN =
-  /\b(?:multi|passes?|commuter|monthly|\d+[- ]?rides?|ten[- ]?rides?|twenty[- ]?rides?)\b/i;
-
-// multi-ride detector
-const isMultiRideTicket = (ticket: TicketStorage): boolean => {
-  const passText = `${ticket.description} ${ticket.name} ${ticket.plu}`;
-
-  // QR fallback pass
-  if (ticket.codeFormat === "qr" && !ticket.description && !ticket.name) {
-    return true;
-  }
-
-  // remaining rides guard
-  if (typeof ticket.usesRemaining === "number" && ticket.usesRemaining > 1) {
-    return true;
-  }
-
-  return MULTI_RIDE_PATTERN.test(passText);
-};
+const LIGHT_SURFACE_SECONDARY_BUTTON = "button-light-surface";
+const MANUAL_LOOKUP_BUTTON_CLASSES =
+  "button w-full border-blue-dark bg-blue-dark text-white " +
+  "hover:border-blue-dark hover:bg-blue-medium hover:text-white";
+const COPIED_TICKET_BUTTON_CLASSES =
+  "button w-full border-green-dark bg-green-dark text-white " +
+  "hover:border-green-dark hover:bg-green-light hover:text-white";
 
 // get display title
 const getTicketTitle = (ticket: TicketStorage | ReservationAccount): string => {
@@ -151,12 +166,14 @@ const getWsfTicketTitle = (
     return "WSF Reservation Account";
   }
 
-  // product title
-  if (isMultiRideTicket(ticket)) {
+  const productKind = getTicketProductKind(ticket);
+  if (productKind === "multi-ride") {
     return "WSF Multi-Ride Pass";
   }
-
-  return "WSF Single-Ride Pass";
+  if (productKind === "single-ride") {
+    return "WSF Single-Ride Pass";
+  }
+  return "WSF Ticket";
 };
 
 // format pass date
@@ -247,7 +264,7 @@ const getPassDetails = (
   }
 
   const details: PassDetail[] = [];
-  const isMultiRide = isMultiRideTicket(ticket);
+  const isMultiRide = getTicketProductKind(ticket) === "multi-ride";
 
   // usage label first
   if (typeof ticket.usesRemaining === "number") {
@@ -352,31 +369,18 @@ const renderBarcode = (
   }
 };
 
-export const BarcodeOverlay = ({
-  ticket,
-  onClose,
-  onDelete,
-  onRefresh,
-}: Props): ReactElement | null => {
-  const codeContainerRef = useRef<HTMLDivElement | null>(null);
-  const ticketTitle = getTicketTitle(ticket);
-  const ticketSubtitle = getTicketSubtitle(ticket);
-  const ticketRouteName = getTicketRouteName(ticket);
-  const ticketCodeLabel = getTicketCodeLabel(ticket);
-  const isQrCode = ticket.codeFormat === "qr";
-  // account theme variant
-  const isReservationAccount = ticket.type === "reservation";
-  // multi-ride theme variant
-  const isMultiRideProduct =
-    ticket.type === "ticket" && isMultiRideTicket(ticket);
-  const passDetails = getPassDetails(ticket);
-  const [confirmation, setConfirmation] = useState<ConfirmationState | null>(
-    null
-  );
+// manage ticket refresh
+const useTicketRefresh = (
+  ticket: TicketStorage | ReservationAccount,
+  onRefresh: Props["onRefresh"]
+): TicketRefreshState => {
+  const autoRefreshTicketIdRef = useRef<string | null>(null);
   const [isRefreshing, setRefreshing] = useState(false);
   const [refreshError, setRefreshError] = useState(false);
 
-  const refresh = async (): Promise<void> => {
+  // refresh ticket details
+  const refresh = useCallback(async (): Promise<void> => {
+    // missing refresh guard
     if (!onRefresh) {
       return;
     }
@@ -390,7 +394,229 @@ export const BarcodeOverlay = ({
     } finally {
       setRefreshing(false);
     }
+  }, [onRefresh]);
+
+  // refresh newly opened tickets
+  useEffect(() => {
+    // automatic refresh guard
+    if (
+      ticket.type !== "ticket" ||
+      !onRefresh ||
+      autoRefreshTicketIdRef.current === ticket.id
+    ) {
+      return;
+    }
+    autoRefreshTicketIdRef.current = ticket.id;
+    refresh().catch(console.error);
+  }, [onRefresh, refresh, ticket.id, ticket.type]);
+
+  return { isRefreshing, refresh, refreshError };
+};
+
+// render manual ticket lookup
+const ManualTicketLookup = ({
+  ticketId,
+  visible,
+}: ManualTicketLookupProps): ReactElement | null => {
+  const [copyState, setCopyState] = useState<"idle" | "copied" | "error">(
+    "idle"
+  );
+  const ticketLookupId = ticketId ? getTicketLookupId(ticketId) : undefined;
+
+  // copy ticket number
+  const copyTicketNumber = async (): Promise<void> => {
+    // clipboard guard
+    if (!ticketLookupId || !navigator.clipboard) {
+      setCopyState("error");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(ticketLookupId);
+      setCopyState("copied");
+    } catch {
+      setCopyState("error");
+    }
   };
+
+  // start ticket number copy
+  const handleCopyTicketNumber = (): void => {
+    copyTicketNumber().catch(() => undefined);
+  };
+
+  // visibility guard
+  if (!visible) {
+    return null;
+  }
+
+  const copied = copyState === "copied";
+
+  return (
+    <section
+      aria-labelledby="ticket-lookup-error-title"
+      className="mb-4 rounded-2xl border-2 border-blue-medium bg-blue-lightest p-4 text-left"
+    >
+      <h3
+        className="text-lg font-black text-blue-dark"
+        id="ticket-lookup-error-title"
+      >
+        Automatic ticket lookup failed
+      </h3>
+      <p className="mt-1 text-sm font-semibold leading-relaxed text-gray-darkest">
+        Check your current ticket details manually in two steps:
+      </p>
+      <ol className="mt-3 space-y-3">
+        <li className="grid grid-cols-[1.75rem_1fr] items-center gap-2">
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-dark text-sm font-black text-white">
+            1
+          </span>
+          <button
+            aria-label={copied ? "Ticket number copied" : "Copy ticket number"}
+            className={
+              copied
+                ? COPIED_TICKET_BUTTON_CLASSES
+                : MANUAL_LOOKUP_BUTTON_CLASSES
+            }
+            onClick={handleCopyTicketNumber}
+            type="button"
+          >
+            {copied ? (
+              <CheckIcon className="ticket-copy-check-icon" />
+            ) : (
+              <CopyIcon />
+            )}
+            {copied ? "Ticket number copied" : "Copy ticket number"}
+          </button>
+        </li>
+        <li className="grid grid-cols-[1.75rem_1fr] items-center gap-2">
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-dark text-sm font-black text-white">
+            2
+          </span>
+          <a
+            className={MANUAL_LOOKUP_BUTTON_CLASSES}
+            href={getWave2GoTicketLookupUrl()}
+            rel="noreferrer"
+            target="_blank"
+          >
+            <ExternalLinkIcon />
+            Go to WSF ticket lookup
+          </a>
+        </li>
+      </ol>
+      <p
+        aria-live="polite"
+        className="mt-2 text-center text-xs font-bold text-red-dark"
+      >
+        {copyState === "error"
+          ? "Could not copy the ticket number. Try again."
+          : null}
+      </p>
+    </section>
+  );
+};
+
+// render confirmation dialog
+const ConfirmationDialog = ({
+  confirmation,
+  onCancel,
+  onConfirm,
+}: ConfirmationDialogProps): ReactElement | null => {
+  // confirmation guard
+  if (!confirmation) {
+    return null;
+  }
+
+  // contain dialog clicks
+  const stopDialogClick = (event: React.MouseEvent<HTMLDivElement>): void => {
+    event.stopPropagation();
+  };
+
+  return (
+    <div
+      className="absolute inset-0 z-30 flex items-center justify-center bg-[rgba(0,20,26,0.86)] px-5 backdrop-blur-md"
+      onClick={stopDialogClick}
+    >
+      <div className="w-full max-w-sm rounded-3xl border border-white/15 bg-white p-5 text-gray-darkest shadow-2xl">
+        <h3 className="text-xl font-black text-green-dark">
+          {confirmation.title}
+        </h3>
+        <p className="mt-3 text-sm font-semibold leading-relaxed text-gray-dark">
+          {confirmation.message}
+        </p>
+        <div className="mt-5 grid grid-cols-2 gap-3">
+          <button
+            className={clsx("button", LIGHT_SURFACE_SECONDARY_BUTTON)}
+            onClick={onCancel}
+            type="button"
+          >
+            Cancel
+          </button>
+          <button
+            className={clsx("button", {
+              "button-primary": confirmation.action === "share",
+              "button-danger": confirmation.action === "delete",
+            })}
+            onClick={onConfirm}
+            type="button"
+          >
+            {confirmation.primaryLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export const BarcodeOverlay = ({
+  ticket,
+  onClose,
+  onDelete,
+  onRefresh,
+}: Props): ReactElement | null => {
+  const codeContainerRef = useRef<HTMLDivElement | null>(null);
+  const ticketTitle = getTicketTitle(ticket);
+  const ticketSubtitle = getTicketSubtitle(ticket);
+  const ticketRouteName = getTicketRouteName(ticket);
+  const ticketCodeLabel = getTicketCodeLabel(ticket);
+  const addedLabel =
+    ticket.type === "ticket" && typeof ticket.addedAt === "number"
+      ? `Added ${toAddedDateString(DateTime.fromMillis(ticket.addedAt))}`
+      : null;
+  const isQrCode = ticket.codeFormat === "qr";
+  // account theme variant
+  const isReservationAccount = ticket.type === "reservation";
+  // multi-ride theme variant
+  const isMultiRideProduct =
+    ticket.type === "ticket" && getTicketProductKind(ticket) === "multi-ride";
+  const passDetails = getPassDetails(ticket);
+  const [confirmation, setConfirmation] = useState<ConfirmationState | null>(
+    null
+  );
+  const { isRefreshing, refresh, refreshError } = useTicketRefresh(
+    ticket,
+    onRefresh
+  );
+  const automaticLookupFailed =
+    ticket.type === "ticket" &&
+    !isRefreshing &&
+    (refreshError || typeof ticket.sourceUpdatedAt !== "number");
+
+  let refreshControl: ReactElement | null = null;
+  if (
+    ticket.type === "ticket" &&
+    typeof ticket.sourceUpdatedAt === "number" &&
+    onRefresh
+  ) {
+    refreshControl = (
+      <FreshnessPill
+        className="relative z-10 mt-3 bg-white shadow-lg"
+        isRefreshing={isRefreshing}
+        onClick={() => {
+          refresh().catch(console.error);
+        }}
+        sourceUpdatedAt={ticket.sourceUpdatedAt}
+      />
+    );
+  }
 
   useEffect(() => {
     const codeContainer = codeContainerRef.current;
@@ -410,12 +636,6 @@ export const BarcodeOverlay = ({
       setShare(canShare);
     };
     initShare();
-  }, []);
-
-  // track deleting state
-  const [isDeleting, setDeleting] = useState<string | null>(null);
-  useEffect(() => {
-    return () => setDeleting(null);
   }, []);
 
   // missing ticket guard
@@ -462,11 +682,10 @@ export const BarcodeOverlay = ({
     await shareTicketNow();
   };
 
-  // delete with confirmation
-  const deleteTicket = async (event: React.MouseEvent<HTMLButtonElement>) => {
+  // delete confirmation
+  const deleteTicket = (event: React.MouseEvent<HTMLButtonElement>) => {
     event.stopPropagation();
 
-    // reservation warning
     if (ticket.type === "reservation") {
       setConfirmation({
         action: "delete",
@@ -478,20 +697,16 @@ export const BarcodeOverlay = ({
       return;
     }
 
-    // confirmed delete
-    if (isDeleting === ticket.id) {
-      setDeleting(null);
-      await onDelete(ticket);
-      return;
-    }
-
-    setDeleting(ticket.id);
+    setConfirmation({
+      action: "delete",
+      message: "This removes the saved ticket and its barcode from Ferry FYI.",
+      primaryLabel: "Remove",
+      title: "Remove ticket?",
+    });
   };
 
   // run confirmation action
-  const confirmAction = async (event: React.MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation();
-
+  const confirmAction = async (): Promise<void> => {
     // missing confirmation guard
     if (!confirmation) {
       return;
@@ -509,8 +724,7 @@ export const BarcodeOverlay = ({
   };
 
   // cancel confirmation
-  const cancelConfirmation = (event: React.MouseEvent<HTMLButtonElement>) => {
-    event.stopPropagation();
+  const cancelConfirmation = (): void => {
     setConfirmation(null);
   };
 
@@ -536,7 +750,7 @@ export const BarcodeOverlay = ({
       >
         <div
           className={clsx(
-            "relative w-full max-w-lg overflow-hidden rounded-3xl shadow-2xl",
+            "relative flex max-h-[calc(100dvh-4rem)] w-full max-w-lg flex-col overflow-hidden rounded-3xl shadow-2xl",
             "border border-white/15 bg-white text-gray-darkest"
           )}
           onClick={(event) => event.stopPropagation()}
@@ -550,7 +764,7 @@ export const BarcodeOverlay = ({
             <StopIcon className="text-xl" />
           </button>
           <div
-            className={clsx("relative overflow-hidden px-5 py-5", {
+            className={clsx("relative shrink-0 overflow-hidden px-5 py-5", {
               // single-ride overlay theme
               "bg-[radial-gradient(circle_at_18%_12%,rgba(255,255,255,0.46)_0%,rgba(255,255,255,0.18)_22%,rgba(255,255,255,0)_42%),linear-gradient(135deg,#016f52_0%,#006f52_52%,#004d61_100%)] text-white":
                 !isMultiRideProduct && !isReservationAccount,
@@ -620,11 +834,16 @@ export const BarcodeOverlay = ({
                 >
                   {ticketTitle}
                 </h2>
+                {addedLabel ? (
+                  <p className="mt-1 text-xs font-bold text-white/75">
+                    {addedLabel}
+                  </p>
+                ) : null}
               </div>
             </div>
           </div>
 
-          <div className="px-5 py-5">
+          <div className="min-h-0 overflow-y-auto overscroll-contain px-5 py-5">
             {/* barcode subtitle */}
             {isQrCode ? null : (
               <p className="mx-auto mb-4 max-w-xs break-all text-center text-sm font-bold text-gray-dark">
@@ -632,8 +851,24 @@ export const BarcodeOverlay = ({
               </p>
             )}
 
+            {isRefreshing ? (
+              <div
+                aria-live="polite"
+                className="mb-4 flex items-center justify-center gap-2 rounded-2xl border border-blue-medium bg-blue-lightest px-4 py-3 text-sm font-black text-blue-dark"
+                role="status"
+              >
+                <SpinnerIcon className="animate-spin text-base" />
+                Refreshing ticket details…
+              </div>
+            ) : null}
+
+            <ManualTicketLookup
+              ticketId={ticket.type === "ticket" ? ticket.id : undefined}
+              visible={automaticLookupFailed}
+            />
+
             {/* pass details */}
-            {passDetails.length > 0 ? (
+            {!automaticLookupFailed && passDetails.length > 0 ? (
               <div className="mb-3 flex flex-wrap justify-center gap-2">
                 {passDetails.map((detail) => (
                   <span
@@ -670,20 +905,18 @@ export const BarcodeOverlay = ({
 
             <div className="mt-5 grid grid-cols-2 gap-3">
               <button
-                className={clsx("button", {
-                  "button-danger": isDeleting === ticket.id,
-                  [LIGHT_SURFACE_SECONDARY_BUTTON]: isDeleting !== ticket.id,
-                  "col-span-2": !canShare,
-                })}
+                className={clsx(
+                  "button border-red-dark bg-transparent text-red-dark",
+                  "hover:border-red-dark hover:bg-red-lightest hover:text-red-dark",
+                  "dark:border-red-dark dark:bg-transparent dark:text-red-dark",
+                  "dark:hover:border-red-dark dark:hover:bg-red-lightest dark:hover:text-red-dark",
+                  { "col-span-2": !canShare }
+                )}
                 onClick={deleteTicket}
                 type="button"
               >
-                {isDeleting === ticket.id ? (
-                  <RemoveConfirmIcon />
-                ) : (
-                  <RemoveIcon />
-                )}
-                {isDeleting === ticket.id ? "Tap again to delete" : "Remove"}
+                <RemoveIcon />
+                Remove
               </button>
               {canShare && (
                 <button
@@ -698,56 +931,13 @@ export const BarcodeOverlay = ({
             </div>
           </div>
         </div>
-        {ticket.type === "ticket" && ticket.sourceUpdatedAt && onRefresh ? (
-          <FreshnessPill
-            className="relative z-10 mt-3 bg-white shadow-lg"
-            isRefreshing={isRefreshing}
-            onClick={() => {
-              refresh().catch(console.error);
-            }}
-            sourceUpdatedAt={ticket.sourceUpdatedAt}
-          />
-        ) : null}
-        {refreshError ? (
-          <Toast error>
-            Could not refresh this ticket. Showing saved data.
-          </Toast>
-        ) : null}
+        {refreshControl}
       </div>
-      {confirmation ? (
-        <div
-          className="absolute inset-0 z-30 flex items-center justify-center bg-[rgba(0,20,26,0.86)] px-5 backdrop-blur-md"
-          onClick={(event) => event.stopPropagation()}
-        >
-          <div className="w-full max-w-sm rounded-3xl border border-white/15 bg-white p-5 text-gray-darkest shadow-2xl">
-            <h3 className="text-xl font-black text-green-dark">
-              {confirmation.title}
-            </h3>
-            <p className="mt-3 text-sm font-semibold leading-relaxed text-gray-dark">
-              {confirmation.message}
-            </p>
-            <div className="mt-5 grid grid-cols-2 gap-3">
-              <button
-                className={clsx("button", LIGHT_SURFACE_SECONDARY_BUTTON)}
-                onClick={cancelConfirmation}
-                type="button"
-              >
-                Cancel
-              </button>
-              <button
-                className={clsx("button", {
-                  "button-primary": confirmation.action === "share",
-                  "button-danger": confirmation.action === "delete",
-                })}
-                onClick={confirmAction}
-                type="button"
-              >
-                {confirmation.primaryLabel}
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <ConfirmationDialog
+        confirmation={confirmation}
+        onCancel={cancelConfirmation}
+        onConfirm={confirmAction}
+      />
     </div>
   );
 };

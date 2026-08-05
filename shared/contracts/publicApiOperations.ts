@@ -238,7 +238,7 @@ export const publicApiOperations = [
     cache: "private-no-store",
     documentInDataSources: false,
     freshness:
-      "Sensitive lookup supplied by the ticket holder; never guess, retain, or cache identifiers.",
+      "Sensitive holder-supplied lookup; optional bearer authentication enables a 30-minute account-scoped latest-result cache, while anonymous results are not persisted.",
     includeInOpenApi: true,
     method: "GET",
     operationId: "getTicket",

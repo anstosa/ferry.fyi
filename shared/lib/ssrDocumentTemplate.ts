@@ -57,10 +57,10 @@ const replaceRootContents = (
   if (rootEnd < 0) {
     throw new Error("SSR document template is missing #root closing tag");
   }
-  const rootWithMode = root[0].replace(
-    ">",
-    ` ${PUBLIC_SSR_DOCUMENT_MODE_ATTRIBUTE}="${mode}">`
-  );
+  const rootWithMode = `${root[0].slice(
+    0,
+    -1
+  )} ${PUBLIC_SSR_DOCUMENT_MODE_ATTRIBUTE}="${mode}">`;
   return (
     template.slice(0, root.index) +
     rootWithMode +

@@ -12,7 +12,7 @@ import { getWsfStatus } from "~/lib/wsf/api";
 
 import { adminRouter, preventAdminCaching } from "./admin";
 import { adsRouter } from "./ads";
-import { assignAuthUser, requireAuth } from "./auth";
+import { assignAuthUser, assignOptionalAuthUser, requireAuth } from "./auth";
 import { cameraRouter } from "./cameras";
 import { debugRouter } from "./debug";
 import { fareRouter } from "./fares";
@@ -90,7 +90,7 @@ apiRouter.use("/terminals", terminalRouter);
 apiRouter.use("/schedule", scheduleRouter);
 apiRouter.use("/fares", fareRouter);
 apiRouter.use("/features", featureRouter);
-apiRouter.use("/tickets", ticketRouter);
+apiRouter.use("/tickets", assignOptionalAuthUser, ticketRouter);
 apiRouter.use("/leaderboards", leaderboardRouter);
 if (process.env.NODE_ENV === "development") {
   apiRouter.use("/debug", debugRouter);

@@ -373,7 +373,19 @@ export const Account = withAuthenticationRequired(
     }
 
     return (
-      <Page title="Account">
+      <Page
+        headerAction={
+          /* top-bar logout */
+          <button
+            className="button button-outline button-small"
+            onClick={onLogout}
+            type="button"
+          >
+            Log Out
+          </button>
+        }
+        title="Account"
+      >
         <SeoHelmet seo={getSeoMetadata("/account")} />
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6">
           {userError && (
@@ -400,7 +412,6 @@ export const Account = withAuthenticationRequired(
             locale={locale}
             name={name}
             nickname={nickname}
-            onLogout={() => onLogout()}
             provider={provider}
             updatedAt={updatedAt}
             username={username}

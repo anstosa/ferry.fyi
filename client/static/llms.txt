@@ -11,7 +11,7 @@ Ferry information changes quickly. Treat times, vehicle space, camera images, fo
 - [Data sources and API guide](https://ferry.fyi/data-sources): Explains data provenance, source freshness, public read-only APIs, citation guidance, and forecast limitations.
 - [How Many Boats?](https://ferry.fyi/today): Shows the Clinton-to-Mukilteo operating context on Ferry FYI. This Ferry FYI URL is intentionally noindex; the indexable canonical profile is [howmanyboats.today](https://howmanyboats.today/).
 - [About Ferry FYI](https://ferry.fyi/about): App background, data credits, privacy, and tap-to-copy web, native-build, and OTA version information.
-- [Tickets](https://ferry.fyi/tickets): Store eligible ticket details, refresh their status, and scan supported ticket barcodes. Ticket data is sensitive and requires the ticket holder's authorization.
+- [Tickets](https://ferry.fyi/tickets): Store eligible tickets and scan supported ticket barcodes. Detail refreshes are best-effort and occur when a ticket is added, opened, or explicitly refreshed; loading the wallet does not bulk-refresh saved tickets. For signed-in users, the latest successful ticket details are cached with the account so another device can reuse a recent result. When Wave2Go lookup is unavailable, Ferry FYI keeps the saved code usable and shows a neutral ticket placeholder instead of guessing the product type. Ticket data is sensitive and requires the ticket holder's authorization.
 - [Privacy and advertising policy](https://ferry.fyi/privacy): Explains how Ferry FYI handles user information, limits contextual advertising, reports aggregate campaign results, and reviews prohibited ad categories.
 - [Support and feedback](https://ferry.fyi/feedback): Report a problem or request a Ferry FYI feature.
 - [Sitemap](https://ferry.fyi/sitemap.xml): Indexable schedules, route tabs, terminal pages, and informational pages.
@@ -33,7 +33,7 @@ Date-selected schedule URLs are noindex variants of the undated route canonical.
 - **Traffic cameras:** View terminal camera images, their update/check time, and driving directions.
 - **Map:** Explore vessel locations and terminal context on an interactive map.
 - **Fare planner:** Browse route/date fare options and calculate a quote from selected fare line items.
-- **Tickets:** Sign in to view eligible ticket and reservation details, barcodes, and refresh status. Do not guess or request another person's ticket identifier.
+- **Tickets:** Sign in to view eligible ticket and reservation details, barcodes, and refresh status when Wave2Go lookup is available. An unresolved saved ticket remains a usable code with a neutral placeholder. Do not guess its product type or request another person's ticket identifier.
 - **Alerts and favorites:** Signed-in users can save favorite routes and configure service, capacity, or sailing alerts.
 - **Forecast explanations:** Learn how weather, tide conditions, and observed data inform capacity and delay forecasts.
 - **Contextual advertising:** Clearly labeled local ads may appear on home, schedule, camera, terminal-detail, and fare pages. Route ads can differ by travel direction; ad selection does not use account information, precise location, saved tickets, notification settings, or activity across other websites.
@@ -104,7 +104,7 @@ Fare responses include a `state` such as `current`, `no-fare`, `stale`, or `unav
 ### Authenticated and specialized endpoints
 
 - `GET /api/user` and `POST /api/user` — Signed-in user's favorites, alert settings, and app metadata. Require an Auth0 bearer token; never request, log, or expose another user's token.
-- `GET /api/tickets/:ticketId` — Looks up a user-provided ticket identifier. Ticket data is sensitive; do not guess identifiers or expose returned barcodes.
+- `GET /api/tickets/:ticketId` — Looks up a user-provided ticket identifier. A valid account bearer token enables an account-scoped recent-result cache; anonymous lookups remain available and are not persisted. Ticket data is sensitive; do not guess identifiers or expose returned barcodes.
 
 <!-- LEADERBOARDS:START -->
 ### Leaderboards (feature-flagged public reads)

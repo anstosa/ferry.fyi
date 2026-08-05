@@ -27,16 +27,16 @@ import type {
   TicketCodeFormat,
   TicketStorage,
 } from "shared/contracts/tickets";
-import { sortBy, without } from "shared/lib/arrays";
+import { sortBy } from "shared/lib/arrays";
 import { getSeoMetadata } from "shared/lib/seo";
+import { getSavedTicketCode, parseSavedTicketCode } from "shared/lib/tickets";
 
 import { AppTeaser } from "~/components/AppTeaser";
 import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { Page } from "~/components/Page";
 import { SeoHelmet } from "~/components/SeoHelmet";
 import { Skeleton, SkeletonGroup } from "~/components/Skeleton";
-import { Toast } from "~/components/Toast";
-import { get } from "~/lib/api";
+import { del, get } from "~/lib/api";
 import { useQuery } from "~/lib/browser";
 import { useDevice } from "~/lib/device";
 import { useFavoriteRoutes } from "~/lib/favoriteRoutes";
@@ -58,7 +58,11 @@ const BarcodeOverlay = React.lazy(() =>
   }))
 );
 import { LoginPrompt } from "./LoginPrompt";
-import { normalizeTicketList, ticketsAtom } from "./storage";
+import {
+  normalizeTicketList,
+  removeStoredTicket,
+  ticketsAtom,
+} from "./storage";
 import { Ticket } from "./Ticket";
 
 interface WebBarcodeScanner {
@@ -121,8 +125,6 @@ interface TicketCodeScan {
   code: string;
   codeFormat: TicketCodeFormat;
 }
-
-const QR_SAVED_TICKET_PREFIX = "qr:";
 
 const HEADER_ACTION_CLASSES = clsx(
   "group flex min-h-16 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border px-2 py-2 text-center backdrop-blur transition",
@@ -200,7 +202,6 @@ const IMAGE_DECODE_CROP_SCALES = [0.24, 0.32, 0.42, 0.58, 0.74];
 const IMAGE_DECODE_MAX_VARIANTS = 72;
 const IMAGE_DECODE_MIN_CANVAS_SIZE = 900;
 const IMAGE_DECODE_MAX_CANVAS_SIZE = 1600;
-const TICKET_REFRESH_CONCURRENCY = 4;
 
 // WSF purchase links
 const WSF_RESERVATION_URL =
@@ -276,44 +277,6 @@ const getTicketCodeFormatFromNative = (
   }
 
   return "barcode";
-};
-
-// encode synced ticket reference
-const getSavedTicketCode = (
-  code: string,
-  codeFormat: TicketCodeFormat
-): string => {
-  // QR sync encoding
-  if (codeFormat === "qr") {
-    return `${QR_SAVED_TICKET_PREFIX}${encodeURIComponent(code)}`;
-  }
-
-  return code;
-};
-
-// parse synced ticket reference
-const parseSavedTicketCode = (savedCode: string): TicketCodeScan => {
-  // QR sync reference
-  if (savedCode.startsWith(QR_SAVED_TICKET_PREFIX)) {
-    try {
-      return {
-        code: decodeURIComponent(
-          savedCode.slice(QR_SAVED_TICKET_PREFIX.length)
-        ),
-        codeFormat: "qr",
-      };
-    } catch {
-      return {
-        code: savedCode.slice(QR_SAVED_TICKET_PREFIX.length),
-        codeFormat: "qr",
-      };
-    }
-  }
-
-  return {
-    code: savedCode,
-    codeFormat: "barcode",
-  };
 };
 
 // ticket lookup path
@@ -784,8 +747,6 @@ export const Tickets = (): ReactElement => {
     TicketStorage | ReservationAccount | null
   >(null);
   const [showInvalidTickets, setShowInvalidTickets] = useState<boolean>(false);
-  const [isRefreshingTickets, setRefreshingTickets] = useState<boolean>(false);
-  const [refreshError, setRefreshError] = useState(false);
   const autoOpenedTicketId = useRef<string | null>(null);
   const brightnessRef = useRef<number | null>(null);
   const {
@@ -797,7 +758,20 @@ export const Tickets = (): ReactElement => {
   const device = useDevice();
   const { terminals } = useTerminals();
   const [favoriteRouteIds] = useFavoriteRoutes();
-  const [{ tickets: savedTickets }, { updateUser }] = useUser();
+  const [{ tickets: savedTickets }, { getAccessToken, updateUser }] = useUser();
+
+  const getTicketAccessToken = async (): Promise<string | undefined> => {
+    try {
+      return await getAccessToken();
+    } catch {
+      return undefined;
+    }
+  };
+
+  const getTicket = async (ticketId: string): Promise<TicketType> => {
+    const accessToken = await getTicketAccessToken();
+    return await get<TicketType>(getTicketLookupPath(ticketId), accessToken);
+  };
 
   // add saved tickets from cloud
   useEffect(() => {
@@ -809,93 +783,34 @@ export const Tickets = (): ReactElement => {
     });
   }, [savedTickets]);
 
-  const updateTickets = async (): Promise<void> => {
-    const standardTickets = tickets.filter(
-      (ticket): ticket is TicketStorage => ticket.type === "ticket"
-    );
-    const refreshedTickets = new Map<string, TicketType>();
-    let didFail = false;
-    let nextTicketIndex = 0;
-    const workers = Array.from(
-      { length: Math.min(TICKET_REFRESH_CONCURRENCY, standardTickets.length) },
-      async () => {
-        while (nextTicketIndex < standardTickets.length) {
-          const ticket = standardTickets[nextTicketIndex];
-          nextTicketIndex += 1;
-          try {
-            refreshedTickets.set(
-              ticket.id,
-              await get<TicketType>(getTicketLookupPath(ticket.id))
-            );
-          } catch (error) {
-            // Keep the prior ticket and let independent ticket refreshes continue.
-            didFail = true;
-            console.error(error);
-          }
-        }
-      }
-    );
-    await Promise.allSettled(workers);
-    setTickets((current) =>
-      standardTickets.reduce((next, ticket) => {
-        const data = refreshedTickets.get(ticket.id);
-        if (!data) {
-          return next;
-        }
-        return [
-          ...without(next, ticket),
-          {
-            ...ticket,
-            ...data,
-            codeFormat: ticket.codeFormat,
-            id: ticket.id,
-            sourceUpdatedAt: data.sourceUpdatedAt ?? null,
-            type: "ticket",
-          },
-        ];
-      }, current)
-    );
-    if (didFail) {
-      throw new Error("One or more ticket refreshes failed");
-    }
-  };
-
   const refreshTicket = async (ticket: TicketStorage): Promise<void> => {
-    const data = await get<TicketType>(getTicketLookupPath(ticket.id));
-    setTickets((current) => [
-      ...without(current, ticket),
-      {
-        ...ticket,
-        ...data,
-        codeFormat: ticket.codeFormat,
-        id: ticket.id,
-        sourceUpdatedAt: data.sourceUpdatedAt ?? null,
-        type: "ticket",
-      },
-    ]);
+    const data = await getTicket(ticket.id);
+    setTickets((current) =>
+      current.map((currentTicket) =>
+        currentTicket.type === "ticket" && currentTicket.id === ticket.id
+          ? {
+              ...currentTicket,
+              ...data,
+              codeFormat: currentTicket.codeFormat,
+              id: currentTicket.id,
+              sourceUpdatedAt: data.sourceUpdatedAt ?? null,
+              type: "ticket" as const,
+            }
+          : currentTicket
+      )
+    );
     setExpanded((current) =>
       current && current.type === "ticket" && current.id === ticket.id
         ? {
-            ...ticket,
+            ...current,
             ...data,
+            codeFormat: current.codeFormat,
+            id: current.id,
             sourceUpdatedAt: data.sourceUpdatedAt ?? null,
             type: "ticket",
           }
         : current
     );
-  };
-
-  const refreshAllTickets = async (): Promise<void> => {
-    setRefreshingTickets(true);
-    setRefreshError(false);
-    try {
-      await updateTickets();
-    } catch (error) {
-      setRefreshError(true);
-      throw error;
-    } finally {
-      setRefreshingTickets(false);
-    }
   };
 
   const stopScanning = (inputControls = controls) => {
@@ -910,7 +825,6 @@ export const Tickets = (): ReactElement => {
   };
 
   useEffect(() => {
-    updateTickets().catch(console.error);
     if (codeInput) {
       addCode(decodeURIComponent(codeInput), {
         codeFormat: codeFormatInput === "qr" ? "qr" : "barcode",
@@ -927,7 +841,10 @@ export const Tickets = (): ReactElement => {
     const normalizedTickets = normalizeTicketList(tickets);
 
     // duplicate account cleanup
-    if (normalizedTickets.length !== tickets.length) {
+    if (
+      normalizedTickets.length !== tickets.length ||
+      normalizedTickets.some((ticket, index) => ticket !== tickets[index])
+    ) {
       setTickets(normalizedTickets);
     }
   }, [setTickets, tickets]);
@@ -1005,6 +922,7 @@ export const Tickets = (): ReactElement => {
     options: { codeFormat?: TicketCodeFormat } = {}
   ): Promise<void> {
     const codeFormat = options.codeFormat ?? "barcode";
+    const addedAt = Date.now();
 
     // existing ticket guard
     if (tickets.find(({ id }) => id === code)) {
@@ -1028,11 +946,12 @@ export const Tickets = (): ReactElement => {
     } else {
       setAdding(true);
       try {
-        const ticket = await get<TicketType>(getTicketLookupPath(code));
+        const ticket = await getTicket(code);
         setTickets((tickets) => [
           ...tickets,
           {
             ...ticket,
+            addedAt,
             codeFormat,
             id: code,
             type: "ticket",
@@ -1046,6 +965,7 @@ export const Tickets = (): ReactElement => {
             {
               type: "ticket",
               id: code,
+              addedAt,
               codeFormat,
             },
           ]);
@@ -1224,7 +1144,7 @@ export const Tickets = (): ReactElement => {
           <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/10" />
           <div className="absolute -bottom-16 right-12 h-36 w-36 rounded-full bg-yellow-medium/20 blur-sm" />
           <div className="relative flex flex-col gap-5">
-            <div className="flex items-start justify-between gap-3">
+            <div>
               <div>
                 <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-yellow-lightest">
                   Wallet
@@ -1233,20 +1153,6 @@ export const Tickets = (): ReactElement => {
                   Ferry tickets, ready to scan
                 </h2>
               </div>
-              <button
-                aria-label="Refresh all ticket codes from WSF"
-                aria-busy={isRefreshingTickets}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/30 bg-white/15 text-white disabled:opacity-60"
-                disabled={isRefreshingTickets}
-                onClick={() => {
-                  refreshAllTickets().catch(console.error);
-                }}
-                type="button"
-              >
-                <SyncIcon
-                  className={isRefreshingTickets ? "animate-spin" : ""}
-                />
-              </button>
             </div>
             <div className="grid grid-cols-3 gap-2">
               <button
@@ -1524,12 +1430,6 @@ export const Tickets = (): ReactElement => {
             : null}
         </ul>
       </section>
-      {refreshError ? (
-        <Toast error>
-          Could not refresh every ticket. Showing saved tickets.
-        </Toast>
-      ) : null}
-
       {expanded && (
         <Suspense fallback={<TicketOverlayLoadingState />}>
           <BarcodeOverlay
@@ -1541,18 +1441,24 @@ export const Tickets = (): ReactElement => {
             }
             onClose={() => closeOverlay()}
             onDelete={async (deleted) => {
-              setTickets(without(tickets, deleted));
+              setTickets((current) => removeStoredTicket(current, deleted));
               const nextSavedTickets = savedTickets?.filter(
                 (savedCode) =>
                   parseSavedTicketCode(savedCode).code !== deleted.id
               );
-              try {
-                await updateUser({
+              await closeOverlay();
+              const accessToken =
+                deleted.type === "ticket"
+                  ? await getTicketAccessToken()
+                  : undefined;
+              await Promise.allSettled([
+                updateUser({
                   app_metadata: { tickets: nextSavedTickets },
-                });
-              } finally {
-                await closeOverlay();
-              }
+                }),
+                deleted.type === "ticket" && accessToken
+                  ? del(getTicketLookupPath(deleted.id), {}, accessToken)
+                  : Promise.resolve(),
+              ]);
             }}
           />
         </Suspense>

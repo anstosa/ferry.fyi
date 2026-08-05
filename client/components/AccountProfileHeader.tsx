@@ -11,11 +11,20 @@ interface Props {
   locale: string | null;
   name: string;
   nickname: string | null;
-  onLogout: () => void;
   provider: string | null;
   updatedAt: string | null;
   username: string | null;
 }
+
+// first-and-last initials fallback
+const getProfileInitials = (name: string): string => {
+  const nameParts = name.trim().split(/\s+/);
+  const firstInitial = nameParts[0]?.charAt(0) ?? "";
+  const lastInitial =
+    nameParts.length > 1 ? (nameParts.at(-1)?.charAt(0) ?? "") : "";
+
+  return `${firstInitial}${lastInitial}`.toUpperCase();
+};
 
 const ProfileDetail = ({
   label,
@@ -43,7 +52,6 @@ export const AccountProfileHeader = ({
   locale,
   name,
   nickname,
-  onLogout,
   provider,
   updatedAt,
   username,
@@ -52,13 +60,13 @@ export const AccountProfileHeader = ({
     aria-labelledby="account-profile-name"
     className="overflow-hidden rounded-2xl border border-green-dark/20 bg-gradient-to-br from-green-dark via-green-dark to-blue-dark shadow-lg dark:border-white/10"
   >
-    <header className="flex flex-col items-stretch gap-4 p-5 sm:flex-row sm:items-start sm:justify-between sm:p-6">
+    <header className="p-5 sm:p-6">
       <div className="flex min-w-0 items-start gap-4 sm:items-center">
         <div
           aria-hidden="true"
           className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-white/30 bg-white/15 text-2xl font-black text-white shadow-inner sm:h-16 sm:w-16"
         >
-          {name.charAt(0).toUpperCase()}
+          {getProfileInitials(name)}
         </div>
         <div className="min-w-0">
           <p className="text-xs font-bold uppercase tracking-wider text-white/80">
@@ -77,13 +85,6 @@ export const AccountProfileHeader = ({
           )}
         </div>
       </div>
-      <button
-        className="button button-outline button-small shrink-0 self-end sm:self-auto"
-        onClick={onLogout}
-        type="button"
-      >
-        Log Out
-      </button>
     </header>
     <dl className="grid gap-px bg-white/15 sm:grid-cols-2 lg:grid-cols-3">
       <ProfileDetail label="Account ID" value={accountId} />

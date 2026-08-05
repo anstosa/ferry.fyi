@@ -5,6 +5,7 @@ import {
   UserUpdatePayload,
 } from "shared/contracts/user";
 import { isObject } from "shared/lib/objects";
+import { getSavedTicketLookupId } from "shared/lib/tickets";
 
 import {
   getAlertRules,
@@ -13,6 +14,7 @@ import {
   hasAppMetadataChanged,
   normalizeAppMetadata,
 } from "~/lib/alertMetadata";
+import { deleteUnsavedUserTickets } from "~/lib/wsf/userTicketCache";
 import { UserSettings } from "~/models/UserSettings";
 
 const userRouter = Router();
@@ -138,6 +140,12 @@ userRouter.post("/", async (request, response) => {
       ? { favoriteRouteIds: update.favoriteRouteIds }
       : {}),
   });
+  if (update.app_metadata?.tickets) {
+    await deleteUnsavedUserTickets(
+      response.locals.user.sub,
+      update.app_metadata.tickets.map(getSavedTicketLookupId)
+    );
+  }
   return response.send(serializeUserSettings(settings, appMetadata));
 });
 

@@ -1,9 +1,14 @@
+import fs from "node:fs";
 import type { IncomingHttpHeaders } from "node:http";
 import https from "node:https";
+import path from "node:path";
 
 import { expect, type Page, test } from "@playwright/test";
 
 const privateCanary = "private-canary-must-never-cross";
+const fixtureCertificate = fs.readFileSync(
+  path.resolve(process.cwd(), "tests/e2e/certs/ferry-fyi.crt")
+);
 
 const fixture = async (
   path: string,
@@ -18,10 +23,10 @@ const fixture = async (
           Host: "ferry.fyi",
         },
         hostname: "127.0.0.1",
+        ca: fixtureCertificate,
         method: body ? "POST" : "GET",
         path,
         port,
-        rejectUnauthorized: false,
       },
       (response) => {
         const chunks: Buffer[] = [];
@@ -88,10 +93,10 @@ const raw = async (
           ...options.headers,
         },
         hostname: "127.0.0.1",
+        ca: fixtureCertificate,
         method: "GET",
         path,
         port: options.port ?? 4177,
-        rejectUnauthorized: false,
       },
       (response) => {
         const chunks: Buffer[] = [];

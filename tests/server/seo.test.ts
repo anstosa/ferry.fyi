@@ -11,7 +11,11 @@ import path from "path";
 import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { createStaticRouter } from "../../server/controllers/static";
+import {
+  createStaticPolicyRateLimiter,
+  createStaticPolicyRouter,
+  createStaticRouter,
+} from "../../server/controllers/static";
 import {
   createBrowserRateLimiter,
   createBrowserRouter,
@@ -115,6 +119,19 @@ describe("SEO metadata", () => {
 
     await request(rateLimitedApp).get("/about").expect(200);
     await request(rateLimitedApp).get("/privacy").expect(429);
+  });
+
+  it("rate limits discovery documents independently", async () => {
+    const rateLimitedApp = express();
+    rateLimitedApp.use(
+      createStaticPolicyRouter(clientDist, {
+        policyRateLimiter: createStaticPolicyRateLimiter({ limit: 1 }),
+      })
+    );
+
+    await request(rateLimitedApp).get("/robots.txt").expect(200);
+    const limited = await request(rateLimitedApp).get("/llms.txt").expect(429);
+    expect(limited.headers.ratelimit).toBeDefined();
   });
 
   it("allows only same-origin canonical redirect paths", () => {
@@ -299,7 +316,7 @@ describe("SEO metadata", () => {
       const response = await request(app).get(pathname).expect(200);
 
       expect(response.text).toContain(
-        `<title data-seo-seed="true">${title.replace("&", "&amp;")}</title>`
+        `<title data-seo-seed="true">${title.replaceAll("&", "&amp;")}</title>`
       );
       expect(response.text).toContain('content="index,follow"');
       expect(response.text).toContain(

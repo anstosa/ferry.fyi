@@ -80,7 +80,11 @@ describe("public API operation contract", () => {
       expect(generated.description).toContain(operation.rate);
       expect(generated.description).toContain(operation.freshness);
       expect(generated.security).toHaveLength(
-        operation.auth === "bearer" ? 1 : 0
+        operation.auth === "bearer"
+          ? 1
+          : operation.auth === "sensitive-id"
+            ? 2
+            : 0
       );
       for (const response of Object.values(generated.responses)) {
         const { example } = response.content["application/json"];

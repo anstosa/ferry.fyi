@@ -6,9 +6,9 @@ import type {
   TicketStorage,
 } from "shared/contracts/tickets";
 import { pluralize } from "shared/lib/strings";
-import { getTicketDisplayInfo } from "shared/lib/tickets";
+import { getTicketDisplayInfo, getTicketProductKind } from "shared/lib/tickets";
 
-import { toShortDateString } from "~/lib/date";
+import { toAddedDateString, toShortDateString } from "~/lib/date";
 
 interface Props {
   ticket: TicketStorage | ReservationAccount;
@@ -18,13 +18,15 @@ interface Props {
 type ProductLabel =
   | "Reservation Account"
   | "Multi-Ride Ticket"
-  | "Single Ride Ticket";
+  | "Single Ride Ticket"
+  | "Ticket";
 
 // stub line pairs
 const PRODUCT_LABEL_LINES: Record<ProductLabel, [string, string]> = {
   "Reservation Account": ["RESERVATION", "ACCOUNT"],
   "Multi-Ride Ticket": ["MULTI-RIDE", "TICKET"],
   "Single Ride Ticket": ["SINGLE RIDE", "TICKET"],
+  Ticket: ["WSF", "TICKET"],
 };
 
 // card product titles
@@ -32,27 +34,7 @@ const PRODUCT_TITLES: Record<ProductLabel, string> = {
   "Reservation Account": "WSF Reservation Account",
   "Multi-Ride Ticket": "WSF Multi-Ride Pass",
   "Single Ride Ticket": "WSF Single-Ride Pass",
-};
-
-// multi-ride text terms
-const MULTI_RIDE_PATTERN =
-  /\b(?:multi|passes?|commuter|monthly|\d+[- ]?rides?|ten[- ]?rides?|twenty[- ]?rides?)\b/i;
-
-// multi-ride detector
-const isMultiRideTicket = (ticket: TicketStorage): boolean => {
-  const passText = `${ticket.description} ${ticket.name} ${ticket.plu}`;
-
-  // QR fallback pass
-  if (ticket.codeFormat === "qr" && !ticket.description && !ticket.name) {
-    return true;
-  }
-
-  // remaining rides guard
-  if (typeof ticket.usesRemaining === "number" && ticket.usesRemaining > 1) {
-    return true;
-  }
-
-  return MULTI_RIDE_PATTERN.test(passText);
+  Ticket: "WSF Ticket",
 };
 
 // product stub label
@@ -64,21 +46,23 @@ const getProductLabel = (
     return "Reservation Account";
   }
 
-  // multi-ride label
-  if (isMultiRideTicket(ticket)) {
+  const productKind = getTicketProductKind(ticket);
+  if (productKind === "multi-ride") {
     return "Multi-Ride Ticket";
   }
-
-  return "Single Ride Ticket";
+  if (productKind === "single-ride") {
+    return "Single Ride Ticket";
+  }
+  return "Ticket";
 };
 
 export const Ticket = ({ ticket, onClick }: Props): ReactElement => {
   let name: string;
   let routeName: string | undefined;
-  // ticket lookup placeholder
+  // unresolved ticket placeholder
   let status: ReactElement = (
     <span className="text-sm font-semibold text-gray-dark dark:text-white/65">
-      Refreshing ticket details
+      Ticket details unavailable
     </span>
   );
   let subtitle: string;
@@ -92,6 +76,10 @@ export const Ticket = ({ ticket, onClick }: Props): ReactElement => {
   const codeLabel = ticket.codeFormat === "qr" ? "QR code" : "barcode";
   const isCodeSubtitle =
     ticket.type === "reservation" || ticket.codeFormat === "qr";
+  const addedLabel =
+    ticket.type === "ticket" && typeof ticket.addedAt === "number"
+      ? `Added ${toAddedDateString(DateTime.fromMillis(ticket.addedAt))}`
+      : null;
 
   // ticket display
   if (ticket.type === "ticket") {
@@ -289,6 +277,11 @@ export const Ticket = ({ ticket, onClick }: Props): ReactElement => {
               </span>
             </span>
             {status}
+            {addedLabel ? (
+              <span className="mt-2 block text-xs font-bold text-gray-dark/75 dark:text-white/55">
+                {addedLabel}
+              </span>
+            ) : null}
           </span>
         </span>
       </button>

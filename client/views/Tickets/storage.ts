@@ -11,23 +11,28 @@ export const ticketsAtom = atomWithStorage<StoredTicket[]>("tickets", []);
 
 // collapse duplicate accounts
 export const normalizeTicketList = (
-  tickets: StoredTicket[]
+  tickets: StoredTicket[],
+  addedAt = Date.now()
 ): StoredTicket[] => {
   let hasReservationAccount = false;
 
-  return tickets.filter((ticket) => {
+  return tickets.flatMap<StoredTicket>((ticket) => {
     // normal tickets remain
     if (ticket.type !== "reservation") {
-      return true;
+      return [
+        typeof ticket.addedAt === "number" && Number.isFinite(ticket.addedAt)
+          ? ticket
+          : { ...ticket, addedAt },
+      ];
     }
 
     // first account remains
     if (!hasReservationAccount) {
       hasReservationAccount = true;
-      return true;
+      return [ticket];
     }
 
-    return false;
+    return [];
   });
 };
 
@@ -37,3 +42,13 @@ export const getReservationAccountCount = (tickets: StoredTicket[]): number => {
     return ticket.type === "reservation";
   }).length;
 };
+
+// persisted identity removal
+export const removeStoredTicket = (
+  tickets: StoredTicket[],
+  removedTicket: StoredTicket
+): StoredTicket[] =>
+  tickets.filter(
+    (ticket) =>
+      ticket.type !== removedTicket.type || ticket.id !== removedTicket.id
+  );

@@ -31,9 +31,25 @@ vi.mock("~/lib/terminals", () => ({
   getSlug: (id: string) => id,
   useTerminals: () => ({ terminals: [] }),
 }));
+// page shell mock
 vi.mock("~/components/Page", () => ({
-  Page: ({ children }: { children: React.ReactNode }) =>
-    React.createElement("main", undefined, children),
+  Page: ({
+    children,
+    headerAction,
+  }: {
+    children: React.ReactNode;
+    headerAction?: React.ReactNode;
+  }) =>
+    React.createElement(
+      React.Fragment,
+      undefined,
+      React.createElement(
+        "header",
+        { "data-testid": "page-header" },
+        headerAction
+      ),
+      React.createElement("main", undefined, children)
+    ),
 }));
 vi.mock("~/components/PageLoadError", () => ({
   PageLoadError: ({
@@ -133,11 +149,11 @@ describe("Account state predicates", () => {
     expect(container.textContent).not.toContain("Account could not load");
   });
 
-  it("renders profile details in a header card with an outline logout action", () => {
+  it("renders profile details with an outline logout action in the top bar", () => {
     auth.user = {
       email: "rider@example.com",
       locale: "en-US",
-      name: "Rider",
+      name: "Rider Example",
       nickname: "ferry-rider",
       sub: "google-oauth2|rider",
     };
@@ -146,15 +162,20 @@ describe("Account state predicates", () => {
     const profile = container.querySelector(
       'section[aria-labelledby="account-profile-name"]'
     );
-    const logout = [...(profile?.querySelectorAll("button") ?? [])].find(
+    const avatar = profile?.querySelector('[aria-hidden="true"]');
+    const logout = [...container.querySelectorAll("button")].find(
       (button) => button.textContent === "Log Out"
     );
 
-    expect(profile?.querySelector("header")?.contains(logout ?? null)).toBe(
-      true
-    );
+    expect(
+      container
+        .querySelector('[data-testid="page-header"]')
+        ?.contains(logout ?? null)
+    ).toBe(true);
+    expect(profile?.contains(logout ?? null)).toBe(false);
+    expect(avatar?.textContent).toBe("RE");
     expect(logout?.classList.contains("button-outline")).toBe(true);
-    expect(profile?.textContent).toContain("Rider");
+    expect(profile?.textContent).toContain("Rider Example");
     expect(profile?.textContent).toContain("rider@example.com");
     expect(profile?.textContent).toContain("Google");
     expect(profile?.textContent).toContain("en-US");

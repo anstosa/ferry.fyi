@@ -9,6 +9,9 @@ import { JSDOM } from "jsdom";
 import { DateTime } from "luxon";
 import { Ticket } from "shared/contracts/tickets";
 import { isKeyOf } from "shared/lib/objects";
+import { getTicketLookupId } from "shared/lib/tickets";
+
+export { getTicketLookupId } from "shared/lib/tickets";
 
 const WAVE2GO_LANDING =
   "https://wave2go.wsdot.com/webstore/landingPage?cg=21&c=76";
@@ -16,21 +19,12 @@ const WAVE2GO_TICKET =
   "https://wave2go.wsdot.com/webstore/account/ticketLookup.aspx?VisualID=";
 const CURL_STATUS_MARKER = "__FERRY_FYI_CURL_STATUS__:";
 const CURL_TIMEOUT_SECONDS = "20";
-const WAVE2GO_BROWSER_HEADERS = [
-  "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+const DEFAULT_USER_AGENT = "FerryFYI/1.0 (+https://ferry.fyi; dev@ferry.fyi)";
+const WAVE2GO_REQUEST_HEADERS = [
   "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
   "Accept-Language: en-US,en;q=0.9",
-  "Upgrade-Insecure-Requests: 1",
 ];
-const TICKET_LOOKUP_ID_PARAMETERS = [
-  "VisualID",
-  "visualID",
-  "visualId",
-  "ticketId",
-  "id",
-];
-
-let wsfCookie: string | null = null;
+let wsfSession: { cookie: string; userAgent: string } | null = null;
 
 export class TicketLookupUnavailableError extends Error {
   status?: number;
@@ -67,8 +61,8 @@ type CurlResponse = {
 };
 
 // cookie cache setter
-const setWsfCookie = (cookie: string): string => {
-  wsfCookie = cookie;
+const setWsfCookie = (cookie: string, userAgent: string): string => {
+  wsfSession = { cookie, userAgent };
   return cookie;
 };
 
@@ -125,7 +119,8 @@ const getCookieHeader = (headers: string): string => {
 // Wave2Go curl request
 const fetchWave2Go = async (
   url: string,
-  headers: string[] = []
+  headers: string[] = [],
+  userAgent = DEFAULT_USER_AGENT
 ): Promise<CurlResponse> => {
   const tempDirectory = await mkdtemp(join(tmpdir(), "ferry-fyi-wave2go-"));
   const headerPath = join(tempDirectory, "headers.txt");
@@ -143,7 +138,9 @@ const fetchWave2Go = async (
       "-",
       "--write-out",
       `${CURL_STATUS_MARKER}%{http_code}`,
-      ...WAVE2GO_BROWSER_HEADERS.flatMap((header) => ["--header", header]),
+      "--user-agent",
+      userAgent,
+      ...WAVE2GO_REQUEST_HEADERS.flatMap((header) => ["--header", header]),
       ...headers.flatMap((header) => ["--header", header]),
       url,
     ]);
@@ -161,60 +158,15 @@ const fetchWave2Go = async (
   }
 };
 
-// lookup id parser
-export const getTicketLookupId = (ticketId: string): string => {
-  const trimmedTicketId = ticketId.trim();
-
-  // empty input guard
-  if (!trimmedTicketId) {
-    return ticketId;
-  }
-
-  try {
-    const url = new URL(trimmedTicketId);
-
-    // query id search
-    for (const parameter of TICKET_LOOKUP_ID_PARAMETERS) {
-      const value = url.searchParams.get(parameter)?.trim();
-
-      // query value guard
-      if (value) {
-        return value;
-      }
-    }
-
-    const pathSegments = url.pathname.split("/").filter(Boolean);
-    const pathTicketId = pathSegments[pathSegments.length - 1];
-
-    // path value guard
-    if (pathTicketId) {
-      return decodeURIComponent(pathTicketId);
-    }
-  } catch {}
-
-  const searchParams = new URLSearchParams(trimmedTicketId);
-
-  // raw query id search
-  for (const parameter of TICKET_LOOKUP_ID_PARAMETERS) {
-    const value = searchParams.get(parameter)?.trim();
-
-    // raw query value guard
-    if (value) {
-      return value;
-    }
-  }
-
-  return trimmedTicketId;
-};
-
 // Wave2Go session cookie
-const getWsfCookie = async (): Promise<string> => {
+const getWsfCookie = async (userAgent: string): Promise<string> => {
   // cached cookie guard
-  if (wsfCookie) {
-    return wsfCookie;
+  if (wsfSession?.userAgent === userAgent) {
+    return wsfSession.cookie;
   }
 
-  const response = await fetchWave2Go(WAVE2GO_LANDING);
+  wsfSession = null;
+  const response = await fetchWave2Go(WAVE2GO_LANDING, [], userAgent);
   // upstream status guard
   if (response.status < 200 || response.status >= 300) {
     throw new TicketLookupUnavailableError(
@@ -230,33 +182,41 @@ const getWsfCookie = async (): Promise<string> => {
       "Wave2Go landing page returned no cookie"
     );
   }
-  return setWsfCookie(cookie);
+  return setWsfCookie(cookie, userAgent);
 };
 
 // ticket page fetcher
-const fetchTicketPage = async (lookupId: string): Promise<CurlResponse> => {
-  const cookie = await getWsfCookie();
+const fetchTicketPage = async (
+  lookupId: string,
+  userAgent: string
+): Promise<CurlResponse> => {
+  const cookie = await getWsfCookie(userAgent);
   const response = await fetchWave2Go(
     `${WAVE2GO_TICKET}${encodeURIComponent(lookupId)}`,
-    [`Cookie: ${cookie}`, `Referer: ${WAVE2GO_LANDING}`]
+    [`Cookie: ${cookie}`, `Referer: ${WAVE2GO_LANDING}`],
+    userAgent
   );
 
   // stale cookie guard
-  if ((response.status === 401 || response.status === 403) && wsfCookie) {
-    wsfCookie = null;
-    const refreshedCookie = await getWsfCookie();
+  if ((response.status === 401 || response.status === 403) && wsfSession) {
+    wsfSession = null;
+    const refreshedCookie = await getWsfCookie(userAgent);
     return await fetchWave2Go(
       `${WAVE2GO_TICKET}${encodeURIComponent(lookupId)}`,
-      [`Cookie: ${refreshedCookie}`, `Referer: ${WAVE2GO_LANDING}`]
+      [`Cookie: ${refreshedCookie}`, `Referer: ${WAVE2GO_LANDING}`],
+      userAgent
     );
   }
 
   return response;
 };
 
-export const fetchTicket = async (ticketId: string): Promise<Ticket | null> => {
+export const fetchTicket = async (
+  ticketId: string,
+  { userAgent = DEFAULT_USER_AGENT }: { userAgent?: string } = {}
+): Promise<Ticket | null> => {
   const lookupId = getTicketLookupId(ticketId);
-  const response = await fetchTicketPage(lookupId);
+  const response = await fetchTicketPage(lookupId, userAgent);
   // upstream status guard
   if (response.status < 200 || response.status >= 300) {
     throw new TicketLookupUnavailableError(

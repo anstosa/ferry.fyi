@@ -55,6 +55,59 @@ afterEach(() => {
 });
 
 describe("Admin", () => {
+  it("offers only truthful canned User-Agent profiles for ticket lookup", async () => {
+    window.history.replaceState({}, "", "/admin?tab=tickets");
+    api.get.mockImplementation((path: string) => {
+      if (path === "/admin/tickets") {
+        return Promise.resolve({
+          cacheTtlSeconds: 1_800,
+          selectedUserAgentProfile: "identified-contact",
+          userAgentProfiles: [
+            {
+              id: "identified-contact",
+              label: "Ferry FYI with contact",
+              userAgent:
+                "FerryFYI/1.0 (+https://ferry.fyi; dev@ferry.fyi)",
+            },
+            {
+              id: "identified-product",
+              label: "Ferry FYI with product URL",
+              userAgent: "FerryFYI/1.0 (+https://ferry.fyi)",
+            },
+            {
+              id: "identified-minimal",
+              label: "Ferry FYI minimal",
+              userAgent: "FerryFYI/1.0",
+            },
+          ],
+        });
+      }
+      return Promise.reject(new Error(`Unexpected request: ${path}`));
+    });
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root?.render(React.createElement(Admin));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(
+      container.querySelector('#admin-tab-tickets[aria-selected="true"]')
+    ).not.toBeNull();
+    const select = container.querySelector(
+      "#ticket-lookup-user-agent"
+    ) as HTMLSelectElement;
+    expect(select.options).toHaveLength(3);
+    expect(select.value).toBe("identified-contact");
+    expect(container.textContent).toContain(
+      "FerryFYI/1.0 (+https://ferry.fyi; dev@ferry.fyi)"
+    );
+    expect(container.textContent).not.toContain("Mozilla/5.0");
+  });
+
   it("opens a deep-linked directional ad placement", async () => {
     window.history.replaceState(
       {},

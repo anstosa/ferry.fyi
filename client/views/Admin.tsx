@@ -20,6 +20,7 @@ import {
   getAdPlacementKey,
 } from "shared/contracts/ads";
 import type { Terminal } from "shared/contracts/terminals";
+import type { TicketLookupAdminSettings } from "shared/contracts/tickets";
 
 import { Page } from "~/components/Page";
 import { Skeleton, SkeletonGroup } from "~/components/Skeleton";
@@ -144,6 +145,7 @@ type AdminTab =
   | "users"
   | "operations"
   | "notifications"
+  | "tickets"
   | "ads"
   | "content";
 
@@ -152,6 +154,7 @@ const adminTabs: { id: AdminTab; label: string }[] = [
   { id: "users", label: "Users" },
   { id: "operations", label: "Data operations" },
   { id: "notifications", label: "Notifications" },
+  { id: "tickets", label: "Ticket lookup" },
   { id: "ads", label: "Advertising" },
   { id: "content", label: "Content & SEO" },
 ];
@@ -546,6 +549,126 @@ const ConfirmButton = ({
   );
 };
 
+// isolate ticket lookup state
+const TicketLookupAdminSection = ({
+  active,
+  token,
+}: {
+  active: boolean;
+  token: () => Promise<string>;
+}): ReactElement => {
+  const [settings, setSettings] = useState<TicketLookupAdminSettings | null>(
+    null
+  );
+
+  // load ticket lookup settings
+  const loadSettings = async (): Promise<void> => {
+    setSettings(
+      await get<TicketLookupAdminSettings>("/admin/tickets", await token())
+    );
+  };
+
+  // update the draft profile
+  const selectUserAgentProfile = (
+    event: React.ChangeEvent<HTMLSelectElement>
+  ): void => {
+    if (!settings) {
+      return;
+    }
+    const selectedProfile = settings.userAgentProfiles.find(
+      ({ id }) => id === event.target.value
+    );
+    // known profile guard
+    if (!selectedProfile) {
+      return;
+    }
+    setSettings({
+      ...settings,
+      selectedUserAgentProfile: selectedProfile.id,
+    });
+  };
+
+  // save the confirmed draft
+  const saveSettings = async (): Promise<void> => {
+    if (!settings) {
+      return;
+    }
+    const target = "ticket-lookup:settings";
+    setSettings(
+      await put<TicketLookupAdminSettings>(
+        "/admin/tickets/settings",
+        {
+          action: "save-ticket-lookup-settings",
+          confirmation: confirmationPhrase(
+            "save-ticket-lookup-settings",
+            target
+          ),
+          selectedUserAgentProfile: settings.selectedUserAgentProfile,
+          target,
+        },
+        await token()
+      )
+    );
+  };
+
+  // resolve the selected profile
+  const selectedProfile = settings?.userAgentProfiles.find(
+    ({ id }) => id === settings.selectedUserAgentProfile
+  );
+
+  return (
+    <AdminSection
+      active={active}
+      description="Control the truthful product identity used for serialized, cached Wave2Go ticket lookups. Browser impersonation is not available."
+      id="tickets"
+      load={loadSettings}
+      loadingFallback={
+        <AdminLoadingSkeleton label="Loading ticket lookup settings" />
+      }
+      title="Ticket lookup"
+    >
+      {settings ? (
+        <div className="mt-4 space-y-4">
+          <label
+            className="block font-semibold"
+            htmlFor="ticket-lookup-user-agent"
+          >
+            Outbound User-Agent profile
+          </label>
+          <select
+            className="w-full rounded border border-gray-medium bg-white p-2 text-gray-900 dark:bg-blue-darkest dark:text-gray-100"
+            id="ticket-lookup-user-agent"
+            onChange={selectUserAgentProfile}
+            value={settings.selectedUserAgentProfile}
+          >
+            {/* render profile options */}
+            {settings.userAgentProfiles.map((profile) => (
+              <option key={profile.id} value={profile.id}>
+                {profile.label}
+              </option>
+            ))}
+          </select>
+          <p className="break-all rounded bg-gray-lightest p-3 font-mono text-xs text-gray-darkest dark:bg-blue-darkest dark:text-gray-light">
+            {selectedProfile?.userAgent}
+          </p>
+          <p className="text-sm text-gray-dark dark:text-gray-light">
+            Lookups run one at a time. Successful results remain in a bounded,
+            in-memory cache for {settings.cacheTtlSeconds / 60} minutes.
+            Changing the profile clears that cache; it does not bypass upstream
+            access controls.
+          </p>
+          <ConfirmButton
+            action="save-ticket-lookup-settings"
+            label="Save ticket lookup settings"
+            target="ticket-lookup:settings"
+            onConfirm={saveSettings}
+          />
+        </div>
+      ) : null}
+    </AdminSection>
+  );
+};
+
 export const Admin = (): ReactElement => {
   const { getAccessTokenSilently, isAuthenticated, user } = useAuth0();
   const adminSearch =
@@ -553,7 +676,9 @@ export const Admin = (): ReactElement => {
   const requestedAdSelection = getAdAdminSelection(adminSearch);
   const requestedAdminTab = new URLSearchParams(adminSearch).get("tab");
   const [activeTab, setActiveTab] = useState<AdminTab>(() =>
-    requestedAdminTab === "ads" || requestedAdSelection ? "ads" : "access"
+    requestedAdSelection
+      ? "ads"
+      : (adminTabs.find(({ id }) => id === requestedAdminTab)?.id ?? "access")
   );
   const [features, setFeatures] = useState<FeatureSettings | null>(null);
   const [detailedFeature, setDetailedFeature] =
@@ -1504,6 +1629,11 @@ export const Admin = (): ReactElement => {
             </div>
           ) : null}
         </AdminSection>
+
+        <TicketLookupAdminSection
+          active={activeTab === "tickets"}
+          token={token}
+        />
 
         <AdminSection
           active={activeTab === "ads"}

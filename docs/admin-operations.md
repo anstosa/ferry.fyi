@@ -152,6 +152,32 @@ The persisted leaderboard sharing setting is returned with public/admin content
 state, but this release does not yet consume it in a public sharing route; do
 not treat it as an enforcement mechanism until such a route exists.
 
+## Ticket lookup policy
+
+Ticket lookups are initiated only when a ticket is added, when its popup is
+opened, or when the user explicitly refreshes that open ticket. Loading the
+saved-ticket list does not start a bulk refresh, and there is no refresh-all
+operation.
+
+The server serializes Wave2Go lookups globally within each web process and
+keeps at most 250 successful results in a shared in-memory cache for 30 minutes.
+For a signed-in request, the latest successful result is also persisted by
+account and ticket so another device on the same account can reuse it during
+that freshness window. Anonymous lookups are not persisted. Cached responses
+retain the timestamp of the upstream lookup rather than pretending a new lookup
+occurred. This is a current per-account cache, not an operational lookup
+history. Removing a saved ticket deletes its persisted result, and owner account
+data deletion deletes all persisted ticket results for the subject.
+
+The Ticket lookup admin screen selects one of a fixed set of truthful Ferry FYI
+User-Agent profiles. Arbitrary values and browser impersonation are not
+available. Saving a profile clears the in-memory result cache; persisted
+per-account results retain their original freshness and expire from lookup use
+after 30 minutes. If a later upstream refresh is unavailable, the last
+successful account-scoped result can still be returned with its original
+timestamp. The setting does not bypass a challenge, override upstream policy,
+or guarantee access.
+
 ## Advertising controls
 
 Advertising uses a persisted global switch plus one switch on each placement.

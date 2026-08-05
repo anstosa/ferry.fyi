@@ -1,3 +1,4 @@
+import type { TicketCodeFormat, TicketStorage } from "../contracts/tickets";
 import terminalOverrides from "../data/terminals.json";
 import wsfCore from "../data/wsf-core.json";
 
@@ -23,6 +24,105 @@ export interface DisplayTicketInfo {
   subtitle?: string;
   title: string;
 }
+
+export type TicketProductKind = "multi-ride" | "single-ride" | "unknown";
+
+const MULTI_RIDE_PATTERN =
+  /\b(?:multi|passes?|commuter|monthly|\d+[- ]?rides?|ten[- ]?rides?|twenty[- ]?rides?)\b/i;
+const TICKET_LOOKUP_ID_PARAMETERS = [
+  "VisualID",
+  "visualID",
+  "visualId",
+  "ticketId",
+  "id",
+];
+const WAVE2GO_TICKET_LOOKUP_URL =
+  "https://wave2go.wsdot.com/webstore/landingPage?c=76&cg=21";
+const QR_SAVED_TICKET_PREFIX = "qr:";
+
+export interface SavedTicketReference {
+  code: string;
+  codeFormat: TicketCodeFormat;
+}
+
+/** identified product classification */
+export const getTicketProductKind = (
+  ticket: Pick<TicketStorage, "description" | "name" | "plu" | "usesRemaining">
+): TicketProductKind => {
+  const passText = `${ticket.description ?? ""} ${ticket.name ?? ""} ${ticket.plu ?? ""}`;
+  if (MULTI_RIDE_PATTERN.test(passText)) {
+    return "multi-ride";
+  }
+  if (typeof ticket.usesRemaining === "number") {
+    return ticket.usesRemaining > 1 ? "multi-ride" : "single-ride";
+  }
+  return "unknown";
+};
+
+export const getTicketLookupId = (ticketId: string): string => {
+  const trimmedTicketId = ticketId.trim();
+  if (!trimmedTicketId) {
+    return ticketId;
+  }
+  try {
+    const url = new URL(trimmedTicketId);
+    for (const parameter of TICKET_LOOKUP_ID_PARAMETERS) {
+      const value = url.searchParams.get(parameter)?.trim();
+      if (value) {
+        return value;
+      }
+    }
+    const pathSegments = url.pathname.split("/").filter(Boolean);
+    const pathTicketId = pathSegments[pathSegments.length - 1];
+    if (pathTicketId) {
+      return decodeURIComponent(pathTicketId);
+    }
+  } catch {}
+  const searchParams = new URLSearchParams(trimmedTicketId);
+  for (const parameter of TICKET_LOOKUP_ID_PARAMETERS) {
+    const value = searchParams.get(parameter)?.trim();
+    if (value) {
+      return value;
+    }
+  }
+  return trimmedTicketId;
+};
+
+// synced ticket encoder
+export const getSavedTicketCode = (
+  code: string,
+  codeFormat: TicketCodeFormat
+): string => {
+  // QR reference guard
+  if (codeFormat === "qr") {
+    return `${QR_SAVED_TICKET_PREFIX}${encodeURIComponent(code)}`;
+  }
+  return code;
+};
+
+// synced ticket parser
+export const parseSavedTicketCode = (
+  savedCode: string
+): SavedTicketReference => {
+  // QR reference guard
+  if (!savedCode.startsWith(QR_SAVED_TICKET_PREFIX)) {
+    return { code: savedCode, codeFormat: "barcode" };
+  }
+  const encodedCode = savedCode.slice(QR_SAVED_TICKET_PREFIX.length);
+  try {
+    return { code: decodeURIComponent(encodedCode), codeFormat: "qr" };
+  } catch {
+    return { code: encodedCode, codeFormat: "qr" };
+  }
+};
+
+/** account-synced lookup ID */
+export const getSavedTicketLookupId = (savedTicket: string): string => {
+  return getTicketLookupId(parseSavedTicketCode(savedTicket).code);
+};
+
+export const getWave2GoTicketLookupUrl = (): string =>
+  WAVE2GO_TICKET_LOOKUP_URL;
 
 const MANUAL_ROUTE_CODES: Record<string, string> = {
   "an-fh": "Anacortes / Friday Harbor",

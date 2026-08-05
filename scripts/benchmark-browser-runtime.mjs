@@ -21,6 +21,9 @@ import {
 } from "./runtime-browser-performance-contract.mjs";
 
 const repoRoot = path.resolve(import.meta.dirname, "..");
+const fixtureCertificate = fs.readFileSync(
+  path.join(repoRoot, "tests/e2e/certs/ferry-fyi.crt")
+);
 const canonicalSampling = Object.freeze({ measured: 7, series: 2, warmups: 2 });
 const scenarios = Object.freeze([
   { id: "home", path: "/" },
@@ -303,7 +306,7 @@ const requestJson = (url, options = {}) =>
   new Promise((resolve, reject) => {
     const request = https.request(
       url,
-      { method: options.method ?? "GET", rejectUnauthorized: false },
+      { ca: fixtureCertificate, method: options.method ?? "GET" },
       (response) => {
         const chunks = [];
         response.on("data", (chunk) => chunks.push(chunk));

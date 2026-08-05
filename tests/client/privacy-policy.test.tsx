@@ -17,8 +17,10 @@ describe("privacy and advertising policy", () => {
     );
 
     expect(html).toContain(
-      '<time dateTime="2026-08-04">August 4, 2026</time>'
+      '<time dateTime="2026-08-05">August 5, 2026</time>'
     );
+    expect(html).toContain("cached with the account");
+    expect(html).toContain("Removing a ticket removes its account-scoped");
     expect(html).toContain("Advertising interactions");
     expect(html).toContain(
       "We do not provide advertisers with personal information"

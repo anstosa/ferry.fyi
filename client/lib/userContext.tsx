@@ -15,6 +15,7 @@ export interface UserState extends AppMetadata, UserMetadata {
 }
 
 export interface UserActions {
+  getAccessToken: () => Promise<string | undefined>;
   refreshUser: () => Promise<void>;
   updateUser: (data: UserUpdatePayload) => Promise<void>;
 }
@@ -30,6 +31,7 @@ export const anonymousUser: UserResponse = [
     userError: null,
   },
   {
+    getAccessToken: async () => await Promise.resolve(undefined),
     refreshUser: async () => await Promise.resolve(),
     updateUser: async () => await Promise.resolve(),
   },

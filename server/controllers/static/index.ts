@@ -1,5 +1,6 @@
 import compression from "compression";
 import express, { type RequestHandler, Router } from "express";
+import { MINUTE, rateLimit } from "express-rate-limit";
 import { existsSync, readFileSync } from "fs";
 import path from "path";
 
@@ -23,6 +24,7 @@ const IMMUTABLE_ASSET_CACHE_CONTROL = "public, max-age=31536000, immutable";
 
 export interface StaticPolicyRouterDependencies {
   llmsPath?: string;
+  policyRateLimiter?: RequestHandler;
 }
 
 export type StaticRouterDependencies = StaticPolicyRouterDependencies & {
@@ -42,12 +44,31 @@ const readPolicyFile = (dist: string, candidates: string[]): string => {
   return readFileSync(filePath, "utf8");
 };
 
+export const createStaticPolicyRateLimiter = ({
+  limit = 600,
+  windowMs = MINUTE,
+}: {
+  limit?: number;
+  windowMs?: number;
+} = {}): RequestHandler =>
+  rateLimit({
+    identifier: "static-policy",
+    legacyHeaders: false,
+    limit,
+    standardHeaders: "draft-8",
+    windowMs,
+  });
+
 /** Dynamic policy documents must be mounted before development Vite middleware. */
 export const createStaticPolicyRouter = (
   dist = clientDist,
   dependencies: StaticPolicyRouterDependencies = {}
 ): Router => {
   const policyRouter = Router();
+  // separate discovery quota
+  policyRouter.use(
+    dependencies.policyRateLimiter ?? createStaticPolicyRateLimiter()
+  );
   // These public documents are policy-controlled and must win over files in
   // dist. Keeping them before express.static makes every dyno read persisted
   // state rather than serving a deploy-time snapshot.
@@ -128,7 +149,10 @@ export const createStaticRouter = (
   // of the browser navigation quota. A few reloads request dozens of assets;
   // sharing that quota could make crawlers and later reloads receive 429s.
   staticRouter.use(
-    createStaticPolicyRouter(dist, { llmsPath: dependencies.llmsPath })
+    createStaticPolicyRouter(dist, {
+      llmsPath: dependencies.llmsPath,
+      policyRateLimiter: dependencies.policyRateLimiter,
+    })
   );
   if (dependencies.serveStaticAssets !== false) {
     staticRouter.use(

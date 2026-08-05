@@ -5,12 +5,14 @@ const db = vi.hoisted(() => ({ transaction: vi.fn() }));
 const privacy = vi.hoisted(() => ({ anonymizeLeaderboardAccount: vi.fn() }));
 const revocation = vi.hoisted(() => ({ revokeApplicationTokens: vi.fn() }));
 const settings = vi.hoisted(() => ({ destroy: vi.fn() }));
+const tickets = vi.hoisted(() => ({ destroy: vi.fn() }));
 const allowlist = vi.hoisted(() => ({ destroy: vi.fn() }));
 
 vi.mock("~/lib/db", () => ({ db }));
 vi.mock("~/lib/leaderboardPrivacy", () => privacy);
 vi.mock("~/lib/admin/sessionRevocation", () => revocation);
 vi.mock("~/models/UserSettings", () => ({ UserSettings: settings }));
+vi.mock("~/models/UserTicket", () => ({ UserTicket: tickets }));
 vi.mock("~/models/FeatureFlagAllowlist", () => ({
   FeatureFlagAllowlist: allowlist,
 }));
@@ -27,6 +29,7 @@ describe("owner user-data deletion service", () => {
       .mockReset()
       .mockResolvedValue({ expiresAt: "2026-07-25T00:00:00.000Z", status: "complete" });
     settings.destroy.mockReset().mockResolvedValue(1);
+    tickets.destroy.mockReset().mockResolvedValue(1);
     allowlist.destroy.mockReset().mockResolvedValue(1);
   });
 
@@ -46,6 +49,10 @@ describe("owner user-data deletion service", () => {
       transaction
     );
     expect(settings.destroy).toHaveBeenCalledWith({
+      transaction,
+      where: { subject: "auth0|person" },
+    });
+    expect(tickets.destroy).toHaveBeenCalledWith({
       transaction,
       where: { subject: "auth0|person" },
     });
@@ -70,6 +77,7 @@ describe("owner user-data deletion service", () => {
       "anonymization failed"
     );
     expect(settings.destroy).not.toHaveBeenCalled();
+    expect(tickets.destroy).not.toHaveBeenCalled();
     expect(allowlist.destroy).not.toHaveBeenCalled();
   });
 
@@ -83,6 +91,7 @@ describe("owner user-data deletion service", () => {
     );
     expect(privacy.anonymizeLeaderboardAccount).not.toHaveBeenCalled();
     expect(settings.destroy).not.toHaveBeenCalled();
+    expect(tickets.destroy).not.toHaveBeenCalled();
     expect(allowlist.destroy).not.toHaveBeenCalled();
   });
 });

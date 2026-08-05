@@ -193,7 +193,7 @@ const _useUser = (): Response => {
     const subject = auth0User?.sub;
     // auth0 subject guard
     if (!subject) {
-      return;
+      return undefined;
     }
     try {
       const nextAccessToken = await getAccessTokenSilently({
@@ -204,6 +204,7 @@ const _useUser = (): Response => {
       });
       setAccessToken(nextAccessToken);
       await loadUser(nextAccessToken);
+      return nextAccessToken;
     } catch (error) {
       setHasRequestedUser(true);
       // interactive recovery guard
@@ -264,6 +265,7 @@ const _useUser = (): Response => {
   };
 
   const actions: Actions = {
+    getAccessToken,
     updateUser: async (data) => {
       const nextUser = (await post("/user", data, accessToken)) as CurrentUser;
       userPromise = Promise.resolve(nextUser);

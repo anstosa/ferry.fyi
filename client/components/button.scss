@@ -108,6 +108,31 @@
     }
   }
 
+  // always-light surface colors
+  &-light-surface {
+    @apply border-[rgba(0,0,0,0.08)];
+    @apply bg-gray-lightest;
+    @apply text-gray-dark;
+
+    html.dark & {
+      @apply border-[rgba(0,0,0,0.08)];
+      @apply bg-gray-lightest;
+      @apply text-gray-dark;
+    }
+
+    &:hover {
+      @apply border-[rgba(0,0,0,0.12)];
+      @apply bg-white;
+      @apply text-gray-darkest;
+
+      html.dark & {
+        @apply border-[rgba(0,0,0,0.12)];
+        @apply bg-white;
+        @apply text-gray-darkest;
+      }
+    }
+  }
+
   &-danger {
     @apply border-transparent;
     @apply bg-red-dark;

@@ -16,6 +16,7 @@ import { db } from "~/lib/db";
 import { anonymizeLeaderboardAccount } from "~/lib/leaderboardPrivacy";
 import { FeatureFlagAllowlist } from "~/models/FeatureFlagAllowlist";
 import { UserSettings } from "~/models/UserSettings";
+import { UserTicket } from "~/models/UserTicket";
 
 export interface DeletedUserDataResult {
   /** Auth0 is the identity provider and is deliberately not modified here. */
@@ -45,6 +46,7 @@ export const deleteFerryUserData = async (
 
     await Promise.all([
       UserSettings.destroy({ transaction, where: { subject } }),
+      UserTicket.destroy({ transaction, where: { subject } }),
       // A feature-flag allowlist entry is app-owned subject data too; retaining
       // it would re-link a future account session to this deletion.
       FeatureFlagAllowlist.destroy({ transaction, where: { subject } }),

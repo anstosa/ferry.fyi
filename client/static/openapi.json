@@ -2098,7 +2098,7 @@
     },
     "/api/tickets/{ticketId}": {
       "get": {
-        "description": "Sensitive lookup supplied by the ticket holder; never guess, retain, or cache identifiers. Cache class: private-no-store. Rate class: sensitive-lookup. Ferry FYI provides best-effort operational data, not an SLA.",
+        "description": "Sensitive holder-supplied lookup; optional bearer authentication enables a 30-minute account-scoped latest-result cache, while anonymous results are not persisted. Cache class: private-no-store. Rate class: sensitive-lookup. Ferry FYI provides best-effort operational data, not an SLA.",
         "operationId": "getTicket",
         "parameters": [
           {
@@ -2237,7 +2237,12 @@
             "description": "Deterministic API error envelope. Error responses are no-store and noindex."
           }
         },
-        "security": [],
+        "security": [
+          {},
+          {
+            "bearerAuth": []
+          }
+        ],
         "summary": "Look up a supplied ticket identifier",
         "tags": [
           "ferries"

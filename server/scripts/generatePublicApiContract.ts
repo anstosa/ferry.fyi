@@ -61,6 +61,18 @@ const parametersFor = (operation: PublicApiOperation): OpenApiParameter[] => {
   return parameters;
 };
 
+const securityFor = (
+  authClass: PublicApiOperation["auth"]
+): ({ bearerAuth: never[] } | Record<string, never>)[] => {
+  if (authClass === "bearer") {
+    return [{ bearerAuth: [] }];
+  }
+  if (authClass === "sensitive-id") {
+    return [{}, { bearerAuth: [] }];
+  }
+  return [];
+};
+
 const paths: Record<string, Record<string, unknown>> = {};
 for (const operation of publicApiOperations.filter(
   ({ includeInOpenApi }) => includeInOpenApi
@@ -103,7 +115,7 @@ for (const operation of publicApiOperations.filter(
       "500": errorResponse,
       "503": errorResponse,
     },
-    security: operation.auth === "bearer" ? [{ bearerAuth: [] }] : [],
+    security: securityFor(operation.auth),
     summary: operation.summary,
     tags: [operation.featureGate ?? "ferries"],
   };
