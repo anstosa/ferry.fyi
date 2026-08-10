@@ -3,10 +3,9 @@ export const AUTH0_GOOGLE_CONNECTION = "google-oauth2";
 
 export type IosMigrationState = "complete" | "eligible" | "unsupported";
 
-export interface IosMigrationStatus {
-  email?: string;
-  state: IosMigrationState;
-}
+export type IosMigrationStatus =
+  | { state: "unsupported" }
+  | { email: string; state: Exclude<IosMigrationState, "unsupported"> };
 
 export interface IosMigrationLinkRequest {
   secondaryAccessToken: string;

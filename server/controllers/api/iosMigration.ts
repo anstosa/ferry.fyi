@@ -72,12 +72,13 @@ const isVerifiedGoogleProfile = (profile: Auth0UserProfile): boolean =>
 
 // status projection
 const getMigrationStatus = (profile: Auth0UserProfile): IosMigrationStatus => {
+  const email = normalizeEmail(profile.email);
   // eligibility guard
-  if (!isVerifiedGoogleProfile(profile)) {
+  if (!isVerifiedGoogleProfile(profile) || !email) {
     return { state: "unsupported" };
   }
   return {
-    email: profile.email,
+    email,
     state: findDatabaseIdentity(profile) ? "complete" : "eligible",
   };
 };

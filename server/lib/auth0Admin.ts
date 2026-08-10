@@ -75,19 +75,29 @@ const getManagementToken = async (): Promise<string> => {
   return token;
 };
 
+/** sends an authenticated Auth0 Management API request */
+const requestManagementApi = async (
+  path: string | URL,
+  init: RequestInit = {}
+): Promise<Response> => {
+  const headers = new Headers(init.headers);
+  headers.set("Authorization", `Bearer ${await getManagementToken()}`);
+  return fetch(
+    typeof path === "string" ? new URL(path, managementAudience()) : path,
+    { ...init, headers }
+  );
+};
+
 export const getAuth0UserEmail = async (
   subject: string
 ): Promise<string | undefined> => {
-  const accessToken = await getManagementToken();
   const url = new URL(
     `users/${encodeURIComponent(subject)}`,
     managementAudience()
   );
   url.searchParams.set("fields", "email");
   url.searchParams.set("include_fields", "true");
-  const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const response = await requestManagementApi(url);
   if (!response.ok) {
     throw new Error(`Auth0 user lookup failed: ${response.status}`);
   }
@@ -97,12 +107,9 @@ export const getAuth0UserEmail = async (
 
 /** permanently removes a Ferry FYI Auth0 identity */
 export const deleteAuth0User = async (subject: string): Promise<void> => {
-  const response = await fetch(
-    new URL(`users/${encodeURIComponent(subject)}`, managementAudience()),
-    {
-      headers: { Authorization: `Bearer ${await getManagementToken()}` },
-      method: "DELETE",
-    }
+  const response = await requestManagementApi(
+    `users/${encodeURIComponent(subject)}`,
+    { method: "DELETE" }
   );
   // idempotent deletion guard
   if (!response.ok && response.status !== 404) {
@@ -178,16 +185,13 @@ const parseAuth0ProviderIdentities = (
 export const getAuth0UserProfile = async (
   subject: string
 ): Promise<Auth0UserProfile> => {
-  const accessToken = await getManagementToken();
   const url = new URL(
     `users/${encodeURIComponent(subject)}`,
     managementAudience()
   );
   url.searchParams.set("fields", "user_id,email,email_verified,identities");
   url.searchParams.set("include_fields", "true");
-  const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  const response = await requestManagementApi(url);
   // lookup response guard
   if (!response.ok) {
     throw new Error(`Auth0 user profile lookup failed: ${response.status}`);
@@ -228,20 +232,14 @@ export const linkAuth0UserIdentity = async (
   if (hasAuth0Identity(primary, secondaryIdentity)) {
     return "already-linked";
   }
-  const response = await fetch(
-    new URL(
-      `users/${encodeURIComponent(primarySubject)}/identities`,
-      managementAudience()
-    ),
+  const response = await requestManagementApi(
+    `users/${encodeURIComponent(primarySubject)}/identities`,
     {
       body: JSON.stringify({
         provider: secondaryIdentity.provider,
         user_id: secondaryIdentity.userId,
       }),
-      headers: {
-        Authorization: `Bearer ${await getManagementToken()}`,
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       method: "POST",
     }
   );
@@ -295,9 +293,7 @@ export const listAuth0Users = async ({
     url.searchParams.set("q", `email:*${term}* OR user_id:*${term}*`);
     url.searchParams.set("search_engine", "v3");
   }
-  const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${await getManagementToken()}` },
-  });
+  const response = await requestManagementApi(url);
   if (!response.ok) {
     throw new Error(`Auth0 user listing failed: ${response.status}`);
   }
@@ -337,9 +333,7 @@ export const findAuth0UserByExactEmail = async (
   }
   const url = new URL("users-by-email", managementAudience());
   url.searchParams.set("email", email.trim());
-  const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${await getManagementToken()}` },
-  });
+  const response = await requestManagementApi(url);
   if (!response.ok) {
     throw new Error(`Auth0 email lookup failed: ${response.status}`);
   }
@@ -375,14 +369,13 @@ export interface Auth0RevocationResult {
   status: "complete" | "partial";
 }
 
-const getManagementResponse = async (path: string): Promise<Response> =>
-  fetch(new URL(path, managementAudience()), {
-    headers: { Authorization: `Bearer ${await getManagementToken()}` },
-  });
+// management get request
+const getManagementResponse = (path: string): Promise<Response> =>
+  requestManagementApi(path);
 
+// management delete request
 const deleteManagementResource = async (path: string): Promise<boolean> => {
-  const response = await fetch(new URL(path, managementAudience()), {
-    headers: { Authorization: `Bearer ${await getManagementToken()}` },
+  const response = await requestManagementApi(path, {
     method: "DELETE",
   });
   return response.ok;

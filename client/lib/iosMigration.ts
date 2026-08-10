@@ -1,8 +1,8 @@
 import { AUTH0_DATABASE_CONNECTION } from "shared/contracts/iosMigration";
 
-export type Auth0DatabaseSignupResult = "created" | "exists";
+type Auth0DatabaseSignupResult = "created" | "exists";
 
-export class Auth0DatabaseSignupError extends Error {
+class Auth0DatabaseSignupError extends Error {
   status: number;
 
   // signup error

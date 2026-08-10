@@ -126,7 +126,7 @@ export const IosMigration = (): ReactElement => {
       return;
     }
     // eligible profile guard
-    if (status?.state !== "eligible" || !status.email) {
+    if (status?.state !== "eligible") {
       setError("Authenticate with your existing Google account first.");
       return;
     }
@@ -148,7 +148,7 @@ export const IosMigration = (): ReactElement => {
   const verifyAndLink = async (): Promise<void> => {
     setError(undefined);
     // eligible profile guard
-    if (status?.state !== "eligible" || !status.email) {
+    if (status?.state !== "eligible") {
       setError("Authenticate with your existing Google account first.");
       return;
     }

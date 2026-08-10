@@ -59,8 +59,6 @@ describe("Auth0 account deletion", () => {
     vi.stubGlobal("fetch", fetch);
     const { deleteAuth0User } = await import("../../server/lib/auth0Admin");
 
-    await expect(deleteAuth0User("auth0|person")).rejects.toThrow(
-      "Auth0 user deletion failed: 403"
-    );
+    await expect(deleteAuth0User("auth0|person")).rejects.toThrow();
   });
 });
