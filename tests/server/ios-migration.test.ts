@@ -1,0 +1,207 @@
+import express, { NextFunction, Request, Response } from "express";
+import request from "supertest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const auth0 = vi.hoisted(() => ({
+  getAuth0UserInfo: vi.fn(),
+  getAuth0UserProfile: vi.fn(),
+  linkAuth0UserIdentity: vi.fn(),
+}));
+const revocation = vi.hoisted(() => ({
+  isApplicationTokenRevoked: vi.fn(),
+}));
+
+vi.mock("~/lib/auth0Admin", () => auth0);
+vi.mock("~/lib/admin/sessionRevocation", () => revocation);
+vi.mock("express-oauth2-jwt-bearer", () => ({
+  // auth fixture
+  auth:
+    () =>
+    (
+      expressRequest: Request & { auth?: { payload: { sub?: string } } },
+      response: Response,
+      next: NextFunction
+    ): void => {
+      // token fixture
+      if (expressRequest.get("authorization") === "Bearer primary-token") {
+        expressRequest.auth = { payload: { sub: "google-oauth2|google-user" } };
+        next();
+        return;
+      }
+      response.status(401).send({ error: "Unauthorized" });
+    },
+}));
+
+import { requireAuth } from "../../server/controllers/api/auth";
+import { iosMigrationRouter } from "../../server/controllers/api/iosMigration";
+
+// app fixture
+const createApp = (): express.Express => {
+  const app = express();
+  app.use(express.json());
+  app.use("/api/ios-migration", requireAuth, iosMigrationRouter);
+  return app;
+};
+
+const googleProfile = {
+  email: "rider@example.com",
+  emailVerified: true,
+  identities: [
+    {
+      connection: "google-oauth2",
+      provider: "google-oauth2",
+      userId: "google-user",
+    },
+  ],
+  subject: "google-oauth2|google-user",
+};
+
+const databaseProfile = {
+  email: "rider@example.com",
+  emailVerified: true,
+  identities: [
+    {
+      connection: "Username-Password-Authentication",
+      provider: "auth0",
+      userId: "database-user",
+    },
+  ],
+  subject: "auth0|database-user",
+};
+
+describe("iOS account migration API", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    revocation.isApplicationTokenRevoked.mockResolvedValue(false);
+    auth0.getAuth0UserProfile.mockResolvedValue(googleProfile);
+    auth0.getAuth0UserInfo.mockResolvedValue({
+      email: "rider@example.com",
+      emailVerified: true,
+      subject: "auth0|database-user",
+    });
+    auth0.linkAuth0UserIdentity.mockResolvedValue("linked");
+  });
+
+  it("reports eligibility only after Google authentication", async () => {
+    const response = await request(createApp())
+      .get("/api/ios-migration/status")
+      .set("Authorization", "Bearer primary-token")
+      .expect(200);
+
+    expect(response.headers["cache-control"]).toBe("no-store");
+    expect(response.body).toEqual({
+      email: "rider@example.com",
+      state: "eligible",
+    });
+  });
+
+  it("reports completion when a database identity is already linked", async () => {
+    auth0.getAuth0UserProfile.mockResolvedValue({
+      ...googleProfile,
+      identities: [...googleProfile.identities, ...databaseProfile.identities],
+    });
+
+    const response = await request(createApp())
+      .get("/api/ios-migration/status")
+      .set("Authorization", "Bearer primary-token")
+      .expect(200);
+
+    expect(response.body).toEqual({
+      email: "rider@example.com",
+      state: "complete",
+    });
+  });
+
+  it("requires a secondary access token instead of accepting identity fields", async () => {
+    await request(createApp())
+      .post("/api/ios-migration/link")
+      .set("Authorization", "Bearer primary-token")
+      .send({
+        email: "rider@example.com",
+        secondarySubject: "auth0|database-user",
+      })
+      .expect(400);
+
+    expect(auth0.getAuth0UserInfo).not.toHaveBeenCalled();
+    expect(auth0.linkAuth0UserIdentity).not.toHaveBeenCalled();
+  });
+
+  it("links only a separately authenticated matching database identity", async () => {
+    auth0.getAuth0UserProfile
+      .mockResolvedValueOnce(googleProfile)
+      .mockResolvedValueOnce(databaseProfile);
+
+    const response = await request(createApp())
+      .post("/api/ios-migration/link")
+      .set("Authorization", "Bearer primary-token")
+      .send({ secondaryAccessToken: "secondary-token" })
+      .expect(200);
+
+    expect(auth0.getAuth0UserInfo).toHaveBeenCalledWith("secondary-token");
+    expect(auth0.linkAuth0UserIdentity).toHaveBeenCalledWith(
+      "google-oauth2|google-user",
+      databaseProfile.identities[0]
+    );
+    expect(response.body).toEqual({ status: "linked" });
+  });
+
+  it("rejects a secondary identity with a different email", async () => {
+    auth0.getAuth0UserInfo.mockResolvedValue({
+      email: "attacker@example.com",
+      emailVerified: true,
+      subject: "auth0|database-user",
+    });
+    auth0.getAuth0UserProfile
+      .mockResolvedValueOnce(googleProfile)
+      .mockResolvedValueOnce({
+        ...databaseProfile,
+        email: "attacker@example.com",
+      });
+
+    await request(createApp())
+      .post("/api/ios-migration/link")
+      .set("Authorization", "Bearer primary-token")
+      .send({ secondaryAccessToken: "secondary-token" })
+      .expect(409);
+
+    expect(auth0.linkAuth0UserIdentity).not.toHaveBeenCalled();
+  });
+
+  it("rejects an unverified secondary identity", async () => {
+    auth0.getAuth0UserInfo.mockResolvedValue({
+      email: "rider@example.com",
+      emailVerified: false,
+      subject: "auth0|database-user",
+    });
+
+    await request(createApp())
+      .post("/api/ios-migration/link")
+      .set("Authorization", "Bearer primary-token")
+      .send({ secondaryAccessToken: "secondary-token" })
+      .expect(409);
+
+    expect(auth0.linkAuth0UserIdentity).not.toHaveBeenCalled();
+  });
+
+  it("rejects a database identity from another connection", async () => {
+    auth0.getAuth0UserProfile
+      .mockResolvedValueOnce(googleProfile)
+      .mockResolvedValueOnce({
+        ...databaseProfile,
+        identities: [
+          {
+            ...databaseProfile.identities[0],
+            connection: "Other-Database",
+          },
+        ],
+      });
+
+    await request(createApp())
+      .post("/api/ios-migration/link")
+      .set("Authorization", "Bearer primary-token")
+      .send({ secondaryAccessToken: "secondary-token" })
+      .expect(409);
+
+    expect(auth0.linkAuth0UserIdentity).not.toHaveBeenCalled();
+  });
+});

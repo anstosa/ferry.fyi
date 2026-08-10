@@ -10,6 +10,7 @@ export type PublicSsrRouteId =
   | "today"
   | "callback"
   | "account"
+  | "ios-migration"
   | "tickets"
   | "about"
   | "admin"

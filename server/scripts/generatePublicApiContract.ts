@@ -84,11 +84,11 @@ for (const operation of publicApiOperations.filter(
     operationId: operation.operationId,
     parameters: parametersFor(operation),
     requestBody:
-      operation.method === "POST"
+      operation.method === "POST" || operation.method === "DELETE"
         ? {
             content: {
               "application/json": {
-                example: {},
+                example: operation.requestExample ?? {},
                 schema: { additionalProperties: true, type: "object" },
               },
             },
@@ -150,7 +150,7 @@ const document = {
   },
   info: {
     description:
-      "Read-oriented Ferry FYI operational data. Preserve timestamps, freshness, state, and observed-versus-predictive distinctions. Do not treat forecasts as guarantees.",
+      "Ferry FYI operational data and authenticated account actions. Preserve timestamps, freshness, state, and observed-versus-predictive distinctions. Do not treat forecasts as guarantees or initiate account deletion on a user's behalf.",
     title: "Ferry FYI public API",
     version: "1.0.0",
   },

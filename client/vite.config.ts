@@ -9,6 +9,7 @@ import { defineConfig, Plugin } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 import svgr from "vite-plugin-svgr";
 
+import { renderCameraDetectionIconSprite } from "../scripts/camera-polygon-annotator/fontAwesomeIcons";
 import {
   SEO_APP_NAME,
   SEO_DEFAULT_DESCRIPTION,
@@ -21,7 +22,18 @@ const configDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(configDir, "..");
 const staticDir = path.resolve(configDir, "static");
 const clientOutDir = path.resolve(repoRoot, "dist/client");
+const cameraDetectionDebuggerHtml = path.resolve(
+  repoRoot,
+  "scripts/camera-polygon-annotator/index.html"
+);
 const rootStaticFiles = ["llms.txt", "openapi.json", "robots.txt"];
+const cameraDetectionDebuggerRoutes = new Set([
+  "/dev/camera-detection",
+  "/dev/camera-detection/",
+  "/dev/camera-detection/benchmarks",
+  "/dev/camera-detection/benchmarks/",
+]);
+const cameraDetectionIconRoute = "/dev/camera-detection/icons.svg";
 const { theme } = resolveConfig(tailwindConfig as never);
 const colors = theme.colors as Record<string, Record<string, string>>;
 const COLOR = colors.green.dark;
@@ -115,6 +127,56 @@ const copyStaticPlugin = (): Plugin => {
         path.resolve(staticDir, "security.txt"),
         path.resolve(clientOutDir, ".well-known/security.txt")
       );
+    },
+  };
+};
+
+// serve development camera tools
+const cameraDetectionDebuggerPlugin = (): Plugin => {
+  return {
+    name: "ferry-camera-detection-debugger",
+    // mount debugger routes
+    configureServer(server) {
+      server.middlewares.use(async (request, response, next) => {
+        const requestPath = new URL(request.url ?? "/", "http://localhost")
+          .pathname;
+        // serve the directly imported Font Awesome subset
+        if (requestPath === cameraDetectionIconRoute) {
+          // read-only asset guard
+          if (request.method !== "GET" && request.method !== "HEAD") {
+            next();
+            return;
+          }
+          const sprite = renderCameraDetectionIconSprite();
+          response.setHeader("Cache-Control", "no-store");
+          response.setHeader("Content-Type", "image/svg+xml; charset=utf-8");
+          response.statusCode = 200;
+          response.end(request.method === "HEAD" ? undefined : sprite);
+          return;
+        }
+        // unrelated route guard
+        if (!cameraDetectionDebuggerRoutes.has(requestPath)) {
+          next();
+          return;
+        }
+        // read-only page guard
+        if (request.method !== "GET" && request.method !== "HEAD") {
+          next();
+          return;
+        }
+        try {
+          const html = await fs.promises.readFile(
+            cameraDetectionDebuggerHtml,
+            "utf8"
+          );
+          response.setHeader("Cache-Control", "no-store");
+          response.setHeader("Content-Type", "text/html; charset=utf-8");
+          response.statusCode = 200;
+          response.end(request.method === "HEAD" ? undefined : html);
+        } catch (error) {
+          next(error as Error);
+        }
+      });
     },
   };
 };
@@ -235,6 +297,7 @@ export default defineConfig(() => ({
     },
   },
   plugins: [
+    cameraDetectionDebuggerPlugin(),
     react(),
     svgr({
       include: "**/*.svg",

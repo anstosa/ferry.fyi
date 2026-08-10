@@ -1,306 +1,244 @@
 {
   "9161": {
-    "areaCounts": [
+    "areaStates": [
       {
         "areaId": "mukilteo_sr_525_at_mp_7_4_clover_ln_wsf_mukilteo_queue_lane",
         "label": "Queue Lane",
-        "type": "queue_lane",
-        "vehicleCount": 0
+        "state": "empty",
+        "type": "queue_lane"
       }
     ],
     "cameraId": "9161",
     "checkedAt": 0,
-    "detectionCount": 0,
     "detections": [],
     "error": "No line detection result source configured",
-    "excludedDetectionCount": 0,
     "imageUrl": "https://images.wsdot.wa.gov/nw/525vc00740.jpg",
-    "includedDetectionCount": 0,
-    "reviewed": true
-  },
-  "9163": {
-    "areaCounts": [
-      {
-        "areaId": "mukilteo_sr_525_at_mp_6_9_76th_st_sw_south_wsf_mukilteo_queue_lane",
-        "label": "Queue Lane",
-        "type": "queue_lane",
-        "vehicleCount": 0
-      }
-    ],
-    "cameraId": "9163",
-    "checkedAt": 0,
-    "detectionCount": 0,
-    "detections": [],
-    "error": "No line detection result source configured",
-    "excludedDetectionCount": 0,
-    "imageUrl": "https://images.wsdot.wa.gov/nw/525vc00694.jpg",
-    "includedDetectionCount": 0,
     "reviewed": true
   },
   "9164": {
-    "areaCounts": [
+    "areaStates": [
       {
         "areaId": "mukilteo_mukilteo_holding_holding_lane_7",
         "label": "Lane 7",
-        "type": "holding_lane",
-        "vehicleCount": 0
+        "state": "empty",
+        "type": "holding_lane"
       },
       {
         "areaId": "mukilteo_mukilteo_holding_holding_lane_6",
         "label": "Lane 6",
-        "type": "holding_lane",
-        "vehicleCount": 0
+        "state": "empty",
+        "type": "holding_lane"
       },
       {
         "areaId": "mukilteo_mukilteo_holding_holding_lane_5",
         "label": "Lane 5",
-        "type": "holding_lane",
-        "vehicleCount": 0
+        "state": "empty",
+        "type": "holding_lane"
       },
       {
         "areaId": "mukilteo_mukilteo_holding_holding_lane_4",
         "label": "Lane 4",
-        "type": "holding_lane",
-        "vehicleCount": 0
+        "state": "empty",
+        "type": "holding_lane"
       },
       {
         "areaId": "mukilteo_mukilteo_holding_queue_lane_3",
         "label": "Lane 3",
-        "type": "queue_lane",
-        "vehicleCount": 0
+        "state": "empty",
+        "type": "queue_lane"
       },
       {
         "areaId": "mukilteo_mukilteo_holding_queue_lane_2",
         "label": "Lane 2",
-        "type": "queue_lane",
-        "vehicleCount": 0
+        "state": "empty",
+        "type": "queue_lane"
       },
       {
         "areaId": "mukilteo_mukilteo_holding_queue_lane_1",
         "label": "Lane 1",
-        "type": "queue_lane",
-        "vehicleCount": 0
+        "state": "empty",
+        "type": "queue_lane"
       }
     ],
     "cameraId": "9164",
     "checkedAt": 0,
-    "detectionCount": 0,
     "detections": [],
     "error": "No line detection result source configured",
-    "excludedDetectionCount": 0,
     "imageUrl": "https://images.wsdot.wa.gov/wsf/Mukilteo/Terminal/mukterm.jpg",
-    "includedDetectionCount": 0,
     "reviewed": true
   },
   "9166": {
-    "areaCounts": [
+    "areaStates": [
       {
         "areaId": "clinton_clinton_terminal_holding_lane_1_front",
         "label": "Lane 1 Front",
-        "type": "holding_lane",
-        "vehicleCount": 0
+        "state": "empty",
+        "type": "holding_lane"
       },
       {
         "areaId": "clinton_clinton_terminal_holding_lane_2_front",
         "label": "Lane 2 Front",
-        "type": "holding_lane",
-        "vehicleCount": 0
+        "state": "empty",
+        "type": "holding_lane"
       },
       {
         "areaId": "clinton_clinton_terminal_holding_lane_3_front",
         "label": "Lane 3 Front",
-        "type": "holding_lane",
-        "vehicleCount": 0
+        "state": "empty",
+        "type": "holding_lane"
       },
       {
         "areaId": "clinton_clinton_terminal_holding_lane_4_front",
         "label": "Lane 4 Front",
-        "type": "holding_lane",
-        "vehicleCount": 0
+        "state": "empty",
+        "type": "holding_lane"
       },
       {
         "areaId": "clinton_clinton_terminal_holding_lane_5_front",
         "label": "Lane 5 Front",
-        "type": "holding_lane",
-        "vehicleCount": 0
+        "state": "empty",
+        "type": "holding_lane"
       },
       {
         "areaId": "clinton_clinton_terminal_holding_lane_6_front",
         "label": "Line 6 Front",
-        "type": "holding_lane",
-        "vehicleCount": 0
+        "state": "empty",
+        "type": "holding_lane"
       },
       {
         "areaId": "clinton_clinton_terminal_holding_lane_7_front",
         "label": "Lane 7 Front",
-        "type": "holding_lane",
-        "vehicleCount": 0
+        "state": "empty",
+        "type": "holding_lane"
       },
       {
         "areaId": "clinton_clinton_terminal_holding_lane_1_back",
         "label": "Lane 1 Back",
-        "type": "holding_lane",
-        "vehicleCount": 0
+        "state": "empty",
+        "type": "holding_lane"
       },
       {
         "areaId": "clinton_clinton_terminal_queue_lane_2_back",
         "label": "Lane 2 Back",
-        "type": "queue_lane",
-        "vehicleCount": 0
+        "state": "empty",
+        "type": "queue_lane"
       },
       {
         "areaId": "clinton_clinton_terminal_queue_lane_3_back",
         "label": "Lane 3 Back",
-        "type": "queue_lane",
-        "vehicleCount": 0
+        "state": "empty",
+        "type": "queue_lane"
       },
       {
         "areaId": "clinton_clinton_terminal_queue_lane_4_back",
         "label": "Lane 4 Back",
-        "type": "queue_lane",
-        "vehicleCount": 0
+        "state": "empty",
+        "type": "queue_lane"
       },
       {
         "areaId": "clinton_clinton_terminal_queue_lane_5_back",
         "label": "Lane 5 Back",
-        "type": "queue_lane",
-        "vehicleCount": 0
+        "state": "empty",
+        "type": "queue_lane"
       },
       {
         "areaId": "clinton_clinton_terminal_queue_lane_6",
         "label": "Lane 6 Back",
-        "type": "queue_lane",
-        "vehicleCount": 0
+        "state": "empty",
+        "type": "queue_lane"
       },
       {
         "areaId": "clinton_clinton_terminal_queue_lane_7_back",
         "label": "Lane 7 Back",
-        "type": "queue_lane",
-        "vehicleCount": 0
+        "state": "empty",
+        "type": "queue_lane"
       }
     ],
     "cameraId": "9166",
     "checkedAt": 0,
-    "detectionCount": 0,
     "detections": [],
     "error": "No line detection result source configured",
-    "excludedDetectionCount": 0,
     "imageUrl": "https://images.wsdot.wa.gov/wsf/clinton/terminal/clinton.jpg",
-    "includedDetectionCount": 0,
     "reviewed": true
   },
   "9172": {
-    "areaCounts": [
+    "areaStates": [
       {
         "areaId": "clinton_clinton_uphill_queue_lane",
         "label": "Queue Lane",
-        "type": "queue_lane",
-        "vehicleCount": 0
+        "state": "empty",
+        "type": "queue_lane"
       }
     ],
     "cameraId": "9172",
     "checkedAt": 0,
-    "detectionCount": 0,
     "detections": [],
     "error": "No line detection result source configured",
-    "excludedDetectionCount": 0,
     "imageUrl": "https://images.wsdot.wa.gov/wsf/clinton/boothhill.jpg",
-    "includedDetectionCount": 0,
-    "reviewed": true
-  },
-  "9173": {
-    "areaCounts": [
-      {
-        "areaId": "clinton_clinton_dock_ferry_slip_a",
-        "label": "Clinton Slip A",
-        "type": "ferry_slip",
-        "vehicleCount": 0
-      }
-    ],
-    "cameraId": "9173",
-    "checkedAt": 0,
-    "detectionCount": 0,
-    "detections": [],
-    "error": "No line detection result source configured",
-    "excludedDetectionCount": 0,
-    "imageUrl": "https://images.wsdot.wa.gov/wsf/clinton/boothdock.jpg",
-    "includedDetectionCount": 0,
     "reviewed": true
   },
   "9174": {
-    "areaCounts": [
+    "areaStates": [
       {
         "areaId": "clinton_clinton_e_sr_525_queue_lane",
         "label": "Queue lane",
-        "type": "queue_lane",
-        "vehicleCount": 0
+        "state": "empty",
+        "type": "queue_lane"
       }
     ],
     "cameraId": "9174",
     "checkedAt": 0,
-    "detectionCount": 0,
     "detections": [],
     "error": "No line detection result source configured",
-    "excludedDetectionCount": 0,
     "imageUrl": "https://images.wsdot.wa.gov/wsf/clinton/clinteast.jpg",
-    "includedDetectionCount": 0,
     "reviewed": true
   },
   "9175": {
-    "areaCounts": [
+    "areaStates": [
       {
         "areaId": "clinton_clinton_w_sr_525_queue_lane",
         "label": "Queue Lane",
-        "type": "queue_lane",
-        "vehicleCount": 0
+        "state": "empty",
+        "type": "queue_lane"
       }
     ],
     "cameraId": "9175",
     "checkedAt": 0,
-    "detectionCount": 0,
     "detections": [],
     "error": "No line detection result source configured",
-    "excludedDetectionCount": 0,
     "imageUrl": "https://images.wsdot.wa.gov/wsf/clinton/clintwest.jpg",
-    "includedDetectionCount": 0,
     "reviewed": true
   },
   "9394": {
-    "areaCounts": [
+    "areaStates": [
       {
         "areaId": "mukilteo_sr_525_at_mp_8_2_5th_st_north_wsf_mukilteo_queue_lane",
         "label": "Queue Lane",
-        "type": "queue_lane",
-        "vehicleCount": 0
+        "state": "empty",
+        "type": "queue_lane"
       }
     ],
     "cameraId": "9394",
     "checkedAt": 0,
-    "detectionCount": 0,
     "detections": [],
     "error": "No line detection result source configured",
-    "excludedDetectionCount": 0,
     "imageUrl": "https://images.wsdot.wa.gov/nw/525vc00820.jpg",
-    "includedDetectionCount": 0,
     "reviewed": true
   },
   "9728": {
-    "areaCounts": [
+    "areaStates": [
       {
         "areaId": "mukilteo_sr_525_at_mp_8_1_5th_st_south_wsf_mukilteo_queue_lane",
         "label": "Queue Lane",
-        "type": "queue_lane",
-        "vehicleCount": 0
+        "state": "empty",
+        "type": "queue_lane"
       }
     ],
     "cameraId": "9728",
     "checkedAt": 0,
-    "detectionCount": 0,
     "detections": [],
     "error": "No line detection result source configured",
-    "excludedDetectionCount": 0,
     "imageUrl": "https://images.wsdot.wa.gov/nw/525vc00819.jpg",
-    "includedDetectionCount": 0,
     "reviewed": true
   }
 }

@@ -1,0 +1,12 @@
+benchmarks/camera-detection/frames/*.avif filter=lfs diff=lfs merge=lfs -text
+benchmarks/camera-detection/frames/*.jpg filter=lfs diff=lfs merge=lfs -text
+benchmarks/camera-detection/frames/*.jpeg filter=lfs diff=lfs merge=lfs -text
+benchmarks/camera-detection/frames/*.png filter=lfs diff=lfs merge=lfs -text
+benchmarks/camera-detection/frames/*.webp filter=lfs diff=lfs merge=lfs -text
+benchmarks/camera-detection/captures/**/*.avif filter=lfs diff=lfs merge=lfs -text
+benchmarks/camera-detection/captures/**/*.jpg filter=lfs diff=lfs merge=lfs -text
+benchmarks/camera-detection/captures/**/*.jpeg filter=lfs diff=lfs merge=lfs -text
+benchmarks/camera-detection/captures/**/*.png filter=lfs diff=lfs merge=lfs -text
+benchmarks/camera-detection/captures/**/*.webp filter=lfs diff=lfs merge=lfs -text
+docs/camera-line-detection-results/*.png filter=lfs diff=lfs merge=lfs -text
+docs/camera-line-detection-overlays/*.png filter=lfs diff=lfs merge=lfs -text

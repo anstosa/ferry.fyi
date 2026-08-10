@@ -14,10 +14,11 @@ export interface PublicApiOperation {
   featureGate?: "leaderboards";
   freshness: string;
   includeInOpenApi: boolean;
-  method: "GET" | "POST";
+  method: "DELETE" | "GET" | "POST";
   operationId: string;
   path: string;
   rate: PublicApiRateClass;
+  requestExample?: Record<string, unknown>;
   responseClass: "collection" | "resource" | "status";
   summary: string;
 }
@@ -163,14 +164,14 @@ export const publicApiOperations = [
     cache: "live-no-store",
     documentInDataSources: false,
     freshness:
-      "Line detection is observational and must not be presented as exact queue length.",
+      "Line detection reports four-state spatial occupancy per configured queue or holding area and must not be presented as exact queue length or vehicle count.",
     includeInOpenApi: true,
     method: "GET",
     operationId: "getCameraLineDetection",
     path: "/api/cameras/line-detection",
     rate: "anonymous-read",
     responseClass: "collection",
-    summary: "Get public camera line-detection summaries",
+    summary: "Get public camera spatial-occupancy states",
   },
   {
     advertiseInLlms: true,
@@ -231,6 +232,22 @@ export const publicApiOperations = [
     rate: "authenticated",
     responseClass: "resource",
     summary: "Update current user settings",
+  },
+  {
+    advertiseInLlms: true,
+    auth: "bearer",
+    cache: "private-no-store",
+    documentInDataSources: false,
+    freshness:
+      "Permanently deletes the authenticated Ferry FYI account after exact confirmation; never submit this request on a user's behalf.",
+    includeInOpenApi: true,
+    method: "DELETE",
+    operationId: "deleteCurrentUser",
+    path: "/api/user",
+    rate: "sensitive-lookup",
+    requestExample: { confirmation: "DELETE" },
+    responseClass: "status",
+    summary: "Permanently delete the current account",
   },
   {
     advertiseInLlms: true,

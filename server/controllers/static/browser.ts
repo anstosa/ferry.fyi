@@ -50,6 +50,7 @@ const APP_PATHS = new Set([
   "/data-sources",
   "/feedback",
   "/forecasting",
+  "/ios",
   "/privacy",
   "/tickets",
   "/today",

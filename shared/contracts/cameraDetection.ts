@@ -19,11 +19,11 @@ export interface CameraDetectionArea {
   label: string;
   polygon: CameraDetectionPoint[];
   type: CameraDetectionAreaType | CameraDetectionExclusionType;
-  vehicleCapacity?: number;
 }
 
 export interface CameraDetectionCameraConfig {
   allowedAreas: CameraDetectionArea[];
+  detectionEnabled?: boolean;
   displayName: string;
   excludedAreaNotes: string[];
   excludedAreas: CameraDetectionArea[];
@@ -72,26 +72,25 @@ export interface CameraLineVehicleDetection extends VehicleDetection {
   excludedAreaIds: string[];
 }
 
-export interface CameraAreaVehicleCount {
+export type CameraAreaOccupancyState =
+  | "empty"
+  | "minority_full"
+  | "majority_full"
+  | "full";
+
+export interface CameraAreaOccupancy {
   areaId: string;
   label: string;
+  state: CameraAreaOccupancyState;
   type: CameraDetectionAreaType | CameraDetectionExclusionType;
-  vehicleCount: number;
-  vehicleCapacity?: number;
-  occupancyPercent?: number;
 }
 
 export interface CameraLineDetectionResult {
-  areaCounts: CameraAreaVehicleCount[];
+  areaStates: CameraAreaOccupancy[];
   cameraId: string;
-  detectionCount: number;
   detections?: CameraLineVehicleDetection[];
-  excludedDetectionCount: number;
   imageUrl: string;
-  includedDetectionCount: number;
-  occupancyPercent: number | null;
   reviewed: boolean;
-  vehicleCapacity: number | null;
 }
 
 export interface CameraLineDetectionStatus extends CameraLineDetectionResult {

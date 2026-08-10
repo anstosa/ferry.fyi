@@ -1,9 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   getAuth0RedirectUri,
   isAuth0CallbackUrl,
   isStaleAuth0CallbackError,
+  loginWithAppFlow,
 } from "../../client/lib/auth";
 
 describe("getAuth0RedirectUri", () => {
@@ -14,9 +15,7 @@ describe("getAuth0RedirectUri", () => {
         platform: "android",
         redirectUri: "fyi.ferry://callback",
       })
-    ).toBe(
-      "fyi.ferry://ferryfyi.us.auth0.com/capacitor/fyi.ferry/callback"
-    );
+    ).toBe("fyi.ferry://ferryfyi.us.auth0.com/capacitor/fyi.ferry/callback");
   });
 
   it("keeps the configured callback URI on other platforms", () => {
@@ -86,4 +85,59 @@ describe("isAuth0CallbackUrl", () => {
       )
     ).toBe(true);
   });
+});
+
+describe("loginWithAppFlow", () => {
+  it("uses popup login only inside a development iframe", async () => {
+    const loginWithPopup = vi.fn().mockResolvedValue(undefined);
+    const loginWithRedirect = vi.fn().mockResolvedValue(undefined);
+    const authorizationParams = {
+      audience: "https://api.ferry.fyi",
+      redirect_uri: "http://localhost:4040/callback",
+    };
+
+    await loginWithAppFlow({
+      environment: "development",
+      framed: true,
+      loginWithPopup,
+      loginWithRedirect,
+      options: {
+        appState: { redirectPath: "/account" },
+        authorizationParams,
+      },
+      popupRedirectUri: "https://dev.ferry.fyi/callback",
+    });
+
+    expect(loginWithPopup).toHaveBeenCalledWith({
+      authorizationParams: {
+        ...authorizationParams,
+        redirect_uri: "https://dev.ferry.fyi/callback",
+      },
+    });
+    expect(loginWithRedirect).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["development", false],
+    ["production", true],
+    ["test", true],
+  ])(
+    "uses redirect login in %s when framed is %s",
+    async (environment, framed) => {
+      const loginWithPopup = vi.fn().mockResolvedValue(undefined);
+      const loginWithRedirect = vi.fn().mockResolvedValue(undefined);
+      const options = { appState: { redirectPath: "/tickets" } };
+
+      await loginWithAppFlow({
+        environment,
+        framed,
+        loginWithPopup,
+        loginWithRedirect,
+        options,
+      });
+
+      expect(loginWithRedirect).toHaveBeenCalledWith(options);
+      expect(loginWithPopup).not.toHaveBeenCalled();
+    }
+  );
 });

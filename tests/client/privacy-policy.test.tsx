@@ -16,10 +16,12 @@ describe("privacy and advertising policy", () => {
       </HelmetProvider>
     );
 
-    expect(html).toContain('<time dateTime="2026-08-05">August 5, 2026</time>');
+    expect(html).toContain('<time dateTime="2026-08-09">August 9, 2026</time>');
     expect(html).toContain("cached with the account");
     expect(html).toContain("a ticket looked up");
     expect(html).toContain("Removing a saved ticket removes its");
+    expect(html).toContain("Account &gt; Delete account");
+    expect(html).toContain("cannot be linked back to the");
     expect(html).toContain("Advertising interactions");
     expect(html).toContain(
       "We do not provide advertisers with personal information"

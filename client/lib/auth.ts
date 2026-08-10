@@ -1,3 +1,9 @@
+import type {
+  Auth0ContextInterface,
+  PopupLoginOptions,
+  RedirectLoginOptions,
+} from "@auth0/auth0-react";
+
 type Auth0RedirectUriOptions = {
   domain: string;
   platform?: string;
@@ -47,3 +53,70 @@ export const isAuth0CallbackUrl = (
 
 export const isStaleAuth0CallbackError = (error: unknown): boolean =>
   error instanceof Error && error.message === "Invalid state";
+
+// ios callback fallback
+export const getIosAuthFailurePath = (
+  error: unknown,
+  platform?: string
+): "/ios" | undefined =>
+  platform === "ios" && !isStaleAuth0CallbackError(error) ? "/ios" : undefined;
+
+type InteractiveLoginMethods = Pick<
+  Auth0ContextInterface,
+  "loginWithPopup" | "loginWithRedirect"
+>;
+
+type LoginWithAppFlowOptions = InteractiveLoginMethods & {
+  environment?: string;
+  framed?: boolean;
+  options?: RedirectLoginOptions;
+  popupRedirectUri?: string;
+};
+
+// framed browser guard
+export const isWindowFramed = (): boolean => {
+  // server render guard
+  if (typeof window === "undefined") {
+    return false;
+  }
+  try {
+    return window.self !== window.top;
+  } catch {
+    // cross-origin fallback
+    return true;
+  }
+};
+
+// popup option adapter
+const getPopupLoginOptions = (
+  options?: RedirectLoginOptions,
+  popupRedirectUri?: string
+): PopupLoginOptions | undefined => {
+  // empty option guard
+  if (!options?.authorizationParams && !popupRedirectUri) {
+    return undefined;
+  }
+  return {
+    authorizationParams: {
+      ...options?.authorizationParams,
+      ...(popupRedirectUri ? { redirect_uri: popupRedirectUri } : {}),
+    },
+  };
+};
+
+// environment-aware login route
+export const loginWithAppFlow = async ({
+  environment = process.env.NODE_ENV,
+  framed = isWindowFramed(),
+  loginWithPopup,
+  loginWithRedirect,
+  options,
+  popupRedirectUri = process.env.AUTH0_DEV_POPUP_REDIRECT,
+}: LoginWithAppFlowOptions): Promise<void> => {
+  // development iframe guard
+  if (environment === "development" && framed) {
+    await loginWithPopup(getPopupLoginOptions(options, popupRedirectUri));
+    return;
+  }
+  await loginWithRedirect(options);
+};

@@ -272,6 +272,7 @@ export type PublicSsrRouteSourceMap = {
   today: "route" | "schedule" | "nextSchedule" | "wsf" | "notices";
   callback: never;
   account: never;
+  "ios-migration": never;
   tickets: "editorial" | "ticketGuidance";
   about: "editorial";
   admin: never;

@@ -3,7 +3,9 @@
 `camera-detection-areas.json` is the app-data source for manually reviewed camera regions used by future ferry line-length detection.
 
 - `allowedAreas` are regions where vehicle detections may count toward a ferry queue, holding lane, holding lot, or ferry slip.
-- Set `vehicleCapacity` on every allowed area that contributes to an occupancy percentage. It is the number of vehicles that fit in that polygon when full; results remain `null` until all countable areas for a camera have a capacity.
+- `detectionEnabled: false` keeps reviewed polygons available for QA while excluding that camera from scheduled and public line detection.
+- Every enabled allowed area reports one spatial occupancy state: `empty`, `minority_full`, `majority_full`, or `full`.
+- Spatial occupancy measures the share of the polygon's principal lane axis covered by detected vehicle boxes. Minority ends below 50%, majority begins at 50%, and full begins at 85%; benchmark results should tune those thresholds before a user-facing launch.
 - `excludedAreas` are holes/breaks/ignore regions inside or near allowed areas, such as intersections and driveways.
 - `reviewed: true` means the camera has been manually inspected. A reviewed camera may have zero polygons when no relevant ferry detection region exists.
 - Coordinates are normalized `[x, y]` values in image space, with origin at the top-left of the loaded camera image.

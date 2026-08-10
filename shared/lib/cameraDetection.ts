@@ -1,5 +1,6 @@
 import type {
-  CameraAreaVehicleCount,
+  CameraAreaOccupancy,
+  CameraAreaOccupancyState,
   CameraDetectionArea,
   CameraDetectionCameraConfig,
   CameraDetectionPoint,
@@ -10,14 +11,12 @@ import type {
 } from "shared/contracts/cameraDetection";
 
 const VEHICLE_LABELS = new Set(["bus", "car", "motorcycle", "truck", "van"]);
+const MAJORITY_OCCUPANCY_THRESHOLD = 0.5;
+const FULL_OCCUPANCY_THRESHOLD = 0.85;
 
 // bound a value
 const clamp = (value: number, min: number, max: number): number =>
   Math.max(min, Math.min(max, value));
-
-// cap a filled-space percentage
-const getOccupancyPercent = (vehicleCount: number, capacity: number): number =>
-  Math.min(100, (vehicleCount / capacity) * 100);
 
 // normalize detection center
 export const getDetectionCenter = (
@@ -86,12 +85,6 @@ const getContainingAreaIds = (
   return areaIds;
 };
 
-// test detection in any area
-const isDetectionInAnyArea = (
-  detection: VehicleDetection,
-  areas: CameraDetectionArea[]
-): boolean => getContainingAreaIds(detection, areas).length > 0;
-
 // classify detections by configured areas
 export const classifyCameraDetections = (
   config: CameraDetectionCameraConfig,
@@ -120,73 +113,160 @@ export const classifyCameraDetections = (
   });
 };
 
-// count detections by configured areas
-export const countCameraDetections = (
+// derive polygon principal axis
+const getPolygonAxis = (
+  polygon: CameraDetectionPoint[]
+): CameraDetectionPoint => {
+  const center = polygon.reduce<CameraDetectionPoint>(
+    (total, point) => [total[0] + point[0], total[1] + point[1]],
+    [0, 0]
+  );
+  center[0] /= polygon.length;
+  center[1] /= polygon.length;
+  const covariance = polygon.reduce(
+    (total, point) => {
+      const x = point[0] - center[0];
+      const y = point[1] - center[1];
+      return {
+        xx: total.xx + x * x,
+        xy: total.xy + x * y,
+        yy: total.yy + y * y,
+      };
+    },
+    { xx: 0, xy: 0, yy: 0 }
+  );
+  const angle =
+    Math.atan2(2 * covariance.xy, covariance.xx - covariance.yy) / 2;
+  return [Math.cos(angle), Math.sin(angle)];
+};
+
+// project one point onto an axis
+const projectPoint = (
+  point: CameraDetectionPoint,
+  axis: CameraDetectionPoint
+): number => point[0] * axis[0] + point[1] * axis[1];
+
+// project a detection box onto an axis
+const projectDetectionBox = (
+  box: VehicleDetectionBox,
+  axis: CameraDetectionPoint
+): [number, number] => {
+  const projections = [
+    [box.x, box.y],
+    [box.x + box.width, box.y],
+    [box.x + box.width, box.y + box.height],
+    [box.x, box.y + box.height],
+  ].map((point) => projectPoint(point as CameraDetectionPoint, axis));
+  return [Math.min(...projections), Math.max(...projections)];
+};
+
+// merge projected vehicle intervals
+const getCoveredLength = (intervals: [number, number][]): number => {
+  const sortedIntervals = [...intervals].sort(
+    (left, right) => left[0] - right[0]
+  );
+  let coveredLength = 0;
+  let currentInterval: [number, number] | null = null;
+  // interval merge pass
+  for (const interval of sortedIntervals) {
+    // first interval guard
+    if (!currentInterval) {
+      currentInterval = [...interval];
+      continue;
+    }
+    // overlapping interval guard
+    if (interval[0] <= currentInterval[1]) {
+      currentInterval[1] = Math.max(currentInterval[1], interval[1]);
+      continue;
+    }
+    coveredLength += currentInterval[1] - currentInterval[0];
+    currentInterval = [...interval];
+  }
+  // final interval guard
+  if (currentInterval) {
+    coveredLength += currentInterval[1] - currentInterval[0];
+  }
+  return coveredLength;
+};
+
+// measure longitudinal polygon occupancy
+export const getAreaSpatialOccupancy = (
+  area: CameraDetectionArea,
+  detections: VehicleDetection[]
+): number => {
+  // empty signal guard
+  if (detections.length === 0) {
+    return 0;
+  }
+  const axis = getPolygonAxis(area.polygon);
+  const polygonProjections = area.polygon.map((point) =>
+    projectPoint(point, axis)
+  );
+  const polygonStart = Math.min(...polygonProjections);
+  const polygonEnd = Math.max(...polygonProjections);
+  const polygonLength = polygonEnd - polygonStart;
+  // degenerate polygon guard
+  if (polygonLength <= Number.EPSILON) {
+    return 0;
+  }
+  const intervals = detections
+    .map((detection) => projectDetectionBox(detection.box, axis))
+    .map(([start, end]): [number, number] => [
+      clamp(start, polygonStart, polygonEnd),
+      clamp(end, polygonStart, polygonEnd),
+    ])
+    .filter(([start, end]) => end > start);
+  return clamp(getCoveredLength(intervals) / polygonLength, 0, 1);
+};
+
+// bucket spatial occupancy
+export const getCameraAreaOccupancyState = (
+  spatialOccupancy: number
+): CameraAreaOccupancyState => {
+  // empty state guard
+  if (spatialOccupancy <= 0) {
+    return "empty";
+  }
+  // minority state guard
+  if (spatialOccupancy < MAJORITY_OCCUPANCY_THRESHOLD) {
+    return "minority_full";
+  }
+  // majority state guard
+  if (spatialOccupancy < FULL_OCCUPANCY_THRESHOLD) {
+    return "majority_full";
+  }
+  return "full";
+};
+
+// evaluate occupancy by configured areas
+export const evaluateCameraOccupancy = (
   cameraId: string,
   config: CameraDetectionCameraConfig,
   detections: VehicleDetection[],
   includeDetections = false
 ): CameraLineDetectionResult => {
   const classifiedDetections = classifyCameraDetections(config, detections);
-  const excludedDetections = classifiedDetections.filter((detection) =>
-    isDetectionInAnyArea(detection, config.excludedAreas)
-  );
   const includedDetections = classifiedDetections.filter((detection) => {
-    // exclusion guard
-    if (isDetectionInAnyArea(detection, config.excludedAreas)) {
-      return false;
-    }
-    return isDetectionInAnyArea(detection, config.allowedAreas);
+    return detection.disposition === "included";
   });
-  const areaCounts: CameraAreaVehicleCount[] = config.allowedAreas.map(
-    (area) => {
-      const vehicleCount = includedDetections.filter((detection) =>
-        isDetectionInArea(detection, area)
-      ).length;
-      const { vehicleCapacity } = area;
-      const hasVehicleCapacity =
-        typeof vehicleCapacity === "number" &&
-        Number.isFinite(vehicleCapacity) &&
-        vehicleCapacity > 0;
-      return {
-        areaId: area.id,
-        label: area.label,
-        ...(hasVehicleCapacity ? { vehicleCapacity } : {}),
-        ...(hasVehicleCapacity
-          ? {
-              occupancyPercent: getOccupancyPercent(
-                vehicleCount,
-                vehicleCapacity!
-              ),
-            }
-          : {}),
-        type: area.type,
-        vehicleCount,
-      };
-    }
-  );
-  const vehicleCapacity = config.allowedAreas.every(
-    (area) =>
-      typeof area.vehicleCapacity === "number" && area.vehicleCapacity > 0
-  )
-    ? config.allowedAreas.reduce(
-        (total, area) => total + (area.vehicleCapacity ?? 0),
-        0
-      )
-    : null;
+  const areaStates: CameraAreaOccupancy[] = config.allowedAreas.map((area) => {
+    const areaDetections = includedDetections.filter((detection) =>
+      detection.allowedAreaIds.includes(area.id)
+    );
+    return {
+      areaId: area.id,
+      label: area.label,
+      state: getCameraAreaOccupancyState(
+        getAreaSpatialOccupancy(area, areaDetections)
+      ),
+      type: area.type,
+    };
+  });
   return {
-    areaCounts,
+    areaStates,
     cameraId,
-    detectionCount: classifiedDetections.length,
     ...(includeDetections ? { detections: classifiedDetections } : {}),
-    excludedDetectionCount: excludedDetections.length,
     imageUrl: config.imageUrl,
-    includedDetectionCount: includedDetections.length,
-    occupancyPercent:
-      vehicleCapacity === null
-        ? null
-        : getOccupancyPercent(includedDetections.length, vehicleCapacity),
     reviewed: config.reviewed,
-    vehicleCapacity,
   };
 };

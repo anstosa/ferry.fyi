@@ -39,8 +39,10 @@ export AUTH0_SERVER_ID="<get from auth0>"
 export AUTH0_SERVER_SECRET="<get from auth0>"
 export AUTH0_SERVER_AUDIENCE="<get from auth0>"
 export AUTH0_CLIENT_ID="<get from auth0>"
+export AUTH0_IOS_CLIENT_ID="<get from auth0>"
 export AUTH0_CLIENT_AUDIENCE="<get from auth0>"
 export AUTH0_CLIENT_REDIRECT="http://localhost:4040/callback"
+export AUTH0_DEV_POPUP_REDIRECT="<Auth0-allowed HTTPS callback for framed development login>"
 
 # Sentry
 export SENTRY_DSN="<get from sentry>"

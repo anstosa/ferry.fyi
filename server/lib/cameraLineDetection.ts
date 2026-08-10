@@ -6,7 +6,7 @@ import type {
   VehicleDetection,
 } from "shared/contracts/cameraDetection";
 import cameraDetectionAreasData from "shared/data/camera-detection-areas.json";
-import { countCameraDetections } from "shared/lib/cameraDetection";
+import { evaluateCameraOccupancy } from "shared/lib/cameraDetection";
 
 import { getErrorMessage } from "./errors";
 
@@ -70,7 +70,12 @@ const stripDetectionDetails = (
 export const getLineDetectionCameraIds = (): string[] =>
   detectionAreas.cameraIds.filter((cameraId) => {
     const camera = detectionAreas.cameras[cameraId];
-    return camera.reviewed && camera.allowedAreas.length > 0;
+    // active reviewed cameras only
+    return (
+      camera.detectionEnabled !== false &&
+      camera.reviewed &&
+      camera.allowedAreas.length > 0
+    );
   });
 
 // get camera config
@@ -260,7 +265,7 @@ export class CameraLineDetectionService {
     try {
       const detections = await this.detectVehicles(cameraId, config);
       const status = {
-        ...countCameraDetections(
+        ...evaluateCameraOccupancy(
           cameraId,
           config,
           detections,
@@ -383,25 +388,20 @@ export class CameraLineDetectionService {
     )
   ): CameraLineDetectionStatus {
     return {
-      areaCounts:
+      areaStates:
         config?.allowedAreas.map((area) => {
           return {
             areaId: area.id,
             label: area.label,
+            state: "empty" as const,
             type: area.type,
-            vehicleCount: 0,
           };
         }) ?? [],
       cameraId,
       checkedAt,
-      detectionCount: 0,
       error,
-      excludedDetectionCount: 0,
       imageUrl: config?.imageUrl ?? "",
-      includedDetectionCount: 0,
-      occupancyPercent: null,
       reviewed: config?.reviewed ?? false,
-      vehicleCapacity: null,
     };
   }
 }

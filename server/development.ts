@@ -1,6 +1,9 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
+import { Router } from "express";
+
+import { createCameraDetectionDebuggerPageRouter } from "~/controllers/api/cameraDetectionDebugger";
 import {
   createStaticPolicyRouter,
   createStaticRouter,
@@ -68,10 +71,19 @@ const startDevelopmentServer = async (): Promise<void> => {
     probe: async () => await db.query("SELECT 1"),
   });
   readiness.markInitialized();
-  const app = createApp({
-    publicMiddleware: createStaticPolicyRouter(clientDirectory, {
+  // compose development routes
+  const publicRouter = Router();
+  publicRouter.use(
+    createStaticPolicyRouter(clientDirectory, {
       llmsPath: path.join(clientDirectory, "static", "llms.txt"),
-    }),
+    })
+  );
+  publicRouter.use(
+    "/dev/camera-detection",
+    createCameraDetectionDebuggerPageRouter()
+  );
+  const app = createApp({
+    publicMiddleware: publicRouter,
     readiness,
     staticHandler: createStaticRouter(clientDirectory, {
       browserDependencies: { documentRuntime },

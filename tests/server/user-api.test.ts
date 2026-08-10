@@ -20,12 +20,16 @@ const ticketCache = vi.hoisted(() => ({
 const revocation = vi.hoisted(() => ({
   isApplicationTokenRevoked: vi.fn(),
 }));
+const accountDeletion = vi.hoisted(() => ({
+  deleteFerryUserAccount: vi.fn(),
+}));
 
 vi.mock("~/models/UserSettings", () => ({
   UserSettings: userSettings,
 }));
 vi.mock("~/lib/wsf/userTicketCache", () => ticketCache);
 vi.mock("~/lib/admin/sessionRevocation", () => revocation);
+vi.mock("~/lib/accountDeletion", () => accountDeletion);
 
 vi.mock("~/lib/wsf/api", () => ({
   getWsfStatus: () => {
@@ -97,6 +101,9 @@ describe("user API", () => {
       .mockReset()
       .mockResolvedValue(undefined);
     revocation.isApplicationTokenRevoked.mockReset().mockResolvedValue(false);
+    accountDeletion.deleteFerryUserAccount
+      .mockReset()
+      .mockResolvedValue({ status: "complete" });
   });
 
   // missing token case
@@ -298,6 +305,34 @@ describe("user API", () => {
       "auth0|123",
       ["abc"]
     );
+  });
+
+  it("permanently deletes only the authenticated account after confirmation", async () => {
+    const app = createApp();
+
+    const response = await request(app)
+      .delete("/api/user")
+      .set("Authorization", "Bearer valid")
+      .send({ confirmation: "DELETE" })
+      .expect(200);
+
+    expect(response.body).toEqual({ status: "complete" });
+    expect(response.headers["cache-control"]).toBe("no-store");
+    expect(accountDeletion.deleteFerryUserAccount).toHaveBeenCalledWith(
+      "auth0|123"
+    );
+  });
+
+  it("requires exact destructive confirmation before deleting an account", async () => {
+    const app = createApp();
+
+    await request(app)
+      .delete("/api/user")
+      .set("Authorization", "Bearer valid")
+      .send({ confirmation: "delete" })
+      .expect(400, { error: "confirmation_required" });
+
+    expect(accountDeletion.deleteFerryUserAccount).not.toHaveBeenCalled();
   });
 });
 

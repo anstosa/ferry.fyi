@@ -1,0 +1,27 @@
+{
+  "cameraIds": [
+    "9174",
+    "9166",
+    "9172",
+    "9175",
+    "9161",
+    "9728",
+    "9394",
+    "9164"
+  ],
+  "captureAttempts": 2072,
+  "duplicateFrames": 16,
+  "failedFrames": 16,
+  "intervalSeconds": 600,
+  "lastCapturedAt": "2026-08-09T21:32:01+00:00",
+  "roundsCompleted": 259,
+  "schemaVersion": 1,
+  "sessionId": "weekend-2026-08-07",
+  "startedAt": "2026-08-08T02:38:30+00:00",
+  "status": "stopped",
+  "stopAt": "2026-08-10T08:00:00-07:00",
+  "storedFrames": 2040,
+  "completedAt": "2026-08-09T21:33:12+00:00",
+  "importedFrames": 2040,
+  "importedAt": "2026-08-09T21:35:11.847Z"
+}

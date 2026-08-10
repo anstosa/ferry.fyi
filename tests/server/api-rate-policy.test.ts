@@ -2,11 +2,23 @@ import express from "express";
 import request from "supertest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createApiRateLimitMiddleware } from "../../server/lib/httpApiPolicy";
+import {
+  classifyApiRequest,
+  createApiRateLimitMiddleware,
+} from "../../server/lib/httpApiPolicy";
 
 afterEach(() => vi.unstubAllEnvs());
 
 describe("API rate policy", () => {
+  it("rate-limits destructive account deletion as a sensitive action", () => {
+    expect(
+      classifyApiRequest({ method: "DELETE", pathname: "/api/user" })
+    ).toBe("sensitive-lookup");
+    expect(classifyApiRequest({ method: "GET", pathname: "/api/user" })).toBe(
+      "authenticated"
+    );
+  });
+
   it("emits standard limit headers and separates route-class counters", async () => {
     vi.stubEnv("API_ANONYMOUS_READ_LIMIT", "1");
     vi.stubEnv("API_SENSITIVE_LOOKUP_LIMIT", "1");

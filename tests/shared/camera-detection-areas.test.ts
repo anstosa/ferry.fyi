@@ -89,6 +89,9 @@ describe("camera detection areas", () => {
     detectionAreas.reviewedCameraIds.forEach((cameraId) => {
       expect(detectionCameras[cameraId].reviewed, cameraId).toBe(true);
     });
+    expect(detectionCameras["9162"].detectionEnabled).toBe(false);
+    expect(detectionCameras["9163"].detectionEnabled).toBe(false);
+    expect(detectionCameras["9173"].detectionEnabled).toBe(false);
   });
 
   // metadata drift guard

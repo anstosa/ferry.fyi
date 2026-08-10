@@ -11,6 +11,7 @@ import { adminNotificationsRouter } from "./admin/notifications";
 import { adminOperationsRouter } from "./admin/operations";
 import { adminTicketsRouter } from "./admin/tickets";
 import { adminUsersRouter } from "./admin/users";
+import { createCameraDetectionDebuggerRouter } from "./cameraDetectionDebugger";
 
 /** Applies to successful and rejected owner-admin API responses. */
 export const preventAdminCaching = (
@@ -39,6 +40,9 @@ adminRouter.use("/notifications", adminNotificationsRouter);
 adminRouter.use("/content", adminContentRouter);
 adminRouter.use("/tickets", adminTicketsRouter);
 adminRouter.use("/features", adminFeaturesRouter);
+if (process.env.NODE_ENV === "development") {
+  adminRouter.use("/camera-detection", createCameraDetectionDebuggerRouter());
+}
 
 // Legacy compact feature response retained for deployed admin clients.
 adminRouter.get("/features", async (_request, response) => {

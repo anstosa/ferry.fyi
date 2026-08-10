@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  ACCOUNT_DELETION_CONFIRMATION,
   AppMetadata,
   CurrentUser,
   UserUpdatePayload,
@@ -7,6 +8,7 @@ import {
 import { isObject } from "shared/lib/objects";
 import { getSavedTicketLookupId } from "shared/lib/tickets";
 
+import { deleteFerryUserAccount } from "~/lib/accountDeletion";
 import {
   getAlertRules,
   getAlertSubscriptions,
@@ -147,6 +149,15 @@ userRouter.post("/", async (request, response) => {
     );
   }
   return response.send(serializeUserSettings(settings, appMetadata));
+});
+
+userRouter.delete("/", async (request, response) => {
+  response.set("Cache-Control", "no-store");
+  // destructive confirmation guard
+  if (request.body?.confirmation !== ACCOUNT_DELETION_CONFIRMATION) {
+    return response.status(400).send({ error: "confirmation_required" });
+  }
+  return response.send(await deleteFerryUserAccount(response.locals.user.sub));
 });
 
 export { userRouter };

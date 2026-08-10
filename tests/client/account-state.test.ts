@@ -18,11 +18,14 @@ const userState = vi.hoisted(() => ({
   userError: null as Error | null,
 }));
 const refreshUser = vi.hoisted(() => vi.fn(() => Promise.resolve()));
+const deleteAccount = vi.hoisted(() => vi.fn(() => Promise.resolve()));
 vi.mock("@auth0/auth0-react", () => ({
   useAuth0: () => auth,
   withAuthenticationRequired: (component: React.ComponentType) => component,
 }));
-vi.mock("~/lib/user", () => ({ useUser: () => [userState, { refreshUser }] }));
+vi.mock("~/lib/user", () => ({
+  useUser: () => [userState, { deleteAccount, refreshUser }],
+}));
 vi.mock("~/lib/device", () => ({ useDevice: () => null }));
 vi.mock("~/lib/theme", () => ({
   useThemePreference: () => ["system", vi.fn()],
@@ -87,8 +90,20 @@ afterEach(() => {
   userState.isUserLoading = false;
   userState.user = null;
   userState.userError = null;
+  auth.logout.mockClear();
+  deleteAccount.mockReset().mockResolvedValue(undefined);
   refreshUser.mockClear();
 });
+
+// controlled input fixture
+const setInputValue = (input: HTMLInputElement, value: string): void => {
+  const setter = Object.getOwnPropertyDescriptor(
+    HTMLInputElement.prototype,
+    "value"
+  )?.set;
+  setter?.call(input, value);
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+};
 const render = () => {
   const container = document.createElement("div");
   document.body.appendChild(container);
@@ -182,5 +197,76 @@ describe("Account state predicates", () => {
 
     act(() => logout?.click());
     expect(auth.logout).toHaveBeenCalledOnce();
+  });
+
+  it("requires typed confirmation and shows permanent deletion completion", async () => {
+    auth.user = {
+      email: "rider@example.com",
+      name: "Rider",
+      sub: "auth0|rider",
+    };
+    userState.user = {};
+    const container = render();
+    const deleteButton = [...container.querySelectorAll("button")].find(
+      (button) => button.textContent === "Delete account"
+    );
+
+    act(() => deleteButton?.click());
+    const dialog = container.querySelector<HTMLElement>('[role="dialog"]');
+    const confirmation = dialog?.querySelector<HTMLInputElement>("input");
+    const permanentlyDelete = [...(dialog?.querySelectorAll("button") ?? [])].find(
+      (button) => button.textContent === "Permanently delete"
+    );
+    expect(dialog?.getAttribute("aria-modal")).toBe("true");
+    expect(permanentlyDelete?.disabled).toBe(true);
+
+    await act(async () => {
+      setInputValue(confirmation as HTMLInputElement, "DELETE");
+      permanentlyDelete?.click();
+      await Promise.resolve();
+    });
+
+    expect(deleteAccount).toHaveBeenCalledWith("DELETE");
+    expect(dialog?.textContent).toContain("Account deleted");
+    expect(dialog?.textContent).toContain("permanently deleted");
+
+    await act(async () => {
+      [...(dialog?.querySelectorAll("button") ?? [])]
+        .find((button) => button.textContent === "Done")
+        ?.click();
+      await Promise.resolve();
+    });
+    expect(auth.logout).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the account active when permanent deletion fails", async () => {
+    auth.user = {
+      email: "rider@example.com",
+      name: "Rider",
+      sub: "auth0|rider",
+    };
+    userState.user = {};
+    deleteAccount.mockRejectedValueOnce(new Error("Auth0 unavailable"));
+    const container = render();
+
+    act(() =>
+      [...container.querySelectorAll("button")]
+        .find((button) => button.textContent === "Delete account")
+        ?.click()
+    );
+    const dialog = container.querySelector<HTMLElement>('[role="dialog"]');
+    const confirmation = dialog?.querySelector<HTMLInputElement>("input");
+    await act(async () => {
+      setInputValue(confirmation as HTMLInputElement, "DELETE");
+      [...(dialog?.querySelectorAll("button") ?? [])]
+        .find((button) => button.textContent === "Permanently delete")
+        ?.click();
+      await Promise.resolve();
+    });
+
+    expect(dialog?.querySelector('[role="alert"]')?.textContent).toContain(
+      "could not confirm account deletion"
+    );
+    expect(auth.logout).not.toHaveBeenCalled();
   });
 });

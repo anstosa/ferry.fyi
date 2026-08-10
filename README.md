@@ -23,6 +23,7 @@ An alternative to the WSDOT mobile app. With Ferry FYI, you get:
 ## Prerequisites
 
 - [Docker](https://docs.docker.com/get-docker/)
+- [Git LFS](https://git-lfs.com/)
 - [Heroku CLI](https://devcenter.heroku.com/articles/heroku-cli#install-the-heroku-cli)
 
 ## Setting up dev environment
@@ -31,9 +32,10 @@ An alternative to the WSDOT mobile app. With Ferry FYI, you get:
    1. Create a database named `ferryfyi` (`CREATE DATABASE ferryfyi;`)
 2. `git clone git@github.com:anstosa/ferry.fyi.git`
 3. `cd ferry.fyi`
-4. `yarn`
-5. `cp .envrc.sample .envrc` and fill out `.envrc` file (use [`direnv`](https://direnv.net/) or similar to populate variables)
-6. `yarn db:migrate` to initialize database
+4. `git lfs install && git lfs pull`
+5. `yarn`
+6. `cp .envrc.sample .envrc` and fill out `.envrc` file (use [`direnv`](https://direnv.net/) or similar to populate variables)
+7. `yarn db:migrate` to initialize database
 
 ## Local container stack
 
@@ -88,7 +90,7 @@ or version-code command is required before committing.
 The iOS target is generated from the same Capacitor app as Android and requires macOS, Xcode, and an Apple Developer account for device builds and App Store distribution.
 
 1. Install dependencies with `yarn` on a Mac.
-2. Set `AUTH0_CLIENT_REDIRECT` to `fyi.ferry://callback` for the native build and add that URL to the Auth0 application's allowed callback and logout URLs.
+2. Set `AUTH0_IOS_CLIENT_ID` to the dedicated Auth0 iOS application, set `AUTH0_CLIENT_REDIRECT` to `fyi.ferry://callback`, and add that URL to the Auth0 application's allowed callback and logout URLs. Keep only the Auth0 database connection enabled for the iOS application; the web application retains Google for the `/ios` account-migration flow.
 3. Run `yarn open:ios`, select the **App** target in Xcode, and choose the Apple Developer signing team. Keep the bundle identifier as `fyi.ferry` unless the registered App ID requires a different one.
 4. Run `yarn ios` to build, sync, and launch on a selected simulator or connected iPhone. The iPhone must grant camera and location access for ticket scanning and nearby-terminal features.
 5. For a release, use **Publish apps** with platform `ios` and the release version, or push an `ios-v*` tag. The workflow builds, synchronizes, signs, and uploads the TestFlight archive from a clean checkout.

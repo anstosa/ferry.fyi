@@ -5,159 +5,475 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Ferry FYI camera polygon annotator</title>
   <style>
-    :root { color-scheme: dark; font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif; }
-    body { margin: 0; background: #111827; color: #f9fafb; }
-    header { padding: 16px 20px; border-bottom: 1px solid #374151; background: #0f172a; }
-    h1 { margin: 0 0 6px; font-size: 20px; }
-    p { margin: 0; color: #cbd5e1; line-height: 1.4; }
-    main { display: grid; grid-template-columns: 360px 1fr; min-height: calc(100vh - 78px); }
-    aside { padding: 16px; border-right: 1px solid #374151; background: #111827; overflow: auto; }
-    section { padding: 16px; overflow: auto; }
-    label { display: block; margin: 12px 0 6px; font-size: 13px; color: #d1d5db; }
-    select, input, textarea, button { box-sizing: border-box; width: 100%; border: 1px solid #4b5563; border-radius: 8px; background: #1f2937; color: #f9fafb; padding: 9px 10px; font: inherit; }
-    input[type="file"] { padding: 7px; }
-    input[type="checkbox"] { width: auto; }
-    .checkline { display: flex; align-items: center; gap: 8px; margin: 12px 0 4px; color: #d1d5db; }
-    button { cursor: pointer; background: #2563eb; border-color: #2563eb; font-weight: 700; margin-top: 8px; }
-    button.secondary { background: #374151; border-color: #4b5563; }
-    button.danger { background: #991b1b; border-color: #b91c1c; }
-    button.good { background: #047857; border-color: #059669; }
-    button:disabled { opacity: 0.45; cursor: not-allowed; }
-    .hint { font-size: 12px; color: #94a3b8; margin-top: 8px; line-height: 1.45; }
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .canvas-wrap { display: inline-block; position: relative; border: 1px solid #475569; background: #020617; max-width: 100%; }
-    canvas { display: block; image-rendering: auto; cursor: crosshair; transform-origin: top left; }
-    .zoom-controls { align-items: center; }
-    .zoom-controls button, .zoom-controls select { width: auto; margin: 0; }
-    .zoom-controls select { min-width: 96px; }
-    #zoomStatus { color: #cbd5e1; padding: 9px 0; }
-    .current { margin: 12px 0; padding: 10px; background: #172554; border: 1px solid #1d4ed8; border-radius: 8px; color: #bfdbfe; }
-    .poly-list { margin-top: 12px; display: grid; gap: 8px; }
-    .poly { border: 1px solid #374151; border-radius: 8px; padding: 8px; background: #0f172a; font-size: 13px; }
-    .poly b { color: #93c5fd; }
-    .poly.exclusion b { color: #fca5a5; }
-    textarea { min-height: 260px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; white-space: pre; }
-    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 14px; }
-    .toolbar button { width: auto; margin: 0; }
-    .small { font-size: 12px; }
-    .summary { display: grid; gap: 4px; margin: 10px 0; padding: 10px; border: 1px solid #334155; border-radius: 8px; background: #0f172a; color: #cbd5e1; font-size: 13px; }
-    .camera-title { font-size: 18px; font-weight: 800; margin-bottom: 4px; }
-    .camera-meta { color: #cbd5e1; margin-bottom: 10px; }
+    :root {
+      color-scheme: dark;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif;
+      --bg: #090f1d;
+      --panel: #101827;
+      --panel-raised: #162033;
+      --line: #26334a;
+      --line-strong: #3b4b66;
+      --muted: #8fa1ba;
+      --text: #f4f7fb;
+      --accent: #4f7cff;
+      --accent-soft: #182b5c;
+      --success: #18a875;
+      --danger: #e05260;
+      --radius: 10px;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); }
+    button, select, input, textarea { font: inherit; }
+    button { cursor: pointer; }
+    button:disabled { cursor: not-allowed; opacity: .42; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 68px; padding: 10px 18px; border-bottom: 1px solid var(--line); background: #0c1424; }
+    .title-lockup { min-width: 0; }
+    .eyebrow { display: block; margin-bottom: 2px; color: #79a2ff; font-size: 10px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    h1 { margin: 0; font-size: 17px; letter-spacing: -.01em; }
+    p { margin: 0; color: #b5c1d2; line-height: 1.4; }
+    .title-lockup p { margin-top: 2px; font-size: 12px; }
+    header nav { display: flex; align-items: center; gap: 8px; flex: none; }
+    header a { color: #c7d5ea; text-decoration: none; }
+    .admin-link { display: inline-flex; align-items: center; gap: 6px; padding: 7px 9px; border-radius: 8px; font-size: 12px; font-weight: 700; }
+    .admin-link:hover { background: var(--panel-raised); color: white; }
+    .route-switcher { display: inline-flex; padding: 3px; border: 1px solid var(--line); border-radius: 10px; background: #080e1a; }
+    .route-switcher a { padding: 6px 9px; border-radius: 7px; font-size: 12px; font-weight: 700; }
+    body[data-tool-mode="editor"] .route-switcher a[data-mode="editor"],
+    body[data-tool-mode="benchmark"] .route-switcher a[data-mode="benchmark"] { background: var(--panel-raised); color: white; box-shadow: inset 0 0 0 1px #31425e; }
+    main { display: grid; grid-template-columns: 304px minmax(0, 1fr); min-height: calc(100vh - 68px); }
+    aside { min-width: 0; padding: 12px; border-right: 1px solid var(--line); background: #0d1524; overflow: auto; }
+    section { min-width: 0; padding: 14px 16px 24px; overflow: auto; }
+    .mobile-tabs { display: none; }
+    .panel-card, details { border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
+    .inspector-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+    .inspector-head h2 { margin: 0; font-size: 14px; }
+    .save-stack { display: flex; align-items: center; gap: 7px; }
+    .save-indicator { width: 7px; height: 7px; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 3px rgb(24 168 117 / 14%); }
+    .save-indicator[data-state="error"] { background: var(--danger); box-shadow: 0 0 0 3px rgb(224 82 96 / 14%); }
+    .summary { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; margin-bottom: 10px; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: var(--line); color: var(--muted); font-size: 10px; }
+    .metric { min-width: 0; padding: 8px 9px; background: var(--panel); }
+    .metric b { display: block; color: var(--text); font-size: 14px; }
+    .control-card { padding: 10px; }
+    .control-card + .control-card, aside details + details, .control-card + details, details + .control-card { margin-top: 9px; }
+    .field { min-width: 0; }
+    .field + .field { margin-top: 8px; }
+    .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    label, .field-label { display: block; margin: 0 0 4px; color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .035em; text-transform: uppercase; }
+    select, input, textarea { width: 100%; min-width: 0; border: 1px solid var(--line-strong); border-radius: 8px; outline: none; background: #182234; color: var(--text); padding: 7px 9px; font-size: 12px; }
+    select, input { height: 34px; }
+    select:focus, input:focus, textarea:focus { border-color: #6e93ff; box-shadow: 0 0 0 3px rgb(79 124 255 / 16%); }
+    .custom-select { position: relative; min-width: 0; }
+    .custom-select-trigger { width: 100%; min-width: 0; min-height: 34px; justify-content: space-between; border-color: var(--line-strong); background: #182234; color: var(--text); padding: 6px 9px; font-weight: 650; text-align: left; }
+    .custom-select-trigger:hover:not(:disabled) { border-color: #526789; filter: none; background: #1b283d; }
+    .custom-select-trigger:focus-visible,
+    .custom-select-trigger[aria-expanded="true"] { border-color: #6e93ff; outline: none; box-shadow: 0 0 0 3px rgb(79 124 255 / 16%); }
+    .custom-select-value { display: block; min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .custom-select-trigger .custom-select-meta { display: none; }
+    .custom-select-chevron { width: 7px; height: 7px; flex: none; margin: -3px 2px 0 8px; border-right: 1.5px solid #91a7c4; border-bottom: 1.5px solid #91a7c4; transform: rotate(45deg); transition: transform 120ms ease; }
+    .custom-select-trigger[aria-expanded="true"] .custom-select-chevron { margin-top: 3px; transform: rotate(225deg); }
+    .custom-select-menu { position: absolute; z-index: 80; top: calc(100% + 5px); right: 0; left: 0; max-height: min(280px, 48vh); padding: 4px; border: 1px solid #41516d; border-radius: 9px; overflow: auto; background: #111b2c; box-shadow: 0 16px 36px rgb(0 0 0 / 42%), 0 0 0 1px rgb(255 255 255 / 3%); }
+    .custom-select-menu[hidden] { display: none; }
+    .custom-select-option { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; width: 100%; min-height: 36px; justify-content: stretch; border-color: transparent; background: transparent; color: #d8e2ef; padding: 7px 8px; text-align: left; }
+    .custom-select-option:hover:not(:disabled),
+    .custom-select-option:focus-visible { border-color: #334968; outline: none; filter: none; background: #1a2a40; }
+    .custom-select-option[aria-selected="true"] { border-color: #365ca8; background: #182b54; color: white; }
+    .custom-select-copy { min-width: 0; }
+    .custom-select-label { display: block; overflow: hidden; font-size: 11px; font-weight: 750; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
+    .custom-select-meta { display: block; margin-top: 2px; overflow: hidden; color: var(--muted); font-size: 9px; font-weight: 550; line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; }
+    .custom-select-check { width: 16px; margin-left: 8px; color: #8eadff; font-size: 12px; text-align: center; }
+    input[type="file"] { height: auto; padding: 6px; }
+    input[type="checkbox"] { width: auto; height: auto; accent-color: var(--accent); }
+    .checkline { display: flex; align-items: center; gap: 8px; min-height: 32px; margin: 7px 0 0; color: #d2dbe8; font-size: 12px; }
+    .checkline span { flex: 1; }
+    button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 34px; border: 1px solid transparent; border-radius: 8px; background: var(--accent); color: white; padding: 6px 10px; font-size: 12px; font-weight: 750; }
+    button:hover:not(:disabled) { filter: brightness(1.08); }
+    button.secondary { border-color: var(--line-strong); background: #222e42; color: #dce5f2; }
+    button.ghost { border-color: transparent; background: transparent; color: #b9c7da; }
+    button.danger { border-color: rgb(224 82 96 / 45%); background: rgb(224 82 96 / 14%); color: #ffb7be; }
+    button.good { background: var(--success); }
+    button.compact { min-height: 30px; padding: 4px 8px; font-size: 11px; }
+    .icon-button { display: inline-grid; place-items: center; width: 34px; padding: 0; font-size: 17px; }
+    .icon { width: 15px; height: 15px; flex: none; fill: currentColor; }
+    .icon-button .icon { width: 16px; height: 16px; }
+    .button-row { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 9px; }
+    .button-row > .grow { flex: 1; }
+    .segmented { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3px; padding: 3px; border: 1px solid var(--line); border-radius: 9px; background: #0a1120; }
+    .segmented button { min-height: 28px; border-color: transparent; background: transparent; color: var(--muted); padding: 4px 7px; font-size: 10px; }
+    .segmented button[aria-pressed="true"] { background: var(--panel-raised); color: white; box-shadow: inset 0 0 0 1px var(--line-strong); }
+    .sr-only { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
+    details { overflow: hidden; }
+    details > summary { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 10px; color: #d9e2ef; cursor: pointer; font-size: 11px; font-weight: 800; list-style: none; }
+    details > summary::-webkit-details-marker { display: none; }
+    details > summary::after { content: ""; width: 6px; height: 6px; border-right: 1.5px solid var(--muted); border-bottom: 1.5px solid var(--muted); transform: rotate(45deg); transition: transform 120ms ease; }
+    details[open] > summary::after { transform: rotate(225deg); }
+    .details-body { padding: 0 10px 10px; border-top: 1px solid var(--line); }
+    .hint { margin-top: 6px; color: var(--muted); font-size: 10px; line-height: 1.45; }
+    .current { margin-top: 9px; padding: 8px 9px; border: 1px solid #29467f; border-radius: 8px; background: #122143; color: #bcd0ff; font-size: 11px; }
+    #controlsPanel[data-interaction="idle"] .drawing-actions,
+    #controlsPanel[data-interaction="idle"] .editing-actions,
+    #controlsPanel[data-interaction="drawing"] .idle-actions,
+    #controlsPanel[data-interaction="drawing"] .editing-actions,
+    #controlsPanel[data-interaction="editing"] .idle-actions,
+    #controlsPanel[data-interaction="editing"] .drawing-actions { display: none; }
+    textarea { min-height: 78px; resize: vertical; }
+    #jsonOut { min-height: 240px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 10px; white-space: pre; }
+    .danger-zone { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+    .workspace-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 10px; }
+    .camera-title { font-size: 16px; font-weight: 820; letter-spacing: -.01em; }
+    .camera-meta { max-width: 720px; margin-top: 2px; color: var(--muted); font-size: 10px; overflow-wrap: anywhere; }
+    .workspace-actions { display: flex; align-items: center; gap: 5px; flex: none; }
+    .status-line { display: flex; align-items: center; gap: 7px; min-height: 28px; margin-bottom: 9px; color: var(--muted); font-size: 10px; }
+    .status-line::before { content: ""; width: 6px; height: 6px; flex: none; border-radius: 50%; background: #5f718d; }
+    .benchmark-panel { margin-bottom: 10px; padding: 10px; border: 1px solid #5847b9; border-radius: var(--radius); background: linear-gradient(135deg, #181839, #191432); }
+    body[data-tool-mode="editor"] .benchmark-panel { display: none; }
+    body[data-tool-mode="benchmark"] .mode-editor-only { display: none; }
+    body[data-tool-mode="benchmark"] #prevBtn,
+    body[data-tool-mode="benchmark"] #nextBtn,
+    body[data-tool-mode="benchmark"] #refreshImageBtn { display: none; }
+    .benchmark-top { display: grid; grid-template-columns: 220px minmax(240px, 1fr) auto; gap: 8px; align-items: end; }
+    .benchmark-actions { display: flex; gap: 5px; }
+    .benchmark-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 7px; }
+    .benchmark-panel details { border-color: #423887; background: rgb(13 13 35 / 45%); }
+    .benchmark-notes { min-height: 64px; }
+    .capture-panel { margin-bottom: 10px; border-color: #315b68; background: #0d1d29; }
+    .capture-panel > summary { color: #c9f2f5; }
+    .capture-body { padding: 0 10px 10px; border-top: 1px solid #315b68; }
+    .capture-intro { margin: 9px 0; color: var(--muted); font-size: 10px; line-height: 1.45; }
+    .capture-schedule { display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 8px; align-items: end; }
+    .capture-schedule input[data-calculated="true"] { border-color: #3a7480; background: #102d35; color: #b9f0f2; }
+    .capture-camera-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; }
+    .capture-camera-actions { display: flex; gap: 4px; }
+    .capture-camera-actions button { min-height: 28px; padding: 3px 7px; font-size: 10px; }
+    .capture-camera-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 4px; max-height: 150px; margin-top: 6px; padding: 6px; border: 1px solid var(--line); border-radius: 8px; overflow: auto; background: #09131d; }
+    .capture-camera-option { display: flex; align-items: center; gap: 6px; min-width: 0; min-height: 28px; margin: 0; padding: 4px 6px; border-radius: 6px; color: #ccd9e6; font-size: 10px; font-weight: 650; letter-spacing: 0; text-transform: none; }
+    .capture-camera-option:hover { background: #142638; }
+    .capture-camera-option input { flex: none; }
+    .capture-camera-option span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .capture-launch { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 9px; }
+    .capture-launch .hint { margin: 0; }
+    .capture-run-list { display: grid; gap: 6px; margin-top: 10px; }
+    .capture-run { display: grid; grid-template-columns: minmax(160px, 1fr) auto; gap: 8px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: #0a1520; }
+    .capture-run-title { color: #e7f3f7; font-size: 11px; font-weight: 800; overflow-wrap: anywhere; }
+    .capture-run-meta { margin-top: 3px; color: var(--muted); font-size: 9px; line-height: 1.45; }
+    .capture-run-actions { display: flex; align-items: flex-start; gap: 4px; }
+    .capture-run-actions button { min-height: 30px; padding: 4px 7px; font-size: 10px; }
+    .capture-log { grid-column: 1 / -1; margin: 0; padding: 6px; border-radius: 6px; overflow: auto; background: #050b11; color: #9eb0c3; font: 9px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre-wrap; }
+    .canvas-shell { border: 1px solid var(--line); border-radius: 12px; background: #080d17; overflow: hidden; }
+    .canvas-shell[data-pan-ready="true"] canvas { cursor: grab; }
+    .canvas-shell[data-panning="true"] canvas { cursor: grabbing; }
+    .canvas-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 42px; padding: 6px 8px 6px 11px; border-bottom: 1px solid var(--line); background: #101827; }
+    .canvas-label { color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    .zoom-controls { display: flex; align-items: center; gap: 3px; }
+    .zoom-controls button { min-height: 28px; padding: 3px 8px; }
+    .zoom-controls button[aria-pressed="true"] { background: var(--accent-soft); color: #a9c0ff; box-shadow: inset 0 0 0 1px #35549d; }
+    #zoomStatus { min-width: 42px; color: #dce5f2; text-align: center; font-size: 10px; font-variant-numeric: tabular-nums; }
+    .canvas-viewport { aspect-ratio: 400 / 245; padding: 14px; overflow: auto; overscroll-behavior: contain; background-color: #070b13; background-image: linear-gradient(45deg, #0c1320 25%, transparent 25%), linear-gradient(-45deg, #0c1320 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #0c1320 75%), linear-gradient(-45deg, transparent 75%, #0c1320 75%); background-position: 0 0, 0 8px, 8px -8px, -8px 0; background-size: 16px 16px; }
+    .canvas-wrap { display: block; position: relative; width: fit-content; max-width: none; margin: 0 auto; border: 1px solid #52617a; background: #020617; overflow: hidden; box-shadow: 0 12px 32px rgb(0 0 0 / 30%); }
+    canvas { display: block; max-width: none; image-rendering: auto; cursor: crosshair; transform-origin: top left; touch-action: none; }
+    .poly-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px; margin-top: 10px; }
+    .poly { position: relative; min-width: 0; border: 1px solid var(--line); border-radius: var(--radius); padding: 9px; background: var(--panel); color: var(--muted); font-size: 10px; }
+    .poly b { display: block; padding-right: 68px; color: #9ab8ff; font-size: 11px; }
+    .poly.exclusion b { color: #ff9da7; }
+    .poly-actions { position: absolute; top: 6px; right: 6px; display: flex; gap: 3px; }
+    .poly-actions button { min-height: 26px; padding: 3px 6px; font-size: 10px; }
+    .benchmark-state { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; margin-top: 8px; }
+    .benchmark-state button { min-height: 30px; border-color: var(--line); background: #121b2a; color: var(--muted); padding: 4px; font-size: 9px; }
+    .benchmark-state button[aria-pressed="true"] { border-color: #7898ff; background: #23366d; color: white; }
+    .poly.benchmark-active { border-color: #7898ff; box-shadow: 0 0 0 2px rgb(120 152 255 / 20%); }
+    .small { font-size: 10px; }
+    @media (max-width: 1000px) {
+      .benchmark-top { grid-template-columns: 1fr 2fr; }
+      .benchmark-actions { grid-column: 1 / -1; }
+    }
+    @media (max-width: 800px) {
+      header { display: block; min-height: 0; padding: 11px 12px; }
+      .title-lockup p { display: none; }
+      header nav { justify-content: space-between; margin-top: 8px; }
+      .route-switcher { flex: 1; }
+      .route-switcher a { flex: 1; text-align: center; }
+      main { display: block; min-height: 0; }
+      .mobile-tabs { position: sticky; top: 0; z-index: 20; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 6px; border-bottom: 1px solid var(--line); background: rgb(12 20 36 / 96%); backdrop-filter: blur(12px); }
+      .mobile-tabs button { min-height: 42px; border-color: transparent; background: transparent; color: var(--muted); }
+      .mobile-tabs button[aria-selected="true"] { border-color: var(--line-strong); background: var(--panel-raised); color: white; }
+      main[data-mobile-panel="camera"] aside { display: none; }
+      main[data-mobile-panel="controls"] section { display: none; }
+      aside, section { width: auto; padding: 10px; border: 0; overflow: visible; }
+      .workspace-head { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
+      .workspace-actions { justify-content: flex-end; gap: 4px; }
+      .workspace-actions .text-action { flex: 1; }
+      .benchmark-top { grid-template-columns: 1fr; }
+      .benchmark-actions { grid-column: auto; display: grid; grid-template-columns: 1fr 1fr; }
+      .benchmark-footer { display: block; }
+      .capture-schedule { grid-template-columns: 1fr 1fr; }
+      .capture-launch { align-items: stretch; flex-direction: column; }
+      .capture-run { grid-template-columns: 1fr; }
+      .capture-run-actions { flex-wrap: wrap; }
+      .canvas-viewport { padding: 8px; }
+      .poly-list { grid-template-columns: 1fr; }
+      .field-grid { grid-template-columns: 1fr; }
+      select, input, .custom-select-trigger { min-height: 40px; }
+      .custom-select-option { min-height: 42px; }
+      button { min-height: 40px; }
+      button.compact, .icon-button, .zoom-controls button { min-height: 36px; }
+      .canvas-wrap { max-width: none; }
+    }
   </style>
 </head>
 <body>
   <header>
-    <h1>Ferry FYI camera polygon annotator</h1>
-    <p>All system cameras are included. Draw include polygons for queue/holding lanes and exclusion polygons for intersections or breaks inside those lanes. It reads and writes shared/data/camera-detection-areas.json through the local server.</p>
+    <div class="title-lockup">
+      <span class="eyebrow">Developer tool</span>
+      <h1>Camera detection debugger</h1>
+      <p>Define spatial occupancy regions and validate detector behavior.</p>
+    </div>
+    <nav aria-label="Camera detection tools">
+      <a class="admin-link" href="/"><svg class="icon" aria-hidden="true"><use href="/dev/camera-detection/icons.svg#icon-arrow-left"/></svg>Ferry FYI</a>
+      <div class="route-switcher">
+        <a data-mode="editor" href="/dev/camera-detection">Editor</a>
+        <a data-mode="benchmark" href="/dev/camera-detection/benchmarks">Benchmarks</a>
+      </div>
+    </nav>
   </header>
-  <main>
-    <aside>
+  <main data-mobile-panel="camera">
+    <div class="mobile-tabs" role="tablist" aria-label="Debugger panels">
+      <button id="showCameraPanel" type="button" role="tab" aria-controls="cameraPanel" aria-selected="true">Workspace</button>
+      <button id="showControlsPanel" type="button" role="tab" aria-controls="controlsPanel" aria-selected="false">Inspector</button>
+    </div>
+    <aside id="controlsPanel" data-interaction="idle" role="tabpanel" aria-labelledby="showControlsPanel">
+      <div class="inspector-head">
+        <h2>Inspector</h2>
+        <div class="save-stack">
+          <span class="save-indicator" aria-hidden="true"></span>
+          <button id="saveBtn" class="good compact" title="Save app data JSON"><svg class="icon" aria-hidden="true"><use href="/dev/camera-detection/icons.svg#icon-save"/></svg>Save JSON</button>
+        </div>
+      </div>
       <div class="summary" id="summary"></div>
 
-      <button id="saveBtn" class="good">Save app data JSON</button>
-      <div class="hint" id="saveStatus">Loading shared/data/camera-detection-areas.json...</div>
-      <label for="loadFile">Load different JSON</label>
-      <input id="loadFile" type="file" accept="application/json,.json" />
-      <div class="hint">Normal flow: run the local server, edit polygons, then click Save app data JSON to overwrite shared/data/camera-detection-areas.json. Loading a different file is only for recovery/import.</div>
-
-      <label for="filter">Camera filter</label>
-      <select id="filter">
-        <option value="all">All cameras</option>
-        <option value="todo">No polygons yet</option>
-        <option value="hasAny">Has any polygon</option>
-        <option value="hasIncludes">Has includes</option>
-        <option value="hasExclusions">Has exclusions</option>
-        <option value="reviewed">Reviewed</option>
-        <option value="unreviewed">Unreviewed</option>
-      </select>
-
-      <label for="camera">Camera</label>
-      <select id="camera"></select>
-
-      <label for="polygonRole">Polygon role</label>
-      <select id="polygonRole">
-        <option value="include">Include: count cars in this area</option>
-        <option value="exclude">Exclude: ignore / break queue here</option>
-      </select>
-
-      <label for="areaType">Polygon type</label>
-      <select id="areaType"></select>
-
-      <label for="areaId">Area id</label>
-      <input id="areaId" placeholder="example: clinton_food_mart_queue_lane" />
-
-      <label for="areaLabel">Label</label>
-      <input id="areaLabel" placeholder="example: ferry-bound SR 525 lane" />
-
-      <label for="vehicleCapacity">Vehicle capacity</label>
-      <input id="vehicleCapacity" type="number" min="1" step="1" placeholder="cars when this zone is full" />
-
-      <label class="checkline" for="reviewedInput"><input id="reviewedInput" type="checkbox" /> Reviewed</label>
-      <div class="hint">Check Reviewed after you inspect a camera, including cameras with no relevant ferry polygons.</div>
-
-      <button id="startBtn">Start polygon</button>
-      <div class="row">
-        <button id="undoBtn" class="secondary" disabled>Undo point</button>
-        <button id="finishBtn" class="good" disabled>Finish polygon</button>
-      </div>
-      <button id="cancelBtn" class="secondary" disabled>Cancel current polygon</button>
-      <button id="updateDetailsBtn" class="good" disabled>Update selected details</button>
-      <div class="row">
-        <button id="doneEditBtn" class="secondary" disabled>Done editing</button>
-        <button id="deleteVertexBtn" class="danger" disabled>Delete selected point</button>
+      <div class="control-card panel-card">
+        <div class="field-grid">
+          <div class="field">
+            <label for="filter">Show</label>
+            <select id="filter">
+              <option value="all">All cameras</option>
+              <option value="todo">Not annotated</option>
+              <option value="hasAny">Annotated</option>
+              <option value="hasIncludes">With occupancy areas</option>
+              <option value="hasExclusions">With exclusions</option>
+              <option value="reviewed">Reviewed</option>
+              <option value="unreviewed">Needs review</option>
+            </select>
+          </div>
+          <label class="checkline" for="reviewedInput">
+            <input id="reviewedInput" type="checkbox" />
+            <span>Reviewed</span>
+          </label>
+        </div>
+        <div class="field">
+          <label for="camera">Camera</label>
+          <select id="camera"></select>
+        </div>
       </div>
 
-      <div class="current" id="currentBox">No polygon in progress.</div>
+      <details class="mode-editor-only" open>
+        <summary>Polygon properties</summary>
+        <div class="details-body">
+          <div class="field">
+            <span class="field-label">Role</span>
+            <div class="segmented" id="polygonRoleControl" aria-label="Polygon role">
+              <button type="button" data-value="include" aria-pressed="true">Occupancy</button>
+              <button type="button" data-value="exclude" aria-pressed="false">Exclusion</button>
+            </div>
+            <select class="sr-only" id="polygonRole" tabindex="-1" aria-hidden="true">
+              <option value="include">Include: evaluate occupancy in this area</option>
+              <option value="exclude">Exclude: ignore / break queue here</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="areaType">Type</label>
+            <select id="areaType"></select>
+          </div>
+          <div class="field-grid">
+            <div class="field">
+              <label for="areaId">Area id</label>
+              <input id="areaId" placeholder="queue_lane_1" />
+            </div>
+            <div class="field">
+              <label for="areaLabel">Label</label>
+              <input id="areaLabel" placeholder="Holding lane" />
+            </div>
+          </div>
+          <div class="current" id="currentBox">Ready to draw.</div>
+          <div class="button-row idle-actions">
+            <button id="startBtn" class="grow"><svg class="icon" aria-hidden="true"><use href="/dev/camera-detection/icons.svg#icon-plus"/></svg>Draw polygon</button>
+          </div>
+          <div class="button-row drawing-actions">
+            <button id="undoBtn" class="secondary" disabled><svg class="icon" aria-hidden="true"><use href="/dev/camera-detection/icons.svg#icon-undo"/></svg>Undo</button>
+            <button id="cancelBtn" class="ghost" disabled>Cancel</button>
+            <button id="finishBtn" class="good grow" disabled><svg class="icon" aria-hidden="true"><use href="/dev/camera-detection/icons.svg#icon-check"/></svg>Finish</button>
+          </div>
+          <div class="button-row editing-actions">
+            <button id="deleteVertexBtn" class="danger" disabled><svg class="icon" aria-hidden="true"><use href="/dev/camera-detection/icons.svg#icon-trash"/></svg>Delete point</button>
+            <button id="updateDetailsBtn" class="secondary" disabled><svg class="icon" aria-hidden="true"><use href="/dev/camera-detection/icons.svg#icon-pencil"/></svg>Apply details</button>
+            <button id="doneEditBtn" class="good grow" disabled><svg class="icon" aria-hidden="true"><use href="/dev/camera-detection/icons.svg#icon-check"/></svg>Done</button>
+          </div>
+        </div>
+      </details>
 
-      <button id="clearCameraBtn" class="danger">Clear this camera</button>
-      <button id="clearAllBtn" class="danger">Clear all annotations</button>
-      <button id="downloadBtn" class="secondary">Download backup JSON</button>
-      <button id="copyBtn" class="secondary">Copy JSON</button>
+      <details class="mode-editor-only">
+        <summary>Drawing guide</summary>
+        <div class="details-body hint">
+          Tap to add points. Drag a point to move it, or tap an edge to insert one. Use separate occupancy polygons for distinct lanes and exclusions for intersections, driveways, parked cars, sidewalks, and through traffic.
+        </div>
+      </details>
 
-      <div class="hint">
-        Tips:<br />
-        • Single click adds a point.<br />
-        • Finish needs at least 3 points.<br />
-        • Use multiple include polygons for separate holding lanes.<br />
-        • Use exclusion polygons for intersections, driveways, crosswalks, or any break that should split/ignore queue detection.<br />
-        • To edit: click a polygon in the image or click Edit in the list, then drag points, click an edge to add a point, or update id/type/label above.<br />
-        • Exclude parked cars, opposing traffic, shoulders, side streets, sidewalks, and through lanes.
-      </div>
-
-      <label for="jsonOut">Export preview</label>
-      <textarea id="jsonOut" spellcheck="false"></textarea>
+      <details>
+        <summary>Data &amp; recovery</summary>
+        <div class="details-body">
+          <div class="hint" id="saveStatus">Loading shared/data/camera-detection-areas.json...</div>
+          <div class="field">
+            <label for="loadFile">Import JSON</label>
+            <input id="loadFile" type="file" accept="application/json,.json" />
+          </div>
+          <div class="button-row">
+            <button id="downloadBtn" class="secondary">Download backup</button>
+            <button id="copyBtn" class="secondary">Copy JSON</button>
+          </div>
+          <div class="danger-zone">
+            <span class="field-label">Destructive actions</span>
+            <div class="button-row">
+              <button id="clearCameraBtn" class="danger">Clear camera</button>
+              <button id="clearAllBtn" class="danger">Clear all</button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="jsonOut">Export preview</label>
+            <textarea id="jsonOut" spellcheck="false"></textarea>
+          </div>
+        </div>
+      </details>
     </aside>
-    <section>
-      <div class="camera-title" id="cameraTitle"></div>
-      <div class="camera-meta" id="cameraMeta"></div>
-      <div class="toolbar">
-        <button id="prevBtn" class="secondary">← Previous camera</button>
-        <button id="nextBtn" class="secondary">Next camera →</button>
-        <button id="refreshImageBtn" class="secondary">Refresh image</button>
-        <button id="detectImageBtn" class="secondary">Detect vehicles</button>
-        <button id="clearDetectionsBtn" class="secondary" disabled>Clear detections</button>
+
+    <section id="cameraPanel" role="tabpanel" aria-labelledby="showCameraPanel">
+      <div class="workspace-head">
+        <div>
+          <div class="camera-title" id="cameraTitle"></div>
+          <div class="camera-meta" id="cameraMeta"></div>
+        </div>
+        <div class="workspace-actions" aria-label="Camera actions">
+          <button id="prevBtn" class="secondary icon-button" title="Previous camera" aria-label="Previous camera"><svg class="icon" aria-hidden="true"><use href="/dev/camera-detection/icons.svg#icon-arrow-left"/></svg></button>
+          <button id="nextBtn" class="secondary icon-button" title="Next camera" aria-label="Next camera"><svg class="icon" aria-hidden="true"><use href="/dev/camera-detection/icons.svg#icon-arrow-right"/></svg></button>
+          <button id="refreshImageBtn" class="secondary icon-button" title="Refresh image" aria-label="Refresh image"><svg class="icon" aria-hidden="true"><use href="/dev/camera-detection/icons.svg#icon-refresh"/></svg></button>
+          <button id="detectImageBtn" class="secondary text-action" title="Run detector"><svg class="icon" aria-hidden="true"><use href="/dev/camera-detection/icons.svg#icon-scan"/></svg>Detect</button>
+          <button id="clearDetectionsBtn" class="ghost text-action" title="Clear detections" disabled><svg class="icon" aria-hidden="true"><use href="/dev/camera-detection/icons.svg#icon-eraser"/></svg>Clear</button>
+        </div>
       </div>
-      <div class="hint" id="detectionStatus">Load a camera image, then detect vehicles with the local container.</div>
-      <div class="toolbar zoom-controls">
-        <button id="zoomOutBtn" class="secondary">− Zoom out</button>
-        <button id="zoomFitBtn" class="secondary">Fit width</button>
-        <button id="zoomActualBtn" class="secondary">100%</button>
-        <button id="zoomInBtn" class="secondary">+ Zoom in</button>
-        <select id="zoomSelect" aria-label="Zoom level">
-          <option value="0.5">50%</option>
-          <option value="0.75">75%</option>
-          <option value="1">100%</option>
-          <option value="1.25">125%</option>
-          <option value="1.5">150%</option>
-          <option value="2">200%</option>
-          <option value="3">300%</option>
-          <option value="4">400%</option>
-          <option value="custom" disabled>Custom</option>
-        </select>
-        <span id="zoomStatus" class="small"></span>
+      <div class="status-line" id="detectionStatus">Load a camera image, then run the detector.</div>
+
+      <div class="benchmark-panel" id="benchmarkPanel">
+        <div class="benchmark-top">
+          <div class="field">
+            <span class="field-label">Frame set</span>
+            <div class="segmented" id="benchmarkRoleControl" aria-label="Benchmark frame set">
+              <button type="button" data-value="control" aria-pressed="true">Controls</button>
+              <button type="button" data-value="test" aria-pressed="false">Tests</button>
+              <button type="button" data-value="all" aria-pressed="false">All</button>
+            </div>
+            <select class="sr-only" id="benchmarkRole" tabindex="-1" aria-hidden="true">
+              <option value="control">Control frames</option>
+              <option value="test">Test frames</option>
+              <option value="all">All frames</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="benchmarkFrame">Frame</label>
+            <select id="benchmarkFrame"></select>
+          </div>
+          <div class="benchmark-actions">
+            <button id="nextUnlabeledBtn" class="secondary" title="Next unlabeled frame"><svg class="icon" aria-hidden="true"><use href="/dev/camera-detection/icons.svg#icon-skip-next"/></svg>Next unlabeled</button>
+            <button id="emptyAllBtn" class="secondary" title="Mark every polygon empty"><svg class="icon" aria-hidden="true"><use href="/dev/camera-detection/icons.svg#icon-circle"/></svg>All empty</button>
+            <button id="saveBenchmarkBtn" class="good"><svg class="icon" aria-hidden="true"><use href="/dev/camera-detection/icons.svg#icon-save"/></svg>Save labels</button>
+          </div>
+        </div>
+        <button id="loadBenchmarkBtn" class="sr-only" tabindex="-1" aria-hidden="true">Load benchmark frame</button>
+        <button id="exitBenchmarkBtn" class="sr-only" tabindex="-1" aria-hidden="true" disabled>Return to live camera</button>
+        <div class="benchmark-footer">
+          <div class="hint" id="benchmarkStatus">Loading benchmark manifest and labels...</div>
+          <details>
+            <summary>Frame notes</summary>
+            <div class="details-body">
+              <textarea id="benchmarkNotes" class="benchmark-notes" placeholder="Weather, glare, stale frame, transition, or ambiguity"></textarea>
+            </div>
+          </details>
+        </div>
       </div>
-      <div class="canvas-wrap">
-        <canvas id="canvas"></canvas>
+
+      <details class="capture-panel" id="capturePanel">
+        <summary>Capture images for labeling</summary>
+        <div class="capture-body">
+          <p class="capture-intro">Set any two schedule values and the third is calculated. The image limit applies per camera; identical frames are recorded as duplicates without storing another file.</p>
+          <div class="capture-schedule">
+            <div class="field">
+              <label for="captureSessionId">Session name</label>
+              <input id="captureSessionId" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label for="captureImageLimit">Image limit / camera</label>
+              <input id="captureImageLimit" type="number" min="1" max="10000" step="1" placeholder="Calculated" />
+            </div>
+            <div class="field">
+              <label for="captureTimeLimit">Time limit (minutes)</label>
+              <input id="captureTimeLimit" type="number" min="0.02" max="44640" step="0.01" value="60" />
+            </div>
+            <div class="field">
+              <label for="captureInterval">Interval (minutes)</label>
+              <input id="captureInterval" type="number" min="0.02" max="1440" step="0.01" value="10" />
+            </div>
+          </div>
+          <div class="capture-camera-head">
+            <span class="field-label">Enabled cameras</span>
+            <div class="capture-camera-actions">
+              <button id="captureSelectAll" class="ghost" type="button">Select all</button>
+              <button id="captureSelectNone" class="ghost" type="button">Clear</button>
+            </div>
+          </div>
+          <div class="capture-camera-list" id="captureCameraList"></div>
+          <div class="capture-launch">
+            <div class="hint" id="captureScheduleSummary">Choose two schedule values and at least one camera.</div>
+            <button id="startCaptureBtn" class="good" type="button"><svg class="icon" aria-hidden="true"><use href="/dev/camera-detection/icons.svg#icon-plus"/></svg>Start capture run</button>
+          </div>
+          <div class="hint" id="captureRunStatus">Loading capture runs...</div>
+          <div class="capture-run-list" id="captureRunList"></div>
+        </div>
+      </details>
+
+      <div class="canvas-shell">
+        <div class="canvas-bar">
+          <span class="canvas-label">Detection frame</span>
+          <div class="zoom-controls" aria-label="Canvas zoom">
+            <button id="zoomOutBtn" class="ghost" title="Zoom out" aria-label="Zoom out"><svg class="icon" aria-hidden="true"><use href="/dev/camera-detection/icons.svg#icon-zoom-out"/></svg></button>
+            <button id="zoomFitBtn" class="ghost"><svg class="icon" aria-hidden="true"><use href="/dev/camera-detection/icons.svg#icon-maximize"/></svg>Fit</button>
+            <button id="panBtn" class="ghost" title="Pan image; space-drag and middle-drag also work" aria-pressed="false" disabled><svg class="icon" aria-hidden="true"><use href="/dev/camera-detection/icons.svg#icon-hand"/></svg>Pan</button>
+            <button id="zoomActualBtn" class="ghost" title="Actual size">1:1</button>
+            <span id="zoomStatus"></span>
+            <button id="zoomInBtn" class="ghost" title="Zoom in" aria-label="Zoom in"><svg class="icon" aria-hidden="true"><use href="/dev/camera-detection/icons.svg#icon-zoom-in"/></svg></button>
+            <select class="sr-only" id="zoomSelect" tabindex="-1" aria-hidden="true">
+              <option value="0.5">50%</option>
+              <option value="0.75">75%</option>
+              <option value="1">100%</option>
+              <option value="1.25">125%</option>
+              <option value="1.5">150%</option>
+              <option value="2">200%</option>
+              <option value="3">300%</option>
+              <option value="4">400%</option>
+              <option value="custom" disabled>Custom</option>
+            </select>
+          </div>
+        </div>
+        <div class="canvas-viewport">
+          <div class="canvas-wrap">
+            <canvas id="canvas"></canvas>
+          </div>
+        </div>
       </div>
       <div class="poly-list" id="polyList"></div>
     </section>
@@ -180,6 +496,8 @@
       ["other_exclusion", "other_exclusion"]
     ];
     const colors = { include: ["#22c55e", "#38bdf8", "#f97316", "#e879f9", "#facc15"], exclude: ["#ef4444", "#fb7185", "#f43f5e", "#dc2626", "#f87171"] };
+    const occupancyStates = ["empty", "minority_full", "majority_full", "full"];
+    const occupancyStateColors = { empty: "#22c55e", minority_full: "#38bdf8", majority_full: "#f97316", full: "#ef4444", unlabeled: "#94a3b8" };
     const storageKey = "ferry-fyi-manual-camera-polygons-v2";
     const state = loadInitialState();
     const cameraSelect = document.getElementById("camera");
@@ -188,9 +506,11 @@
     const areaType = document.getElementById("areaType");
     const areaId = document.getElementById("areaId");
     const areaLabel = document.getElementById("areaLabel");
-    const vehicleCapacity = document.getElementById("vehicleCapacity");
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
+    const canvasShell = document.querySelector(".canvas-shell");
+    const canvasViewport = document.querySelector(".canvas-viewport");
+    const panBtn = document.getElementById("panBtn");
     const img = new Image();
     const currentBox = document.getElementById("currentBox");
     const polyList = document.getElementById("polyList");
@@ -201,12 +521,69 @@
     const zoomSelect = document.getElementById("zoomSelect");
     const zoomStatus = document.getElementById("zoomStatus");
     const saveStatus = document.getElementById("saveStatus");
+    const saveIndicator = document.querySelector(".save-indicator");
     const detectionStatus = document.getElementById("detectionStatus");
     const detectImageBtn = document.getElementById("detectImageBtn");
     const clearDetectionsBtn = document.getElementById("clearDetectionsBtn");
     const reviewedInput = document.getElementById("reviewedInput");
+    const benchmarkRole = document.getElementById("benchmarkRole");
+    const benchmarkFrame = document.getElementById("benchmarkFrame");
+    const benchmarkNotes = document.getElementById("benchmarkNotes");
+    const benchmarkStatus = document.getElementById("benchmarkStatus");
+    const captureSessionId = document.getElementById("captureSessionId");
+    const captureImageLimit = document.getElementById("captureImageLimit");
+    const captureTimeLimit = document.getElementById("captureTimeLimit");
+    const captureInterval = document.getElementById("captureInterval");
+    const captureCameraList = document.getElementById("captureCameraList");
+    const captureScheduleSummary = document.getElementById("captureScheduleSummary");
+    const captureRunStatus = document.getElementById("captureRunStatus");
+    const captureRunList = document.getElementById("captureRunList");
+    const startCaptureBtn = document.getElementById("startCaptureBtn");
+    const exitBenchmarkBtn = document.getElementById("exitBenchmarkBtn");
+    const main = document.querySelector("main");
+    const showCameraPanel = document.getElementById("showCameraPanel");
+    const showControlsPanel = document.getElementById("showControlsPanel");
+    const controlsPanel = document.getElementById("controlsPanel");
+    const polygonRoleControl = document.getElementById("polygonRoleControl");
+    const benchmarkRoleControl = document.getElementById("benchmarkRoleControl");
+    const customSelects = new Map();
+    const mobileViewport = window.matchMedia("(max-width: 800px)");
+    const debuggerRouteBase = "/dev/camera-detection";
+    const debuggerTokenStorageKey = "ferry-fyi-dev-camera-detection-access-token";
+    // detect app-served routes
+    const isAppDebuggerRoute = window.location.pathname === debuggerRouteBase
+      || window.location.pathname === `${debuggerRouteBase}/benchmarks`;
+    const startsInBenchmarkMode = window.location.pathname === `${debuggerRouteBase}/benchmarks`;
+    document.body.dataset.toolMode = startsInBenchmarkMode ? "benchmark" : "editor";
+    const appApiBase = isAppDebuggerRoute
+      ? "/api/debug/camera-detection"
+      : "";
+    const appMutationBase = appApiBase
+      ? "/api/admin/camera-detection"
+      : "";
+    // restore admin authorization
+    const appAccessToken = appApiBase
+      ? sessionStorage.getItem(debuggerTokenStorageKey) || ""
+      : "";
+    // resolve standalone or app routes
+    function toolEndpoint(path) {
+      return `${appApiBase}${path}`;
+    }
+    // authorize app mutations
+    function toolFetch(path, options = {}) {
+      const method = String(options.method || "GET").toUpperCase();
+      const isMutation = method !== "GET";
+      const headers = new Headers(options.headers || {});
+      // app mutation guard
+      if (isMutation && appAccessToken) {
+        headers.set("Authorization", `Bearer ${appAccessToken}`);
+      }
+      const base = isMutation ? appMutationBase : appApiBase;
+      return fetch(`${base}${path}`, { ...options, headers });
+    }
     const annotationFileName = "/camera-detection-areas.json";
     const annotationDisplayName = "shared/data/camera-detection-areas.json";
+    const cameraOverridesFileName = "/camera-display-overrides.json";
     let currentPoints = [];
     let drawing = false;
     let editing = null;
@@ -220,6 +597,258 @@
     let detectionCameraId = null;
     let detectionImageUrl = null;
     let detections = [];
+    let benchmarkManifest = { frames: [] };
+    let benchmarkLabels = { frames: {}, schemaVersion: 1, updatedAt: null };
+    let cameraDisplayOverrides = {};
+    let benchmarkSaveQueue = Promise.resolve(true);
+    let captureRuns = [];
+    let capturePollTimer = null;
+    let captureScheduleInputs = ["time", "interval"];
+    let activeBenchmarkFrameId = null;
+    let lastPointerType = "mouse";
+    let panMode = false;
+    let spacePan = false;
+    let panGesture = null;
+    const activeTouchPointers = new Map();
+    let pinchGesture = null;
+    let pinchPointerIds = new Set();
+
+    // switch compact-screen panels
+    function setMobilePanel(panel) {
+      main.dataset.mobilePanel = panel;
+      showCameraPanel.setAttribute("aria-selected", String(panel === "camera"));
+      showControlsPanel.setAttribute("aria-selected", String(panel === "controls"));
+      // fit newly visible canvas
+      if (panel === "camera" && mobileViewport.matches) {
+        requestAnimationFrame(fitZoomToWidth);
+      }
+    }
+
+    // reflect a native select in compact buttons
+    function syncSegmentedControl(control, select) {
+      // update option buttons
+      control.querySelectorAll("[data-value]").forEach((button) => {
+        button.setAttribute("aria-pressed", String(button.dataset.value === select.value));
+        button.disabled = select.disabled;
+      });
+    }
+
+    // bind compact buttons to one select contract
+    function bindSegmentedControl(control, select) {
+      // bind option buttons
+      control.querySelectorAll("[data-value]").forEach((button) => {
+        button.addEventListener("click", () => {
+          select.value = button.dataset.value;
+          select.dispatchEvent(new Event("change", { bubbles: true }));
+        });
+      });
+      select.addEventListener("change", () => syncSegmentedControl(control, select));
+      syncSegmentedControl(control, select);
+    }
+
+    // derive one custom option presentation
+    function customSelectPresentation(option) {
+      return {
+        label: option?.dataset.label || option?.textContent?.trim() || "Choose an option",
+        meta: option?.dataset.meta || ""
+      };
+    }
+
+    // close one custom select
+    function closeCustomSelect(select, restoreFocus = false) {
+      const controller = customSelects.get(select);
+      // initialized select guard
+      if (!controller) return;
+      controller.menu.hidden = true;
+      controller.trigger.setAttribute("aria-expanded", "false");
+      // focus restoration guard
+      if (restoreFocus) controller.trigger.focus();
+    }
+
+    // close competing custom selects
+    function closeOtherCustomSelects(activeSelect) {
+      // custom select pass
+      customSelects.forEach((_controller, select) => {
+        // active select guard
+        if (select !== activeSelect) closeCustomSelect(select);
+      });
+    }
+
+    // select one rendered option
+    function chooseCustomSelectOption(select, value) {
+      const option = [...select.options].find((candidate) => candidate.value === value);
+      // enabled option guard
+      if (!option || option.disabled) return;
+      select.value = value;
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+      closeCustomSelect(select, true);
+    }
+
+    // synchronize custom rendering with a native select
+    function syncCustomSelect(select) {
+      const controller = customSelects.get(select);
+      // initialized select guard
+      if (!controller) return;
+      const selectedOption = select.selectedOptions[0];
+      const selected = customSelectPresentation(selectedOption);
+      controller.value.textContent = selected.label;
+      controller.trigger.disabled = select.disabled;
+      controller.menu.innerHTML = "";
+      // native option pass
+      [...select.options].forEach((option) => {
+        const presentation = customSelectPresentation(option);
+        const button = document.createElement("button");
+        const copy = document.createElement("span");
+        const label = document.createElement("span");
+        const meta = document.createElement("span");
+        const check = document.createElement("span");
+        button.type = "button";
+        button.className = "custom-select-option";
+        button.dataset.value = option.value;
+        button.disabled = option.disabled;
+        button.setAttribute("role", "option");
+        button.setAttribute("aria-selected", String(option.selected));
+        copy.className = "custom-select-copy";
+        label.className = "custom-select-label";
+        label.textContent = presentation.label;
+        meta.className = "custom-select-meta";
+        meta.textContent = presentation.meta;
+        meta.hidden = !presentation.meta;
+        check.className = "custom-select-check";
+        check.textContent = option.selected ? "✓" : "";
+        check.setAttribute("aria-hidden", "true");
+        copy.append(label, meta);
+        button.append(copy, check);
+        button.addEventListener("click", () => chooseCustomSelectOption(select, option.value));
+        controller.menu.appendChild(button);
+      });
+    }
+
+    // open one custom select and focus an option
+    function openCustomSelect(select, direction = 0) {
+      const controller = customSelects.get(select);
+      // available select guard
+      if (!controller || select.disabled) return;
+      closeOtherCustomSelects(select);
+      syncCustomSelect(select);
+      controller.menu.hidden = false;
+      controller.trigger.setAttribute("aria-expanded", "true");
+      const options = [...controller.menu.querySelectorAll(".custom-select-option:not(:disabled)")];
+      const selectedIndex = options.findIndex((option) => option.getAttribute("aria-selected") === "true");
+      const fallbackIndex = direction < 0 ? options.length - 1 : 0;
+      const focusIndex = selectedIndex >= 0 ? selectedIndex : fallbackIndex;
+      // option availability guard
+      if (options[focusIndex]) requestAnimationFrame(() => options[focusIndex].focus());
+    }
+
+    // move keyboard focus within one custom menu
+    function moveCustomSelectFocus(menu, direction) {
+      const options = [...menu.querySelectorAll(".custom-select-option:not(:disabled)")];
+      const currentIndex = options.indexOf(document.activeElement);
+      const nextIndex = Math.max(0, Math.min(options.length - 1, currentIndex + direction));
+      // option availability guard
+      if (options[nextIndex]) options[nextIndex].focus();
+    }
+
+    // bind one native select to custom rendering
+    function bindCustomSelect(select) {
+      const wrapper = document.createElement("div");
+      const trigger = document.createElement("button");
+      const value = document.createElement("span");
+      const chevron = document.createElement("span");
+      const menu = document.createElement("div");
+      const label = document.querySelector(`label[for="${CSS.escape(select.id)}"]`);
+      wrapper.className = "custom-select";
+      trigger.id = `${select.id}Control`;
+      trigger.type = "button";
+      trigger.className = "custom-select-trigger";
+      trigger.setAttribute("aria-haspopup", "listbox");
+      trigger.setAttribute("aria-controls", `${select.id}Menu`);
+      trigger.setAttribute("aria-expanded", "false");
+      value.className = "custom-select-value";
+      chevron.className = "custom-select-chevron";
+      chevron.setAttribute("aria-hidden", "true");
+      menu.id = `${select.id}Menu`;
+      menu.className = "custom-select-menu";
+      menu.setAttribute("role", "listbox");
+      menu.hidden = true;
+      trigger.append(value, chevron);
+      select.before(wrapper);
+      wrapper.append(select, trigger, menu);
+      select.classList.add("sr-only", "custom-select-native");
+      select.tabIndex = -1;
+      select.setAttribute("aria-hidden", "true");
+      // associated label branch
+      if (label) {
+        label.htmlFor = trigger.id;
+        label.id ||= `${select.id}Label`;
+        trigger.setAttribute("aria-labelledby", label.id);
+      } else {
+        trigger.setAttribute("aria-label", select.getAttribute("aria-label") || "Choose an option");
+      }
+      customSelects.set(select, { menu, trigger, value });
+      trigger.addEventListener("click", () => {
+        // expanded menu branch
+        if (trigger.getAttribute("aria-expanded") === "true") {
+          closeCustomSelect(select);
+          return;
+        }
+        openCustomSelect(select);
+      });
+      trigger.addEventListener("keydown", (event) => {
+        // open key guard
+        if (!["ArrowDown", "ArrowUp", "Enter", " "].includes(event.key)) return;
+        event.preventDefault();
+        openCustomSelect(select, event.key === "ArrowUp" ? -1 : 1);
+      });
+      menu.addEventListener("keydown", (event) => {
+        // close key branch
+        if (event.key === "Escape") {
+          event.preventDefault();
+          closeCustomSelect(select, true);
+          return;
+        }
+        // tab exit branch
+        if (event.key === "Tab") {
+          closeCustomSelect(select);
+          return;
+        }
+        // first option branch
+        if (event.key === "Home") {
+          event.preventDefault();
+          menu.querySelector(".custom-select-option:not(:disabled)")?.focus();
+          return;
+        }
+        // last option branch
+        if (event.key === "End") {
+          event.preventDefault();
+          const options = [...menu.querySelectorAll(".custom-select-option:not(:disabled)")];
+          options.at(-1)?.focus();
+          return;
+        }
+        // directional key guard
+        if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+        event.preventDefault();
+        moveCustomSelectFocus(menu, event.key === "ArrowDown" ? 1 : -1);
+      });
+      select.addEventListener("change", () => syncCustomSelect(select));
+      const observer = new MutationObserver(() => syncCustomSelect(select));
+      observer.observe(select, { attributes: true, childList: true, subtree: true });
+      syncCustomSelect(select);
+    }
+
+    // initialize every visible native select
+    function initializeCustomSelects() {
+      // visible select pass
+      document.querySelectorAll("select:not(.sr-only)").forEach(bindCustomSelect);
+      document.addEventListener("pointerdown", (event) => {
+        // custom select pass
+        customSelects.forEach((controller, select) => {
+          // outside pointer guard
+          if (!controller.trigger.parentElement.contains(event.target)) closeCustomSelect(select);
+        });
+      });
+    }
 
     function loadInitialState() {
       try {
@@ -236,6 +865,8 @@
       Object.entries(source || {}).forEach(([cameraId, cameraData]) => {
         annotations[cameraId] = {
           allowedAreas: Array.isArray(cameraData.allowedAreas) ? cameraData.allowedAreas : [],
+          // preserve detector eligibility
+          detectionEnabled: cameraData.detectionEnabled !== false,
           excludedAreas: Array.isArray(cameraData.excludedAreas) ? cameraData.excludedAreas : Array.isArray(cameraData.exclusionAreas) ? cameraData.exclusionAreas : [],
           reviewed: Boolean(cameraData.reviewed)
         };
@@ -247,12 +878,561 @@
       return catalog.find((camera) => camera.id === cameraSelect.value) || filteredCameras[0] || catalog[0];
     }
 
+    // resolve the canonical custom camera name
+    function customCameraName(camera) {
+      return cameraDisplayOverrides[camera.id]?.title || camera.displayName || camera.title;
+    }
+
+    // resolve a benchmark camera name
+    function customBenchmarkCameraName(frame) {
+      const camera = catalog.find((candidate) => candidate.id === frame.cameraId);
+      return camera ? customCameraName(camera) : frame.cameraName;
+    }
+
     function cameraAnnotation(cameraId) {
-      state.annotations[cameraId] ||= { allowedAreas: [], excludedAreas: [], reviewed: false };
+      state.annotations[cameraId] ||= { allowedAreas: [], detectionEnabled: true, excludedAreas: [], reviewed: false };
       state.annotations[cameraId].allowedAreas ||= [];
+      // default detector eligibility
+      state.annotations[cameraId].detectionEnabled = state.annotations[cameraId].detectionEnabled !== false;
       state.annotations[cameraId].excludedAreas ||= [];
       state.annotations[cameraId].reviewed = Boolean(state.annotations[cameraId].reviewed);
       return state.annotations[cameraId];
+    }
+
+    // get active benchmark frame
+    function activeBenchmarkFrame() {
+      return benchmarkManifest.frames.find((frame) => frame.frameId === activeBenchmarkFrameId) || null;
+    }
+
+    // format one occupancy state
+    function formatOccupancyState(value) {
+      return value ? value.replaceAll("_", " ") : "unlabeled";
+    }
+
+    // ensure mutable frame labels
+    function ensureBenchmarkFrameLabels(frame) {
+      benchmarkLabels.frames[frame.frameId] ||= {
+        areaStates: {},
+        cameraId: frame.cameraId,
+        notes: ""
+      };
+      return benchmarkLabels.frames[frame.frameId];
+    }
+
+    // get one polygon truth state
+    function benchmarkAreaState(areaId) {
+      const frame = activeBenchmarkFrame();
+      // inactive benchmark guard
+      if (!frame) return null;
+      return benchmarkLabels.frames[frame.frameId]?.areaStates?.[areaId] || null;
+    }
+
+    // get filtered benchmark frames
+    function filteredBenchmarkFrames() {
+      // all-frame guard
+      if (benchmarkRole.value === "all") return benchmarkManifest.frames;
+      return benchmarkManifest.frames.filter((frame) => frame.role === benchmarkRole.value);
+    }
+
+    // find unlabeled frame areas
+    function unlabeledBenchmarkAreas(frame) {
+      const states = benchmarkLabels.frames[frame.frameId]?.areaStates || {};
+      return cameraAnnotation(frame.cameraId).allowedAreas.filter((area) => !occupancyStates.includes(states[area.id]));
+    }
+
+    // focus one benchmark area
+    function focusBenchmarkArea(areaId) {
+      requestAnimationFrame(() => {
+        const cards = [...polyList.querySelectorAll("[data-benchmark-card]")];
+        const card = cards.find((candidate) => candidate.dataset.benchmarkCard === areaId);
+        // target card guard
+        if (!card) return;
+        cards.forEach((candidate) => candidate.classList.remove("benchmark-active"));
+        card.classList.add("benchmark-active");
+        card.scrollIntoView({ behavior: "smooth", block: "center" });
+        card.querySelector("button")?.focus({ preventScroll: true });
+      });
+    }
+
+    // focus the first incomplete area
+    function focusFirstUnlabeledBenchmarkArea(frame = activeBenchmarkFrame()) {
+      const area = frame ? unlabeledBenchmarkAreas(frame)[0] : null;
+      // incomplete area guard
+      if (area) focusBenchmarkArea(area.id);
+    }
+
+    // populate benchmark frame choices
+    function populateBenchmarkFrames(preferredFrameId) {
+      const frames = filteredBenchmarkFrames();
+      benchmarkFrame.innerHTML = "";
+      // benchmark option pass
+      frames.forEach((frame) => {
+        const option = document.createElement("option");
+        const customName = customBenchmarkCameraName(frame);
+        option.value = frame.frameId;
+        option.textContent = `${customName} — ${frame.role}`;
+        option.dataset.label = customName;
+        option.dataset.meta = `${frame.role === "control" ? "Control" : "Test"} frame · ${frame.cameraName} · ${frame.frameId}`;
+        benchmarkFrame.appendChild(option);
+      });
+      // selected frame preservation
+      if (frames.some((frame) => frame.frameId === preferredFrameId)) {
+        benchmarkFrame.value = preferredFrameId;
+      }
+      syncCustomSelect(benchmarkFrame);
+    }
+
+    // summarize benchmark progress
+    function renderBenchmarkStatus(message = "") {
+      const controls = benchmarkManifest.frames.filter((frame) => frame.role === "control");
+      const progress = controls.reduce((total, frame) => {
+        const areas = cameraAnnotation(frame.cameraId).allowedAreas;
+        const states = benchmarkLabels.frames[frame.frameId]?.areaStates || {};
+        return {
+          labeled: total.labeled + areas.filter((area) => occupancyStates.includes(states[area.id])).length,
+          total: total.total + areas.length
+        };
+      }, { labeled: 0, total: 0 });
+      benchmarkStatus.textContent = `${message ? `${message} ` : ""}Control labels: ${progress.labeled}/${progress.total}.`;
+    }
+
+    // load benchmark files
+    async function loadBenchmarkData() {
+      try {
+        const [manifestResponse, labelsResponse] = await Promise.all([
+          toolFetch(`/camera-benchmark.json?_=${Date.now()}`, { cache: "no-store" }),
+          toolFetch(`/camera-benchmark-labels.json?_=${Date.now()}`, { cache: "no-store" })
+        ]);
+        // benchmark response guard
+        if (!manifestResponse.ok || !labelsResponse.ok) throw new Error("Benchmark files unavailable");
+        benchmarkManifest = await manifestResponse.json();
+        benchmarkLabels = await labelsResponse.json();
+        benchmarkLabels.frames ||= {};
+        populateBenchmarkFrames();
+        renderBenchmarkStatus("Benchmark data loaded.");
+      } catch (error) {
+        benchmarkStatus.textContent = `Could not load benchmark data. ${error.message || ""}`;
+      }
+    }
+
+    // create a filesystem-safe capture name
+    function defaultCaptureSessionId() {
+      return `capture-${new Date().toISOString().slice(0, 19).replace(/[^0-9]/g, "")}`;
+    }
+
+    // list cameras eligible for occupancy capture
+    function eligibleCaptureCameras() {
+      return catalog.filter((camera) => {
+        const annotation = cameraAnnotation(camera.id);
+        return annotation.reviewed
+          && annotation.detectionEnabled !== false
+          && annotation.allowedAreas.length > 0;
+      });
+    }
+
+    // get selected capture camera ids
+    function selectedCaptureCameraIds() {
+      return [...captureCameraList.querySelectorAll("input:checked")].map((input) => input.value);
+    }
+
+    // populate enabled camera choices
+    function renderCaptureCameras(selectAll = false) {
+      const previous = new Set(selectedCaptureCameraIds());
+      const cameras = eligibleCaptureCameras();
+      captureCameraList.innerHTML = "";
+      // eligible camera pass
+      cameras.forEach((camera) => {
+        const option = document.createElement("label");
+        option.className = "capture-camera-option";
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.value = camera.id;
+        checkbox.checked = selectAll || previous.has(camera.id) || previous.size === 0;
+        const label = document.createElement("span");
+        label.textContent = `${camera.terminal}: ${camera.displayName || camera.title}`;
+        option.append(checkbox, label);
+        captureCameraList.appendChild(option);
+      });
+      renderCaptureScheduleSummary();
+    }
+
+    // read one positive schedule value
+    function captureScheduleValue(key) {
+      const field = key === "image" ? captureImageLimit : key === "time" ? captureTimeLimit : captureInterval;
+      const value = Number(field.value);
+      return Number.isFinite(value) && value > 0 ? value : null;
+    }
+
+    // write one derived schedule value
+    function setCalculatedCaptureValue(key, value) {
+      const field = key === "image" ? captureImageLimit : key === "time" ? captureTimeLimit : captureInterval;
+      const rounded = key === "image" ? Math.max(1, Math.floor(value)) : Math.max(0.02, Math.round(value * 100) / 100);
+      field.value = String(rounded);
+      field.dataset.calculated = "true";
+    }
+
+    // calculate the schedule field not set most recently
+    function calculateCaptureSchedule(changedKey) {
+      // manual input tracking
+      if (changedKey) {
+        captureScheduleInputs = [...captureScheduleInputs.filter((key) => key !== changedKey), changedKey].slice(-2);
+        const changedField = changedKey === "image" ? captureImageLimit : changedKey === "time" ? captureTimeLimit : captureInterval;
+        changedField.dataset.calculated = "false";
+      }
+      // two-input guard
+      if (captureScheduleInputs.length < 2) {
+        renderCaptureScheduleSummary();
+        return;
+      }
+      const derivedKey = ["image", "time", "interval"].find((key) => !captureScheduleInputs.includes(key));
+      const imageLimit = captureScheduleValue("image");
+      const timeLimit = captureScheduleValue("time");
+      const interval = captureScheduleValue("interval");
+      // image derivation
+      if (derivedKey === "image" && timeLimit && interval) {
+        setCalculatedCaptureValue("image", timeLimit / interval);
+      }
+      // time derivation
+      if (derivedKey === "time" && imageLimit && interval) {
+        setCalculatedCaptureValue("time", imageLimit * interval);
+      }
+      // interval derivation
+      if (derivedKey === "interval" && imageLimit && timeLimit) {
+        setCalculatedCaptureValue("interval", timeLimit / imageLimit);
+      }
+      renderCaptureScheduleSummary();
+    }
+
+    // summarize the planned capture volume
+    function renderCaptureScheduleSummary() {
+      const imageLimit = captureScheduleValue("image");
+      const timeLimit = captureScheduleValue("time");
+      const interval = captureScheduleValue("interval");
+      const cameraCount = selectedCaptureCameraIds().length;
+      // complete schedule guard
+      if (!imageLimit || !timeLimit || !interval || cameraCount === 0) {
+        captureScheduleSummary.textContent = "Choose two schedule values and at least one camera.";
+        startCaptureBtn.disabled = true;
+        return;
+      }
+      const totalImages = Math.floor(imageLimit) * cameraCount;
+      captureScheduleSummary.textContent = `${Math.floor(imageLimit)} images per camera · ${cameraCount} cameras · up to ${totalImages} unique files · ${timeLimit} minutes at ${interval}-minute intervals.`;
+      startCaptureBtn.disabled = !appApiBase;
+    }
+
+    // format one capture byte count
+    function formatCaptureBytes(bytes) {
+      // megabyte display guard
+      if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MiB`;
+      return `${Math.round(bytes / 1024)} KiB`;
+    }
+
+    // make one capture action button
+    function captureActionButton(label, action, sessionId, className = "secondary") {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = className;
+      button.dataset.captureAction = action;
+      button.dataset.sessionId = sessionId;
+      button.textContent = label;
+      return button;
+    }
+
+    // render raw capture run management
+    function renderCaptureRuns() {
+      captureRunList.innerHTML = "";
+      // empty run guard
+      if (captureRuns.length === 0) {
+        captureRunStatus.textContent = "No capture runs yet.";
+        return;
+      }
+      captureRunStatus.textContent = `${captureRuns.length} capture run${captureRuns.length === 1 ? "" : "s"}. Imported frames are copied into the labeling set, so raw runs can then be deleted.`;
+      // capture run pass
+      captureRuns.forEach((run) => {
+        const card = document.createElement("article");
+        card.className = "capture-run";
+        const summary = document.createElement("div");
+        const title = document.createElement("div");
+        title.className = "capture-run-title";
+        title.textContent = `${run.sessionId} · ${run.status}`;
+        const meta = document.createElement("div");
+        meta.className = "capture-run-meta";
+        meta.textContent = `${run.cameraIds.length} cameras · ${run.roundsCompleted}/${run.imageLimit || "?"} rounds · ${run.storedFrames} stored · ${run.duplicateFrames} duplicate · ${run.failedFrames} failed · ${formatCaptureBytes(run.storedBytes)} · ${run.importedFrames} imported`;
+        summary.append(title, meta);
+        const actions = document.createElement("div");
+        actions.className = "capture-run-actions";
+        const active = run.status === "running" || run.status === "starting";
+        // active run actions
+        if (active) {
+          actions.appendChild(captureActionButton("Stop", "stop", run.sessionId, "danger"));
+        } else {
+          // importable frame action
+          if (run.storedFrames > 0) {
+            actions.appendChild(captureActionButton("Add to labeling", "import", run.sessionId, "good"));
+          }
+          actions.appendChild(captureActionButton("Delete raw", "delete", run.sessionId, "danger"));
+        }
+        card.append(summary, actions);
+        // log tail guard
+        if (run.logTail) {
+          const log = document.createElement("pre");
+          log.className = "capture-log";
+          log.textContent = run.logTail;
+          card.appendChild(log);
+        }
+        captureRunList.appendChild(card);
+      });
+    }
+
+    // poll while a recorder is active
+    function scheduleCaptureRunPoll() {
+      // stale timer guard
+      if (capturePollTimer) clearTimeout(capturePollTimer);
+      const hasActiveRun = captureRuns.some((run) => run.status === "running" || run.status === "starting");
+      // active recorder guard
+      if (hasActiveRun) {
+        capturePollTimer = setTimeout(loadCaptureRuns, 3000);
+      }
+    }
+
+    // load capture sessions from disk
+    async function loadCaptureRuns() {
+      // app route guard
+      if (!appApiBase) {
+        captureRunStatus.textContent = "Capture management requires the Ferry FYI development route.";
+        startCaptureBtn.disabled = true;
+        return;
+      }
+      try {
+        const response = await toolFetch(`/capture-runs?_=${Date.now()}`, { cache: "no-store" });
+        // capture list response guard
+        if (!response.ok) throw new Error("Capture runs unavailable");
+        captureRuns = await response.json();
+        renderCaptureRuns();
+        scheduleCaptureRunPoll();
+      } catch (error) {
+        captureRunStatus.textContent = `Could not load capture runs. ${error.message || ""}`;
+      }
+    }
+
+    // send one capture management mutation
+    async function mutateCaptureRun(path, method = "POST", body) {
+      const response = await toolFetch(path, {
+        method,
+        ...(body ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : {})
+      });
+      const payload = await response.json();
+      // mutation response guard
+      if (!response.ok) throw new Error(payload.error || "Capture action failed");
+      return payload;
+    }
+
+    // launch one bounded capture session
+    async function startCaptureRun() {
+      const cameraIds = selectedCaptureCameraIds();
+      const imageLimit = Math.floor(captureScheduleValue("image") || 0);
+      const durationSeconds = Math.round((captureScheduleValue("time") || 0) * 60);
+      const intervalSeconds = Math.round((captureScheduleValue("interval") || 0) * 60);
+      // complete request guard
+      if (!cameraIds.length || !imageLimit || !durationSeconds || !intervalSeconds) return;
+      startCaptureBtn.disabled = true;
+      captureRunStatus.textContent = "Starting capture run...";
+      try {
+        await mutateCaptureRun("/capture-runs", "POST", {
+          cameraIds,
+          durationSeconds,
+          imageLimit,
+          intervalSeconds,
+          sessionId: captureSessionId.value.trim().toLowerCase()
+        });
+        captureSessionId.value = defaultCaptureSessionId();
+        await loadCaptureRuns();
+      } catch (error) {
+        captureRunStatus.textContent = `Could not start capture run. ${error.message || ""}`;
+      } finally {
+        renderCaptureScheduleSummary();
+      }
+    }
+
+    // handle one run management action
+    async function manageCaptureRun(action, sessionId) {
+      try {
+        let resultMessage = "";
+        // stop action
+        if (action === "stop") {
+          await mutateCaptureRun(`/capture-runs/${sessionId}/stop`);
+          resultMessage = `Stopping ${sessionId}...`;
+        }
+        // import action
+        if (action === "import") {
+          const payload = await mutateCaptureRun(`/capture-runs/${sessionId}/import`);
+          await loadBenchmarkData();
+          populateBenchmarkFrames(benchmarkFrame.value);
+          resultMessage = `${payload.importedFrames} new frames added to labeling.`;
+        }
+        // delete action
+        if (action === "delete") {
+          // destructive confirmation guard
+          if (!confirm(`Delete raw capture files for ${sessionId}? Imported labeling copies will remain.`)) return;
+          await mutateCaptureRun(`/capture-runs/${sessionId}`, "DELETE");
+          resultMessage = `Deleted raw files for ${sessionId}.`;
+        }
+        await loadCaptureRuns();
+        // completed action message
+        if (resultMessage) captureRunStatus.textContent = resultMessage;
+      } catch (error) {
+        captureRunStatus.textContent = `Capture action failed. ${error.message || ""}`;
+      }
+    }
+
+    // load immutable benchmark image
+    function loadBenchmarkFrame(frameId = benchmarkFrame.value) {
+      const frame = benchmarkManifest.frames.find((candidate) => candidate.frameId === frameId);
+      // selected frame guard
+      if (!frame) return;
+      // visible camera guard
+      if (!filteredCameras.some((camera) => camera.id === frame.cameraId)) {
+        filterSelect.value = "all";
+        syncCustomSelect(filterSelect);
+        populateCameras(frame.cameraId);
+      }
+      cameraSelect.value = frame.cameraId;
+      syncCustomSelect(cameraSelect);
+      activeBenchmarkFrameId = frame.frameId;
+      const camera = selectedCamera();
+      const frameLabels = ensureBenchmarkFrameLabels(frame);
+      benchmarkNotes.value = frameLabels.notes || "";
+      detections = [];
+      detectionCameraId = null;
+      detectionImageUrl = null;
+      clearDetectionsBtn.disabled = true;
+      drawing = false;
+      currentPoints = [];
+      clearEditing();
+      defaultsFor(camera);
+      exitBenchmarkBtn.disabled = false;
+      detectionStatus.textContent = "Stored benchmark frame loaded. Run the detector to compare its boxes with human labels.";
+      img.onload = () => {
+        renderLoadedImage();
+        focusFirstUnlabeledBenchmarkArea(frame);
+      };
+      img.onerror = () => {
+        benchmarkStatus.textContent = "Benchmark frame failed to load.";
+      };
+      img.src = `${toolEndpoint(`/camera-benchmark-frame/${frame.file.split("/").pop()}`)}?_=${Date.now()}`;
+      renderBenchmarkStatus(`Loaded ${frame.cameraName}.`);
+    }
+
+    // persist benchmark labels
+    async function saveBenchmarkLabels(successMessage = "Benchmark labels saved.") {
+      try {
+        const response = await toolFetch("/save-benchmark-labels", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(benchmarkLabels)
+        });
+        const payload = await response.json();
+        // save response guard
+        if (!response.ok) throw new Error(payload.error || "Benchmark label save failed");
+        renderBenchmarkStatus(successMessage);
+        return true;
+      } catch (error) {
+        benchmarkStatus.textContent = `Could not save benchmark labels. ${error.message || ""}`;
+        return false;
+      }
+    }
+
+    // serialize benchmark saves
+    function queueBenchmarkSave(successMessage) {
+      const queuedSave = benchmarkSaveQueue.then(() => saveBenchmarkLabels(successMessage));
+      benchmarkSaveQueue = queuedSave.catch(() => false);
+      return queuedSave;
+    }
+
+    // find the next incomplete frame
+    function nextUnlabeledBenchmarkFrame(currentFrameId) {
+      const frames = filteredBenchmarkFrames();
+      const currentIndex = Math.max(0, frames.findIndex((frame) => frame.frameId === currentFrameId));
+      // forward frame pass
+      for (let offset = 1; offset <= frames.length; offset += 1) {
+        const candidate = frames[(currentIndex + offset) % frames.length];
+        // incomplete frame guard
+        if (candidate && unlabeledBenchmarkAreas(candidate).length > 0) return candidate;
+      }
+      return null;
+    }
+
+    // advance benchmark labeling focus
+    function advanceBenchmarkLabeling(frameId, areaId) {
+      // stale interaction guard
+      if (activeBenchmarkFrameId !== frameId) return;
+      const frame = activeBenchmarkFrame();
+      // active frame guard
+      if (!frame) return;
+      const areas = cameraAnnotation(frame.cameraId).allowedAreas;
+      const currentIndex = Math.max(0, areas.findIndex((area) => area.id === areaId));
+      const orderedAreas = [...areas.slice(currentIndex + 1), ...areas.slice(0, currentIndex)];
+      const states = benchmarkLabels.frames[frame.frameId]?.areaStates || {};
+      const nextArea = orderedAreas.find((area) => !occupancyStates.includes(states[area.id]));
+      // same-frame target guard
+      if (nextArea) {
+        focusBenchmarkArea(nextArea.id);
+        return;
+      }
+      const nextFrame = nextUnlabeledBenchmarkFrame(frame.frameId);
+      // next-frame target guard
+      if (nextFrame) {
+        populateBenchmarkFrames(nextFrame.frameId);
+        loadBenchmarkFrame(nextFrame.frameId);
+        return;
+      }
+      renderBenchmarkStatus("Every polygon in this frame set is labeled and saved.");
+    }
+
+    // apply and persist one benchmark label
+    async function applyBenchmarkState(frame, areaId, state) {
+      const frameLabels = ensureBenchmarkFrameLabels(frame);
+      const clearingState = frameLabels.areaStates[areaId] === state;
+      // selected-state toggle
+      if (clearingState) delete frameLabels.areaStates[areaId];
+      else frameLabels.areaStates[areaId] = state;
+      render();
+      const saved = await queueBenchmarkSave(clearingState ? "Label cleared and saved." : "Label saved.");
+      // failed-save and clear guards
+      if (!saved || clearingState) {
+        focusBenchmarkArea(areaId);
+        return;
+      }
+      advanceBenchmarkLabeling(frame.frameId, areaId);
+    }
+
+    // mark every active polygon empty
+    async function markEveryBenchmarkAreaEmpty() {
+      const frame = activeBenchmarkFrame();
+      // active frame guard
+      if (!frame) return;
+      const frameLabels = ensureBenchmarkFrameLabels(frame);
+      const areas = cameraAnnotation(frame.cameraId).allowedAreas;
+      // empty-state pass
+      areas.forEach((area) => {
+        frameLabels.areaStates[area.id] = "empty";
+      });
+      render();
+      const saved = await queueBenchmarkSave(`Marked ${frame.cameraName} empty and saved.`);
+      // successful bulk-save guard
+      if (saved && areas.length > 0) advanceBenchmarkLabeling(frame.frameId, areas.at(-1).id);
+    }
+
+    // load next incomplete frame
+    function loadNextUnlabeledFrame() {
+      const incomplete = filteredBenchmarkFrames().find((frame) => unlabeledBenchmarkAreas(frame).length > 0);
+      // complete-set guard
+      if (!incomplete) {
+        renderBenchmarkStatus("Every polygon in this frame set is labeled.");
+        return;
+      }
+      populateBenchmarkFrames(incomplete.frameId);
+      loadBenchmarkFrame(incomplete.frameId);
     }
 
     function editingArea() {
@@ -270,11 +1450,12 @@
 
     function populateDetailFields(area, collection) {
       polygonRole.value = collection === "allowedAreas" ? "include" : "exclude";
+      syncSegmentedControl(polygonRoleControl, polygonRole);
       updateTypeOptions(false);
       areaType.value = [...areaType.options].some((option) => option.value === area.type) ? area.type : areaType.value;
+      syncCustomSelect(areaType);
       areaId.value = area.id || "";
       areaLabel.value = area.label || "";
-      vehicleCapacity.value = area.vehicleCapacity || "";
     }
 
     function beginEditing(collection, index) {
@@ -308,10 +1489,11 @@
       types.forEach(([value, label]) => {
         const option = document.createElement("option");
         option.value = value;
-        option.textContent = label;
+        option.textContent = label.replaceAll("_", " ");
         areaType.appendChild(option);
       });
       if ([...areaType.options].some((option) => option.value === previousType)) areaType.value = previousType;
+      syncCustomSelect(areaType);
       if (resetDetails && !editing) defaultsFor(selectedCamera());
     }
 
@@ -321,7 +1503,6 @@
       const count = cameraAnnotation(camera.id)[currentCollection()].length + 1;
       areaId.value = `${prefix}_${areaType.value}_${count}`;
       areaLabel.value = `${role === "include" ? "Include" : "Exclude"}: ${camera.terminal} ${camera.displayName || camera.title} ${areaType.value.replaceAll("_", " ")}`;
-      vehicleCapacity.value = "";
     }
 
     function save() {
@@ -360,6 +1541,28 @@
       return Math.max(0.25, Math.min(4, Number(value) || 1));
     }
 
+    // reflect the active pan interaction
+    function syncPanCursor() {
+      canvasShell.dataset.panReady = String(panMode || spacePan);
+      canvasShell.dataset.panning = String(Boolean(panGesture));
+    }
+
+    // toggle persistent pan mode
+    function setPanMode(active) {
+      panMode = Boolean(active) && !panBtn.disabled;
+      panBtn.setAttribute("aria-pressed", String(panMode));
+      syncPanCursor();
+    }
+
+    // enable panning only for overflowing images
+    function updatePanAvailability() {
+      const canPan = canvasViewport.scrollWidth > canvasViewport.clientWidth + 1
+        || canvasViewport.scrollHeight > canvasViewport.clientHeight + 1;
+      panBtn.disabled = !canPan;
+      // stale pan guard
+      if (!canPan) setPanMode(false);
+    }
+
     function applyZoom() {
       const camera = selectedCamera();
       zoom = clampZoom(zoom);
@@ -368,6 +1571,7 @@
       zoomSelect.value = [...zoomSelect.options].some((option) => Number(option.value) === zoom) ? String(zoom) : "custom";
       zoomStatus.textContent = `${Math.round(zoom * 100)}%`;
       localStorage.setItem(`${storageKey}-zoom`, String(zoom));
+      requestAnimationFrame(updatePanAvailability);
     }
 
     function setZoom(value) {
@@ -375,10 +1579,28 @@
       applyZoom();
     }
 
+    // preserve a point while zooming
+    function setZoomAroundImagePoint(value, imagePoint, clientPoint) {
+      setZoom(value);
+      const camera = selectedCamera();
+      const rect = canvas.getBoundingClientRect();
+      const imageClientX = rect.left + (imagePoint[0] / frameWidth(camera)) * rect.width;
+      const imageClientY = rect.top + (imagePoint[1] / frameHeight(camera)) * rect.height;
+      canvasViewport.scrollLeft += imageClientX - clientPoint[0];
+      canvasViewport.scrollTop += imageClientY - clientPoint[1];
+    }
+
     function fitZoomToWidth() {
       const camera = selectedCamera();
       const availableWidth = Math.max(240, document.querySelector("section").clientWidth - 36);
       setZoom(availableWidth / frameWidth(camera));
+    }
+
+    // render and fit phone canvases
+    function renderLoadedImage() {
+      render();
+      // compact viewport guard
+      if (mobileViewport.matches) fitZoomToWidth();
     }
 
     function stepZoom(direction) {
@@ -389,6 +1611,46 @@
 
     function distance(a, b) {
       return Math.hypot(a[0] - b[0], a[1] - b[1]);
+    }
+
+    // calculate a pointer midpoint
+    function pointerMidpoint(first, second) {
+      return [(first.clientX + second.clientX) / 2, (first.clientY + second.clientY) / 2];
+    }
+
+    // begin a two-finger zoom
+    function beginPinchGesture() {
+      const pointers = [...activeTouchPointers.entries()].slice(0, 2);
+      // two-pointer guard
+      if (pointers.length !== 2) return;
+      const [[firstId, first], [secondId, second]] = pointers;
+      const midpoint = pointerMidpoint(first, second);
+      pinchPointerIds = new Set([firstId, secondId]);
+      pinchGesture = {
+        imagePoint: canvasPointAt(midpoint[0], midpoint[1]),
+        pointerIds: [firstId, secondId],
+        startDistance: Math.max(1, distance([first.clientX, first.clientY], [second.clientX, second.clientY])),
+        startZoom: zoom
+      };
+      panGesture = null;
+      draggingVertex = null;
+      suppressNextClick = true;
+      syncPanCursor();
+    }
+
+    // update a two-finger zoom
+    function updatePinchGesture() {
+      // active pinch guard
+      if (!pinchGesture) return;
+      const [firstId, secondId] = pinchGesture.pointerIds;
+      const first = activeTouchPointers.get(firstId);
+      const second = activeTouchPointers.get(secondId);
+      // retained pointer guard
+      if (!first || !second) return;
+      const midpoint = pointerMidpoint(first, second);
+      const currentDistance = Math.max(1, distance([first.clientX, first.clientY], [second.clientX, second.clientY]));
+      const nextZoom = pinchGesture.startZoom * (currentDistance / pinchGesture.startDistance);
+      setZoomAroundImagePoint(nextZoom, pinchGesture.imagePoint, midpoint);
     }
 
     function nearestVertex(points, point, threshold) {
@@ -612,30 +1874,50 @@
 
     function render() {
       const camera = selectedCamera();
+      const benchmark = activeBenchmarkFrame();
       setActualFrameSize(camera);
+      // match the loaded image shape
+      canvasViewport.style.aspectRatio = `${frameWidth(camera)} / ${frameHeight(camera)}`;
       canvas.width = frameWidth(camera);
       canvas.height = frameHeight(camera);
       applyZoom();
-      cameraTitle.textContent = `${camera.id} — ${camera.terminal}: ${camera.displayName || camera.title}`;
-      cameraMeta.textContent = `${frameWidth(camera)}×${frameHeight(camera)} actual; ${camera.image.url}`;
+      cameraTitle.textContent = benchmark ? `${benchmark.cameraName} — ${benchmark.role} benchmark` : `${camera.id} — ${camera.terminal}: ${camera.displayName || camera.title}`;
+      cameraMeta.textContent = benchmark ? `${benchmark.capturedAt}; immutable ${benchmark.sha256.slice(0, 12)}…` : `${frameWidth(camera)}×${frameHeight(camera)} actual; ${camera.image.url}`;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       if (img.complete && img.naturalWidth) ctx.drawImage(img, 0, 0, frameWidth(camera), frameHeight(camera));
       placedLabelBoxes = [];
       const annotation = cameraAnnotation(camera.id);
       reviewedInput.checked = annotation.reviewed;
-      annotation.allowedAreas.forEach((area, index) => drawPolygon(denormalized(area.polygon, camera), colors.include[index % colors.include.length], area.label || area.id, true));
+      reviewedInput.disabled = Boolean(benchmark);
+      polygonRole.disabled = Boolean(benchmark);
+      syncSegmentedControl(polygonRoleControl, polygonRole);
+      areaType.disabled = Boolean(benchmark);
+      syncCustomSelect(areaType);
+      areaId.disabled = Boolean(benchmark);
+      areaLabel.disabled = Boolean(benchmark);
+      annotation.allowedAreas.forEach((area, index) => {
+        const state = benchmarkAreaState(area.id);
+        const color = benchmark ? occupancyStateColors[state || "unlabeled"] : colors.include[index % colors.include.length];
+        const label = benchmark ? `${area.label || area.id} (${formatOccupancyState(state)})` : area.label || area.id;
+        drawPolygon(denormalized(area.polygon, camera), color, label, true);
+      });
       annotation.excludedAreas.forEach((area, index) => drawPolygon(denormalized(area.polygon, camera), colors.exclude[index % colors.exclude.length], area.label || area.id, true));
       drawDetections(camera);
       drawEditHandles(camera);
       drawPolygon(currentPoints, "#ffffff", "current", false);
       const area = editingArea();
-      currentBox.textContent = drawing ? `${currentPoints.length} point(s) in current polygon.` : area ? `Editing ${area.label || area.id}. Drag points; click an edge to add a point; update details above.` : "No polygon in progress.";
-      document.getElementById("undoBtn").disabled = !drawing || currentPoints.length === 0;
-      document.getElementById("finishBtn").disabled = !drawing || currentPoints.length < 3;
-      document.getElementById("cancelBtn").disabled = !drawing;
-      document.getElementById("doneEditBtn").disabled = !editing;
-      document.getElementById("deleteVertexBtn").disabled = !editing || selectedVertex === null || (area?.polygon.length || 0) <= 3;
-      document.getElementById("updateDetailsBtn").disabled = !editing;
+      controlsPanel.dataset.interaction = drawing ? "drawing" : editing ? "editing" : "idle";
+      currentBox.textContent = drawing ? `${currentPoints.length} points placed` : area ? `Editing ${area.label || area.id}` : "Ready to draw";
+      document.getElementById("startBtn").disabled = Boolean(benchmark);
+      document.getElementById("undoBtn").disabled = Boolean(benchmark) || !drawing || currentPoints.length === 0;
+      document.getElementById("finishBtn").disabled = Boolean(benchmark) || !drawing || currentPoints.length < 3;
+      document.getElementById("cancelBtn").disabled = Boolean(benchmark) || !drawing;
+      document.getElementById("doneEditBtn").disabled = Boolean(benchmark) || !editing;
+      document.getElementById("deleteVertexBtn").disabled = Boolean(benchmark) || !editing || selectedVertex === null || (area?.polygon.length || 0) <= 3;
+      document.getElementById("updateDetailsBtn").disabled = Boolean(benchmark) || !editing;
+      document.getElementById("clearCameraBtn").disabled = Boolean(benchmark);
+      document.getElementById("clearAllBtn").disabled = Boolean(benchmark);
+      document.getElementById("refreshImageBtn").disabled = Boolean(benchmark);
       renderList();
       renderSummary();
     }
@@ -643,6 +1925,7 @@
     function renderList() {
       const camera = selectedCamera();
       const annotation = cameraAnnotation(camera.id);
+      const benchmark = activeBenchmarkFrame();
       polyList.innerHTML = "";
       const rows = [
         ...annotation.allowedAreas.map((area, index) => ({ area, index, role: "include", collection: "allowedAreas" })),
@@ -652,11 +1935,39 @@
         polyList.innerHTML = `<div class="hint">No polygons saved for ${camera.id} yet.</div>`;
         return;
       }
+      // benchmark labeling mode
+      if (benchmark) {
+        const frameLabels = ensureBenchmarkFrameLabels(benchmark);
+        // render polygon state cards
+        rows.forEach(({ area, role }) => {
+          const div = document.createElement("div");
+          div.className = `poly ${role === "exclude" ? "exclusion" : ""}`;
+          // exclusion context only
+          if (role === "exclude") {
+            div.innerHTML = `<b>Excluded context: ${area.label || area.id}</b><br>${area.type}`;
+          } else {
+            const selectedState = frameLabels.areaStates[area.id] || "";
+            const options = occupancyStates.map((state) => `<button type="button" data-benchmark-area="${area.id}" data-state="${state}" aria-pressed="${selectedState === state}" title="Select ${formatOccupancyState(state)}; select again to clear">${formatOccupancyState(state)}</button>`).join("");
+            div.dataset.benchmarkCard = area.id;
+            div.innerHTML = `<b>${area.label || area.id}</b>${area.type}<div class="benchmark-state" role="group" aria-label="Ground-truth occupancy for ${area.label || area.id}">${options}</div>`;
+          }
+          polyList.appendChild(div);
+        });
+        // bind polygon state buttons
+        polyList.querySelectorAll("[data-benchmark-area]").forEach((button) => {
+          button.addEventListener("click", async () => {
+            const areaId = button.dataset.benchmarkArea;
+            const state = button.dataset.state;
+            await applyBenchmarkState(benchmark, areaId, state);
+          });
+        });
+        return;
+      }
       rows.forEach(({ area, index, role, collection }) => {
         const div = document.createElement("div");
         div.className = `poly ${role === "exclude" ? "exclusion" : ""}`;
         const isEditing = editing?.collection === collection && editing?.index === index;
-        div.innerHTML = `<b>${role}: ${area.id}</b><br>${area.type}; ${area.polygon.length} points<br>${area.label}<br><button class="secondary small" data-collection="${collection}" data-edit="${index}">${isEditing ? "Done" : "Edit"}</button> <button class="danger small" data-collection="${collection}" data-delete="${index}">Delete</button>`;
+        div.innerHTML = `<b>${area.label || area.id}</b>${role} · ${area.type} · ${area.polygon.length} points<div class="poly-actions"><button class="secondary" data-collection="${collection}" data-edit="${index}"><svg class="icon" aria-hidden="true"><use href="/dev/camera-detection/icons.svg#icon-${isEditing ? "check" : "pencil"}"/></svg>${isEditing ? "Done" : "Edit"}</button><button class="danger icon-button" data-collection="${collection}" data-delete="${index}" aria-label="Delete ${area.label || area.id}"><svg class="icon" aria-hidden="true"><use href="/dev/camera-detection/icons.svg#icon-trash"/></svg></button></div>`;
         polyList.appendChild(div);
       });
       polyList.querySelectorAll("[data-edit]").forEach((button) => {
@@ -698,12 +2009,16 @@
       filteredCameras.forEach((camera) => {
         const annotation = cameraAnnotation(camera.id);
         const option = document.createElement("option");
+        const customName = customCameraName(camera);
         option.value = camera.id;
-        option.textContent = `${camera.id} — ${camera.terminal}: ${camera.displayName || camera.title} (${annotation.allowedAreas.length} in / ${annotation.excludedAreas.length} ex / ${annotation.reviewed ? "reviewed" : "unreviewed"})`;
+        option.textContent = `${camera.id} — ${camera.terminal}: ${customName} (${annotation.allowedAreas.length} in / ${annotation.excludedAreas.length} ex / ${annotation.reviewed ? "reviewed" : "unreviewed"})`;
+        option.dataset.label = `${camera.terminal}: ${customName}`;
+        option.dataset.meta = `${camera.id} · ${camera.displayName || camera.title} · ${annotation.allowedAreas.length} occupancy · ${annotation.excludedAreas.length} exclusions · ${annotation.reviewed ? "reviewed" : "needs review"}`;
         cameraSelect.appendChild(option);
       });
       const stillVisible = filteredCameras.some((camera) => camera.id === preferredId);
       cameraSelect.value = stillVisible ? preferredId : filteredCameras[0].id;
+      syncCustomSelect(cameraSelect);
     }
 
     function renderSummary() {
@@ -711,16 +2026,18 @@
       const includeCount = catalog.reduce((sum, camera) => sum + cameraAnnotation(camera.id).allowedAreas.length, 0);
       const excludeCount = catalog.reduce((sum, camera) => sum + cameraAnnotation(camera.id).excludedAreas.length, 0);
       const reviewedCount = catalog.filter((camera) => cameraAnnotation(camera.id).reviewed).length;
-      summary.innerHTML = `<b>${annotated}/${catalog.length}</b> cameras annotated<br><b>${reviewedCount}/${catalog.length}</b> cameras reviewed<br><b>${includeCount}</b> include polygons<br><b>${excludeCount}</b> exclusion polygons`;
+      summary.innerHTML = `<div class="metric"><b>${annotated}/${catalog.length}</b>Annotated</div><div class="metric"><b>${reviewedCount}/${catalog.length}</b>Reviewed</div><div class="metric"><b>${includeCount}</b>Occupancy</div><div class="metric"><b>${excludeCount}</b>Exclusions</div>`;
     }
 
     function setSaveStatus(message) {
       saveStatus.textContent = message;
+      saveIndicator.dataset.state = /^(Could not|Save needs)/.test(message) ? "error" : "ready";
+      saveIndicator.title = message;
     }
 
     async function loadDefaultAnnotations() {
       try {
-        const response = await fetch(`${annotationFileName}?_=${Date.now()}`, { cache: "no-store" });
+        const response = await toolFetch(`${annotationFileName}?_=${Date.now()}`, { cache: "no-store" });
         if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
         const imported = normalizeImport(await response.json());
         state.annotations = imported.annotations;
@@ -731,10 +2048,22 @@
       }
     }
 
+    // load canonical camera display overrides
+    async function loadCameraDisplayOverrides() {
+      try {
+        const response = await toolFetch(`${cameraOverridesFileName}?_=${Date.now()}`, { cache: "no-store" });
+        // override response guard
+        if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+        cameraDisplayOverrides = await response.json();
+      } catch (_) {
+        cameraDisplayOverrides = {};
+      }
+    }
+
     async function saveDefaultAnnotations() {
       renderExport();
       try {
-        const response = await fetch("/save-annotations", {
+        const response = await toolFetch("/save-annotations", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: jsonOut.value
@@ -757,6 +2086,8 @@
           title: camera.title,
           frameSize: { width: frameWidth(camera), height: frameHeight(camera) },
           imageUrl: camera.image.url,
+          // export detector eligibility
+          detectionEnabled: annotation.detectionEnabled,
           reviewed: annotation.reviewed,
           requiresDaylightReview: false,
           allowedAreas: annotation.allowedAreas,
@@ -786,6 +2117,12 @@
 
     function loadCamera(refresh = false) {
       const camera = selectedCamera();
+      syncCustomSelect(cameraSelect);
+      activeBenchmarkFrameId = null;
+      benchmarkNotes.value = "";
+      exitBenchmarkBtn.disabled = true;
+      reviewedInput.disabled = false;
+      document.getElementById("refreshImageBtn").disabled = false;
       // clear stale detector response
       detections = [];
       detectionCameraId = null;
@@ -796,7 +2133,7 @@
       drawing = false;
       clearEditing();
       defaultsFor(camera);
-      img.onload = render;
+      img.onload = renderLoadedImage;
       img.onerror = () => {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         currentBox.textContent = "Image failed to load. Try Refresh image.";
@@ -810,16 +2147,17 @@
     async function detectCurrentImage() {
       const camera = selectedCamera();
       const imageUrl = img.src;
+      const frameId = activeBenchmarkFrameId;
       // loaded image guard
       if (!img.src) return;
       detectImageBtn.disabled = true;
       detectionStatus.textContent = "Sending current image to local detector...";
       try {
-        const response = await fetch("/detect-current-image", {
+        const response = await toolFetch("/detect-current-image", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            imageUrl,
+            ...(frameId ? { frameId } : { imageUrl }),
             allowedAreas: cameraAnnotation(camera.id).allowedAreas,
             excludedAreas: cameraAnnotation(camera.id).excludedAreas
           })
@@ -828,14 +2166,13 @@
         // detector payload guard
         if (!response.ok || !Array.isArray(payload.detections)) throw new Error(payload.error || "Detector response did not include detections.");
         // ignore stale camera response
-        if (selectedCamera().id !== camera.id || img.src !== imageUrl) return;
+        if (selectedCamera().id !== camera.id || img.src !== imageUrl || activeBenchmarkFrameId !== frameId) return;
         // retain response for active camera
         detections = payload.detections;
         detectionCameraId = camera.id;
         detectionImageUrl = imageUrl;
         clearDetectionsBtn.disabled = false;
-        const countableDetections = detections.filter((detection) => isDetectionCountable(detection, camera));
-        detectionStatus.textContent = `${countableDetections.length} countable detection${countableDetections.length === 1 ? "" : "s"} overlaid for camera ${camera.id}.`;
+        detectionStatus.textContent = `Countable detector signals overlaid for ${activeBenchmarkFrame()?.cameraName || camera.displayName || camera.title}.`;
         render();
       } catch (error) {
         detectionStatus.textContent = `Could not reach the local detector. Run yarn container:up, then try again. ${error.message || ""}`;
@@ -854,13 +2191,24 @@
       render();
     }
 
-    function canvasPoint(event) {
+    // map client coordinates into image space
+    function canvasPointAt(clientX, clientY) {
       const camera = selectedCamera();
       const rect = canvas.getBoundingClientRect();
       return [
-        Math.max(0, Math.min(frameWidth(camera), ((event.clientX - rect.left) / rect.width) * frameWidth(camera))),
-        Math.max(0, Math.min(frameHeight(camera), ((event.clientY - rect.top) / rect.height) * frameHeight(camera)))
+        Math.max(0, Math.min(frameWidth(camera), ((clientX - rect.left) / rect.width) * frameWidth(camera))),
+        Math.max(0, Math.min(frameHeight(camera), ((clientY - rect.top) / rect.height) * frameHeight(camera)))
       ];
+    }
+
+    // map one pointer into image space
+    function canvasPoint(event) {
+      return canvasPointAt(event.clientX, event.clientY);
+    }
+
+    // enlarge touch edit targets
+    function interactionRadius() {
+      return (lastPointerType === "touch" ? 24 : 10) / zoom;
     }
 
     document.getElementById("startBtn").addEventListener("click", () => {
@@ -868,26 +2216,78 @@
       drawing = true;
       currentPoints = [];
       render();
+      // expose drawing surface on phones
+      if (mobileViewport.matches) setMobilePanel("camera");
     });
 
-    canvas.addEventListener("mousedown", (event) => {
+    canvas.addEventListener("pointerdown", (event) => {
+      lastPointerType = event.pointerType || "mouse";
+      // touch tracking branch
+      if (event.pointerType === "touch") {
+        activeTouchPointers.set(event.pointerId, { clientX: event.clientX, clientY: event.clientY });
+        // pinch start guard
+        if (!pinchGesture && activeTouchPointers.size >= 2) beginPinchGesture();
+        // active pinch guard
+        if (pinchGesture) {
+          event.preventDefault();
+          return;
+        }
+      }
+      // pan gesture branch
+      if (!panBtn.disabled && (panMode || spacePan || event.button === 1)) {
+        event.preventDefault();
+        panGesture = {
+          pointerId: event.pointerId,
+          startX: event.clientX,
+          startY: event.clientY,
+          scrollLeft: canvasViewport.scrollLeft,
+          scrollTop: canvasViewport.scrollTop
+        };
+        suppressNextClick = true;
+        canvas.setPointerCapture(event.pointerId);
+        syncPanCursor();
+        return;
+      }
+      // vertex-editing guard
       if (drawing || !editing) return;
       const area = editingArea();
+      // active area guard
       if (!area) return;
       const point = canvasPoint(event);
       const points = denormalized(area.polygon, selectedCamera());
-      const nearest = nearestVertex(points, point, 10 / zoom);
+      const nearest = nearestVertex(points, point, interactionRadius());
+      // nearby vertex guard
       if (!nearest) return;
       selectedVertex = nearest.index;
       draggingVertex = nearest.index;
       movedDuringDrag = false;
       suppressNextClick = true;
+      canvas.setPointerCapture(event.pointerId);
       render();
     });
 
-    canvas.addEventListener("mousemove", (event) => {
+    canvas.addEventListener("pointermove", (event) => {
+      // touch tracking branch
+      if (event.pointerType === "touch" && activeTouchPointers.has(event.pointerId)) {
+        activeTouchPointers.set(event.pointerId, { clientX: event.clientX, clientY: event.clientY });
+        // pinch movement guard
+        if (pinchGesture && pinchPointerIds.has(event.pointerId)) {
+          event.preventDefault();
+          updatePinchGesture();
+          return;
+        }
+      }
+      // pan gesture branch
+      if (panGesture?.pointerId === event.pointerId) {
+        event.preventDefault();
+        canvasViewport.scrollLeft = panGesture.scrollLeft - (event.clientX - panGesture.startX);
+        canvasViewport.scrollTop = panGesture.scrollTop - (event.clientY - panGesture.startY);
+        return;
+      }
+      // vertex-drag guard
       if (draggingVertex === null || !editing) return;
       const area = editingArea();
+      // active area guard
       if (!area) return;
       const points = denormalized(area.polygon, selectedCamera());
       points[draggingVertex] = canvasPoint(event);
@@ -896,11 +2296,50 @@
       render();
     });
 
-    window.addEventListener("mouseup", () => {
+    // finish pan or vertex gestures
+    function finishCanvasPointer(event) {
+      // release touch tracking
+      if (event.pointerType === "touch") {
+        activeTouchPointers.delete(event.pointerId);
+        // pinch completion branch
+        if (pinchPointerIds.has(event.pointerId)) {
+          pinchPointerIds.delete(event.pointerId);
+          // incomplete pinch guard
+          if (pinchPointerIds.size < 2) pinchGesture = null;
+          suppressNextClick = true;
+          return;
+        }
+      }
+      // pan completion branch
+      if (panGesture?.pointerId === event.pointerId) {
+        panGesture = null;
+        syncPanCursor();
+        // expire unused synthetic-click suppression
+        setTimeout(() => {
+          suppressNextClick = false;
+        }, 0);
+        // captured pan guard
+        if (canvas.hasPointerCapture(event.pointerId)) {
+          canvas.releasePointerCapture(event.pointerId);
+        }
+        return;
+      }
+      // vertex-drag guard
       if (draggingVertex === null) return;
       draggingVertex = null;
       suppressNextClick = movedDuringDrag;
       movedDuringDrag = false;
+      // captured vertex guard
+      if (canvas.hasPointerCapture(event.pointerId)) {
+        canvas.releasePointerCapture(event.pointerId);
+      }
+    }
+
+    window.addEventListener("pointerup", finishCanvasPointer);
+    window.addEventListener("pointercancel", finishCanvasPointer);
+    canvas.addEventListener("auxclick", (event) => {
+      // middle-click navigation guard
+      if (event.button === 1) event.preventDefault();
     });
 
     canvas.addEventListener("click", (event) => {
@@ -924,7 +2363,7 @@
       const area = editingArea();
       if (!area) return;
       const points = denormalized(area.polygon, selectedCamera());
-      const vertex = nearestVertex(points, point, 10 / zoom);
+      const vertex = nearestVertex(points, point, interactionRadius());
       if (vertex) {
         if (event.shiftKey && points.length > 3) {
           points.splice(vertex.index, 1);
@@ -934,7 +2373,7 @@
         render();
         return;
       }
-      const edge = nearestEdge(points, point, 10 / zoom);
+      const edge = nearestEdge(points, point, interactionRadius());
       if (edge) {
         points.splice(edge.index, 0, point);
         selectedVertex = edge.index;
@@ -966,10 +2405,6 @@
       area.id = areaId.value.trim() || area.id;
       area.type = areaType.value;
       area.label = areaLabel.value.trim() || area.id;
-      const capacity = Number(vehicleCapacity.value);
-      // capacity field guard
-      if (Number.isFinite(capacity) && capacity > 0 && nextCollection === "allowedAreas") area.vehicleCapacity = capacity;
-      else delete area.vehicleCapacity;
       if (nextCollection !== editing.collection) {
         cameraAnnotation(selectedCamera().id)[editing.collection].splice(editing.index, 1);
         cameraAnnotation(selectedCamera().id)[nextCollection].push(area);
@@ -1003,8 +2438,7 @@
         id: areaId.value.trim() || `manual_${camera.id}_${collection}_${annotation[collection].length + 1}`,
         type: areaType.value,
         label: areaLabel.value.trim() || areaId.value.trim(),
-        polygon: normalized(currentPoints, camera),
-        ...(collection === "allowedAreas" && Number(vehicleCapacity.value) > 0 ? { vehicleCapacity: Number(vehicleCapacity.value) } : {})
+        polygon: normalized(currentPoints, camera)
       });
       annotation.reviewed = true;
       drawing = false;
@@ -1017,7 +2451,13 @@
 
     document.getElementById("clearCameraBtn").addEventListener("click", () => {
       if (!confirm(`Clear all polygons for ${selectedCamera().id}?`)) return;
-      state.annotations[selectedCamera().id] = { allowedAreas: [], excludedAreas: [], reviewed: false };
+      // preserve detector eligibility
+      state.annotations[selectedCamera().id] = {
+        allowedAreas: [],
+        detectionEnabled: cameraAnnotation(selectedCamera().id).detectionEnabled,
+        excludedAreas: [],
+        reviewed: false
+      };
       clearEditing();
       save();
       render();
@@ -1063,7 +2503,7 @@
       state.annotations = imported.annotations;
       clearEditing();
       save();
-      setSaveStatus(`Loaded ${file.name}. Click Save app data JSON to overwrite ${annotationDisplayName}.`);
+      setSaveStatus(`Loaded ${file.name}. Click Save JSON to overwrite ${annotationDisplayName}.`);
       populateCameras(selectedCamera().id);
       loadCamera(true);
     });
@@ -1081,11 +2521,89 @@
     document.getElementById("refreshImageBtn").addEventListener("click", () => loadCamera(true));
     detectImageBtn.addEventListener("click", detectCurrentImage);
     clearDetectionsBtn.addEventListener("click", clearDetections);
+    document.getElementById("loadBenchmarkBtn").addEventListener("click", () => loadBenchmarkFrame());
+    document.getElementById("nextUnlabeledBtn").addEventListener("click", loadNextUnlabeledFrame);
+    document.getElementById("emptyAllBtn").addEventListener("click", markEveryBenchmarkAreaEmpty);
+    document.getElementById("saveBenchmarkBtn").addEventListener("click", () => queueBenchmarkSave("Benchmark labels saved."));
+    exitBenchmarkBtn.addEventListener("click", () => loadCamera());
+    // calculate capture schedules from the latest two inputs
+    [[captureImageLimit, "image"], [captureTimeLimit, "time"], [captureInterval, "interval"]].forEach(([field, key]) => {
+      field.addEventListener("input", () => calculateCaptureSchedule(key));
+    });
+    captureCameraList.addEventListener("change", renderCaptureScheduleSummary);
+    document.getElementById("captureSelectAll").addEventListener("click", () => renderCaptureCameras(true));
+    document.getElementById("captureSelectNone").addEventListener("click", () => {
+      // camera checkbox pass
+      captureCameraList.querySelectorAll("input").forEach((input) => {
+        input.checked = false;
+      });
+      renderCaptureScheduleSummary();
+    });
+    startCaptureBtn.addEventListener("click", startCaptureRun);
+    captureRunList.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-capture-action]");
+      // action target guard
+      if (!button) return;
+      manageCaptureRun(button.dataset.captureAction, button.dataset.sessionId);
+    });
+    bindSegmentedControl(polygonRoleControl, polygonRole);
+    bindSegmentedControl(benchmarkRoleControl, benchmarkRole);
+    benchmarkRole.addEventListener("change", () => {
+      populateBenchmarkFrames();
+      // benchmark route selection guard
+      if (startsInBenchmarkMode) loadBenchmarkFrame();
+    });
+    benchmarkFrame.addEventListener("change", () => loadBenchmarkFrame());
+    benchmarkNotes.addEventListener("input", () => {
+      const frame = activeBenchmarkFrame();
+      // active frame guard
+      if (!frame) return;
+      ensureBenchmarkFrameLabels(frame).notes = benchmarkNotes.value;
+    });
     document.getElementById("zoomOutBtn").addEventListener("click", () => stepZoom(-1));
     document.getElementById("zoomFitBtn").addEventListener("click", fitZoomToWidth);
     document.getElementById("zoomActualBtn").addEventListener("click", () => setZoom(1));
     document.getElementById("zoomInBtn").addEventListener("click", () => stepZoom(1));
+    // toggle persistent panning
+    panBtn.addEventListener("click", () => setPanMode(!panMode));
     zoomSelect.addEventListener("change", () => setZoom(zoomSelect.value));
+    showCameraPanel.addEventListener("click", () => setMobilePanel("camera"));
+    showControlsPanel.addEventListener("click", () => setMobilePanel("controls"));
+    mobileViewport.addEventListener("change", (event) => {
+      // newly compact viewport guard
+      if (event.matches) fitZoomToWidth();
+    });
+    // refresh overflow after resizing
+    window.addEventListener("resize", () => requestAnimationFrame(updatePanAvailability));
+    // enable temporary space-drag panning
+    window.addEventListener("keydown", (event) => {
+      const target = event.target;
+      // text-entry and non-space guard
+      if (
+        event.code !== "Space"
+        || target instanceof HTMLButtonElement
+        || target instanceof HTMLAnchorElement
+        || target instanceof HTMLInputElement
+        || target instanceof HTMLTextAreaElement
+        || target instanceof HTMLSelectElement
+        || target?.isContentEditable
+      ) return;
+      event.preventDefault();
+      spacePan = !panBtn.disabled;
+      syncPanCursor();
+    });
+    // disable temporary space-drag panning
+    window.addEventListener("keyup", (event) => {
+      // space-release guard
+      if (event.code !== "Space") return;
+      spacePan = false;
+      syncPanCursor();
+    });
+    // clear temporary pan state
+    window.addEventListener("blur", () => {
+      spacePan = false;
+      syncPanCursor();
+    });
     cameraSelect.addEventListener("change", () => loadCamera());
     filterSelect.addEventListener("change", () => {
       populateCameras(cameraSelect.value);
@@ -1096,10 +2614,24 @@
       if (!editing) defaultsFor(selectedCamera());
     });
 
+    // initialize debugger data and capture controls
     async function initialize() {
+      initializeCustomSelects();
       updateTypeOptions();
-      await loadDefaultAnnotations();
+      await Promise.all([loadDefaultAnnotations(), loadCameraDisplayOverrides()]);
+      captureSessionId.value = defaultCaptureSessionId();
+      renderCaptureCameras(true);
+      calculateCaptureSchedule();
+      await Promise.all([loadBenchmarkData(), loadCaptureRuns()]);
       populateCameras(catalog[0].id);
+      // benchmark route guard
+      if (startsInBenchmarkMode) {
+        benchmarkRole.value = "control";
+        syncSegmentedControl(benchmarkRoleControl, benchmarkRole);
+        populateBenchmarkFrames();
+        loadBenchmarkFrame();
+        return;
+      }
       loadCamera();
     }
 

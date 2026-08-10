@@ -72,6 +72,13 @@ export const classifyApiRequest = ({
   if (path === "/tickets" || path.startsWith("/tickets/")) {
     return "sensitive-lookup";
   }
+  if (path === "/ios-migration" || path.startsWith("/ios-migration/")) {
+    return "sensitive-lookup";
+  }
+  // destructive account action
+  if (path === "/user" && normalizedMethod === "DELETE") {
+    return "sensitive-lookup";
+  }
   if (path === "/ads" || path.startsWith("/ads/")) {
     return normalizedMethod === "GET" || normalizedMethod === "HEAD"
       ? "anonymous-read"

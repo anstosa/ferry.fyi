@@ -11,7 +11,8 @@ import {
   getBrowserInstallPlatform,
   requestInstallPrompt,
 } from "~/lib/appInstall";
-import { getConfiguredAuth0RedirectUri } from "~/lib/auth";
+import { getConfiguredAuth0RedirectUri, loginWithAppFlow } from "~/lib/auth";
+import { openCameraDetectionDebugger } from "~/lib/cameraDetectionDebugger";
 import { isInstalledApp, useDevice } from "~/lib/device";
 import { useFeatureFlags } from "~/lib/featureFlags";
 import { colors } from "~/lib/theme";
@@ -23,6 +24,7 @@ import TicketIcon from "~/static/images/icons/solid/barcode-alt.svg";
 import ScheduleIcon from "~/static/images/icons/solid/calendar-week.svg";
 import DownloadIcon from "~/static/images/icons/solid/download.svg";
 import FeedbackIcon from "~/static/images/icons/solid/question-circle.svg";
+import DetectorIcon from "~/static/images/icons/solid/scanner-image.svg";
 import ShareIcon from "~/static/images/icons/solid/share-alt.svg";
 import TrophyIcon from "~/static/images/icons/solid/trophy.svg";
 import UserIcon from "~/static/images/icons/solid/user.svg";
@@ -36,6 +38,7 @@ export interface ShareOptions {
 }
 
 interface Props {
+  environment?: string;
   hasTopBanner: boolean;
   isOpen: boolean;
   onClose: () => void;
@@ -69,7 +72,9 @@ const Avatar = ({ className }: SVGAttributes<SVGElement>) => {
   return <UserIcon className={className} />;
 };
 
+// app navigation menu
 export const Menu = ({
+  environment = process.env.NODE_ENV,
   hasTopBanner,
   isOpen,
   onClose,
@@ -83,14 +88,31 @@ export const Menu = ({
   const [dragStart, setDragStart] = useState<number | null>(null);
   const [dragPosition, setDragPosition] = useState<number | null>(null);
   const device = useDevice();
-  const { isAuthenticated, loginWithRedirect, user } = useAuth0();
+  const {
+    getAccessTokenSilently,
+    isAuthenticated,
+    loginWithPopup,
+    loginWithRedirect,
+    user,
+  } = useAuth0();
   const { leaderboardsEnabled } = useFeatureFlags();
   const [canShare, setShare] = useState<boolean>(false);
   const location = useLocation();
+  const isOwner = user?.email === "anstosa@gmail.com";
+  const detectorEnabled = isOwner && environment === "development";
 
   const initShare = async () => {
     const { value: canShare } = await Share.canShare();
     setShare(canShare);
+  };
+
+  // open the authorized development detector
+  const openDetector = async (): Promise<void> => {
+    try {
+      await openCameraDetectionDebugger(getAccessTokenSilently);
+    } catch (error) {
+      console.error("Failed to authorize camera detector", error);
+    }
   };
 
   // login route
@@ -107,10 +129,14 @@ export const Menu = ({
         },
       });
     } else {
-      loginWithRedirect({
-        appState: { redirectPath: location.pathname },
-        authorizationParams: {
-          redirect_uri: getConfiguredAuth0RedirectUri(),
+      await loginWithAppFlow({
+        loginWithPopup,
+        loginWithRedirect,
+        options: {
+          appState: { redirectPath: location.pathname },
+          authorizationParams: {
+            redirect_uri: getConfiguredAuth0RedirectUri(),
+          },
         },
       });
     }
@@ -138,6 +164,14 @@ export const Menu = ({
         label: "Log In",
         onClick: login,
       };
+  const iosMigrationItem: MenuItem | null =
+    !isAuthenticated && device?.platform === "ios"
+      ? {
+          Icon: UserIcon,
+          label: "Move Google account",
+          path: "/ios",
+        }
+      : null;
   const platform = getBrowserInstallPlatform();
   let InstallIcon = DownloadIcon;
   if (platform === "android") {
@@ -176,12 +210,22 @@ export const Menu = ({
         ]
       : []),
     ...topItems,
-    ...(user?.email === "anstosa@gmail.com"
+    ...(isOwner
       ? [{ Icon: AdminIcon, label: "Admin", path: "/admin" } satisfies MenuItem]
+      : []),
+    ...(detectorEnabled
+      ? [
+          {
+            Icon: DetectorIcon,
+            label: "Detector",
+            onClick: openDetector,
+          } satisfies MenuItem,
+        ]
       : []),
     { isSpacer: true },
     ...(installItem ? [installItem] : []),
     accountItem,
+    ...(iosMigrationItem ? [iosMigrationItem] : []),
     ...bottomItems,
     {
       Icon: AboutIcon,

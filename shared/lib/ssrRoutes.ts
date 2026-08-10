@@ -179,6 +179,18 @@ export const PUBLIC_SSR_ROUTE_MANIFEST = [
     refresh: "none",
     requiredSources: [],
   }),
+  define({
+    allowedQuery: [],
+    boundaryLabel: "iOS account migration",
+    id: "ios-migration",
+    indexabilityPolicy: "noindex",
+    kind: "private",
+    loader: "none",
+    path: "/ios",
+    placeholder: "client-only",
+    refresh: "none",
+    requiredSources: [],
+  }),
   staticRoute("tickets", "/tickets", "Tickets", [
     "editorial",
     "ticketGuidance",

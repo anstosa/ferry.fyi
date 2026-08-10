@@ -654,7 +654,7 @@ const EDITORIAL_PAGES: Record<
     title: "Forecast methodology",
   },
   privacy: {
-    body: "Ferry FYI keeps account and notification controls private. Contextual advertisements may use the route, terminal, or page being viewed, but not account information, precise location, saved tickets, notification settings, or activity across other websites.",
+    body: "Ferry FYI keeps account and notification controls private and lets signed-in users permanently delete their account from the Account page. Contextual advertisements may use the route, terminal, or page being viewed, but not account information, precise location, saved tickets, notification settings, or activity across other websites.",
     path: "/privacy",
     title: "Privacy Policy",
   },

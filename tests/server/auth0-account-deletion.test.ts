@@ -1,0 +1,66 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+// response fixture
+const response = (status: number): Response => new Response(null, { status });
+
+// auth0 environment fixture
+const configureAuth0 = (): void => {
+  vi.stubEnv("AUTH0_DOMAIN", "tenant.example.test");
+  vi.stubEnv("AUTH0_SERVER_ID", "server-id");
+  vi.stubEnv("AUTH0_SERVER_SECRET", "server-secret");
+};
+
+afterEach(() => {
+  vi.resetModules();
+  vi.restoreAllMocks();
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
+});
+
+describe("Auth0 account deletion", () => {
+  it("permanently deletes the encoded Auth0 subject", async () => {
+    configureAuth0();
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            access_token: "management-token",
+            expires_in: 300,
+          }),
+          { headers: { "Content-Type": "application/json" }, status: 200 }
+        )
+      )
+      .mockResolvedValueOnce(response(204));
+    vi.stubGlobal("fetch", fetch);
+    const { deleteAuth0User } = await import("../../server/lib/auth0Admin");
+
+    await expect(deleteAuth0User("auth0|person")).resolves.toBeUndefined();
+    expect(fetch.mock.calls[1][0].toString()).toBe(
+      "https://tenant.example.test/api/v2/users/auth0%7Cperson"
+    );
+    expect(fetch.mock.calls[1][1]).toMatchObject({ method: "DELETE" });
+  });
+
+  it("fails closed when Auth0 rejects account deletion", async () => {
+    configureAuth0();
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            access_token: "management-token",
+            expires_in: 300,
+          }),
+          { headers: { "Content-Type": "application/json" }, status: 200 }
+        )
+      )
+      .mockResolvedValueOnce(response(403));
+    vi.stubGlobal("fetch", fetch);
+    const { deleteAuth0User } = await import("../../server/lib/auth0Admin");
+
+    await expect(deleteAuth0User("auth0|person")).rejects.toThrow(
+      "Auth0 user deletion failed: 403"
+    );
+  });
+});

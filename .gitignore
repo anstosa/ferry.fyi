@@ -53,3 +53,7 @@ infra/aws/terraform/crash.*.log
 # python
 __pycache__/
 *.py[cod]
+
+# camera capture runtime locks
+benchmarks/camera-detection/captures/**/.capture.lock
+benchmarks/camera-detection/captures/**/.stop-requested

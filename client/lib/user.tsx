@@ -9,8 +9,8 @@ import React, {
 import { useLocation } from "react-router-dom";
 import { CurrentUser } from "shared/contracts/user";
 
-import { get, post } from "~/lib/api";
-import { getConfiguredAuth0RedirectUri } from "~/lib/auth";
+import { del, get, post } from "~/lib/api";
+import { getConfiguredAuth0RedirectUri, loginWithAppFlow } from "~/lib/auth";
 import { useDevice } from "~/lib/device";
 import {
   type UserActions as Actions,
@@ -105,6 +105,7 @@ const isCurrentUser = (input: unknown): input is CurrentUser => {
   return typeof input === "object" && input !== null;
 };
 
+// synchronize account state
 const _useUser = (): Response => {
   const device = useDevice();
   const location = useLocation();
@@ -115,6 +116,7 @@ const _useUser = (): Response => {
   const {
     user: auth0User,
     getAccessTokenSilently,
+    loginWithPopup,
     loginWithRedirect,
     isAuthenticated,
     isLoading: isAuthLoading,
@@ -185,7 +187,11 @@ const _useUser = (): Response => {
       });
       return;
     }
-    await loginWithRedirect(loginOptions);
+    await loginWithAppFlow({
+      loginWithPopup,
+      loginWithRedirect,
+      options: loginOptions,
+    });
   };
 
   // sync access token
@@ -265,6 +271,18 @@ const _useUser = (): Response => {
   };
 
   const actions: Actions = {
+    // permanently delete account
+    deleteAccount: async (confirmation) => {
+      const token = await getAccessToken();
+      // authenticated deletion guard
+      if (!token) {
+        throw new Error("Sign in again before deleting your account.");
+      }
+      await del("/user", { confirmation }, token);
+      userPromise = null;
+      userPromiseSubject = null;
+      setUser(null);
+    },
     getAccessToken,
     updateUser: async (data) => {
       const nextUser = (await post("/user", data, accessToken)) as CurrentUser;

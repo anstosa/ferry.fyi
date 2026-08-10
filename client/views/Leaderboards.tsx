@@ -21,6 +21,7 @@ import { Page } from "~/components/Page";
 import { SeoHelmet } from "~/components/SeoHelmet";
 import { Skeleton, SkeletonGroup } from "~/components/Skeleton";
 import { ApiError } from "~/lib/api";
+import { loginWithAppFlow } from "~/lib/auth";
 import { useFavoriteRoutes } from "~/lib/favoriteRoutes";
 import { useFeatureFlags } from "~/lib/featureFlags";
 import { leaderboardInitials } from "~/lib/leaderboardLocation";
@@ -308,9 +309,15 @@ const NotificationToggleButton = ({
   );
 };
 
+// leaderboard preferences
 const Preferences = (): ReactElement => {
-  const { getAccessTokenSilently, isAuthenticated, loginWithRedirect, user } =
-    useAuth0();
+  const {
+    getAccessTokenSilently,
+    isAuthenticated,
+    loginWithPopup,
+    loginWithRedirect,
+    user,
+  } = useAuth0();
   const { leaderboardsEnabled } = useFeatureFlags();
   const [preferences, setPreferences] = useState<LeaderboardPreferences | null>(
     null
@@ -354,8 +361,12 @@ const Preferences = (): ReactElement => {
       <button
         className="button"
         onClick={() =>
-          loginWithRedirect({
-            appState: { redirectPath: "/leaderboards/settings" },
+          loginWithAppFlow({
+            loginWithPopup,
+            loginWithRedirect,
+            options: {
+              appState: { redirectPath: "/leaderboards/settings" },
+            },
           })
         }
         type="button"

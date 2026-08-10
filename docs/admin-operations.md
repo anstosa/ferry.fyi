@@ -53,6 +53,22 @@ The deletion does **not** delete, disable, or otherwise modify the person's
 Auth0 identity. A later Auth0 sign-in can therefore create fresh Ferry FYI
 state.
 
+### Self-service account deletion
+
+The signed-in Account screen exposes a separate permanent account-deletion
+flow. It requires the user to type `DELETE`, then `DELETE /api/user` removes
+the same Ferry FYI-owned identifying state described above and permanently
+deletes the user's Auth0 tenant identity. The app-owned deletion and Auth0
+request run inside one database transaction so an Auth0 rejection rolls back
+the local changes and leaves the account active for a retry. The committed
+revocation watermark prevents an already-issued Ferry FYI access token from
+recreating account state after deletion.
+
+The Ferry FYI server M2M application must have Auth0 Management API
+`delete:users` scope in addition to the scopes required by other account and
+admin operations. Without that scope, self-service deletion fails closed and
+the UI asks the user to sign in again and retry if the account remains active.
+
 ### Force sign-out
 
 Force sign-out immediately writes a bounded application-token revocation
@@ -108,6 +124,28 @@ Do not add shell commands, URLs, SQL, arbitrary cache keys, or unregistered
 jobs to this surface. Add a named registry entry, bounded domain implementation,
 and focused tests instead.
 
+## Development detector capture runs
+
+The development-only Detector surface can start bounded camera-image capture
+runs for benchmark labeling. It is mounted only when `NODE_ENV=development`,
+and every mutation remains behind the owner-admin authorization boundary. The
+client cannot provide commands, source URLs, output paths, or executable names;
+it can select only reviewed, detection-enabled cameras from the canonical
+camera configuration.
+
+Each run has a validated session id, per-camera image limit, time limit, and
+interval. The detached recorder enforces the configured limits, deduplicates
+identical camera frames, maintains an append-only raw manifest, refuses
+concurrent writers for one session, and stops before the configured disk-space
+floor. Active runs can be stopped through a filesystem sentinel that remains
+effective if the browser closes.
+
+Completed raw runs are not labeling data until the owner selects **Add to
+labeling**. Import copies unique images into the canonical LFS-managed benchmark
+frame directory and atomically adds test-frame records to the benchmark
+manifest. Raw session deletion is available only after a run reaches a terminal
+state and does not delete already imported labeling copies.
+
 ## Notification pause and dashboard
 
 The notification pause is a persisted global policy. The Firebase submission
@@ -136,7 +174,7 @@ public content. Announcement title and body are plain text, not HTML.
 Crawler policy is restricted to the following persisted choices:
 
 - AI crawlers: `allow` or `disallow` for the fixed supported agent list.
-- General disallow paths: `/account`, `/admin`, `/callback`, and
+- General disallow paths: `/account`, `/admin`, `/callback`, `/ios`, and
   `/leaderboards/settings` only.
 
 `robots.txt`, `sitemap.xml`, and the leaderboard section of `llms.txt` are

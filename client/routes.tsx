@@ -35,6 +35,12 @@ const Admin = lazy(loadAdmin);
 const loadAccount = () =>
   import("~/views/Account").then(({ Account }) => ({ default: Account }));
 const Account = lazy(loadAccount);
+// ios migration route loader
+const loadIosMigration = () =>
+  import("~/views/IosMigration").then(({ IosMigration }) => ({
+    default: IosMigration,
+  }));
+const IosMigration = lazy(loadIosMigration);
 const loadDataSources = () =>
   import("~/views/DataSources").then(({ DataSources }) => ({
     default: DataSources,
@@ -89,6 +95,10 @@ export const preloadBrowserRoute = async (
   }
   if (pathname === "/account") {
     await loadAccount();
+    return;
+  }
+  if (pathname === "/ios") {
+    await loadIosMigration();
     return;
   }
   if (pathname === "/admin") {
@@ -149,6 +159,8 @@ const browserRouteElement = (route: PublicSsrRouteDefinition): ReactElement => {
       return <Splash />;
     case "account":
       return <Account />;
+    case "ios-migration":
+      return <IosMigration />;
     case "tickets":
       return <Tickets />;
     case "about":

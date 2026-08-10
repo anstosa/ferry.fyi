@@ -4,6 +4,8 @@ interface TokenResponse {
 }
 interface UserResponse {
   email?: unknown;
+  email_verified?: unknown;
+  identities?: unknown;
   user_id?: unknown;
 }
 interface UsersResponse {
@@ -13,7 +15,19 @@ interface UsersResponse {
 
 export interface Auth0UserIdentity {
   email?: string;
+  emailVerified?: boolean;
   subject: string;
+}
+
+export interface Auth0UserProviderIdentity {
+  connection: string;
+  provider: string;
+  userId: string;
+}
+
+export interface Auth0UserProfile extends Auth0UserIdentity {
+  emailVerified: boolean;
+  identities: Auth0UserProviderIdentity[];
 }
 
 let token: string | undefined;
@@ -81,6 +95,21 @@ export const getAuth0UserEmail = async (
   return typeof body.email === "string" ? body.email : undefined;
 };
 
+/** permanently removes a Ferry FYI Auth0 identity */
+export const deleteAuth0User = async (subject: string): Promise<void> => {
+  const response = await fetch(
+    new URL(`users/${encodeURIComponent(subject)}`, managementAudience()),
+    {
+      headers: { Authorization: `Bearer ${await getManagementToken()}` },
+      method: "DELETE",
+    }
+  );
+  // idempotent deletion guard
+  if (!response.ok && response.status !== 404) {
+    throw new Error(`Auth0 user deletion failed: ${response.status}`);
+  }
+};
+
 /**
  * Resolves the profile attached to an already validated user access token.
  * Tokens requested with `openid` are also valid for Auth0's `/userinfo`
@@ -101,6 +130,7 @@ export const getAuth0UserInfo = async (
   }
   const body = (await response.json()) as {
     email?: unknown;
+    email_verified?: unknown;
     sub?: unknown;
   };
   if (typeof body.sub !== "string") {
@@ -108,8 +138,126 @@ export const getAuth0UserInfo = async (
   }
   return {
     ...(typeof body.email === "string" ? { email: body.email } : {}),
+    ...(typeof body.email_verified === "boolean"
+      ? { emailVerified: body.email_verified }
+      : {}),
     subject: body.sub,
   };
+};
+
+// provider identity parser
+const parseAuth0ProviderIdentities = (
+  value: unknown
+): Auth0UserProviderIdentity[] => {
+  // array guard
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.flatMap((identity): Auth0UserProviderIdentity[] => {
+    // identity shape guard
+    if (
+      !identity ||
+      typeof identity !== "object" ||
+      typeof (identity as { connection?: unknown }).connection !== "string" ||
+      typeof (identity as { provider?: unknown }).provider !== "string" ||
+      typeof (identity as { user_id?: unknown }).user_id !== "string"
+    ) {
+      return [];
+    }
+    return [
+      {
+        connection: (identity as { connection: string }).connection,
+        provider: (identity as { provider: string }).provider,
+        userId: (identity as { user_id: string }).user_id,
+      },
+    ];
+  });
+};
+
+/** Returns the bounded Auth0 fields needed to verify an account migration. */
+export const getAuth0UserProfile = async (
+  subject: string
+): Promise<Auth0UserProfile> => {
+  const accessToken = await getManagementToken();
+  const url = new URL(
+    `users/${encodeURIComponent(subject)}`,
+    managementAudience()
+  );
+  url.searchParams.set("fields", "user_id,email,email_verified,identities");
+  url.searchParams.set("include_fields", "true");
+  const response = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  // lookup response guard
+  if (!response.ok) {
+    throw new Error(`Auth0 user profile lookup failed: ${response.status}`);
+  }
+  const body = (await response.json()) as UserResponse;
+  // subject response guard
+  if (typeof body.user_id !== "string" || body.user_id !== subject) {
+    throw new Error("Auth0 user profile subject was invalid");
+  }
+  return {
+    ...(typeof body.email === "string" ? { email: body.email } : {}),
+    emailVerified: body.email_verified === true,
+    identities: parseAuth0ProviderIdentities(body.identities),
+    subject: body.user_id,
+  };
+};
+
+export type Auth0LinkIdentityResult = "already-linked" | "linked";
+
+// identity membership guard
+const hasAuth0Identity = (
+  profile: Auth0UserProfile,
+  identity: Auth0UserProviderIdentity
+): boolean =>
+  profile.identities.some(
+    (candidate) =>
+      candidate.provider === identity.provider &&
+      candidate.userId === identity.userId
+  );
+
+/** Links a verified secondary identity while preserving the primary subject. */
+export const linkAuth0UserIdentity = async (
+  primarySubject: string,
+  secondaryIdentity: Auth0UserProviderIdentity
+): Promise<Auth0LinkIdentityResult> => {
+  const primary = await getAuth0UserProfile(primarySubject);
+  // idempotency guard
+  if (hasAuth0Identity(primary, secondaryIdentity)) {
+    return "already-linked";
+  }
+  const response = await fetch(
+    new URL(
+      `users/${encodeURIComponent(primarySubject)}/identities`,
+      managementAudience()
+    ),
+    {
+      body: JSON.stringify({
+        provider: secondaryIdentity.provider,
+        user_id: secondaryIdentity.userId,
+      }),
+      headers: {
+        Authorization: `Bearer ${await getManagementToken()}`,
+        "Content-Type": "application/json",
+      },
+      method: "POST",
+    }
+  );
+  // success guard
+  if (response.ok) {
+    return "linked";
+  }
+  // race recovery
+  if (response.status === 400 || response.status === 409) {
+    const refreshedPrimary = await getAuth0UserProfile(primarySubject);
+    // linked race guard
+    if (hasAuth0Identity(refreshedPrimary, secondaryIdentity)) {
+      return "already-linked";
+    }
+  }
+  throw new Error(`Auth0 identity link failed: ${response.status}`);
 };
 
 export interface Auth0UserPage {

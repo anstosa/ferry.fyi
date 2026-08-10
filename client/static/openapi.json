@@ -43,7 +43,7 @@
     }
   },
   "info": {
-    "description": "Read-oriented Ferry FYI operational data. Preserve timestamps, freshness, state, and observed-versus-predictive distinctions. Do not treat forecasts as guarantees.",
+    "description": "Ferry FYI operational data and authenticated account actions. Preserve timestamps, freshness, state, and observed-versus-predictive distinctions. Do not treat forecasts as guarantees or initiate account deletion on a user's behalf.",
     "title": "Ferry FYI public API",
     "version": "1.0.0"
   },
@@ -1369,7 +1369,7 @@
     },
     "/api/cameras/line-detection": {
       "get": {
-        "description": "Line detection is observational and must not be presented as exact queue length. Cache class: live-no-store. Rate class: anonymous-read. Ferry FYI provides best-effort operational data, not an SLA.",
+        "description": "Line detection reports four-state spatial occupancy per configured queue or holding area and must not be presented as exact queue length or vehicle count. Cache class: live-no-store. Rate class: anonymous-read. Ferry FYI provides best-effort operational data, not an SLA.",
         "operationId": "getCameraLineDetection",
         "parameters": [
           {
@@ -1508,7 +1508,7 @@
           }
         },
         "security": [],
-        "summary": "Get public camera line-detection summaries",
+        "summary": "Get public camera spatial-occupancy states",
         "tags": [
           "ferries"
         ]
@@ -2091,6 +2091,160 @@
           }
         ],
         "summary": "Update current user settings",
+        "tags": [
+          "ferries"
+        ]
+      },
+      "delete": {
+        "description": "Permanently deletes the authenticated Ferry FYI account after exact confirmation; never submit this request on a user's behalf. Cache class: private-no-store. Rate class: sensitive-lookup. Ferry FYI provides best-effort operational data, not an SLA.",
+        "operationId": "deleteCurrentUser",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "confirmation": "DELETE"
+              },
+              "schema": {
+                "additionalProperties": true,
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "body": {},
+                  "wsfStatus": {
+                    "offline": false
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            },
+            "description": "status response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "body": {
+                    "error": "api_not_found"
+                  },
+                  "wsfStatus": {
+                    "offline": false
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            },
+            "description": "Deterministic API error envelope. Error responses are no-store and noindex."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "body": {
+                    "error": "api_not_found"
+                  },
+                  "wsfStatus": {
+                    "offline": false
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            },
+            "description": "Deterministic API error envelope. Error responses are no-store and noindex."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "body": {
+                    "error": "api_not_found"
+                  },
+                  "wsfStatus": {
+                    "offline": false
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            },
+            "description": "Deterministic API error envelope. Error responses are no-store and noindex."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "body": {
+                    "error": "api_not_found"
+                  },
+                  "wsfStatus": {
+                    "offline": false
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            },
+            "description": "Deterministic API error envelope. Error responses are no-store and noindex."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "body": {
+                    "error": "api_not_found"
+                  },
+                  "wsfStatus": {
+                    "offline": false
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            },
+            "description": "Deterministic API error envelope. Error responses are no-store and noindex."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "body": {
+                    "error": "api_not_found"
+                  },
+                  "wsfStatus": {
+                    "offline": false
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            },
+            "description": "Deterministic API error envelope. Error responses are no-store and noindex."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Permanently delete the current account",
         "tags": [
           "ferries"
         ]

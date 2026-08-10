@@ -40,3 +40,13 @@ export interface UserUpdatePayload extends Record<string, unknown> {
   app_metadata?: AppMetadata;
   favoriteRouteIds?: string[];
 }
+
+export const ACCOUNT_DELETION_CONFIRMATION = "DELETE";
+
+export interface AccountDeletionPayload extends Record<string, unknown> {
+  confirmation: string;
+}
+
+export interface AccountDeletionResult extends Record<string, unknown> {
+  status: "complete";
+}

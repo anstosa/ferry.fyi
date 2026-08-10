@@ -17,6 +17,7 @@ import { cameraRouter } from "./cameras";
 import { debugRouter } from "./debug";
 import { fareRouter } from "./fares";
 import { featureRouter } from "./features";
+import { iosMigrationRouter } from "./iosMigration";
 import { leaderboardRouter } from "./leaderboards";
 import { otaRouter } from "./ota";
 import { scheduleRouter } from "./schedule";
@@ -97,6 +98,7 @@ if (process.env.NODE_ENV === "development") {
 }
 
 apiRouter.use("/admin", preventAdminCaching, requireAuth, adminRouter);
+apiRouter.use("/ios-migration", requireAuth, iosMigrationRouter);
 apiRouter.use("/user", requireAuth, userRouter);
 
 apiRouter.use(apiNotFound);

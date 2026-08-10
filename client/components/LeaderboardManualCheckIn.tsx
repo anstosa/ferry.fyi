@@ -1,6 +1,7 @@
 import { useAuth0 } from "@auth0/auth0-react";
 import React, { ReactElement, useCallback, useEffect, useState } from "react";
 
+import { loginWithAppFlow } from "~/lib/auth";
 import { requestForegroundLocation } from "~/lib/geo";
 import { vesselSailingId } from "~/lib/leaderboardForeground";
 import { notifyLeaderboardCheckIn } from "~/lib/leaderboardNotifications";
@@ -57,8 +58,12 @@ export const LeaderboardManualCheckIn = ({
   kind,
   name,
 }: Props): ReactElement => {
-  const { getAccessTokenSilently, isAuthenticated, loginWithRedirect } =
-    useAuth0();
+  const {
+    getAccessTokenSilently,
+    isAuthenticated,
+    loginWithPopup,
+    loginWithRedirect,
+  } = useAuth0();
   const [checkedIn, setCheckedIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isChecking, setChecking] = useState(false);
@@ -98,9 +103,13 @@ export const LeaderboardManualCheckIn = ({
 
   const checkIn = async (): Promise<void> => {
     if (!isAuthenticated) {
-      await loginWithRedirect({
-        appState: {
-          redirectPath: `${window.location.pathname}${window.location.search}`,
+      await loginWithAppFlow({
+        loginWithPopup,
+        loginWithRedirect,
+        options: {
+          appState: {
+            redirectPath: `${window.location.pathname}${window.location.search}`,
+          },
         },
       });
       return;

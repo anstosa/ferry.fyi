@@ -16,7 +16,11 @@ import { NearbyTicketNotifications } from "~/components/NearbyTicketNotification
 import { Prompt } from "~/components/Prompt";
 import { deferAnalytics, useRecordPageViews } from "~/lib/analytics";
 import { useOnline, useWSF } from "~/lib/api";
-import { isAuth0CallbackUrl, isStaleAuth0CallbackError } from "~/lib/auth";
+import {
+  getIosAuthFailurePath,
+  isAuth0CallbackUrl,
+  isStaleAuth0CallbackError,
+} from "~/lib/auth";
 import { useDevice } from "~/lib/device";
 import { initializeOtaUpdater } from "~/lib/ota";
 import { usePush } from "~/lib/push";
@@ -96,6 +100,7 @@ export const App = ({
     }
   }, [alertRules]);
 
+  // auth callback
   const handleCallback = async (url: string) => {
     let appUrl: URL;
     try {
@@ -118,6 +123,12 @@ export const App = ({
           // A callback URL can be replayed by browser restoration or a second
           // native app-open event after Auth0 has already consumed its state.
           if (!isStaleAuth0CallbackError(error)) {
+            const failurePath = getIosAuthFailurePath(error, device?.platform);
+            // ios failure handoff
+            if (failurePath) {
+              navigate(failurePath);
+              return;
+            }
             throw error;
           }
         }

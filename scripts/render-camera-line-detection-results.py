@@ -103,23 +103,20 @@ def build_unavailable_results(camera_ids: list[str], data: dict[str, Any]) -> di
     for camera_id in camera_ids:
         camera = data["cameras"][camera_id]
         results[camera_id] = {
-            "areaCounts": [
+            "areaStates": [
                 {
                     "areaId": area["id"],
                     "label": area["label"],
+                    "state": "empty",
                     "type": area["type"],
-                    "vehicleCount": 0,
                 }
                 for area in camera.get("allowedAreas", [])
             ],
             "cameraId": camera_id,
             "checkedAt": 0,
-            "detectionCount": 0,
             "detections": [],
             "error": "No line detection result source configured",
-            "excludedDetectionCount": 0,
             "imageUrl": camera["imageUrl"],
-            "includedDetectionCount": 0,
             "reviewed": camera.get("reviewed", False),
         }
     return results
@@ -173,13 +170,13 @@ def draw_area(
     width: int,
     height: int,
     color: tuple[int, int, int, int],
-    count_lookup: dict[str, int],
+    state_lookup: dict[str, str],
 ) -> None:
     points = denormalize_polygon(area["polygon"], width, height)
     draw.polygon(points, fill=color, outline=color[:3], width=2)
     anchor = label_anchor(points)
-    count = count_lookup.get(area["id"])
-    suffix = f" ({count})" if count is not None else ""
+    state = state_lookup.get(area["id"])
+    suffix = f" ({state.replace('_', ' ')})" if state else ""
     label = textwrap.shorten(f"{area.get('label') or area['id']}{suffix}", width=34)
     draw_text(draw, anchor, label, LABEL_FONT)
 
@@ -233,13 +230,13 @@ def render_camera_result(
     overlay = Image.new("RGBA", image.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(overlay)
     width, height = image.size
-    count_lookup = {
-        area["areaId"]: area.get("vehicleCount", 0)
-        for area in result.get("areaCounts", [])
+    state_lookup = {
+        area["areaId"]: area.get("state", "empty")
+        for area in result.get("areaStates", [])
     }
     # include area pass
     for area in camera.get("allowedAreas", []):
-        draw_area(draw, area, width, height, INCLUDE_COLOR, count_lookup)
+        draw_area(draw, area, width, height, INCLUDE_COLOR, state_lookup)
     # exclusion area pass
     for area in camera.get("excludedAreas", []):
         draw_area(draw, area, width, height, EXCLUDE_COLOR, {})
@@ -259,11 +256,7 @@ def render_camera_result(
     canvas.alpha_composite(combined, (0, title_height))
     title_draw = ImageDraw.Draw(canvas)
     draw_text(title_draw, (10, 6), f"{camera_id} — {camera['terminal']}", TITLE_FONT)
-    summary = (
-        f"detected {result.get('detectionCount', 0)} | "
-        f"included {result.get('includedDetectionCount', 0)} | "
-        f"excluded {result.get('excludedDetectionCount', 0)}"
-    )
+    summary = "spatial occupancy states by configured area"
     draw_text(title_draw, (10, 28), summary, SMALL_FONT)
     error = result.get("error")
     # error guard
@@ -308,7 +301,8 @@ def main() -> None:
     reviewed_with_areas = [
         camera_id
         for camera_id in data.get("reviewedCameraIds", [])
-        if data["cameras"][camera_id].get("allowedAreas")
+        if data["cameras"][camera_id].get("detectionEnabled", True)
+        and data["cameras"][camera_id].get("allowedAreas")
     ]
     camera_ids = args.camera_ids or reviewed_with_areas
     args.output_dir.mkdir(parents=True, exist_ok=True)

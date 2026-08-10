@@ -15,6 +15,7 @@ describe("Auth0 user info owner identity", () => {
       new Response(
         JSON.stringify({
           email: "owner@example.test",
+          email_verified: true,
           name: "Private profile value",
           sub: "auth0|owner",
         }),
@@ -25,6 +26,7 @@ describe("Auth0 user info owner identity", () => {
 
     await expect(getAuth0UserInfo("validated-token")).resolves.toEqual({
       email: "owner@example.test",
+      emailVerified: true,
       subject: "auth0|owner",
     });
     expect(fetch).toHaveBeenCalledWith(

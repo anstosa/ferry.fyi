@@ -39,10 +39,12 @@ Date-selected schedule URLs are noindex variants of the undated route canonical.
 - **Contextual advertising:** Clearly labeled local ads may appear on home, schedule, camera, terminal-detail, and fare pages. Route ads can differ by travel direction; ad selection does not use account information, precise location, saved tickets, notification settings, or activity across other websites.
 - **Advertising measurement:** Ferry FYI may report daily aggregate viewable opportunities, served ads, viewable impressions (at least 50% visible for one continuous second), and ad clicks. These figures are not unique-person counts, audited fraud-free traffic, or billable delivery. Advertiser reports are private bearer links and are intentionally not listed here.
 - **Mobile and PWA support:** Install Ferry FYI as a web app or use the native mobile app for device-aware features, OTA web-asset updates, and prompts when a newer native build is available from Google Play or the App Store.
+- **iOS account migration:** [Move an existing Google account to email and password login](https://ferry.fyi/ios). The private, noindex flow requires separate authentication of the verified Google and database identities before linking them and preserves the existing Google identity as the primary Ferry FYI account. Never infer account existence from an email address or link identities based only on matching email.
+- **Account deletion:** Signed-in users can permanently delete their Ferry FYI account from the Account page. Deletion removes the Auth0 identity and Ferry FYI-owned account data; retained leaderboard scores are reassigned to an irreversible anonymous identity.
 
 ## AI API guide
 
-The read-oriented API base is `https://ferry.fyi/api`. Responses from the endpoints below are JSON envelopes with a `body` field and a `wsfStatus` field; use `body` for the resource data and `wsfStatus` to detect upstream availability. API responses are operational data, not a promise of a stable third-party integration contract.
+The API base is `https://ferry.fyi/api`. Responses from the endpoints below are JSON envelopes with a `body` field and a `wsfStatus` field; use `body` for the resource data and `wsfStatus` to detect upstream availability. API responses are operational data, not a promise of a stable third-party integration contract.
 
 - [OpenAPI contract](https://ferry.fyi/openapi.json) — Machine-readable methods, paths, authentication, schemas, statuses, freshness notes, cache classes, and rate classes for every operation advertised here.
 
@@ -90,9 +92,9 @@ For service bulletins and terminal wait-time context, read `body.bulletins` and 
 ### Cameras and observed conditions
 
 - `GET /api/cameras/frames?ids=:commaSeparatedCameraIds` — Camera image metadata, freshness, and source update times for the requested camera ids.
-- `GET /api/cameras/line-detection?ids=:commaSeparatedCameraIds` — Public vehicle-line detection summaries for supported camera ids. Omit `ids` to request all supported cameras; requests with invalid ids return `400`.
+- `GET /api/cameras/line-detection?ids=:commaSeparatedCameraIds` — Public spatial occupancy states (`empty`, `minority_full`, `majority_full`, or `full`) for each configured queue or holding polygon. Omit `ids` to request all supported cameras; requests with invalid ids return `400`.
 
-Camera images and line detections can be delayed, unavailable, or stale. Present their timestamps and uncertainty rather than inferring current queue length or boarding availability.
+Camera images and spatial occupancy states can be delayed, unavailable, or stale. Do not translate a state into an exact vehicle count, queue length, or boarding prediction.
 
 ### Fares
 
@@ -104,6 +106,7 @@ Fare responses include a `state` such as `current`, `no-fare`, `stale`, or `unav
 ### Authenticated and specialized endpoints
 
 - `GET /api/user` and `POST /api/user` — Signed-in user's favorites, alert settings, and app metadata. Require an Auth0 bearer token; never request, log, or expose another user's token.
+- `DELETE /api/user` — Permanently deletes the bearer token owner's Ferry FYI account only after the body contains the exact confirmation `{ "confirmation": "DELETE" }`. Never initiate deletion automatically or on a user's behalf.
 - `GET /api/tickets/:ticketId` — Looks up a user-provided ticket identifier. A valid account bearer token enables an account-scoped recent-result cache; anonymous lookups remain available and are not persisted. Ticket data is sensitive; do not guess identifiers or expose returned barcodes.
 
 <!-- LEADERBOARDS:START -->

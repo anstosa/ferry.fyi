@@ -3,11 +3,12 @@ import { Browser } from "@capacitor/browser";
 import clsx from "clsx";
 import { useAtomValue } from "jotai";
 import { DateTime } from "luxon";
-import React, { ReactElement } from "react";
+import React, { ReactElement, useState } from "react";
 import { Link } from "react-router-dom";
-import type {
-  AlertRule,
-  AlertSubscriptionChannel,
+import {
+  ACCOUNT_DELETION_CONFIRMATION,
+  type AlertRule,
+  type AlertSubscriptionChannel,
 } from "shared/contracts/user";
 import {
   EVERY_DAY_DAYS,
@@ -50,6 +51,8 @@ interface TicketSummaryCounts {
   reservationAccountCount: number;
   savedTicketCount: number;
 }
+
+type AccountDeletionState = "closed" | "confirming" | "deleting" | "deleted";
 
 const THEME_OPTIONS: Array<{
   description: string;
@@ -302,10 +305,14 @@ export const Account = withAuthenticationRequired(
     const { user: authUser, logout } = useAuth0();
     const [
       { alertRules, isUserLoading, tickets, user: accountUser, userError },
-      { refreshUser },
+      { deleteAccount, refreshUser },
     ] = useUser();
     const device = useDevice();
     const [themePreference, setThemePreference] = useThemePreference();
+    const [deletionConfirmation, setDeletionConfirmation] = useState("");
+    const [deletionError, setDeletionError] = useState<string | null>(null);
+    const [deletionState, setDeletionState] =
+      useState<AccountDeletionState>("closed");
     const { terminals } = useTerminals();
     const storedTickets = useAtomValue(ticketsAtom);
     const subscriptionSummaries = getAlertRuleSummaries(alertRules, terminals);
@@ -351,6 +358,40 @@ export const Account = withAuthenticationRequired(
         // retry failure
         console.error(error);
       });
+    };
+
+    // open deletion confirmation
+    const openDeletion = (): void => {
+      setDeletionConfirmation("");
+      setDeletionError(null);
+      setDeletionState("confirming");
+    };
+
+    // close deletion confirmation
+    const closeDeletion = (): void => {
+      setDeletionConfirmation("");
+      setDeletionError(null);
+      setDeletionState("closed");
+    };
+
+    // permanently delete account
+    const confirmDeletion = async (): Promise<void> => {
+      // exact confirmation guard
+      if (deletionConfirmation !== ACCOUNT_DELETION_CONFIRMATION) {
+        return;
+      }
+      setDeletionError(null);
+      setDeletionState("deleting");
+      try {
+        await deleteAccount(deletionConfirmation);
+        setDeletionState("deleted");
+      } catch (error) {
+        console.error(error);
+        setDeletionError(
+          "Ferry FYI could not confirm account deletion. Sign in again; if your account is still active, retry."
+        );
+        setDeletionState("confirming");
+      }
     };
 
     // initial account metadata error
@@ -525,6 +566,134 @@ export const Account = withAuthenticationRequired(
               </p>
             )}
           </section>
+
+          <section
+            className="rounded border border-red-dark bg-white p-6 shadow dark:bg-black"
+            id="account-deletion"
+          >
+            <h3 className="text-xl font-bold text-red-dark dark:text-red-light">
+              Delete account
+            </h3>
+            <p className="mt-2 text-sm text-gray-dark dark:text-gray-medium">
+              Permanently delete your Ferry FYI login, saved alerts,
+              preferences, server-side ticket cache, and leaderboard identity.
+              Anonymous leaderboard scores may remain, but cannot be linked back
+              to you.
+            </p>
+            <button
+              className="button button-danger mt-4"
+              onClick={openDeletion}
+              type="button"
+            >
+              Delete account
+            </button>
+          </section>
+
+          {deletionState !== "closed" && (
+            <div
+              aria-labelledby="account-deletion-title"
+              aria-modal="true"
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+              onKeyDown={(event) => {
+                // escape cancellation guard
+                if (event.key === "Escape" && deletionState === "confirming") {
+                  closeDeletion();
+                }
+              }}
+              role="dialog"
+            >
+              <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl dark:bg-blue-darkest">
+                {deletionState === "deleted" ? (
+                  <>
+                    <h3
+                      className="text-xl font-bold"
+                      id="account-deletion-title"
+                    >
+                      Account deleted
+                    </h3>
+                    <p className="mt-3 text-sm text-gray-dark dark:text-gray-medium">
+                      Your Ferry FYI account and associated account data were
+                      permanently deleted.
+                    </p>
+                    <div className="mt-5 flex justify-end">
+                      <button
+                        className="button button-primary"
+                        onClick={onLogout}
+                        type="button"
+                      >
+                        Done
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <h3
+                      className="text-xl font-bold text-red-dark dark:text-red-light"
+                      id="account-deletion-title"
+                    >
+                      Permanently delete account?
+                    </h3>
+                    <p className="mt-3 text-sm text-gray-dark dark:text-gray-medium">
+                      This cannot be undone. You will need to create a new
+                      account to use signed-in features again.
+                    </p>
+                    <label
+                      className="mt-4 block text-sm font-semibold"
+                      htmlFor="account-deletion-confirmation"
+                    >
+                      Type <strong>{ACCOUNT_DELETION_CONFIRMATION}</strong> to
+                      confirm.
+                    </label>
+                    <input
+                      autoCapitalize="characters"
+                      autoComplete="off"
+                      autoCorrect="off"
+                      autoFocus
+                      className="mt-2 w-full rounded border border-gray-medium bg-white p-2 text-gray-darkest dark:bg-blue-darkest dark:text-white"
+                      disabled={deletionState === "deleting"}
+                      id="account-deletion-confirmation"
+                      onChange={(event) =>
+                        setDeletionConfirmation(event.target.value)
+                      }
+                      spellCheck={false}
+                      value={deletionConfirmation}
+                    />
+                    {deletionError && (
+                      <p
+                        className="mt-3 text-sm font-semibold text-red-dark dark:text-red-light"
+                        role="alert"
+                      >
+                        {deletionError}
+                      </p>
+                    )}
+                    <div className="mt-5 flex flex-wrap justify-end gap-2">
+                      <button
+                        className="button button-secondary"
+                        disabled={deletionState === "deleting"}
+                        onClick={closeDeletion}
+                        type="button"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        className="button button-danger"
+                        disabled={
+                          deletionState === "deleting" ||
+                          deletionConfirmation !== ACCOUNT_DELETION_CONFIRMATION
+                        }
+                        onClick={confirmDeletion}
+                        type="button"
+                      >
+                        {deletionState === "deleting"
+                          ? "Deleting…"
+                          : "Permanently delete"}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </Page>
     );

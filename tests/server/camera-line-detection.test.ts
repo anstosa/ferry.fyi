@@ -119,8 +119,12 @@ describe("CameraLineDetectionService", () => {
 
   // configured camera list guard
   it("uses reviewed cameras with include polygons as default targets", () => {
+    expect(getLineDetectionCameraIds()).toContain("9161");
     expect(getLineDetectionCameraIds()).toContain("9164");
     expect(getLineDetectionCameraIds()).toContain("9166");
+    expect(getLineDetectionCameraIds()).not.toContain("9162");
+    expect(getLineDetectionCameraIds()).not.toContain("9163");
+    expect(getLineDetectionCameraIds()).not.toContain("9173");
   });
 
   // injected detector path
@@ -158,7 +162,12 @@ describe("CameraLineDetectionService", () => {
       expect.objectContaining({ cameraId: "9164", imageUrl: config!.imageUrl })
     );
     expect(result["9164"]?.error).toBeNull();
-    expect(result["9164"]?.includedDetectionCount).toBe(1);
+    expect(result["9164"]?.areaStates).toContainEqual(
+      expect.objectContaining({
+        areaId: config!.allowedAreas[0].id,
+        state: "minority_full",
+      })
+    );
   });
 
   // qa detection path
@@ -292,7 +301,8 @@ describe("CameraLineDetectionService", () => {
     expect(result["9164"]?.error).toBe(
       "Detector response contains malformed detection"
     );
-    expect(result["9164"]?.includedDetectionCount).toBe(0);
+    expect(result["9164"]?.areaStates.every(({ state }) => state === "empty"))
+      .toBe(true);
   });
 
   // unknown camera guard
@@ -359,7 +369,7 @@ describe("CameraLineDetectionService", () => {
   });
 
   // missing detector guard
-  it("returns a zero-count error when no detector endpoint is configured", async () => {
+  it("returns empty states when no detector endpoint is configured", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(imageResponse());
     const service = new CameraLineDetectionService({
       detectorEndpoint: "",
@@ -372,6 +382,7 @@ describe("CameraLineDetectionService", () => {
     expect(result["9164"]?.error).toBe(
       "CAR_DETECTION_ENDPOINT is not configured"
     );
-    expect(result["9164"]?.includedDetectionCount).toBe(0);
+    expect(result["9164"]?.areaStates.every(({ state }) => state === "empty"))
+      .toBe(true);
   });
 });

@@ -10,7 +10,7 @@ export const PrivacyPolicy = (): ReactElement => (
     <SeoHelmet seo={getSeoMetadata("/privacy")} />
 
     <p className="mt-4 text-sm">
-      Last updated: <time dateTime="2026-08-05">August 5, 2026</time>
+      Last updated: <time dateTime="2026-08-09">August 9, 2026</time>
     </p>
     <p className="mt-4">
       Ferry FYI provides Washington State Ferries schedules, service
@@ -157,9 +157,13 @@ export const PrivacyPolicy = (): ReactElement => (
       your browser or device settings. We retain account settings and
       account-scoped ticket lookup details for as long as your account is active
       or as needed to provide Ferry FYI. Removing a saved ticket removes its
-      matching cached details, and deleting Ferry FYI account data removes all
-      cached ticket details. To request access to or deletion of account
-      information, email us at{" "}
+      matching cached details. You can permanently delete your login and
+      associated Ferry FYI account data from Account &gt; Delete account. This
+      removes the authentication profile, settings, notification token, cached
+      ticket details, and leaderboard identity. Leaderboard scores may remain
+      only under a new anonymous identifier that cannot be linked back to the
+      deleted account. For access requests or other privacy questions, email us
+      at{" "}
       <a className="link" href="mailto:dev@ferry.fyi">
         dev@ferry.fyi
       </a>

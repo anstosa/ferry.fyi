@@ -34,7 +34,7 @@ import { pluralize } from "shared/lib/strings";
 
 import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { ExternalPillLink } from "~/components/ExternalPillLink";
-import { getConfiguredAuth0RedirectUri } from "~/lib/auth";
+import { getConfiguredAuth0RedirectUri, loginWithAppFlow } from "~/lib/auth";
 import { isDuringDaylight } from "~/lib/daylight";
 import { useDevice } from "~/lib/device";
 import { useFeatureFlags } from "~/lib/featureFlags";
@@ -246,6 +246,7 @@ interface Props {
   time: DateTime;
 }
 
+// sailing detail panel
 export const SlotInfo = (props: Props): ReactElement => {
   const {
     className = "",
@@ -264,7 +265,8 @@ export const SlotInfo = (props: Props): ReactElement => {
   } = props;
   const device = useDevice();
   const locationRoute = useLocation();
-  const { isAuthenticated, isLoading, loginWithRedirect } = useAuth0();
+  const { isAuthenticated, isLoading, loginWithPopup, loginWithRedirect } =
+    useAuth0();
   const [{ alertRules, isUserLoading }, { updateUser }] = useUser();
   const { leaderboardsEnabled: showLeaderboardLink } = useFeatureFlags();
   const [isSailingAlertSaving, setSailingAlertSaving] =
@@ -436,7 +438,11 @@ export const SlotInfo = (props: Props): ReactElement => {
         });
         return;
       }
-      await loginWithRedirect(loginOptions);
+      await loginWithAppFlow({
+        loginWithPopup,
+        loginWithRedirect,
+        options: loginOptions,
+      });
     } catch (error) {
       setSailingAlertError(
         error instanceof Error ? error.message : "Unable to start sign in"

@@ -16,7 +16,7 @@ import { createApp } from "../../server/server";
 afterEach(() => vi.unstubAllEnvs());
 
 describe("server security boundary", () => {
-  it("removes framework disclosure and emits stable baseline headers", async () => {
+  it("removes framework disclosure and allows development framing", async () => {
     const handler = express
       .Router()
       .get("/", (_request, response) => response.send("ok"));
@@ -31,8 +31,24 @@ describe("server security boundary", () => {
     expect(response.headers["referrer-policy"]).toBe(
       "strict-origin-when-cross-origin"
     );
-    expect(response.headers["x-frame-options"]).toBe("DENY");
+    expect(response.headers["x-frame-options"]).toBeUndefined();
+    expect(response.headers["content-security-policy"]).toBeUndefined();
+    expect(
+      response.headers["content-security-policy-report-only"]
+    ).not.toContain("frame-ancestors");
     expect(response.headers["permissions-policy"]).toContain("camera=(self)");
+  });
+
+  it("blocks production framing with enforced modern and legacy headers", async () => {
+    const app = express();
+    app.use(createHttpSecurityMiddleware({ environment: "production" }));
+    app.get("/", (_request, response) => response.send("ok"));
+
+    const response = await request(app).get("/").expect(200);
+    expect(response.headers["content-security-policy"]).toBe(
+      "frame-ancestors 'none'"
+    );
+    expect(response.headers["x-frame-options"]).toBe("DENY");
   });
 
   it("uses HSTS only for production HTTPS and does not preload subdomains", async () => {
@@ -84,6 +100,9 @@ describe("server security boundary", () => {
       ]
     ).toContain("report-uri https://reports.ferry.fyi/csp");
     expect(buildCspReportOnlyPolicy()).toContain("frame-ancestors 'none'");
+    expect(buildCspReportOnlyPolicy(undefined, true)).not.toContain(
+      "frame-ancestors"
+    );
   });
 });
 

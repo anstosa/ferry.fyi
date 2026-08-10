@@ -8,6 +8,7 @@ const allowedCrawlerPaths = [
   "/account",
   "/admin",
   "/callback",
+  "/ios",
   "/leaderboards/settings",
 ] as const;
 const aiCrawlerAgents = [

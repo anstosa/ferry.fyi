@@ -18,12 +18,15 @@ const asReportUri = (value: string | undefined): string | undefined => {
   }
 };
 
-export const buildCspReportOnlyPolicy = (reportUri?: string): string => {
+// build report policy
+export const buildCspReportOnlyPolicy = (
+  reportUri?: string,
+  allowFraming = false
+): string => {
   const directives = [
     "default-src 'self'",
     "base-uri 'self'",
     "object-src 'none'",
-    "frame-ancestors 'none'",
     "form-action 'self' https:",
     "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
@@ -34,6 +37,10 @@ export const buildCspReportOnlyPolicy = (reportUri?: string): string => {
     "frame-src 'self' https:",
     "manifest-src 'self'",
   ];
+  // framing policy guard
+  if (!allowFraming) {
+    directives.push("frame-ancestors 'none'");
+  }
   const normalizedReportUri = asReportUri(reportUri);
   if (normalizedReportUri) {
     directives.push(`report-uri ${normalizedReportUri}`);
@@ -41,6 +48,7 @@ export const buildCspReportOnlyPolicy = (reportUri?: string): string => {
   return directives.join("; ");
 };
 
+// apply transport security
 export const createHttpSecurityMiddleware = ({
   environment = process.env.NODE_ENV,
   reportUri = process.env.CSP_REPORT_URI,
@@ -49,23 +57,31 @@ export const createHttpSecurityMiddleware = ({
   reportUri?: string;
 } = {}): RequestHandler => {
   const normalizedReportUri = asReportUri(reportUri);
-  const activateReportOnly =
-    environment !== "production" || normalizedReportUri;
+  const isProduction = environment === "production";
+  const activateReportOnly = !isProduction || normalizedReportUri;
   return (request, response, next) => {
     response.set({
       "Permissions-Policy": "camera=(self), geolocation=(self), microphone=()",
       "Referrer-Policy": "strict-origin-when-cross-origin",
       "X-Content-Type-Options": "nosniff",
-      "X-Frame-Options": "DENY",
     });
+    // production framing guard
+    if (isProduction) {
+      response.set({
+        "Content-Security-Policy": "frame-ancestors 'none'",
+        "X-Frame-Options": "DENY",
+      });
+    }
+    // report-only policy guard
     if (activateReportOnly) {
       response.set(
         "Content-Security-Policy-Report-Only",
-        buildCspReportOnlyPolicy(normalizedReportUri)
+        buildCspReportOnlyPolicy(normalizedReportUri, !isProduction)
       );
     }
     const protocol = request.get("x-forwarded-proto") || request.protocol;
-    if (environment === "production" && protocol === "https") {
+    // production transport guard
+    if (isProduction && protocol === "https") {
       response.set("Strict-Transport-Security", "max-age=15552000");
     }
     next();

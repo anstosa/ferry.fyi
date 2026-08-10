@@ -4,11 +4,12 @@ import clsx from "clsx";
 import React, { ReactElement } from "react";
 import { useLocation } from "react-router-dom";
 
-import { getConfiguredAuth0RedirectUri } from "~/lib/auth";
+import { getConfiguredAuth0RedirectUri, loginWithAppFlow } from "~/lib/auth";
 import { useDevice } from "~/lib/device";
 
+// ticket login prompt
 export const LoginPrompt = (): ReactElement | null => {
-  const { isAuthenticated, loginWithRedirect } = useAuth0();
+  const { isAuthenticated, loginWithPopup, loginWithRedirect } = useAuth0();
   const device = useDevice();
   const location = useLocation();
 
@@ -26,10 +27,14 @@ export const LoginPrompt = (): ReactElement | null => {
         },
       });
     } else {
-      loginWithRedirect({
-        appState: { redirectPath: location.pathname },
-        authorizationParams: {
-          redirect_uri: getConfiguredAuth0RedirectUri(),
+      await loginWithAppFlow({
+        loginWithPopup,
+        loginWithRedirect,
+        options: {
+          appState: { redirectPath: location.pathname },
+          authorizationParams: {
+            redirect_uri: getConfiguredAuth0RedirectUri(),
+          },
         },
       });
     }

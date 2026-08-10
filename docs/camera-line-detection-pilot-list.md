@@ -62,12 +62,12 @@ Use this subset for the first manual/CV benchmark:
 - Mukilteo: `9164`, `9944`, `9394`, `9728`.
 - Clinton: `9166`, `9172`, `9174`, `9175`.
 
-This is eight camera images per sample. At 10-minute sampling for 14 useful hours/day, the first benchmark would inspect roughly 6,720 images/month if automated continuously. For the initial validation harness, sample less aggressively and store only detection outputs plus short-lived operational metadata, not a raw frame archive.
+This is eight camera images per test round. The repository keeps a deliberately small immutable labeled benchmark under `benchmarks/camera-detection`; continuous operational sampling should still store only derived states plus short-lived metadata rather than a raw frame archive.
 
 ## Open items before implementation
 
-1. Review the draft normalized polygon ROIs against daylight/manual samples before production inference.
-2. Capture a small manual benchmark set across empty, light, moderate, full, dark, rain, glare, and stale-frame cases.
+1. Review the normalized polygon ROIs against labeled daylight and adverse-condition samples.
+2. Grow the seed benchmark across empty, minority-full, majority-full, full, dark, rain, glare, and stale-frame cases.
 3. Define marker conflict behavior, especially paired 5th Street Mukilteo cameras.
-4. Pick detection approach after ROI/manual benchmark: self-hosted object detector, cloud object localization, or hybrid heuristic.
+4. Validate the current self-hosted detector's spatial occupancy states against the manual control labels.
 5. Add negative tests where visible non-queue cars do not advance the marker.

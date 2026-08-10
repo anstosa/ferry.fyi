@@ -20,6 +20,11 @@ if [[ -z "${BASE_URL:-}" || "${BASE_URL}" == http://localhost* ]]; then
   export BASE_URL="https://ferry.fyi"
 fi
 
+# prefer the ios-specific auth client
+if [[ -n "${AUTH0_IOS_CLIENT_ID:-}" ]]; then
+  export AUTH0_CLIENT_ID="${AUTH0_IOS_CLIENT_ID}"
+fi
+
 # prefer native callback override
 if [[ -n "${IOS_AUTH0_CLIENT_REDIRECT:-}" ]]; then
   export AUTH0_CLIENT_REDIRECT="${IOS_AUTH0_CLIENT_REDIRECT}"

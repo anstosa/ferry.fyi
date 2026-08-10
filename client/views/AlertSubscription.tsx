@@ -35,7 +35,7 @@ import { AppTeaser } from "~/components/AppTeaser";
 import { HeaderDropdown } from "~/components/HeaderDropdown";
 import { NotificationPermissionWarning } from "~/components/NotificationPermissionWarning";
 import { Skeleton, SkeletonGroup } from "~/components/Skeleton";
-import { getConfiguredAuth0RedirectUri } from "~/lib/auth";
+import { getConfiguredAuth0RedirectUri, loginWithAppFlow } from "~/lib/auth";
 import { useDevice } from "~/lib/device";
 import {
   requestNotificationPermission,
@@ -890,6 +890,7 @@ const AlertRuleSummary = ({
   );
 };
 
+// route alert editor
 export const AlertSubscription = ({
   mate,
   setRoute,
@@ -897,7 +898,8 @@ export const AlertSubscription = ({
 }: Props): ReactElement => {
   const device = useDevice();
   const location = useLocation();
-  const { isAuthenticated, isLoading, loginWithRedirect } = useAuth0();
+  const { isAuthenticated, isLoading, loginWithPopup, loginWithRedirect } =
+    useAuth0();
   const { terminals } = useTerminals();
   const [
     { alertRules, isUserLoading, user, userError },
@@ -963,7 +965,11 @@ export const AlertSubscription = ({
           });
           return;
         }
-        await loginWithRedirect(loginOptions);
+        await loginWithAppFlow({
+          loginWithPopup,
+          loginWithRedirect,
+          options: loginOptions,
+        });
       } catch (error) {
         // login failure guard
         setLoginError(
@@ -978,6 +984,7 @@ export const AlertSubscription = ({
     isLoading,
     location.pathname,
     location.search,
+    loginWithPopup,
     loginWithRedirect,
   ]);
 

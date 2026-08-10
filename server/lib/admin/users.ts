@@ -1,5 +1,6 @@
 import type { AlertRule, AlertSubscriptions } from "shared/contracts/user";
 
+import { deleteFerryUserData } from "~/lib/accountDeletion";
 import {
   ApplicationRevocationResult,
   revokeApplicationTokens,
@@ -12,49 +13,7 @@ import {
   listAuth0Users,
   revokeAuth0UserCredentials,
 } from "~/lib/auth0Admin";
-import { db } from "~/lib/db";
-import { anonymizeLeaderboardAccount } from "~/lib/leaderboardPrivacy";
-import { FeatureFlagAllowlist } from "~/models/FeatureFlagAllowlist";
 import { UserSettings } from "~/models/UserSettings";
-import { UserTicket } from "~/models/UserTicket";
-
-export interface DeletedUserDataResult {
-  /** Auth0 is the identity provider and is deliberately not modified here. */
-  auth0Identity: "retained";
-  /** The operation is repeat-safe; zero deleted rows still means complete. */
-  status: "complete";
-}
-
-/**
- * Removes all Ferry FYI-owned identifying state for a subject.
- *
- * Leaderboard check-ins are the sole retention exception: they are first
- * reassigned to a newly generated, non-linkable subject by the shared privacy
- * service.  Profiles and live terminal presence are removed by that service.
- * User settings contain push tokens and notification subscriptions, so
- * deleting the settings row removes those identifiers as well.  Auth0's user
- * record is intentionally retained and this operation performs no Auth0 call.
- */
-export const deleteFerryUserData = async (
-  subject: string
-): Promise<DeletedUserDataResult> => {
-  await db.transaction(async (transaction) => {
-    // The revocation watermark must commit with deletion so an old token
-    // cannot recreate Ferry FYI data after the identifiers are removed.
-    await revokeApplicationTokens(subject, new Date(), transaction);
-    await anonymizeLeaderboardAccount(subject, transaction);
-
-    await Promise.all([
-      UserSettings.destroy({ transaction, where: { subject } }),
-      UserTicket.destroy({ transaction, where: { subject } }),
-      // A feature-flag allowlist entry is app-owned subject data too; retaining
-      // it would re-link a future account session to this deletion.
-      FeatureFlagAllowlist.destroy({ transaction, where: { subject } }),
-    ]);
-  });
-
-  return { auth0Identity: "retained", status: "complete" };
-};
 
 export interface ForceSignOutResult {
   applicationTokens: ApplicationRevocationResult;
@@ -79,6 +38,8 @@ export const forceSignOutFerryUser = async (
     status: auth0.status,
   };
 };
+
+export { deleteFerryUserData };
 
 export interface AdminSupportProfile {
   email?: string;
