@@ -48,6 +48,8 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     env:
+      AUTH0_CLIENT_AUDIENCE: https://ferry.fyi/api
+      AUTH0_DOMAIN: tenant.example.test
       BASE_URL: https://ferry.fyi
       DATABASE_URL: postgres://test:testing@localhost:5432/ferryfyi
       PGSSLMODE: disable
@@ -103,6 +105,7 @@ jobs:
           name: production-build-${{ github.sha }}
           path: dist
           if-no-files-found: error
+          include-hidden-files: true
           retention-days: 7
 
   browser:
