@@ -83,8 +83,8 @@ type LogoutWithAppFlowOptions = {
   options?: LogoutOptions;
 };
 
-export type LogoutWithAppFlowResult = "local" | "redirecting";
-export type LogoutMode = "iframe" | "native" | "web";
+type LogoutWithAppFlowResult = "local" | "redirecting";
+type LogoutMode = "iframe" | "native" | "web";
 
 // framed browser guard
 export const isWindowFramed = (): boolean => {

@@ -44,22 +44,29 @@ describe("Auth0 account deletion", () => {
 
   it("fails closed when Auth0 rejects account deletion", async () => {
     configureAuth0();
+    // token response fixture
+    const tokenResponse = (accessToken: string): Response =>
+      new Response(
+        JSON.stringify({
+          access_token: accessToken,
+          expires_in: 300,
+        }),
+        { headers: { "Content-Type": "application/json" }, status: 200 }
+      );
     const fetch = vi
       .fn()
-      .mockResolvedValueOnce(
-        new Response(
-          JSON.stringify({
-            access_token: "management-token",
-            expires_in: 300,
-          }),
-          { headers: { "Content-Type": "application/json" }, status: 200 }
-        )
-      )
+      .mockResolvedValueOnce(tokenResponse("old-management-token"))
+      .mockResolvedValueOnce(response(403))
+      .mockResolvedValueOnce(tokenResponse("new-management-token"))
       .mockResolvedValueOnce(response(403));
     vi.stubGlobal("fetch", fetch);
     const { deleteAuth0User } = await import("../../server/lib/auth0Admin");
 
     await expect(deleteAuth0User("auth0|person")).rejects.toThrow();
+    expect(fetch).toHaveBeenCalledTimes(4);
+    expect(
+      (fetch.mock.calls[3][1]?.headers as Headers).get("Authorization")
+    ).toBe("Bearer new-management-token");
   });
 
   it("refreshes a cached management token after permissions change", async () => {

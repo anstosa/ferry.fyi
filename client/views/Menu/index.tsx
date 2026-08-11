@@ -3,7 +3,12 @@ import { Browser } from "@capacitor/browser";
 import { Share } from "@capacitor/share";
 import clsx from "clsx";
 import { AnimatePresence, motion } from "framer-motion";
-import React, { ReactElement, SVGAttributes, useEffect, useState } from "react";
+import React, {
+  type ReactElement,
+  type SVGAttributes,
+  useEffect,
+  useState,
+} from "react";
 import { Link, useLocation } from "react-router-dom";
 import { isNull } from "shared/lib/identity";
 

@@ -1,5 +1,10 @@
 import { useAuth0 } from "@auth0/auth0-react";
-import React, { FormEvent, ReactElement, useEffect, useState } from "react";
+import React, {
+  type FormEvent,
+  type ReactElement,
+  useEffect,
+  useState,
+} from "react";
 import {
   AUTH0_DATABASE_CONNECTION,
   AUTH0_GOOGLE_CONNECTION,

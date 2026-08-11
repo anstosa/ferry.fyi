@@ -285,7 +285,7 @@ describe("Account state predicates", () => {
     expect(auth.logout).not.toHaveBeenCalled();
   });
 
-  it("does not report completed deletion as failed when local logout rejects", async () => {
+  it("continues completed deletion through the forced logout route", async () => {
     auth.user = {
       email: "rider@example.com",
       name: "Rider",
@@ -315,7 +315,7 @@ describe("Account state predicates", () => {
     expect(deleteAccount).toHaveBeenCalledOnce();
     expect(
       container.querySelector('[data-testid="location"]')?.textContent
-    ).toBe("/");
+    ).toBe("/logout");
     expect(container.textContent).not.toContain(
       "could not confirm account deletion"
     );

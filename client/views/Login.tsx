@@ -1,6 +1,6 @@
 import { useAuth0 } from "@auth0/auth0-react";
 import { Browser } from "@capacitor/browser";
-import React, { ReactElement, useState } from "react";
+import React, { type ReactElement, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { AUTH0_DATABASE_CONNECTION } from "shared/contracts/iosMigration";
 import { getSeoMetadata } from "shared/lib/seo";

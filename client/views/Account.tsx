@@ -3,7 +3,7 @@ import { Browser } from "@capacitor/browser";
 import clsx from "clsx";
 import { useAtomValue } from "jotai";
 import { DateTime } from "luxon";
-import React, { ReactElement, useState } from "react";
+import React, { type ReactElement, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   ACCOUNT_DELETION_CONFIRMATION,
@@ -409,12 +409,13 @@ export const Account = withAuthenticationRequired(
         setDeletionState("confirming");
         return;
       }
-      navigate("/", { replace: true });
       try {
         await logout({ openUrl: false });
+        navigate("/", { replace: true });
       } catch (error) {
         // completed deletion cleanup failure
         console.error("Local logout failed after account deletion", error);
+        navigate("/logout", { replace: true });
       }
     };
 

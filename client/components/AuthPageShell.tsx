@@ -1,11 +1,10 @@
-import React, { PropsWithChildren, ReactElement } from "react";
+import React, { type PropsWithChildren, type ReactElement } from "react";
 import { Link } from "react-router-dom";
 
 import logo from "~/static/images/icon_monochrome-256.png?inline";
 
 interface Props {
   description?: string;
-  eyebrow?: string;
   title: string;
   titleId: string;
 }
@@ -14,7 +13,6 @@ interface Props {
 export const AuthPageShell = ({
   children,
   description,
-  eyebrow,
   title,
   titleId,
 }: PropsWithChildren<Props>): ReactElement => (
@@ -41,14 +39,8 @@ export const AuthPageShell = ({
         aria-labelledby={titleId}
         className="mt-7 w-full rounded-[2rem] border border-white/30 bg-white/95 p-6 text-center text-gray-darkest shadow-2xl backdrop-blur-xl sm:p-10 dark:bg-blue-darkest/95 dark:text-white"
       >
-        {/* optional eyebrow */}
-        {eyebrow && (
-          <p className="text-xs font-black uppercase tracking-[0.2em] text-green-dark dark:text-green-light">
-            {eyebrow}
-          </p>
-        )}
         <h1
-          className={`${eyebrow ? "mt-3" : ""} text-2xl font-black leading-tight sm:text-3xl`}
+          className="text-2xl font-black leading-tight sm:text-3xl"
           id={titleId}
         >
           {title}
