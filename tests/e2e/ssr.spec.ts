@@ -97,6 +97,8 @@ const raw = async (
         method: "GET",
         path,
         port: options.port ?? 4177,
+        // fixture certificate identity
+        servername: "ferry.fyi",
       },
       (response) => {
         const chunks: Buffer[] = [];
