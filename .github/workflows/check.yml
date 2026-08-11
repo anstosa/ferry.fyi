@@ -48,6 +48,8 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     env:
+      AUTH0_CLIENT_AUDIENCE: https://ferry.fyi/api
+      AUTH0_DOMAIN: tenant.example.test
       BASE_URL: https://ferry.fyi
       DATABASE_URL: postgres://test:testing@localhost:5432/ferryfyi
       PGSSLMODE: disable
@@ -74,6 +76,10 @@ jobs:
     name: Production build and artifact smokes
     runs-on: ubuntu-latest
     env:
+      AUTH0_CLIENT_AUDIENCE: https://ferry.fyi/api
+      AUTH0_CLIENT_ID: checks-client
+      AUTH0_CLIENT_REDIRECT: https://ferry.fyi/callback
+      AUTH0_DOMAIN: tenant.example.test
       BASE_URL: https://ferry.fyi
       SENTRY_AUTH_TOKEN: ""
     steps:
@@ -103,12 +109,34 @@ jobs:
           name: production-build-${{ github.sha }}
           path: dist
           if-no-files-found: error
+          include-hidden-files: true
           retention-days: 7
 
   browser:
     name: Critical SSR and public surfaces
     needs: build
     runs-on: ubuntu-latest
+    # support production server imports in the SSR fixture
+    services:
+      postgres:
+        image: postgres:16-bookworm
+        env:
+          POSTGRES_DB: ferryfyi
+          POSTGRES_PASSWORD: testing
+          POSTGRES_USER: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U test -d ferryfyi"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      AUTH0_CLIENT_AUDIENCE: https://ferry.fyi/api
+      AUTH0_DOMAIN: tenant.example.test
+      DATABASE_URL: postgres://test:testing@localhost:5432/ferryfyi
+      PGSSLMODE: disable
+      TZ: America/Los_Angeles
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
@@ -122,6 +150,7 @@ jobs:
           name: production-build-${{ github.sha }}
           path: dist
       - run: sha256sum --check dist/artifact-files.sha256
+      - run: yarn db:migrate
       - run: yarn playwright install --with-deps chromium
       - name: Run the deterministic critical SSR sample
         run: >-
