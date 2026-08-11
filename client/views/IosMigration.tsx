@@ -5,10 +5,11 @@ import {
   AUTH0_GOOGLE_CONNECTION,
   type IosMigrationLinkResponse,
   type IosMigrationStatus,
+  type IosMigrationVerificationEmailResponse,
 } from "shared/contracts/iosMigration";
 import { getSeoMetadata } from "shared/lib/seo";
 
-import { Page } from "~/components/Page";
+import { AuthPageShell } from "~/components/AuthPageShell";
 import { SeoHelmet } from "~/components/SeoHelmet";
 import { ApiError, get, post } from "~/lib/api";
 import {
@@ -18,6 +19,14 @@ import {
 import { useAppRenderContext } from "~/lib/renderContext";
 
 type MigrationStep = "creating" | "password" | "verify";
+type DatabaseSignupState = "created" | "exists";
+type VerificationEmailState = "idle" | "sending" | "sent";
+
+// auth0 signup detail
+const getPasswordCreationError = (caught: unknown): string =>
+  caught instanceof Error && caught.message
+    ? caught.message
+    : "Auth0 could not create that login. Please try again.";
 
 // canonical web migration url
 const getWebMigrationUrl = (): string => {
@@ -45,6 +54,10 @@ export const IosMigration = (): ReactElement => {
   const [password, setPassword] = useState("");
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
   const [error, setError] = useState<string>();
+  const [databaseSignupState, setDatabaseSignupState] =
+    useState<DatabaseSignupState>();
+  const [verificationEmailState, setVerificationEmailState] =
+    useState<VerificationEmailState>("idle");
 
   // load authenticated migration state
   useEffect(() => {
@@ -109,6 +122,26 @@ export const IosMigration = (): ReactElement => {
     }
   };
 
+  // verification email request
+  const sendVerificationEmail = async (): Promise<void> => {
+    setError(undefined);
+    setVerificationEmailState("sending");
+    try {
+      const accessToken = await getAccessTokenSilently();
+      await post<IosMigrationVerificationEmailResponse>(
+        "/ios-migration/verification-email",
+        {},
+        accessToken
+      );
+      setVerificationEmailState("sent");
+    } catch {
+      setVerificationEmailState("idle");
+      setError(
+        "Your password login exists, but Ferry FYI could not send its verification email. Try resending it."
+      );
+    }
+  };
+
   // password submission
   const createPasswordIdentity = async (
     event: FormEvent<HTMLFormElement>
@@ -132,15 +165,18 @@ export const IosMigration = (): ReactElement => {
     }
     setStep("creating");
     try {
-      await createAuth0DatabaseAccount({ email: status.email, password });
+      const signupState = await createAuth0DatabaseAccount({
+        email: status.email,
+        password,
+      });
+      setDatabaseSignupState(signupState);
       setPassword("");
       setPasswordConfirmation("");
       setStep("verify");
-    } catch {
+      await sendVerificationEmail();
+    } catch (caught) {
       setStep("password");
-      setError(
-        "Auth0 rejected that password. Use a stronger password and try again."
-      );
+      setError(getPasswordCreationError(caught));
     }
   };
 
@@ -174,12 +210,11 @@ export const IosMigration = (): ReactElement => {
         primaryAccessToken
       );
       setStatus({ email: status.email, state: "complete" });
-      await authenticateGoogle();
     } catch (caught) {
       // verification guidance
       if (caught instanceof ApiError && caught.status === 409) {
         setError(
-          "Verify the new account email, then authenticate with the new password again."
+          "That email is not verified yet. Open the verification email or resend it below, then try again."
         );
         return;
       }
@@ -191,35 +226,34 @@ export const IosMigration = (): ReactElement => {
 
   const entry = (
     <button
-      className="button button-primary mt-6 w-full"
+      className="button button-primary mt-7 h-14 w-full text-base shadow-lg"
       onClick={startMigration}
+      type="button"
     >
       {platform === "ios" ? "Open secure migration" : "Continue with Google"}
     </button>
   );
 
   return (
-    <Page title="Move your account to iOS">
+    <>
       <SeoHelmet seo={getSeoMetadata("/ios")} />
-      <section className="mx-auto max-w-xl py-6" aria-labelledby="ios-title">
-        <h2 id="ios-title" className="text-2xl font-bold">
-          Keep your Ferry FYI account on iOS
-        </h2>
-        <p className="mt-3">
-          Authenticate your existing Google account, create an email and
-          password login, then verify both identities. Your saved Ferry FYI data
-          stays attached to the existing account.
-        </p>
-
+      <AuthPageShell
+        description="Login with Google, add a username and password. Your saved routes, tickets, and alerts stay with you."
+        title="Make your Ferry FYI account iOS compatible"
+        titleId="ios-title"
+      >
         {error && (
-          <p className="mt-4 rounded bg-red-100 p-3 text-red-900" role="alert">
+          <p
+            className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-900"
+            role="alert"
+          >
             {error}
           </p>
         )}
 
         {platform === "ios" && (
           <>
-            <p className="mt-4">
+            <p className="mt-6 text-sm font-semibold leading-relaxed text-gray-dark dark:text-gray-light">
               This step uses Ferry FYI&apos;s web login because Google is not
               offered by the iOS app.
             </p>
@@ -228,16 +262,23 @@ export const IosMigration = (): ReactElement => {
         )}
 
         {platform !== "ios" && (isLoading || (isAuthenticated && !status)) && (
-          <p className="mt-6" aria-live="polite">
+          <div
+            className="mt-7 flex items-center justify-center gap-3 rounded-2xl bg-green-50 p-4 font-bold text-green-dark dark:bg-white/10 dark:text-green-light"
+            aria-live="polite"
+          >
+            <span
+              aria-hidden="true"
+              className="h-3 w-3 animate-pulse rounded-full bg-green-light"
+            />
             Checking your account…
-          </p>
+          </div>
         )}
 
         {platform !== "ios" && !isLoading && !isAuthenticated && entry}
 
         {platform !== "ios" && status?.state === "unsupported" && (
           <>
-            <p className="mt-4">
+            <p className="mt-6 text-sm font-semibold leading-relaxed text-gray-dark dark:text-gray-light">
               Continue with the Google account that owns your existing Ferry FYI
               data.
             </p>
@@ -248,16 +289,19 @@ export const IosMigration = (): ReactElement => {
         {platform !== "ios" &&
           status?.state === "eligible" &&
           step !== "verify" && (
-            <form className="mt-6" onSubmit={createPasswordIdentity}>
-              <p className="mb-4">
+            <form className="mt-7 text-left" onSubmit={createPasswordIdentity}>
+              <p className="mb-5 text-center font-semibold">
                 Create a password login for <strong>{status.email}</strong>.
               </p>
-              <label className="block font-bold" htmlFor="ios-password">
+              <label
+                className="block text-sm font-black"
+                htmlFor="ios-password"
+              >
                 New password
               </label>
               <input
                 autoComplete="new-password"
-                className="mt-1 w-full rounded border border-gray-400 bg-white p-3 text-gray-900"
+                className="mt-2 w-full rounded-2xl border border-gray-300 bg-white p-3.5 text-gray-900 shadow-inner outline-none transition focus:border-green-light focus:ring-4 focus:ring-green-light/20"
                 disabled={step === "creating"}
                 id="ios-password"
                 onChange={(event) => setPassword(event.target.value)}
@@ -266,14 +310,14 @@ export const IosMigration = (): ReactElement => {
                 value={password}
               />
               <label
-                className="mt-4 block font-bold"
+                className="mt-5 block text-sm font-black"
                 htmlFor="ios-password-confirmation"
               >
                 Confirm password
               </label>
               <input
                 autoComplete="new-password"
-                className="mt-1 w-full rounded border border-gray-400 bg-white p-3 text-gray-900"
+                className="mt-2 w-full rounded-2xl border border-gray-300 bg-white p-3.5 text-gray-900 shadow-inner outline-none transition focus:border-green-light focus:ring-4 focus:ring-green-light/20"
                 disabled={step === "creating"}
                 id="ios-password-confirmation"
                 onChange={(event) =>
@@ -284,7 +328,7 @@ export const IosMigration = (): ReactElement => {
                 value={passwordConfirmation}
               />
               <button
-                className="button button-primary mt-6 w-full"
+                className="button button-primary mt-7 h-14 w-full text-base shadow-lg"
                 disabled={step === "creating"}
                 type="submit"
               >
@@ -298,31 +342,51 @@ export const IosMigration = (): ReactElement => {
         {platform !== "ios" &&
           status?.state === "eligible" &&
           step === "verify" && (
-            <div className="mt-6">
-              <h3 className="text-lg font-bold">Verify the new login</h3>
-              <p className="mt-2">
-                If Auth0 sent a verification email, open it first. Then
-                authenticate once with the password you just created.
+            <div className="mt-7 rounded-2xl bg-green-50 p-5 dark:bg-white/10">
+              <h2 className="text-xl font-black">Finish account migration</h2>
+              <p className="mt-2 text-sm font-semibold leading-relaxed text-gray-dark dark:text-gray-light">
+                {verificationEmailState === "sent" &&
+                  databaseSignupState === "created" &&
+                  `We sent a verification email to ${status.email}. Open it, return here, then authenticate with the password you just created.`}
+                {verificationEmailState === "sent" &&
+                  databaseSignupState === "exists" &&
+                  `A password login already exists for ${status.email}. Open the verification email if needed, then authenticate with its existing password or use Forgot password.`}
+                {verificationEmailState === "sending" &&
+                  `Sending a verification email to ${status.email}…`}
+                {verificationEmailState === "idle" &&
+                  "Send a verification email before authenticating with the password login."}
               </p>
               <button
-                className="button button-primary mt-6 w-full"
-                onClick={verifyAndLink}
+                className="button button-secondary mt-5 w-full"
+                disabled={verificationEmailState === "sending"}
+                onClick={sendVerificationEmail}
+                type="button"
               >
-                Verify password and finish
+                {verificationEmailState === "sending"
+                  ? "Sending verification email…"
+                  : "Resend verification email"}
+              </button>
+              <button
+                className="button button-primary mt-6 h-14 w-full text-base shadow-lg"
+                disabled={verificationEmailState !== "sent"}
+                onClick={verifyAndLink}
+                type="button"
+              >
+                Authenticate with password and finish
               </button>
             </div>
           )}
 
         {platform !== "ios" && status?.state === "complete" && (
           <div
-            className="mt-6 rounded bg-green-100 p-4 text-green-900"
+            className="mt-7 rounded-2xl border border-green-200 bg-green-50 p-5 font-semibold text-green-900"
             role="status"
           >
             Your email and password login is connected. You can now return to
             the iOS app and sign in with it.
           </div>
         )}
-      </section>
-    </Page>
+      </AuthPageShell>
+    </>
   );
 };

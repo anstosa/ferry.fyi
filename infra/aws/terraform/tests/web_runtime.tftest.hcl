@@ -40,4 +40,29 @@ run "web_runtime_contract" {
     condition     = aws_ecs_service.web.deployment_circuit_breaker[0].enable && !aws_ecs_service.web.deployment_circuit_breaker[0].rollback
     error_message = "Circuit-breaker detection must be enabled without unsafe automatic rollback."
   }
+
+  assert {
+    condition     = aws_sesv2_email_identity.auth0.email_identity == "ferry.fyi"
+    error_message = "Auth0 email must use the Ferry FYI SES identity."
+  }
+
+  assert {
+    condition     = aws_iam_user.auth0_ses.name == "ferry-fyi-prod-auth0-ses"
+    error_message = "Production Auth0 SES delivery must use its dedicated IAM user."
+  }
+
+  assert {
+    condition     = aws_iam_user.auth0_ses_dev.name == "ferry-fyi-prod-auth0-ses-dev"
+    error_message = "Development Auth0 SES delivery must use a separate IAM user."
+  }
+
+  assert {
+    condition     = toset(local.auth0_ses_actions) == toset(["ses:SendEmail", "ses:SendRawEmail"])
+    error_message = "Auth0's IAM policy must include both SES send actions."
+  }
+
+  assert {
+    condition     = aws_iam_user_policy.auth0_ses.user != aws_iam_user_policy.auth0_ses_dev.user
+    error_message = "Development and production Auth0 tenants must not share SES credentials."
+  }
 }

@@ -19,6 +19,7 @@ It is intentionally small and reviewable: no third-party Terraform modules, no N
 - Least-privilege GitHub OIDC deploy role for `anstosa/ferry.fyi` `production` branch only.
 - Private, versioned, AES-256 encrypted S3 storage for OTA bundles and release JSON, with all public S3 access blocked.
 - CloudFront OTA delivery with SigV4 Origin Access Control, HTTPS redirects, a one-year immutable bundle cache, and a short release-JSON cache.
+- Amazon SES domain verification and a dedicated least-privilege IAM user for Auth0 account email.
 
 ## First apply sequence
 
@@ -178,6 +179,37 @@ Configure these non-secret GitHub variables at the repository or organization le
 
 Keep application runtime secrets in AWS Secrets Manager.
 Do not copy `DATABASE_URL`, Firebase service account JSON, Auth0 server secret, WSDOT API key, or `SENTRY_AUTH_TOKEN` into GitHub variables for ECS runtime deployment. If sourcemap upload is enabled later, store `SENTRY_AUTH_TOKEN` only as a GitHub build secret and do not pass it to ECS runtime.
+
+## Auth0 email through Amazon SES
+
+Terraform creates the `ferry.fyi` SES identity and separate development and
+production IAM users with only `ses:SendEmail` and `ses:SendRawEmail` access from
+`noreply@ferry.fyi`. It intentionally does not create an IAM access key because
+Terraform would retain the secret in state.
+
+After reviewing and applying the Terraform plan:
+
+1. Read `ses_dkim_records` from `terraform output -json` and add each entry to
+   Cloudflare as a DNS-only CNAME.
+2. Wait for `aws sesv2 get-email-identity --region us-west-2 --email-identity ferry.fyi`
+   to report `VERIFIED` DKIM and sending status.
+3. Grant the Management API clients in both `ferryfyidev.us.auth0.com` and
+   `ferryfyi.us.auth0.com` the `read:email_provider` and
+   `update:email_provider` scopes.
+4. Create separate access keys for the IAM users named by
+   `auth0_ses_iam_user_name` and `auth0_ses_dev_iam_user_name`. Store each key
+   only in its matching Auth0 tenant's SES provider configuration and the
+   approved credential vault; never add either key to Terraform, Secrets
+   Manager for the app, GitHub, or this repository.
+5. Update each Auth0 tenant's email provider to `ses` with region `us-west-2`,
+   From address `noreply@ferry.fyi`, and its tenant-specific access key, then
+   send a test verification email from **Branding → Email Provider** in each
+   tenant.
+6. After the SES test succeeds, revoke the old SendGrid API key.
+
+Auth0 requires AWS API credentials for its native SES integration. Do not enter
+SES SMTP credentials in the AWS provider form; API credentials and SMTP
+credentials are different credential types.
 
 Set `REPORT_BASE_URL` in the runtime app-config secret to the dedicated HTTPS
 origin `https://reports.santosa.family`. The report hostname must route to the

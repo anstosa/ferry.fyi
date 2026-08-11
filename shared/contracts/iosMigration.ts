@@ -15,6 +15,10 @@ export interface IosMigrationLinkResponse {
   status: "already-linked" | "linked";
 }
 
+export interface IosMigrationVerificationEmailResponse {
+  status: "already-verified" | "sent";
+}
+
 // link request validator
 export const isIosMigrationLinkRequest = (
   value: unknown

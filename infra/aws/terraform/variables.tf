@@ -41,6 +41,28 @@ variable "base_url" {
   default     = "https://ferry.fyi"
 }
 
+variable "ses_email_identity" {
+  description = "Domain identity verified in SES for Auth0 account email."
+  type        = string
+  default     = "ferry.fyi"
+
+  validation {
+    condition     = can(regex("^[a-z0-9.-]+\\.[a-z]{2,}$", lower(var.ses_email_identity)))
+    error_message = "ses_email_identity must be a valid domain name."
+  }
+}
+
+variable "ses_default_from_address" {
+  description = "Verified From address used by the Auth0 SES provider."
+  type        = string
+  default     = "noreply@ferry.fyi"
+
+  validation {
+    condition     = can(regex("^[^@[:space:]]+@[^@[:space:]]+\\.[^@[:space:]]+$", var.ses_default_from_address))
+    error_message = "ses_default_from_address must be a valid email address."
+  }
+}
+
 variable "container_port" {
   description = "Container port exposed by the Node web process."
   type        = number

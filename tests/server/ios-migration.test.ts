@@ -6,6 +6,7 @@ const auth0 = vi.hoisted(() => ({
   getAuth0UserInfo: vi.fn(),
   getAuth0UserProfile: vi.fn(),
   linkAuth0UserIdentity: vi.fn(),
+  sendAuth0VerificationEmailForProvider: vi.fn(),
 }));
 const revocation = vi.hoisted(() => ({
   isApplicationTokenRevoked: vi.fn(),
@@ -80,6 +81,7 @@ describe("iOS account migration API", () => {
       subject: "auth0|database-user",
     });
     auth0.linkAuth0UserIdentity.mockResolvedValue("linked");
+    auth0.sendAuth0VerificationEmailForProvider.mockResolvedValue("sent");
   });
 
   it("reports eligibility only after Google authentication", async () => {
@@ -110,6 +112,90 @@ describe("iOS account migration API", () => {
       email: "rider@example.com",
       state: "complete",
     });
+  });
+
+  it("requests verification for the matching database identity", async () => {
+    const response = await request(createApp())
+      .post("/api/ios-migration/verification-email")
+      .set("Authorization", "Bearer primary-token")
+      .send({})
+      .expect(200);
+
+    expect(auth0.sendAuth0VerificationEmailForProvider).toHaveBeenCalledWith({
+      connection: "Username-Password-Authentication",
+      email: "rider@example.com",
+      provider: "auth0",
+    });
+    expect(response.body).toEqual({ status: "sent" });
+  });
+
+  it("does not send mail from an unverified primary email", async () => {
+    auth0.getAuth0UserProfile.mockResolvedValue({
+      ...googleProfile,
+      emailVerified: false,
+    });
+
+    await request(createApp())
+      .post("/api/ios-migration/verification-email")
+      .set("Authorization", "Bearer primary-token")
+      .send({})
+      .expect(409, { error: "google_identity_required" });
+
+    expect(auth0.sendAuth0VerificationEmailForProvider).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      label: "a non-Google primary",
+      profile: {
+        ...googleProfile,
+        identities: [
+          {
+            connection: "Username-Password-Authentication",
+            provider: "auth0",
+            userId: "database-user",
+          },
+        ],
+        subject: "auth0|database-user",
+      },
+    },
+    {
+      label: "Google linked only as a secondary identity",
+      profile: {
+        ...googleProfile,
+        identities: [
+          {
+            connection: "Username-Password-Authentication",
+            provider: "auth0",
+            userId: "database-user",
+          },
+          ...googleProfile.identities,
+        ],
+        subject: "auth0|database-user",
+      },
+    },
+  ])("does not send mail for $label", async ({ profile }) => {
+    auth0.getAuth0UserProfile.mockResolvedValue(profile);
+
+    await request(createApp())
+      .post("/api/ios-migration/verification-email")
+      .set("Authorization", "Bearer primary-token")
+      .send({})
+      .expect(409, { error: "google_identity_required" });
+
+    expect(auth0.sendAuth0VerificationEmailForProvider).not.toHaveBeenCalled();
+  });
+
+  it("does not send verification before the database identity exists", async () => {
+    auth0.sendAuth0VerificationEmailForProvider.mockResolvedValue(
+      "user-not-found"
+    );
+
+    await request(createApp())
+      .post("/api/ios-migration/verification-email")
+      .set("Authorization", "Bearer primary-token")
+      .send({})
+      .expect(409, { error: "database_identity_required" });
   });
 
   it("requires a secondary access token instead of accepting identity fields", async () => {

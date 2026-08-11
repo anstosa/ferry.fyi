@@ -4,7 +4,7 @@ import clsx from "clsx";
 import { useAtomValue } from "jotai";
 import { DateTime } from "luxon";
 import React, { ReactElement, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   ACCOUNT_DELETION_CONFIRMATION,
   type AlertRule,
@@ -28,7 +28,11 @@ import { Page } from "~/components/Page";
 import { PageLoadError } from "~/components/PageLoadError";
 import { SeoHelmet } from "~/components/SeoHelmet";
 import { Skeleton, SkeletonGroup } from "~/components/Skeleton";
-import { getConfiguredAuth0RedirectUri } from "~/lib/auth";
+import {
+  getConfiguredAuth0RedirectUri,
+  getLogoutMode,
+  logoutWithAppFlow,
+} from "~/lib/auth";
 import { useDevice } from "~/lib/device";
 import { getSlug, useTerminals } from "~/lib/terminals";
 import { type ThemePreference, useThemePreference } from "~/lib/theme";
@@ -52,7 +56,7 @@ interface TicketSummaryCounts {
   savedTicketCount: number;
 }
 
-type AccountDeletionState = "closed" | "confirming" | "deleting" | "deleted";
+type AccountDeletionState = "closed" | "confirming" | "deleting";
 
 const THEME_OPTIONS: Array<{
   description: string;
@@ -308,6 +312,7 @@ export const Account = withAuthenticationRequired(
       { deleteAccount, refreshUser },
     ] = useUser();
     const device = useDevice();
+    const navigate = useNavigate();
     const [themePreference, setThemePreference] = useThemePreference();
     const [deletionConfirmation, setDeletionConfirmation] = useState("");
     const [deletionError, setDeletionError] = useState<string | null>(null);
@@ -337,18 +342,30 @@ export const Account = withAuthenticationRequired(
 
     // logout route
     const onLogout = async () => {
+      const options = {
+        logoutParams: { returnTo: getConfiguredAuth0RedirectUri() },
+      };
+      const mode = getLogoutMode(Boolean(device?.isNativeMobile));
+      // framed browser local logout
+      if (mode === "iframe") {
+        await logoutWithAppFlow({
+          beforeLogout: () => navigate("/", { replace: true }),
+          framed: true,
+          logout,
+          options,
+        });
+        return;
+      }
       // native browser logout
-      if (device?.isNativeMobile) {
+      if (mode === "native") {
         await logout({
-          logoutParams: { returnTo: getConfiguredAuth0RedirectUri() },
+          ...options,
           openUrl: async (url) => {
             await Browser.open({ url });
           },
         });
       } else {
-        await logout({
-          logoutParams: { returnTo: getConfiguredAuth0RedirectUri() },
-        });
+        await logoutWithAppFlow({ framed: false, logout, options });
       }
     };
 
@@ -384,13 +401,20 @@ export const Account = withAuthenticationRequired(
       setDeletionState("deleting");
       try {
         await deleteAccount(deletionConfirmation);
-        setDeletionState("deleted");
       } catch (error) {
         console.error(error);
         setDeletionError(
           "Ferry FYI could not confirm account deletion. Sign in again; if your account is still active, retry."
         );
         setDeletionState("confirming");
+        return;
+      }
+      navigate("/", { replace: true });
+      try {
+        await logout({ openUrl: false });
+      } catch (error) {
+        // completed deletion cleanup failure
+        console.error("Local logout failed after account deletion", error);
       }
     };
 
@@ -603,94 +627,68 @@ export const Account = withAuthenticationRequired(
               role="dialog"
             >
               <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl dark:bg-blue-darkest">
-                {deletionState === "deleted" ? (
-                  <>
-                    <h3
-                      className="text-xl font-bold"
-                      id="account-deletion-title"
-                    >
-                      Account deleted
-                    </h3>
-                    <p className="mt-3 text-sm text-gray-dark dark:text-gray-medium">
-                      Your Ferry FYI account and associated account data were
-                      permanently deleted.
-                    </p>
-                    <div className="mt-5 flex justify-end">
-                      <button
-                        className="button button-primary"
-                        onClick={onLogout}
-                        type="button"
-                      >
-                        Done
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <h3
-                      className="text-xl font-bold text-red-dark dark:text-red-light"
-                      id="account-deletion-title"
-                    >
-                      Permanently delete account?
-                    </h3>
-                    <p className="mt-3 text-sm text-gray-dark dark:text-gray-medium">
-                      This cannot be undone. You will need to create a new
-                      account to use signed-in features again.
-                    </p>
-                    <label
-                      className="mt-4 block text-sm font-semibold"
-                      htmlFor="account-deletion-confirmation"
-                    >
-                      Type <strong>{ACCOUNT_DELETION_CONFIRMATION}</strong> to
-                      confirm.
-                    </label>
-                    <input
-                      autoCapitalize="characters"
-                      autoComplete="off"
-                      autoCorrect="off"
-                      autoFocus
-                      className="mt-2 w-full rounded border border-gray-medium bg-white p-2 text-gray-darkest dark:bg-blue-darkest dark:text-white"
-                      disabled={deletionState === "deleting"}
-                      id="account-deletion-confirmation"
-                      onChange={(event) =>
-                        setDeletionConfirmation(event.target.value)
-                      }
-                      spellCheck={false}
-                      value={deletionConfirmation}
-                    />
-                    {deletionError && (
-                      <p
-                        className="mt-3 text-sm font-semibold text-red-dark dark:text-red-light"
-                        role="alert"
-                      >
-                        {deletionError}
-                      </p>
-                    )}
-                    <div className="mt-5 flex flex-wrap justify-end gap-2">
-                      <button
-                        className="button button-secondary"
-                        disabled={deletionState === "deleting"}
-                        onClick={closeDeletion}
-                        type="button"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        className="button button-danger"
-                        disabled={
-                          deletionState === "deleting" ||
-                          deletionConfirmation !== ACCOUNT_DELETION_CONFIRMATION
-                        }
-                        onClick={confirmDeletion}
-                        type="button"
-                      >
-                        {deletionState === "deleting"
-                          ? "Deleting…"
-                          : "Permanently delete"}
-                      </button>
-                    </div>
-                  </>
+                <h3
+                  className="text-xl font-bold text-red-dark dark:text-red-light"
+                  id="account-deletion-title"
+                >
+                  Permanently delete account?
+                </h3>
+                <p className="mt-3 text-sm text-gray-dark dark:text-gray-medium">
+                  This cannot be undone. You will need to create a new account
+                  to use signed-in features again.
+                </p>
+                <label
+                  className="mt-4 block text-sm font-semibold"
+                  htmlFor="account-deletion-confirmation"
+                >
+                  Type <strong>{ACCOUNT_DELETION_CONFIRMATION}</strong> to
+                  confirm.
+                </label>
+                <input
+                  autoCapitalize="characters"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoFocus
+                  className="mt-2 w-full rounded border border-gray-medium bg-white p-2 text-gray-darkest dark:bg-blue-darkest dark:text-white"
+                  disabled={deletionState === "deleting"}
+                  id="account-deletion-confirmation"
+                  onChange={(event) =>
+                    setDeletionConfirmation(event.target.value)
+                  }
+                  spellCheck={false}
+                  value={deletionConfirmation}
+                />
+                {deletionError && (
+                  <p
+                    className="mt-3 text-sm font-semibold text-red-dark dark:text-red-light"
+                    role="alert"
+                  >
+                    {deletionError}
+                  </p>
                 )}
+                <div className="mt-5 flex flex-wrap justify-end gap-2">
+                  <button
+                    className="button button-secondary"
+                    disabled={deletionState === "deleting"}
+                    onClick={closeDeletion}
+                    type="button"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="button button-danger"
+                    disabled={
+                      deletionState === "deleting" ||
+                      deletionConfirmation !== ACCOUNT_DELETION_CONFIRMATION
+                    }
+                    onClick={confirmDeletion}
+                    type="button"
+                  >
+                    {deletionState === "deleting"
+                      ? "Deleting…"
+                      : "Permanently delete"}
+                  </button>
+                </div>
               </div>
             </div>
           )}

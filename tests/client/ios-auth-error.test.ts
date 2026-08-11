@@ -3,9 +3,9 @@ import { describe, expect, it } from "vitest";
 import { getIosAuthFailurePath } from "../../client/lib/auth";
 
 describe("iOS authentication failure handoff", () => {
-  it("uses the generic migration page for native iOS callback errors", () => {
+  it("returns to the login page for native iOS callback errors", () => {
     expect(getIosAuthFailurePath(new Error("access denied"), "ios")).toBe(
-      "/ios"
+      "/login"
     );
   });
 

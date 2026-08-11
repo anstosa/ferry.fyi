@@ -41,6 +41,14 @@ const loadIosMigration = () =>
     default: IosMigration,
   }));
 const IosMigration = lazy(loadIosMigration);
+// login route loader
+const loadLogin = () =>
+  import("~/views/Login").then(({ Login }) => ({ default: Login }));
+const Login = lazy(loadLogin);
+// logout route loader
+const loadLogout = () =>
+  import("~/views/Logout").then(({ Logout }) => ({ default: Logout }));
+const Logout = lazy(loadLogout);
 const loadDataSources = () =>
   import("~/views/DataSources").then(({ DataSources }) => ({
     default: DataSources,
@@ -99,6 +107,14 @@ export const preloadBrowserRoute = async (
   }
   if (pathname === "/ios") {
     await loadIosMigration();
+    return;
+  }
+  if (pathname === "/login") {
+    await loadLogin();
+    return;
+  }
+  if (pathname === "/logout") {
+    await loadLogout();
     return;
   }
   if (pathname === "/admin") {
@@ -161,6 +177,10 @@ const browserRouteElement = (route: PublicSsrRouteDefinition): ReactElement => {
       return <Account />;
     case "ios-migration":
       return <IosMigration />;
+    case "login":
+      return <Login />;
+    case "logout":
+      return <Logout />;
     case "tickets":
       return <Tickets />;
     case "about":

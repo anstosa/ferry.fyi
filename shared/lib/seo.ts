@@ -78,6 +78,16 @@ export const SEO_INDEXABLE_PATHS = [
 ] as const;
 
 const fixedPages: Record<string, Pick<SeoMetadata, "title" | "description">> = {
+  "/login": {
+    title: "Log In - Ferry FYI",
+    description:
+      "Log in to Ferry FYI with a username and password, or prepare an existing Google account for use in the iOS app.",
+  },
+  "/logout": {
+    title: "Log Out - Ferry FYI",
+    description:
+      "Clear the current Ferry FYI authentication session and return to the home page.",
+  },
   "/about": {
     title: "About Ferry FYI - Washington State Ferries Schedules",
     description:

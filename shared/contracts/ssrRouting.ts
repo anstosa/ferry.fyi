@@ -11,6 +11,8 @@ export type PublicSsrRouteId =
   | "callback"
   | "account"
   | "ios-migration"
+  | "login"
+  | "logout"
   | "tickets"
   | "about"
   | "admin"

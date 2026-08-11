@@ -260,6 +260,14 @@ describe("SEO metadata", () => {
       title: "Ferry FYI Support & Feedback",
     });
     expect(getSeoMetadata("/account").robots).toBe("noindex,follow");
+    expect(getSeoMetadata("/login")).toMatchObject({
+      robots: "noindex,follow",
+      title: "Log In - Ferry FYI",
+    });
+    expect(getSeoMetadata("/logout")).toMatchObject({
+      robots: "noindex,follow",
+      title: "Log Out - Ferry FYI",
+    });
     expect(getSeoUrl("https://ferry.fyi/", "/about")).toBe(
       "https://ferry.fyi/about"
     );
@@ -442,6 +450,14 @@ describe("SEO metadata", () => {
       .expect(301)
       .expect("Location", "/forecasting");
   });
+
+  it.each(["/login", "/logout"])(
+    "serves the private browser route %s",
+    async (pathname) => {
+      const response = await request(app).get(pathname).expect(200);
+      expect(response.text).toContain('content="noindex,follow"');
+    }
+  );
 
   it("returns 404 for routes whose mate does not belong to the terminal", async () => {
     await request(app).get("/bainbridge-island/bremerton").expect(404);

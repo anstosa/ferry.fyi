@@ -4,6 +4,11 @@ import { describe, expect, it } from "vitest";
 import { createAppRoutes } from "../../client/routes";
 
 describe("manifest-driven browser routes", () => {
+  it("mounts the forced logout route", () => {
+    const routes = createAppRoutes((_label, element) => element);
+    expect(matchRoutes(routes, "/logout")?.[0].route.path).toBe("/logout");
+  });
+
   it("preserves the Leaderboards nested route remainder", () => {
     const routes = createAppRoutes((_label, element) => element);
     const leaderboardRoutes = routes.filter((route) =>

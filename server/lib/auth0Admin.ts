@@ -80,12 +80,23 @@ const requestManagementApi = async (
   path: string | URL,
   init: RequestInit = {}
 ): Promise<Response> => {
-  const headers = new Headers(init.headers);
-  headers.set("Authorization", `Bearer ${await getManagementToken()}`);
-  return fetch(
-    typeof path === "string" ? new URL(path, managementAudience()) : path,
-    { ...init, headers }
-  );
+  const url =
+    typeof path === "string" ? new URL(path, managementAudience()) : path;
+  // authenticated request
+  const send = async (): Promise<Response> => {
+    const headers = new Headers(init.headers);
+    headers.set("Authorization", `Bearer ${await getManagementToken()}`);
+    return fetch(url, { ...init, headers });
+  };
+
+  const response = await send();
+  // stale permission guard
+  if (response.status !== 401 && response.status !== 403) {
+    return response;
+  }
+  token = undefined;
+  tokenExpiresAt = 0;
+  return send();
 };
 
 export const getAuth0UserEmail = async (
@@ -323,13 +334,14 @@ export const listAuth0Users = async ({
   };
 };
 
-/** Exact email lookup, kept server-side and bounded to Auth0's response. */
-export const findAuth0UserByExactEmail = async (
+// exact email lookup boundary
+const getAuth0UsersByExactEmail = async (
   email: string
-): Promise<Auth0UserIdentity | undefined> => {
+): Promise<UserResponse[]> => {
   const normalized = email.trim().toLocaleLowerCase("en-US");
+  // email input guard
   if (!normalized || normalized.length > 320) {
-    return undefined;
+    return [];
   }
   const url = new URL("users-by-email", managementAudience());
   url.searchParams.set("email", email.trim());
@@ -338,10 +350,11 @@ export const findAuth0UserByExactEmail = async (
     throw new Error(`Auth0 email lookup failed: ${response.status}`);
   }
   const users = (await response.json()) as unknown;
+  // response shape guard
   if (!Array.isArray(users)) {
-    return undefined;
+    return [];
   }
-  const match = users.find(
+  return users.filter(
     (user): user is UserResponse =>
       Boolean(user) &&
       typeof user === "object" &&
@@ -351,12 +364,64 @@ export const findAuth0UserByExactEmail = async (
         .trim()
         .toLocaleLowerCase("en-US") === normalized
   );
+};
+
+/** Exact email lookup, kept server-side and bounded to Auth0's response. */
+export const findAuth0UserByExactEmail = async (
+  email: string
+): Promise<Auth0UserIdentity | undefined> => {
+  const users = await getAuth0UsersByExactEmail(email);
+  const match = users[0];
   return match
     ? {
         email: match.email as string,
         subject: match.user_id as string,
       }
     : undefined;
+};
+
+export type Auth0VerificationEmailResult =
+  | "already-verified"
+  | "sent"
+  | "user-not-found";
+
+/** Requests verification for the matching database identity only. */
+export const sendAuth0VerificationEmailForProvider = async ({
+  connection,
+  email,
+  provider,
+}: {
+  connection: string;
+  email: string;
+  provider: string;
+}): Promise<Auth0VerificationEmailResult> => {
+  const users = await getAuth0UsersByExactEmail(email);
+  const user = users.find((candidate) =>
+    parseAuth0ProviderIdentities(candidate.identities).some(
+      (identity) =>
+        identity.connection === connection && identity.provider === provider
+    )
+  );
+  // matching identity guard
+  if (!user || typeof user.user_id !== "string") {
+    return "user-not-found";
+  }
+  // verified identity guard
+  if (user.email_verified === true) {
+    return "already-verified";
+  }
+  const response = await requestManagementApi("jobs/verification-email", {
+    body: JSON.stringify({ user_id: user.user_id }),
+    headers: { "Content-Type": "application/json" },
+    method: "POST",
+  });
+  // job acceptance guard
+  if (!response.ok) {
+    throw new Error(
+      `Auth0 verification email request failed: ${response.status}`
+    );
+  }
+  return "sent";
 };
 
 type Auth0RevocationCapability = "complete" | "unavailable";

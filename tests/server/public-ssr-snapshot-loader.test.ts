@@ -334,6 +334,8 @@ describe("public SSR snapshot loader", () => {
 
   it.each([
     ["/account", "account"],
+    ["/login", "login"],
+    ["/logout", "logout"],
     ["/admin", "admin"],
     ["/leaderboards/settings", "leaderboards-settings"],
     ["/leaderboards/nope", "leaderboards-unmatched"],

@@ -3,7 +3,7 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const device = vi.hoisted(() => ({
   isNativeMobile: true,
@@ -51,14 +51,26 @@ const renderMenu = (): string =>
   );
 
 describe("iOS migration menu entry", () => {
-  it("offers the generic migration path in the iOS app", () => {
-    expect(renderMenu()).toContain('href="/ios"');
-    expect(renderMenu()).toContain("Move Google account");
+  // platform reset
+  beforeEach(() => {
+    device.platform = "ios";
   });
 
-  it("does not show the migration entry on Android", () => {
+  // ios navigation contract
+  it("offers one login page entry in the iOS app", () => {
+    const menu = renderMenu();
+
+    expect(menu).toContain('href="/login"');
+    expect(menu.match(/Log In/g)).toHaveLength(1);
+    expect(menu).not.toContain("Move Google account");
+  });
+
+  // android navigation contract
+  it("keeps Android on the direct login action", () => {
     device.platform = "android";
-    expect(renderMenu()).not.toContain("Move Google account");
-    device.platform = "ios";
+    const menu = renderMenu();
+
+    expect(menu).not.toContain('href="/login"');
+    expect(menu).not.toContain("Move Google account");
   });
 });

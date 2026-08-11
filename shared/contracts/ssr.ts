@@ -273,6 +273,8 @@ export type PublicSsrRouteSourceMap = {
   callback: never;
   account: never;
   "ios-migration": never;
+  login: never;
+  logout: never;
   tickets: "editorial" | "ticketGuidance";
   about: "editorial";
   admin: never;

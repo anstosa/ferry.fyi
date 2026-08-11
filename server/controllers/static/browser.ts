@@ -51,6 +51,8 @@ const APP_PATHS = new Set([
   "/feedback",
   "/forecasting",
   "/ios",
+  "/login",
+  "/logout",
   "/privacy",
   "/tickets",
   "/today",

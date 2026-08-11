@@ -57,6 +57,15 @@ describe("public content query service", () => {
       parseCrawlerPolicy({ aiCrawlers: "allow", disallowPaths: ["/"] })
     ).toBeUndefined();
     expect(
+      parseCrawlerPolicy({
+        aiCrawlers: "allow",
+        disallowPaths: ["/login", "/logout"],
+      })
+    ).toEqual({
+      aiCrawlers: "allow",
+      disallowPaths: ["/login", "/logout"],
+    });
+    expect(
       getRobotsTxt({ aiCrawlers: "disallow", disallowPaths: ["/admin"] })
     ).toContain("User-agent: GPTBot\nDisallow: /");
     const allowedAi = getRobotsTxt({

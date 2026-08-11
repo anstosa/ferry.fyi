@@ -61,4 +61,34 @@ describe("Auth0 account deletion", () => {
 
     await expect(deleteAuth0User("auth0|person")).rejects.toThrow();
   });
+
+  it("refreshes a cached management token after permissions change", async () => {
+    configureAuth0();
+    // token response fixture
+    const tokenResponse = (accessToken: string): Response =>
+      new Response(
+        JSON.stringify({
+          access_token: accessToken,
+          expires_in: 300,
+        }),
+        { headers: { "Content-Type": "application/json" }, status: 200 }
+      );
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(tokenResponse("old-management-token"))
+      .mockResolvedValueOnce(response(403))
+      .mockResolvedValueOnce(tokenResponse("new-management-token"))
+      .mockResolvedValueOnce(response(204));
+    vi.stubGlobal("fetch", fetch);
+    const { deleteAuth0User } = await import("../../server/lib/auth0Admin");
+
+    await expect(deleteAuth0User("auth0|person")).resolves.toBeUndefined();
+    expect(fetch).toHaveBeenCalledTimes(4);
+    expect(
+      (fetch.mock.calls[1][1]?.headers as Headers).get("Authorization")
+    ).toBe("Bearer old-management-token");
+    expect(
+      (fetch.mock.calls[3][1]?.headers as Headers).get("Authorization")
+    ).toBe("Bearer new-management-token");
+  });
 });

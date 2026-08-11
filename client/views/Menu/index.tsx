@@ -153,25 +153,29 @@ export const Menu = ({
     (item) => "isBottom" in item && item.isBottom
   );
 
-  const accountItem: MenuItem = isAuthenticated
-    ? {
-        Icon: Avatar,
-        label: "Account",
-        path: "/account",
-      }
-    : {
-        Icon: UserIcon,
-        label: "Log In",
-        onClick: login,
-      };
-  const iosMigrationItem: MenuItem | null =
-    !isAuthenticated && device?.platform === "ios"
-      ? {
-          Icon: UserIcon,
-          label: "Move Google account",
-          path: "/ios",
-        }
-      : null;
+  let accountItem: MenuItem;
+  // authenticated account route
+  if (isAuthenticated) {
+    accountItem = {
+      Icon: Avatar,
+      label: "Account",
+      path: "/account",
+    };
+  } else if (device?.platform === "ios") {
+    // ios password login route
+    accountItem = {
+      Icon: UserIcon,
+      label: "Log In",
+      path: "/login",
+    };
+  } else {
+    // direct login action
+    accountItem = {
+      Icon: UserIcon,
+      label: "Log In",
+      onClick: login,
+    };
+  }
   const platform = getBrowserInstallPlatform();
   let InstallIcon = DownloadIcon;
   if (platform === "android") {
@@ -225,7 +229,6 @@ export const Menu = ({
     { isSpacer: true },
     ...(installItem ? [installItem] : []),
     accountItem,
-    ...(iosMigrationItem ? [iosMigrationItem] : []),
     ...bottomItems,
     {
       Icon: AboutIcon,

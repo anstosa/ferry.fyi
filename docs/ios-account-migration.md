@@ -10,13 +10,15 @@ their saved Ferry FYI data.
 The migration never accepts an email or Auth0 subject as proof of account
 ownership. It requires all of the following:
 
-1. A fresh Google authentication through the web Auth0 client.
+1. An authenticated Google primary identity through the web Auth0 client.
 2. A verified email on the Google identity.
 3. Creation of an Auth0 database identity with the same server-derived email.
    The browser sends the password directly to Auth0's
    `/dbconnections/signup` endpoint; Ferry FYI never receives it.
-4. A separate fresh authentication with the new database identity.
-5. Matching verified emails in the access-token profile and both Auth0
+4. Mailbox verification through Auth0's verification-email link for the exact
+   matching database identity.
+5. A separate fresh authentication with the new database identity.
+6. Matching verified emails in the access-token profile and both Auth0
    Management API profiles.
 
 The server links the database identity as secondary under the existing Google

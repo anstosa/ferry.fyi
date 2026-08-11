@@ -2,10 +2,30 @@ import { describe, expect, it, vi } from "vitest";
 
 import {
   getAuth0RedirectUri,
+  getLogoutMode,
   isAuth0CallbackUrl,
   isStaleAuth0CallbackError,
   loginWithAppFlow,
+  logoutWithAppFlow,
 } from "../../client/lib/auth";
+
+describe("getLogoutMode", () => {
+  // iframe precedence contract
+  it("uses the popup even when device emulation reports native", () => {
+    expect(getLogoutMode(true, true)).toBe("iframe");
+  });
+
+  // standard route contracts
+  it.each([
+    [true, false, "native"],
+    [false, false, "web"],
+  ] as const)(
+    "selects native=%s framed=%s as %s",
+    (isNativeMobile, framed, expected) => {
+      expect(getLogoutMode(isNativeMobile, framed)).toBe(expected);
+    }
+  );
+});
 
 describe("getAuth0RedirectUri", () => {
   it("uses Capacitor's Android callback URI on Android", () => {
@@ -111,6 +131,7 @@ describe("loginWithAppFlow", () => {
     expect(loginWithPopup).toHaveBeenCalledWith({
       authorizationParams: {
         ...authorizationParams,
+        prompt: "login",
         redirect_uri: "https://dev.ferry.fyi/callback",
       },
     });
@@ -140,4 +161,47 @@ describe("loginWithAppFlow", () => {
       expect(loginWithPopup).not.toHaveBeenCalled();
     }
   );
+});
+
+describe("logoutWithAppFlow", () => {
+  // framed logout ordering
+  it("leaves the protected route before clearing framed authentication", async () => {
+    const order: string[] = [];
+    const logout = vi.fn().mockImplementation(() => {
+      order.push("logout");
+      return Promise.resolve();
+    });
+    const options = {
+      logoutParams: { returnTo: "https://dev.ferry.fyi/callback" },
+    };
+
+    await expect(
+      logoutWithAppFlow({
+        beforeLogout: () => order.push("navigate"),
+        framed: true,
+        logout,
+        options,
+      })
+    ).resolves.toBe("local");
+
+    expect(logout).toHaveBeenCalledWith({
+      ...options,
+      openUrl: false,
+    });
+    expect(order).toEqual(["navigate", "logout"]);
+  });
+
+  // standard logout redirect
+  it("keeps redirect logout outside a frame", async () => {
+    const logout = vi.fn().mockResolvedValue(undefined);
+    const options = {
+      logoutParams: { returnTo: "https://ferry.fyi/callback" },
+    };
+
+    await expect(
+      logoutWithAppFlow({ framed: false, logout, options })
+    ).resolves.toBe("redirecting");
+
+    expect(logout).toHaveBeenCalledWith(options);
+  });
 });

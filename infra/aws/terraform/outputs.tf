@@ -8,6 +8,34 @@ output "region" {
   value       = var.aws_region
 }
 
+output "ses_email_identity" {
+  description = "SES domain identity used by Auth0 account email."
+  value       = aws_sesv2_email_identity.auth0.email_identity
+}
+
+output "ses_default_from_address" {
+  description = "From address to configure on the Auth0 SES provider."
+  value       = var.ses_default_from_address
+}
+
+output "ses_dkim_records" {
+  description = "DNS-only CNAME records required to verify the SES domain in Cloudflare."
+  value = try({
+    for token in aws_sesv2_email_identity.auth0.dkim_signing_attributes[0].tokens :
+    "${token}._domainkey.${var.ses_email_identity}" => "${token}.dkim.amazonses.com"
+  }, {})
+}
+
+output "auth0_ses_iam_user_name" {
+  description = "Production Auth0 IAM user whose access key is stored only in Auth0."
+  value       = aws_iam_user.auth0_ses.name
+}
+
+output "auth0_ses_dev_iam_user_name" {
+  description = "Development Auth0 IAM user whose access key is stored only in Auth0."
+  value       = aws_iam_user.auth0_ses_dev.name
+}
+
 output "ecr_repository_url" {
   description = "Docker image repository URL for CI builds."
   value       = aws_ecr_repository.app.repository_url

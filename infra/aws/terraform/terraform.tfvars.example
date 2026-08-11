@@ -6,6 +6,10 @@ aws_region     = "us-west-2"
 app_domains = ["ferry.fyi", "staging.ferry.fyi"]
 base_url    = "https://ferry.fyi"
 
+# Auth0 account email is sent through Amazon SES from the Ferry FYI domain.
+ses_email_identity      = "ferry.fyi"
+ses_default_from_address = "noreply@ferry.fyi"
+
 # Keep ALB enabled until the Cloudflare Tunnel route is healthy, then disable it to remove ALB/IP charges.
 enable_public_alb      = true
 enable_https_listener  = true

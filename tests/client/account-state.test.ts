@@ -2,7 +2,7 @@
 
 import React, { act } from "react";
 import { createRoot, Root } from "react-dom/client";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -104,13 +104,34 @@ const setInputValue = (input: HTMLInputElement, value: string): void => {
   setter?.call(input, value);
   input.dispatchEvent(new Event("input", { bubbles: true }));
 };
+
+// route location fixture
+const LocationProbe = (): React.ReactElement => {
+  const location = useLocation();
+  return React.createElement(
+    "output",
+    { "data-testid": "location" },
+    location.pathname
+  );
+};
+
+// account render fixture
 const render = () => {
   const container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container);
   act(() =>
     root?.render(
-      React.createElement(MemoryRouter, undefined, React.createElement(Account))
+      React.createElement(
+        MemoryRouter,
+        { initialEntries: ["/account"] },
+        React.createElement(
+          React.Fragment,
+          undefined,
+          React.createElement(Account),
+          React.createElement(LocationProbe)
+        )
+      )
     )
   );
   return container;
@@ -199,7 +220,7 @@ describe("Account state predicates", () => {
     expect(auth.logout).toHaveBeenCalledOnce();
   });
 
-  it("requires typed confirmation and shows permanent deletion completion", async () => {
+  it("requires typed confirmation and redirects home after deletion", async () => {
     auth.user = {
       email: "rider@example.com",
       name: "Rider",
@@ -214,9 +235,9 @@ describe("Account state predicates", () => {
     act(() => deleteButton?.click());
     const dialog = container.querySelector<HTMLElement>('[role="dialog"]');
     const confirmation = dialog?.querySelector<HTMLInputElement>("input");
-    const permanentlyDelete = [...(dialog?.querySelectorAll("button") ?? [])].find(
-      (button) => button.textContent === "Permanently delete"
-    );
+    const permanentlyDelete = [
+      ...(dialog?.querySelectorAll("button") ?? []),
+    ].find((button) => button.textContent === "Permanently delete");
     expect(dialog?.getAttribute("aria-modal")).toBe("true");
     expect(permanentlyDelete?.disabled).toBe(true);
 
@@ -227,16 +248,10 @@ describe("Account state predicates", () => {
     });
 
     expect(deleteAccount).toHaveBeenCalledWith("DELETE");
-    expect(dialog?.textContent).toContain("Account deleted");
-    expect(dialog?.textContent).toContain("permanently deleted");
-
-    await act(async () => {
-      [...(dialog?.querySelectorAll("button") ?? [])]
-        .find((button) => button.textContent === "Done")
-        ?.click();
-      await Promise.resolve();
-    });
-    expect(auth.logout).toHaveBeenCalledOnce();
+    expect(auth.logout).toHaveBeenCalledWith({ openUrl: false });
+    expect(
+      container.querySelector('[data-testid="location"]')?.textContent
+    ).toBe("/");
   });
 
   it("keeps the account active when permanent deletion fails", async () => {
@@ -268,5 +283,46 @@ describe("Account state predicates", () => {
       "could not confirm account deletion"
     );
     expect(auth.logout).not.toHaveBeenCalled();
+  });
+
+  it("does not report completed deletion as failed when local logout rejects", async () => {
+    auth.user = {
+      email: "rider@example.com",
+      name: "Rider",
+      sub: "auth0|rider",
+    };
+    userState.user = {};
+    auth.logout.mockRejectedValueOnce(new Error("Local cache unavailable"));
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const container = render();
+
+    act(() =>
+      [...container.querySelectorAll("button")]
+        .find((button) => button.textContent === "Delete account")
+        ?.click()
+    );
+    const dialog = container.querySelector<HTMLElement>('[role="dialog"]');
+    const confirmation = dialog?.querySelector<HTMLInputElement>("input");
+    await act(async () => {
+      setInputValue(confirmation as HTMLInputElement, "DELETE");
+      [...(dialog?.querySelectorAll("button") ?? [])]
+        .find((button) => button.textContent === "Permanently delete")
+        ?.click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(deleteAccount).toHaveBeenCalledOnce();
+    expect(
+      container.querySelector('[data-testid="location"]')?.textContent
+    ).toBe("/");
+    expect(container.textContent).not.toContain(
+      "could not confirm account deletion"
+    );
+    expect(consoleError).toHaveBeenCalledWith(
+      "Local logout failed after account deletion",
+      expect.any(Error)
+    );
+    consoleError.mockRestore();
   });
 });

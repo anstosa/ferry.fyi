@@ -1,5 +1,6 @@
 import type {
   Auth0ContextInterface,
+  LogoutOptions,
   PopupLoginOptions,
   RedirectLoginOptions,
 } from "@auth0/auth0-react";
@@ -58,8 +59,10 @@ export const isStaleAuth0CallbackError = (error: unknown): boolean =>
 export const getIosAuthFailurePath = (
   error: unknown,
   platform?: string
-): "/ios" | undefined =>
-  platform === "ios" && !isStaleAuth0CallbackError(error) ? "/ios" : undefined;
+): "/login" | undefined =>
+  platform === "ios" && !isStaleAuth0CallbackError(error)
+    ? "/login"
+    : undefined;
 
 type InteractiveLoginMethods = Pick<
   Auth0ContextInterface,
@@ -72,6 +75,16 @@ type LoginWithAppFlowOptions = InteractiveLoginMethods & {
   options?: RedirectLoginOptions;
   popupRedirectUri?: string;
 };
+
+type LogoutWithAppFlowOptions = {
+  beforeLogout?: () => void;
+  framed?: boolean;
+  logout: (options?: LogoutOptions) => Promise<void>;
+  options?: LogoutOptions;
+};
+
+export type LogoutWithAppFlowResult = "local" | "redirecting";
+export type LogoutMode = "iframe" | "native" | "web";
 
 // framed browser guard
 export const isWindowFramed = (): boolean => {
@@ -87,26 +100,46 @@ export const isWindowFramed = (): boolean => {
   }
 };
 
+// logout route selector
+export const getLogoutMode = (
+  isNativeMobile: boolean,
+  framed = isWindowFramed()
+): LogoutMode => {
+  // iframe precedence guard
+  if (framed) {
+    return "iframe";
+  }
+  // native browser guard
+  if (isNativeMobile) {
+    return "native";
+  }
+  return "web";
+};
+
 // popup option adapter
 const getPopupLoginOptions = (
   options?: RedirectLoginOptions,
-  popupRedirectUri?: string
+  popupRedirectUri?: string,
+  forceLogin = false
 ): PopupLoginOptions | undefined => {
   // empty option guard
-  if (!options?.authorizationParams && !popupRedirectUri) {
+  if (!options?.authorizationParams && !popupRedirectUri && !forceLogin) {
     return undefined;
   }
   return {
     authorizationParams: {
       ...options?.authorizationParams,
       ...(popupRedirectUri ? { redirect_uri: popupRedirectUri } : {}),
+      ...(forceLogin && !options?.authorizationParams?.prompt
+        ? { prompt: "login" }
+        : {}),
     },
   };
 };
 
 // environment-aware login route
 export const loginWithAppFlow = async ({
-  environment = process.env.NODE_ENV,
+  environment = import.meta.env.MODE,
   framed = isWindowFramed(),
   loginWithPopup,
   loginWithRedirect,
@@ -115,8 +148,28 @@ export const loginWithAppFlow = async ({
 }: LoginWithAppFlowOptions): Promise<void> => {
   // development iframe guard
   if (environment === "development" && framed) {
-    await loginWithPopup(getPopupLoginOptions(options, popupRedirectUri));
+    await loginWithPopup(getPopupLoginOptions(options, popupRedirectUri, true));
     return;
   }
   await loginWithRedirect(options);
+};
+
+// frame-aware logout route
+export const logoutWithAppFlow = async ({
+  beforeLogout,
+  framed = isWindowFramed(),
+  logout,
+  options,
+}: LogoutWithAppFlowOptions): Promise<LogoutWithAppFlowResult> => {
+  // iframe redirect guard
+  if (framed) {
+    beforeLogout?.();
+    await logout({
+      ...options,
+      openUrl: false,
+    });
+    return "local";
+  }
+  await logout(options);
+  return "redirecting";
 };

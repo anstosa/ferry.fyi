@@ -4,6 +4,7 @@ import {
   AUTH0_GOOGLE_CONNECTION,
   type IosMigrationLinkResponse,
   type IosMigrationStatus,
+  type IosMigrationVerificationEmailResponse,
   isIosMigrationLinkRequest,
 } from "shared/contracts/iosMigration";
 
@@ -13,6 +14,7 @@ import {
   getAuth0UserInfo,
   getAuth0UserProfile,
   linkAuth0UserIdentity,
+  sendAuth0VerificationEmailForProvider,
 } from "~/lib/auth0Admin";
 
 const AUTH0_DATABASE_PROVIDER = "auth0";
@@ -139,6 +141,42 @@ iosMigrationRouter.get("/status", async (_request, response, next) => {
     next(error);
   }
 });
+
+// send secondary identity verification
+iosMigrationRouter.post(
+  "/verification-email",
+  async (_request, response, next) => {
+    try {
+      const subject = response.locals.user?.sub;
+      // auth context guard
+      if (typeof subject !== "string") {
+        response.status(401).send({ error: "unauthorized" });
+        return;
+      }
+      const primary = await getAuth0UserProfile(subject);
+      const email = normalizeEmail(primary.email);
+      // primary identity guard
+      if (!isVerifiedGoogleProfile(primary) || !email) {
+        response.status(409).send({ error: "google_identity_required" });
+        return;
+      }
+      const status = await sendAuth0VerificationEmailForProvider({
+        connection: AUTH0_DATABASE_CONNECTION,
+        email,
+        provider: AUTH0_DATABASE_PROVIDER,
+      });
+      // secondary identity guard
+      if (status === "user-not-found") {
+        response.status(409).send({ error: "database_identity_required" });
+        return;
+      }
+      const body: IosMigrationVerificationEmailResponse = { status };
+      response.send(body);
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 // verify and link the secondary identity
 iosMigrationRouter.post("/link", async (request, response, next) => {

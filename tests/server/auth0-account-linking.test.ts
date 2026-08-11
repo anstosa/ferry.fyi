@@ -104,4 +104,60 @@ describe("Auth0 account linking", () => {
     ).resolves.toBe("already-linked");
     expect(fetch).toHaveBeenCalledTimes(2);
   });
+
+  it("sends verification only to the matching database identity", async () => {
+    configureAuth0();
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse({ access_token: "management-token", expires_in: 300 })
+      )
+      .mockResolvedValueOnce(
+        jsonResponse([
+          {
+            email: "rider@example.com",
+            email_verified: true,
+            identities: [
+              {
+                connection: "google-oauth2",
+                provider: "google-oauth2",
+                user_id: "google-user",
+              },
+            ],
+            user_id: "google-oauth2|google-user",
+          },
+          {
+            email: "rider@example.com",
+            email_verified: false,
+            identities: [
+              {
+                connection: "Username-Password-Authentication",
+                provider: "auth0",
+                user_id: "database-user",
+              },
+            ],
+            user_id: "auth0|database-user",
+          },
+        ])
+      )
+      .mockResolvedValueOnce(jsonResponse({ id: "job-id" }, 201));
+    vi.stubGlobal("fetch", fetch);
+    const { sendAuth0VerificationEmailForProvider } =
+      await import("../../server/lib/auth0Admin");
+
+    await expect(
+      sendAuth0VerificationEmailForProvider({
+        connection: "Username-Password-Authentication",
+        email: "rider@example.com",
+        provider: "auth0",
+      })
+    ).resolves.toBe("sent");
+
+    expect(fetch.mock.calls[2][0].toString()).toContain(
+      "jobs/verification-email"
+    );
+    expect(JSON.parse(fetch.mock.calls[2][1].body)).toEqual({
+      user_id: "auth0|database-user",
+    });
+  });
 });

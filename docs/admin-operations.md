@@ -174,8 +174,8 @@ public content. Announcement title and body are plain text, not HTML.
 Crawler policy is restricted to the following persisted choices:
 
 - AI crawlers: `allow` or `disallow` for the fixed supported agent list.
-- General disallow paths: `/account`, `/admin`, `/callback`, `/ios`, and
-  `/leaderboards/settings` only.
+- General disallow paths: `/account`, `/admin`, `/callback`, `/ios`, `/login`,
+  `/logout`, and `/leaderboards/settings` only.
 
 `robots.txt`, `sitemap.xml`, and the leaderboard section of `llms.txt` are
 served dynamically before `express.static`. Each request reads the persisted

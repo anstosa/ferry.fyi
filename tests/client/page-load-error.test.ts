@@ -5,6 +5,7 @@ import { createRoot, Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { PageLoadError } from "../../client/components/PageLoadError";
+import { ApiError } from "../../client/lib/api";
 
 interface RenderResult {
   container: HTMLDivElement;
@@ -51,5 +52,20 @@ describe("PageLoadError", () => {
 
     expect(reload).toHaveBeenCalledTimes(1);
     expect(contactLink?.getAttribute("href")).toContain("mailto:dev@ferry.fyi");
+  });
+
+  // unauthorized recovery action
+  it("offers logout after an unauthorized page load", () => {
+    const { container } = renderElement(
+      React.createElement(PageLoadError, {
+        error: new ApiError(401, { error: "unauthorized" }),
+        onReload: vi.fn(),
+      })
+    );
+
+    const logoutLink = [...container.querySelectorAll("a")].find(
+      (link) => link.textContent === "Log Out"
+    );
+    expect(logoutLink?.getAttribute("href")).toBe("/logout");
   });
 });
