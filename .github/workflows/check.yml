@@ -76,6 +76,10 @@ jobs:
     name: Production build and artifact smokes
     runs-on: ubuntu-latest
     env:
+      AUTH0_CLIENT_AUDIENCE: https://ferry.fyi/api
+      AUTH0_CLIENT_ID: checks-client
+      AUTH0_CLIENT_REDIRECT: https://ferry.fyi/callback
+      AUTH0_DOMAIN: tenant.example.test
       BASE_URL: https://ferry.fyi
       SENTRY_AUTH_TOKEN: ""
     steps:
@@ -146,6 +150,7 @@ jobs:
           name: production-build-${{ github.sha }}
           path: dist
       - run: sha256sum --check dist/artifact-files.sha256
+      - run: yarn db:migrate
       - run: yarn playwright install --with-deps chromium
       - name: Run the deterministic critical SSR sample
         run: >-
