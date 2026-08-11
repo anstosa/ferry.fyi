@@ -13,6 +13,10 @@ import express from "express";
 import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+const logs = vi.hoisted(() => ({ error: vi.fn() }));
+
+vi.mock("heroku-logger", () => ({ default: logs }));
+
 import {
   createCameraDetectionDebuggerPageRouter,
   createCameraDetectionDebuggerRateLimiter,
@@ -205,6 +209,7 @@ describe("camera detection development debugger", () => {
   // debugger rate-limit contract
   it("rate-limits repository and detector work", async () => {
     const app = express();
+    app.use(wrapApiResponse);
     app.use(
       "/camera-detection",
       createCameraDetectionDebuggerRouter({
@@ -221,6 +226,8 @@ describe("camera detection development debugger", () => {
       .expect(429);
 
     expect(limitedResponse.headers["ratelimit-policy"]).toContain("1;");
+    expect(limitedResponse.body).toEqual({ error: "Rate limit exceeded" });
+    expect(limitedResponse.body).not.toHaveProperty("body");
   });
 
   // repository save contract
@@ -464,9 +471,9 @@ describe("camera detection development debugger", () => {
   // raw debugger response contract
   it("keeps detector errors outside the wrapped API envelope", async () => {
     // simulate tainted upstream failure
-    const fetchImpl = vi.fn(() => {
-      return Promise.reject(new Error("<img src=x onerror=alert(1)>"));
-    }) as unknown as typeof fetch;
+    const fetchImpl: typeof fetch = vi.fn(() =>
+      Promise.reject(new Error("<img src=x onerror=alert(1)>"))
+    );
     const app = express();
     app.use(express.json());
     app.use(wrapApiResponse);
@@ -487,5 +494,12 @@ describe("camera detection development debugger", () => {
     expect(response.headers["content-type"]).toContain("application/json");
     expect(response.body).toEqual({ error: "Detector unavailable" });
     expect(response.body).not.toHaveProperty("body");
+    expect(logs.error).toHaveBeenCalledWith(
+      "Camera detection debugger request failed",
+      expect.objectContaining({
+        error: "<img src=x onerror=alert(1)>",
+        stack: expect.any(String),
+      })
+    );
   });
 });

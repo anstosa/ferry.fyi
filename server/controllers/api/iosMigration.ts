@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { type RequestHandler, Router } from "express";
 import { MINUTE, rateLimit } from "express-rate-limit";
 import {
   AUTH0_DATABASE_CONNECTION,
@@ -20,22 +20,11 @@ import {
 
 const AUTH0_DATABASE_PROVIDER = "auth0";
 
-// verification email abuse limit
-const verificationEmailRateLimiter = rateLimit({
-  identifier: "ios-migration-verification-email",
-  legacyHeaders: false,
-  limit: 5,
-  standardHeaders: "draft-8",
-  windowMs: 15 * MINUTE,
-});
-// identity link abuse limit
-const linkRateLimiter = rateLimit({
-  identifier: "ios-migration-link",
-  legacyHeaders: false,
-  limit: 10,
-  standardHeaders: "draft-8",
-  windowMs: 15 * MINUTE,
-});
+interface IosMigrationRouterOptions {
+  linkLimit?: number;
+  verificationEmailLimit?: number;
+  windowMs?: number;
+}
 
 class IosMigrationError extends Error {
   status: number;
@@ -137,16 +126,18 @@ const verifySecondaryIdentity = async (
   return secondaryIdentity;
 };
 
-export const iosMigrationRouter = Router();
-
 // disable migration response caching
-iosMigrationRouter.use((_request, response, next) => {
+const preventMigrationCaching: RequestHandler = (_request, response, next) => {
   response.set("Cache-Control", "no-store");
   next();
-});
+};
 
 // report migration eligibility
-iosMigrationRouter.get("/status", async (_request, response, next) => {
+const reportMigrationStatus: RequestHandler = async (
+  _request,
+  response,
+  next
+) => {
   try {
     const subject = response.locals.user?.sub;
     // auth context guard
@@ -158,90 +149,126 @@ iosMigrationRouter.get("/status", async (_request, response, next) => {
   } catch (error) {
     next(error);
   }
-});
+};
 
 // send secondary identity verification
-iosMigrationRouter.post(
-  "/verification-email",
-  verificationEmailRateLimiter,
-  async (_request, response, next) => {
-    try {
-      const subject = response.locals.user?.sub;
-      // auth context guard
-      if (typeof subject !== "string") {
-        response.status(401).send({ error: "unauthorized" });
-        return;
-      }
-      const primary = await getAuth0UserProfile(subject);
-      const email = normalizeEmail(primary.email);
-      // primary identity guard
-      if (!isVerifiedGoogleProfile(primary) || !email) {
-        response.status(409).send({ error: "google_identity_required" });
-        return;
-      }
-      const status = await sendAuth0VerificationEmailForProvider({
-        connection: AUTH0_DATABASE_CONNECTION,
-        email,
-        provider: AUTH0_DATABASE_PROVIDER,
-      });
-      // secondary identity guard
-      if (status === "user-not-found") {
-        response.status(409).send({ error: "database_identity_required" });
-        return;
-      }
-      const body: IosMigrationVerificationEmailResponse = { status };
-      response.send(body);
-    } catch (error) {
-      next(error);
+const sendSecondaryVerification: RequestHandler = async (
+  _request,
+  response,
+  next
+) => {
+  try {
+    const subject = response.locals.user?.sub;
+    // auth context guard
+    if (typeof subject !== "string") {
+      response.status(401).send({ error: "unauthorized" });
+      return;
     }
+    const primary = await getAuth0UserProfile(subject);
+    const email = normalizeEmail(primary.email);
+    // primary identity guard
+    if (!isVerifiedGoogleProfile(primary) || !email) {
+      response.status(409).send({ error: "google_identity_required" });
+      return;
+    }
+    const status = await sendAuth0VerificationEmailForProvider({
+      connection: AUTH0_DATABASE_CONNECTION,
+      email,
+      provider: AUTH0_DATABASE_PROVIDER,
+    });
+    // secondary identity guard
+    if (status === "user-not-found") {
+      response.status(409).send({ error: "database_identity_required" });
+      return;
+    }
+    const body: IosMigrationVerificationEmailResponse = { status };
+    response.send(body);
+  } catch (error) {
+    next(error);
   }
-);
+};
 
 // verify and link the secondary identity
-iosMigrationRouter.post(
-  "/link",
-  linkRateLimiter,
-  async (request, response, next) => {
-    try {
-      const subject = response.locals.user?.sub;
-      // auth context guard
-      if (typeof subject !== "string") {
-        response.status(401).send({ error: "unauthorized" });
-        return;
-      }
-      // request shape guard
-      if (!isIosMigrationLinkRequest(request.body)) {
-        response.status(400).send({ error: "invalid_request" });
-        return;
-      }
-      const primary = await getAuth0UserProfile(subject);
-      // primary identity guard
-      if (!isVerifiedGoogleProfile(primary)) {
-        response.status(409).send({ error: "google_identity_required" });
-        return;
-      }
-      const existingIdentity = findDatabaseIdentity(primary);
-      // idempotency guard
-      if (existingIdentity) {
-        const body: IosMigrationLinkResponse = { status: "already-linked" };
-        response.send(body);
-        return;
-      }
-      const secondaryIdentity = await verifySecondaryIdentity(
-        request.body.secondaryAccessToken,
-        primary
-      );
-      const body: IosMigrationLinkResponse = {
-        status: await linkAuth0UserIdentity(subject, secondaryIdentity),
-      };
-      response.send(body);
-    } catch (error) {
-      // expected migration guard
-      if (error instanceof IosMigrationError) {
-        response.status(error.status).send({ error: error.message });
-        return;
-      }
-      next(error);
+const linkSecondaryIdentity: RequestHandler = async (
+  request,
+  response,
+  next
+) => {
+  try {
+    const subject = response.locals.user?.sub;
+    // auth context guard
+    if (typeof subject !== "string") {
+      response.status(401).send({ error: "unauthorized" });
+      return;
     }
+    // request shape guard
+    if (!isIosMigrationLinkRequest(request.body)) {
+      response.status(400).send({ error: "invalid_request" });
+      return;
+    }
+    const primary = await getAuth0UserProfile(subject);
+    // primary identity guard
+    if (!isVerifiedGoogleProfile(primary)) {
+      response.status(409).send({ error: "google_identity_required" });
+      return;
+    }
+    const existingIdentity = findDatabaseIdentity(primary);
+    // idempotency guard
+    if (existingIdentity) {
+      const body: IosMigrationLinkResponse = { status: "already-linked" };
+      response.send(body);
+      return;
+    }
+    const secondaryIdentity = await verifySecondaryIdentity(
+      request.body.secondaryAccessToken,
+      primary
+    );
+    const body: IosMigrationLinkResponse = {
+      status: await linkAuth0UserIdentity(subject, secondaryIdentity),
+    };
+    response.send(body);
+  } catch (error) {
+    // expected migration guard
+    if (error instanceof IosMigrationError) {
+      response.status(error.status).send({ error: error.message });
+      return;
+    }
+    next(error);
   }
-);
+};
+
+// compose one independently rate-limited migration router
+export const createIosMigrationRouter = ({
+  linkLimit = 10,
+  verificationEmailLimit = 5,
+  windowMs = 15 * MINUTE,
+}: IosMigrationRouterOptions = {}): Router => {
+  const router = Router();
+  router.use(preventMigrationCaching);
+  router.get("/status", reportMigrationStatus);
+  router.post(
+    "/verification-email",
+    rateLimit({
+      identifier: "ios-migration-verification-email",
+      legacyHeaders: false,
+      limit: verificationEmailLimit,
+      standardHeaders: "draft-8",
+      windowMs,
+    }),
+    sendSecondaryVerification
+  );
+  router.post(
+    "/link",
+    rateLimit({
+      identifier: "ios-migration-link",
+      legacyHeaders: false,
+      limit: linkLimit,
+      standardHeaders: "draft-8",
+      windowMs,
+    }),
+    linkSecondaryIdentity
+  );
+  return router;
+};
+
+export const iosMigrationRouter = createIosMigrationRouter();

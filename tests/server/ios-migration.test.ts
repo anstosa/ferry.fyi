@@ -1,4 +1,8 @@
-import express, { NextFunction, Request, Response } from "express";
+import express, {
+  type NextFunction,
+  type Request,
+  type Response,
+} from "express";
 import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -34,13 +38,20 @@ vi.mock("express-oauth2-jwt-bearer", () => ({
 }));
 
 import { requireAuth } from "../../server/controllers/api/auth";
-import { iosMigrationRouter } from "../../server/controllers/api/iosMigration";
+import { createIosMigrationRouter } from "../../server/controllers/api/iosMigration";
+
+// router configuration fixture
+type IosMigrationRouterOptions = NonNullable<
+  Parameters<typeof createIosMigrationRouter>[0]
+>;
 
 // app fixture
-const createApp = (): express.Express => {
+const createApp = (
+  options: IosMigrationRouterOptions = {}
+): express.Express => {
   const app = express();
   app.use(express.json());
-  app.use("/api/ios-migration", requireAuth, iosMigrationRouter);
+  app.use("/api/ios-migration", requireAuth, createIosMigrationRouter(options));
   return app;
 };
 
@@ -127,8 +138,24 @@ describe("iOS account migration API", () => {
       provider: "auth0",
     });
     expect(response.headers.ratelimit).toBeTruthy();
-    expect(response.headers["ratelimit-policy"]).toContain("q=5; w=900");
     expect(response.body).toEqual({ status: "sent" });
+  });
+
+  it("rate-limits verification before another Auth0 email request", async () => {
+    const app = createApp({ verificationEmailLimit: 1 });
+
+    await request(app)
+      .post("/api/ios-migration/verification-email")
+      .set("Authorization", "Bearer primary-token")
+      .send({})
+      .expect(200);
+    await request(app)
+      .post("/api/ios-migration/verification-email")
+      .set("Authorization", "Bearer primary-token")
+      .send({})
+      .expect(429);
+
+    expect(auth0.sendAuth0VerificationEmailForProvider).toHaveBeenCalledOnce();
   });
 
   it("does not send mail from an unverified primary email", async () => {
@@ -231,8 +258,28 @@ describe("iOS account migration API", () => {
       databaseProfile.identities[0]
     );
     expect(response.headers.ratelimit).toBeTruthy();
-    expect(response.headers["ratelimit-policy"]).toContain("q=10; w=900");
     expect(response.body).toEqual({ status: "linked" });
+  });
+
+  it("rate-limits linking before another Auth0 identity request", async () => {
+    auth0.getAuth0UserProfile
+      .mockResolvedValueOnce(googleProfile)
+      .mockResolvedValueOnce(databaseProfile);
+    const app = createApp({ linkLimit: 1 });
+
+    await request(app)
+      .post("/api/ios-migration/link")
+      .set("Authorization", "Bearer primary-token")
+      .send({ secondaryAccessToken: "secondary-token" })
+      .expect(200);
+    await request(app)
+      .post("/api/ios-migration/link")
+      .set("Authorization", "Bearer primary-token")
+      .send({ secondaryAccessToken: "secondary-token" })
+      .expect(429);
+
+    expect(auth0.getAuth0UserInfo).toHaveBeenCalledOnce();
+    expect(auth0.linkAuth0UserIdentity).toHaveBeenCalledOnce();
   });
 
   it("rejects a secondary identity with a different email", async () => {

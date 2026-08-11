@@ -192,4 +192,37 @@ describe("camera detection capture run paths", () => {
     ).rejects.toThrow();
     expect(await readFile(outsideFrame, "utf8")).toBe("outside-frame");
   });
+
+  // frame directory symlink contract
+  it("rejects frame directories that leave the capture run", async () => {
+    const sessionId = "capture-frame-directory-link";
+    const runDirectory = path.join(fixture.paths.captureRoot, sessionId);
+    const outsideFrames = path.join(fixture.root, "outside-frames");
+    const outsideFrame = path.join(outsideFrames, "captured.jpg");
+    await writeCompletedRun(runDirectory, [
+      {
+        cameraId: "camera-one",
+        cameraName: "Camera one",
+        capturedAt: "2026-08-11T12:00:00.000Z",
+        contentType: "image/jpeg",
+        file: "frames/captured.jpg",
+        frameSize: { height: 100, width: 100 },
+        sha256: "linked-directory-frame-sha",
+        sourceImageUrl: "https://example.test/camera.jpg",
+        status: "stored",
+      },
+    ]);
+    await mkdir(outsideFrames);
+    await writeFile(outsideFrame, "outside-frame");
+    await rm(path.join(runDirectory, "frames"), { recursive: true });
+    await symlink(outsideFrames, path.join(runDirectory, "frames"), "dir");
+
+    await expect(
+      importCameraCaptureRun(fixture.paths, sessionId)
+    ).rejects.toThrow();
+    expect(await readFile(outsideFrame, "utf8")).toBe("outside-frame");
+    expect(
+      JSON.parse(await readFile(fixture.paths.benchmarkManifestFile, "utf8"))
+    ).toEqual({ frames: [] });
+  });
 });

@@ -276,27 +276,21 @@ const existingCaptureRun = async (
   }
   const rootDirectory = await realpath(captureRoot);
   const entries = await readdir(rootDirectory, { withFileTypes: true });
-  // physical directory selection pass
-  for (const entry of entries) {
-    // exact identifier guard
-    if (entry.name !== sessionId) {
-      continue;
-    }
-    // physical directory guard
-    if (!entry.isDirectory() || !CAPTURE_RUN_ID.test(entry.name)) {
-      break;
-    }
-    const runDirectory = await realpath(path.join(rootDirectory, entry.name));
-    // canonical containment guard
-    if (!isContainedPath(rootDirectory, runDirectory)) {
-      break;
-    }
-    return {
-      runDirectory,
-      sessionId: entry.name,
-    };
+  // select the exact filesystem entry
+  const entry = entries.find((candidate) => candidate.name === sessionId);
+  // physical directory guard
+  if (!entry?.isDirectory()) {
+    throw new Error("Capture run does not exist");
   }
-  throw new Error("Capture run does not exist");
+  const runDirectory = await realpath(path.join(rootDirectory, entry.name));
+  // canonical containment guard
+  if (!isContainedPath(rootDirectory, runDirectory)) {
+    throw new Error("Capture run does not exist");
+  }
+  return {
+    runDirectory,
+    sessionId: entry.name,
+  };
 };
 
 // summarize one capture directory

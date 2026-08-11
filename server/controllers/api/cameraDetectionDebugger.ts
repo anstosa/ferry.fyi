@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { Router, type RequestHandler, type Response } from "express";
+import { type RequestHandler, type Response, Router } from "express";
 import { MINUTE, rateLimit } from "express-rate-limit";
 import logger from "heroku-logger";
 import type {
@@ -21,7 +21,7 @@ import {
   stopCameraCaptureRun,
   validateCameraCaptureRunRequest,
 } from "~/lib/cameraDetectionCaptureRuns";
-import { getLogError } from "~/lib/errors";
+import { getErrorMessage } from "~/lib/errors";
 
 const CAMERA_IMAGE_HOST = "images.wsdot.wa.gov";
 const OCCUPANCY_STATES = new Set<CameraAreaOccupancyState>([
@@ -120,6 +120,10 @@ export const createCameraDetectionDebuggerRateLimiter = ({
   windowMs?: number;
 } = {}): RequestHandler =>
   rateLimit({
+    // preserve raw debugger protocol
+    handler: (_request, response) => {
+      sendRawJson(response, 429, { error: "Rate limit exceeded" });
+    },
     identifier: "camera-detection-debugger",
     legacyHeaders: false,
     limit,
@@ -542,10 +546,10 @@ export const createCameraDetectionDebuggerRouter = ({
       sendRawJson(response, 200, await detectorResponse.json());
     } catch (error) {
       // preserve detector diagnostics
-      logger.error(
-        "Camera detection debugger request failed",
-        getLogError(error)
-      );
+      logger.error("Camera detection debugger request failed", {
+        error: getErrorMessage(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
       sendRawJson(response, 502, { error: "Detector unavailable" });
     }
   });
