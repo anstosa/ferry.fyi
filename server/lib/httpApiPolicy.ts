@@ -217,6 +217,56 @@ export const applyApiErrorHeaders = (response: Response): void => {
   response.type("application/json");
 };
 
+// detect the canonical API envelope
+const isWrappedApiBody = (body: unknown): boolean => {
+  // envelope guard
+  return (
+    body !== null &&
+    typeof body === "object" &&
+    "wsfStatus" in body &&
+    "body" in body
+  );
+};
+
+// add ferry status to one API body
+const wrapApiBody = (body: unknown): unknown => {
+  // duplicate envelope guard
+  if (isWrappedApiBody(body)) {
+    return body;
+  }
+  return {
+    wsfStatus: getWsfStatus(),
+    body,
+  };
+};
+
+// wrap ordinary API responses
+export const wrapApiResponse: RequestHandler = (request, response, next) => {
+  const defaultSend = response.send;
+  const sendJson = (body: unknown): Response => {
+    response.type("application/json");
+    return defaultSend.call(response, JSON.stringify(wrapApiBody(body)));
+  };
+  const wrapJson: (typeof response)["json"] = (body) => sendJson(body);
+  const wrapSend: (typeof response)["send"] = (body) => {
+    // empty status guard
+    if (typeof body === "undefined") {
+      if (response.statusCode === 404) {
+        applyApiErrorHeaders(response);
+        return sendJson({ error: "resource_not_found" });
+      }
+      return defaultSend.call(response, body);
+    }
+    if (response.statusCode >= 400) {
+      applyApiErrorHeaders(response);
+    }
+    return sendJson(body);
+  };
+  response.json = wrapJson;
+  response.send = wrapSend;
+  next();
+};
+
 const sendApiError = (
   request: Request,
   response: Response,

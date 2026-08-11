@@ -1,11 +1,11 @@
 import { spawn } from "node:child_process";
 import { closeSync, constants, existsSync, openSync } from "node:fs";
 import {
-  access,
-  copyFile,
   mkdir,
+  open,
   readdir,
   readFile,
+  realpath,
   rename,
   rm,
   stat,
@@ -17,6 +17,9 @@ import type { CameraDetectionAreasConfig } from "shared/contracts/cameraDetectio
 import { isObject } from "shared/lib/objects";
 
 const CAPTURE_RUN_ID = /^[a-z0-9][a-z0-9-]{1,62}[a-z0-9]$/;
+// allow stored image paths
+const CAPTURE_FRAME_FILE =
+  /^frames\/[a-z0-9][a-z0-9._-]{0,254}\.(?:jpe?g|png)$/i;
 const TERMINAL_STATUSES = new Set(["completed", "failed", "stopped"]);
 
 export interface CameraCaptureRunPaths {
@@ -80,6 +83,23 @@ export interface CameraCaptureRunSummary {
   storedBytes: number;
   storedFrames: number;
 }
+
+// identify one filesystem-selected run
+interface ExistingCaptureRun {
+  runDirectory: string;
+  sessionId: string;
+}
+
+// verify strict child containment
+const isContainedPath = (root: string, candidate: string): boolean => {
+  const relativePath = path.relative(root, candidate);
+  return (
+    relativePath !== "" &&
+    relativePath !== ".." &&
+    !relativePath.startsWith(`..${path.sep}`) &&
+    !path.isAbsolute(relativePath)
+  );
+};
 
 // parse one JSON file when present
 const readOptionalJson = async <T>(file: string): Promise<T | null> => {
@@ -227,12 +247,64 @@ const getLogTail = async (logFile: string): Promise<string> => {
   }
 };
 
+// resolve one contained capture directory
+const captureRunDirectory = (
+  captureRoot: string,
+  sessionId: string
+): string => {
+  // identifier allowlist guard
+  if (!CAPTURE_RUN_ID.test(sessionId)) {
+    throw new Error("Invalid capture session id");
+  }
+  const rootDirectory = path.resolve(captureRoot);
+  const runDirectory = path.resolve(rootDirectory, sessionId);
+  // root containment guard
+  if (!isContainedPath(rootDirectory, runDirectory)) {
+    throw new Error("Invalid capture session id");
+  }
+  return runDirectory;
+};
+
+// select one existing physical capture directory
+const existingCaptureRun = async (
+  captureRoot: string,
+  sessionId: string
+): Promise<ExistingCaptureRun> => {
+  // route identifier allowlist guard
+  if (!CAPTURE_RUN_ID.test(sessionId)) {
+    throw new Error("Invalid capture session id");
+  }
+  const rootDirectory = await realpath(captureRoot);
+  const entries = await readdir(rootDirectory, { withFileTypes: true });
+  // physical directory selection pass
+  for (const entry of entries) {
+    // exact identifier guard
+    if (entry.name !== sessionId) {
+      continue;
+    }
+    // physical directory guard
+    if (!entry.isDirectory() || !CAPTURE_RUN_ID.test(entry.name)) {
+      break;
+    }
+    const runDirectory = await realpath(path.join(rootDirectory, entry.name));
+    // canonical containment guard
+    if (!isContainedPath(rootDirectory, runDirectory)) {
+      break;
+    }
+    return {
+      runDirectory,
+      sessionId: entry.name,
+    };
+  }
+  throw new Error("Capture run does not exist");
+};
+
 // summarize one capture directory
 const summarizeCaptureRun = async (
   captureRoot: string,
   sessionId: string
 ): Promise<CameraCaptureRunSummary> => {
-  const runDirectory = path.join(captureRoot, sessionId);
+  const runDirectory = captureRunDirectory(captureRoot, sessionId);
   const [request, session, storedBytes, logTail] = await Promise.all([
     readOptionalJson<CameraCaptureRunRequest>(
       path.join(runDirectory, "request.json")
@@ -282,7 +354,10 @@ export const startCameraCaptureRun = async (
   request: CameraCaptureRunRequest,
   paths: CameraCaptureRunPaths
 ): Promise<CameraCaptureRunSummary> => {
-  const runDirectory = path.join(paths.captureRoot, request.sessionId);
+  const runDirectory = captureRunDirectory(
+    paths.captureRoot,
+    request.sessionId
+  );
   await mkdir(paths.captureRoot, { recursive: true });
   await mkdir(runDirectory);
   await writeFile(
@@ -331,25 +406,12 @@ export const startCameraCaptureRun = async (
   return await summarizeCaptureRun(paths.captureRoot, request.sessionId);
 };
 
-// validate a capture directory identifier
-const captureRunDirectory = (
-  captureRoot: string,
-  sessionId: string
-): string => {
-  // identifier guard
-  if (!CAPTURE_RUN_ID.test(sessionId)) {
-    throw new Error("Invalid capture session id");
-  }
-  return path.join(captureRoot, sessionId);
-};
-
 // request a graceful recorder stop
 export const stopCameraCaptureRun = async (
   captureRoot: string,
   sessionId: string
 ): Promise<void> => {
-  const runDirectory = captureRunDirectory(captureRoot, sessionId);
-  await access(runDirectory);
+  const { runDirectory } = await existingCaptureRun(captureRoot, sessionId);
   await writeFile(path.join(runDirectory, ".stop-requested"), "stop\n", "utf8");
 };
 
@@ -358,7 +420,7 @@ export const deleteCameraCaptureRun = async (
   captureRoot: string,
   sessionId: string
 ): Promise<void> => {
-  const runDirectory = captureRunDirectory(captureRoot, sessionId);
+  const { runDirectory } = await existingCaptureRun(captureRoot, sessionId);
   const session = await readOptionalJson<CaptureSession>(
     path.join(runDirectory, "session.json")
   );
@@ -382,16 +444,47 @@ const readCaptureRecords = async (
       continue;
     }
     const record = JSON.parse(line) as CaptureRecord;
-    // usable frame guard
+    // stored frame path allowlist guard
     if (
       record.status === "stored" &&
       typeof record.file === "string" &&
-      record.file === `frames/${path.basename(record.file)}`
+      CAPTURE_FRAME_FILE.test(record.file)
     ) {
       records.push(record);
     }
   }
   return records;
+};
+
+// read one physical frame without following a final symlink
+const readCaptureFrame = async (
+  runDirectory: string,
+  recordFile: string
+): Promise<Buffer> => {
+  const framesDirectory = await realpath(path.join(runDirectory, "frames"));
+  // frame directory containment guard
+  if (!isContainedPath(runDirectory, framesDirectory)) {
+    throw new Error("Capture frame directory is invalid");
+  }
+  const sourceFile = path.resolve(framesDirectory, path.basename(recordFile));
+  // frame path containment guard
+  if (!isContainedPath(framesDirectory, sourceFile)) {
+    throw new Error("Capture frame path is invalid");
+  }
+  const sourceHandle = await open(
+    sourceFile,
+    constants.O_RDONLY | constants.O_NOFOLLOW
+  );
+  try {
+    const sourceStats = await sourceHandle.stat();
+    // regular frame guard
+    if (!sourceStats.isFile()) {
+      throw new Error("Capture frame is not a regular file");
+    }
+    return await sourceHandle.readFile();
+  } finally {
+    await sourceHandle.close();
+  }
 };
 
 // build one stable benchmark identifier
@@ -406,7 +499,10 @@ export const importCameraCaptureRun = async (
   paths: CameraCaptureRunPaths,
   sessionId: string
 ): Promise<number> => {
-  const runDirectory = captureRunDirectory(paths.captureRoot, sessionId);
+  const { runDirectory, sessionId: storedSessionId } = await existingCaptureRun(
+    paths.captureRoot,
+    sessionId
+  );
   const sessionFile = path.join(runDirectory, "session.json");
   const session = await readOptionalJson<CaptureSession>(sessionFile);
   // terminal run guard
@@ -435,13 +531,16 @@ export const importCameraCaptureRun = async (
       continue;
     }
     const extension = path.extname(record.file).toLowerCase() || ".jpg";
-    const frameId = captureFrameId(sessionId, record);
+    const frameId = captureFrameId(storedSessionId, record);
     const fileName = `${frameId}${extension}`;
-    const sourceFile = path.join(runDirectory, record.file);
     const destinationFile = path.join(benchmarkFramesDirectory, fileName);
     // interrupted import recovery
     if (!existsSync(destinationFile)) {
-      await copyFile(sourceFile, destinationFile, constants.COPYFILE_EXCL);
+      await writeFile(
+        destinationFile,
+        await readCaptureFrame(runDirectory, record.file),
+        { flag: "wx" }
+      );
     }
     manifest.frames.push({
       cameraId: record.cameraId,

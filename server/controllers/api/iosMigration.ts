@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { MINUTE, rateLimit } from "express-rate-limit";
 import {
   AUTH0_DATABASE_CONNECTION,
   AUTH0_GOOGLE_CONNECTION,
@@ -18,6 +19,23 @@ import {
 } from "~/lib/auth0Admin";
 
 const AUTH0_DATABASE_PROVIDER = "auth0";
+
+// verification email abuse limit
+const verificationEmailRateLimiter = rateLimit({
+  identifier: "ios-migration-verification-email",
+  legacyHeaders: false,
+  limit: 5,
+  standardHeaders: "draft-8",
+  windowMs: 15 * MINUTE,
+});
+// identity link abuse limit
+const linkRateLimiter = rateLimit({
+  identifier: "ios-migration-link",
+  legacyHeaders: false,
+  limit: 10,
+  standardHeaders: "draft-8",
+  windowMs: 15 * MINUTE,
+});
 
 class IosMigrationError extends Error {
   status: number;
@@ -145,6 +163,7 @@ iosMigrationRouter.get("/status", async (_request, response, next) => {
 // send secondary identity verification
 iosMigrationRouter.post(
   "/verification-email",
+  verificationEmailRateLimiter,
   async (_request, response, next) => {
     try {
       const subject = response.locals.user?.sub;
@@ -179,46 +198,50 @@ iosMigrationRouter.post(
 );
 
 // verify and link the secondary identity
-iosMigrationRouter.post("/link", async (request, response, next) => {
-  try {
-    const subject = response.locals.user?.sub;
-    // auth context guard
-    if (typeof subject !== "string") {
-      response.status(401).send({ error: "unauthorized" });
-      return;
-    }
-    // request shape guard
-    if (!isIosMigrationLinkRequest(request.body)) {
-      response.status(400).send({ error: "invalid_request" });
-      return;
-    }
-    const primary = await getAuth0UserProfile(subject);
-    // primary identity guard
-    if (!isVerifiedGoogleProfile(primary)) {
-      response.status(409).send({ error: "google_identity_required" });
-      return;
-    }
-    const existingIdentity = findDatabaseIdentity(primary);
-    // idempotency guard
-    if (existingIdentity) {
-      const body: IosMigrationLinkResponse = { status: "already-linked" };
+iosMigrationRouter.post(
+  "/link",
+  linkRateLimiter,
+  async (request, response, next) => {
+    try {
+      const subject = response.locals.user?.sub;
+      // auth context guard
+      if (typeof subject !== "string") {
+        response.status(401).send({ error: "unauthorized" });
+        return;
+      }
+      // request shape guard
+      if (!isIosMigrationLinkRequest(request.body)) {
+        response.status(400).send({ error: "invalid_request" });
+        return;
+      }
+      const primary = await getAuth0UserProfile(subject);
+      // primary identity guard
+      if (!isVerifiedGoogleProfile(primary)) {
+        response.status(409).send({ error: "google_identity_required" });
+        return;
+      }
+      const existingIdentity = findDatabaseIdentity(primary);
+      // idempotency guard
+      if (existingIdentity) {
+        const body: IosMigrationLinkResponse = { status: "already-linked" };
+        response.send(body);
+        return;
+      }
+      const secondaryIdentity = await verifySecondaryIdentity(
+        request.body.secondaryAccessToken,
+        primary
+      );
+      const body: IosMigrationLinkResponse = {
+        status: await linkAuth0UserIdentity(subject, secondaryIdentity),
+      };
       response.send(body);
-      return;
+    } catch (error) {
+      // expected migration guard
+      if (error instanceof IosMigrationError) {
+        response.status(error.status).send({ error: error.message });
+        return;
+      }
+      next(error);
     }
-    const secondaryIdentity = await verifySecondaryIdentity(
-      request.body.secondaryAccessToken,
-      primary
-    );
-    const body: IosMigrationLinkResponse = {
-      status: await linkAuth0UserIdentity(subject, secondaryIdentity),
-    };
-    response.send(body);
-  } catch (error) {
-    // expected migration guard
-    if (error instanceof IosMigrationError) {
-      response.status(error.status).send({ error: error.message });
-      return;
-    }
-    next(error);
   }
-});
+);

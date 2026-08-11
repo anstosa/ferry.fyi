@@ -2,7 +2,9 @@ import { randomUUID } from "node:crypto";
 import { readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { Response, Router } from "express";
+import { Router, type RequestHandler, type Response } from "express";
+import { MINUTE, rateLimit } from "express-rate-limit";
+import logger from "heroku-logger";
 import type {
   CameraAreaOccupancyState,
   CameraDetectionArea,
@@ -19,6 +21,7 @@ import {
   stopCameraCaptureRun,
   validateCameraCaptureRunRequest,
 } from "~/lib/cameraDetectionCaptureRuns";
+import { getLogError } from "~/lib/errors";
 
 const CAMERA_IMAGE_HOST = "images.wsdot.wa.gov";
 const OCCUPANCY_STATES = new Set<CameraAreaOccupancyState>([
@@ -53,6 +56,7 @@ interface CameraDetectionDebuggerOptions {
   detectorUrl?: string;
   fetchImpl?: typeof fetch;
   paths?: Partial<CameraDetectionDebuggerPaths>;
+  rateLimiter?: RequestHandler;
 }
 
 interface CameraDetectionDebuggerPageOptions {
@@ -106,6 +110,22 @@ const sendRawJson = (
     .type("application/json")
     .end(`${JSON.stringify(payload)}\n`);
 };
+
+// bound debugger file and detector work
+export const createCameraDetectionDebuggerRateLimiter = ({
+  limit = 60,
+  windowMs = MINUTE,
+}: {
+  limit?: number;
+  windowMs?: number;
+} = {}): RequestHandler =>
+  rateLimit({
+    identifier: "camera-detection-debugger",
+    legacyHeaders: false,
+    limit,
+    standardHeaders: "draft-8",
+    windowMs,
+  });
 
 // read one repository JSON document
 const readJson = async <T>(file: string): Promise<T> =>
@@ -288,9 +308,13 @@ export const createCameraDetectionDebuggerRouter = ({
   detectorUrl = getCameraDetectionDebuggerDetectorUrl(),
   fetchImpl = fetch,
   paths: pathOverrides,
+  rateLimiter = createCameraDetectionDebuggerRateLimiter(),
 }: CameraDetectionDebuggerOptions = {}): Router => {
   const paths = { ...defaultPaths, ...pathOverrides };
   const router = Router();
+
+  // protect repository and detector work
+  router.use(rateLimiter);
 
   // serve the editable camera JSON
   router.get("/camera-detection-areas.json", async (_request, response) => {
@@ -517,9 +541,12 @@ export const createCameraDetectionDebuggerRouter = ({
       }
       sendRawJson(response, 200, await detectorResponse.json());
     } catch (error) {
-      sendRawJson(response, 502, {
-        error: error instanceof Error ? error.message : "Detector unavailable",
-      });
+      // preserve detector diagnostics
+      logger.error(
+        "Camera detection debugger request failed",
+        getLogError(error)
+      );
+      sendRawJson(response, 502, { error: "Detector unavailable" });
     }
   });
 

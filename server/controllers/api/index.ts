@@ -1,14 +1,13 @@
-import { RequestHandler, Response, Router } from "express";
+import { Router } from "express";
 
 import {
   apiErrorHandler,
   apiNotFound,
-  applyApiErrorHeaders,
   createApiCorsMiddleware,
   createApiRateLimitMiddleware,
   denyUntrustedSensitivePreflight,
+  wrapApiResponse,
 } from "~/lib/httpApiPolicy";
-import { getWsfStatus } from "~/lib/wsf/api";
 
 import { adminRouter, preventAdminCaching } from "./admin";
 import { adsRouter } from "./ads";
@@ -31,53 +30,6 @@ const apiRouter = Router();
 // preserve the external updater response protocol
 apiRouter.use(createApiCorsMiddleware());
 apiRouter.use("/ota", otaRouter);
-
-const isWrappedApiBody = (body: unknown): boolean => {
-  // envelope guard
-  return (
-    body !== null &&
-    typeof body === "object" &&
-    "wsfStatus" in body &&
-    "body" in body
-  );
-};
-
-const wrapApiBody = (body: unknown): unknown => {
-  // duplicate envelope guard
-  if (isWrappedApiBody(body)) {
-    return body;
-  }
-  return {
-    wsfStatus: getWsfStatus(),
-    body,
-  };
-};
-
-export const wrapApiResponse: RequestHandler = (request, response, next) => {
-  const defaultSend = response.send;
-  const sendJson = (body: unknown): Response => {
-    response.type("application/json");
-    return defaultSend.call(response, JSON.stringify(wrapApiBody(body)));
-  };
-  const wrapJson: (typeof response)["json"] = (body) => sendJson(body);
-  const wrapSend: (typeof response)["send"] = (body) => {
-    // empty status guard
-    if (typeof body === "undefined") {
-      if (response.statusCode === 404) {
-        applyApiErrorHeaders(response);
-        return sendJson({ error: "resource_not_found" });
-      }
-      return defaultSend.call(response, body);
-    }
-    if (response.statusCode >= 400) {
-      applyApiErrorHeaders(response);
-    }
-    return sendJson(body);
-  };
-  response.json = wrapJson;
-  response.send = wrapSend;
-  next();
-};
 
 // wrap all routes with wsf status middleware
 apiRouter.use(wrapApiResponse);
@@ -104,4 +56,5 @@ apiRouter.use("/user", requireAuth, userRouter);
 apiRouter.use(apiNotFound);
 apiRouter.use(apiErrorHandler);
 
+export { wrapApiResponse };
 export { apiRouter };

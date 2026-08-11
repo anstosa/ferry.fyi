@@ -126,6 +126,8 @@ describe("iOS account migration API", () => {
       email: "rider@example.com",
       provider: "auth0",
     });
+    expect(response.headers.ratelimit).toBeTruthy();
+    expect(response.headers["ratelimit-policy"]).toContain("q=5; w=900");
     expect(response.body).toEqual({ status: "sent" });
   });
 
@@ -228,6 +230,8 @@ describe("iOS account migration API", () => {
       "google-oauth2|google-user",
       databaseProfile.identities[0]
     );
+    expect(response.headers.ratelimit).toBeTruthy();
+    expect(response.headers["ratelimit-policy"]).toContain("q=10; w=900");
     expect(response.body).toEqual({ status: "linked" });
   });
 

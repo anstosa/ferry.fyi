@@ -15,9 +15,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   createCameraDetectionDebuggerPageRouter,
+  createCameraDetectionDebuggerRateLimiter,
   createCameraDetectionDebuggerRouter,
   getCameraDetectionDebuggerDetectorUrl,
 } from "~/controllers/api/cameraDetectionDebugger";
+import { wrapApiResponse } from "~/lib/httpApiPolicy";
 
 const cameraId = "camera-one";
 const areaId = "queue-one";
@@ -198,6 +200,27 @@ describe("camera detection development debugger", () => {
     );
     expect(overridesResponse.status).toBe(200);
     expect(overridesResponse.body[cameraId].title).toBe("Custom camera");
+  });
+
+  // debugger rate-limit contract
+  it("rate-limits repository and detector work", async () => {
+    const app = express();
+    app.use(
+      "/camera-detection",
+      createCameraDetectionDebuggerRouter({
+        paths,
+        rateLimiter: createCameraDetectionDebuggerRateLimiter({ limit: 1 }),
+      })
+    );
+
+    await request(app)
+      .get("/camera-detection/camera-detection-areas.json")
+      .expect(200);
+    const limitedResponse = await request(app)
+      .get("/camera-detection/camera-display-overrides.json")
+      .expect(429);
+
+    expect(limitedResponse.headers["ratelimit-policy"]).toContain("1;");
   });
 
   // repository save contract
@@ -434,7 +457,35 @@ describe("camera detection development debugger", () => {
 
     expect(response.status).toBe(502);
     expect(response.body).toEqual({
-      error: "Detector returned text/html; charset=utf-8",
+      error: "Detector unavailable",
     });
+  });
+
+  // raw debugger response contract
+  it("keeps detector errors outside the wrapped API envelope", async () => {
+    // simulate tainted upstream failure
+    const fetchImpl = vi.fn(() => {
+      return Promise.reject(new Error("<img src=x onerror=alert(1)>"));
+    }) as unknown as typeof fetch;
+    const app = express();
+    app.use(express.json());
+    app.use(wrapApiResponse);
+    app.use(
+      "/camera-detection",
+      createCameraDetectionDebuggerRouter({
+        detectorUrl: "http://detector.test/detect",
+        fetchImpl,
+        paths,
+      })
+    );
+
+    const response = await request(app)
+      .post("/camera-detection/detect-current-image")
+      .send({ frameId: "control-one" });
+
+    expect(response.status).toBe(502);
+    expect(response.headers["content-type"]).toContain("application/json");
+    expect(response.body).toEqual({ error: "Detector unavailable" });
+    expect(response.body).not.toHaveProperty("body");
   });
 });
