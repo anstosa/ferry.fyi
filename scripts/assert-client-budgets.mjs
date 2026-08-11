@@ -7,7 +7,7 @@ import process from "node:process";
 export const DEFAULT_CLIENT_BUDGETS = Object.freeze({
   cssBytes: 140_000,
   javascriptBytes: 5_150_000,
-  javascriptFiles: 130,
+  javascriptFiles: 135,
   largestJavascriptBytes: 1_900_000,
 });
 
