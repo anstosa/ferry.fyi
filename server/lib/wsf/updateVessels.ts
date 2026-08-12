@@ -48,11 +48,9 @@ export const updateVessels = async (): Promise<void> => {
       `Started vessel metadata update; cache flush ${cacheFlushDate}`
     );
   }
-  lastFlushDate = cacheFlushDate;
-
   const vessels = await wsfRequest<WSF.VesselsVerboseResponse[]>(API_VERBOSE);
   // missing vessels guard
-  if (!vessels) {
+  if (!vessels?.length) {
     logger.info("Skipped vessel metadata update; WSF returned no vessels");
     return;
   }
@@ -118,8 +116,12 @@ export const updateVessels = async (): Promise<void> => {
       },
     ])
   );
+  // refresh calls are serialized by updateLong
+  // eslint-disable-next-line require-atomic-updates
+  lastFlushDate = cacheFlushDate;
 };
 
+// refresh hydrated vessel status
 export const updateVesselStatus = async (): Promise<any> => {
   logger.info("Started vessel status update");
   const vessels =
@@ -132,11 +134,17 @@ export const updateVesselStatus = async (): Promise<any> => {
   const schedules = values(Schedule.getAll());
   const terminals = values(Terminal.getAll());
   const now = DateTime.local();
-  let createdVessels = 0;
+  let skippedVessels = 0;
   let updatedVessels = 0;
   let vesselsAtDock = 0;
   vessels.forEach((VesselData) => {
-    let vessel = Vessel.getByIndex(String(VesselData.VesselID));
+    const vessel = Vessel.getByIndex(String(VesselData.VesselID));
+    // require vessel metadata
+    if (!vessel) {
+      skippedVessels += 1;
+      return;
+    }
+    const { departureDelta: previousDepartureDelta } = vessel;
     const departedTime = wsfDateToTimestamp(VesselData.LeftDock);
     const departureTime = wsfDateToTimestamp(VesselData.ScheduledDeparture);
     const estimatedArrivalTime = wsfDateToTimestamp(VesselData.Eta);
@@ -145,7 +153,7 @@ export const updateVesselStatus = async (): Promise<any> => {
     if (departureTime && departedTime) {
       departureDelta = departedTime - departureTime;
     } else {
-      departureDelta = vessel?.departureDelta;
+      departureDelta = previousDepartureDelta;
     }
     const gpsDelayLeg = findGpsDelayLeg({
       arrivalTerminalId: VesselData.ArrivingTerminalID,
@@ -175,7 +183,7 @@ export const updateVesselStatus = async (): Promise<any> => {
       : null;
     let dockedTime: number | undefined;
     // newly docked guard
-    if (VesselData.AtDock && !vessel?.isAtDock) {
+    if (VesselData.AtDock && !vessel.isAtDock) {
       dockedTime = now.toMillis();
     }
     const data = {
@@ -197,18 +205,12 @@ export const updateVesselStatus = async (): Promise<any> => {
       speed: VesselData.Speed,
       statusUpdatedAt: Date.now(),
       info: {
-        ...vessel?.info,
+        ...vessel.info,
         crossing: VesselData.EtaBasis,
       },
     };
-    // existing vessel guard
-    if (vessel) {
-      vessel.update(data);
-      updatedVessels += 1;
-    } else {
-      [vessel] = Vessel.getOrCreate(String(VesselData.VesselID), data);
-      createdVessels += 1;
-    }
+    vessel.update(data);
+    updatedVessels += 1;
     // docked vessel guard
     if (VesselData.AtDock) {
       vesselsAtDock += 1;
@@ -223,10 +225,10 @@ export const updateVesselStatus = async (): Promise<any> => {
       {
         heading: "summary",
         lines: [
-          `existing vessels: ${updatedVessels}`,
-          `new vessels: ${createdVessels}`,
+          `updated vessels: ${updatedVessels}`,
+          `skipped vessels: ${skippedVessels}`,
           `at dock: ${vesselsAtDock}`,
-          `underway: ${vessels.length - vesselsAtDock}`,
+          `underway: ${updatedVessels - vesselsAtDock}`,
         ],
       },
       {

@@ -19,7 +19,6 @@ import { SitemapStream, streamToPromise } from "sitemap";
 import { Terminal } from "~/models/Terminal";
 import { Vessel } from "~/models/Vessel";
 
-// build auditable sitemap metadata
 export const getSitemapSeoEntries = (
   terminals: Terminal[],
   vessels: Vessel[] = [],
@@ -52,10 +51,7 @@ export const getSitemapSeoEntries = (
       ...terminals.map((terminal) =>
         getTerminalLeaderboardSeoMetadata(terminal)
       ),
-      // omit partially hydrated vessel records
-      ...vessels
-        .filter((vessel) => vessel.name?.trim())
-        .map((vessel) => getVesselLeaderboardSeoMetadata(vessel))
+      ...vessels.map((vessel) => getVesselLeaderboardSeoMetadata(vessel))
     );
   }
 
