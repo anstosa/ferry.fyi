@@ -16,6 +16,7 @@ import { Prompt } from "~/components/Prompt";
 import { trackEvent } from "~/lib/analytics";
 import { useLocalStorage } from "~/lib/browser";
 import { hasGeoPermissions, useGeo } from "~/lib/geo";
+import { useAppRenderContext } from "~/lib/renderContext";
 import { getSlug, useTerminals } from "~/lib/terminals";
 import ArrowRightIcon from "~/static/images/icons/solid/arrow-right.svg";
 import ExchangeIcon from "~/static/images/icons/solid/exchange.svg";
@@ -29,8 +30,10 @@ interface Props {
   terminal: Terminal;
 }
 
+/** terminal route controls */
 export const RouteSelector = (props: Props): ReactElement => {
   const { mate, terminal, setRoute } = props;
+  const { platform } = useAppRenderContext();
   const [location, updateGeo] = useGeo();
   const [isTerminalOpen, setTerminalOpen] = useState<boolean>(false);
   const [isMateOpen, setMateOpen] = useState<boolean>(false);
@@ -181,7 +184,7 @@ export const RouteSelector = (props: Props): ReactElement => {
             actions={[
               {
                 Icon: LocationIcon,
-                label: "Sure!",
+                label: platform === "ios" ? "Continue" : "Sure!",
                 onClick: () => {
                   if (locationRequestStarted.current) {
                     return;
@@ -195,7 +198,18 @@ export const RouteSelector = (props: Props): ReactElement => {
                 },
                 primary: true,
               },
-              { label: "No thanks", onClick: () => saveNoLocation(true) },
+              // ios must continue to the system prompt
+              ...(platform === "ios"
+                ? []
+                : [
+                    {
+                      label: "No thanks",
+                      onClick: () => {
+                        // remember the non-ios dismissal
+                        saveNoLocation(true);
+                      },
+                    },
+                  ]),
             ]}
             title="Enable location features?"
           >

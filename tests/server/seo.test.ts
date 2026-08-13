@@ -255,9 +255,9 @@ describe("SEO metadata", () => {
       robots: "index,follow",
       title: "Privacy Policy - Ferry FYI",
     });
-    expect(getSeoMetadata("/feedback")).toMatchObject({
+    expect(getSeoMetadata("/support")).toMatchObject({
       robots: "index,follow",
-      title: "Ferry FYI Support & Feedback",
+      title: "Ferry FYI Support",
     });
     expect(getSeoMetadata("/account").robots).toBe("noindex,follow");
     expect(getSeoMetadata("/login")).toMatchObject({
@@ -274,7 +274,7 @@ describe("SEO metadata", () => {
     const distinctProductDescriptions = [
       "/tickets",
       "/privacy",
-      "/feedback",
+      "/support",
     ].map((pathname) => getSeoMetadata(pathname).description);
     expect(new Set(distinctProductDescriptions).size).toBe(3);
     expect(distinctProductDescriptions[0]).toContain("tickets");
@@ -319,7 +319,7 @@ describe("SEO metadata", () => {
         "Washington State Ferry Tickets & Barcode Scanner - Ferry FYI",
       ],
       ["/privacy", "Privacy Policy - Ferry FYI"],
-      ["/feedback", "Ferry FYI Support & Feedback"],
+      ["/support", "Ferry FYI Support"],
     ]) {
       const response = await request(app).get(pathname).expect(200);
 
@@ -449,6 +449,14 @@ describe("SEO metadata", () => {
       .get("/forecasting-explained")
       .expect(301)
       .expect("Location", "/forecasting");
+  });
+
+  // verify the legacy support redirect
+  it("redirects the legacy feedback path", async () => {
+    await request(app)
+      .get("/feedback")
+      .expect(301)
+      .expect("Location", "/support");
   });
 
   it.each(["/login", "/logout"])(

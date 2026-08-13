@@ -25,6 +25,7 @@ export type PublicSsrRouteId =
   | "privacy"
   | "forecasting"
   | "forecasting-explained"
+  | "support"
   | "feedback"
   | "terminal-schedule"
   | "terminal-cameras"

@@ -138,8 +138,8 @@ export const DataSources = (): ReactElement => (
     <p className="mt-2">
       Conditions can change after a refresh. For an error, missing timestamp, or
       source question, use the{" "}
-      <Link className="link" to="/feedback">
-        Ferry FYI feedback page
+      <Link className="link" to="/support">
+        Ferry FYI support page
       </Link>
       . Do not use a forecast or camera observation as proof of a confirmed
       sailing outcome.

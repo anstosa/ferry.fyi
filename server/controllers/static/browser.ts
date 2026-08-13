@@ -48,12 +48,12 @@ const APP_PATHS = new Set([
   "/account",
   "/callback",
   "/data-sources",
-  "/feedback",
   "/forecasting",
   "/ios",
   "/login",
   "/logout",
   "/privacy",
+  "/support",
   "/tickets",
   "/today",
 ]);
@@ -228,6 +228,7 @@ export const renderSeoHtml = (
   );
 };
 
+/** create the browser document router */
 export const createBrowserRouter = (
   dist = clientDist,
   dependencies: BrowserRouterDependencies = {}
@@ -281,6 +282,16 @@ export const createBrowserRouter = (
         .status(rendered.status)
         .type("text/html")
         .send(rendered.html);
+    }
+    const normalizedPath =
+      request.path === "/" ? "/" : request.path.replace(/\/$/, "");
+    // resolve static legacy routes before loading public services
+    if (normalizedPath === "/forecasting-explained") {
+      return response.redirect(301, "/forecasting");
+    }
+    // legacy support route
+    if (normalizedPath === "/feedback") {
+      return response.redirect(301, "/support");
     }
     const requestHost = request.hostname;
     const terminalMatch = request.path.match(
@@ -375,11 +386,6 @@ export const createBrowserRouter = (
       }
     }
 
-    const normalizedPath =
-      request.path === "/" ? "/" : request.path.replace(/\/$/, "");
-    if (normalizedPath === "/forecasting-explained") {
-      return response.redirect(301, "/forecasting");
-    }
     if (
       !seoProfileBaseUrl &&
       !metadata &&

@@ -54,9 +54,10 @@ const loadDataSources = () =>
     default: DataSources,
   }));
 const DataSources = lazy(loadDataSources);
-const loadFeedback = () =>
-  import("~/views/Feedback").then(({ Feedback }) => ({ default: Feedback }));
-const Feedback = lazy(loadFeedback);
+// support route loader
+const loadSupport = () =>
+  import("~/views/Support").then(({ Support }) => ({ default: Support }));
+const Support = lazy(loadSupport);
 const loadForecastingExplained = () =>
   import("~/views/ForecastingExplained").then(({ ForecastingExplained }) => ({
     default: ForecastingExplained,
@@ -140,8 +141,9 @@ export const preloadBrowserRoute = async (
     await loadForecastingExplained();
     return;
   }
-  if (pathname === "/feedback") {
-    await loadFeedback();
+  // support preload
+  if (pathname === "/support") {
+    await loadSupport();
     return;
   }
   if (
@@ -161,7 +163,12 @@ export type RouteBoundary = (
 
 export type AppRouteMode = "browser" | "universal";
 
+// resolve the interactive route view
 const browserRouteElement = (route: PublicSsrRouteDefinition): ReactElement => {
+  // follow manifest-owned redirects
+  if (route.kind === "redirect" && route.redirectTo) {
+    return <Navigate replace to={route.redirectTo} />;
+  }
   if (route.view) {
     return <Route view={route.view as RouteView} />;
   }
@@ -199,10 +206,8 @@ const browserRouteElement = (route: PublicSsrRouteDefinition): ReactElement => {
       return <PrivacyPolicy />;
     case "forecasting":
       return <ForecastingExplained />;
-    case "forecasting-explained":
-      return <Navigate replace to="/forecasting" />;
-    case "feedback":
-      return <Feedback />;
+    case "support":
+      return <Support />;
     case "unknown-public-path":
       return <NotFound />;
     default:
@@ -236,9 +241,14 @@ const NotFound = (): ReactElement => (
   </>
 );
 
+// resolve the browser-neutral route view
 const universalRouteElement = (
   route: PublicSsrRouteDefinition
 ): ReactElement => {
+  // shared redirect route
+  if (route.kind === "redirect" && route.redirectTo) {
+    return <Navigate replace to={route.redirectTo} />;
+  }
   if (route.placeholder === "client-only" || route.kind === "private") {
     return <ClientOnlyPlaceholder />;
   }
@@ -252,7 +262,7 @@ const universalRouteElement = (
     route.id === "data-sources" ||
     route.id === "privacy" ||
     route.id === "forecasting" ||
-    route.id === "feedback"
+    route.id === "support"
   ) {
     return <PublicEditorialPage page={route.id} />;
   }

@@ -635,7 +635,7 @@ export const PublicHome = (): ReactElement => {
 };
 
 const EDITORIAL_PAGES: Record<
-  "data-sources" | "privacy" | "forecasting" | "feedback",
+  "data-sources" | "privacy" | "forecasting" | "support",
   { body: string; path: string; title: string }
 > = {
   "data-sources": {
@@ -643,10 +643,10 @@ const EDITORIAL_PAGES: Record<
     path: "/data-sources",
     title: "Data sources and API guide",
   },
-  feedback: {
-    body: "Ferry FYI is maintained for Washington State ferry riders. Share feedback after the app is ready so it can include the page and device context you choose to provide.",
-    path: "/feedback",
-    title: "Feedback",
+  support: {
+    body: "Questions, inaccurate information, app issues, and ideas are welcome. Email Ferry FYI support with the route or terminal, what happened, and the device you were using when those details are helpful.",
+    path: "/support",
+    title: "Support",
   },
   forecasting: {
     body: "Vehicle-space, delay, weather, and tide forecasts are estimates, not confirmations of boarding availability, cancellations, or delays.",

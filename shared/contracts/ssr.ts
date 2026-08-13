@@ -287,7 +287,8 @@ export type PublicSsrRouteSourceMap = {
   privacy: "editorial";
   forecasting: "editorial";
   "forecasting-explained": never;
-  feedback: "editorial";
+  support: "editorial";
+  feedback: never;
   "terminal-schedule":
     | "ad"
     | "route"

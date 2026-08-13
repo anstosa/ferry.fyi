@@ -300,7 +300,7 @@ describe("public SSR snapshot loader", () => {
     ["/data-sources", "data-sources"],
     ["/privacy", "privacy"],
     ["/forecasting", "forecasting"],
-    ["/feedback", "feedback"],
+    ["/support", "support"],
   ])(
     "builds editorial-only %s snapshots without operational calls",
     async (path, routeId) => {
@@ -374,6 +374,20 @@ describe("public SSR snapshot loader", () => {
       classification: "redirect",
       match: { route: { id: "forecasting-explained" } },
       redirectTo: "/forecasting",
+      snapshot: undefined,
+    });
+    noCalls(publicServices);
+  });
+
+  // verify the legacy support redirect contract
+  it("classifies the feedback redirect without loading a snapshot", async () => {
+    const { loader, publicServices } = loaderFor();
+    await expect(
+      loader(input("https://ferry.fyi/feedback"))
+    ).resolves.toMatchObject({
+      classification: "redirect",
+      match: { route: { id: "feedback" } },
+      redirectTo: "/support",
       snapshot: undefined,
     });
     noCalls(publicServices);

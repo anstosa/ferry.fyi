@@ -74,7 +74,7 @@ export const SEO_INDEXABLE_PATHS = [
   "/data-sources",
   "/tickets",
   "/privacy",
-  "/feedback",
+  "/support",
 ] as const;
 
 const fixedPages: Record<string, Pick<SeoMetadata, "title" | "description">> = {
@@ -113,10 +113,10 @@ const fixedPages: Record<string, Pick<SeoMetadata, "title" | "description">> = {
     description:
       "Read how Ferry FYI handles account, location, ticket, notification, analytics, diagnostic, and contextual advertising data across the web and mobile apps.",
   },
-  "/feedback": {
-    title: "Ferry FYI Support & Feedback",
+  "/support": {
+    title: "Ferry FYI Support",
     description:
-      "Contact Ferry FYI support to report inaccurate ferry information, troubleshoot the app, share feedback, or request a trip-planning feature.",
+      "Email Ferry FYI support with questions, inaccurate ferry information, app issues, or ideas that could improve trip planning.",
   },
 };
 

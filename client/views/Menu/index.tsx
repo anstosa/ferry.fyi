@@ -28,7 +28,7 @@ import AboutIcon from "~/static/images/icons/solid/address-card.svg";
 import TicketIcon from "~/static/images/icons/solid/barcode-alt.svg";
 import ScheduleIcon from "~/static/images/icons/solid/calendar-week.svg";
 import DownloadIcon from "~/static/images/icons/solid/download.svg";
-import FeedbackIcon from "~/static/images/icons/solid/question-circle.svg";
+import SupportIcon from "~/static/images/icons/solid/question-circle.svg";
 import DetectorIcon from "~/static/images/icons/solid/scanner-image.svg";
 import ShareIcon from "~/static/images/icons/solid/share-alt.svg";
 import TrophyIcon from "~/static/images/icons/solid/trophy.svg";
@@ -242,9 +242,9 @@ export const Menu = ({
       isBottom: true,
     },
     {
-      Icon: FeedbackIcon,
-      label: "Feedback",
-      path: "/feedback",
+      Icon: SupportIcon,
+      label: "Support",
+      path: "/support",
       isBottom: true,
     },
   ];

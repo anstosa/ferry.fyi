@@ -166,7 +166,7 @@ describe("sitemap URLs", () => {
         "/",
         "/tickets",
         "/privacy",
-        "/feedback",
+        "/support",
         "/seattle",
         "/seattle/terminal",
         "/bainbridge-island",

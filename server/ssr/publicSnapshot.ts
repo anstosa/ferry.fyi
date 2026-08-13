@@ -829,7 +829,8 @@ export const createPublicSsrSnapshotLoader = ({
         case "data-sources":
         case "privacy":
         case "forecasting":
-        case "feedback":
+        case "support":
+          // load editorial support content
           sources.editorial = source("editorial", editorial());
           break;
         case "today": {

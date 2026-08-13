@@ -13,7 +13,7 @@ Ferry information changes quickly. Treat times, vehicle space, camera images, fo
 - [About Ferry FYI](https://ferry.fyi/about): App background, data credits, privacy, and tap-to-copy web, native-build, and OTA version information.
 - [Tickets](https://ferry.fyi/tickets): Store eligible tickets and scan supported ticket barcodes. Detail refreshes are best-effort and occur when a ticket is added, opened, or explicitly refreshed; loading the wallet does not bulk-refresh saved tickets. For signed-in users, the latest successful ticket details are cached with the account so another device can reuse a recent result. When Wave2Go lookup is unavailable, Ferry FYI keeps the saved code usable and shows a neutral ticket placeholder instead of guessing the product type. Ticket data is sensitive and requires the ticket holder's authorization.
 - [Privacy and advertising policy](https://ferry.fyi/privacy): Explains how Ferry FYI handles user information, limits contextual advertising, reports aggregate campaign results, and reviews prohibited ad categories.
-- [Support and feedback](https://ferry.fyi/feedback): Report a problem or request a Ferry FYI feature.
+- [Support](https://ferry.fyi/support): Email Ferry FYI support with questions, inaccurate ferry information, app issues, or ideas that could improve trip planning.
 - [Sitemap](https://ferry.fyi/sitemap.xml): Indexable schedules, route tabs, terminal pages, and informational pages.
 
 Canonical schedule pages are directional: the first terminal is the departure
