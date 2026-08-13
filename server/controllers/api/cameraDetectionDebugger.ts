@@ -300,7 +300,7 @@ export const createCameraDetectionDebuggerPageRouter = ({
 }: CameraDetectionDebuggerPageOptions = {}): Router => {
   const router = Router();
   // serve tool page routes
-  router.get(["/", "/benchmarks"], async (_request, response) => {
+  router.get(["/", "/benchmarks", "/capture"], async (_request, response) => {
     response.set("Cache-Control", "no-store");
     response.type("text/html").end(await readFile(debuggerHtmlFile));
   });

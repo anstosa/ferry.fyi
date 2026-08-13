@@ -32,6 +32,8 @@ const cameraDetectionDebuggerRoutes = new Set([
   "/dev/camera-detection/",
   "/dev/camera-detection/benchmarks",
   "/dev/camera-detection/benchmarks/",
+  "/dev/camera-detection/capture",
+  "/dev/camera-detection/capture/",
 ]);
 const cameraDetectionIconRoute = "/dev/camera-detection/icons.svg";
 const { theme } = resolveConfig(tailwindConfig as never);

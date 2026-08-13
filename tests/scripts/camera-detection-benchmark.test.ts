@@ -120,6 +120,13 @@ describe("camera detection benchmark", () => {
   it("uses app routes and session authorization without an iframe channel", () => {
     expect(debuggerHtml).toContain('href="/dev/camera-detection"');
     expect(debuggerHtml).toContain('href="/dev/camera-detection/benchmarks"');
+    expect(debuggerHtml).toContain('href="/dev/camera-detection/capture"');
+    expect(debuggerHtml).toContain(
+      '<div class="capture-panel" id="capturePanel">'
+    );
+    expect(debuggerHtml).not.toContain(
+      '<details class="capture-panel" id="capturePanel">'
+    );
     expect(debuggerHtml).toContain(
       "sessionStorage.getItem(debuggerTokenStorageKey)"
     );
@@ -128,10 +135,12 @@ describe("camera detection benchmark", () => {
   });
 
   // mobile interaction contract
-  it("provides compact panels and pointer-based canvas editing", () => {
+  it("provides an inspector drawer and pointer-based canvas editing", () => {
     expect(debuggerHtml).toContain("@media (max-width: 800px)");
-    expect(debuggerHtml).toContain('id="showCameraPanel"');
-    expect(debuggerHtml).toContain('id="showControlsPanel"');
+    expect(debuggerHtml).toContain('id="inspectorMenuButton"');
+    expect(debuggerHtml).toContain('id="inspectorCloseButton"');
+    expect(debuggerHtml).toContain('aria-controls="controlsPanel"');
+    expect(debuggerHtml).toContain("setInspectorOpen(true)");
     expect(debuggerHtml).toContain('canvas.addEventListener("pointerdown"');
     expect(debuggerHtml).toContain('canvas.addEventListener("pointermove"');
     expect(debuggerHtml).toContain('window.addEventListener("pointerup"');
@@ -145,11 +154,14 @@ describe("camera detection benchmark", () => {
   });
 
   // accelerated labeling contract
-  it("autosaves labels and advances through incomplete polygons", () => {
+  it("autosaves labels and advances from sticky benchmark controls", () => {
     expect(debuggerHtml).toContain("async function applyBenchmarkState");
     expect(debuggerHtml).toContain("await queueBenchmarkSave");
     expect(debuggerHtml).toContain("advanceBenchmarkLabeling");
-    expect(debuggerHtml).toContain("data-benchmark-card");
+    expect(debuggerHtml).toContain('class="benchmark-labeler"');
+    expect(debuggerHtml).toContain('id="skipBenchmarkPolygonBtn"');
+    expect(debuggerHtml).toContain('id="skipBenchmarkFrameBtn"');
+    expect(debuggerHtml).not.toContain("data-benchmark-card");
     expect(debuggerHtml).toContain("nextUnlabeledBenchmarkFrame");
   });
 
@@ -158,7 +170,11 @@ describe("camera detection benchmark", () => {
     expect(debuggerHtml).toContain('id="polygonRoleControl"');
     expect(debuggerHtml).toContain('id="benchmarkRoleControl"');
     expect(debuggerHtml).toContain('data-interaction="idle"');
-    expect(debuggerHtml).toContain('class="benchmark-state" role="group"');
+    expect(debuggerHtml).toContain(
+      'id="benchmarkQuickStates" role="group" aria-label="Label highlighted polygon"'
+    );
+    expect(debuggerHtml).toContain('data-state="minority_full"');
+    expect(debuggerHtml).toContain('data-state="majority_full"');
     expect(debuggerHtml).toContain("bindSegmentedControl");
     expect(debuggerHtml).not.toContain('<select id="state-');
   });
@@ -194,9 +210,10 @@ describe("camera detection benchmark", () => {
   });
 
   // development route guard
-  it("mounts both debugger pages in the live Vite middleware", () => {
+  it("mounts all debugger pages in the live Vite middleware", () => {
     expect(viteConfig).toContain('"/dev/camera-detection"');
     expect(viteConfig).toContain('"/dev/camera-detection/benchmarks"');
+    expect(viteConfig).toContain('"/dev/camera-detection/capture"');
     expect(viteConfig).toContain("cameraDetectionDebuggerPlugin()");
     expect(viteConfig).toContain("cameraDetectionDebuggerHtml");
     expect(viteConfig).toContain("cameraDetectionIconRoute");

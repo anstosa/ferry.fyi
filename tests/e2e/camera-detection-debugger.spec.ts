@@ -31,11 +31,16 @@ type CaptureRunRequest = {
   intervalSeconds?: number;
 };
 
+type SaveControl = {
+  failNext: boolean;
+};
+
 // install deterministic debugger routes
 const installDebuggerFixtures = async (
   page: Page,
   savedPayloads: SavedLabels[],
-  captureRequests: CaptureRunRequest[]
+  captureRequests: CaptureRunRequest[],
+  saveControl: SaveControl = { failNext: false }
 ): Promise<void> => {
   await page.route(
     "**/api/debug/camera-detection/camera-detection-areas.json*",
@@ -125,6 +130,16 @@ const installDebuggerFixtures = async (
     "**/api/admin/camera-detection/save-benchmark-labels",
     async (route) => {
       savedPayloads.push(route.request().postDataJSON() as SavedLabels);
+      // requested save failure
+      if (saveControl.failNext) {
+        saveControl.failNext = false;
+        await route.fulfill({
+          body: JSON.stringify({ error: "Fixture save failed" }),
+          contentType: "application/json",
+          status: 500,
+        });
+        return;
+      }
       await route.fulfill({
         body: JSON.stringify({ ok: true }),
         contentType: "application/json",
@@ -159,6 +174,7 @@ test("autosaves, advances labels, and supports mobile pinch zoom", async ({
       "data-label",
       "Mukilteo: Clover Lane (facing towards)"
     );
+    await page.getByRole("button", { name: "Controls" }).click();
     await expect(
       page.locator(
         '#benchmarkFrame option[value="control-clover-lane-empty-001"]'
@@ -170,7 +186,10 @@ test("autosaves, advances labels, and supports mobile pinch zoom", async ({
     await expect(page.locator("#benchmarkFrameMenu")).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(benchmarkDropdown).toBeFocused();
-    await page.locator("#capturePanel > summary").click();
+    await page.goto("/dev/camera-detection/capture", {
+      waitUntil: "domcontentloaded",
+    });
+    await expect(page.locator("#capturePanel")).toBeVisible();
     await expect(page.locator("#captureImageLimit")).toHaveValue("6");
     await page.locator("#captureImageLimit").fill("12");
     await expect(page.locator("#captureTimeLimit")).toHaveValue("120");
@@ -191,6 +210,10 @@ test("autosaves, advances labels, and supports mobile pinch zoom", async ({
       imageLimit: 12,
       intervalSeconds: 150,
     });
+    await page.goto("/dev/camera-detection/benchmarks", {
+      waitUntil: "domcontentloaded",
+    });
+    await expect(page.locator("#benchmarkStatus")).toContainText(/loaded/i);
     await page.getByRole("button", { name: "Tests" }).click();
     await page.locator("#benchmarkFrameControl").click();
     await page
@@ -199,7 +222,6 @@ test("autosaves, advances labels, and supports mobile pinch zoom", async ({
     await expect(page.locator("#benchmarkFrame")).toHaveValue(
       "test-mukilteo-holding-001"
     );
-    await expect(page.locator("[data-benchmark-card]")).toHaveCount(7);
     // compare rendered image geometry
     const imageAreaRatios = await page.evaluate(() => {
       const canvas = document.querySelector<HTMLCanvasElement>("#canvas");
@@ -217,50 +239,62 @@ test("autosaves, advances labels, and supports mobile pinch zoom", async ({
     expect(imageAreaRatios).not.toBeNull();
     expect(imageAreaRatios!.imageArea).toBeCloseTo(imageAreaRatios!.image, 2);
 
-    const firstCard = page.locator("[data-benchmark-card]").first();
-    const firstArea = await firstCard.getAttribute("data-benchmark-card");
-    await firstCard.getByRole("button", { name: "empty", exact: true }).click();
+    const firstArea = await page.locator("#benchmarkTargetName").textContent();
+    await page
+      .locator("#benchmarkQuickStates")
+      .getByRole("button", { name: "Empty", exact: true })
+      .click();
     await expect(page.locator("#benchmarkStatus")).toContainText("saved");
     await expect(page.locator("#benchmarkFrame")).toHaveValue(
       "test-mukilteo-holding-001"
     );
-    await expect
-      .poll(() =>
-        page.evaluate(() => {
-          const card = document.activeElement?.closest(
-            "[data-benchmark-card]"
-          ) as HTMLElement | null;
-          return card?.dataset.benchmarkCard ?? null;
-        })
-      )
-      .not.toBe(firstArea);
+    await expect(page.locator("#benchmarkTargetName")).not.toHaveText(
+      firstArea ?? ""
+    );
 
     await page.locator("#benchmarkFrame").selectOption("test-clover-lane-001");
-    await expect(page.locator("[data-benchmark-card]")).toHaveCount(1);
     await page
-      .locator("[data-benchmark-card]")
-      .getByRole("button", { name: "empty", exact: true })
+      .locator("#benchmarkQuickStates")
+      .getByRole("button", { name: "Empty", exact: true })
       .click();
     await expect(page.locator("#benchmarkFrame")).not.toHaveValue(
       "test-clover-lane-001"
     );
     expect(savedPayloads).toHaveLength(2);
     expect(
-      savedPayloads.at(-1)?.frames?.["test-mukilteo-holding-001"]?.areaStates?.[
-        firstArea ?? ""
-      ]
-    ).toBe("empty");
+      Object.values(
+        savedPayloads.at(-1)?.frames?.["test-mukilteo-holding-001"]
+          ?.areaStates ?? {}
+      )
+    ).toContain("empty");
     expect(
       savedPayloads.at(-1)?.frames?.["test-clover-lane-001"]?.areaStates
     ).toBeDefined();
 
     const canvas = page.locator("#canvas");
     await canvas.scrollIntoViewIfNeeded();
-    const box = await canvas.boundingBox();
-    expect(box).not.toBeNull();
+    const touchPoint = await page.evaluate(() => {
+      const canvasElement = document.querySelector<HTMLCanvasElement>("#canvas");
+      const labeler = document.querySelector<HTMLElement>("#benchmarkLabeler");
+      // visible canvas guard
+      if (!canvasElement || !labeler) return null;
+      const canvasBox = canvasElement.getBoundingClientRect();
+      const labelerBox = labeler.getBoundingClientRect();
+      const visibleTop = Math.max(0, canvasBox.top) + 20;
+      const visibleBottom = Math.min(
+        window.innerHeight,
+        canvasBox.bottom,
+        labelerBox.top
+      ) - 20;
+      return {
+        x: canvasBox.left + canvasBox.width / 2,
+        y: (visibleTop + visibleBottom) / 2,
+      };
+    });
+    expect(touchPoint).not.toBeNull();
     const beforeZoom = await page.locator("#zoomStatus").textContent();
-    const centerX = box!.x + box!.width / 2;
-    const centerY = box!.y + box!.height / 2;
+    const centerX = touchPoint!.x;
+    const centerY = touchPoint!.y;
     const cdp = await context.newCDPSession(page);
     await cdp.send("Input.dispatchTouchEvent", {
       touchPoints: [
@@ -284,4 +318,40 @@ test("autosaves, advances labels, and supports mobile pinch zoom", async ({
   } finally {
     await context.close();
   }
+});
+
+// failed label persistence contract
+test("keeps a failed benchmark label focused for retry", async ({ page }) => {
+  const savedPayloads: SavedLabels[] = [];
+  const captureRequests: CaptureRunRequest[] = [];
+  const saveControl = { failNext: true };
+  await installDebuggerFixtures(
+    page,
+    savedPayloads,
+    captureRequests,
+    saveControl
+  );
+
+  await page.goto("/dev/camera-detection/benchmarks", {
+    waitUntil: "domcontentloaded",
+  });
+  await expect(page.locator("#benchmarkStatus")).toContainText(/loaded/i);
+  await page.getByRole("button", { name: "Tests" }).click();
+  await page.locator("#benchmarkFrame").selectOption("test-clover-lane-001");
+  const emptyButton = page
+    .locator("#benchmarkQuickStates")
+    .getByRole("button", { name: "Empty", exact: true });
+  await expect(emptyButton).toBeEnabled();
+  const targetName = await page.locator("#benchmarkTargetName").textContent();
+
+  await emptyButton.click();
+
+  await expect(page.locator("#benchmarkStatus")).toContainText(
+    "Could not save benchmark labels"
+  );
+  await expect(page.locator("#benchmarkTargetName")).toHaveText(
+    targetName ?? ""
+  );
+  await expect(emptyButton).toHaveAttribute("aria-pressed", "true");
+  expect(savedPayloads).toHaveLength(1);
 });

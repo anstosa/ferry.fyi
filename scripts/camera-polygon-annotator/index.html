@@ -20,6 +20,7 @@
       --success: #18a875;
       --danger: #e05260;
       --radius: 10px;
+      --benchmark-dock-clearance: 120px;
     }
     * { box-sizing: border-box; }
     body { margin: 0; background: var(--bg); color: var(--text); }
@@ -39,11 +40,11 @@
     .route-switcher { display: inline-flex; padding: 3px; border: 1px solid var(--line); border-radius: 10px; background: #080e1a; }
     .route-switcher a { padding: 6px 9px; border-radius: 7px; font-size: 12px; font-weight: 700; }
     body[data-tool-mode="editor"] .route-switcher a[data-mode="editor"],
-    body[data-tool-mode="benchmark"] .route-switcher a[data-mode="benchmark"] { background: var(--panel-raised); color: white; box-shadow: inset 0 0 0 1px #31425e; }
+    body[data-tool-mode="benchmark"] .route-switcher a[data-mode="benchmark"],
+    body[data-tool-mode="capture"] .route-switcher a[data-mode="capture"] { background: var(--panel-raised); color: white; box-shadow: inset 0 0 0 1px #31425e; }
     main { display: grid; grid-template-columns: 304px minmax(0, 1fr); min-height: calc(100vh - 68px); }
     aside { min-width: 0; padding: 12px; border-right: 1px solid var(--line); background: #0d1524; overflow: auto; }
     section { min-width: 0; padding: 14px 16px 24px; overflow: auto; }
-    .mobile-tabs { display: none; }
     .panel-card, details { border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
     .inspector-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
     .inspector-head h2 { margin: 0; font-size: 14px; }
@@ -95,6 +96,7 @@
     .icon-button { display: inline-grid; place-items: center; width: 34px; padding: 0; font-size: 17px; }
     .icon { width: 15px; height: 15px; flex: none; fill: currentColor; }
     .icon-button .icon { width: 16px; height: 16px; }
+    .inspector-menu-button, .inspector-close, .inspector-backdrop { display: none; }
     .button-row { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 9px; }
     .button-row > .grow { flex: 1; }
     .segmented { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3px; padding: 3px; border: 1px solid var(--line); border-radius: 9px; background: #0a1120; }
@@ -125,19 +127,43 @@
     .status-line { display: flex; align-items: center; gap: 7px; min-height: 28px; margin-bottom: 9px; color: var(--muted); font-size: 10px; }
     .status-line::before { content: ""; width: 6px; height: 6px; flex: none; border-radius: 50%; background: #5f718d; }
     .benchmark-panel { margin-bottom: 10px; padding: 10px; border: 1px solid #5847b9; border-radius: var(--radius); background: linear-gradient(135deg, #181839, #191432); }
-    body[data-tool-mode="editor"] .benchmark-panel { display: none; }
+    body:not([data-tool-mode="benchmark"]) .benchmark-panel { display: none; }
     body[data-tool-mode="benchmark"] .mode-editor-only { display: none; }
     body[data-tool-mode="benchmark"] #prevBtn,
     body[data-tool-mode="benchmark"] #nextBtn,
     body[data-tool-mode="benchmark"] #refreshImageBtn { display: none; }
+    body[data-tool-mode="benchmark"] canvas { cursor: pointer; }
+    .benchmark-labeler { position: fixed; z-index: 85; right: 16px; bottom: 8px; left: 320px; display: grid; grid-template-columns: minmax(180px, .8fr) minmax(420px, 1.5fr); gap: 10px; align-items: center; margin: 0; padding: 10px; border: 1px solid #806df0; border-radius: 10px; background: rgb(20 18 53 / 96%); box-shadow: 0 10px 28px rgb(0 0 0 / 30%); backdrop-filter: blur(12px); }
+    body[data-tool-mode="benchmark"] section { padding-bottom: calc(var(--benchmark-dock-clearance) + 24px); }
+    body[data-tool-mode="benchmark"] .canvas-wrap { margin-bottom: var(--benchmark-dock-clearance); }
+    .benchmark-target-label { display: block; color: #b9aefe; font-size: 9px; font-weight: 850; letter-spacing: .1em; text-transform: uppercase; }
+    .benchmark-target-name { display: block; margin-top: 2px; overflow: hidden; color: white; font-size: 14px; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
+    .benchmark-target-meta { display: block; margin-top: 3px; color: #aeb9ca; font-size: 9px; line-height: 1.35; }
+    .benchmark-label-actions { display: grid; gap: 6px; }
+    .benchmark-quick-states { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+    .benchmark-quick-states button { min-height: 46px; border-color: #3b4b66; background: #121b2a; color: #e7edf7; font-size: 11px; }
+    .benchmark-quick-states button[data-state="empty"] { border-color: #22c55e; }
+    .benchmark-quick-states button[data-state="minority_full"] { border-color: #38bdf8; }
+    .benchmark-quick-states button[data-state="majority_full"] { border-color: #f97316; }
+    .benchmark-quick-states button[data-state="full"] { border-color: #ef4444; }
+    .benchmark-quick-states button[aria-pressed="true"] { background: #23366d; color: white; box-shadow: inset 0 0 0 1px currentColor; }
+    .benchmark-skip-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .benchmark-skip-actions button { min-height: 32px; padding: 4px 8px; font-size: 10px; }
     .benchmark-top { display: grid; grid-template-columns: 220px minmax(240px, 1fr) auto; gap: 8px; align-items: end; }
     .benchmark-actions { display: flex; gap: 5px; }
     .benchmark-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 7px; }
     .benchmark-panel details { border-color: #423887; background: rgb(13 13 35 / 45%); }
     .benchmark-notes { min-height: 64px; }
-    .capture-panel { margin-bottom: 10px; border-color: #315b68; background: #0d1d29; }
-    .capture-panel > summary { color: #c9f2f5; }
-    .capture-body { padding: 0 10px 10px; border-top: 1px solid #315b68; }
+    body:not([data-tool-mode="capture"]) .capture-panel { display: none; }
+    body[data-tool-mode="capture"] main { grid-template-columns: minmax(0, 1fr); }
+    body[data-tool-mode="capture"] aside,
+    body[data-tool-mode="capture"] .camera-workspace-only,
+    body[data-tool-mode="capture"] .inspector-menu-button { display: none; }
+    .capture-panel { margin-bottom: 10px; border: 1px solid #315b68; border-radius: var(--radius); background: #0d1d29; }
+    .capture-page-head { padding: 14px; border-bottom: 1px solid #315b68; }
+    .capture-page-head h2 { margin: 2px 0 3px; color: #e7fbff; font-size: 18px; }
+    .capture-page-head p { max-width: 760px; font-size: 11px; }
+    .capture-body { padding: 0 10px 10px; }
     .capture-intro { margin: 9px 0; color: var(--muted); font-size: 10px; line-height: 1.45; }
     .capture-schedule { display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 8px; align-items: end; }
     .capture-schedule input[data-calculated="true"] { border-color: #3a7480; background: #102d35; color: #b9f0f2; }
@@ -162,8 +188,7 @@
     .canvas-shell[data-pan-ready="true"] canvas { cursor: grab; }
     .canvas-shell[data-panning="true"] canvas { cursor: grabbing; }
     .canvas-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 42px; padding: 6px 8px 6px 11px; border-bottom: 1px solid var(--line); background: #101827; }
-    .canvas-label { color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
-    .zoom-controls { display: flex; align-items: center; gap: 3px; }
+    .zoom-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 3px; margin-left: auto; }
     .zoom-controls button { min-height: 28px; padding: 3px 8px; }
     .zoom-controls button[aria-pressed="true"] { background: var(--accent-soft); color: #a9c0ff; box-shadow: inset 0 0 0 1px #35549d; }
     #zoomStatus { min-width: 42px; color: #dce5f2; text-align: center; font-size: 10px; font-variant-numeric: tabular-nums; }
@@ -176,12 +201,9 @@
     .poly.exclusion b { color: #ff9da7; }
     .poly-actions { position: absolute; top: 6px; right: 6px; display: flex; gap: 3px; }
     .poly-actions button { min-height: 26px; padding: 3px 6px; font-size: 10px; }
-    .benchmark-state { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; margin-top: 8px; }
-    .benchmark-state button { min-height: 30px; border-color: var(--line); background: #121b2a; color: var(--muted); padding: 4px; font-size: 9px; }
-    .benchmark-state button[aria-pressed="true"] { border-color: #7898ff; background: #23366d; color: white; }
-    .poly.benchmark-active { border-color: #7898ff; box-shadow: 0 0 0 2px rgb(120 152 255 / 20%); }
     .small { font-size: 10px; }
     @media (max-width: 1000px) {
+      .benchmark-labeler { grid-template-columns: 1fr; }
       .benchmark-top { grid-template-columns: 1fr 2fr; }
       .benchmark-actions { grid-column: 1 / -1; }
     }
@@ -189,18 +211,23 @@
       header { display: block; min-height: 0; padding: 11px 12px; }
       .title-lockup p { display: none; }
       header nav { justify-content: space-between; margin-top: 8px; }
+      .admin-link { display: none; }
+      .inspector-menu-button { display: inline-flex; flex: none; }
       .route-switcher { flex: 1; }
       .route-switcher a { flex: 1; text-align: center; }
       main { display: block; min-height: 0; }
-      .mobile-tabs { position: sticky; top: 0; z-index: 20; display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 6px; border-bottom: 1px solid var(--line); background: rgb(12 20 36 / 96%); backdrop-filter: blur(12px); }
-      .mobile-tabs button { min-height: 42px; border-color: transparent; background: transparent; color: var(--muted); }
-      .mobile-tabs button[aria-selected="true"] { border-color: var(--line-strong); background: var(--panel-raised); color: white; }
-      main[data-mobile-panel="camera"] aside { display: none; }
-      main[data-mobile-panel="controls"] section { display: none; }
-      aside, section { width: auto; padding: 10px; border: 0; overflow: visible; }
+      section { width: auto; padding: 10px; border: 0; overflow: visible; }
+      aside { position: fixed; z-index: 100; top: 0; right: 0; bottom: 0; width: min(340px, calc(100vw - 34px)); padding: 12px; border: 0; border-left: 1px solid var(--line-strong); overflow: auto; background: #0d1524; box-shadow: -18px 0 46px rgb(0 0 0 / 48%); transform: translateX(105%); transition: transform 180ms ease; }
+      body[data-inspector-open="true"] { overflow: hidden; }
+      body[data-inspector-open="true"] aside { transform: translateX(0); }
+      .inspector-close { display: inline-grid; }
+      .inspector-backdrop { position: fixed; z-index: 90; inset: 0; display: block; width: 100%; min-height: 100%; border: 0; border-radius: 0; background: rgb(2 6 23 / 66%); opacity: 0; pointer-events: none; transition: opacity 180ms ease; }
+      body[data-inspector-open="true"] .inspector-backdrop { opacity: 1; pointer-events: auto; }
       .workspace-head { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
       .workspace-actions { justify-content: flex-end; gap: 4px; }
       .workspace-actions .text-action { flex: 1; }
+      .benchmark-labeler { right: 10px; bottom: max(8px, env(safe-area-inset-bottom)); left: 10px; }
+      .benchmark-quick-states { grid-template-columns: 1fr 1fr; }
       .benchmark-top { grid-template-columns: 1fr; }
       .benchmark-actions { grid-column: auto; display: grid; grid-template-columns: 1fr 1fr; }
       .benchmark-footer { display: block; }
@@ -231,20 +258,20 @@
       <div class="route-switcher">
         <a data-mode="editor" href="/dev/camera-detection">Editor</a>
         <a data-mode="benchmark" href="/dev/camera-detection/benchmarks">Benchmarks</a>
+        <a data-mode="capture" href="/dev/camera-detection/capture">Capture</a>
       </div>
+      <button id="inspectorMenuButton" class="secondary inspector-menu-button icon-button" type="button" aria-controls="controlsPanel" aria-expanded="false" aria-label="Open inspector" title="Open inspector"><span aria-hidden="true">☰</span></button>
     </nav>
   </header>
-  <main data-mobile-panel="camera">
-    <div class="mobile-tabs" role="tablist" aria-label="Debugger panels">
-      <button id="showCameraPanel" type="button" role="tab" aria-controls="cameraPanel" aria-selected="true">Workspace</button>
-      <button id="showControlsPanel" type="button" role="tab" aria-controls="controlsPanel" aria-selected="false">Inspector</button>
-    </div>
-    <aside id="controlsPanel" data-interaction="idle" role="tabpanel" aria-labelledby="showControlsPanel">
+  <main>
+    <button id="inspectorBackdrop" class="inspector-backdrop" type="button" aria-label="Close inspector" tabindex="-1"></button>
+    <aside id="controlsPanel" data-interaction="idle" aria-label="Inspector">
       <div class="inspector-head">
         <h2>Inspector</h2>
         <div class="save-stack">
-          <span class="save-indicator" aria-hidden="true"></span>
-          <button id="saveBtn" class="good compact" title="Save app data JSON"><svg class="icon" aria-hidden="true"><use href="/dev/camera-detection/icons.svg#icon-save"/></svg>Save JSON</button>
+          <span class="save-indicator mode-editor-only" aria-hidden="true"></span>
+          <button id="saveBtn" class="good compact mode-editor-only" title="Save app data JSON"><svg class="icon" aria-hidden="true"><use href="/dev/camera-detection/icons.svg#icon-save"/></svg>Save JSON</button>
+          <button id="inspectorCloseButton" class="secondary inspector-close icon-button" type="button" aria-label="Close inspector" title="Close inspector"><span aria-hidden="true">×</span></button>
         </div>
       </div>
       <div class="summary" id="summary"></div>
@@ -263,7 +290,7 @@
               <option value="unreviewed">Needs review</option>
             </select>
           </div>
-          <label class="checkline" for="reviewedInput">
+          <label class="checkline mode-editor-only" for="reviewedInput">
             <input id="reviewedInput" type="checkbox" />
             <span>Reviewed</span>
           </label>
@@ -326,7 +353,7 @@
         </div>
       </details>
 
-      <details>
+      <details class="mode-editor-only">
         <summary>Data &amp; recovery</summary>
         <div class="details-body">
           <div class="hint" id="saveStatus">Loading shared/data/camera-detection-areas.json...</div>
@@ -353,8 +380,8 @@
       </details>
     </aside>
 
-    <section id="cameraPanel" role="tabpanel" aria-labelledby="showCameraPanel">
-      <div class="workspace-head">
+    <section id="cameraPanel">
+      <div class="workspace-head camera-workspace-only">
         <div>
           <div class="camera-title" id="cameraTitle"></div>
           <div class="camera-meta" id="cameraMeta"></div>
@@ -367,9 +394,28 @@
           <button id="clearDetectionsBtn" class="ghost text-action" title="Clear detections" disabled><svg class="icon" aria-hidden="true"><use href="/dev/camera-detection/icons.svg#icon-eraser"/></svg>Clear</button>
         </div>
       </div>
-      <div class="status-line" id="detectionStatus">Load a camera image, then run the detector.</div>
+      <div class="status-line camera-workspace-only" id="detectionStatus">Load a camera image, then run the detector.</div>
 
       <div class="benchmark-panel" id="benchmarkPanel">
+        <div class="benchmark-labeler" id="benchmarkLabeler">
+          <div>
+            <span class="benchmark-target-label">Label highlighted polygon</span>
+            <strong class="benchmark-target-name" id="benchmarkTargetName">Loading an unlabeled image...</strong>
+            <span class="benchmark-target-meta" id="benchmarkTargetMeta">Each click saves one label and advances.</span>
+          </div>
+          <div class="benchmark-label-actions">
+            <div class="benchmark-quick-states" id="benchmarkQuickStates" role="group" aria-label="Label highlighted polygon">
+              <button type="button" data-state="empty" aria-pressed="false" disabled>Empty</button>
+              <button type="button" data-state="minority_full" aria-pressed="false" disabled>Minority full</button>
+              <button type="button" data-state="majority_full" aria-pressed="false" disabled>Majority full</button>
+              <button type="button" data-state="full" aria-pressed="false" disabled>Full</button>
+            </div>
+            <div class="benchmark-skip-actions" aria-label="Skip benchmark items">
+              <button id="skipBenchmarkPolygonBtn" class="ghost" type="button" disabled>Skip polygon</button>
+              <button id="skipBenchmarkFrameBtn" class="ghost" type="button" disabled>Skip frame</button>
+            </div>
+          </div>
+        </div>
         <div class="benchmark-top">
           <div class="field">
             <span class="field-label">Frame set</span>
@@ -389,9 +435,8 @@
             <select id="benchmarkFrame"></select>
           </div>
           <div class="benchmark-actions">
-            <button id="nextUnlabeledBtn" class="secondary" title="Next unlabeled frame"><svg class="icon" aria-hidden="true"><use href="/dev/camera-detection/icons.svg#icon-skip-next"/></svg>Next unlabeled</button>
+            <button id="nextUnlabeledBtn" class="secondary" title="Load a random unlabeled frame"><svg class="icon" aria-hidden="true"><use href="/dev/camera-detection/icons.svg#icon-skip-next"/></svg>Random unlabeled</button>
             <button id="emptyAllBtn" class="secondary" title="Mark every polygon empty"><svg class="icon" aria-hidden="true"><use href="/dev/camera-detection/icons.svg#icon-circle"/></svg>All empty</button>
-            <button id="saveBenchmarkBtn" class="good"><svg class="icon" aria-hidden="true"><use href="/dev/camera-detection/icons.svg#icon-save"/></svg>Save labels</button>
           </div>
         </div>
         <button id="loadBenchmarkBtn" class="sr-only" tabindex="-1" aria-hidden="true">Load benchmark frame</button>
@@ -407,8 +452,12 @@
         </div>
       </div>
 
-      <details class="capture-panel" id="capturePanel">
-        <summary>Capture images for labeling</summary>
+      <div class="capture-panel" id="capturePanel">
+        <div class="capture-page-head">
+          <span class="eyebrow">Dataset capture</span>
+          <h2>Capture images for labeling</h2>
+          <p>Record bounded image sets from enabled cameras, then import completed runs into the benchmark dataset.</p>
+        </div>
         <div class="capture-body">
           <p class="capture-intro">Set any two schedule values and the third is calculated. The image limit applies per camera; identical frames are recorded as duplicates without storing another file.</p>
           <div class="capture-schedule">
@@ -444,15 +493,15 @@
           <div class="hint" id="captureRunStatus">Loading capture runs...</div>
           <div class="capture-run-list" id="captureRunList"></div>
         </div>
-      </details>
+      </div>
 
-      <div class="canvas-shell">
+      <div class="canvas-shell camera-workspace-only">
         <div class="canvas-bar">
-          <span class="canvas-label">Detection frame</span>
-          <div class="zoom-controls" aria-label="Canvas zoom">
+          <div class="zoom-controls" aria-label="Detection frame tools">
             <button id="zoomOutBtn" class="ghost" title="Zoom out" aria-label="Zoom out"><svg class="icon" aria-hidden="true"><use href="/dev/camera-detection/icons.svg#icon-zoom-out"/></svg></button>
             <button id="zoomFitBtn" class="ghost"><svg class="icon" aria-hidden="true"><use href="/dev/camera-detection/icons.svg#icon-maximize"/></svg>Fit</button>
             <button id="panBtn" class="ghost" title="Pan image; space-drag and middle-drag also work" aria-pressed="false" disabled><svg class="icon" aria-hidden="true"><use href="/dev/camera-detection/icons.svg#icon-hand"/></svg>Pan</button>
+            <button id="hidePolygonsBtn" class="ghost" type="button" aria-pressed="false">Hide polygons</button>
             <button id="zoomActualBtn" class="ghost" title="Actual size">1:1</button>
             <span id="zoomStatus"></span>
             <button id="zoomInBtn" class="ghost" title="Zoom in" aria-label="Zoom in"><svg class="icon" aria-hidden="true"><use href="/dev/camera-detection/icons.svg#icon-zoom-in"/></svg></button>
@@ -475,7 +524,7 @@
           </div>
         </div>
       </div>
-      <div class="poly-list" id="polyList"></div>
+      <div class="poly-list camera-workspace-only" id="polyList"></div>
     </section>
   </main>
 
@@ -511,6 +560,7 @@
     const canvasShell = document.querySelector(".canvas-shell");
     const canvasViewport = document.querySelector(".canvas-viewport");
     const panBtn = document.getElementById("panBtn");
+    const hidePolygonsBtn = document.getElementById("hidePolygonsBtn");
     const img = new Image();
     const currentBox = document.getElementById("currentBox");
     const polyList = document.getElementById("polyList");
@@ -530,6 +580,12 @@
     const benchmarkFrame = document.getElementById("benchmarkFrame");
     const benchmarkNotes = document.getElementById("benchmarkNotes");
     const benchmarkStatus = document.getElementById("benchmarkStatus");
+    const benchmarkTargetName = document.getElementById("benchmarkTargetName");
+    const benchmarkTargetMeta = document.getElementById("benchmarkTargetMeta");
+    const benchmarkLabeler = document.getElementById("benchmarkLabeler");
+    const benchmarkQuickStates = document.getElementById("benchmarkQuickStates");
+    const skipBenchmarkPolygonBtn = document.getElementById("skipBenchmarkPolygonBtn");
+    const skipBenchmarkFrameBtn = document.getElementById("skipBenchmarkFrameBtn");
     const captureSessionId = document.getElementById("captureSessionId");
     const captureImageLimit = document.getElementById("captureImageLimit");
     const captureTimeLimit = document.getElementById("captureTimeLimit");
@@ -540,21 +596,27 @@
     const captureRunList = document.getElementById("captureRunList");
     const startCaptureBtn = document.getElementById("startCaptureBtn");
     const exitBenchmarkBtn = document.getElementById("exitBenchmarkBtn");
-    const main = document.querySelector("main");
-    const showCameraPanel = document.getElementById("showCameraPanel");
-    const showControlsPanel = document.getElementById("showControlsPanel");
+    const inspectorMenuButton = document.getElementById("inspectorMenuButton");
+    const inspectorCloseButton = document.getElementById("inspectorCloseButton");
+    const inspectorBackdrop = document.getElementById("inspectorBackdrop");
     const controlsPanel = document.getElementById("controlsPanel");
+    const cameraPanel = document.getElementById("cameraPanel");
+    const appHeader = document.querySelector("header");
     const polygonRoleControl = document.getElementById("polygonRoleControl");
     const benchmarkRoleControl = document.getElementById("benchmarkRoleControl");
     const customSelects = new Map();
     const mobileViewport = window.matchMedia("(max-width: 800px)");
     const debuggerRouteBase = "/dev/camera-detection";
     const debuggerTokenStorageKey = "ferry-fyi-dev-camera-detection-access-token";
+    const activeDebuggerPath = window.location.pathname.replace(/\/+$/, "");
     // detect app-served routes
-    const isAppDebuggerRoute = window.location.pathname === debuggerRouteBase
-      || window.location.pathname === `${debuggerRouteBase}/benchmarks`;
-    const startsInBenchmarkMode = window.location.pathname === `${debuggerRouteBase}/benchmarks`;
-    document.body.dataset.toolMode = startsInBenchmarkMode ? "benchmark" : "editor";
+    const isAppDebuggerRoute = activeDebuggerPath === debuggerRouteBase
+      || activeDebuggerPath === `${debuggerRouteBase}/benchmarks`
+      || activeDebuggerPath === `${debuggerRouteBase}/capture`;
+    const startsInBenchmarkMode = activeDebuggerPath === `${debuggerRouteBase}/benchmarks`;
+    const startsInCaptureMode = activeDebuggerPath === `${debuggerRouteBase}/capture`;
+    const startsInEditorMode = !startsInBenchmarkMode && !startsInCaptureMode;
+    document.body.dataset.toolMode = startsInBenchmarkMode ? "benchmark" : startsInCaptureMode ? "capture" : "editor";
     const appApiBase = isAppDebuggerRoute
       ? "/api/debug/camera-detection"
       : "";
@@ -601,27 +663,54 @@
     let benchmarkLabels = { frames: {}, schemaVersion: 1, updatedAt: null };
     let cameraDisplayOverrides = {};
     let benchmarkSaveQueue = Promise.resolve(true);
+    let benchmarkNotesSaveTimer = null;
     let captureRuns = [];
     let capturePollTimer = null;
     let captureScheduleInputs = ["time", "interval"];
     let activeBenchmarkFrameId = null;
+    let activeBenchmarkAreaId = null;
+    let benchmarkImageReady = false;
     let lastPointerType = "mouse";
     let panMode = false;
+    let polygonsHidden = false;
     let spacePan = false;
     let panGesture = null;
     const activeTouchPointers = new Map();
     let pinchGesture = null;
     let pinchPointerIds = new Set();
 
-    // switch compact-screen panels
-    function setMobilePanel(panel) {
-      main.dataset.mobilePanel = panel;
-      showCameraPanel.setAttribute("aria-selected", String(panel === "camera"));
-      showControlsPanel.setAttribute("aria-selected", String(panel === "controls"));
-      // fit newly visible canvas
-      if (panel === "camera" && mobileViewport.matches) {
-        requestAnimationFrame(fitZoomToWidth);
+    // reserve space around the bottom label dock
+    function syncBenchmarkDockClearance() {
+      // benchmark route guard
+      if (!startsInBenchmarkMode) return;
+      const clearance = Math.ceil(benchmarkLabeler.getBoundingClientRect().height + 16);
+      document.documentElement.style.setProperty("--benchmark-dock-clearance", `${clearance}px`);
+      requestAnimationFrame(updatePanAvailability);
+    }
+
+    // observe responsive dock height
+    const benchmarkDockObserver = new ResizeObserver(syncBenchmarkDockClearance);
+    benchmarkDockObserver.observe(benchmarkLabeler);
+
+    // toggle the compact inspector drawer
+    function setInspectorOpen(open, restoreFocus = false) {
+      const drawerOpen = Boolean(open) && mobileViewport.matches;
+      document.body.dataset.inspectorOpen = String(drawerOpen);
+      inspectorMenuButton.setAttribute("aria-expanded", String(drawerOpen));
+      controlsPanel.inert = mobileViewport.matches && !drawerOpen;
+      cameraPanel.inert = drawerOpen;
+      appHeader.inert = drawerOpen;
+      controlsPanel.setAttribute("role", mobileViewport.matches ? "dialog" : "complementary");
+      // compact dialog semantics
+      if (mobileViewport.matches) controlsPanel.setAttribute("aria-modal", "true");
+      else controlsPanel.removeAttribute("aria-modal");
+      // open drawer focus
+      if (drawerOpen) {
+        requestAnimationFrame(() => inspectorCloseButton.focus());
+        return;
       }
+      // restore trigger focus
+      if (restoreFocus && mobileViewport.matches) inspectorMenuButton.focus();
     }
 
     // reflect a native select in compact buttons
@@ -940,25 +1029,59 @@
       return cameraAnnotation(frame.cameraId).allowedAreas.filter((area) => !occupancyStates.includes(states[area.id]));
     }
 
-    // focus one benchmark area
-    function focusBenchmarkArea(areaId) {
-      requestAnimationFrame(() => {
-        const cards = [...polyList.querySelectorAll("[data-benchmark-card]")];
-        const card = cards.find((candidate) => candidate.dataset.benchmarkCard === areaId);
-        // target card guard
-        if (!card) return;
-        cards.forEach((candidate) => candidate.classList.remove("benchmark-active"));
-        card.classList.add("benchmark-active");
-        card.scrollIntoView({ behavior: "smooth", block: "center" });
-        card.querySelector("button")?.focus({ preventScroll: true });
+    // resolve the active labeling target
+    function activeBenchmarkArea(frame = activeBenchmarkFrame()) {
+      // active frame guard
+      if (!frame) return null;
+      return cameraAnnotation(frame.cameraId).allowedAreas.find((area) => area.id === activeBenchmarkAreaId) || null;
+    }
+
+    // update the quick-label toolbar
+    function renderBenchmarkLabeler() {
+      const frame = activeBenchmarkFrame();
+      const area = activeBenchmarkArea(frame);
+      const buttons = [...benchmarkQuickStates.querySelectorAll("button")];
+      const imageReady = Boolean(frame) && benchmarkImageReady;
+      skipBenchmarkPolygonBtn.disabled = !imageReady || !area;
+      skipBenchmarkFrameBtn.disabled = !imageReady;
+      // loading image guard
+      if (frame && area && !benchmarkImageReady) {
+        benchmarkTargetName.textContent = `Loading ${customBenchmarkCameraName(frame)}...`;
+        benchmarkTargetMeta.textContent = "The next label will unlock when the image is visible.";
+        // disable labels while loading
+        buttons.forEach((button) => {
+          button.disabled = true;
+          button.setAttribute("aria-pressed", "false");
+        });
+        return;
+      }
+      // incomplete target guard
+      if (!frame || !area) {
+        benchmarkTargetName.textContent = frame ? "This frame set is fully labeled" : "Loading an unlabeled image...";
+        benchmarkTargetMeta.textContent = frame ? "Choose another frame set or review existing labels below." : "Each click saves one label and advances.";
+        // disable unavailable labels
+        buttons.forEach((button) => {
+          button.disabled = true;
+          button.setAttribute("aria-pressed", "false");
+        });
+        return;
+      }
+      const remainingInFrame = unlabeledBenchmarkAreas(frame).length;
+      const remainingInSet = filteredBenchmarkFrames().reduce((total, candidate) => total + unlabeledBenchmarkAreas(candidate).length, 0);
+      const selectedState = benchmarkAreaState(area.id);
+      benchmarkTargetName.textContent = area.label || area.id;
+      benchmarkTargetMeta.textContent = `${area.type} · ${formatOccupancyState(selectedState)} · ${customBenchmarkCameraName(frame)} · ${remainingInFrame} left in image · ${remainingInSet} left in set`;
+      // enable active labels
+      buttons.forEach((button) => {
+        button.disabled = false;
+        button.setAttribute("aria-pressed", String(button.dataset.state === selectedState));
       });
     }
 
-    // focus the first incomplete area
-    function focusFirstUnlabeledBenchmarkArea(frame = activeBenchmarkFrame()) {
-      const area = frame ? unlabeledBenchmarkAreas(frame)[0] : null;
-      // incomplete area guard
-      if (area) focusBenchmarkArea(area.id);
+    // select one benchmark area
+    function focusBenchmarkArea(areaId) {
+      activeBenchmarkAreaId = areaId;
+      render();
     }
 
     // populate benchmark frame choices
@@ -984,8 +1107,8 @@
 
     // summarize benchmark progress
     function renderBenchmarkStatus(message = "") {
-      const controls = benchmarkManifest.frames.filter((frame) => frame.role === "control");
-      const progress = controls.reduce((total, frame) => {
+      const frames = filteredBenchmarkFrames();
+      const progress = frames.reduce((total, frame) => {
         const areas = cameraAnnotation(frame.cameraId).allowedAreas;
         const states = benchmarkLabels.frames[frame.frameId]?.areaStates || {};
         return {
@@ -993,7 +1116,8 @@
           total: total.total + areas.length
         };
       }, { labeled: 0, total: 0 });
-      benchmarkStatus.textContent = `${message ? `${message} ` : ""}Control labels: ${progress.labeled}/${progress.total}.`;
+      const setName = benchmarkRole.value === "all" ? "All" : benchmarkRole.value === "control" ? "Control" : "Test";
+      benchmarkStatus.textContent = `${message ? `${message} ` : ""}${setName} labels: ${progress.labeled}/${progress.total}.`;
     }
 
     // load benchmark files
@@ -1299,6 +1423,10 @@
       cameraSelect.value = frame.cameraId;
       syncCustomSelect(cameraSelect);
       activeBenchmarkFrameId = frame.frameId;
+      activeBenchmarkAreaId = unlabeledBenchmarkAreas(frame)[0]?.id || null;
+      // lock labels during image load
+      benchmarkImageReady = false;
+      renderBenchmarkLabeler();
       const camera = selectedCamera();
       const frameLabels = ensureBenchmarkFrameLabels(frame);
       benchmarkNotes.value = frameLabels.notes || "";
@@ -1313,10 +1441,12 @@
       exitBenchmarkBtn.disabled = false;
       detectionStatus.textContent = "Stored benchmark frame loaded. Run the detector to compare its boxes with human labels.";
       img.onload = () => {
+        benchmarkImageReady = true;
         renderLoadedImage();
-        focusFirstUnlabeledBenchmarkArea(frame);
       };
       img.onerror = () => {
+        benchmarkImageReady = false;
+        renderBenchmarkLabeler();
         benchmarkStatus.textContent = "Benchmark frame failed to load.";
       };
       img.src = `${toolEndpoint(`/camera-benchmark-frame/${frame.file.split("/").pop()}`)}?_=${Date.now()}`;
@@ -1349,17 +1479,30 @@
       return queuedSave;
     }
 
-    // find the next incomplete frame
-    function nextUnlabeledBenchmarkFrame(currentFrameId) {
-      const frames = filteredBenchmarkFrames();
-      const currentIndex = Math.max(0, frames.findIndex((frame) => frame.frameId === currentFrameId));
-      // forward frame pass
-      for (let offset = 1; offset <= frames.length; offset += 1) {
-        const candidate = frames[(currentIndex + offset) % frames.length];
-        // incomplete frame guard
-        if (candidate && unlabeledBenchmarkAreas(candidate).length > 0) return candidate;
-      }
+    // debounce benchmark note saves
+    function scheduleBenchmarkNotesSave(delay = 400) {
+      clearTimeout(benchmarkNotesSaveTimer);
+      benchmarkNotesSaveTimer = setTimeout(() => {
+        benchmarkNotesSaveTimer = null;
+        void queueBenchmarkSave("Frame notes autosaved.");
+      }, delay);
+    }
+
+    // pick a random incomplete frame
+    function nextUnlabeledBenchmarkFrame(currentFrameId = null, allowCurrent = true) {
+      const incompleteFrames = filteredBenchmarkFrames().filter((frame) => frame.frameId !== currentFrameId && unlabeledBenchmarkAreas(frame).length > 0);
+      // alternate frame guard
+      if (incompleteFrames.length > 0) return incompleteFrames[Math.floor(Math.random() * incompleteFrames.length)];
+      const currentFrame = benchmarkManifest.frames.find((frame) => frame.frameId === currentFrameId);
+      // current frame fallback
+      if (allowCurrent && currentFrame && unlabeledBenchmarkAreas(currentFrame).length > 0) return currentFrame;
       return null;
+    }
+
+    // choose a useful initial frame set
+    function startingBenchmarkRole() {
+      const incompleteRole = ["test", "control"].find((role) => benchmarkManifest.frames.some((frame) => frame.role === role && unlabeledBenchmarkAreas(frame).length > 0));
+      return incompleteRole || "control";
     }
 
     // advance benchmark labeling focus
@@ -1379,14 +1522,47 @@
         focusBenchmarkArea(nextArea.id);
         return;
       }
-      const nextFrame = nextUnlabeledBenchmarkFrame(frame.frameId);
+      const nextFrame = nextUnlabeledBenchmarkFrame(frame.frameId, false);
       // next-frame target guard
       if (nextFrame) {
         populateBenchmarkFrames(nextFrame.frameId);
         loadBenchmarkFrame(nextFrame.frameId);
         return;
       }
+      const remainingAreas = filteredBenchmarkFrames().reduce((total, candidate) => total + unlabeledBenchmarkAreas(candidate).length, 0);
+      // skipped final target guard
+      if (remainingAreas > 0) {
+        focusBenchmarkArea(areaId);
+        renderBenchmarkStatus("No other unlabeled polygon is available in this frame set.");
+        return;
+      }
+      activeBenchmarkAreaId = null;
+      render();
       renderBenchmarkStatus("Every polygon in this frame set is labeled and saved.");
+    }
+
+    // skip the selected polygon
+    function skipBenchmarkPolygon() {
+      const frame = activeBenchmarkFrame();
+      const area = activeBenchmarkArea(frame);
+      // active polygon guard
+      if (!frame || !area || !benchmarkImageReady) return;
+      advanceBenchmarkLabeling(frame.frameId, area.id);
+    }
+
+    // skip the current frame
+    function skipBenchmarkFrame() {
+      const frame = activeBenchmarkFrame();
+      // active frame guard
+      if (!frame || !benchmarkImageReady) return;
+      const nextFrame = nextUnlabeledBenchmarkFrame(frame.frameId, false);
+      // alternate frame guard
+      if (!nextFrame) {
+        renderBenchmarkStatus("No other unlabeled frame is available in this frame set.");
+        return;
+      }
+      populateBenchmarkFrames(nextFrame.frameId);
+      loadBenchmarkFrame(nextFrame.frameId);
     }
 
     // apply and persist one benchmark label
@@ -1425,9 +1601,11 @@
 
     // load next incomplete frame
     function loadNextUnlabeledFrame() {
-      const incomplete = filteredBenchmarkFrames().find((frame) => unlabeledBenchmarkAreas(frame).length > 0);
+      const incomplete = nextUnlabeledBenchmarkFrame(activeBenchmarkFrameId);
       // complete-set guard
       if (!incomplete) {
+        activeBenchmarkAreaId = null;
+        renderBenchmarkLabeler();
         renderBenchmarkStatus("Every polygon in this frame set is labeled.");
         return;
       }
@@ -1459,6 +1637,8 @@
     }
 
     function beginEditing(collection, index) {
+      // non-editor mutation guard
+      if (!startsInEditorMode) return;
       const area = cameraAnnotation(selectedCamera().id)[collection]?.[index];
       if (!area) return;
       drawing = false;
@@ -1469,6 +1649,8 @@
     }
 
     function persistAnnotations() {
+      // non-editor mutation guard
+      if (!startsInEditorMode) return;
       localStorage.setItem(storageKey, JSON.stringify(state));
       renderExport();
       renderSummary();
@@ -1506,6 +1688,8 @@
     }
 
     function save() {
+      // non-editor mutation guard
+      if (!startsInEditorMode) return;
       localStorage.setItem(storageKey, JSON.stringify(state));
       renderExport();
       renderSummary();
@@ -1707,6 +1891,8 @@
     }
 
     function updateEditingPolygon(points) {
+      // non-editor mutation guard
+      if (!startsInEditorMode) return;
       const area = editingArea();
       if (!area) return;
       area.polygon = normalized(points, selectedCamera());
@@ -1833,6 +2019,14 @@
       if (label) drawPlacedLabel(points, color, label, closed);
     }
 
+    // toggle polygon overlays
+    function setPolygonsHidden(hidden) {
+      polygonsHidden = Boolean(hidden);
+      hidePolygonsBtn.setAttribute("aria-pressed", String(polygonsHidden));
+      hidePolygonsBtn.textContent = polygonsHidden ? "Show polygons" : "Hide polygons";
+      render();
+    }
+
     // draw detector response boxes
     function drawDetections(camera) {
       // camera-scoped overlay guard
@@ -1872,9 +2066,11 @@
       return !annotation.excludedAreas.some((area) => pointInPolygon(center, area.polygon));
     }
 
+    // render the active camera workspace
     function render() {
       const camera = selectedCamera();
       const benchmark = activeBenchmarkFrame();
+      const editingLocked = !startsInEditorMode || Boolean(benchmark);
       setActualFrameSize(camera);
       // match the loaded image shape
       canvasViewport.style.aspectRatio = `${frameWidth(camera)} / ${frameHeight(camera)}`;
@@ -1884,83 +2080,76 @@
       cameraTitle.textContent = benchmark ? `${benchmark.cameraName} — ${benchmark.role} benchmark` : `${camera.id} — ${camera.terminal}: ${camera.displayName || camera.title}`;
       cameraMeta.textContent = benchmark ? `${benchmark.capturedAt}; immutable ${benchmark.sha256.slice(0, 12)}…` : `${frameWidth(camera)}×${frameHeight(camera)} actual; ${camera.image.url}`;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+      // loaded image guard
       if (img.complete && img.naturalWidth) ctx.drawImage(img, 0, 0, frameWidth(camera), frameHeight(camera));
       placedLabelBoxes = [];
       const annotation = cameraAnnotation(camera.id);
       reviewedInput.checked = annotation.reviewed;
-      reviewedInput.disabled = Boolean(benchmark);
-      polygonRole.disabled = Boolean(benchmark);
+      reviewedInput.disabled = editingLocked;
+      filterSelect.disabled = !startsInEditorMode;
+      cameraSelect.disabled = !startsInEditorMode;
+      syncCustomSelect(filterSelect);
+      syncCustomSelect(cameraSelect);
+      polygonRole.disabled = editingLocked;
       syncSegmentedControl(polygonRoleControl, polygonRole);
-      areaType.disabled = Boolean(benchmark);
+      areaType.disabled = editingLocked;
       syncCustomSelect(areaType);
-      areaId.disabled = Boolean(benchmark);
-      areaLabel.disabled = Boolean(benchmark);
-      annotation.allowedAreas.forEach((area, index) => {
-        const state = benchmarkAreaState(area.id);
-        const color = benchmark ? occupancyStateColors[state || "unlabeled"] : colors.include[index % colors.include.length];
-        const label = benchmark ? `${area.label || area.id} (${formatOccupancyState(state)})` : area.label || area.id;
-        drawPolygon(denormalized(area.polygon, camera), color, label, true);
-      });
-      annotation.excludedAreas.forEach((area, index) => drawPolygon(denormalized(area.polygon, camera), colors.exclude[index % colors.exclude.length], area.label || area.id, true));
+      areaId.disabled = editingLocked;
+      areaLabel.disabled = editingLocked;
+      // polygon overlay guard
+      if (!polygonsHidden) {
+        // draw allowed polygons
+        annotation.allowedAreas.forEach((area, index) => {
+          const state = benchmarkAreaState(area.id);
+          const color = benchmark ? occupancyStateColors[state || "unlabeled"] : colors.include[index % colors.include.length];
+          const label = benchmark ? `${area.label || area.id} (${formatOccupancyState(state)})` : area.label || area.id;
+          drawPolygon(denormalized(area.polygon, camera), color, label, true);
+        });
+        // draw excluded polygons
+        annotation.excludedAreas.forEach((area, index) => drawPolygon(denormalized(area.polygon, camera), colors.exclude[index % colors.exclude.length], area.label || area.id, true));
+        const benchmarkTarget = activeBenchmarkArea(benchmark);
+        // emphasize the next label
+        if (benchmarkTarget) {
+          drawPolygon(denormalized(benchmarkTarget.polygon, camera), "#facc15", `SELECTED: ${benchmarkTarget.label || benchmarkTarget.id}`, true);
+        }
+        drawEditHandles(camera);
+        drawPolygon(currentPoints, "#ffffff", "current", false);
+      }
       drawDetections(camera);
-      drawEditHandles(camera);
-      drawPolygon(currentPoints, "#ffffff", "current", false);
       const area = editingArea();
       controlsPanel.dataset.interaction = drawing ? "drawing" : editing ? "editing" : "idle";
       currentBox.textContent = drawing ? `${currentPoints.length} points placed` : area ? `Editing ${area.label || area.id}` : "Ready to draw";
-      document.getElementById("startBtn").disabled = Boolean(benchmark);
-      document.getElementById("undoBtn").disabled = Boolean(benchmark) || !drawing || currentPoints.length === 0;
-      document.getElementById("finishBtn").disabled = Boolean(benchmark) || !drawing || currentPoints.length < 3;
-      document.getElementById("cancelBtn").disabled = Boolean(benchmark) || !drawing;
-      document.getElementById("doneEditBtn").disabled = Boolean(benchmark) || !editing;
-      document.getElementById("deleteVertexBtn").disabled = Boolean(benchmark) || !editing || selectedVertex === null || (area?.polygon.length || 0) <= 3;
-      document.getElementById("updateDetailsBtn").disabled = Boolean(benchmark) || !editing;
-      document.getElementById("clearCameraBtn").disabled = Boolean(benchmark);
-      document.getElementById("clearAllBtn").disabled = Boolean(benchmark);
-      document.getElementById("refreshImageBtn").disabled = Boolean(benchmark);
+      document.getElementById("startBtn").disabled = editingLocked;
+      document.getElementById("undoBtn").disabled = editingLocked || !drawing || currentPoints.length === 0;
+      document.getElementById("finishBtn").disabled = editingLocked || !drawing || currentPoints.length < 3;
+      document.getElementById("cancelBtn").disabled = editingLocked || !drawing;
+      document.getElementById("doneEditBtn").disabled = editingLocked || !editing;
+      document.getElementById("deleteVertexBtn").disabled = editingLocked || !editing || selectedVertex === null || (area?.polygon.length || 0) <= 3;
+      document.getElementById("updateDetailsBtn").disabled = editingLocked || !editing;
+      document.getElementById("clearCameraBtn").disabled = editingLocked;
+      document.getElementById("clearAllBtn").disabled = editingLocked;
+      document.getElementById("refreshImageBtn").disabled = editingLocked;
+      renderBenchmarkLabeler();
       renderList();
       renderSummary();
     }
 
+    // render polygon cards
     function renderList() {
       const camera = selectedCamera();
       const annotation = cameraAnnotation(camera.id);
       const benchmark = activeBenchmarkFrame();
       polyList.innerHTML = "";
+      polyList.hidden = Boolean(benchmark);
+      // benchmark list removal
+      if (benchmark) return;
       const rows = [
         ...annotation.allowedAreas.map((area, index) => ({ area, index, role: "include", collection: "allowedAreas" })),
         ...annotation.excludedAreas.map((area, index) => ({ area, index, role: "exclude", collection: "excludedAreas" }))
       ];
+      // empty camera guard
       if (!rows.length) {
         polyList.innerHTML = `<div class="hint">No polygons saved for ${camera.id} yet.</div>`;
-        return;
-      }
-      // benchmark labeling mode
-      if (benchmark) {
-        const frameLabels = ensureBenchmarkFrameLabels(benchmark);
-        // render polygon state cards
-        rows.forEach(({ area, role }) => {
-          const div = document.createElement("div");
-          div.className = `poly ${role === "exclude" ? "exclusion" : ""}`;
-          // exclusion context only
-          if (role === "exclude") {
-            div.innerHTML = `<b>Excluded context: ${area.label || area.id}</b><br>${area.type}`;
-          } else {
-            const selectedState = frameLabels.areaStates[area.id] || "";
-            const options = occupancyStates.map((state) => `<button type="button" data-benchmark-area="${area.id}" data-state="${state}" aria-pressed="${selectedState === state}" title="Select ${formatOccupancyState(state)}; select again to clear">${formatOccupancyState(state)}</button>`).join("");
-            div.dataset.benchmarkCard = area.id;
-            div.innerHTML = `<b>${area.label || area.id}</b>${area.type}<div class="benchmark-state" role="group" aria-label="Ground-truth occupancy for ${area.label || area.id}">${options}</div>`;
-          }
-          polyList.appendChild(div);
-        });
-        // bind polygon state buttons
-        polyList.querySelectorAll("[data-benchmark-area]").forEach((button) => {
-          button.addEventListener("click", async () => {
-            const areaId = button.dataset.benchmarkArea;
-            const state = button.dataset.state;
-            await applyBenchmarkState(benchmark, areaId, state);
-          });
-        });
         return;
       }
       rows.forEach(({ area, index, role, collection }) => {
@@ -2061,6 +2250,8 @@
     }
 
     async function saveDefaultAnnotations() {
+      // non-editor mutation guard
+      if (!startsInEditorMode) return;
       renderExport();
       try {
         const response = await toolFetch("/save-annotations", {
@@ -2116,9 +2307,13 @@
     }
 
     function loadCamera(refresh = false) {
+      // editor navigation guard
+      if (!startsInEditorMode) return;
       const camera = selectedCamera();
       syncCustomSelect(cameraSelect);
       activeBenchmarkFrameId = null;
+      activeBenchmarkAreaId = null;
+      benchmarkImageReady = false;
       benchmarkNotes.value = "";
       exitBenchmarkBtn.disabled = true;
       reviewedInput.disabled = false;
@@ -2212,12 +2407,14 @@
     }
 
     document.getElementById("startBtn").addEventListener("click", () => {
+      // non-editor mutation guard
+      if (!startsInEditorMode) return;
       clearEditing();
       drawing = true;
       currentPoints = [];
       render();
       // expose drawing surface on phones
-      if (mobileViewport.matches) setMobilePanel("camera");
+      if (mobileViewport.matches) setInspectorOpen(false);
     });
 
     canvas.addEventListener("pointerdown", (event) => {
@@ -2248,6 +2445,8 @@
         syncPanCursor();
         return;
       }
+      // non-editor editing guard
+      if (!startsInEditorMode) return;
       // vertex-editing guard
       if (drawing || !editing) return;
       const area = editingArea();
@@ -2284,6 +2483,8 @@
         canvasViewport.scrollTop = panGesture.scrollTop - (event.clientY - panGesture.startY);
         return;
       }
+      // non-editor editing guard
+      if (!startsInEditorMode) return;
       // vertex-drag guard
       if (draggingVertex === null || !editing) return;
       const area = editingArea();
@@ -2353,6 +2554,15 @@
         return;
       }
       const point = canvasPoint(event);
+      const benchmark = activeBenchmarkFrame();
+      // benchmark polygon selection
+      if (benchmark) {
+        const hit = polygonHit(point);
+        // labelable polygon guard
+        if (!hit || hit.collection !== "allowedAreas") return;
+        focusBenchmarkArea(hit.area.id);
+        return;
+      }
       if (!editing) {
         const hit = polygonHit(point);
         if (!hit) return;
@@ -2399,6 +2609,8 @@
     });
 
     document.getElementById("updateDetailsBtn").addEventListener("click", () => {
+      // non-editor mutation guard
+      if (!startsInEditorMode) return;
       const area = editingArea();
       if (!area || !editing) return;
       const nextCollection = currentCollection();
@@ -2421,6 +2633,8 @@
     });
 
     document.getElementById("deleteVertexBtn").addEventListener("click", () => {
+      // non-editor mutation guard
+      if (!startsInEditorMode) return;
       const area = editingArea();
       if (!area || selectedVertex === null || area.polygon.length <= 3) return;
       const points = denormalized(area.polygon, selectedCamera());
@@ -2431,6 +2645,8 @@
     });
 
     document.getElementById("finishBtn").addEventListener("click", () => {
+      // non-editor mutation guard
+      if (!startsInEditorMode) return;
       const camera = selectedCamera();
       const collection = currentCollection();
       const annotation = cameraAnnotation(camera.id);
@@ -2450,6 +2666,8 @@
     });
 
     document.getElementById("clearCameraBtn").addEventListener("click", () => {
+      // non-editor mutation guard
+      if (!startsInEditorMode) return;
       if (!confirm(`Clear all polygons for ${selectedCamera().id}?`)) return;
       // preserve detector eligibility
       state.annotations[selectedCamera().id] = {
@@ -2464,6 +2682,8 @@
     });
 
     document.getElementById("clearAllBtn").addEventListener("click", () => {
+      // non-editor mutation guard
+      if (!startsInEditorMode) return;
       if (!confirm("Clear all annotations in browser autosave? Only do this after saving a JSON backup.")) return;
       state.annotations = {};
       clearEditing();
@@ -2472,6 +2692,8 @@
     });
 
     reviewedInput.addEventListener("change", () => {
+      // non-editor mutation guard
+      if (!startsInEditorMode) return;
       cameraAnnotation(selectedCamera().id).reviewed = reviewedInput.checked;
       save();
       render();
@@ -2497,6 +2719,8 @@
     });
 
     document.getElementById("loadFile").addEventListener("change", async (event) => {
+      // non-editor mutation guard
+      if (!startsInEditorMode) return;
       const file = event.target.files[0];
       if (!file) return;
       const imported = normalizeImport(JSON.parse(await file.text()));
@@ -2524,7 +2748,17 @@
     document.getElementById("loadBenchmarkBtn").addEventListener("click", () => loadBenchmarkFrame());
     document.getElementById("nextUnlabeledBtn").addEventListener("click", loadNextUnlabeledFrame);
     document.getElementById("emptyAllBtn").addEventListener("click", markEveryBenchmarkAreaEmpty);
-    document.getElementById("saveBenchmarkBtn").addEventListener("click", () => queueBenchmarkSave("Benchmark labels saved."));
+    skipBenchmarkPolygonBtn.addEventListener("click", skipBenchmarkPolygon);
+    skipBenchmarkFrameBtn.addEventListener("click", skipBenchmarkFrame);
+    // label the current target
+    benchmarkQuickStates.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-state]");
+      const frame = activeBenchmarkFrame();
+      const area = activeBenchmarkArea(frame);
+      // active label guard
+      if (!button || !frame || !area || !benchmarkImageReady) return;
+      applyBenchmarkState(frame, area.id, button.dataset.state);
+    });
     exitBenchmarkBtn.addEventListener("click", () => loadCamera());
     // calculate capture schedules from the latest two inputs
     [[captureImageLimit, "image"], [captureTimeLimit, "time"], [captureInterval, "interval"]].forEach(([field, key]) => {
@@ -2551,7 +2785,7 @@
     benchmarkRole.addEventListener("change", () => {
       populateBenchmarkFrames();
       // benchmark route selection guard
-      if (startsInBenchmarkMode) loadBenchmarkFrame();
+      if (startsInBenchmarkMode) loadNextUnlabeledFrame();
     });
     benchmarkFrame.addEventListener("change", () => loadBenchmarkFrame());
     benchmarkNotes.addEventListener("input", () => {
@@ -2559,17 +2793,22 @@
       // active frame guard
       if (!frame) return;
       ensureBenchmarkFrameLabels(frame).notes = benchmarkNotes.value;
+      scheduleBenchmarkNotesSave();
     });
+    benchmarkNotes.addEventListener("change", () => scheduleBenchmarkNotesSave(0));
     document.getElementById("zoomOutBtn").addEventListener("click", () => stepZoom(-1));
     document.getElementById("zoomFitBtn").addEventListener("click", fitZoomToWidth);
     document.getElementById("zoomActualBtn").addEventListener("click", () => setZoom(1));
     document.getElementById("zoomInBtn").addEventListener("click", () => stepZoom(1));
+    hidePolygonsBtn.addEventListener("click", () => setPolygonsHidden(!polygonsHidden));
     // toggle persistent panning
     panBtn.addEventListener("click", () => setPanMode(!panMode));
     zoomSelect.addEventListener("change", () => setZoom(zoomSelect.value));
-    showCameraPanel.addEventListener("click", () => setMobilePanel("camera"));
-    showControlsPanel.addEventListener("click", () => setMobilePanel("controls"));
+    inspectorMenuButton.addEventListener("click", () => setInspectorOpen(true));
+    inspectorCloseButton.addEventListener("click", () => setInspectorOpen(false, true));
+    inspectorBackdrop.addEventListener("click", () => setInspectorOpen(false, true));
     mobileViewport.addEventListener("change", (event) => {
+      setInspectorOpen(false);
       // newly compact viewport guard
       if (event.matches) fitZoomToWidth();
     });
@@ -2578,6 +2817,11 @@
     // enable temporary space-drag panning
     window.addEventListener("keydown", (event) => {
       const target = event.target;
+      // drawer escape guard
+      if (event.key === "Escape" && document.body.dataset.inspectorOpen === "true") {
+        setInspectorOpen(false, true);
+        return;
+      }
       // text-entry and non-space guard
       if (
         event.code !== "Space"
@@ -2604,8 +2848,14 @@
       spacePan = false;
       syncPanCursor();
     });
-    cameraSelect.addEventListener("change", () => loadCamera());
+    cameraSelect.addEventListener("change", () => {
+      // editor navigation guard
+      if (!startsInEditorMode) return;
+      loadCamera();
+    });
     filterSelect.addEventListener("change", () => {
+      // editor navigation guard
+      if (!startsInEditorMode) return;
       populateCameras(cameraSelect.value);
       loadCamera();
     });
@@ -2618,18 +2868,24 @@
     async function initialize() {
       initializeCustomSelects();
       updateTypeOptions();
+      setInspectorOpen(false);
       await Promise.all([loadDefaultAnnotations(), loadCameraDisplayOverrides()]);
-      captureSessionId.value = defaultCaptureSessionId();
-      renderCaptureCameras(true);
-      calculateCaptureSchedule();
-      await Promise.all([loadBenchmarkData(), loadCaptureRuns()]);
+      // capture route setup
+      if (startsInCaptureMode) {
+        captureSessionId.value = defaultCaptureSessionId();
+        renderCaptureCameras(true);
+        calculateCaptureSchedule();
+        await loadCaptureRuns();
+        return;
+      }
+      await loadBenchmarkData();
       populateCameras(catalog[0].id);
       // benchmark route guard
       if (startsInBenchmarkMode) {
-        benchmarkRole.value = "control";
+        benchmarkRole.value = startingBenchmarkRole();
         syncSegmentedControl(benchmarkRoleControl, benchmarkRole);
         populateBenchmarkFrames();
-        loadBenchmarkFrame();
+        loadNextUnlabeledFrame();
         return;
       }
       loadCamera();

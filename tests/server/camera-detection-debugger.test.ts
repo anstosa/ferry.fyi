@@ -165,7 +165,7 @@ describe("camera detection development debugger", () => {
   });
 
   // standalone document contract
-  it("serves standalone editor and benchmark pages", async () => {
+  it("serves standalone editor, benchmark, and capture pages", async () => {
     const app = express();
     app.use(
       "/dev/camera-detection",
@@ -184,6 +184,13 @@ describe("camera detection development debugger", () => {
     );
     expect(benchmarkResponse.status).toBe(200);
     expect(benchmarkResponse.text).toContain("<title>debugger</title>");
+
+    const captureResponse = await request(app).get(
+      "/dev/camera-detection/capture"
+    );
+    expect(captureResponse.status).toBe(200);
+    expect(captureResponse.headers["cache-control"]).toBe("no-store");
+    expect(captureResponse.text).toContain("<title>debugger</title>");
   });
 
   // repository read contract

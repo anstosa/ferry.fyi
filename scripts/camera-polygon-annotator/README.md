@@ -13,11 +13,12 @@ Open the main menu as the owner in development and select **Detector**:
 http://localhost:4040/dev/camera-detection
 ```
 
-The detector provides two development routes:
+The detector provides three development routes:
 
 ```text
 http://localhost:4040/dev/camera-detection
 http://localhost:4040/dev/camera-detection/benchmarks
+http://localhost:4040/dev/camera-detection/capture
 ```
 
 The links and routes are mounted only when `NODE_ENV=development`. JSON mutations and detector requests still pass through the owner-admin authorization boundary. `yarn container:up` starts the local detector container. The app uses `FERRY_DETECTOR_URL` when set, otherwise the stack's `CAR_DETECTION_ENDPOINT`, then falls back to `http://127.0.0.1:8001/detect` for host development.
@@ -57,7 +58,7 @@ shared/data/camera-detection-areas.json
 - Benchmark mode loads immutable test or control frames from `benchmarks/camera-detection`.
 - Each benchmark polygon can be labeled `empty`, `minority_full`, `majority_full`, or `full` and saved to `benchmarks/camera-detection/labels.json`.
 - **All empty** speeds up negative-control labeling without creating vehicle counts.
-- **Capture images for labeling** starts bounded background recording sessions from the detector. Select enabled cameras and set any two of image limit, time limit, or interval; the third value is calculated automatically.
+- The top-level **Capture** tab starts bounded background recording sessions from the detector. Select enabled cameras and set any two of image limit, time limit, or interval; the third value is calculated automatically.
 - Capture run cards show stored, duplicate, failed, and imported file counts. Stop active runs, copy unique completed frames into the benchmark labeling set, then delete the raw session when it is no longer needed.
 
 ## Workflow
@@ -76,10 +77,10 @@ shared/data/camera-detection-areas.json
 
 ## Benchmark labeling workflow
 
-1. Open **Capture images for labeling** and select the enabled cameras to sample.
+1. Open the top-level **Capture** tab and select the enabled cameras to sample.
 2. Set any two schedule values. Image limit is per camera, time limit bounds the run, and interval controls each capture round. Start the run and leave the development server running.
 3. When the run completes, select **Add to labeling**. Unique images are copied into `benchmarks/camera-detection/frames` and added to the test-frame manifest. Raw capture files remain isolated until you delete them.
-4. Choose **Controls**, **Tests**, or **All** in the benchmark panel.
+4. Return to the top-level **Benchmarks** tab, then choose **Controls**, **Tests**, or **All** in the benchmark panel.
 5. Select a stored frame; it loads immediately. Polygon editing is disabled in benchmark mode.
 6. Select one ground-truth occupancy state for every green/colored queue or holding polygon. Each selection saves immediately and focuses the next unlabeled polygon or loads the next incomplete frame. Select the active state again to clear and save it without advancing.
 7. Add frame notes for weather, glare, staleness, loading transitions, or ambiguity.
