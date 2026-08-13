@@ -11,16 +11,24 @@ const cameraConfig = fs.readFileSync(
 const cameraOverrides = fs.readFileSync(
   path.join(repositoryRoot, "shared/data/cameras.json")
 );
+const cameraDetectionAreas = JSON.parse(cameraConfig.toString("utf8")) as {
+  cameras: Record<string, { allowedAreas: Array<{ id: string }> }>;
+};
 const benchmarkManifest = JSON.parse(
   fs.readFileSync(path.join(benchmarkRoot, "manifest.json"), "utf8")
 ) as {
-  frames: Array<{ file: string }>;
+  frames: Array<{
+    cameraId: string;
+    file: string;
+    frameId: string;
+    role: "control" | "test";
+  }>;
 };
 
 type SavedLabels = {
   frames?: Record<
     string,
-    { areaStates?: Record<string, string>; cameraId?: string }
+    { areaStates?: Record<string, string>; cameraId?: string; notes?: string }
   >;
 };
 
@@ -32,7 +40,30 @@ type CaptureRunRequest = {
 };
 
 type SaveControl = {
-  failNext: boolean;
+  failuresRemaining: number;
+};
+
+// build completed labels for one frame role
+const completedLabelsForRole = (role: "control" | "test"): SavedLabels => {
+  const frames: NonNullable<SavedLabels["frames"]> = {};
+  // selected role pass
+  for (const frame of benchmarkManifest.frames.filter(
+    (candidate) => candidate.role === role
+  )) {
+    const areas =
+      cameraDetectionAreas.cameras[frame.cameraId]?.allowedAreas ?? [];
+    const areaStates: Record<string, string> = {};
+    // completed area pass
+    for (const area of areas) {
+      areaStates[area.id] = "empty";
+    }
+    frames[frame.frameId] = {
+      areaStates,
+      cameraId: frame.cameraId,
+      notes: "",
+    };
+  }
+  return { frames };
 };
 
 // install deterministic debugger routes
@@ -40,7 +71,8 @@ const installDebuggerFixtures = async (
   page: Page,
   savedPayloads: SavedLabels[],
   captureRequests: CaptureRunRequest[],
-  saveControl: SaveControl = { failNext: false }
+  saveControl: SaveControl = { failuresRemaining: 0 },
+  initialLabels: SavedLabels = { frames: {} }
 ): Promise<void> => {
   await page.route(
     "**/api/debug/camera-detection/camera-detection-areas.json*",
@@ -76,11 +108,7 @@ const installDebuggerFixtures = async (
     "**/api/debug/camera-detection/camera-benchmark-labels.json*",
     async (route) => {
       await route.fulfill({
-        body: JSON.stringify({
-          frames: {},
-          schemaVersion: 1,
-          updatedAt: null,
-        }),
+        body: JSON.stringify(initialLabels),
         contentType: "application/json",
         status: 200,
       });
@@ -131,8 +159,8 @@ const installDebuggerFixtures = async (
     async (route) => {
       savedPayloads.push(route.request().postDataJSON() as SavedLabels);
       // requested save failure
-      if (saveControl.failNext) {
-        saveControl.failNext = false;
+      if (saveControl.failuresRemaining > 0) {
+        saveControl.failuresRemaining -= 1;
         await route.fulfill({
           body: JSON.stringify({ error: "Fixture save failed" }),
           contentType: "application/json",
@@ -186,6 +214,15 @@ test("autosaves, advances labels, and supports mobile pinch zoom", async ({
     await expect(page.locator("#benchmarkFrameMenu")).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(benchmarkDropdown).toBeFocused();
+    await page.getByRole("button", { name: "Open inspector" }).click();
+    await expect(page.locator("#controlsPanel")).toHaveAttribute(
+      "aria-modal",
+      "true"
+    );
+    await page.locator("#inspectorCloseButton").click();
+    await expect(
+      page.getByRole("button", { name: "Open inspector" })
+    ).toBeFocused();
     await page.goto("/dev/camera-detection/capture", {
       waitUntil: "domcontentloaded",
     });
@@ -272,26 +309,35 @@ test("autosaves, advances labels, and supports mobile pinch zoom", async ({
     ).toBeDefined();
 
     const canvas = page.locator("#canvas");
-    await canvas.scrollIntoViewIfNeeded();
+    await canvas.evaluate((element) => {
+      element.scrollIntoView({ block: "start", inline: "center" });
+      window.scrollBy(0, -12);
+    });
     const touchPoint = await page.evaluate(() => {
-      const canvasElement = document.querySelector<HTMLCanvasElement>("#canvas");
+      const canvasElement =
+        document.querySelector<HTMLCanvasElement>("#canvas");
       const labeler = document.querySelector<HTMLElement>("#benchmarkLabeler");
       // visible canvas guard
-      if (!canvasElement || !labeler) return null;
+      if (!canvasElement || !labeler) {
+        return null;
+      }
       const canvasBox = canvasElement.getBoundingClientRect();
       const labelerBox = labeler.getBoundingClientRect();
       const visibleTop = Math.max(0, canvasBox.top) + 20;
-      const visibleBottom = Math.min(
-        window.innerHeight,
-        canvasBox.bottom,
-        labelerBox.top
-      ) - 20;
+      const visibleBottom =
+        Math.min(window.innerHeight, canvasBox.bottom, labelerBox.top) - 20;
       return {
         x: canvasBox.left + canvasBox.width / 2,
         y: (visibleTop + visibleBottom) / 2,
       };
     });
     expect(touchPoint).not.toBeNull();
+    expect(
+      await page.evaluate(
+        ({ x, y }) => document.elementFromPoint(x, y)?.id,
+        touchPoint!
+      )
+    ).toBe("canvas");
     const beforeZoom = await page.locator("#zoomStatus").textContent();
     const centerX = touchPoint!.x;
     const centerY = touchPoint!.y;
@@ -324,7 +370,7 @@ test("autosaves, advances labels, and supports mobile pinch zoom", async ({
 test("keeps a failed benchmark label focused for retry", async ({ page }) => {
   const savedPayloads: SavedLabels[] = [];
   const captureRequests: CaptureRunRequest[] = [];
-  const saveControl = { failNext: true };
+  const saveControl = { failuresRemaining: 1 };
   await installDebuggerFixtures(
     page,
     savedPayloads,
@@ -354,4 +400,71 @@ test("keeps a failed benchmark label focused for retry", async ({ page }) => {
   );
   await expect(emptyButton).toHaveAttribute("aria-pressed", "true");
   expect(savedPayloads).toHaveLength(1);
+
+  await page.getByRole("button", { name: "Retry save" }).click();
+
+  await expect(page.locator("#benchmarkStatus")).toContainText(
+    "Benchmark labels saved"
+  );
+  expect(savedPayloads).toHaveLength(2);
+  expect(
+    Object.values(
+      savedPayloads.at(-1)?.frames?.["test-clover-lane-001"]?.areaStates ?? {}
+    )
+  ).toContain("empty");
+  await expect(page.getByRole("button", { name: "Saved" })).toBeDisabled();
+
+  saveControl.failuresRemaining = 1;
+  await page.getByText("Frame notes", { exact: true }).click();
+  await page.locator("#benchmarkNotes").fill("glare near the holding lane");
+  await expect(page.locator("#benchmarkStatus")).toContainText(
+    "Could not save benchmark labels"
+  );
+  await page.getByRole("button", { name: "Retry save" }).click();
+  await expect(page.locator("#benchmarkStatus")).toContainText(
+    "Benchmark labels saved"
+  );
+  expect(savedPayloads.at(-1)?.frames?.["test-clover-lane-001"]?.notes).toBe(
+    "glare near the holding lane"
+  );
+
+  await page.locator("#benchmarkNotes").fill("rain near the holding lane");
+  await page.getByRole("button", { name: "Save now" }).click();
+  await expect(page.getByRole("button", { name: "Saved" })).toBeDisabled();
+  await page.waitForTimeout(500);
+  expect(savedPayloads).toHaveLength(5);
+});
+
+// completed frame-set navigation contract
+test("keeps completed benchmark review inside the selected frame set", async ({
+  page,
+}) => {
+  const savedPayloads: SavedLabels[] = [];
+  const captureRequests: CaptureRunRequest[] = [];
+  await installDebuggerFixtures(
+    page,
+    savedPayloads,
+    captureRequests,
+    { failuresRemaining: 0 },
+    completedLabelsForRole("control")
+  );
+
+  await page.goto("/dev/camera-detection/benchmarks", {
+    waitUntil: "domcontentloaded",
+  });
+  await expect(page.locator("#benchmarkStatus")).toContainText(/loaded/i);
+  await page.locator("#benchmarkFrame").selectOption("test-clover-lane-001");
+  const controlFrameIds = benchmarkManifest.frames
+    .filter((frame) => frame.role === "control")
+    .map((frame) => frame.frameId);
+
+  await page.getByRole("button", { name: "Controls" }).click();
+
+  await expect(page.getByRole("button", { name: "Controls" })).toHaveAttribute(
+    "aria-pressed",
+    "true"
+  );
+  expect(controlFrameIds).toContain(
+    await page.locator("#benchmarkFrame").inputValue()
+  );
 });

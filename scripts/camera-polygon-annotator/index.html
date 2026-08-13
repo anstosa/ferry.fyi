@@ -139,7 +139,7 @@
     .benchmark-target-label { display: block; color: #b9aefe; font-size: 9px; font-weight: 850; letter-spacing: .1em; text-transform: uppercase; }
     .benchmark-target-name { display: block; margin-top: 2px; overflow: hidden; color: white; font-size: 14px; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
     .benchmark-target-meta { display: block; margin-top: 3px; color: #aeb9ca; font-size: 9px; line-height: 1.35; }
-    .benchmark-label-actions { display: grid; gap: 6px; }
+    .benchmark-label-actions { display: flex; flex-direction: column; gap: 6px; }
     .benchmark-quick-states { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
     .benchmark-quick-states button { min-height: 46px; border-color: #3b4b66; background: #121b2a; color: #e7edf7; font-size: 11px; }
     .benchmark-quick-states button[data-state="empty"] { border-color: #22c55e; }
@@ -147,11 +147,12 @@
     .benchmark-quick-states button[data-state="majority_full"] { border-color: #f97316; }
     .benchmark-quick-states button[data-state="full"] { border-color: #ef4444; }
     .benchmark-quick-states button[aria-pressed="true"] { background: #23366d; color: white; box-shadow: inset 0 0 0 1px currentColor; }
-    .benchmark-skip-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-    .benchmark-skip-actions button { min-height: 32px; padding: 4px 8px; font-size: 10px; }
+    .benchmark-skip-actions { display: flex; gap: 6px; }
+    .benchmark-skip-actions button { min-height: 32px; flex: 1; padding: 4px 8px; font-size: 10px; }
     .benchmark-top { display: grid; grid-template-columns: 220px minmax(240px, 1fr) auto; gap: 8px; align-items: end; }
     .benchmark-actions { display: flex; gap: 5px; }
     .benchmark-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 7px; }
+    #saveBenchmarkBtn[data-dirty="true"] { border-color: #e05260; color: #ffb7be; }
     .benchmark-panel details { border-color: #423887; background: rgb(13 13 35 / 45%); }
     .benchmark-notes { min-height: 64px; }
     body:not([data-tool-mode="capture"]) .capture-panel { display: none; }
@@ -439,10 +440,9 @@
             <button id="emptyAllBtn" class="secondary" title="Mark every polygon empty"><svg class="icon" aria-hidden="true"><use href="/dev/camera-detection/icons.svg#icon-circle"/></svg>All empty</button>
           </div>
         </div>
-        <button id="loadBenchmarkBtn" class="sr-only" tabindex="-1" aria-hidden="true">Load benchmark frame</button>
-        <button id="exitBenchmarkBtn" class="sr-only" tabindex="-1" aria-hidden="true" disabled>Return to live camera</button>
         <div class="benchmark-footer">
           <div class="hint" id="benchmarkStatus">Loading benchmark manifest and labels...</div>
+          <button id="saveBenchmarkBtn" class="secondary" type="button">Save labels</button>
           <details>
             <summary>Frame notes</summary>
             <div class="details-body">
@@ -580,6 +580,7 @@
     const benchmarkFrame = document.getElementById("benchmarkFrame");
     const benchmarkNotes = document.getElementById("benchmarkNotes");
     const benchmarkStatus = document.getElementById("benchmarkStatus");
+    const saveBenchmarkBtn = document.getElementById("saveBenchmarkBtn");
     const benchmarkTargetName = document.getElementById("benchmarkTargetName");
     const benchmarkTargetMeta = document.getElementById("benchmarkTargetMeta");
     const benchmarkLabeler = document.getElementById("benchmarkLabeler");
@@ -595,7 +596,6 @@
     const captureRunStatus = document.getElementById("captureRunStatus");
     const captureRunList = document.getElementById("captureRunList");
     const startCaptureBtn = document.getElementById("startCaptureBtn");
-    const exitBenchmarkBtn = document.getElementById("exitBenchmarkBtn");
     const inspectorMenuButton = document.getElementById("inspectorMenuButton");
     const inspectorCloseButton = document.getElementById("inspectorCloseButton");
     const inspectorBackdrop = document.getElementById("inspectorBackdrop");
@@ -663,6 +663,10 @@
     let benchmarkLabels = { frames: {}, schemaVersion: 1, updatedAt: null };
     let cameraDisplayOverrides = {};
     let benchmarkSaveQueue = Promise.resolve(true);
+    let benchmarkDirtyRevision = 0;
+    let benchmarkSavedRevision = 0;
+    let benchmarkPendingRevision = 0;
+    let benchmarkFailedRevision = 0;
     let benchmarkNotesSaveTimer = null;
     let captureRuns = [];
     let capturePollTimer = null;
@@ -1078,6 +1082,29 @@
       });
     }
 
+    // reflect benchmark persistence state
+    function renderBenchmarkPersistence() {
+      const dirty = benchmarkSavedRevision < benchmarkDirtyRevision;
+      const pending = dirty && benchmarkPendingRevision >= benchmarkDirtyRevision;
+      const failed = dirty && benchmarkFailedRevision >= benchmarkDirtyRevision;
+      let buttonLabel = "Saved";
+      // pending label
+      if (pending) buttonLabel = "Saving...";
+      // failed label
+      else if (failed) buttonLabel = "Retry save";
+      // dirty label
+      else if (dirty) buttonLabel = "Save now";
+      saveBenchmarkBtn.textContent = buttonLabel;
+      saveBenchmarkBtn.disabled = pending || !dirty;
+      saveBenchmarkBtn.dataset.dirty = String(dirty);
+    }
+
+    // mark benchmark data unsaved
+    function markBenchmarkDirty() {
+      benchmarkDirtyRevision += 1;
+      renderBenchmarkPersistence();
+    }
+
     // select one benchmark area
     function focusBenchmarkArea(areaId) {
       activeBenchmarkAreaId = areaId;
@@ -1132,6 +1159,11 @@
         benchmarkManifest = await manifestResponse.json();
         benchmarkLabels = await labelsResponse.json();
         benchmarkLabels.frames ||= {};
+        benchmarkDirtyRevision = 0;
+        benchmarkSavedRevision = 0;
+        benchmarkPendingRevision = 0;
+        benchmarkFailedRevision = 0;
+        renderBenchmarkPersistence();
         populateBenchmarkFrames();
         renderBenchmarkStatus("Benchmark data loaded.");
       } catch (error) {
@@ -1438,7 +1470,6 @@
       currentPoints = [];
       clearEditing();
       defaultsFor(camera);
-      exitBenchmarkBtn.disabled = false;
       detectionStatus.textContent = "Stored benchmark frame loaded. Run the detector to compare its boxes with human labels.";
       img.onload = () => {
         benchmarkImageReady = true;
@@ -1454,7 +1485,7 @@
     }
 
     // persist benchmark labels
-    async function saveBenchmarkLabels(successMessage = "Benchmark labels saved.") {
+    async function saveBenchmarkLabels(successMessage, requestedRevision) {
       try {
         const response = await toolFetch("/save-benchmark-labels", {
           method: "POST",
@@ -1464,9 +1495,14 @@
         const payload = await response.json();
         // save response guard
         if (!response.ok) throw new Error(payload.error || "Benchmark label save failed");
+        benchmarkSavedRevision = Math.max(benchmarkSavedRevision, requestedRevision);
+        benchmarkFailedRevision = 0;
+        renderBenchmarkPersistence();
         renderBenchmarkStatus(successMessage);
         return true;
       } catch (error) {
+        benchmarkFailedRevision = Math.max(benchmarkFailedRevision, requestedRevision);
+        renderBenchmarkPersistence();
         benchmarkStatus.textContent = `Could not save benchmark labels. ${error.message || ""}`;
         return false;
       }
@@ -1474,8 +1510,19 @@
 
     // serialize benchmark saves
     function queueBenchmarkSave(successMessage) {
-      const queuedSave = benchmarkSaveQueue.then(() => saveBenchmarkLabels(successMessage));
-      benchmarkSaveQueue = queuedSave.catch(() => false);
+      const requestedRevision = benchmarkDirtyRevision;
+      // persisted revision guard
+      if (requestedRevision <= benchmarkSavedRevision) return Promise.resolve(true);
+      // pending revision guard
+      if (requestedRevision <= benchmarkPendingRevision) return benchmarkSaveQueue;
+      benchmarkPendingRevision = requestedRevision;
+      renderBenchmarkPersistence();
+      const queuedSave = benchmarkSaveQueue.then(() => saveBenchmarkLabels(successMessage, requestedRevision));
+      benchmarkSaveQueue = queuedSave.finally(() => {
+        // latest request completion
+        if (benchmarkPendingRevision === requestedRevision) benchmarkPendingRevision = 0;
+        renderBenchmarkPersistence();
+      }).catch(() => false);
       return queuedSave;
     }
 
@@ -1493,7 +1540,7 @@
       const incompleteFrames = filteredBenchmarkFrames().filter((frame) => frame.frameId !== currentFrameId && unlabeledBenchmarkAreas(frame).length > 0);
       // alternate frame guard
       if (incompleteFrames.length > 0) return incompleteFrames[Math.floor(Math.random() * incompleteFrames.length)];
-      const currentFrame = benchmarkManifest.frames.find((frame) => frame.frameId === currentFrameId);
+      const currentFrame = filteredBenchmarkFrames().find((frame) => frame.frameId === currentFrameId);
       // current frame fallback
       if (allowCurrent && currentFrame && unlabeledBenchmarkAreas(currentFrame).length > 0) return currentFrame;
       return null;
@@ -1572,6 +1619,7 @@
       // selected-state toggle
       if (clearingState) delete frameLabels.areaStates[areaId];
       else frameLabels.areaStates[areaId] = state;
+      markBenchmarkDirty();
       render();
       const saved = await queueBenchmarkSave(clearingState ? "Label cleared and saved." : "Label saved.");
       // failed-save and clear guards
@@ -1593,6 +1641,7 @@
       areas.forEach((area) => {
         frameLabels.areaStates[area.id] = "empty";
       });
+      markBenchmarkDirty();
       render();
       const saved = await queueBenchmarkSave(`Marked ${frame.cameraName} empty and saved.`);
       // successful bulk-save guard
@@ -1604,8 +1653,20 @@
       const incomplete = nextUnlabeledBenchmarkFrame(activeBenchmarkFrameId);
       // complete-set guard
       if (!incomplete) {
-        activeBenchmarkAreaId = null;
-        renderBenchmarkLabeler();
+        const frames = filteredBenchmarkFrames();
+        const selectedFrame = frames.find((frame) => frame.frameId === benchmarkFrame.value)
+          || frames[0]
+          || null;
+        // completed frame review
+        if (selectedFrame) {
+          populateBenchmarkFrames(selectedFrame.frameId);
+          loadBenchmarkFrame(selectedFrame.frameId);
+        } else {
+          activeBenchmarkFrameId = null;
+          activeBenchmarkAreaId = null;
+          benchmarkImageReady = false;
+          renderBenchmarkLabeler();
+        }
         renderBenchmarkStatus("Every polygon in this frame set is labeled.");
         return;
       }
@@ -2315,7 +2376,6 @@
       activeBenchmarkAreaId = null;
       benchmarkImageReady = false;
       benchmarkNotes.value = "";
-      exitBenchmarkBtn.disabled = true;
       reviewedInput.disabled = false;
       document.getElementById("refreshImageBtn").disabled = false;
       // clear stale detector response
@@ -2745,7 +2805,6 @@
     document.getElementById("refreshImageBtn").addEventListener("click", () => loadCamera(true));
     detectImageBtn.addEventListener("click", detectCurrentImage);
     clearDetectionsBtn.addEventListener("click", clearDetections);
-    document.getElementById("loadBenchmarkBtn").addEventListener("click", () => loadBenchmarkFrame());
     document.getElementById("nextUnlabeledBtn").addEventListener("click", loadNextUnlabeledFrame);
     document.getElementById("emptyAllBtn").addEventListener("click", markEveryBenchmarkAreaEmpty);
     skipBenchmarkPolygonBtn.addEventListener("click", skipBenchmarkPolygon);
@@ -2759,7 +2818,11 @@
       if (!button || !frame || !area || !benchmarkImageReady) return;
       applyBenchmarkState(frame, area.id, button.dataset.state);
     });
-    exitBenchmarkBtn.addEventListener("click", () => loadCamera());
+    saveBenchmarkBtn.addEventListener("click", () => {
+      clearTimeout(benchmarkNotesSaveTimer);
+      benchmarkNotesSaveTimer = null;
+      queueBenchmarkSave("Benchmark labels saved.");
+    });
     // calculate capture schedules from the latest two inputs
     [[captureImageLimit, "image"], [captureTimeLimit, "time"], [captureInterval, "interval"]].forEach(([field, key]) => {
       field.addEventListener("input", () => calculateCaptureSchedule(key));
@@ -2793,9 +2856,9 @@
       // active frame guard
       if (!frame) return;
       ensureBenchmarkFrameLabels(frame).notes = benchmarkNotes.value;
+      markBenchmarkDirty();
       scheduleBenchmarkNotesSave();
     });
-    benchmarkNotes.addEventListener("change", () => scheduleBenchmarkNotesSave(0));
     document.getElementById("zoomOutBtn").addEventListener("click", () => stepZoom(-1));
     document.getElementById("zoomFitBtn").addEventListener("click", fitZoomToWidth);
     document.getElementById("zoomActualBtn").addEventListener("click", () => setZoom(1));
@@ -2847,6 +2910,13 @@
     window.addEventListener("blur", () => {
       spacePan = false;
       syncPanCursor();
+    });
+    // protect unsaved benchmark work
+    window.addEventListener("beforeunload", (event) => {
+      // clean benchmark guard
+      if (benchmarkSavedRevision >= benchmarkDirtyRevision) return;
+      event.preventDefault();
+      event.returnValue = "";
     });
     cameraSelect.addEventListener("change", () => {
       // editor navigation guard

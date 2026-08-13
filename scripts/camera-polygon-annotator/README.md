@@ -86,7 +86,7 @@ shared/data/camera-detection-areas.json
 7. Add frame notes for weather, glare, staleness, loading transitions, or ambiguity.
 8. Use **All empty** only when every configured polygon is visibly empty.
 9. Run **Detect vehicles** to overlay detector signals for comparison; labels remain independent of predictions.
-10. Use **Save labels** to retry or explicitly confirm persistence when needed.
+10. Use **Save now** to flush pending edits or **Retry save** after a failed write. The control reads **Saved** when all label and note changes are durable.
 11. Use **Next unlabeled** to jump to the next incomplete frame in the selected frame set.
 
 ## Rules
