@@ -191,7 +191,8 @@ export const LeaderboardForegroundCheckins: FunctionComponent = () => {
         result.notification?.action === "replace" &&
         preferencesRef.current?.notificationsEnabled
       ) {
-        await notifyLeaderboardCheckIn(terminal.name, false);
+        // show the credited terminal
+        await notifyLeaderboardCheckIn(terminal.name, true, "terminal");
       }
     },
     [getAccessTokenSilently, isCurrentCheckinGeneration]

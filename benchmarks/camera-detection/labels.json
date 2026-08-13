@@ -88,8 +88,15 @@
       },
       "cameraId": "9728",
       "notes": ""
+    },
+    "weekend-2026-08-07-9174-2026-08-08t02-38-30-00-00": {
+      "areaStates": {
+        "clinton_clinton_e_sr_525_queue_lane": "empty"
+      },
+      "cameraId": "9174",
+      "notes": ""
     }
   },
   "schemaVersion": 1,
-  "updatedAt": "2026-08-07T04:27:57.509Z"
+  "updatedAt": "2026-08-13T03:24:23.971Z"
 }

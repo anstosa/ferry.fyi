@@ -153,8 +153,9 @@ export const LeaderboardManualCheckIn = ({
       setCheckedIn(true);
       getLeaderboardPreferences(accessToken)
         .then((preferences) => {
+          // show the credited terminal or vessel
           if (preferences.notificationsEnabled) {
-            return notifyLeaderboardCheckIn(name, false);
+            return notifyLeaderboardCheckIn(name, true, kind);
           }
           return undefined;
         })

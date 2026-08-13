@@ -2,6 +2,9 @@ export const LEADERBOARD_CHECKIN_NOTIFICATION_ID = 902;
 export const LEADERBOARD_CHECKIN_ANDROID_CHANNEL =
   "leaderboard-checkins-silent";
 
+/** Supported check-in notification targets. */
+export type LeaderboardCheckInKind = "terminal" | "vessel";
+
 export const leaderboardCheckinAndroidChannel = {
   description: "Silent summaries of Ferry FYI leaderboard check-ins",
   id: LEADERBOARD_CHECKIN_ANDROID_CHANNEL,
@@ -25,18 +28,22 @@ export const leaderboardCheckinNotification = (
   title: "Ferry FYI check-in",
 });
 
-/** The default alert is deliberately non-identifying. */
+/** Format a private check-in summary with optional place details. */
 export const formatLeaderboardCheckinBody = (
-  terminalName: string,
+  entityName: string,
   verbose: boolean,
-  terminalNames: string[] = []
+  entityNames: string[] = [],
+  kind: LeaderboardCheckInKind = "terminal"
 ): string => {
+  // preserve the legacy private summary
   if (!verbose) {
     return "A Ferry FYI check-in was recorded.";
   }
-  return terminalNames.length === 1
-    ? `Checked in at ${terminalName}.`
-    : `${terminalNames.length} recent check-ins: ${terminalNames.join(", ")}.`;
+  // choose the target-specific preposition
+  const preposition = kind === "vessel" ? "on" : "at";
+  return entityNames.length === 1
+    ? `Checked in ${preposition} ${entityName}.`
+    : `${entityNames.length} recent check-ins: ${entityNames.join(", ")}.`;
 };
 
 /**
@@ -51,7 +58,9 @@ export const mergeLeaderboardCheckinNames = (
   const deliveredSummary = deliveredBody?.match(
     /recent check-ins: (.+)\.$/
   )?.[1];
-  const deliveredSingle = deliveredBody?.match(/Checked in at (.+)\.$/)?.[1];
+  const deliveredSingle = deliveredBody?.match(
+    /Checked in (?:at|on) (.+)\.$/
+  )?.[1];
   let deliveredNames: string[] = [];
   if (deliveredSummary) {
     deliveredNames = deliveredSummary.split(", ");
