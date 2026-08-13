@@ -2,7 +2,7 @@ export const LEADERBOARD_CHECKIN_NOTIFICATION_ID = 902;
 export const LEADERBOARD_CHECKIN_ANDROID_CHANNEL =
   "leaderboard-checkins-silent";
 
-/** Supported check-in notification targets. */
+/** supported check-in notification targets */
 export type LeaderboardCheckInKind = "terminal" | "vessel";
 
 export const leaderboardCheckinAndroidChannel = {
@@ -28,7 +28,17 @@ export const leaderboardCheckinNotification = (
   title: "Ferry FYI check-in",
 });
 
-/** Format a private check-in summary with optional place details. */
+/** format the currently credited terminal or vessel */
+export const formatLeaderboardCheckinTargetBody = (
+  entityName: string,
+  kind: LeaderboardCheckInKind
+): string => {
+  // choose the target-specific preposition
+  const preposition = kind === "vessel" ? "on" : "at";
+  return `Checked in ${preposition} ${entityName}.`;
+};
+
+/** format a private check-in summary with optional place details */
 export const formatLeaderboardCheckinBody = (
   entityName: string,
   verbose: boolean,
@@ -39,16 +49,14 @@ export const formatLeaderboardCheckinBody = (
   if (!verbose) {
     return "A Ferry FYI check-in was recorded.";
   }
-  // choose the target-specific preposition
-  const preposition = kind === "vessel" ? "on" : "at";
   return entityNames.length === 1
-    ? `Checked in ${preposition} ${entityName}.`
+    ? formatLeaderboardCheckinTargetBody(entityName, kind)
     : `${entityNames.length} recent check-ins: ${entityNames.join(", ")}.`;
 };
 
 /**
- * Extends a delivered check-in summary when a native OS exposes its body after
- * an app restart. If no body is available, callers can safely start fresh.
+ * extends a delivered check-in summary when a native OS exposes its body after
+ * an app restart. if no body is available, callers can safely start fresh.
  */
 export const mergeLeaderboardCheckinNames = (
   terminalName: string,

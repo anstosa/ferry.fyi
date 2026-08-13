@@ -4,6 +4,7 @@ import React, { ReactElement, useCallback, useEffect, useState } from "react";
 import { loginWithAppFlow } from "~/lib/auth";
 import { requestForegroundLocation } from "~/lib/geo";
 import { vesselSailingId } from "~/lib/leaderboardForeground";
+import type { LeaderboardCheckInKind } from "~/lib/leaderboardNotificationConfig";
 import { notifyLeaderboardCheckIn } from "~/lib/leaderboardNotifications";
 import {
   getLeaderboardPreferences,
@@ -16,11 +17,9 @@ import { getVessels } from "~/lib/vessels";
 import CheckIcon from "~/static/images/icons/solid/check-circle.svg";
 import LocationIcon from "~/static/images/icons/solid/location.svg";
 
-type CheckInKind = "terminal" | "vessel";
-
 interface Props {
   entityId: string;
-  kind: CheckInKind;
+  kind: LeaderboardCheckInKind;
   name: string;
 }
 
@@ -49,8 +48,8 @@ const reasonText = (reason?: string): string => {
 };
 
 /**
- * An explicit check-in action that requests one fresh foreground fix and
- * delegates every eligibility decision to the server. The location is never
+ * an explicit check-in action that requests one fresh foreground fix and
+ * delegates every eligibility decision to the server. the location is never
  * placed in state or local storage.
  */
 export const LeaderboardManualCheckIn = ({
@@ -89,7 +88,7 @@ export const LeaderboardManualCheckIn = ({
     const updateStatus = (event: Event): void => {
       const { detail } = event as CustomEvent<{
         entityId: string;
-        kind: CheckInKind;
+        kind: LeaderboardCheckInKind;
       }>;
       if (detail?.entityId === entityId && detail.kind === kind) {
         setCheckedIn(true);
@@ -155,7 +154,7 @@ export const LeaderboardManualCheckIn = ({
         .then((preferences) => {
           // show the credited terminal or vessel
           if (preferences.notificationsEnabled) {
-            return notifyLeaderboardCheckIn(name, true, kind);
+            return notifyLeaderboardCheckIn(name, { kind });
           }
           return undefined;
         })

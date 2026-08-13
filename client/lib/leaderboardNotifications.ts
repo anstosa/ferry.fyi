@@ -4,6 +4,7 @@ import { LocalNotifications } from "@capacitor/local-notifications";
 import { isNativeMobileApp } from "~/lib/device";
 import {
   formatLeaderboardCheckinBody,
+  formatLeaderboardCheckinTargetBody,
   LEADERBOARD_CHECKIN_NOTIFICATION_ID,
   leaderboardCheckinAndroidChannel,
   type LeaderboardCheckInKind,
@@ -16,20 +17,26 @@ import { getNotificationPermission } from "~/lib/push";
 let activeBrowserNotification: Notification | null = null;
 let creditedEntityNames: string[] = [];
 
+/** check-in notification presentation options */
+interface LeaderboardCheckInNotificationOptions {
+  kind: LeaderboardCheckInKind;
+  summarizeRecent?: boolean;
+}
+
 /**
- * Native platforms only merge a prior alert when the operating system provides
+ * native platforms only merge a prior alert when the operating system provides
  * its delivered body after restart; otherwise the stable ID replaces it safely.
  */
 const mergedCheckinBody = (
   entityName: string,
-  verbose: boolean,
-  deliveredBody?: string,
-  kind: LeaderboardCheckInKind = "terminal"
+  summarizeRecent: boolean,
+  kind: LeaderboardCheckInKind,
+  deliveredBody?: string
 ): string => {
-  // clear names for private summaries
-  if (!verbose) {
+  // replace standard alerts with the current target
+  if (!summarizeRecent) {
     creditedEntityNames = [];
-    return formatLeaderboardCheckinBody(entityName, false);
+    return formatLeaderboardCheckinTargetBody(entityName, kind);
   }
   creditedEntityNames = mergeLeaderboardCheckinNames(
     entityName,
@@ -44,11 +51,10 @@ const mergedCheckinBody = (
   );
 };
 
-/** Replace the prior active check-in alert with a concise, silent summary. */
+/** replace the prior active check-in alert with a concise, silent summary */
 export const notifyLeaderboardCheckIn = async (
   entityName: string,
-  verbose = false,
-  kind: LeaderboardCheckInKind = "terminal"
+  { kind, summarizeRecent = false }: LeaderboardCheckInNotificationOptions
 ): Promise<void> => {
   // native notification path
   if (isNativeMobileApp()) {
@@ -70,9 +76,9 @@ export const notifyLeaderboardCheckIn = async (
     );
     const body = mergedCheckinBody(
       entityName,
-      verbose,
-      typeof prior?.body === "string" ? prior.body : undefined,
-      kind
+      summarizeRecent,
+      kind,
+      typeof prior?.body === "string" ? prior.body : undefined
     );
     await Promise.all([
       LocalNotifications.cancel({
@@ -92,7 +98,7 @@ export const notifyLeaderboardCheckIn = async (
     return;
   }
 
-  const body = mergedCheckinBody(entityName, verbose, undefined, kind);
+  const body = mergedCheckinBody(entityName, summarizeRecent, kind);
   if (
     getNotificationPermission() !== "granted" ||
     !("Notification" in window)
