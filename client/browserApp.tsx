@@ -6,6 +6,7 @@ import { useLocation } from "react-router-dom";
 import type { PublicSsrHostProfile } from "shared/lib/ssrRouteMatch";
 
 import { App } from "~/App";
+import { CameraDetectionDebuggerAuthorization } from "~/components/CameraDetectionDebuggerAuthorization";
 import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { getConfiguredAuth0RedirectUri } from "~/lib/auth";
 import { FeatureFlagProvider } from "~/lib/featureFlags";
@@ -90,6 +91,7 @@ export const BrowserPhase = ({
             useRefreshTokens
             useRefreshTokensFallback
           >
+            <CameraDetectionDebuggerAuthorization />
             <FeatureFlagProvider>
               <UserProvider>
                 <App suspendInitialRoute={suspendInitialRoute} />

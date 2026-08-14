@@ -284,6 +284,7 @@ export type PublicSsrRouteSourceMap = {
   "leaderboards-terminal": "features" | "notices" | "leaderboard";
   "leaderboards-vessel": "features" | "notices" | "leaderboard";
   "data-sources": "editorial";
+  install: "editorial";
   privacy: "editorial";
   forecasting: "editorial";
   "forecasting-explained": never;

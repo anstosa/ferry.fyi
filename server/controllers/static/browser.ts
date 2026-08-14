@@ -49,6 +49,7 @@ const APP_PATHS = new Set([
   "/callback",
   "/data-sources",
   "/forecasting",
+  "/install",
   "/ios",
   "/login",
   "/logout",

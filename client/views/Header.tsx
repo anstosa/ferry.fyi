@@ -80,7 +80,8 @@ export const Header: FunctionComponent<PropsWithChildren<Props>> = (props) => {
 
   return (
     <>
-      <div className="w-full h-safe-top" />
+      {/* reserve native top inset */}
+      <div className="h-safe-top w-full flex-shrink-0" />
       <div
         className={clsx(
           "fixed top-0 inset-x-0 z-20",

@@ -22,7 +22,8 @@ const routeLoadingLabels: Record<RouteView, string> = {
 
 const RouteHeaderSkeleton = (): ReactElement => (
   <>
-    <div className="h-safe-top bg-green-dark dark:bg-blue-dark" />
+    {/* reserve native top inset */}
+    <div className="h-safe-top flex-shrink-0 bg-green-dark dark:bg-blue-dark" />
     <header className="flex h-16 items-center gap-3 bg-green-dark px-4 dark:bg-blue-dark">
       <Skeleton className="h-8 w-8 shrink-0 bg-white/20" variant="circle" />
       <Skeleton className="mx-auto h-7 w-40 max-w-[45%] bg-white/20" />

@@ -257,7 +257,7 @@
     <nav aria-label="Camera detection tools">
       <a class="admin-link" href="/"><svg class="icon" aria-hidden="true"><use href="/dev/camera-detection/icons.svg#icon-arrow-left"/></svg>Ferry FYI</a>
       <div class="route-switcher">
-        <a data-mode="editor" href="/dev/camera-detection">Editor</a>
+        <a data-mode="editor" href="/dev/camera-detection/editor">Editor</a>
         <a data-mode="benchmark" href="/dev/camera-detection/benchmarks">Benchmarks</a>
         <a data-mode="capture" href="/dev/camera-detection/capture">Capture</a>
       </div>
@@ -608,14 +608,19 @@
     const mobileViewport = window.matchMedia("(max-width: 800px)");
     const debuggerRouteBase = "/dev/camera-detection";
     const debuggerTokenStorageKey = "ferry-fyi-dev-camera-detection-access-token";
+    const benchmarkDraftStorageKey = "ferry-fyi-dev-camera-detection-benchmark-draft";
+    const debuggerAuthorizationAttemptKey = "ferry-fyi-dev-camera-detection-authorization-attempted";
+    const debuggerAuthorizationRefreshedKey = "ferry-fyi-dev-camera-detection-authorization-refreshed";
+    const debuggerAuthorizationPath = "/?authorizeCameraDetectionDebugger=benchmarks";
     const activeDebuggerPath = window.location.pathname.replace(/\/+$/, "");
     // detect app-served routes
     const isAppDebuggerRoute = activeDebuggerPath === debuggerRouteBase
+      || activeDebuggerPath === `${debuggerRouteBase}/editor`
       || activeDebuggerPath === `${debuggerRouteBase}/benchmarks`
       || activeDebuggerPath === `${debuggerRouteBase}/capture`;
-    const startsInBenchmarkMode = activeDebuggerPath === `${debuggerRouteBase}/benchmarks`;
     const startsInCaptureMode = activeDebuggerPath === `${debuggerRouteBase}/capture`;
-    const startsInEditorMode = !startsInBenchmarkMode && !startsInCaptureMode;
+    const startsInEditorMode = activeDebuggerPath === `${debuggerRouteBase}/editor`;
+    const startsInBenchmarkMode = !startsInEditorMode && !startsInCaptureMode;
     document.body.dataset.toolMode = startsInBenchmarkMode ? "benchmark" : startsInCaptureMode ? "capture" : "editor";
     const appApiBase = isAppDebuggerRoute
       ? "/api/debug/camera-detection"
@@ -643,6 +648,46 @@
       const base = isMutation ? appMutationBase : appApiBase;
       return fetch(`${base}${path}`, { ...options, headers });
     }
+    // unwrap standard api envelopes
+    function debuggerResponseBody(payload) {
+      // wrapped response guard
+      if (payload && typeof payload === "object" && payload.body && typeof payload.body === "object") {
+        return payload.body;
+      }
+      return payload;
+    }
+    // explain benchmark persistence failures
+    function benchmarkSaveError(response, payload) {
+      // expired authorization guard
+      if (isAppDebuggerRoute && (response.status === 401 || response.status === 403)) {
+        sessionStorage.removeItem(debuggerTokenStorageKey);
+        const error = new Error("Save authorization is missing or expired. Unsaved labels are retained in this browser.");
+        error.authorizationRequired = true;
+        return error;
+      }
+      const message = payload && typeof payload === "object" && typeof payload.error === "string"
+        ? payload.error
+        : "Benchmark label save failed";
+      return new Error(message);
+    }
+    // restore one unsaved benchmark draft
+    function readBenchmarkDraft() {
+      try {
+        const draft = JSON.parse(sessionStorage.getItem(benchmarkDraftStorageKey) || "null");
+        // draft shape guard
+        if (draft && typeof draft === "object" && draft.frames && typeof draft.frames === "object") {
+          return draft;
+        }
+      } catch {
+        // discard malformed browser state
+      }
+      sessionStorage.removeItem(benchmarkDraftStorageKey);
+      return null;
+    }
+    // retain one unsaved benchmark draft
+    function writeBenchmarkDraft() {
+      sessionStorage.setItem(benchmarkDraftStorageKey, JSON.stringify(benchmarkLabels));
+    }
     const annotationFileName = "/camera-detection-areas.json";
     const annotationDisplayName = "shared/data/camera-detection-areas.json";
     const cameraOverridesFileName = "/camera-display-overrides.json";
@@ -667,6 +712,7 @@
     let benchmarkSavedRevision = 0;
     let benchmarkPendingRevision = 0;
     let benchmarkFailedRevision = 0;
+    let benchmarkDraftRestored = false;
     let benchmarkNotesSaveTimer = null;
     let captureRuns = [];
     let capturePollTimer = null;
@@ -1144,7 +1190,8 @@
         };
       }, { labeled: 0, total: 0 });
       const setName = benchmarkRole.value === "all" ? "All" : benchmarkRole.value === "control" ? "Control" : "Test";
-      benchmarkStatus.textContent = `${message ? `${message} ` : ""}${setName} labels: ${progress.labeled}/${progress.total}.`;
+      const restoreMessage = benchmarkDraftRestored ? "Unsaved labels restored. " : "";
+      benchmarkStatus.textContent = `${restoreMessage}${message ? `${message} ` : ""}${setName} labels: ${progress.labeled}/${progress.total}.`;
     }
 
     // load benchmark files
@@ -1157,15 +1204,18 @@
         // benchmark response guard
         if (!manifestResponse.ok || !labelsResponse.ok) throw new Error("Benchmark files unavailable");
         benchmarkManifest = await manifestResponse.json();
-        benchmarkLabels = await labelsResponse.json();
+        const persistedLabels = await labelsResponse.json();
+        const benchmarkDraft = readBenchmarkDraft();
+        benchmarkLabels = benchmarkDraft || persistedLabels;
+        benchmarkDraftRestored = Boolean(benchmarkDraft);
         benchmarkLabels.frames ||= {};
-        benchmarkDirtyRevision = 0;
+        benchmarkDirtyRevision = benchmarkDraft ? 1 : 0;
         benchmarkSavedRevision = 0;
         benchmarkPendingRevision = 0;
-        benchmarkFailedRevision = 0;
+        benchmarkFailedRevision = benchmarkDraft ? 1 : 0;
         renderBenchmarkPersistence();
         populateBenchmarkFrames();
-        renderBenchmarkStatus("Benchmark data loaded.");
+        renderBenchmarkStatus(benchmarkDraft ? "" : "Benchmark data loaded.");
       } catch (error) {
         benchmarkStatus.textContent = `Could not load benchmark data. ${error.message || ""}`;
       }
@@ -1492,18 +1542,28 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(benchmarkLabels)
         });
-        const payload = await response.json();
+        const payload = debuggerResponseBody(await response.json());
         // save response guard
-        if (!response.ok) throw new Error(payload.error || "Benchmark label save failed");
+        if (!response.ok) throw benchmarkSaveError(response, payload);
+        sessionStorage.removeItem(benchmarkDraftStorageKey);
+        sessionStorage.removeItem(debuggerAuthorizationAttemptKey);
+        sessionStorage.removeItem(debuggerAuthorizationRefreshedKey);
+        benchmarkDraftRestored = false;
         benchmarkSavedRevision = Math.max(benchmarkSavedRevision, requestedRevision);
         benchmarkFailedRevision = 0;
         renderBenchmarkPersistence();
         renderBenchmarkStatus(successMessage);
         return true;
       } catch (error) {
+        writeBenchmarkDraft();
         benchmarkFailedRevision = Math.max(benchmarkFailedRevision, requestedRevision);
         renderBenchmarkPersistence();
         benchmarkStatus.textContent = `Could not save benchmark labels. ${error.message || ""}`;
+        // one automatic authorization recovery
+        if (error.authorizationRequired && !sessionStorage.getItem(debuggerAuthorizationAttemptKey)) {
+          sessionStorage.setItem(debuggerAuthorizationAttemptKey, "true");
+          window.location.assign(debuggerAuthorizationPath);
+        }
         return false;
       }
     }
@@ -2956,6 +3016,12 @@
         syncSegmentedControl(benchmarkRoleControl, benchmarkRole);
         populateBenchmarkFrames();
         loadNextUnlabeledFrame();
+        const authorizationRefreshed = sessionStorage.getItem(debuggerAuthorizationRefreshedKey) === "true";
+        sessionStorage.removeItem(debuggerAuthorizationRefreshedKey);
+        // retry the interrupted save once
+        if (benchmarkDraftRestored && authorizationRefreshed) {
+          await queueBenchmarkSave("Benchmark labels saved after authorization refresh.");
+        }
         return;
       }
       loadCamera();

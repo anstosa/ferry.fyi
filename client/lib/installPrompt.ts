@@ -57,9 +57,17 @@ export const triggerInstallPrompt = async (): Promise<boolean> => {
   if (!promptEvent) {
     return false;
   }
-  installPromptEvent = null;
-  notifyInstallPromptListeners();
-  await promptEvent.prompt();
-  await promptEvent.userChoice?.catch(() => undefined);
-  return true;
+  try {
+    await promptEvent.prompt();
+    // consume the displayed prompt
+    if (installPromptEvent === promptEvent) {
+      installPromptEvent = null;
+      notifyInstallPromptListeners();
+    }
+    await promptEvent.userChoice?.catch(() => undefined);
+    return true;
+  } catch {
+    // retain gesture-blocked prompts
+    return false;
+  }
 };

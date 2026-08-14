@@ -158,7 +158,8 @@ export const Footer = ({ terminal, getPath }: Props): ReactElement => {
           {renderBulletins()}
         </LayoutGroup>
       </WrapFooter>
-      <div className="h-safe-bottom w-full bg-ferry-footer-gradient" />
+      {/* reserve native bottom inset */}
+      <div className="h-safe-bottom w-full flex-shrink-0 bg-ferry-footer-gradient" />
     </>
   );
 };

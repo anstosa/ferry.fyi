@@ -1,9 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   APPLE_APP_STORE_ID,
   APPLE_APP_STORE_URL,
+  getInstallStoreUrl,
   getInstallPlatform,
+  GOOGLE_PLAY_URL,
+  redirectToInstallStore,
 } from "../../client/lib/appInstall";
 
 describe("getInstallPlatform", () => {
@@ -21,12 +24,40 @@ describe("getInstallPlatform", () => {
   });
 
   it("routes Apple mobile browsers to home-screen instructions", () => {
-    expect(getInstallPlatform("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)")).toBe(
-      "ios"
-    );
+    expect(
+      getInstallPlatform(
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)"
+      )
+    ).toBe("ios");
+  });
+
+  it("routes iPadOS desktop-class browsers to the App Store", () => {
+    expect(
+      getInstallPlatform(
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15) AppleWebKit/605.1.15",
+        5
+      )
+    ).toBe("ios");
   });
 
   it("uses website installation guidance for other browsers", () => {
     expect(getInstallPlatform("Mozilla/5.0 (X11; Linux x86_64)")).toBe("web");
+  });
+
+  it("maps mobile platforms to their published store listings", () => {
+    expect(getInstallStoreUrl("android")).toBe(GOOGLE_PLAY_URL);
+    expect(getInstallStoreUrl("ios")).toBe(APPLE_APP_STORE_URL);
+    expect(getInstallStoreUrl("web")).toBeNull();
+  });
+
+  it("redirects only mobile platforms", () => {
+    const redirect = vi.fn();
+
+    expect(redirectToInstallStore("android", redirect)).toBe(true);
+    expect(redirect).toHaveBeenCalledWith(GOOGLE_PLAY_URL);
+    redirect.mockClear();
+
+    expect(redirectToInstallStore("web", redirect)).toBe(false);
+    expect(redirect).not.toHaveBeenCalled();
   });
 });

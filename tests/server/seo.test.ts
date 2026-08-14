@@ -247,6 +247,10 @@ describe("SEO metadata", () => {
   it("keeps product pages indexable and private pages noindexed", () => {
     expect(getSeoMetadata("/forecasting").robots).toBe("index,follow");
     expect(getSeoMetadata("/data-sources").robots).toBe("index,follow");
+    expect(getSeoMetadata("/install")).toMatchObject({
+      robots: "index,follow",
+      title: "Install Ferry FYI",
+    });
     expect(getSeoMetadata("/tickets")).toMatchObject({
       robots: "index,follow",
       title: "Washington State Ferry Tickets & Barcode Scanner - Ferry FYI",
@@ -273,13 +277,15 @@ describe("SEO metadata", () => {
     );
     const distinctProductDescriptions = [
       "/tickets",
+      "/install",
       "/privacy",
       "/support",
     ].map((pathname) => getSeoMetadata(pathname).description);
-    expect(new Set(distinctProductDescriptions).size).toBe(3);
+    expect(new Set(distinctProductDescriptions).size).toBe(4);
     expect(distinctProductDescriptions[0]).toContain("tickets");
-    expect(distinctProductDescriptions[1]).toContain("data");
-    expect(distinctProductDescriptions[2]).toContain("support");
+    expect(distinctProductDescriptions[1]).toContain("Install");
+    expect(distinctProductDescriptions[2]).toContain("data");
+    expect(distinctProductDescriptions[3]).toContain("support");
   });
 
   it("keeps every route description directional and purpose-specific", () => {
@@ -318,6 +324,7 @@ describe("SEO metadata", () => {
         "/tickets",
         "Washington State Ferry Tickets & Barcode Scanner - Ferry FYI",
       ],
+      ["/install", "Install Ferry FYI"],
       ["/privacy", "Privacy Policy - Ferry FYI"],
       ["/support", "Ferry FYI Support"],
     ]) {

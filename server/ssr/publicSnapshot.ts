@@ -827,6 +827,7 @@ export const createPublicSsrSnapshotLoader = ({
           break;
         case "about":
         case "data-sources":
+        case "install":
         case "privacy":
         case "forecasting":
         case "support":

@@ -294,6 +294,7 @@ export const PUBLIC_SSR_ROUTE_MANIFEST = [
     requiredSources: [],
   }),
   staticRoute("data-sources", "/data-sources", "Data sources and API guide"),
+  staticRoute("install", "/install", "Install"),
   staticRoute("privacy", "/privacy", "Privacy Policy"),
   staticRoute("forecasting", "/forecasting", "Forecasting"),
   define({

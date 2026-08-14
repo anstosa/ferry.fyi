@@ -30,6 +30,8 @@ const rootStaticFiles = ["llms.txt", "openapi.json", "robots.txt"];
 const cameraDetectionDebuggerRoutes = new Set([
   "/dev/camera-detection",
   "/dev/camera-detection/",
+  "/dev/camera-detection/editor",
+  "/dev/camera-detection/editor/",
   "/dev/camera-detection/benchmarks",
   "/dev/camera-detection/benchmarks/",
   "/dev/camera-detection/capture",

@@ -22,6 +22,7 @@ export type PublicSsrRouteId =
   | "leaderboards-vessel"
   | "leaderboards-unmatched"
   | "data-sources"
+  | "install"
   | "privacy"
   | "forecasting"
   | "forecasting-explained"

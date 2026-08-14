@@ -165,6 +165,7 @@ describe("sitemap URLs", () => {
       expect.arrayContaining([
         "/",
         "/tickets",
+        "/install",
         "/privacy",
         "/support",
         "/seattle",

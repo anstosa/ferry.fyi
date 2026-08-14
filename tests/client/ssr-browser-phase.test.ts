@@ -25,7 +25,15 @@ describe("deferred browser phase", () => {
     const initializeServiceWorker = vi.fn(() => () => undefined);
     const preloadBrowserRoute = vi.fn(() => Promise.resolve());
 
-    vi.doMock("@auth0/auth0-react", () => ({ Auth0Provider: authProvider }));
+    vi.doMock("@auth0/auth0-react", () => ({
+      Auth0Provider: authProvider,
+      useAuth0: () => ({
+        getAccessTokenSilently: vi.fn(),
+        isAuthenticated: false,
+        isLoading: false,
+        loginWithRedirect: vi.fn(),
+      }),
+    }));
     vi.doMock("@capacitor/core", () => ({
       Capacitor: { getPlatform: () => "web" },
     }));

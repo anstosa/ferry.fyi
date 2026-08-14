@@ -298,6 +298,7 @@ describe("public SSR snapshot loader", () => {
   it.each([
     ["/about", "about"],
     ["/data-sources", "data-sources"],
+    ["/install", "install"],
     ["/privacy", "privacy"],
     ["/forecasting", "forecasting"],
     ["/support", "support"],

@@ -54,6 +54,10 @@ const loadDataSources = () =>
     default: DataSources,
   }));
 const DataSources = lazy(loadDataSources);
+// install route loader
+const loadInstall = () =>
+  import("~/views/Install").then(({ Install }) => ({ default: Install }));
+const Install = lazy(loadInstall);
 // support route loader
 const loadSupport = () =>
   import("~/views/Support").then(({ Support }) => ({ default: Support }));
@@ -133,6 +137,11 @@ export const preloadBrowserRoute = async (
     await loadDataSources();
     return;
   }
+  // install preload
+  if (pathname === "/install") {
+    await loadInstall();
+    return;
+  }
   if (pathname === "/privacy") {
     await loadPrivacyPolicy();
     return;
@@ -202,6 +211,8 @@ const browserRouteElement = (route: PublicSsrRouteDefinition): ReactElement => {
       return <Leaderboards />;
     case "data-sources":
       return <DataSources />;
+    case "install":
+      return <Install />;
     case "privacy":
       return <PrivacyPolicy />;
     case "forecasting":
@@ -260,6 +271,7 @@ const universalRouteElement = (
   }
   if (
     route.id === "data-sources" ||
+    route.id === "install" ||
     route.id === "privacy" ||
     route.id === "forecasting" ||
     route.id === "support"

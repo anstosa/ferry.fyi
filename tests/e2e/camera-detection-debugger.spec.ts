@@ -3,7 +3,15 @@ import path from "node:path";
 
 import { expect, type Page, test } from "@playwright/test";
 
+import {
+  CAMERA_DETECTION_DEBUGGER_AUTHORIZATION_ATTEMPT_KEY,
+  CAMERA_DETECTION_DEBUGGER_AUTHORIZATION_REFRESHED_KEY,
+  CAMERA_DETECTION_DEBUGGER_TOKEN_KEY,
+} from "../../client/lib/cameraDetectionDebugger";
+
 const repositoryRoot = process.cwd();
+const benchmarkDraftStorageKey =
+  "ferry-fyi-dev-camera-detection-benchmark-draft";
 const benchmarkRoot = path.join(repositoryRoot, "benchmarks/camera-detection");
 const cameraConfig = fs.readFileSync(
   path.join(repositoryRoot, "shared/data/camera-detection-areas.json")
@@ -40,6 +48,7 @@ type CaptureRunRequest = {
 };
 
 type SaveControl = {
+  authorizationFailuresRemaining?: number;
   failuresRemaining: number;
 };
 
@@ -158,6 +167,21 @@ const installDebuggerFixtures = async (
     "**/api/admin/camera-detection/save-benchmark-labels",
     async (route) => {
       savedPayloads.push(route.request().postDataJSON() as SavedLabels);
+      const authorizationFailures =
+        saveControl.authorizationFailuresRemaining ?? 0;
+      // requested authorization failure
+      if (authorizationFailures > 0) {
+        saveControl.authorizationFailuresRemaining = authorizationFailures - 1;
+        await route.fulfill({
+          body: JSON.stringify({
+            body: { error: "unauthorized" },
+            wsfStatus: { offline: false },
+          }),
+          contentType: "application/json",
+          status: 401,
+        });
+        return;
+      }
       // requested save failure
       if (saveControl.failuresRemaining > 0) {
         saveControl.failuresRemaining -= 1;
@@ -176,6 +200,33 @@ const installDebuggerFixtures = async (
     }
   );
 };
+
+// default debugger route contract
+test("opens benchmark labels by default and preserves the editor route", async ({
+  page,
+}) => {
+  await installDebuggerFixtures(page, [], []);
+
+  await page.goto("/dev/camera-detection", {
+    waitUntil: "domcontentloaded",
+  });
+  await expect(page.locator("body")).toHaveAttribute(
+    "data-tool-mode",
+    "benchmark"
+  );
+  await expect(page.locator('a[data-mode="editor"]')).toHaveAttribute(
+    "href",
+    "/dev/camera-detection/editor"
+  );
+
+  await page.goto("/dev/camera-detection/editor", {
+    waitUntil: "domcontentloaded",
+  });
+  await expect(page.locator("body")).toHaveAttribute(
+    "data-tool-mode",
+    "editor"
+  );
+});
 
 // accelerated mobile labeling contract
 test("autosaves, advances labels, and supports mobile pinch zoom", async ({
@@ -433,6 +484,77 @@ test("keeps a failed benchmark label focused for retry", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Saved" })).toBeDisabled();
   await page.waitForTimeout(500);
   expect(savedPayloads).toHaveLength(5);
+});
+
+// automatic authorization recovery contract
+test("refreshes expired benchmark save authorization and retries labels", async ({
+  page,
+}) => {
+  const savedPayloads: SavedLabels[] = [];
+  const captureRequests: CaptureRunRequest[] = [];
+  await installDebuggerFixtures(page, savedPayloads, captureRequests, {
+    authorizationFailuresRemaining: 1,
+    failuresRemaining: 0,
+  });
+  // emulate the authenticated app token bridge
+  await page.route(
+    "**/?authorizeCameraDetectionDebugger=benchmarks",
+    async (route) => {
+      await route.fulfill({
+        body: `<script>
+          sessionStorage.setItem(${JSON.stringify(CAMERA_DETECTION_DEBUGGER_TOKEN_KEY)}, "renewed-access-token");
+          sessionStorage.setItem(${JSON.stringify(CAMERA_DETECTION_DEBUGGER_AUTHORIZATION_REFRESHED_KEY)}, "true");
+          window.location.replace("/dev/camera-detection/benchmarks");
+        </script>`,
+        contentType: "text/html",
+        status: 200,
+      });
+    }
+  );
+
+  await page.goto("/dev/camera-detection/benchmarks", {
+    waitUntil: "domcontentloaded",
+  });
+  // seed one stale debugger credential
+  await page.evaluate(
+    ([key, value]) => sessionStorage.setItem(key, value),
+    [CAMERA_DETECTION_DEBUGGER_TOKEN_KEY, "stale-access-token"]
+  );
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect(page.locator("#benchmarkStatus")).toContainText(/loaded/i);
+  await page.getByRole("button", { name: "Tests" }).click();
+  await page.locator("#benchmarkFrame").selectOption("test-clover-lane-001");
+  const emptyButton = page
+    .locator("#benchmarkQuickStates")
+    .getByRole("button", { name: "Empty", exact: true });
+
+  await emptyButton.click();
+
+  await expect(page).toHaveURL(/\/dev\/camera-detection\/benchmarks$/);
+  await expect(page.locator("#benchmarkStatus")).toContainText(
+    "Benchmark labels saved after authorization refresh"
+  );
+  // inspect renewed authorization
+  expect(
+    await page.evaluate(
+      (key) => sessionStorage.getItem(key),
+      CAMERA_DETECTION_DEBUGGER_TOKEN_KEY
+    )
+  ).toBe("renewed-access-token");
+  // verify recovery state cleanup
+  expect(
+    await page.evaluate(
+      (key) => sessionStorage.getItem(key),
+      benchmarkDraftStorageKey
+    )
+  ).toBeNull();
+  expect(
+    await page.evaluate(
+      (key) => sessionStorage.getItem(key),
+      CAMERA_DETECTION_DEBUGGER_AUTHORIZATION_ATTEMPT_KEY
+    )
+  ).toBeNull();
+  expect(savedPayloads).toHaveLength(2);
 });
 
 // completed frame-set navigation contract

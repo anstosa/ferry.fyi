@@ -635,13 +635,18 @@ export const PublicHome = (): ReactElement => {
 };
 
 const EDITORIAL_PAGES: Record<
-  "data-sources" | "privacy" | "forecasting" | "support",
+  "data-sources" | "install" | "privacy" | "forecasting" | "support",
   { body: string; path: string; title: string }
 > = {
   "data-sources": {
     body: "Ferry FYI combines Washington State Ferries schedules and service context with weather, tide, historical, and live observations. Preserve displayed source timestamps when citing time-sensitive information.",
     path: "/data-sources",
     title: "Data sources and API guide",
+  },
+  install: {
+    body: "Install Ferry FYI from the App Store on iPhone and iPad, from Google Play on Android, or as an installable web app on desktop browsers.",
+    path: "/install",
+    title: "Install Ferry FYI",
   },
   support: {
     body: "Questions, inaccurate information, app issues, and ideas are welcome. Email Ferry FYI support with the route or terminal, what happened, and the device you were using when those details are helpful.",

@@ -95,8 +95,96 @@
       },
       "cameraId": "9174",
       "notes": ""
+    },
+    "weekend-2026-08-07-9161-2026-08-08t22-02-05-00-00": {
+      "areaStates": {
+        "mukilteo_sr_525_at_mp_7_4_clover_ln_wsf_mukilteo_queue_lane": "empty"
+      },
+      "cameraId": "9161",
+      "notes": ""
+    },
+    "weekend-2026-08-07-9164-2026-08-09t01-12-07-00-00": {
+      "areaStates": {
+        "mukilteo_mukilteo_holding_holding_lane_7": "empty",
+        "mukilteo_mukilteo_holding_holding_lane_6": "empty",
+        "mukilteo_mukilteo_holding_holding_lane_5": "empty",
+        "mukilteo_mukilteo_holding_holding_lane_4": "empty",
+        "mukilteo_mukilteo_holding_queue_lane_3": "empty",
+        "mukilteo_mukilteo_holding_queue_lane_2": "empty",
+        "mukilteo_mukilteo_holding_queue_lane_1": "minority_full"
+      },
+      "cameraId": "9164",
+      "notes": ""
+    },
+    "weekend-2026-08-07-9164-2026-08-08t13-41-11-00-00": {
+      "areaStates": {
+        "mukilteo_mukilteo_holding_holding_lane_7": "empty",
+        "mukilteo_mukilteo_holding_holding_lane_6": "empty",
+        "mukilteo_mukilteo_holding_holding_lane_5": "empty",
+        "mukilteo_mukilteo_holding_queue_lane_3": "empty",
+        "mukilteo_mukilteo_holding_queue_lane_2": "empty",
+        "mukilteo_mukilteo_holding_holding_lane_4": "empty",
+        "mukilteo_mukilteo_holding_queue_lane_1": "empty"
+      },
+      "cameraId": "9164",
+      "notes": ""
+    },
+    "weekend-2026-08-07-9166-2026-08-09t20-32-01-00-00": {
+      "areaStates": {
+        "clinton_clinton_terminal_holding_lane_1_front": "minority_full",
+        "clinton_clinton_terminal_holding_lane_2_front": "full",
+        "clinton_clinton_terminal_holding_lane_3_front": "full",
+        "clinton_clinton_terminal_holding_lane_4_front": "full",
+        "clinton_clinton_terminal_holding_lane_5_front": "full",
+        "clinton_clinton_terminal_holding_lane_6_front": "full",
+        "clinton_clinton_terminal_holding_lane_7_front": "full",
+        "clinton_clinton_terminal_holding_lane_1_back": "full",
+        "clinton_clinton_terminal_queue_lane_2_back": "full",
+        "clinton_clinton_terminal_queue_lane_3_back": "full",
+        "clinton_clinton_terminal_queue_lane_4_back": "full",
+        "clinton_clinton_terminal_queue_lane_5_back": "full",
+        "clinton_clinton_terminal_queue_lane_6": "full"
+      },
+      "cameraId": "9166",
+      "notes": ""
+    },
+    "weekend-2026-08-07-9174-2026-08-08t16-21-10-00-00": {
+      "areaStates": {
+        "clinton_clinton_e_sr_525_queue_lane": "empty"
+      },
+      "cameraId": "9174",
+      "notes": ""
+    },
+    "weekend-2026-08-07-9174-2026-08-08t07-01-14-00-00": {
+      "areaStates": {
+        "clinton_clinton_e_sr_525_queue_lane": "empty"
+      },
+      "cameraId": "9174",
+      "notes": ""
+    },
+    "weekend-2026-08-07-9164-2026-08-08t14-11-11-00-00": {
+      "areaStates": {
+        "mukilteo_mukilteo_holding_holding_lane_7": "empty"
+      },
+      "cameraId": "9164",
+      "notes": ""
+    },
+    "weekend-2026-08-07-9394-2026-08-08t23-42-07-00-00": {
+      "areaStates": {},
+      "cameraId": "9394",
+      "notes": ""
+    },
+    "weekend-2026-08-07-9164-2026-08-09t16-02-02-00-00": {
+      "areaStates": {
+        "mukilteo_mukilteo_holding_holding_lane_7": "empty",
+        "mukilteo_mukilteo_holding_holding_lane_6": "empty",
+        "mukilteo_mukilteo_holding_holding_lane_5": "empty",
+        "mukilteo_mukilteo_holding_holding_lane_4": "empty"
+      },
+      "cameraId": "9164",
+      "notes": ""
     }
   },
   "schemaVersion": 1,
-  "updatedAt": "2026-08-13T03:24:23.971Z"
+  "updatedAt": "2026-08-14T06:15:49.603Z"
 }

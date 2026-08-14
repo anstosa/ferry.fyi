@@ -72,6 +72,7 @@ export const SEO_INDEXABLE_PATHS = [
   "/about",
   "/forecasting",
   "/data-sources",
+  "/install",
   "/tickets",
   "/privacy",
   "/support",
@@ -102,6 +103,11 @@ const fixedPages: Record<string, Pick<SeoMetadata, "title" | "description">> = {
     title: "Ferry FYI Data Sources and API Guide",
     description:
       "Learn how Ferry FYI sources and timestamps Washington State Ferries schedules, vessels, forecasts, cameras, weather, tides, and public read-only APIs.",
+  },
+  "/install": {
+    title: "Install Ferry FYI",
+    description:
+      "Install Ferry FYI on iPhone, iPad, Android, or desktop for quick access to Washington State Ferries schedules, alerts, tickets, and trip tools.",
   },
   "/tickets": {
     title: "Washington State Ferry Tickets & Barcode Scanner - Ferry FYI",

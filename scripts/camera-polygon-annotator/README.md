@@ -13,10 +13,10 @@ Open the main menu as the owner in development and select **Detector**:
 http://localhost:4040/dev/camera-detection
 ```
 
-The detector provides three development routes:
+The detector opens on Benchmarks by default and provides three explicit development routes:
 
 ```text
-http://localhost:4040/dev/camera-detection
+http://localhost:4040/dev/camera-detection/editor
 http://localhost:4040/dev/camera-detection/benchmarks
 http://localhost:4040/dev/camera-detection/capture
 ```
