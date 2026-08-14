@@ -19,12 +19,14 @@ vi.mock("~/components/Page", () => ({
 vi.mock("~/components/SeoHelmet", () => ({ SeoHelmet: () => null }));
 vi.mock("~/lib/appInstall", () => ({
   getBrowserInstallPlatform: () => mocks.platform,
-  getInstallStoreUrl: (platform: string) =>
-    platform === "android"
-      ? "https://play.example/app"
-      : platform === "ios"
-        ? "https://apps.example/app"
-        : null,
+  getInstallStoreUrl: (platform: string) => {
+    // deterministic store doubles
+    const storeUrls: Record<string, string> = {
+      android: "https://play.example/app",
+      ios: "https://apps.example/app",
+    };
+    return storeUrls[platform] ?? null;
+  },
   redirectToInstallStore: mocks.redirectToInstallStore,
 }));
 vi.mock("~/lib/device", () => ({

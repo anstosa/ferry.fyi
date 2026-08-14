@@ -713,6 +713,7 @@
     let benchmarkPendingRevision = 0;
     let benchmarkFailedRevision = 0;
     let benchmarkDraftRestored = false;
+    let benchmarkAuthorizationRedirecting = false;
     let benchmarkNotesSaveTimer = null;
     let captureRuns = [];
     let capturePollTimer = null;
@@ -877,7 +878,7 @@
       const fallbackIndex = direction < 0 ? options.length - 1 : 0;
       const focusIndex = selectedIndex >= 0 ? selectedIndex : fallbackIndex;
       // option availability guard
-      if (options[focusIndex]) requestAnimationFrame(() => options[focusIndex].focus());
+      if (options[focusIndex]) options[focusIndex].focus();
     }
 
     // move keyboard focus within one custom menu
@@ -1562,6 +1563,7 @@
         // one automatic authorization recovery
         if (error.authorizationRequired && !sessionStorage.getItem(debuggerAuthorizationAttemptKey)) {
           sessionStorage.setItem(debuggerAuthorizationAttemptKey, "true");
+          benchmarkAuthorizationRedirecting = true;
           window.location.assign(debuggerAuthorizationPath);
         }
         return false;
@@ -2973,8 +2975,8 @@
     });
     // protect unsaved benchmark work
     window.addEventListener("beforeunload", (event) => {
-      // clean benchmark guard
-      if (benchmarkSavedRevision >= benchmarkDirtyRevision) return;
+      // persisted or recovery draft guard
+      if (benchmarkAuthorizationRedirecting || benchmarkSavedRevision >= benchmarkDirtyRevision) return;
       event.preventDefault();
       event.returnValue = "";
     });

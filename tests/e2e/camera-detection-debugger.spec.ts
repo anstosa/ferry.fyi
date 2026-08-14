@@ -492,6 +492,12 @@ test("refreshes expired benchmark save authorization and retries labels", async 
 }) => {
   const savedPayloads: SavedLabels[] = [];
   const captureRequests: CaptureRunRequest[] = [];
+  const unexpectedDialogs: string[] = [];
+  // capture interrupted recovery navigation
+  page.on("dialog", async (dialog) => {
+    unexpectedDialogs.push(dialog.type());
+    await dialog.dismiss();
+  });
   await installDebuggerFixtures(page, savedPayloads, captureRequests, {
     authorizationFailuresRemaining: 1,
     failuresRemaining: 0,
@@ -554,6 +560,7 @@ test("refreshes expired benchmark save authorization and retries labels", async 
       CAMERA_DETECTION_DEBUGGER_AUTHORIZATION_ATTEMPT_KEY
     )
   ).toBeNull();
+  expect(unexpectedDialogs).toEqual([]);
   expect(savedPayloads).toHaveLength(2);
 });
 
