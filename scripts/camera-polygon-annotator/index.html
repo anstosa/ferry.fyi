@@ -655,7 +655,7 @@
       const isMutation = method !== "GET";
       const headers = new Headers(options.headers || {});
       const appAccessToken = isMutation && appApiBase
-        ? localStorage.getItem(debuggerTokenStorageKey) || ""
+        ? sessionStorage.getItem(debuggerTokenStorageKey) || ""
         : "";
       // app mutation guard
       if (isMutation && appAccessToken) {
@@ -676,7 +676,7 @@
     function benchmarkSaveError(response, payload) {
       // expired authorization guard
       if (isAppDebuggerRoute && response.status === 401) {
-        localStorage.removeItem(debuggerTokenStorageKey);
+        sessionStorage.removeItem(debuggerTokenStorageKey);
         const error = new Error("Save authorization is missing or expired. Unsaved labels are retained in this browser.");
         error.authorizationRequired = true;
         return error;

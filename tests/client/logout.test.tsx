@@ -45,12 +45,12 @@ describe("Logout", () => {
     root = undefined;
     document.body.innerHTML = "";
     auth.logout.mockReset();
-    localStorage.clear();
+    sessionStorage.clear();
   });
 
   it("clears local authentication and returns home", async () => {
     auth.logout.mockResolvedValue(undefined);
-    localStorage.setItem(
+    sessionStorage.setItem(
       CAMERA_DETECTION_DEBUGGER_TOKEN_KEY,
       "owner-access-token"
     );
@@ -64,7 +64,7 @@ describe("Logout", () => {
     expect(auth.logout).toHaveBeenCalledOnce();
     expect(auth.logout).toHaveBeenCalledWith({ openUrl: false });
     expect(
-      localStorage.getItem(CAMERA_DETECTION_DEBUGGER_TOKEN_KEY)
+      sessionStorage.getItem(CAMERA_DETECTION_DEBUGGER_TOKEN_KEY)
     ).toBeNull();
     expect(container.textContent).toContain("Home page");
   });

@@ -47,7 +47,7 @@ export const CameraDetectionDebuggerAuthorization = ({
   navigate = replaceLocation,
   recoveryStorage = window.sessionStorage,
   search = window.location.search,
-  storage = window.localStorage,
+  storage = window.sessionStorage,
 }: Props): null => {
   const {
     getAccessTokenSilently,

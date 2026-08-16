@@ -111,9 +111,9 @@ describe("camera detection benchmark", () => {
   });
 
   // authorization transport contract
-  it("uses persistent authorization without an iframe channel", () => {
+  it("uses tab-scoped authorization without an iframe channel", () => {
     expect(debuggerHtml).toContain(
-      "localStorage.getItem(debuggerTokenStorageKey)"
+      "sessionStorage.getItem(debuggerTokenStorageKey)"
     );
     expect(debuggerHtml).toContain('"/api/admin/camera-detection"');
     expect(debuggerHtml).not.toContain("window.name");

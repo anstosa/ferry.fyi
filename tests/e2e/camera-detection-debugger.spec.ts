@@ -1246,7 +1246,7 @@ test("refreshes expired benchmark save authorization and retries labels", async 
     async (route) => {
       await route.fulfill({
         body: `<script>
-          localStorage.setItem(${JSON.stringify(CAMERA_DETECTION_DEBUGGER_TOKEN_KEY)}, "renewed-access-token");
+          sessionStorage.setItem(${JSON.stringify(CAMERA_DETECTION_DEBUGGER_TOKEN_KEY)}, "renewed-access-token");
           sessionStorage.setItem(${JSON.stringify(CAMERA_DETECTION_DEBUGGER_AUTHORIZATION_REFRESHED_KEY)}, "true");
           window.location.replace("/dev/camera-detection/benchmarks");
         </script>`,
@@ -1261,7 +1261,7 @@ test("refreshes expired benchmark save authorization and retries labels", async 
   });
   // seed one stale debugger credential
   await page.evaluate(
-    ([key, value]) => localStorage.setItem(key, value),
+    ([key, value]) => sessionStorage.setItem(key, value),
     [CAMERA_DETECTION_DEBUGGER_TOKEN_KEY, "stale-access-token"]
   );
   await page.reload({ waitUntil: "domcontentloaded" });
@@ -1281,7 +1281,7 @@ test("refreshes expired benchmark save authorization and retries labels", async 
   // inspect renewed authorization
   expect(
     await page.evaluate(
-      (key) => localStorage.getItem(key),
+      (key) => sessionStorage.getItem(key),
       CAMERA_DETECTION_DEBUGGER_TOKEN_KEY
     )
   ).toBe("renewed-access-token");
@@ -1316,7 +1316,7 @@ test("does not relogin after an owner authorization denial", async ({
     waitUntil: "domcontentloaded",
   });
   await page.evaluate(
-    ([key, value]) => localStorage.setItem(key, value),
+    ([key, value]) => sessionStorage.setItem(key, value),
     [CAMERA_DETECTION_DEBUGGER_TOKEN_KEY, "valid-owner-token"]
   );
   await page.getByRole("button", { name: "Tests" }).click();
@@ -1332,7 +1332,7 @@ test("does not relogin after an owner authorization denial", async ({
   await expect(page).toHaveURL(/\/dev\/camera-detection\/benchmarks$/);
   expect(
     await page.evaluate(
-      (key) => localStorage.getItem(key),
+      (key) => sessionStorage.getItem(key),
       CAMERA_DETECTION_DEBUGGER_TOKEN_KEY
     )
   ).toBe("valid-owner-token");

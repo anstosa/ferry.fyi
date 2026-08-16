@@ -23,7 +23,7 @@ http://localhost:4040/dev/camera-detection/capture
 
 The links and routes are mounted only when `NODE_ENV=development`. JSON mutations and detector requests still pass through the owner-admin authorization boundary. `yarn container:up` starts the local detector container. The app uses `FERRY_DETECTOR_URL` when set, otherwise the stack's `CAR_DETECTION_ENDPOINT`, then falls back to `http://127.0.0.1:8001/detect` for host development.
 
-The debugger reuses the main app's persisted owner token. A `401` triggers one silent Auth0 refresh through the app; a `403` remains an authorization error and never forces a login loop.
+The debugger reuses the main app's tab-scoped owner token across reloads. A `401` triggers one silent Auth0 refresh through the app; a `403` remains an authorization error and never forces a login loop.
 
 The standalone debugger remains available for recovery or focused use:
 

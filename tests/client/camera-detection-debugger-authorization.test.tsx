@@ -54,7 +54,6 @@ describe("camera detection debugger authorization", () => {
     auth.isLoading = false;
     auth.loginWithRedirect.mockReset();
     auth.loginWithRedirect.mockResolvedValue(undefined);
-    localStorage.clear();
     sessionStorage.clear();
     document.body.innerHTML = "";
   });
@@ -66,7 +65,7 @@ describe("camera detection debugger authorization", () => {
     expect(auth.getAccessTokenSilently).toHaveBeenCalledWith({
       cacheMode: "off",
     });
-    expect(localStorage.getItem(CAMERA_DETECTION_DEBUGGER_TOKEN_KEY)).toBe(
+    expect(sessionStorage.getItem(CAMERA_DETECTION_DEBUGGER_TOKEN_KEY)).toBe(
       "fresh-owner-token"
     );
     expect(
