@@ -10,10 +10,30 @@ import {
 // minimal authorization storage boundary
 type AuthorizationStorage = Pick<Storage, "setItem">;
 
+const interactiveAuthorizationErrors = new Set([
+  "consent_required",
+  "interaction_required",
+  "login_required",
+  "missing_refresh_token",
+]);
+
+// identify errors that require user interaction
+const requiresInteractiveAuthorization = (error: unknown): boolean => {
+  const errorCode =
+    typeof error === "object" && error !== null && "error" in error
+      ? (error as { error?: unknown }).error
+      : null;
+  return (
+    typeof errorCode === "string" &&
+    interactiveAuthorizationErrors.has(errorCode)
+  );
+};
+
 // injectable browser authorization inputs
 interface Props {
   environment?: string;
   navigate?: (path: string) => void;
+  recoveryStorage?: AuthorizationStorage;
   search?: string;
   storage?: AuthorizationStorage;
 }
@@ -25,8 +45,9 @@ const replaceLocation = (path: string): void => window.location.replace(path);
 export const CameraDetectionDebuggerAuthorization = ({
   environment = process.env.NODE_ENV,
   navigate = replaceLocation,
+  recoveryStorage = window.sessionStorage,
   search = window.location.search,
-  storage = window.sessionStorage,
+  storage = window.localStorage,
 }: Props): null => {
   const {
     getAccessTokenSilently,
@@ -63,16 +84,20 @@ export const CameraDetectionDebuggerAuthorization = ({
       try {
         const accessToken = await getAccessTokenSilently({ cacheMode: "off" });
         storage.setItem(CAMERA_DETECTION_DEBUGGER_TOKEN_KEY, accessToken);
-        storage.setItem(
+        recoveryStorage.setItem(
           CAMERA_DETECTION_DEBUGGER_AUTHORIZATION_REFRESHED_KEY,
           "true"
         );
         navigate(returnPath);
-      } catch {
-        // expired browser session fallback
-        await loginWithRedirect({
-          appState: { redirectPath: `${window.location.pathname}${search}` },
-        });
+      } catch (error) {
+        // interactive recovery guard
+        if (requiresInteractiveAuthorization(error)) {
+          await loginWithRedirect({
+            appState: { redirectPath: `${window.location.pathname}${search}` },
+          });
+          return;
+        }
+        console.error("Camera detector silent authorization failed", error);
       }
     };
 
@@ -86,6 +111,7 @@ export const CameraDetectionDebuggerAuthorization = ({
     isLoading,
     loginWithRedirect,
     navigate,
+    recoveryStorage,
     search,
     storage,
   ]);

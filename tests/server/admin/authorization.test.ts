@@ -53,6 +53,7 @@ import {
   adminRouter,
   preventAdminCaching,
 } from "../../../server/controllers/api/admin";
+import { clearOwnerAdminVerificationCache } from "../../../server/controllers/api/admin/authorization";
 import { requireAuth } from "../../../server/controllers/api/auth";
 
 const createApp = (): express.Express => {
@@ -64,6 +65,7 @@ const createApp = (): express.Express => {
 
 describe("owner admin authorization", () => {
   beforeEach(() => {
+    clearOwnerAdminVerificationCache();
     auth0.getAuth0UserEmail.mockReset();
     auth0.getAuth0UserInfo
       .mockReset()
@@ -128,7 +130,7 @@ describe("owner admin authorization", () => {
     expect(auth0.getAuth0UserEmail).not.toHaveBeenCalled();
   });
 
-  it("fails closed when the owner lookup is unavailable", async () => {
+  it("reports unavailable owner identity verification", async () => {
     auth0.getAuth0UserEmail.mockRejectedValueOnce(
       new Error("Auth0 unavailable")
     );
@@ -136,9 +138,11 @@ describe("owner admin authorization", () => {
     const response = await request(createApp())
       .get("/api/admin/features")
       .set("Authorization", "Bearer owner")
-      .expect(403);
+      .expect(503);
 
-    expect(response.body).toEqual({ error: "Administrator access required" });
+    expect(response.body).toEqual({
+      error: "Administrator identity verification unavailable",
+    });
     expect(response.headers["cache-control"]).toBe("no-store");
   });
 
@@ -169,6 +173,47 @@ describe("owner admin authorization", () => {
       .expect(200);
 
     expect(auth0.getAuth0UserInfo).toHaveBeenCalledWith("owner-token");
+    expect(auth0.getAuth0UserEmail).not.toHaveBeenCalled();
+  });
+
+  it("retries a transient owner user-info failure", async () => {
+    auth0.getAuth0UserInfo
+      .mockRejectedValueOnce(new Error("Auth0 unavailable"))
+      .mockResolvedValueOnce({
+        email: "anstosa@gmail.com",
+        subject: "auth0|owner",
+      });
+
+    await request(createApp())
+      .get("/api/admin/features")
+      .set("Authorization", "Bearer owner")
+      .expect(200);
+
+    expect(auth0.getAuth0UserInfo).toHaveBeenCalledTimes(2);
+    expect(auth0.getAuth0UserEmail).not.toHaveBeenCalled();
+  });
+
+  it("reuses recent positive owner verification during provider failures", async () => {
+    auth0.getAuth0UserInfo.mockResolvedValueOnce({
+      email: "anstosa@gmail.com",
+      subject: "auth0|owner",
+    });
+
+    await request(createApp())
+      .get("/api/admin/features")
+      .set("Authorization", "Bearer owner")
+      .expect(200);
+    auth0.getAuth0UserInfo.mockRejectedValue(new Error("Auth0 unavailable"));
+    auth0.getAuth0UserEmail.mockRejectedValue(
+      new Error("Management API unavailable")
+    );
+
+    await request(createApp())
+      .get("/api/admin/features")
+      .set("Authorization", "Bearer owner")
+      .expect(200);
+
+    expect(auth0.getAuth0UserInfo).toHaveBeenCalledOnce();
     expect(auth0.getAuth0UserEmail).not.toHaveBeenCalled();
   });
 

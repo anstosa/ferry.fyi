@@ -81,14 +81,14 @@ describe("camera detection benchmark", () => {
   });
 
   // role eligibility guard
-  it("uses reviewed polygon cameras and keeps every test camera enabled", () => {
+  it("keeps benchmark cameras reviewed and test cameras labelable", () => {
     manifest.frames.forEach(
       ({ cameraId, role }: { cameraId: string; role: string }) => {
         const camera = cameraConfig.cameras[cameraId];
-        expect(camera.allowedAreas.length).toBeGreaterThan(0);
         expect(camera.reviewed).toBe(true);
         // enabled test guard
         if (role === "test") {
+          expect(camera.allowedAreas.length).toBeGreaterThan(0);
           expect(camera.detectionEnabled !== false).toBe(true);
         }
       }
@@ -111,9 +111,9 @@ describe("camera detection benchmark", () => {
   });
 
   // authorization transport contract
-  it("uses session authorization without an iframe channel", () => {
+  it("uses persistent authorization without an iframe channel", () => {
     expect(debuggerHtml).toContain(
-      "sessionStorage.getItem(debuggerTokenStorageKey)"
+      "localStorage.getItem(debuggerTokenStorageKey)"
     );
     expect(debuggerHtml).toContain('"/api/admin/camera-detection"');
     expect(debuggerHtml).not.toContain("window.name");
@@ -121,7 +121,7 @@ describe("camera detection benchmark", () => {
 
   // iconography contract
   it("uses a directly imported Font Awesome subset", () => {
-    expect(cameraDetectionIconCount).toBe(17);
+    expect(cameraDetectionIconCount).toBe(16);
     expect(iconSprite).toBe(renderCameraDetectionIconSprite());
     expect(Buffer.byteLength(iconSprite)).toBeLessThan(10_000);
     expect(iconSource).toContain(
@@ -133,9 +133,7 @@ describe("camera detection benchmark", () => {
     expect(iconSource).not.toContain(
       'from "@fortawesome/free-solid-svg-icons"'
     );
-    expect(debuggerHtml).toContain(
-      '<use href="/dev/camera-detection/icons.svg#icon-hand"/>'
-    );
+    expect(debuggerHtml).not.toContain("icon-hand");
     expect(debuggerHtml).not.toContain('<symbol id="icon-');
     expect(debuggerHtml).not.toMatch(/<button[^>]*>[←→↻↶＋−×]/);
   });

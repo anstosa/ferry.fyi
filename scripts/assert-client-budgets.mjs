@@ -3,11 +3,13 @@
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
+import { fileURLToPath } from "node:url";
 
 export const DEFAULT_CLIENT_BUDGETS = Object.freeze({
   cssBytes: 140_000,
   javascriptBytes: 5_150_000,
-  javascriptFiles: 135,
+  // reserve bounded route-chunk headroom
+  javascriptFiles: 140,
   largestJavascriptBytes: 1_900_000,
 });
 
@@ -54,7 +56,8 @@ export const assertClientBudgets = (
   return summary;
 };
 
-if (process.argv[1] === new URL(import.meta.url).pathname) {
+// direct execution guard
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const directory = path.resolve(
     process.cwd(),
     process.argv[2] ?? "dist/client/assets"

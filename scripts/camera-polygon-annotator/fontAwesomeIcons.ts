@@ -7,7 +7,6 @@ import { faEraser } from "@fortawesome/free-solid-svg-icons/faEraser";
 import { faExpand } from "@fortawesome/free-solid-svg-icons/faExpand";
 import { faFloppyDisk } from "@fortawesome/free-solid-svg-icons/faFloppyDisk";
 import { faForwardStep } from "@fortawesome/free-solid-svg-icons/faForwardStep";
-import { faHand } from "@fortawesome/free-solid-svg-icons/faHand";
 import { faMagnifyingGlassMinus } from "@fortawesome/free-solid-svg-icons/faMagnifyingGlassMinus";
 import { faMagnifyingGlassPlus } from "@fortawesome/free-solid-svg-icons/faMagnifyingGlassPlus";
 import { faPen } from "@fortawesome/free-solid-svg-icons/faPen";
@@ -26,7 +25,6 @@ const icons: Array<[string, FontAwesomeIconDefinition]> = [
   ["icon-check", faCheck],
   ["icon-circle", faCircle],
   ["icon-eraser", faEraser],
-  ["icon-hand", faHand],
   ["icon-maximize", faExpand],
   ["icon-pencil", faPen],
   ["icon-plus", faPlus],

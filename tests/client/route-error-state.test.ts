@@ -16,6 +16,9 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const getTerminal = vi.hoisted(() => vi.fn());
 const getSchedule = vi.hoisted(() => vi.fn());
 const refreshSchedule = vi.hoisted(() => vi.fn());
+const dateButton = vi.hoisted(() => ({
+  onDateChange: undefined as undefined | ((date: DateTime) => void),
+}));
 vi.mock("~/lib/terminals", () => ({
   getSlug: (id: string) => id,
   getTerminal,
@@ -53,7 +56,17 @@ vi.mock("~/components/RouteLoadingState", () => ({
   RouteLoadingState: () => React.createElement("p", undefined, "Loading route"),
 }));
 vi.mock("~/components/Footer", () => ({ Footer: () => null }));
-vi.mock("~/components/DateButton", () => ({ DateButton: () => null }));
+vi.mock("~/components/DateButton", () => ({
+  // expose date changes to route tests
+  DateButton: ({
+    onDateChange,
+  }: {
+    onDateChange?: (date: DateTime) => void;
+  }) => {
+    dateButton.onDateChange = onDateChange;
+    return null;
+  },
+}));
 vi.mock("~/components/RouteSelector", () => ({ RouteSelector: () => null }));
 vi.mock("~/components/SeoHelmet", () => ({ SeoHelmet: () => null }));
 vi.mock("~/views/Header", () => ({
@@ -130,6 +143,8 @@ afterEach(() => {
   act(() => root?.unmount());
   root = undefined;
   document.body.innerHTML = "";
+  window.history.replaceState(null, "", "/");
+  dateButton.onDateChange = undefined;
   vi.clearAllMocks();
 });
 
@@ -314,6 +329,41 @@ const renderSeededMapRoute = (seededVessels: unknown[]) =>
   renderSeededRoute({ seededVessels, view: "map" });
 
 describe("Route route-load errors", () => {
+  it("updates the browser URL when the selected schedule date changes", async () => {
+    const terminal = {
+      id: "terminal-a",
+      mates: [{ id: "terminal-b" }, { id: "terminal-c" }],
+      name: "A",
+      routes: {},
+    };
+    const mate = { id: "terminal-b", mates: [], name: "B", routes: {} };
+    getTerminal.mockResolvedValueOnce(terminal).mockResolvedValueOnce(mate);
+    getSchedule.mockResolvedValue({
+      schedule: {
+        date: getLocalScheduleDate(),
+        mateId: mate.id,
+        slots: [],
+        terminalId: terminal.id,
+      },
+      timestamp: 0,
+    });
+    window.history.replaceState(
+      null,
+      "",
+      "/terminal-a/terminal-b?farePassengers=2#sailings"
+    );
+    await renderNavigableRoute({ navigate: () => undefined });
+
+    await act(async () => {
+      dateButton.onDateChange?.(DateTime.fromISO("2026-08-20"));
+      await Promise.resolve();
+    });
+
+    expect(window.location.href).toBe(
+      "http://localhost:3000/terminal-a/terminal-b?farePassengers=2&date=2026-08-20#sailings"
+    );
+  });
+
   it("uses the seeded response check time during hydration", async () => {
     getSchedule.mockReturnValue(deferred().promise);
 

@@ -24,6 +24,10 @@ type DebuggerNavigator = (path: string) => void;
 const navigateToDebugger: DebuggerNavigator = (path) =>
   window.location.assign(path);
 
+// clear persisted debugger authorization
+export const clearCameraDetectionDebuggerAuthorization = (): void =>
+  localStorage.removeItem(CAMERA_DETECTION_DEBUGGER_TOKEN_KEY);
+
 // resolve a bounded authorization return route
 export const getCameraDetectionDebuggerAuthorizationReturnPath = (
   search: string
@@ -47,7 +51,7 @@ export const openCameraDetectionDebugger = async (
   navigate: DebuggerNavigator = navigateToDebugger
 ): Promise<void> => {
   const accessToken = await getAccessToken();
-  sessionStorage.setItem(CAMERA_DETECTION_DEBUGGER_TOKEN_KEY, accessToken);
+  localStorage.setItem(CAMERA_DETECTION_DEBUGGER_TOKEN_KEY, accessToken);
   sessionStorage.removeItem(
     CAMERA_DETECTION_DEBUGGER_AUTHORIZATION_ATTEMPT_KEY
   );

@@ -12,6 +12,7 @@ interface DetectionArea {
 }
 
 interface DetectionCamera {
+  detectionEnabled: boolean;
   terminal: string;
   terminalId: string;
   displayName: string;
@@ -72,8 +73,9 @@ describe("camera detection areas", () => {
   // reviewed camera guard
   it("preserves the reviewed Clinton and Mukilteo annotations", () => {
     expect(detectionAreas.status).toBe("manual-partial-review");
-    expect(detectionAreas.reviewedCameraIds).toEqual([
+    expect([...detectionAreas.reviewedCameraIds].sort()).toEqual([
       "9161",
+      "9162",
       "9163",
       "9164",
       "9166",
@@ -83,6 +85,7 @@ describe("camera detection areas", () => {
       "9175",
       "9394",
       "9728",
+      "9944",
     ]);
 
     // every reviewed camera is flagged in camera metadata
@@ -113,6 +116,10 @@ describe("camera detection areas", () => {
         `${cameraId} frame height`
       ).toBeGreaterThan(0);
       expect(typeof camera.reviewed, `${cameraId} reviewed`).toBe("boolean");
+      expect(
+        typeof camera.detectionEnabled,
+        `${cameraId} detection enabled`
+      ).toBe("boolean");
       expect(Array.isArray(camera.allowedAreas), cameraId).toBe(true);
       expect(Array.isArray(camera.excludedAreas), cameraId).toBe(true);
       expect(Array.isArray(camera.excludedAreaNotes), cameraId).toBe(true);

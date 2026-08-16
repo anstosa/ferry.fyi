@@ -9,6 +9,7 @@ import React, {
 import { Navigate } from "react-router-dom";
 
 import { Splash } from "~/components/Splash";
+import { clearCameraDetectionDebuggerAuthorization } from "~/lib/cameraDetectionDebugger";
 
 type LogoutState = "complete" | "failed" | "running";
 
@@ -21,6 +22,7 @@ export const Logout = (): ReactElement => {
   // local logout attempt
   const runLogout = useCallback(async (): Promise<void> => {
     setState("running");
+    clearCameraDetectionDebuggerAuthorization();
     try {
       await logout({ openUrl: false });
       setState("complete");

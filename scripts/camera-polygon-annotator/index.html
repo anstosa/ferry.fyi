@@ -133,22 +133,41 @@
     body[data-tool-mode="benchmark"] #nextBtn,
     body[data-tool-mode="benchmark"] #refreshImageBtn { display: none; }
     body[data-tool-mode="benchmark"] canvas { cursor: pointer; }
-    .benchmark-labeler { position: fixed; z-index: 85; right: 16px; bottom: 8px; left: 320px; display: grid; grid-template-columns: minmax(180px, .8fr) minmax(420px, 1.5fr); gap: 10px; align-items: center; margin: 0; padding: 10px; border: 1px solid #806df0; border-radius: 10px; background: rgb(20 18 53 / 96%); box-shadow: 0 10px 28px rgb(0 0 0 / 30%); backdrop-filter: blur(12px); }
-    body[data-tool-mode="benchmark"] section { padding-bottom: calc(var(--benchmark-dock-clearance) + 24px); }
-    body[data-tool-mode="benchmark"] .canvas-wrap { margin-bottom: var(--benchmark-dock-clearance); }
-    .benchmark-target-label { display: block; color: #b9aefe; font-size: 9px; font-weight: 850; letter-spacing: .1em; text-transform: uppercase; }
-    .benchmark-target-name { display: block; margin-top: 2px; overflow: hidden; color: white; font-size: 14px; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
+    .benchmark-labeler { position: fixed; z-index: 85; right: 8px; bottom: 8px; left: 312px; display: grid; grid-template-columns: minmax(180px, .8fr) minmax(420px, 1.5fr); gap: 10px; align-items: center; margin: 0; padding: 10px; border: 1px solid #806df0; border-radius: 10px; background: rgb(20 18 53 / 96%); box-shadow: 0 10px 28px rgb(0 0 0 / 30%); backdrop-filter: blur(12px); }
+    body[data-tool-mode="benchmark"] section { padding-right: 8px; padding-bottom: 0; padding-left: 8px; }
+    body[data-tool-mode="benchmark"] section::after { content: ""; display: block; height: var(--benchmark-dock-clearance); }
+    body[data-tool-mode="benchmark"] .canvas-bar { min-height: 32px; padding: 2px 6px; }
+    body[data-tool-mode="benchmark"] .zoom-controls button { min-height: 26px; padding: 2px 7px; }
+    body[data-tool-mode="benchmark"] .canvas-shell { width: calc(100% + 16px); margin-right: -8px; margin-left: -8px; border-right: 0; border-left: 0; border-radius: 0; }
+    body[data-tool-mode="benchmark"] .canvas-viewport { padding: 0; }
+    body[data-tool-mode="benchmark"] .canvas-wrap { border-right: 0; border-left: 0; }
+    body:not([data-tool-mode="benchmark"]) #polygonVisibilityBtn { display: none; }
+    .benchmark-target-name { display: block; overflow: hidden; color: white; font-size: 14px; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
     .benchmark-target-meta { display: block; margin-top: 3px; color: #aeb9ca; font-size: 9px; line-height: 1.35; }
     .benchmark-label-actions { display: flex; flex-direction: column; gap: 6px; }
-    .benchmark-quick-states { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
-    .benchmark-quick-states button { min-height: 46px; border-color: #3b4b66; background: #121b2a; color: #e7edf7; font-size: 11px; }
-    .benchmark-quick-states button[data-state="empty"] { border-color: #22c55e; }
-    .benchmark-quick-states button[data-state="minority_full"] { border-color: #38bdf8; }
-    .benchmark-quick-states button[data-state="majority_full"] { border-color: #f97316; }
-    .benchmark-quick-states button[data-state="full"] { border-color: #ef4444; }
-    .benchmark-quick-states button[aria-pressed="true"] { background: #23366d; color: white; box-shadow: inset 0 0 0 1px currentColor; }
+    .benchmark-quick-states { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; padding: 0; border: 0; background: transparent; }
+    .benchmark-quick-states button { position: relative; display: inline-flex; min-height: 32px; align-items: center; justify-content: center; border: 0; border-radius: 0; background: #182131; color: #dce5f2; padding: 4px 28px 4px 5px; font-size: 10px; }
+    .benchmark-quick-states button:first-child { border-radius: 3px 0 0 3px; }
+    .benchmark-quick-states button:last-child { border-radius: 0 3px 3px 0; }
+    .benchmark-quick-states button[data-state="empty"] { background: rgb(34 197 94 / 18%); color: #8ff0af; }
+    .benchmark-quick-states button[data-state="minority_full"] { background: rgb(56 189 248 / 18%); color: #9cddfb; }
+    .benchmark-quick-states button[data-state="majority_full"] { background: rgb(249 115 22 / 20%); color: #ffb37f; }
+    .benchmark-quick-states button[data-state="full"] { background: rgb(239 68 68 / 20%); color: #ffa2a2; }
+    .benchmark-quick-states button[aria-pressed="true"] { color: #08111d; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 35%); }
+    .benchmark-quick-states button[data-state="empty"][aria-pressed="true"] { background: #22c55e; }
+    .benchmark-quick-states button[data-state="minority_full"][aria-pressed="true"] { background: #38bdf8; }
+    .benchmark-quick-states button[data-state="majority_full"][aria-pressed="true"] { background: #f97316; }
+    .benchmark-quick-states button[data-state="full"][aria-pressed="true"] { background: #ef4444; }
     .benchmark-skip-actions { display: flex; gap: 6px; }
-    .benchmark-skip-actions button { min-height: 32px; flex: 1; padding: 4px 8px; font-size: 10px; }
+    .benchmark-skip-actions button { position: relative; min-height: 32px; flex: 1; padding: 4px 38px 4px 8px; font-size: 10px; }
+    .benchmark-skip-actions button:last-child { padding-right: 69px; }
+    .shortcut-overlay { position: absolute; top: 50%; right: 6px; display: inline-flex; align-items: center; gap: 3px; pointer-events: none; transform: translateY(-50%); }
+    .shortcut-keycap { display: inline-flex; min-width: 18px; height: 18px; align-items: center; justify-content: center; padding: 0 4px; border: 1px solid currentcolor; border-radius: 4px; background: rgb(3 8 18 / 42%); box-shadow: 0 2px 0 rgb(0 0 0 / 45%); color: inherit; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 8px; font-weight: 900; line-height: 1; opacity: .9; }
+    /* saving overlay */
+    .benchmark-labeler-loading { position: absolute; z-index: 2; inset: 0; display: flex; align-items: center; justify-content: center; gap: 9px; border-radius: inherit; background: rgb(12 10 35 / 92%); color: #f4f1ff; font-size: 12px; font-weight: 800; letter-spacing: .02em; }
+    .benchmark-labeler-loading[hidden] { display: none; }
+    .benchmark-labeler-spinner { width: 18px; height: 18px; border: 2px solid rgb(255 255 255 / 25%); border-top-color: #a99cff; border-radius: 50%; animation: benchmark-labeler-spin .7s linear infinite; }
+    @keyframes benchmark-labeler-spin { to { transform: rotate(360deg); } }
     .benchmark-top { display: grid; grid-template-columns: 220px minmax(240px, 1fr) auto; gap: 8px; align-items: end; }
     .benchmark-actions { display: flex; gap: 5px; }
     .benchmark-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 7px; }
@@ -191,12 +210,11 @@
     .canvas-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 42px; padding: 6px 8px 6px 11px; border-bottom: 1px solid var(--line); background: #101827; }
     .zoom-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 3px; margin-left: auto; }
     .zoom-controls button { min-height: 28px; padding: 3px 8px; }
-    .zoom-controls button[aria-pressed="true"] { background: var(--accent-soft); color: #a9c0ff; box-shadow: inset 0 0 0 1px #35549d; }
-    #zoomStatus { min-width: 42px; color: #dce5f2; text-align: center; font-size: 10px; font-variant-numeric: tabular-nums; }
     .canvas-viewport { aspect-ratio: 400 / 245; padding: 14px; overflow: auto; overscroll-behavior: contain; background-color: #070b13; background-image: linear-gradient(45deg, #0c1320 25%, transparent 25%), linear-gradient(-45deg, #0c1320 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #0c1320 75%), linear-gradient(-45deg, transparent 75%, #0c1320 75%); background-position: 0 0, 0 8px, 8px -8px, -8px 0; background-size: 16px 16px; }
     .canvas-wrap { display: block; position: relative; width: fit-content; max-width: none; margin: 0 auto; border: 1px solid #52617a; background: #020617; overflow: hidden; box-shadow: 0 12px 32px rgb(0 0 0 / 30%); }
     canvas { display: block; max-width: none; image-rendering: auto; cursor: crosshair; transform-origin: top left; touch-action: none; }
     .poly-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 8px; margin-top: 10px; }
+    .poly-list[hidden] { display: none; }
     .poly { position: relative; min-width: 0; border: 1px solid var(--line); border-radius: var(--radius); padding: 9px; background: var(--panel); color: var(--muted); font-size: 10px; }
     .poly b { display: block; padding-right: 68px; color: #9ab8ff; font-size: 11px; }
     .poly.exclusion b { color: #ff9da7; }
@@ -227,8 +245,7 @@
       .workspace-head { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
       .workspace-actions { justify-content: flex-end; gap: 4px; }
       .workspace-actions .text-action { flex: 1; }
-      .benchmark-labeler { right: 10px; bottom: max(8px, env(safe-area-inset-bottom)); left: 10px; }
-      .benchmark-quick-states { grid-template-columns: 1fr 1fr; }
+      .benchmark-labeler { right: 8px; bottom: max(8px, env(safe-area-inset-bottom)); left: 8px; }
       .benchmark-top { grid-template-columns: 1fr; }
       .benchmark-actions { grid-column: auto; display: grid; grid-template-columns: 1fr 1fr; }
       .benchmark-footer { display: block; }
@@ -398,23 +415,32 @@
       <div class="status-line camera-workspace-only" id="detectionStatus">Load a camera image, then run the detector.</div>
 
       <div class="benchmark-panel" id="benchmarkPanel">
-        <div class="benchmark-labeler" id="benchmarkLabeler">
+        <div class="benchmark-labeler" id="benchmarkLabeler" aria-busy="false">
+          <div class="benchmark-labeler-loading" id="benchmarkLabelerLoading" role="status" aria-live="polite" hidden>
+            <span class="benchmark-labeler-spinner" aria-hidden="true"></span>
+            <span>Saving label...</span>
+          </div>
           <div>
-            <span class="benchmark-target-label">Label highlighted polygon</span>
             <strong class="benchmark-target-name" id="benchmarkTargetName">Loading an unlabeled image...</strong>
             <span class="benchmark-target-meta" id="benchmarkTargetMeta">Each click saves one label and advances.</span>
           </div>
           <div class="benchmark-label-actions">
-            <div class="benchmark-quick-states" id="benchmarkQuickStates" role="group" aria-label="Label highlighted polygon">
-              <button type="button" data-state="empty" aria-pressed="false" disabled>Empty</button>
-              <button type="button" data-state="minority_full" aria-pressed="false" disabled>Minority full</button>
-              <button type="button" data-state="majority_full" aria-pressed="false" disabled>Majority full</button>
-              <button type="button" data-state="full" aria-pressed="false" disabled>Full</button>
+            <div class="benchmark-quick-states" id="benchmarkQuickStates" role="group" aria-label="Occupancy label">
+              <button type="button" data-shortcut="1" data-state="empty" aria-label="Empty" aria-describedby="benchmarkShortcut1Description" aria-keyshortcuts="1" aria-pressed="false" title="Shortcut: 1" disabled>Empty<span class="shortcut-overlay" aria-hidden="true"><span class="shortcut-keycap">1</span></span></button>
+              <button type="button" data-shortcut="2" data-state="minority_full" aria-label="Sparse" aria-describedby="benchmarkShortcut2Description" aria-keyshortcuts="2" aria-pressed="false" title="Shortcut: 2" disabled>Sparse<span class="shortcut-overlay" aria-hidden="true"><span class="shortcut-keycap">2</span></span></button>
+              <button type="button" data-shortcut="3" data-state="majority_full" aria-label="Crowded" aria-describedby="benchmarkShortcut3Description" aria-keyshortcuts="3" aria-pressed="false" title="Shortcut: 3" disabled>Crowded<span class="shortcut-overlay" aria-hidden="true"><span class="shortcut-keycap">3</span></span></button>
+              <button type="button" data-shortcut="4" data-state="full" aria-label="Full" aria-describedby="benchmarkShortcut4Description" aria-keyshortcuts="4" aria-pressed="false" title="Shortcut: 4" disabled>Full<span class="shortcut-overlay" aria-hidden="true"><span class="shortcut-keycap">4</span></span></button>
             </div>
+            <span class="sr-only" id="benchmarkShortcut1Description">Keyboard shortcut: 1.</span>
+            <span class="sr-only" id="benchmarkShortcut2Description">Keyboard shortcut: 2.</span>
+            <span class="sr-only" id="benchmarkShortcut3Description">Keyboard shortcut: 3.</span>
+            <span class="sr-only" id="benchmarkShortcut4Description">Keyboard shortcut: 4.</span>
             <div class="benchmark-skip-actions" aria-label="Skip benchmark items">
-              <button id="skipBenchmarkPolygonBtn" class="ghost" type="button" disabled>Skip polygon</button>
-              <button id="skipBenchmarkFrameBtn" class="ghost" type="button" disabled>Skip frame</button>
+              <button id="skipBenchmarkPolygonBtn" class="ghost" type="button" aria-describedby="skipBenchmarkPolygonShortcutDescription" aria-keyshortcuts="ArrowRight" title="Shortcut: Right arrow" disabled>Skip polygon<span class="shortcut-overlay" aria-hidden="true"><span class="shortcut-keycap">→</span></span></button>
+              <button id="skipBenchmarkFrameBtn" class="ghost" type="button" aria-describedby="skipBenchmarkFrameShortcutDescription" aria-keyshortcuts="Control+ArrowRight" title="Shortcut: Ctrl+Right arrow" disabled>Skip frame<span class="shortcut-overlay" aria-hidden="true"><span class="shortcut-keycap">Ctrl</span><span class="shortcut-keycap">→</span></span></button>
             </div>
+            <span class="sr-only" id="skipBenchmarkPolygonShortcutDescription">Keyboard shortcut: Right Arrow.</span>
+            <span class="sr-only" id="skipBenchmarkFrameShortcutDescription">Keyboard shortcut: Control plus Right Arrow.</span>
           </div>
         </div>
         <div class="benchmark-top">
@@ -499,23 +525,9 @@
         <div class="canvas-bar">
           <div class="zoom-controls" aria-label="Detection frame tools">
             <button id="zoomOutBtn" class="ghost" title="Zoom out" aria-label="Zoom out"><svg class="icon" aria-hidden="true"><use href="/dev/camera-detection/icons.svg#icon-zoom-out"/></svg></button>
-            <button id="zoomFitBtn" class="ghost"><svg class="icon" aria-hidden="true"><use href="/dev/camera-detection/icons.svg#icon-maximize"/></svg>Fit</button>
-            <button id="panBtn" class="ghost" title="Pan image; space-drag and middle-drag also work" aria-pressed="false" disabled><svg class="icon" aria-hidden="true"><use href="/dev/camera-detection/icons.svg#icon-hand"/></svg>Pan</button>
-            <button id="hidePolygonsBtn" class="ghost" type="button" aria-pressed="false">Hide polygons</button>
-            <button id="zoomActualBtn" class="ghost" title="Actual size">1:1</button>
-            <span id="zoomStatus"></span>
             <button id="zoomInBtn" class="ghost" title="Zoom in" aria-label="Zoom in"><svg class="icon" aria-hidden="true"><use href="/dev/camera-detection/icons.svg#icon-zoom-in"/></svg></button>
-            <select class="sr-only" id="zoomSelect" tabindex="-1" aria-hidden="true">
-              <option value="0.5">50%</option>
-              <option value="0.75">75%</option>
-              <option value="1">100%</option>
-              <option value="1.25">125%</option>
-              <option value="1.5">150%</option>
-              <option value="2">200%</option>
-              <option value="3">300%</option>
-              <option value="4">400%</option>
-              <option value="custom" disabled>Custom</option>
-            </select>
+            <button id="zoomFitBtn" class="ghost"><svg class="icon" aria-hidden="true"><use href="/dev/camera-detection/icons.svg#icon-maximize"/></svg>Fit</button>
+            <button id="polygonVisibilityBtn" class="ghost" type="button" aria-label="Polygon display: Blink Poly">Blink Poly</button>
           </div>
         </div>
         <div class="canvas-viewport">
@@ -546,7 +558,13 @@
     ];
     const colors = { include: ["#22c55e", "#38bdf8", "#f97316", "#e879f9", "#facc15"], exclude: ["#ef4444", "#fb7185", "#f43f5e", "#dc2626", "#f87171"] };
     const occupancyStates = ["empty", "minority_full", "majority_full", "full"];
-    const occupancyStateColors = { empty: "#22c55e", minority_full: "#38bdf8", majority_full: "#f97316", full: "#ef4444", unlabeled: "#94a3b8" };
+    // map label shortcut keys
+    const benchmarkShortcutStates = {
+      1: occupancyStates[0],
+      2: occupancyStates[1],
+      3: occupancyStates[2],
+      4: occupancyStates[3]
+    };
     const storageKey = "ferry-fyi-manual-camera-polygons-v2";
     const state = loadInitialState();
     const cameraSelect = document.getElementById("camera");
@@ -559,8 +577,6 @@
     const ctx = canvas.getContext("2d");
     const canvasShell = document.querySelector(".canvas-shell");
     const canvasViewport = document.querySelector(".canvas-viewport");
-    const panBtn = document.getElementById("panBtn");
-    const hidePolygonsBtn = document.getElementById("hidePolygonsBtn");
     const img = new Image();
     const currentBox = document.getElementById("currentBox");
     const polyList = document.getElementById("polyList");
@@ -568,8 +584,6 @@
     const cameraTitle = document.getElementById("cameraTitle");
     const cameraMeta = document.getElementById("cameraMeta");
     const summary = document.getElementById("summary");
-    const zoomSelect = document.getElementById("zoomSelect");
-    const zoomStatus = document.getElementById("zoomStatus");
     const saveStatus = document.getElementById("saveStatus");
     const saveIndicator = document.querySelector(".save-indicator");
     const detectionStatus = document.getElementById("detectionStatus");
@@ -584,7 +598,9 @@
     const benchmarkTargetName = document.getElementById("benchmarkTargetName");
     const benchmarkTargetMeta = document.getElementById("benchmarkTargetMeta");
     const benchmarkLabeler = document.getElementById("benchmarkLabeler");
+    const benchmarkLabelerLoading = document.getElementById("benchmarkLabelerLoading");
     const benchmarkQuickStates = document.getElementById("benchmarkQuickStates");
+    const polygonVisibilityBtn = document.getElementById("polygonVisibilityBtn");
     const skipBenchmarkPolygonBtn = document.getElementById("skipBenchmarkPolygonBtn");
     const skipBenchmarkFrameBtn = document.getElementById("skipBenchmarkFrameBtn");
     const captureSessionId = document.getElementById("captureSessionId");
@@ -611,7 +627,6 @@
     const benchmarkDraftStorageKey = "ferry-fyi-dev-camera-detection-benchmark-draft";
     const debuggerAuthorizationAttemptKey = "ferry-fyi-dev-camera-detection-authorization-attempted";
     const debuggerAuthorizationRefreshedKey = "ferry-fyi-dev-camera-detection-authorization-refreshed";
-    const debuggerAuthorizationPath = "/?authorizeCameraDetectionDebugger=benchmarks";
     const activeDebuggerPath = window.location.pathname.replace(/\/+$/, "");
     // detect app-served routes
     const isAppDebuggerRoute = activeDebuggerPath === debuggerRouteBase
@@ -621,16 +636,14 @@
     const startsInCaptureMode = activeDebuggerPath === `${debuggerRouteBase}/capture`;
     const startsInEditorMode = activeDebuggerPath === `${debuggerRouteBase}/editor`;
     const startsInBenchmarkMode = !startsInEditorMode && !startsInCaptureMode;
+    const activeDebuggerMode = startsInEditorMode ? "editor" : startsInCaptureMode ? "capture" : "benchmarks";
+    const debuggerAuthorizationPath = `/?authorizeCameraDetectionDebugger=${activeDebuggerMode}`;
     document.body.dataset.toolMode = startsInBenchmarkMode ? "benchmark" : startsInCaptureMode ? "capture" : "editor";
     const appApiBase = isAppDebuggerRoute
       ? "/api/debug/camera-detection"
       : "";
     const appMutationBase = appApiBase
       ? "/api/admin/camera-detection"
-      : "";
-    // restore admin authorization
-    const appAccessToken = appApiBase
-      ? sessionStorage.getItem(debuggerTokenStorageKey) || ""
       : "";
     // resolve standalone or app routes
     function toolEndpoint(path) {
@@ -641,6 +654,9 @@
       const method = String(options.method || "GET").toUpperCase();
       const isMutation = method !== "GET";
       const headers = new Headers(options.headers || {});
+      const appAccessToken = isMutation && appApiBase
+        ? localStorage.getItem(debuggerTokenStorageKey) || ""
+        : "";
       // app mutation guard
       if (isMutation && appAccessToken) {
         headers.set("Authorization", `Bearer ${appAccessToken}`);
@@ -659,8 +675,8 @@
     // explain benchmark persistence failures
     function benchmarkSaveError(response, payload) {
       // expired authorization guard
-      if (isAppDebuggerRoute && (response.status === 401 || response.status === 403)) {
-        sessionStorage.removeItem(debuggerTokenStorageKey);
+      if (isAppDebuggerRoute && response.status === 401) {
+        localStorage.removeItem(debuggerTokenStorageKey);
         const error = new Error("Save authorization is missing or expired. Unsaved labels are retained in this browser.");
         error.authorizationRequired = true;
         return error;
@@ -721,9 +737,10 @@
     let activeBenchmarkFrameId = null;
     let activeBenchmarkAreaId = null;
     let benchmarkImageReady = false;
+    let benchmarkHighlightVisible = true;
+    let benchmarkHighlightTimer = null;
+    let benchmarkPolygonMode = "blink";
     let lastPointerType = "mouse";
-    let panMode = false;
-    let polygonsHidden = false;
     let spacePan = false;
     let panGesture = null;
     const activeTouchPointers = new Map();
@@ -736,7 +753,6 @@
       if (!startsInBenchmarkMode) return;
       const clearance = Math.ceil(benchmarkLabeler.getBoundingClientRect().height + 16);
       document.documentElement.style.setProperty("--benchmark-dock-clearance", `${clearance}px`);
-      requestAnimationFrame(updatePanAvailability);
     }
 
     // observe responsive dock height
@@ -1044,11 +1060,6 @@
       return benchmarkManifest.frames.find((frame) => frame.frameId === activeBenchmarkFrameId) || null;
     }
 
-    // format one occupancy state
-    function formatOccupancyState(value) {
-      return value ? value.replaceAll("_", " ") : "unlabeled";
-    }
-
     // ensure mutable frame labels
     function ensureBenchmarkFrameLabels(frame) {
       benchmarkLabels.frames[frame.frameId] ||= {
@@ -1087,14 +1098,43 @@
       return cameraAnnotation(frame.cameraId).allowedAreas.find((area) => area.id === activeBenchmarkAreaId) || null;
     }
 
+    // remove labels for deleted polygons
+    function pruneObsoleteBenchmarkLabels() {
+      let removedCount = 0;
+      // benchmark frame pass
+      Object.entries(benchmarkLabels.frames).forEach(([frameId, frameLabels]) => {
+        const frame = benchmarkManifest.frames.find((candidate) => candidate.frameId === frameId);
+        // valid frame-label guard
+        if (!frame || !frameLabels?.areaStates) return;
+        const validAreaIds = new Set(cameraAnnotation(frame.cameraId).allowedAreas.map((area) => area.id));
+        // saved polygon pass
+        Object.keys(frameLabels.areaStates).forEach((areaId) => {
+          // active polygon guard
+          if (validAreaIds.has(areaId)) return;
+          delete frameLabels.areaStates[areaId];
+          removedCount += 1;
+        });
+      });
+      return removedCount;
+    }
+
     // update the quick-label toolbar
     function renderBenchmarkLabeler() {
       const frame = activeBenchmarkFrame();
       const area = activeBenchmarkArea(frame);
       const buttons = [...benchmarkQuickStates.querySelectorAll("button")];
       const imageReady = Boolean(frame) && benchmarkImageReady;
-      skipBenchmarkPolygonBtn.disabled = !imageReady || !area;
-      skipBenchmarkFrameBtn.disabled = !imageReady;
+      const saving = benchmarkPendingRevision > benchmarkSavedRevision;
+      skipBenchmarkPolygonBtn.disabled = saving || !imageReady || !area;
+      skipBenchmarkFrameBtn.disabled = saving || !imageReady;
+      // pending save guard
+      if (saving) {
+        // disable labels while saving
+        buttons.forEach((button) => {
+          button.disabled = true;
+        });
+        return;
+      }
       // loading image guard
       if (frame && area && !benchmarkImageReady) {
         benchmarkTargetName.textContent = `Loading ${customBenchmarkCameraName(frame)}...`;
@@ -1117,11 +1157,9 @@
         });
         return;
       }
-      const remainingInFrame = unlabeledBenchmarkAreas(frame).length;
-      const remainingInSet = filteredBenchmarkFrames().reduce((total, candidate) => total + unlabeledBenchmarkAreas(candidate).length, 0);
       const selectedState = benchmarkAreaState(area.id);
-      benchmarkTargetName.textContent = area.label || area.id;
-      benchmarkTargetMeta.textContent = `${area.type} · ${formatOccupancyState(selectedState)} · ${customBenchmarkCameraName(frame)} · ${remainingInFrame} left in image · ${remainingInSet} left in set`;
+      benchmarkTargetName.textContent = area.label || "Highlighted polygon";
+      benchmarkTargetMeta.textContent = customBenchmarkCameraName(frame);
       // enable active labels
       buttons.forEach((button) => {
         button.disabled = false;
@@ -1144,6 +1182,10 @@
       saveBenchmarkBtn.textContent = buttonLabel;
       saveBenchmarkBtn.disabled = pending || !dirty;
       saveBenchmarkBtn.dataset.dirty = String(dirty);
+      benchmarkLabeler.dataset.saving = String(pending);
+      benchmarkLabeler.setAttribute("aria-busy", String(pending));
+      benchmarkLabelerLoading.hidden = !pending;
+      renderBenchmarkLabeler();
     }
 
     // mark benchmark data unsaved
@@ -1155,7 +1197,120 @@
     // select one benchmark area
     function focusBenchmarkArea(areaId) {
       activeBenchmarkAreaId = areaId;
+      resetBenchmarkHighlightBlink();
       render();
+    }
+
+    // move among polygons in the active frame
+    function focusAdjacentBenchmarkArea(direction) {
+      const frame = activeBenchmarkFrame();
+      // ready frame guard
+      if (!frame || !benchmarkImageReady) return;
+      const areas = cameraAnnotation(frame.cameraId).allowedAreas;
+      // available polygon guard
+      if (areas.length === 0) return;
+      const currentIndex = areas.findIndex((area) => area.id === activeBenchmarkAreaId);
+      const fallbackIndex = direction > 0 ? 0 : areas.length - 1;
+      const nextIndex = currentIndex < 0
+        ? fallbackIndex
+        : (currentIndex + direction + areas.length) % areas.length;
+      focusBenchmarkArea(areas[nextIndex].id);
+    }
+
+    // blink the active benchmark polygon
+    function blinkBenchmarkHighlight() {
+      // active labeling guard
+      if (!benchmarkImageReady || !activeBenchmarkAreaId) {
+        benchmarkHighlightVisible = true;
+        return;
+      }
+      benchmarkHighlightVisible = !benchmarkHighlightVisible;
+      render();
+    }
+
+    // render the polygon display mode
+    function renderBenchmarkPolygonMode() {
+      const labels = {
+        blink: "Blink Poly",
+        hide: "Hide Poly",
+        show: "Show Poly"
+      };
+      const label = labels[benchmarkPolygonMode];
+      polygonVisibilityBtn.textContent = label;
+      polygonVisibilityBtn.setAttribute("aria-label", `Polygon display: ${label}`);
+    }
+
+    // cycle the polygon display mode
+    function cycleBenchmarkPolygonMode() {
+      const modes = ["show", "blink", "hide"];
+      const currentIndex = modes.indexOf(benchmarkPolygonMode);
+      benchmarkPolygonMode = modes[(currentIndex + 1) % modes.length];
+      renderBenchmarkPolygonMode();
+      resetBenchmarkHighlightBlink();
+      render();
+    }
+
+    // restart the active polygon blink cadence
+    function resetBenchmarkHighlightBlink() {
+      benchmarkHighlightVisible = benchmarkPolygonMode !== "hide";
+      // previous cadence guard
+      if (benchmarkHighlightTimer !== null) {
+        window.clearInterval(benchmarkHighlightTimer);
+      }
+      // active blink guard
+      if (!startsInBenchmarkMode || benchmarkPolygonMode !== "blink") return;
+      benchmarkHighlightTimer = window.setInterval(blinkBenchmarkHighlight, 1000);
+    }
+
+    // identify controls that own typed input
+    function isKeyboardInputTarget(target) {
+      return target instanceof HTMLInputElement
+        || target instanceof HTMLTextAreaElement
+        || target instanceof HTMLSelectElement
+        || target instanceof HTMLElement && target.isContentEditable;
+    }
+
+    // handle benchmark labeling shortcuts
+    function handleBenchmarkShortcut(event) {
+      // inactive shortcut guard
+      if (
+        !startsInBenchmarkMode
+        || event.repeat
+        || event.altKey
+        || event.metaKey
+        || isKeyboardInputTarget(event.target)
+      ) return;
+      const frame = activeBenchmarkFrame();
+      const area = activeBenchmarkArea(frame);
+      const saving = benchmarkPendingRevision > benchmarkSavedRevision;
+      // unavailable labeling guard
+      if (!frame || !benchmarkImageReady || saving) return;
+      // skip-frame shortcut branch
+      if (event.ctrlKey && event.key === "ArrowRight") {
+        event.preventDefault();
+        skipBenchmarkFrame();
+        return;
+      }
+      const shortcutState = benchmarkShortcutStates[event.key];
+      // label shortcut branch
+      if (!event.ctrlKey && shortcutState && area) {
+        event.preventDefault();
+        void applyBenchmarkState(frame, area.id, shortcutState);
+        return;
+      }
+      // modified arrow guard
+      if (event.ctrlKey) return;
+      // previous-polygon shortcut branch
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        focusAdjacentBenchmarkArea(-1);
+        return;
+      }
+      // next-polygon shortcut branch
+      if (event.key === "ArrowRight") {
+        event.preventDefault();
+        focusAdjacentBenchmarkArea(1);
+      }
     }
 
     // populate benchmark frame choices
@@ -1210,13 +1365,19 @@
         benchmarkLabels = benchmarkDraft || persistedLabels;
         benchmarkDraftRestored = Boolean(benchmarkDraft);
         benchmarkLabels.frames ||= {};
-        benchmarkDirtyRevision = benchmarkDraft ? 1 : 0;
+        const removedLabelCount = pruneObsoleteBenchmarkLabels();
+        benchmarkDirtyRevision = benchmarkDraft || removedLabelCount ? 1 : 0;
         benchmarkSavedRevision = 0;
         benchmarkPendingRevision = 0;
         benchmarkFailedRevision = benchmarkDraft ? 1 : 0;
         renderBenchmarkPersistence();
         populateBenchmarkFrames();
-        renderBenchmarkStatus(benchmarkDraft ? "" : "Benchmark data loaded.");
+        let loadMessage = benchmarkDraft ? "" : "Benchmark data loaded.";
+        // obsolete label notice
+        if (removedLabelCount) {
+          loadMessage = `Removed ${removedLabelCount} obsolete polygon label${removedLabelCount === 1 ? "" : "s"}.`;
+        }
+        renderBenchmarkStatus(loadMessage);
       } catch (error) {
         benchmarkStatus.textContent = `Could not load benchmark data. ${error.message || ""}`;
       }
@@ -1507,6 +1668,7 @@
       syncCustomSelect(cameraSelect);
       activeBenchmarkFrameId = frame.frameId;
       activeBenchmarkAreaId = unlabeledBenchmarkAreas(frame)[0]?.id || null;
+      resetBenchmarkHighlightBlink();
       // lock labels during image load
       benchmarkImageReady = false;
       renderBenchmarkLabeler();
@@ -1572,6 +1734,9 @@
 
     // serialize benchmark saves
     function queueBenchmarkSave(successMessage) {
+      const removedLabelCount = pruneObsoleteBenchmarkLabels();
+      // obsolete label branch
+      if (removedLabelCount) markBenchmarkDirty();
       const requestedRevision = benchmarkDirtyRevision;
       // persisted revision guard
       if (requestedRevision <= benchmarkSavedRevision) return Promise.resolve(true);
@@ -1850,35 +2015,17 @@
 
     // reflect the active pan interaction
     function syncPanCursor() {
-      canvasShell.dataset.panReady = String(panMode || spacePan);
+      canvasShell.dataset.panReady = String(spacePan);
       canvasShell.dataset.panning = String(Boolean(panGesture));
     }
 
-    // toggle persistent pan mode
-    function setPanMode(active) {
-      panMode = Boolean(active) && !panBtn.disabled;
-      panBtn.setAttribute("aria-pressed", String(panMode));
-      syncPanCursor();
-    }
-
-    // enable panning only for overflowing images
-    function updatePanAvailability() {
-      const canPan = canvasViewport.scrollWidth > canvasViewport.clientWidth + 1
-        || canvasViewport.scrollHeight > canvasViewport.clientHeight + 1;
-      panBtn.disabled = !canPan;
-      // stale pan guard
-      if (!canPan) setPanMode(false);
-    }
-
+    // apply the selected zoom
     function applyZoom() {
       const camera = selectedCamera();
       zoom = clampZoom(zoom);
       canvas.style.width = `${frameWidth(camera) * zoom}px`;
       canvas.style.height = `${frameHeight(camera) * zoom}px`;
-      zoomSelect.value = [...zoomSelect.options].some((option) => Number(option.value) === zoom) ? String(zoom) : "custom";
-      zoomStatus.textContent = `${Math.round(zoom * 100)}%`;
       localStorage.setItem(`${storageKey}-zoom`, String(zoom));
-      requestAnimationFrame(updatePanAvailability);
     }
 
     function setZoom(value) {
@@ -1897,23 +2044,54 @@
       canvasViewport.scrollTop += imageClientY - clientPoint[1];
     }
 
-    function fitZoomToWidth() {
+    // fit the full image inside the viewport
+    function fitZoomToViewport() {
       const camera = selectedCamera();
-      const availableWidth = Math.max(240, document.querySelector("section").clientWidth - 36);
-      setZoom(availableWidth / frameWidth(camera));
+      const viewportStyle = getComputedStyle(canvasViewport);
+      const wrapStyle = getComputedStyle(canvas.parentElement);
+      const horizontalChrome = Number.parseFloat(viewportStyle.paddingLeft)
+        + Number.parseFloat(viewportStyle.paddingRight)
+        + Number.parseFloat(wrapStyle.borderLeftWidth)
+        + Number.parseFloat(wrapStyle.borderRightWidth);
+      const verticalChrome = Number.parseFloat(viewportStyle.paddingTop)
+        + Number.parseFloat(viewportStyle.paddingBottom)
+        + Number.parseFloat(wrapStyle.borderTopWidth)
+        + Number.parseFloat(wrapStyle.borderBottomWidth)
+        + Number.parseFloat(wrapStyle.marginTop)
+        + Number.parseFloat(wrapStyle.marginBottom);
+      const availableWidth = Math.max(1, canvasViewport.clientWidth - horizontalChrome - 2);
+      const availableHeight = Math.max(1, canvasViewport.clientHeight - verticalChrome - 2);
+      setZoom(Math.min(availableWidth / frameWidth(camera), availableHeight / frameHeight(camera)));
+      canvasViewport.scrollLeft = 0;
+      canvasViewport.scrollTop = 0;
     }
 
-    // render and fit phone canvases
+    // reset each newly loaded image view
     function renderLoadedImage() {
+      zoom = 1;
       render();
       // compact viewport guard
-      if (mobileViewport.matches) fitZoomToWidth();
+      if (mobileViewport.matches) fitZoomToViewport();
+      canvasViewport.scrollLeft = 0;
+      canvasViewport.scrollTop = 0;
     }
 
+    // step around the visible image center
     function stepZoom(direction) {
       const steps = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4];
       const next = direction > 0 ? steps.find((step) => step > zoom + 0.001) : [...steps].reverse().find((step) => step < zoom - 0.001);
-      setZoom(next || zoom);
+      const canvasRect = canvas.getBoundingClientRect();
+      const viewportRect = canvasViewport.getBoundingClientRect();
+      const visibleCenter = [
+        (Math.max(canvasRect.left, viewportRect.left) + Math.min(canvasRect.right, viewportRect.right)) / 2,
+        (Math.max(canvasRect.top, viewportRect.top) + Math.min(canvasRect.bottom, viewportRect.bottom)) / 2
+      ];
+      const viewportCenter = [
+        viewportRect.left + viewportRect.width / 2,
+        viewportRect.top + viewportRect.height / 2
+      ];
+      const imagePoint = canvasPointAt(visibleCenter[0], visibleCenter[1]);
+      setZoomAroundImagePoint(next || zoom, imagePoint, viewportCenter);
     }
 
     function distance(a, b) {
@@ -2115,7 +2293,8 @@
       ctx.fillText(label, box.left, center[1] + height / 3);
     }
 
-    function drawPolygon(points, color, label, closed) {
+    // draw one polygon overlay
+    function drawPolygon(points, color, label, closed, shaded = true, showVertices = true) {
       if (!points.length) return;
       ctx.beginPath();
       points.forEach(([x, y], index) => {
@@ -2126,28 +2305,24 @@
       ctx.lineWidth = 1.5;
       ctx.strokeStyle = color;
       ctx.stroke();
-      if (closed) {
+      // optional interior shading
+      if (closed && shaded) {
         ctx.fillStyle = `${color}40`;
         ctx.fill();
       }
-      points.forEach(([x, y]) => {
-        ctx.beginPath();
-        ctx.arc(x, y, 2.5, 0, Math.PI * 2);
-        ctx.fillStyle = color;
-        ctx.fill();
-        ctx.lineWidth = 1;
-        ctx.strokeStyle = "#020617";
-        ctx.stroke();
-      });
+      // optional vertex markers
+      if (showVertices) {
+        points.forEach(([x, y]) => {
+          ctx.beginPath();
+          ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+          ctx.fillStyle = color;
+          ctx.fill();
+          ctx.lineWidth = 1;
+          ctx.strokeStyle = "#020617";
+          ctx.stroke();
+        });
+      }
       if (label) drawPlacedLabel(points, color, label, closed);
-    }
-
-    // toggle polygon overlays
-    function setPolygonsHidden(hidden) {
-      polygonsHidden = Boolean(hidden);
-      hidePolygonsBtn.setAttribute("aria-pressed", String(polygonsHidden));
-      hidePolygonsBtn.textContent = polygonsHidden ? "Show polygons" : "Hide polygons";
-      render();
     }
 
     // draw detector response boxes
@@ -2219,22 +2394,21 @@
       syncCustomSelect(areaType);
       areaId.disabled = editingLocked;
       areaLabel.disabled = editingLocked;
-      // polygon overlay guard
-      if (!polygonsHidden) {
+      // labeling focus branch
+      if (startsInBenchmarkMode) {
+        const benchmarkTarget = activeBenchmarkArea(benchmark);
+        // blinking target guard
+        if (benchmarkTarget && benchmarkHighlightVisible) {
+          drawPolygon(denormalized(benchmarkTarget.polygon, camera), "#facc15", null, true, false, false);
+        }
+      } else {
         // draw allowed polygons
         annotation.allowedAreas.forEach((area, index) => {
-          const state = benchmarkAreaState(area.id);
-          const color = benchmark ? occupancyStateColors[state || "unlabeled"] : colors.include[index % colors.include.length];
-          const label = benchmark ? `${area.label || area.id} (${formatOccupancyState(state)})` : area.label || area.id;
-          drawPolygon(denormalized(area.polygon, camera), color, label, true);
+          const color = colors.include[index % colors.include.length];
+          drawPolygon(denormalized(area.polygon, camera), color, area.label || area.id, true);
         });
         // draw excluded polygons
         annotation.excludedAreas.forEach((area, index) => drawPolygon(denormalized(area.polygon, camera), colors.exclude[index % colors.exclude.length], area.label || area.id, true));
-        const benchmarkTarget = activeBenchmarkArea(benchmark);
-        // emphasize the next label
-        if (benchmarkTarget) {
-          drawPolygon(denormalized(benchmarkTarget.polygon, camera), "#facc15", `SELECTED: ${benchmarkTarget.label || benchmarkTarget.id}`, true);
-        }
         drawEditHandles(camera);
         drawPolygon(currentPoints, "#ffffff", "current", false);
       }
@@ -2553,7 +2727,7 @@
         }
       }
       // pan gesture branch
-      if (!panBtn.disabled && (panMode || spacePan || event.button === 1)) {
+      if (spacePan || event.button === 1) {
         event.preventDefault();
         panGesture = {
           pointerId: event.pointerId,
@@ -2922,23 +3096,20 @@
       scheduleBenchmarkNotesSave();
     });
     document.getElementById("zoomOutBtn").addEventListener("click", () => stepZoom(-1));
-    document.getElementById("zoomFitBtn").addEventListener("click", fitZoomToWidth);
-    document.getElementById("zoomActualBtn").addEventListener("click", () => setZoom(1));
     document.getElementById("zoomInBtn").addEventListener("click", () => stepZoom(1));
-    hidePolygonsBtn.addEventListener("click", () => setPolygonsHidden(!polygonsHidden));
-    // toggle persistent panning
-    panBtn.addEventListener("click", () => setPanMode(!panMode));
-    zoomSelect.addEventListener("change", () => setZoom(zoomSelect.value));
+    document.getElementById("zoomFitBtn").addEventListener("click", fitZoomToViewport);
+    polygonVisibilityBtn.addEventListener("click", cycleBenchmarkPolygonMode);
+    renderBenchmarkPolygonMode();
     inspectorMenuButton.addEventListener("click", () => setInspectorOpen(true));
     inspectorCloseButton.addEventListener("click", () => setInspectorOpen(false, true));
     inspectorBackdrop.addEventListener("click", () => setInspectorOpen(false, true));
     mobileViewport.addEventListener("change", (event) => {
       setInspectorOpen(false);
       // newly compact viewport guard
-      if (event.matches) fitZoomToWidth();
+      if (event.matches) fitZoomToViewport();
     });
-    // refresh overflow after resizing
-    window.addEventListener("resize", () => requestAnimationFrame(updatePanAvailability));
+    // enable benchmark keyboard shortcuts
+    window.addEventListener("keydown", handleBenchmarkShortcut);
     // enable temporary space-drag panning
     window.addEventListener("keydown", (event) => {
       const target = event.target;
@@ -2958,7 +3129,7 @@
         || target?.isContentEditable
       ) return;
       event.preventDefault();
-      spacePan = !panBtn.disabled;
+      spacePan = true;
       syncPanCursor();
     });
     // disable temporary space-drag panning
@@ -3001,6 +3172,8 @@
       initializeCustomSelects();
       updateTypeOptions();
       setInspectorOpen(false);
+      // benchmark blink loop
+      if (startsInBenchmarkMode) resetBenchmarkHighlightBlink();
       await Promise.all([loadDefaultAnnotations(), loadCameraDisplayOverrides()]);
       // capture route setup
       if (startsInCaptureMode) {

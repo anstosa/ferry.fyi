@@ -23,6 +23,8 @@ http://localhost:4040/dev/camera-detection/capture
 
 The links and routes are mounted only when `NODE_ENV=development`. JSON mutations and detector requests still pass through the owner-admin authorization boundary. `yarn container:up` starts the local detector container. The app uses `FERRY_DETECTOR_URL` when set, otherwise the stack's `CAR_DETECTION_ENDPOINT`, then falls back to `http://127.0.0.1:8001/detect` for host development.
 
+The debugger reuses the main app's persisted owner token. A `401` triggers one silent Auth0 refresh through the app; a `403` remains an authorization error and never forces a login loop.
+
 The standalone debugger remains available for recovery or focused use:
 
 ```bash
@@ -46,7 +48,8 @@ shared/data/camera-detection-areas.json
 - Browser autosave on this computer.
 - Backup download/copy still available.
 - Font Awesome controls use per-icon deep imports to generate a small standalone SVG sprite; the debugger does not load the full icon pack or Font Awesome browser runtime.
-- Compact zoom controls: zoom in/out, fit width, or return to 1:1. Enable **Pan** to drag a zoomed image on mouse or touch; desktop users can also hold Space or middle-drag temporarily.
+- Compact image controls place zoom out and zoom in together, fit the full frame, and switch the active polygon among show, blink, and hide modes. Desktop users can hold Space or middle-drag to pan temporarily.
+- Benchmark labeling hides every polygon except the active target. Its border blinks once per second by default.
 - Polygon editing: click a polygon on the image or click Edit, drag vertices, click an edge to add a point, select a point and delete it.
 - Mobile image navigation: pinch with two fingers to zoom around the gesture midpoint.
 - Detail editing: select a polygon, change Occupancy/Exclusion, type, id, or label, then click Apply details.
@@ -83,6 +86,7 @@ shared/data/camera-detection-areas.json
 4. Return to the top-level **Benchmarks** tab, then choose **Controls**, **Tests**, or **All** in the benchmark panel.
 5. Select a stored frame; it loads immediately. Polygon editing is disabled in benchmark mode.
 6. Select one ground-truth occupancy state for every green/colored queue or holding polygon. Each selection saves immediately and focuses the next unlabeled polygon or loads the next incomplete frame. Select the active state again to clear and save it without advancing.
+   Keyboard shortcuts: `1`–`4` apply Empty, Sparse, Crowded, or Full; Left and Right move between polygons; Ctrl+Right skips the current frame.
 7. Add frame notes for weather, glare, staleness, loading transitions, or ambiguity.
 8. Use **All empty** only when every configured polygon is visibly empty.
 9. Run **Detect vehicles** to overlay detector signals for comparison; labels remain independent of predictions.

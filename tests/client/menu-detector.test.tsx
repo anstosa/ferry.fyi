@@ -62,6 +62,7 @@ const renderMenu = (environment: string, email: string): string => {
 
 afterEach(() => {
   auth.user = { email: "anstosa@gmail.com" };
+  localStorage.clear();
   sessionStorage.clear();
   vi.clearAllMocks();
 });
@@ -114,7 +115,7 @@ describe("Detector menu shortcut", () => {
 
     await openCameraDetectionDebugger(getAccessToken, navigate);
 
-    expect(sessionStorage.getItem(CAMERA_DETECTION_DEBUGGER_TOKEN_KEY)).toBe(
+    expect(localStorage.getItem(CAMERA_DETECTION_DEBUGGER_TOKEN_KEY)).toBe(
       "owner-token"
     );
     expect(CAMERA_DETECTION_DEBUGGER_PATH).toBe(

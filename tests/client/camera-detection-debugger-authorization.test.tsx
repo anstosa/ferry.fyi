@@ -39,6 +39,8 @@ describe("camera detection debugger authorization", () => {
           search="?authorizeCameraDetectionDebugger=benchmarks"
         />
       );
+      // flush authorization effect
+      await Promise.resolve();
     });
     return navigate;
   };
@@ -52,6 +54,7 @@ describe("camera detection debugger authorization", () => {
     auth.isLoading = false;
     auth.loginWithRedirect.mockReset();
     auth.loginWithRedirect.mockResolvedValue(undefined);
+    localStorage.clear();
     sessionStorage.clear();
     document.body.innerHTML = "";
   });
@@ -63,7 +66,7 @@ describe("camera detection debugger authorization", () => {
     expect(auth.getAccessTokenSilently).toHaveBeenCalledWith({
       cacheMode: "off",
     });
-    expect(sessionStorage.getItem(CAMERA_DETECTION_DEBUGGER_TOKEN_KEY)).toBe(
+    expect(localStorage.getItem(CAMERA_DETECTION_DEBUGGER_TOKEN_KEY)).toBe(
       "fresh-owner-token"
     );
     expect(
@@ -89,9 +92,9 @@ describe("camera detection debugger authorization", () => {
 
   // expired session fallback contract
   it("starts login when silent token refresh fails", async () => {
-    auth.getAccessTokenSilently.mockRejectedValueOnce(
-      new Error("login required")
-    );
+    auth.getAccessTokenSilently.mockRejectedValueOnce({
+      error: "login_required",
+    });
 
     await renderAuthorization();
 
@@ -100,5 +103,23 @@ describe("camera detection debugger authorization", () => {
         redirectPath: "/?authorizeCameraDetectionDebugger=benchmarks",
       },
     });
+  });
+
+  // transient refresh failure contract
+  it("does not force login after a transient silent refresh failure", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(vi.fn());
+    auth.getAccessTokenSilently.mockRejectedValueOnce(
+      new Error("Auth0 request timed out")
+    );
+
+    const navigate = await renderAuthorization();
+
+    expect(auth.loginWithRedirect).not.toHaveBeenCalled();
+    expect(navigate).not.toHaveBeenCalled();
+    expect(consoleError).toHaveBeenCalledWith(
+      "Camera detector silent authorization failed",
+      expect.any(Error)
+    );
+    consoleError.mockRestore();
   });
 });

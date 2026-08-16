@@ -10,9 +10,12 @@ const auth = vi.hoisted(() => ({ logout: vi.fn() }));
 vi.mock("@auth0/auth0-react", () => ({ useAuth0: () => auth }));
 vi.mock("~/components/Splash", () => ({
   // splash fixture
-  Splash: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  Splash: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
 }));
 
+import { CAMERA_DETECTION_DEBUGGER_TOKEN_KEY } from "../../client/lib/cameraDetectionDebugger";
 import { Logout } from "../../client/views/Logout";
 
 let root: Root | undefined;
@@ -42,10 +45,15 @@ describe("Logout", () => {
     root = undefined;
     document.body.innerHTML = "";
     auth.logout.mockReset();
+    localStorage.clear();
   });
 
   it("clears local authentication and returns home", async () => {
     auth.logout.mockResolvedValue(undefined);
+    localStorage.setItem(
+      CAMERA_DETECTION_DEBUGGER_TOKEN_KEY,
+      "owner-access-token"
+    );
     const container = renderLogout();
 
     await act(async () => {
@@ -55,6 +63,9 @@ describe("Logout", () => {
 
     expect(auth.logout).toHaveBeenCalledOnce();
     expect(auth.logout).toHaveBeenCalledWith({ openUrl: false });
+    expect(
+      localStorage.getItem(CAMERA_DETECTION_DEBUGGER_TOKEN_KEY)
+    ).toBeNull();
     expect(container.textContent).toContain("Home page");
   });
 
@@ -62,7 +73,7 @@ describe("Logout", () => {
     auth.logout
       .mockRejectedValueOnce(new Error("Local cache unavailable"))
       .mockResolvedValueOnce(undefined);
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleError = vi.spyOn(console, "error").mockImplementation(vi.fn());
     const container = renderLogout();
 
     await act(async () => {

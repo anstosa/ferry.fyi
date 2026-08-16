@@ -33,6 +33,7 @@ import {
   getLogoutMode,
   logoutWithAppFlow,
 } from "~/lib/auth";
+import { clearCameraDetectionDebuggerAuthorization } from "~/lib/cameraDetectionDebugger";
 import { useDevice } from "~/lib/device";
 import { getSlug, useTerminals } from "~/lib/terminals";
 import { type ThemePreference, useThemePreference } from "~/lib/theme";
@@ -342,6 +343,7 @@ export const Account = withAuthenticationRequired(
 
     // logout route
     const onLogout = async () => {
+      clearCameraDetectionDebuggerAuthorization();
       const options = {
         logoutParams: { returnTo: getConfiguredAuth0RedirectUri() },
       };
@@ -409,6 +411,7 @@ export const Account = withAuthenticationRequired(
         setDeletionState("confirming");
         return;
       }
+      clearCameraDetectionDebuggerAuthorization();
       try {
         await logout({ openUrl: false });
         navigate("/", { replace: true });

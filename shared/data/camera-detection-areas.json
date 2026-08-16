@@ -8,21 +8,23 @@
   "origin": "top-left",
   "status": "manual-partial-review",
   "source": {
-    "annotatedAt": "2026-07-13T01:56:54.503Z",
+    "annotatedAt": "2026-08-14T20:38:35.258Z",
     "notes": "Manual polygons drawn in ferry-fyi-camera-polygon-annotator. allowedAreas are countable queue/holding regions. excludedAreas are holes/breaks/ignore regions that split or suppress detection.",
-    "savedBy": "ferry-fyi-camera-polygon-annotator"
+    "savedBy": "ferry-fyi-camera-detection-debugger"
   },
   "reviewedCameraIds": [
-    "9161",
-    "9163",
-    "9164",
-    "9166",
-    "9172",
     "9173",
     "9174",
+    "9166",
+    "9172",
     "9175",
+    "9162",
+    "9163",
+    "9161",
+    "9728",
     "9394",
-    "9728"
+    "9944",
+    "9164"
   ],
   "cameraIds": [
     "9048",
@@ -98,6 +100,7 @@
         "height": 245
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/fridayharbor/friholding.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -116,6 +119,7 @@
         "height": 246
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/colman/seattlemain.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -134,6 +138,7 @@
         "height": 246
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/bremerton/holding/holding.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -152,6 +157,7 @@
         "height": 245
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/fauntleroy/terminal/fauntleroy.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -170,6 +176,7 @@
         "height": 245
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/southworth/holding.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -188,6 +195,7 @@
         "height": 421
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/Bainbridge/Bainbridge.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -206,6 +214,7 @@
         "height": 294
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/vashon/VSHvc00001.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -224,6 +233,7 @@
         "height": 294
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/vashon/VSHvc00002.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -242,6 +252,7 @@
         "height": 294
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/vashon/VSHvc00004.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -260,6 +271,7 @@
         "height": 294
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/vashon/VSHvc00003.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -278,6 +290,7 @@
         "height": 245
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/Tahlequah/holding/holding.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -296,6 +309,7 @@
         "height": 245
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/Tahlequah/VMSSign/VMSSign.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -314,6 +328,7 @@
         "height": 245
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/anacortes/terminal/anaterm.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -332,6 +347,7 @@
         "height": 245
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/anacortes/holding/anahold.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -350,6 +366,7 @@
         "height": 245
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/anacortes/road/anaroad.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -368,6 +385,7 @@
         "height": 209
       },
       "imageUrl": "https://images.wsdot.wa.gov/orflow/104vc02465.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -386,6 +404,7 @@
         "height": 294
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/kingston/fse/fse.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -404,6 +423,7 @@
         "height": 294
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/kingston/fsw/fsw.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -422,6 +442,7 @@
         "height": 244
       },
       "imageUrl": "https://images.wsdot.wa.gov/orflow/104vc02314.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -440,6 +461,7 @@
         "height": 294
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/edmonds/104dayton.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -458,6 +480,7 @@
         "height": 294
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/edmonds/104vms_wts.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -476,6 +499,7 @@
         "height": 421
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/edmonds/holding.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -494,6 +518,7 @@
         "height": 246
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/edmonds/104underpass.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -512,6 +537,7 @@
         "height": 246
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/edmonds/104pine.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -530,6 +556,7 @@
         "height": 249
       },
       "imageUrl": "https://images.wsdot.wa.gov/nw/525vc00740.jpg",
+      "detectionEnabled": true,
       "reviewed": true,
       "requiresDaylightReview": false,
       "allowedAreas": [
@@ -567,13 +594,13 @@
       "terminalId": "14",
       "displayName": "SR 525 at MP 6.9: 76th St SW North - WSF Mukilteo",
       "title": "SR 525 at MP 6.9: 76th St SW North - WSF Mukilteo",
-      "detectionEnabled": false,
       "frameSize": {
         "width": 335,
         "height": 249
       },
       "imageUrl": "https://images.wsdot.wa.gov/nw/525vc00695.jpg",
-      "reviewed": false,
+      "detectionEnabled": false,
+      "reviewed": true,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
@@ -586,83 +613,15 @@
       "terminalId": "14",
       "displayName": "SR 525 at MP 6.9: 76th St SW South - WSF Mukilteo",
       "title": "SR 525 at MP 6.9: 76th St SW South - WSF Mukilteo",
-      "detectionEnabled": false,
       "frameSize": {
         "width": 335,
         "height": 249
       },
       "imageUrl": "https://images.wsdot.wa.gov/nw/525vc00694.jpg",
+      "detectionEnabled": false,
       "reviewed": true,
       "requiresDaylightReview": false,
-      "allowedAreas": [
-        {
-          "id": "mukilteo_sr_525_at_mp_6_9_76th_st_sw_south_wsf_mukilteo_queue_lane",
-          "type": "queue_lane",
-          "label": "Queue Lane",
-          "polygon": [
-            [
-              0.9802,
-              0.919
-            ],
-            [
-              0.6544,
-              0.5822
-            ],
-            [
-              0.4293,
-              0.3244
-            ],
-            [
-              0.3538,
-              0.202
-            ],
-            [
-              0.3622,
-              0.1375
-            ],
-            [
-              0.3945,
-              0.094
-            ],
-            [
-              0.4221,
-              0.0666
-            ],
-            [
-              0.4281,
-              0.0699
-            ],
-            [
-              0.4089,
-              0.1005
-            ],
-            [
-              0.3981,
-              0.1375
-            ],
-            [
-              0.4149,
-              0.1907
-            ],
-            [
-              0.5155,
-              0.3083
-            ],
-            [
-              0.7395,
-              0.5114
-            ],
-            [
-              0.9969,
-              0.7321
-            ],
-            [
-              0.9945,
-              0.9142
-            ]
-          ]
-        }
-      ],
+      "allowedAreas": [],
       "excludedAreas": [],
       "excludedAreaNotes": [
         "Manual annotation: exclude all cars outside include polygons and all cars inside excluded polygons, including intersections, side streets, parking, opposing traffic, shoulders, sidewalks, and non-ferry lanes."
@@ -678,6 +637,7 @@
         "height": 246
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/Mukilteo/Terminal/mukterm.jpg",
+      "detectionEnabled": true,
       "reviewed": true,
       "requiresDaylightReview": false,
       "allowedAreas": [
@@ -942,6 +902,7 @@
         "height": 421
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/clinton/terminal/clinton.jpg",
+      "detectionEnabled": true,
       "reviewed": true,
       "requiresDaylightReview": false,
       "allowedAreas": [
@@ -1283,6 +1244,7 @@
         "height": 246
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/PortTownsend/terminal/ptterm.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -1301,6 +1263,7 @@
         "height": 245
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/PortTownsend/Street/ptStreet.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -1319,6 +1282,7 @@
         "height": 245
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/Keystone/terminal/keyterm.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -1337,6 +1301,7 @@
         "height": 245
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/Keystone/Street/keyStreet.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -1351,10 +1316,11 @@
       "displayName": "Clinton Uphill",
       "title": "WSF Clinton Uphill",
       "frameSize": {
-        "width": 400,
-        "height": 137
+        "width": 480,
+        "height": 352
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/clinton/boothhill.jpg",
+      "detectionEnabled": true,
       "reviewed": true,
       "requiresDaylightReview": false,
       "allowedAreas": [
@@ -1432,12 +1398,12 @@
       "terminalId": "5",
       "displayName": "Clinton Dock",
       "title": "WSF Clinton Dock",
-      "detectionEnabled": false,
       "frameSize": {
         "width": 480,
         "height": 352
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/clinton/boothdock.jpg",
+      "detectionEnabled": false,
       "reviewed": true,
       "requiresDaylightReview": false,
       "allowedAreas": [
@@ -1480,6 +1446,7 @@
         "height": 360
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/clinton/clinteast.jpg",
+      "detectionEnabled": true,
       "reviewed": true,
       "requiresDaylightReview": false,
       "allowedAreas": [
@@ -1578,10 +1545,11 @@
       "displayName": "Clinton W SR 525",
       "title": "WSF Clinton W SR 525",
       "frameSize": {
-        "width": 400,
-        "height": 140
+        "width": 480,
+        "height": 360
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/clinton/clintwest.jpg",
+      "detectionEnabled": true,
       "reviewed": true,
       "requiresDaylightReview": false,
       "allowedAreas": [
@@ -1672,6 +1640,7 @@
         "height": 246
       },
       "imageUrl": "https://www.seattle.gov/trafficcams/images/Fauntleroy_SW_Cloverdale_NS.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -1690,6 +1659,7 @@
         "height": 245
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/southworth/terminal.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -1708,6 +1678,7 @@
         "height": 249
       },
       "imageUrl": "https://images.wsdot.wa.gov/nw/525vc00820.jpg",
+      "detectionEnabled": true,
       "reviewed": true,
       "requiresDaylightReview": false,
       "allowedAreas": [
@@ -1717,52 +1688,52 @@
           "label": "Queue Lane",
           "polygon": [
             [
-              0.2503,
-              0.9182
+              0.0012,
+              0.9167
             ],
             [
-              0.6982,
-              0.5379
+              0,
+              0.7761
             ],
             [
-              0.7186,
-              0.5266
+              0.4736,
+              0.3258
             ],
             [
-              0.7353,
-              0.4783
+              0.5454,
+              0.2365
             ],
             [
-              0.6946,
-              0.4525
+              0.5473,
+              0.1851
             ],
             [
-              0.6539,
-              0.4428
+              0.511,
+              0.1671
             ],
             [
-              0.6695,
-              0.4267
+              0.5454,
+              0.1594
             ],
             [
-              0.7258,
-              0.438
+              0.5913,
+              0.1748
             ],
             [
-              0.7856,
-              0.4605
+              0.6047,
+              0.2288
             ],
             [
-              0.8192,
-              0.4896
+              0.5397,
+              0.3624
             ],
             [
-              0.8168,
-              0.5395
+              0.3735,
+              0.6297
             ],
             [
-              0.5022,
-              0.9288
+              0.184,
+              0.9199
             ]
           ]
         }
@@ -1774,20 +1745,24 @@
           "label": "Driveway",
           "polygon": [
             [
-              0.8255,
-              0.5633
+              0.5614,
+              0.3577
             ],
             [
-              0.633,
-              0.544
+              0.3905,
+              0.3386
             ],
             [
-              0.153,
-              0.9133
+              0,
+              0.6675
             ],
             [
-              0.5525,
-              0.9191
+              0,
+              0.9167
+            ],
+            [
+              0.222,
+              0.9199
             ]
           ]
         },
@@ -1797,20 +1772,20 @@
           "label": "4th Ave",
           "polygon": [
             [
-              0.8144,
-              0.5363
+              0.6199,
+              0.2416
             ],
             [
-              0.6946,
-              0.5298
+              0.5378,
+              0.2288
             ],
             [
-              0.7138,
-              0.4912
+              0.5378,
+              0.2082
             ],
             [
-              0.8443,
-              0.5008
+              0.618,
+              0.221
             ]
           ]
         }
@@ -1829,6 +1804,7 @@
         "height": 294
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/fauntleroy/terminal/fauntterminal.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -1847,6 +1823,7 @@
         "height": 294
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/fauntleroy/terminal/faunttrenton.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -1865,6 +1842,7 @@
         "height": 294
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/fauntleroy/terminal/fauntlincoln.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -1883,6 +1861,7 @@
         "height": 209
       },
       "imageUrl": "https://images.wsdot.wa.gov/orflow/305vc00022.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -1901,6 +1880,7 @@
         "height": 209
       },
       "imageUrl": "https://images.wsdot.wa.gov/orflow/305vc00023.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -1919,6 +1899,7 @@
         "height": 249
       },
       "imageUrl": "https://images.wsdot.wa.gov/orflow/305vc00028.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -1937,6 +1918,7 @@
         "height": 249
       },
       "imageUrl": "https://images.wsdot.wa.gov/orflow/305vc00029.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -1955,6 +1937,7 @@
         "height": 245
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/fridayharbor/upperholding.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -1973,6 +1956,7 @@
         "height": 288
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/orcas/holding.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -1991,6 +1975,7 @@
         "height": 288
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/orcas/booth.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -2009,6 +1994,7 @@
         "height": 246
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/lopez/approach.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -2027,6 +2013,7 @@
         "height": 321
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/lopez/holding.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -2045,6 +2032,7 @@
         "height": 245
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/vashon/HoldingSouth.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -2063,6 +2051,7 @@
         "height": 249
       },
       "imageUrl": "https://images.wsdot.wa.gov/nw/525vc00819.jpg",
+      "detectionEnabled": true,
       "reviewed": true,
       "requiresDaylightReview": false,
       "allowedAreas": [
@@ -2176,6 +2165,7 @@
         "height": 245
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/PointDefiance/PtDefHolding.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -2194,6 +2184,7 @@
         "height": 245
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/PointDefiance/PtDefBooth.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -2212,6 +2203,7 @@
         "height": 244
       },
       "imageUrl": "https://images.wsdot.wa.gov/orflow/104vc02466.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -2230,7 +2222,8 @@
         "height": 209
       },
       "imageUrl": "https://images.wsdot.wa.gov/nw/525vc00858.jpg",
-      "reviewed": false,
+      "detectionEnabled": true,
+      "reviewed": true,
       "requiresDaylightReview": false,
       "allowedAreas": [],
       "excludedAreas": [],
@@ -2248,6 +2241,7 @@
         "height": 321
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/lopez/holding2.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -2266,6 +2260,7 @@
         "height": 321
       },
       "imageUrl": "https://images.wsdot.wa.gov/wsf/lopez/holding3.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],
@@ -2284,6 +2279,7 @@
         "height": 244
       },
       "imageUrl": "https://images.wsdot.wa.gov/orflow/104vc02390.jpg",
+      "detectionEnabled": true,
       "reviewed": false,
       "requiresDaylightReview": false,
       "allowedAreas": [],

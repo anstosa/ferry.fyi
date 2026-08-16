@@ -4,8 +4,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const operations = vi.hoisted(() => ({
   getAdminOperationStates: vi.fn(),
-  isAdminOperationName: vi.fn((value: string) => value === "wsf-refresh" || value === "clear-wsf-memory-cache"),
-  isDestructiveAdminOperation: vi.fn((value: string) => value === "clear-wsf-memory-cache"),
+  isAdminOperationName: vi.fn(
+    (value: string) =>
+      value === "wsf-refresh" || value === "clear-wsf-memory-cache"
+  ),
+  isDestructiveAdminOperation: vi.fn(
+    (value: string) => value === "clear-wsf-memory-cache"
+  ),
   runAdminOperation: vi.fn(),
 }));
 const auth0 = vi.hoisted(() => ({ getAuth0UserEmail: vi.fn() }));
@@ -13,23 +18,33 @@ const auth0 = vi.hoisted(() => ({ getAuth0UserEmail: vi.fn() }));
 vi.mock("~/lib/admin/operations", () => operations);
 vi.mock("~/lib/auth0Admin", () => auth0);
 
-import { adminOperationsRouter } from "../../../server/controllers/api/admin/operations";
+import {
+  clearOwnerAdminVerificationCache,
+  requireOwnerAdmin,
+} from "../../../server/controllers/api/admin/authorization";
 import { getAdminConfirmationPhrase } from "../../../server/controllers/api/admin/confirmation";
-import { requireOwnerAdmin } from "../../../server/controllers/api/admin/authorization";
+import { adminOperationsRouter } from "../../../server/controllers/api/admin/operations";
 
 const createApp = (): express.Express => {
   const app = express();
   app.use(express.json());
-  app.use((request: Request & { auth?: { payload: { sub: string } } }, _response: Response, next: NextFunction) => {
-    request.auth = { payload: { sub: "auth0|owner" } };
-    next();
-  });
+  app.use(
+    (
+      request: Request & { auth?: { payload: { sub: string } } },
+      _response: Response,
+      next: NextFunction
+    ) => {
+      request.auth = { payload: { sub: "auth0|owner" } };
+      next();
+    }
+  );
   app.use("/api/admin/operations", requireOwnerAdmin, adminOperationsRouter);
   return app;
 };
 
 describe("owner admin operations route", () => {
   beforeEach(() => {
+    clearOwnerAdminVerificationCache();
     vi.clearAllMocks();
     auth0.getAuth0UserEmail.mockResolvedValue("anstosa@gmail.com");
     operations.getAdminOperationStates.mockResolvedValue([]);

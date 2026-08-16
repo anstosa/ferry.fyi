@@ -420,6 +420,29 @@ export const Route = ({
     updateSchedule();
   }, [terminal, mate, date]);
 
+  // keep the selected service date shareable
+  useEffect(() => {
+    const nextDate = date.toISODate();
+    // invalid date guard
+    if (!nextDate) {
+      return;
+    }
+    const url = new URL(window.location.href);
+    // today query branch
+    if (nextDate === todayKey) {
+      url.searchParams.delete("date");
+    } else {
+      url.searchParams.set("date", nextDate);
+    }
+    const nextUrl = `${url.pathname}${url.search}${url.hash}`;
+    const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+    // unchanged url guard
+    if (nextUrl === currentUrl) {
+      return;
+    }
+    window.history.replaceState(window.history.state, "", nextUrl);
+  }, [date, todayKey]);
+
   // update parents on parameter change
   useEffect(() => {
     onTerminalChange?.(terminal);

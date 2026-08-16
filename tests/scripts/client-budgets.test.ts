@@ -26,6 +26,20 @@ afterEach(() => {
 });
 
 describe("client asset budgets", () => {
+  it("allows bounded production route chunk growth", () => {
+    const files: Record<string, number> = {};
+    // create the allowed route chunks
+    for (let index = 0; index < 140; index += 1) {
+      files[`route-${index}.js`] = 1;
+    }
+    const summary = summarizeClientAssets(fixture(files));
+
+    expect(() => assertClientBudgets(summary)).not.toThrow();
+    expect(() =>
+      assertClientBudgets({ ...summary, javascriptFiles: 141 })
+    ).toThrow(/javascriptFiles/);
+  });
+
   it("summarizes and accepts a bounded fixture", () => {
     const summary = summarizeClientAssets(
       fixture({ "main.css": 20, "main.js": 100, "route.js": 50 })
