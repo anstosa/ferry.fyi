@@ -101,6 +101,16 @@ describe("getWebVersion", () => {
       )
     ).toBe("runtime-hash");
   });
+
+  // verify build-inlined defaults
+  it("reads build-inlined production values without an environment argument", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("HEROKU_RELEASE_VERSION", "build-hash");
+    document.head.innerHTML =
+      '<meta name="ferry-fyi-release" content="runtime-hash" />';
+
+    expect(getWebVersion()).toBe("runtime-hash");
+  });
 });
 
 describe("AppVersionInfo", () => {
