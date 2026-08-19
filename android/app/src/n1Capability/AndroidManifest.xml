@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- isolate the explicit n1 capability -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- capability-only background authorization -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+
+    <!-- receivers remain disabled until one exact region generation commits -->
+</manifest>

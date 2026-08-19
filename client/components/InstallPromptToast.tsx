@@ -8,6 +8,7 @@ import {
 } from "~/lib/appInstall";
 import { useLocalStorage } from "~/lib/browser";
 import { isInstalledApp } from "~/lib/device";
+import { useFeatureFlags } from "~/lib/featureFlags";
 import {
   hasInstallPrompt,
   subscribeInstallPrompt,
@@ -31,6 +32,7 @@ interface Props {
 export const InstallPromptToast = ({
   footerDocked = false,
 }: Props): ReactElement | null => {
+  const { automaticLeaderboardCheckinsEnabled } = useFeatureFlags();
   const [loadCount, setLoadCount] = useLocalStorage<number>(
     INSTALL_PROMPT_LOAD_COUNT_KEY,
     0
@@ -58,6 +60,7 @@ export const InstallPromptToast = ({
 
   // visibility guard
   if (
+    automaticLeaderboardCheckinsEnabled ||
     hideInstallPrompt ||
     loadCount < INSTALL_PROMPT_LOAD_THRESHOLD ||
     isInstalledApp()

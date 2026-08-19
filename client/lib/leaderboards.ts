@@ -1,4 +1,11 @@
 import type {
+  AutomaticEnrollmentBootstrapRequestV1,
+  AutomaticEnrollmentCredentialV1,
+  AutomaticEnrollmentDevicesV1,
+  AutomaticEnrollmentDisableRequestV1,
+  AutomaticEnrollmentDisableResultV1,
+  AutomaticEnrollmentHealthResultV1,
+  AutomaticEnrollmentHealthUpdateV1,
   ForegroundTerminalCheckInRequest,
   ForegroundTerminalCheckInResult,
   ForegroundTerminalPresenceResult,
@@ -11,7 +18,7 @@ import type {
   VesselCheckInResult,
 } from "shared/contracts/leaderboards";
 
-import { get, post, put } from "~/lib/api";
+import { del, get, post, put } from "~/lib/api";
 
 export const leaderboardPeriodOrder: LeaderboardPeriod[] = [
   "week",
@@ -76,6 +83,62 @@ export const updateLeaderboardPreferences = (
   put(
     "/leaderboards/preferences",
     preferences as unknown as Record<string, unknown>,
+    accessToken
+  );
+
+// create one subject-bound native enrollment
+export const createAutomaticEnrollment = (
+  bootstrap: AutomaticEnrollmentBootstrapRequestV1,
+  accessToken: string
+): Promise<AutomaticEnrollmentCredentialV1> =>
+  post(
+    "/leaderboards/automatic/enrollments",
+    bootstrap as unknown as Record<string, unknown>,
+    accessToken
+  );
+
+// list privacy-minimal subject devices
+export const getAutomaticEnrollments = (
+  accessToken: string
+): Promise<AutomaticEnrollmentDevicesV1> =>
+  get("/leaderboards/automatic/enrollments", accessToken);
+
+// revoke one subject-bound native enrollment
+export const revokeAutomaticEnrollment = (
+  enrollmentId: string,
+  accessToken: string
+): Promise<void> =>
+  del(
+    `/leaderboards/automatic/enrollments/${encodeURIComponent(enrollmentId)}`,
+    {},
+    accessToken
+  );
+
+// disable every subject-bound native enrollment
+export const disableAutomaticEnrollments = (
+  accessToken: string,
+  expectedSubject: string
+): Promise<AutomaticEnrollmentDisableResultV1> =>
+  post<AutomaticEnrollmentDisableResultV1>(
+    "/leaderboards/automatic/disable",
+    {
+      expectedSubject,
+    } as AutomaticEnrollmentDisableRequestV1 as unknown as Record<
+      string,
+      unknown
+    >,
+    accessToken
+  );
+
+// confirm one installation-bound detector health result
+export const updateAutomaticEnrollmentHealth = (
+  enrollmentId: string,
+  health: AutomaticEnrollmentHealthUpdateV1,
+  accessToken: string
+): Promise<AutomaticEnrollmentHealthResultV1> =>
+  put(
+    `/leaderboards/automatic/enrollments/${encodeURIComponent(enrollmentId)}/health`,
+    health as unknown as Record<string, unknown>,
     accessToken
   );
 

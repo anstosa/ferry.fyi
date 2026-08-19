@@ -4,6 +4,7 @@ import type { AccountDeletionResult } from "shared/contracts/user";
 import { revokeApplicationTokens } from "~/lib/admin/sessionRevocation";
 import { deleteAuth0User } from "~/lib/auth0Admin";
 import { db } from "~/lib/db";
+import { lockLeaderboardAutomaticPolicy } from "~/lib/leaderboardAutomaticPolicy";
 import { anonymizeLeaderboardAccount } from "~/lib/leaderboardPrivacy";
 import { FeatureFlagAllowlist } from "~/models/FeatureFlagAllowlist";
 import { UserSettings } from "~/models/UserSettings";
@@ -21,9 +22,15 @@ const deleteFerryUserDataInTransaction = async (
   subject: string,
   transaction: Transaction
 ): Promise<void> => {
+  const policy = await lockLeaderboardAutomaticPolicy(transaction, {
+    lockCheckins: true,
+    lockPresence: true,
+    lockReceipts: true,
+    subject,
+  });
   // commit revocation with deletion
   await revokeApplicationTokens(subject, new Date(), transaction);
-  await anonymizeLeaderboardAccount(subject, transaction);
+  await anonymizeLeaderboardAccount(subject, transaction, policy);
 
   await Promise.all([
     UserSettings.destroy({ transaction, where: { subject } }),
@@ -37,6 +44,7 @@ const deleteFerryUserDataInTransaction = async (
 export const deleteFerryUserData = async (
   subject: string
 ): Promise<DeletedUserDataResult> => {
+  // run app deletion atomically
   await db.transaction((transaction) =>
     deleteFerryUserDataInTransaction(subject, transaction)
   );
@@ -48,6 +56,7 @@ export const deleteFerryUserData = async (
 export const deleteFerryUserAccount = async (
   subject: string
 ): Promise<AccountDeletionResult> => {
+  // bind app and identity deletion
   await db.transaction(async (transaction) => {
     await deleteFerryUserDataInTransaction(subject, transaction);
     // preserve retry on Auth0 failure

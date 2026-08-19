@@ -35,9 +35,14 @@ The `leaderboards` flag is persisted in the database. Its evaluation order is:
 Public pages and public API decisions use global state only; a subject allowlist
 never makes a feature public. There is no percentage rollout or expiry.
 
-Automatic and background leaderboard check-ins are unavailable. The server
-always reports that capability as disabled, and the admin feature endpoint
-cannot enable it. Check-ins require an open-app, foreground interaction.
+Automatic check-ins have an independent `automaticLeaderboardCheckins` child
+flag. The owner admin UI manages its global state, exact Auth0 subject allowlist,
+and typed-confirmation kill switch separately from `leaderboards`. Evaluation is
+kill switch, global enable, then subject allowlist, and the parent leaderboard
+decision must also pass. The legacy compact feature update mutates only the
+parent and cannot enable or disable the child. Production native capability
+flags remain off independently of server rollout state. Manual check-in remains
+an open-app foreground interaction.
 
 ## User data and sign-out
 
@@ -281,7 +286,7 @@ When adding or changing an admin capability:
 
 1. Mount it only below the authenticated owner composition root.
 2. Require a server-derived typed confirmation for every destructive mutation.
-3. Keep automatic/background check-ins unavailable.
+3. Keep production native automatic capability flags off until G010 evidence is approved.
 4. Route all provider notifications through the final shared policy boundary.
 5. Put public crawler, sitemap, and `llms.txt` behavior behind the persisted
    content controls before static-file middleware.

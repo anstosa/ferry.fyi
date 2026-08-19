@@ -8,6 +8,7 @@ import React, { ReactElement, Suspense, useEffect, useRef } from "react";
 import { useLocation, useNavigate, useRoutes } from "react-router-dom";
 
 import { AppLoadingState } from "~/components/AppLoadingState";
+import { AutomaticCheckinsInstallBanner } from "~/components/AutomaticCheckinsInstallBanner";
 import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { InstallPromptToast } from "~/components/InstallPromptToast";
 import { LeaderboardForegroundCheckins } from "~/components/LeaderboardForegroundCheckins";
@@ -40,6 +41,7 @@ const InitialRouteReady = ({
   return <>{children}</>;
 };
 
+// application shell
 export const App = ({
   suspendInitialRoute = false,
 }: {
@@ -194,6 +196,7 @@ export const App = ({
       <>
         {routeElement}
         <AnimatePresence>
+          <AutomaticCheckinsInstallBanner key="automatic-checkins-install" />
           {!isOnline && !offlineDismissed && (
             <Prompt
               key="device-offline"

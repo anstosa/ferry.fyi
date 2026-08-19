@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { Transaction } from "sequelize";
 import type {
+  AutomaticEnrollmentDisableRequestV1,
   ForegroundTerminalCheckInRequest,
   ForegroundTerminalCheckInResult,
   ForegroundTerminalPresenceResult,
@@ -14,7 +15,17 @@ import { isObject } from "shared/lib/objects";
 
 import coastlineSnapshot from "~/data/noaa-enc-harbour-puget-sound.json";
 import { db } from "~/lib/db";
-import { leaderboardsEnabledForSubject } from "~/lib/leaderboardFlags";
+import {
+  advanceServerPolicyGeneration,
+  evaluateLeaderboardAutomaticPolicy,
+  hasHealthyAutomaticEnrollment,
+  lockLeaderboardAutomaticPolicy,
+  withLeaderboardAutomaticPolicyTransaction,
+} from "~/lib/leaderboardAutomaticPolicy";
+import {
+  automaticLeaderboardCheckinsEnabledForSubject,
+  leaderboardsEnabledForSubject,
+} from "~/lib/leaderboardFlags";
 import { anonymizeLeaderboardAccount } from "~/lib/leaderboardPrivacy";
 import {
   evaluateTerminalEligibility,
@@ -36,6 +47,19 @@ import { LeaderboardTerminalPresence } from "~/models/LeaderboardTerminalPresenc
 import { Route } from "~/models/Route";
 import { Terminal } from "~/models/Terminal";
 import { Vessel } from "~/models/Vessel";
+import {
+  acknowledgeAutomaticEnrollmentRotation,
+  AutomaticEnrollmentError,
+  createAutomaticEnrollment,
+  disableAutomaticEnrollments,
+  listAutomaticEnrollments,
+  parseAutomaticEnrollmentBootstrapRequest,
+  parseAutomaticEnrollmentHealthUpdate,
+  parseAutomaticEnrollmentRotationRequest,
+  revokeAutomaticEnrollment,
+  rotateAutomaticEnrollmentCredential,
+  updateAutomaticEnrollmentHealth,
+} from "~/services/leaderboardAutomaticEnrollment";
 import {
   getPublicLeaderboard,
   parsePublicLeaderboardPeriod,
@@ -72,10 +96,11 @@ const getProfile = async (
   return profile;
 };
 
+// serialize stored preferences
 const serializePreferences = (
   profile: LeaderboardProfile
 ): LeaderboardPreferences => ({
-  automaticCheckinsEnabled: false,
+  automaticCheckinsEnabled: profile.automaticCheckinsEnabled,
   displayName: profile.displayName,
   notificationsEnabled: profile.notificationsEnabled,
   optedOut: profile.optedOut,
@@ -83,6 +108,7 @@ const serializePreferences = (
   verboseNotificationsEnabled: profile.verboseNotificationsEnabled,
 });
 
+// validate preference mutations
 const sanitizePreferences = (
   input: unknown
 ): { update: LeaderboardPreferencesUpdate; valid: boolean } => {
@@ -96,23 +122,30 @@ const sanitizePreferences = (
     return { update: {}, valid: false };
   }
   const label = hasDisplayName ? input.displayName : input.initials;
+  // validate an optional public label
   if (label !== undefined) {
+    // require a string label
     if (typeof label !== "string") {
       return { update: {}, valid: false };
     }
     const displayName = normalizeLeaderboardDisplayName(label);
+    // reject unsafe labels
     if (displayName === null) {
       return { update: {}, valid: false };
     }
     update.displayName = displayName;
   }
+  // validate each boolean preference
   for (const key of [
+    "automaticCheckinsEnabled",
     "notificationsEnabled",
     "optedOut",
     "useFullName",
     "verboseNotificationsEnabled",
   ] as const) {
+    // copy only submitted preferences
     if (key in input) {
+      // require boolean preference values
       if (typeof input[key] !== "boolean") {
         return { update: {}, valid: false };
       }
@@ -239,9 +272,40 @@ leaderboardRouter.get(
   }
 );
 
-// enforce subject feature access
-leaderboardRouter.use(requireAuth, async (request, response, next) => {
+// authenticate every private leaderboard route
+leaderboardRouter.use(requireAuth);
+
+// prevent private response caching
+leaderboardRouter.use((_request, response, next) => {
   response.set("Cache-Control", "no-store");
+  next();
+});
+
+// disable all owned native credentials outside rollout admission
+leaderboardRouter.post("/automatic/disable", async (request, response) => {
+  // require one exact transient authenticated-owner binding
+  if (
+    !isObject(request.body) ||
+    Object.keys(request.body).length !== 1 ||
+    typeof request.body.expectedSubject !== "string" ||
+    !request.body.expectedSubject ||
+    request.body.expectedSubject.length > 512
+  ) {
+    response.status(400).send({ error: "invalid_cleanup_request" });
+    return;
+  }
+  const { expectedSubject } =
+    request.body as AutomaticEnrollmentDisableRequestV1;
+  // reject token replacement before mutating either subject
+  if (expectedSubject !== response.locals.user.sub) {
+    response.status(409).send({ error: "automatic_cleanup_subject_changed" });
+    return;
+  }
+  response.send(await disableAutomaticEnrollments(expectedSubject));
+});
+
+// enforce subject feature access
+leaderboardRouter.use(async (_request, response, next) => {
   // subject feature guard
   if (!(await leaderboardsEnabledForSubject(response.locals.user.sub))) {
     rejectDisabledLeaderboard(response);
@@ -249,6 +313,160 @@ leaderboardRouter.use(requireAuth, async (request, response, next) => {
   }
   next();
 });
+
+// require the child automatic subject policy for native enrollment routes
+leaderboardRouter.use("/automatic", async (_request, response, next) => {
+  // fail closed outside the automatic rollout subject set
+  if (
+    !(await automaticLeaderboardCheckinsEnabledForSubject(
+      response.locals.user.sub
+    ))
+  ) {
+    rejectDisabledLeaderboard(response);
+    return;
+  }
+  next();
+});
+
+// normalize fixed enrollment lifecycle failures
+const sendAutomaticEnrollmentFailure = (
+  error: unknown,
+  response: import("express").Response
+): import("express").Response => {
+  // expose only fixed enrollment codes
+  if (error instanceof AutomaticEnrollmentError) {
+    return response.status(error.status).send({ error: error.code });
+  }
+  throw error;
+};
+
+// create one auth0-bound native enrollment
+leaderboardRouter.post("/automatic/enrollments", async (request, response) => {
+  const parsed = parseAutomaticEnrollmentBootstrapRequest(request.body);
+  // reject malformed bootstrap bytes
+  if (!parsed) {
+    return response.status(400).send({ error: "invalid_enrollment_request" });
+  }
+
+  // normalize fixed lifecycle failures
+  try {
+    return response
+      .status(201)
+      .send(await createAutomaticEnrollment(response.locals.user.sub, parsed));
+  } catch (error) {
+    // redact lifecycle failure details
+    return sendAutomaticEnrollmentFailure(error, response);
+  }
+});
+
+// list privacy-minimal auth0-owned devices
+leaderboardRouter.get("/automatic/enrollments", async (_request, response) => {
+  // normalize fixed lifecycle failures
+  try {
+    return response.send(
+      await listAutomaticEnrollments(response.locals.user.sub)
+    );
+  } catch (error) {
+    // redact lifecycle failure details
+    return sendAutomaticEnrollmentFailure(error, response);
+  }
+});
+
+// update one auth0-owned detector health record
+leaderboardRouter.put(
+  "/automatic/enrollments/:enrollmentId/health",
+  async (request, response) => {
+    const parsed = parseAutomaticEnrollmentHealthUpdate(request.body);
+    // reject malformed health bytes
+    if (!parsed) {
+      return response.status(400).send({ error: "invalid_enrollment_request" });
+    }
+
+    // normalize fixed lifecycle failures
+    try {
+      return response.send(
+        await updateAutomaticEnrollmentHealth(
+          response.locals.user.sub,
+          request.params.enrollmentId,
+          parsed
+        )
+      );
+    } catch (error) {
+      // redact lifecycle failure details
+      return sendAutomaticEnrollmentFailure(error, response);
+    }
+  }
+);
+
+// rotate one auth0-owned credential
+leaderboardRouter.post(
+  "/automatic/enrollments/:enrollmentId/rotate",
+  async (request, response) => {
+    const parsed = parseAutomaticEnrollmentRotationRequest(request.body);
+    // reject malformed rotation bytes
+    if (!parsed) {
+      return response.status(400).send({ error: "invalid_enrollment_request" });
+    }
+
+    // normalize fixed lifecycle failures
+    try {
+      return response.send(
+        await rotateAutomaticEnrollmentCredential(
+          response.locals.user.sub,
+          request.params.enrollmentId,
+          parsed.installationNonce
+        )
+      );
+    } catch (error) {
+      // redact lifecycle failure details
+      return sendAutomaticEnrollmentFailure(error, response);
+    }
+  }
+);
+
+// acknowledge one auth0-owned credential rotation
+leaderboardRouter.post(
+  "/automatic/enrollments/:enrollmentId/rotation/acknowledge",
+  async (request, response) => {
+    const parsed = parseAutomaticEnrollmentRotationRequest(request.body);
+    // reject malformed acknowledgement bytes
+    if (!parsed) {
+      return response.status(400).send({ error: "invalid_enrollment_request" });
+    }
+
+    // normalize fixed lifecycle failures
+    try {
+      return response.send(
+        await acknowledgeAutomaticEnrollmentRotation(
+          response.locals.user.sub,
+          request.params.enrollmentId,
+          parsed.installationNonce
+        )
+      );
+    } catch (error) {
+      // redact lifecycle failure details
+      return sendAutomaticEnrollmentFailure(error, response);
+    }
+  }
+);
+
+// revoke one auth0-owned enrollment
+leaderboardRouter.delete(
+  "/automatic/enrollments/:enrollmentId",
+  async (request, response) => {
+    // normalize fixed lifecycle failures
+    try {
+      await revokeAutomaticEnrollment(
+        response.locals.user.sub,
+        request.params.enrollmentId
+      );
+      return response.status(204).send();
+    } catch (error) {
+      // redact lifecycle failure details
+      return sendAutomaticEnrollmentFailure(error, response);
+    }
+  }
+);
 
 leaderboardRouter.delete("/account", async (request, response) => {
   await db.transaction((transaction: Transaction) =>
@@ -292,6 +510,7 @@ leaderboardRouter.get(
   }
 );
 
+// credit one verified manual vessel event
 leaderboardRouter.post("/checkins/vessels", async (request, response) => {
   const checkin = parseVesselCheckin(request.body);
   if (!checkin) {
@@ -342,9 +561,16 @@ leaderboardRouter.post("/checkins/vessels", async (request, response) => {
     };
     return response.status(422).send(result);
   }
+  // serialize manual vessel credit
   const result = await db.transaction(async (transaction: Transaction) => {
-    const profile = await getProfile(response.locals.user.sub, transaction);
-    if (profile.optedOut) {
+    const policy = await lockLeaderboardAutomaticPolicy(transaction, {
+      createProfile: true,
+      lockCheckins: true,
+      sailingId,
+      subject: response.locals.user.sub,
+    });
+    // recheck manual policy while locked
+    if (!evaluateLeaderboardAutomaticPolicy(policy, now).manualEnabled) {
       return {
         status: 403,
         body: { error: "Leaderboard participation is disabled" },
@@ -385,6 +611,7 @@ leaderboardRouter.get("/preferences", async (request, response) =>
   )
 );
 
+// update preferences under policy locks
 leaderboardRouter.put("/preferences", async (request, response) => {
   const sanitized = sanitizePreferences(request.body);
   if (!sanitized.valid) {
@@ -392,19 +619,90 @@ leaderboardRouter.put("/preferences", async (request, response) => {
       .status(400)
       .send({ error: "Invalid leaderboard preferences" });
   }
+  // require the child rollout before any generic automatic enable request
   if (
-    isObject(request.body) &&
-    request.body.automaticCheckinsEnabled === true
+    sanitized.update.automaticCheckinsEnabled === true &&
+    !(await automaticLeaderboardCheckinsEnabledForSubject(
+      response.locals.user.sub
+    ))
   ) {
-    return response
-      .status(400)
-      .send({ error: "Automatic check-ins are unavailable" });
+    rejectDisabledLeaderboard(response);
+    return;
   }
-  const profile = await getProfile(response.locals.user.sub);
-  await profile.update(sanitized.update);
-  return response.send(serializePreferences(profile));
+  const now = new Date();
+  const result = await withLeaderboardAutomaticPolicyTransaction(
+    { createProfile: true, subject: response.locals.user.sub },
+    // mutate one locked profile
+    async (policy) => {
+      const profile = policy.profile as LeaderboardProfile;
+      const requestedAutomatic = sanitized.update.automaticCheckinsEnabled;
+
+      // require native health before generic enablement
+      if (
+        requestedAutomatic === true &&
+        !hasHealthyAutomaticEnrollment(policy, now)
+      ) {
+        return {
+          error: "Automatic check-ins require a healthy native enrollment",
+          status: 400,
+        } as const;
+      }
+
+      const optedOut = sanitized.update.optedOut ?? profile.optedOut;
+      const update: LeaderboardPreferencesUpdate = {
+        ...sanitized.update,
+        ...(optedOut ? { automaticCheckinsEnabled: false } : {}),
+      };
+      const policyChanged =
+        (update.optedOut !== undefined &&
+          update.optedOut !== profile.optedOut) ||
+        (update.automaticCheckinsEnabled !== undefined &&
+          update.automaticCheckinsEnabled !== profile.automaticCheckinsEnabled);
+      let enrollmentRevoked = false;
+
+      // revoke native credentials on any account-wide automatic disable
+      if (optedOut || requestedAutomatic === false) {
+        // visit each locked enrollment
+        for (const enrollment of policy.enrollments) {
+          // preserve already-revoked rows
+          if (enrollment.revokedAt === null) {
+            enrollmentRevoked = true;
+            await enrollment.update(
+              {
+                detectorEnabled: false,
+                health: "disabled",
+                healthUpdatedAt: now,
+                revokedAt: now,
+              },
+              { transaction: policy.transaction }
+            );
+          }
+        }
+      }
+
+      await profile.update(update, { transaction: policy.transaction });
+
+      // advance only server policy mutations
+      if (policyChanged || enrollmentRevoked) {
+        await advanceServerPolicyGeneration(policy);
+      }
+
+      return {
+        preferences: serializePreferences(profile),
+        status: 200,
+      } as const;
+    }
+  );
+
+  // return one generic preference result
+  if ("error" in result) {
+    return response.status(result.status).send({ error: result.error });
+  }
+
+  return response.status(result.status).send(result.preferences);
 });
 
+// record one verified manual terminal exit
 leaderboardRouter.post("/presence/terminals", async (request, response) => {
   const location = parseLocation(request.body);
   if (!location) {
@@ -413,6 +711,7 @@ leaderboardRouter.post("/presence/terminals", async (request, response) => {
       .send({ error: "Invalid foreground location payload" });
   }
   const now = new Date();
+  const eventAt = new Date(location.observedAt);
   const timeReason = locationTimeReason(location.observedAt, now);
   if (timeReason) {
     const result: ForegroundTerminalPresenceResult = {
@@ -449,11 +748,25 @@ leaderboardRouter.post("/presence/terminals", async (request, response) => {
     };
     return response.status(422).send(result);
   }
+  // serialize manual terminal exit
   const result = await db.transaction(async (transaction: Transaction) => {
+    const policy = await lockLeaderboardAutomaticPolicy(transaction, {
+      createProfile: true,
+      lockPresence: true,
+      subject: response.locals.user.sub,
+      terminalId: location.terminalId,
+    });
+
+    // recheck manual policy while locked
+    if (!evaluateLeaderboardAutomaticPolicy(policy, now).manualEnabled) {
+      return { recorded: false };
+    }
+
     const [presence] = await LeaderboardTerminalPresence.findOrCreate({
       defaults: {
         exitedAt: null,
         lastCreditedAt: null,
+        lastObservedAt: null,
         subject: response.locals.user.sub,
         terminalId: location.terminalId,
       },
@@ -464,15 +777,29 @@ leaderboardRouter.post("/presence/terminals", async (request, response) => {
       },
     });
     await presence.reload({ lock: transaction.LOCK.UPDATE, transaction });
+
+    // reject chronology reversal and equality
+    if (
+      presence.lastObservedAt &&
+      eventAt.getTime() <= presence.lastObservedAt.getTime()
+    ) {
+      return { recorded: false, reason: "STALE_LOCATION" } as const;
+    }
+
+    // require an active entry before exit
     if (!presence.lastCreditedAt || presence.exitedAt) {
       return { recorded: false };
     }
-    await presence.update({ exitedAt: now }, { transaction });
+    await presence.update(
+      { exitedAt: eventAt, lastObservedAt: eventAt },
+      { transaction }
+    );
     return { recorded: true };
   });
   return response.send(result);
 });
 
+// credit one verified manual terminal entry
 leaderboardRouter.post("/checkins/terminals", async (request, response) => {
   const location = parseLocation(request.body);
   if (!location) {
@@ -481,6 +808,7 @@ leaderboardRouter.post("/checkins/terminals", async (request, response) => {
       .send({ error: "Invalid foreground location payload" });
   }
   const now = new Date();
+  const eventAt = new Date(location.observedAt);
   const timeReason = locationTimeReason(location.observedAt, now);
   if (timeReason) {
     const result: ForegroundTerminalCheckInResult = {
@@ -527,9 +855,18 @@ leaderboardRouter.post("/checkins/terminals", async (request, response) => {
       .status(503)
       .send({ error: "Terminal route data is warming" });
   }
+  // serialize manual terminal entry
   const result = await db.transaction(async (transaction: Transaction) => {
-    const profile = await getProfile(response.locals.user.sub, transaction);
-    if (profile.optedOut) {
+    const policy = await lockLeaderboardAutomaticPolicy(transaction, {
+      createProfile: true,
+      lockPresence: true,
+      subject: response.locals.user.sub,
+      terminalId: location.terminalId,
+    });
+    const profile = policy.profile as LeaderboardProfile;
+
+    // recheck manual policy while locked
+    if (!evaluateLeaderboardAutomaticPolicy(policy, now).manualEnabled) {
       return {
         status: 403,
         body: { error: "Leaderboard participation is disabled" },
@@ -539,6 +876,7 @@ leaderboardRouter.post("/checkins/terminals", async (request, response) => {
       defaults: {
         exitedAt: null,
         lastCreditedAt: null,
+        lastObservedAt: null,
         subject: response.locals.user.sub,
         terminalId: location.terminalId,
       },
@@ -549,9 +887,26 @@ leaderboardRouter.post("/checkins/terminals", async (request, response) => {
       },
     });
     await presence.reload({ lock: transaction.LOCK.UPDATE, transaction });
+
+    // reject chronology reversal and equality
+    if (
+      presence.lastObservedAt &&
+      eventAt.getTime() <= presence.lastObservedAt.getTime()
+    ) {
+      return {
+        status: 422,
+        body: { credited: false, reason: "STALE_LOCATION" },
+      };
+    }
+
+    // process a verified exit event
     if (outside) {
+      // close an active presence
       if (presence.lastCreditedAt && !presence.exitedAt) {
-        await presence.update({ exitedAt: now }, { transaction });
+        await presence.update(
+          { exitedAt: eventAt, lastObservedAt: eventAt },
+          { transaction }
+        );
       }
       return {
         status: 200,
@@ -560,9 +915,10 @@ leaderboardRouter.post("/checkins/terminals", async (request, response) => {
     }
     const eligibility = evaluateTerminalEligibility(
       presence,
-      now,
+      eventAt,
       crossingMinutes
     );
+    // return the current eligibility denial
     if (!eligibility.eligible) {
       return {
         status: 200,
@@ -579,13 +935,17 @@ leaderboardRouter.post("/checkins/terminals", async (request, response) => {
       {
         entityId: location.terminalId,
         kind: "terminal",
-        occurredAt: now,
+        occurredAt: eventAt,
         subject: response.locals.user.sub,
       },
       { transaction }
     );
     await presence.update(
-      { exitedAt: null, lastCreditedAt: now },
+      {
+        exitedAt: null,
+        lastCreditedAt: eventAt,
+        lastObservedAt: eventAt,
+      },
       { transaction }
     );
     return {

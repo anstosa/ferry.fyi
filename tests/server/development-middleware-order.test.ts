@@ -23,6 +23,12 @@ vi.mock("~/lib/db", async () => {
 vi.mock("~/controllers/api", () => ({
   apiRouter: (_request: unknown, _response: unknown, next: () => void) =>
     next(),
+  // bypass isolated native routing
+  automaticLeaderboardNativeRouter: (
+    _request: unknown,
+    _response: unknown,
+    next: () => void
+  ) => next(),
 }));
 
 import { createApp } from "~/server";

@@ -66,8 +66,7 @@ describe("Admin", () => {
             {
               id: "identified-contact",
               label: "Ferry FYI with contact",
-              userAgent:
-                "FerryFYI/1.0 (+https://ferry.fyi; dev@ferry.fyi)",
+              userAgent: "FerryFYI/1.0 (+https://ferry.fyi; dev@ferry.fyi)",
             },
             {
               id: "identified-product",
@@ -88,6 +87,7 @@ describe("Admin", () => {
     document.body.appendChild(container);
     root = createRoot(container);
 
+    // render one complete feature policy surface
     await act(async () => {
       root?.render(React.createElement(Admin));
       await Promise.resolve();
@@ -153,7 +153,15 @@ describe("Admin", () => {
           leaderboardsEnabled: boolean;
         }) => void)
       | undefined;
-    let resolveDetailedFeature:
+    let resolveLeaderboardFeature:
+      | ((value: {
+          enabled: boolean;
+          killSwitch: boolean;
+          name: string;
+          subjects: string[];
+        }) => void)
+      | undefined;
+    let resolveAutomaticFeature:
       | ((value: {
           enabled: boolean;
           killSwitch: boolean;
@@ -168,7 +176,10 @@ describe("Admin", () => {
             resolveFeatures = resolve;
           }
           if (path === "/admin/features/leaderboards") {
-            resolveDetailedFeature = resolve;
+            resolveLeaderboardFeature = resolve;
+          }
+          if (path === "/admin/features/automaticLeaderboardCheckins") {
+            resolveAutomaticFeature = resolve;
           }
         })
     );
@@ -192,10 +203,16 @@ describe("Admin", () => {
         automaticLeaderboardCheckinsEnabled: false,
         leaderboardsEnabled: false,
       });
-      resolveDetailedFeature?.({
+      resolveLeaderboardFeature?.({
         enabled: false,
         killSwitch: false,
-        name: "Leaderboards",
+        name: "leaderboards",
+        subjects: [],
+      });
+      resolveAutomaticFeature?.({
+        enabled: false,
+        killSwitch: false,
+        name: "automaticLeaderboardCheckins",
         subjects: [],
       });
       await Promise.resolve();
@@ -207,6 +224,101 @@ describe("Admin", () => {
       )
     ).toBeNull();
     expect(container.textContent).toContain("Emergency kill switch:");
+    expect(container.textContent).toContain("Automatic leaderboard check-ins");
+  });
+
+  // verify independent automatic subject policy writes
+  it("saves the automatic check-in allowlist through its exact endpoint", async () => {
+    api.get.mockImplementation(
+      // return each independently managed feature fixture
+      (path: string) => {
+        // return the legacy projection
+        if (path === "/admin/features") {
+          return Promise.resolve({
+            automaticLeaderboardCheckinsEnabled: false,
+            leaderboardsEnabled: true,
+          });
+        }
+        // return the parent subject policy
+        if (path === "/admin/features/leaderboards") {
+          return Promise.resolve({
+            enabled: true,
+            killSwitch: false,
+            name: "leaderboards",
+            subjects: ["auth0|parent"],
+          });
+        }
+        // return the automatic subject policy
+        if (path === "/admin/features/automaticLeaderboardCheckins") {
+          return Promise.resolve({
+            enabled: false,
+            killSwitch: false,
+            name: "automaticLeaderboardCheckins",
+            subjects: ["auth0|automatic-old"],
+          });
+        }
+        return Promise.reject(new Error(`Unexpected request: ${path}`));
+      }
+    );
+    api.put.mockResolvedValue({
+      enabled: true,
+      killSwitch: false,
+      name: "automaticLeaderboardCheckins",
+      subjects: ["auth0|automatic-a", "auth0|automatic-b"],
+    });
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root?.render(React.createElement(Admin));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const toggle = container.querySelector(
+      '[aria-label="Enable automatic leaderboard check-ins"]'
+    ) as HTMLButtonElement;
+    const allowlist = container.querySelector(
+      "#automaticLeaderboardCheckins-allowlist"
+    ) as HTMLTextAreaElement;
+    const save = [...container.querySelectorAll("button")].find(
+      // find one exact automatic save action
+      (button) =>
+        button.textContent === "Save automatic leaderboard check-ins access"
+    );
+
+    // toggle one automatic feature decision
+    await act(async () => {
+      toggle.click();
+    });
+    // stage one exact automatic allowlist
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(
+        HTMLTextAreaElement.prototype,
+        "value"
+      )?.set?.call(allowlist, "auth0|automatic-a\nauth0|automatic-b");
+      allowlist.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    // save one automatic feature policy
+    await act(async () => {
+      save?.click();
+      await Promise.resolve();
+    });
+
+    expect(api.put).toHaveBeenCalledWith(
+      "/admin/features/automaticLeaderboardCheckins",
+      {
+        enabled: true,
+        subjects: ["auth0|automatic-a", "auth0|automatic-b"],
+      },
+      "access-token"
+    );
+    expect(api.put).not.toHaveBeenCalledWith(
+      "/admin/features/leaderboards",
+      expect.anything(),
+      expect.anything()
+    );
   });
 
   it("surfaces the first user-directory load failure in the section", async () => {

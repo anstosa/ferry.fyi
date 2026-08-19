@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- define the shared build scheme -->
+<Scheme
+   LastUpgradeVersion = "2600"
+   version = "1.7">
+   <!-- define the scheme build action -->
+   <BuildAction
+      parallelizeBuildables = "YES"
+      buildImplicitDependencies = "YES"
+      buildArchitectures = "Automatic">
+      <!-- define the scheme build action -->
+      <BuildActionEntries>
+         <!-- define the scheme build action -->
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "YES"
+            buildForArchiving = "YES"
+            buildForAnalyzing = "YES">
+            <!-- reference one exact xcode target -->
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "504EC3031FED79650016851F"
+               BuildableName = "Ferry FYI.app"
+               BlueprintName = "Ferry FYI"
+               ReferencedContainer = "container:Ferry FYI.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+         <!-- define the scheme build action -->
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "YES">
+            <!-- reference one exact xcode target -->
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "F20000000000000000000041"
+               BuildableName = "Ferry FYI Tests.xctest"
+               BlueprintName = "Ferry FYI Tests"
+               ReferencedContainer = "container:Ferry FYI.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+      </BuildActionEntries>
+   </BuildAction>
+   <!-- define the simulator test action -->
+   <TestAction
+      buildConfiguration = "Debug"
+      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
+      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+      shouldUseLaunchSchemeArgsEnv = "YES"
+      shouldAutocreateTestPlan = "YES">
+      <!-- list the reviewed test targets -->
+      <Testables>
+         <!-- bind the native test bundle -->
+         <TestableReference
+            skipped = "NO">
+            <!-- reference one exact xcode target -->
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "F20000000000000000000041"
+               BuildableName = "Ferry FYI Tests.xctest"
+               BlueprintName = "Ferry FYI Tests"
+               ReferencedContainer = "container:Ferry FYI.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+      </Testables>
+   </TestAction>
+   <!-- define the local launch action -->
+   <LaunchAction
+      buildConfiguration = "Debug"
+      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
+      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+      launchStyle = "0"
+      useCustomWorkingDirectory = "NO"
+      ignoresPersistentStateOnLaunch = "NO"
+      debugDocumentVersioning = "YES"
+      debugServiceExtension = "internal"
+      allowLocationSimulation = "YES">
+      <!-- launch the reviewed application target -->
+      <BuildableProductRunnable runnableDebuggingMode = "0">
+         <!-- reference one exact xcode target -->
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "504EC3031FED79650016851F"
+            BuildableName = "Ferry FYI.app"
+            BlueprintName = "Ferry FYI"
+            ReferencedContainer = "container:Ferry FYI.xcodeproj">
+         </BuildableReference>
+      </BuildableProductRunnable>
+   </LaunchAction>
+   <!-- define the release profile action -->
+   <ProfileAction
+      buildConfiguration = "Release"
+      shouldUseLaunchSchemeArgsEnv = "YES"
+      savedToolIdentifier = ""
+      useCustomWorkingDirectory = "NO"
+      debugDocumentVersioning = "YES">
+      <!-- launch the reviewed application target -->
+      <BuildableProductRunnable runnableDebuggingMode = "0">
+         <!-- reference one exact xcode target -->
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "504EC3031FED79650016851F"
+            BuildableName = "Ferry FYI.app"
+            BlueprintName = "Ferry FYI"
+            ReferencedContainer = "container:Ferry FYI.xcodeproj">
+         </BuildableReference>
+      </BuildableProductRunnable>
+   </ProfileAction>
+   <!-- define the debug analysis action -->
+   <AnalyzeAction buildConfiguration = "Debug">
+   </AnalyzeAction>
+   <!-- define the release archive action -->
+   <ArchiveAction
+      buildConfiguration = "Release"
+      revealArchiveInOrganizer = "YES">
+   </ArchiveAction>
+</Scheme>

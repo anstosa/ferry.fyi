@@ -490,6 +490,61 @@ test("serves page-specific React source from built artifacts", async () => {
   );
 });
 
+// verify web manual fallback and published privacy
+test("@automatic-checkins keeps web manual-only and publishes the native privacy contract", async ({
+  page,
+}) => {
+  // preserve the privacy-safe public snapshot for deterministic browser assertions
+  await page.route(/\/assets\/entry-client\.[^/]+\.js$/, (route) =>
+    route.abort()
+  );
+  const leaderboard = await page.goto(
+    "https://ferry.fyi:4177/leaderboards/terminals/7",
+    { waitUntil: "domcontentloaded" }
+  );
+  expect(leaderboard?.status()).toBe(200);
+  await expect(page.getByRole("heading", { name: "Seattle" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Automatic leaderboard check-ins" })
+  ).toHaveCount(0);
+});
+
+// verify the published privacy contract independently
+test("@automatic-checkins publishes the native privacy contract", async ({
+  page,
+}) => {
+  // preserve the privacy-safe public snapshot for deterministic browser assertions
+  await page.route(/\/assets\/entry-client\.[^/]+\.js$/, (route) =>
+    route.abort()
+  );
+  const privacy = await page.goto("https://ferry.fyi:4177/privacy", {
+    waitUntil: "domcontentloaded",
+  });
+  expect(privacy?.status()).toBe(200);
+  await expect(
+    page.getByRole("heading", { name: "Privacy Policy" })
+  ).toBeVisible();
+  // locate the hashed production privacy artifact
+  // find one generated privacy-policy artifact
+  const privacyArtifactName = fs
+    .readdirSync(path.resolve(process.cwd(), "dist/client/assets"))
+    // match only the privacy policy chunk
+    .find((name) => /^PrivacyPolicy\.[^.]+\.js$/.test(name));
+  expect(privacyArtifactName).toBeDefined();
+  const privacyArtifact = fs.readFileSync(
+    path.resolve(
+      process.cwd(),
+      "dist/client/assets",
+      privacyArtifactName as string
+    ),
+    "utf8"
+  );
+  expect(privacyArtifact).toContain("Optional automatic check-ins");
+  expect(privacyArtifact).toContain("becomes ineligible exactly 12 hours");
+  expect(privacyArtifact).toContain("Manual check-in remains available.");
+  await expect(page.locator("main")).not.toContainText(privateCanary);
+});
+
 test("hydrates without replacing the root and refreshes anonymous data", async ({
   page,
 }) => {

@@ -1,9 +1,15 @@
 import { DateTime } from "luxon";
 import { describe, expect, it } from "vitest";
 
-import { toWsfDate } from "~/lib/wsf/date";
+import { toWsfDate, wsfDateToTimestamp } from "~/lib/wsf/date";
 
-describe("toWsfDate", () => {
+// group WSF date parsing
+describe("WSF date parsing", () => {
+  // verify public seconds contract
+  it("parses real-shaped WSF dates as epoch seconds", () => {
+    expect(wsfDateToTimestamp("/Date(1784836800000-0700)/")).toBe(1784836800);
+  });
+
   it("uses the Pacific service date for a UTC timestamp", () => {
     const time = DateTime.fromISO("2026-07-15T02:30:00.000Z");
 

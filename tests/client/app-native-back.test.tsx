@@ -30,6 +30,9 @@ vi.mock("react-router-dom", () => ({
 vi.mock("~/components/AppLoadingState", () => ({
   AppLoadingState: () => null,
 }));
+vi.mock("~/components/AutomaticCheckinsInstallBanner", () => ({
+  AutomaticCheckinsInstallBanner: () => null,
+}));
 vi.mock("~/components/ErrorBoundary", () => ({
   ErrorBoundary: ({ children }: React.PropsWithChildren) => children,
 }));

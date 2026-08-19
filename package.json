@@ -155,7 +155,7 @@
     "build:ios": "scripts/with-ios-env.sh sh -c 'NODE_ENV=production CACHE_NAME=ios vite build --config client/vite.config.ts && cap sync ios'",
     "build:server": "NODE_ENV=production vite build --config server/vite.config.ts",
     "build:ssr": "NODE_ENV=production vite build --config client/vite.ssr.config.ts",
-    "build:e2e:ssr": "NODE_ENV=test vite build --config tests/e2e/vite.config.ts",
+    "build:e2e:ssr": "NODE_ENV=test vite build --config tests/e2e/vite.config.ts && NODE_ENV=test vite build --config tests/e2e/automatic-checkins/vite.config.ts",
     "camera:benchmark:capture": "python scripts/capture-camera-detection-benchmark.py",
     "camera:benchmark:record": "python scripts/record-camera-detection-frames.py",
     "camera:icons": "node scripts/register-esbuild.js scripts/camera-polygon-annotator/generate-icons.ts",

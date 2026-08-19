@@ -60,6 +60,8 @@ export const useWSF = (): WSFStatus => {
 };
 
 const inProgress: Record<string, Promise<any>> = {};
+// separate every authenticated read owner
+let authenticatedRequestSequence = 0;
 
 export class ApiError extends Error {
   status: number;
@@ -76,7 +78,12 @@ export class ApiError extends Error {
 
 // request cache key
 const getRequestKey = (path: string, accessToken?: string): string => {
-  return `${path}:${accessToken ? "auth" : "anon"}`;
+  // never coalesce reads across authenticated identities
+  if (accessToken) {
+    authenticatedRequestSequence += 1;
+    return `${path}:auth:${authenticatedRequestSequence}`;
+  }
+  return `${path}:anon`;
 };
 
 // parse response data
@@ -215,7 +222,7 @@ export const del = async <T = Record<string, unknown>>(
 };
 
 export const useOnline = (): boolean => {
-  // Keep the first render anonymous and deterministic; browser state follows
+  // keep the first render anonymous and deterministic
   // after commit so document rendering never reads navigator.
   const [online, setOnline] = useState<boolean>(true);
   useEffect(() => {

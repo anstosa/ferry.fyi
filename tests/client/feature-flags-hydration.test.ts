@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   auth: {
     getAccessTokenSilently: vi.fn(),
     isAuthenticated: false,
+    user: undefined as { sub: string } | undefined,
   },
   get: vi.fn(),
 }));
@@ -91,6 +92,7 @@ describe("feature flag hydration seed", () => {
     root = undefined;
     document.body.innerHTML = "";
     mocks.auth.isAuthenticated = false;
+    mocks.auth.user = undefined;
     vi.clearAllMocks();
   });
 
@@ -141,6 +143,7 @@ describe("feature flag hydration seed", () => {
 
   it("accepts authenticated flags without widening the private allowlist", async () => {
     mocks.auth.isAuthenticated = true;
+    mocks.auth.user = { sub: "auth0|fixture" };
     mocks.auth.getAccessTokenSilently.mockResolvedValue("private-token");
     mocks.get.mockResolvedValue({
       automaticLeaderboardCheckinsEnabled: true,
@@ -159,8 +162,67 @@ describe("feature flag hydration seed", () => {
 
     expect(mocks.get).toHaveBeenCalledWith("/features/me", "private-token");
     expect(container.textContent).toBe(
-      '{"automaticLeaderboardCheckinsEnabled":false,"leaderboardsEnabled":true,"loading":false}'
+      '{"automaticLeaderboardCheckinsEnabled":true,"leaderboardsEnabled":true,"loading":false}'
     );
     expect(container.textContent).not.toContain("ownerAdminEnabled");
+  });
+
+  // discard delayed private flags after an auth subject replacement
+  it("never applies a delayed prior-subject feature response", async () => {
+    let resolveFirst: ((value: unknown) => void) | undefined;
+    let resolveSecond: ((value: unknown) => void) | undefined;
+    mocks.auth.isAuthenticated = true;
+    mocks.auth.user = { sub: "auth0|one" };
+    mocks.auth.getAccessTokenSilently
+      .mockResolvedValueOnce("token-one")
+      .mockResolvedValueOnce("token-two");
+    mocks.get.mockImplementation(
+      // hold each subject-bound response independently
+      (_path, token) =>
+        new Promise(
+          // bind each response to its fixture token
+          (resolve) => {
+            // separate the prior subject response
+            if (token === "token-one") {
+              resolveFirst = resolve;
+            } else {
+              resolveSecond = resolve;
+            }
+          }
+        )
+    );
+    const container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root?.render(React.createElement(Tree, { runtime: "browser" }));
+      await Promise.resolve();
+    });
+    mocks.auth.user = { sub: "auth0|two" };
+    await act(async () => {
+      root?.render(React.createElement(Tree, { runtime: "browser" }));
+      await Promise.resolve();
+    });
+    expect(container.textContent).toContain(
+      '"automaticLeaderboardCheckinsEnabled":false'
+    );
+
+    await act(async () => {
+      resolveSecond?.({
+        automaticLeaderboardCheckinsEnabled: false,
+        leaderboardsEnabled: true,
+      });
+      await Promise.resolve();
+      resolveFirst?.({
+        automaticLeaderboardCheckinsEnabled: true,
+        leaderboardsEnabled: true,
+      });
+      await Promise.resolve();
+    });
+
+    expect(container.textContent).toBe(
+      '{"automaticLeaderboardCheckinsEnabled":false,"leaderboardsEnabled":true,"loading":false}'
+    );
   });
 });
