@@ -3533,6 +3533,11 @@ final class AutomaticSecureRuntimeCoordinator: AutomaticUploaderPolicyReconcilin
             do {
                 try generationStore.store(next)
                 localWorkGeneration = LocalWorkGeneration(value: next)
+                // reserve exhaustion permanently
+                if next == Int64.max {
+                    generationPersistenceHealthy = false
+                    generationRecoveryAllowed = false
+                }
             // fail closed on the error
             } catch {
                 localWorkGeneration = LocalWorkGeneration(value: Int64.max)

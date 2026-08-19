@@ -61,13 +61,16 @@ internal interface AutomaticAeadV1 {
 // define the native contract
 internal class AutomaticAndroidKeystoreAeadV1(
     private val alias: String,
-    private val random: SecureRandom = SecureRandom(),
 ) : AutomaticAeadV1 {
     // seal with a unique random gcm nonce
     override fun seal(plaintext: ByteArray, associatedData: ByteArray): AutomaticAeadSealedBox? = try {
-        val nonce = ByteArray(AUTOMATIC_AEAD_NONCE_BYTES).also(random::nextBytes)
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey(), GCMParameterSpec(AUTOMATIC_AEAD_TAG_BITS, nonce))
+        cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey())
+        val nonce = cipher.iv
+        // require the canonical gcm nonce
+        if (nonce.size != AUTOMATIC_AEAD_NONCE_BYTES) {
+            return null
+        }
         cipher.updateAAD(associatedData)
         AutomaticAeadSealedBox(nonce, cipher.doFinal(plaintext))
     // fail closed on the error

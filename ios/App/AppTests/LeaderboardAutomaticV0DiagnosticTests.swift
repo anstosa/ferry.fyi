@@ -892,10 +892,15 @@ final class AutomaticV0DiagnosticHarnessTests: XCTestCase {
         XCTAssertTrue(store.hasRecord())
         XCTAssertEqual(store.load(), record)
         XCTAssertEqual(try url.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup, true)
-        XCTAssertEqual(
-            try FileManager.default.attributesOfItem(atPath: url.path)[.protectionKey] as? FileProtectionType,
-            .completeUntilFirstUserAuthentication
-        )
+        let protection = try FileManager.default.attributesOfItem(atPath: url.path)[.protectionKey]
+            as? FileProtectionType
+        #if targetEnvironment(simulator)
+        // simulator omits protection metadata
+        XCTAssertNil(protection)
+        #else
+        // devices enforce first-unlock protection
+        XCTAssertEqual(protection, .completeUntilFirstUserAuthentication)
+        #endif
 
         store.remove()
         XCTAssertFalse(store.hasRecord())
@@ -1120,10 +1125,15 @@ final class AutomaticV0FleetFileCacheTests: XCTestCase {
         XCTAssertNil(value["candidate"])
         XCTAssertNil(value["credential"])
         XCTAssertEqual(try url.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup, true)
-        XCTAssertEqual(
-            try FileManager.default.attributesOfItem(atPath: url.path)[.protectionKey] as? FileProtectionType,
-            .completeUntilFirstUserAuthentication
-        )
+        let protection = try FileManager.default.attributesOfItem(atPath: url.path)[.protectionKey]
+            as? FileProtectionType
+        #if targetEnvironment(simulator)
+        // simulator omits protection metadata
+        XCTAssertNil(protection)
+        #else
+        // devices enforce first-unlock protection
+        XCTAssertEqual(protection, .completeUntilFirstUserAuthentication)
+        #endif
     }
 
     // reject a corrupted body hash
