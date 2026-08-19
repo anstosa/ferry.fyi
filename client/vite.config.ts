@@ -297,6 +297,17 @@ export default defineConfig(() => ({
         assetFileNames: "assets/[name].[hash][extname]",
         chunkFileNames: "assets/[name].[hash].js",
         entryFileNames: "assets/[name].[hash].js",
+        // consolidate automatic check-in runtime code
+        manualChunks: (id: string): string | undefined => {
+          // feature module guard
+          if (
+            id.endsWith("/client/lib/leaderboardAutomatic.ts") ||
+            id.endsWith("/client/lib/leaderboardNotifications.ts")
+          ) {
+            return "leaderboardAutomatic";
+          }
+          return undefined;
+        },
       },
     },
   },
