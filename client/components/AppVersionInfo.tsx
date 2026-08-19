@@ -8,6 +8,14 @@ interface Versions {
 }
 
 const COPIED_FEEDBACK_MS = 2_000;
+const SHORT_HASH_LENGTH = 8;
+
+// shorten deployed git hashes for display
+const formatReleaseVersion = (version: string): string => {
+  return /^[a-f0-9]{40}$/i.test(version)
+    ? version.slice(0, SHORT_HASH_LENGTH)
+    : version;
+};
 
 // keep local browser builds distinct from deployed web releases
 export const getWebVersion = (
@@ -23,7 +31,9 @@ export const getWebVersion = (
   const runtimeVersion = document
     ?.querySelector<HTMLMetaElement>('meta[name="ferry-fyi-release"]')
     ?.content.trim();
-  return runtimeVersion || environment.HEROKU_RELEASE_VERSION || "UNKNOWN";
+  return formatReleaseVersion(
+    runtimeVersion || environment.HEROKU_RELEASE_VERSION || "UNKNOWN"
+  );
 };
 
 export const getNativePlatformLabel = (platform: string): string => {
