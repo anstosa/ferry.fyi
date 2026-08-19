@@ -507,7 +507,16 @@ test("@automatic-checkins keeps web manual-only and publishes the native privacy
   await expect(
     page.getByRole("heading", { name: "Automatic leaderboard check-ins" })
   ).toHaveCount(0);
+});
 
+// verify the published privacy contract independently
+test("@automatic-checkins publishes the native privacy contract", async ({
+  page,
+}) => {
+  // preserve the privacy-safe public snapshot for deterministic browser assertions
+  await page.route(/\/assets\/entry-client\.[^/]+\.js$/, (route) =>
+    route.abort()
+  );
   const privacy = await page.goto("https://ferry.fyi:4177/privacy", {
     waitUntil: "domcontentloaded",
   });
