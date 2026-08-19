@@ -127,22 +127,69 @@ describe("leaderboard eligibility helpers", () => {
     expect(leaderboardLabel("")).toBe("Anonymous");
   });
 
+  // verify live sailing requirements
   it("accepts only fresh underway WSF sailing identities", () => {
-    const now = Date.parse("2026-07-23T20:00:00.000Z");
+    const nowMs = Date.parse("2026-07-23T20:00:00.000Z");
+    const nowSeconds = nowMs / 1000;
     const vessel = {
       arrivingTerminalId: 2,
-      departedTime: now - 60_000,
+      departedTime: nowSeconds - 60,
       departingTerminalId: 1,
       id: "42",
       inService: true,
       isAtDock: false,
       location: { latitude: 47.6, longitude: -122.4 },
-      statusUpdatedAt: now - 60_000,
+      statusUpdatedAt: nowMs - 60_000,
     };
-    expect(stableSailingId(vessel, now)).toBe(`42:${now - 60_000}:1:2`);
+    expect(stableSailingId(vessel, nowMs)).toBe(`42:${nowSeconds - 60}:1:2`);
     expect(
-      stableSailingId({ ...vessel, statusUpdatedAt: now - 6 * 60_000 }, now)
+      stableSailingId({ ...vessel, statusUpdatedAt: nowMs - 6 * 60_000 }, nowMs)
     ).toBeNull();
-    expect(stableSailingId({ ...vessel, isAtDock: true }, now)).toBeNull();
+    expect(stableSailingId({ ...vessel, isAtDock: true }, nowMs)).toBeNull();
+  });
+
+  // verify unit boundaries
+  it("keeps WSF departure freshness boundaries in epoch seconds", () => {
+    const nowMs = Date.parse("2026-07-23T20:00:00.000Z");
+    const nowSeconds = nowMs / 1000;
+    const vessel = {
+      arrivingTerminalId: 2,
+      departedTime: nowSeconds,
+      departingTerminalId: 1,
+      id: "42",
+      inService: true,
+      isAtDock: false,
+      location: { latitude: 47.6, longitude: -122.4 },
+      statusUpdatedAt: nowMs,
+    };
+
+    expect(
+      stableSailingId(
+        { ...vessel, departedTime: nowSeconds - 12 * 60 * 60 },
+        nowMs
+      )
+    ).not.toBeNull();
+    expect(
+      stableSailingId(
+        { ...vessel, departedTime: nowSeconds - 12 * 60 * 60 - 1 },
+        nowMs
+      )
+    ).toBeNull();
+    expect(
+      stableSailingId({ ...vessel, departedTime: nowSeconds + 60 }, nowMs)
+    ).not.toBeNull();
+    expect(
+      stableSailingId({ ...vessel, departedTime: nowSeconds + 61 }, nowMs)
+    ).toBeNull();
+    expect(stableSailingId({ ...vessel, departedTime: 0 }, nowMs)).toBeNull();
+    expect(
+      stableSailingId({ ...vessel, departedTime: Number.NaN }, nowMs)
+    ).toBeNull();
+    expect(
+      stableSailingId({ ...vessel, departedTime: nowMs - 60_000 }, nowMs)
+    ).toBeNull();
+    expect(
+      stableSailingId({ ...vessel, statusUpdatedAt: nowSeconds }, nowMs)
+    ).toBeNull();
   });
 });

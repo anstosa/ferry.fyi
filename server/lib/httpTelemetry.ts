@@ -9,6 +9,7 @@ export type HttpMethodClass = "other" | "preflight" | "read" | "write";
 export type HttpRouteClass =
   | "api.ad-measurement"
   | "api.anonymous-read"
+  | "api.automatic-native"
   | "api.authenticated"
   | "api.ota"
   | "api.sensitive-lookup"
@@ -54,6 +55,7 @@ const METHOD_CLASSES = new Set<HttpMethodClass>([
 const ROUTE_CLASSES = new Set<HttpRouteClass>([
   "api.ad-measurement",
   "api.anonymous-read",
+  "api.automatic-native",
   "api.authenticated",
   "api.ota",
   "api.sensitive-lookup",
@@ -82,16 +84,20 @@ const COMPLETION_OUTCOMES = new Set<HttpCompletionOutcome>([
 const pathnameFor = (request: Pick<Request, "originalUrl" | "path">): string =>
   (request.originalUrl || request.path).split(/[?#]/, 1)[0] || "/";
 
+// classify requests without inspecting sensitive content
 export const classifyHttpRoute = (
   request: Pick<Request, "method" | "originalUrl" | "path">
 ): HttpRouteClass => {
   const pathname = pathnameFor(request);
+  // classify health checks
   if (pathname === "/healthz") {
     return "health";
   }
+  // classify readiness checks
   if (pathname === "/readyz") {
     return "readiness";
   }
+  // classify discovery documents
   if (
     pathname === "/robots.txt" ||
     pathname === "/sitemap.xml" ||
@@ -101,15 +107,18 @@ export const classifyHttpRoute = (
   ) {
     return "discovery";
   }
+  // classify api traffic
   if (pathname === "/api" || pathname.startsWith("/api/")) {
     return `api.${classifyApiRequest({
       method: request.method,
       pathname,
     })}`;
   }
+  // classify static assets
   if (/\.[a-z0-9]{2,8}$/i.test(pathname)) {
     return "asset";
   }
+  // classify public reads
   if (request.method === "GET" || request.method === "HEAD") {
     return "ssr.public";
   }

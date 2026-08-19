@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "encoding": {
+    "byteOrder": "big-endian",
+    "integerLayout": "u8 schema, u64 captured/config, i32 coordinates, u32 accuracy",
+    "stringLayout": "u32 byte length followed by exact UTF-8 bytes",
+    "terminalOrder": [
+      "schemaVersion",
+      "kind",
+      "candidateId",
+      "capturedAtMs",
+      "latitudeE7",
+      "longitudeE7",
+      "accuracyMillimeters",
+      "terminalId",
+      "configGeneration"
+    ],
+    "vesselOrder": [
+      "schemaVersion",
+      "kind",
+      "candidateId",
+      "capturedAtMs",
+      "latitudeE7",
+      "longitudeE7",
+      "accuracyMillimeters",
+      "vesselId",
+      "sailingId"
+    ]
+  },
+  "vectors": [
+    {
+      "name": "terminal-minimum",
+      "candidate": {
+        "schemaVersion": 1,
+        "candidateId": "AAAAAAAAAAAAAAAAAAAAAA",
+        "capturedAtMs": 0,
+        "kind": "terminal",
+        "latitudeE7": -900000000,
+        "longitudeE7": -1800000000,
+        "accuracyMillimeters": 0,
+        "terminalId": "1",
+        "configGeneration": 1
+      },
+      "canonicalHex": "01000000087465726d696e616c00000016414141414141414141414141414141414141414141410000000000000000ca5b170094b62e000000000000000001310000000000000001",
+      "digestHex": "c9373b5cd580e5d6aefcb7a8ab88798dd556289c33f97369a41e9eee394b186a"
+    },
+    {
+      "name": "terminal-maximum-unicode",
+      "candidate": {
+        "schemaVersion": 1,
+        "candidateId": "_____________________w",
+        "capturedAtMs": 9007199254740991,
+        "kind": "terminal",
+        "latitudeE7": 900000000,
+        "longitudeE7": 1800000000,
+        "accuracyMillimeters": 4294967295,
+        "terminalId": "⛴️-船",
+        "configGeneration": 9007199254740991
+      },
+      "canonicalHex": "01000000087465726d696e616c000000165f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f5f77001fffffffffffff35a4e9006b49d200ffffffff0000000ae29bb4efb88f2de888b9001fffffffffffff",
+      "digestHex": "faa5cf985c15127e82656c20926ab0a60ea68b075a51d5278c8dd8e422fc70ae"
+    },
+    {
+      "name": "vessel-ascii",
+      "candidate": {
+        "schemaVersion": 1,
+        "candidateId": "AAECAwQFBgcICQoLDA0ODw",
+        "capturedAtMs": 1720000000123,
+        "kind": "vessel",
+        "latitudeE7": 473000001,
+        "longitudeE7": -1225000001,
+        "accuracyMillimeters": 12500,
+        "vesselId": "144",
+        "sailingId": "144:1720000000"
+      },
+      "canonicalHex": "010000000676657373656c0000001641414543417751464267634943516f4c4441304f44770000019077fd307b1c316841b6fbfbbf000030d4000000033134340000000e3134343a31373230303030303030",
+      "digestHex": "4b16cb37a1988b14bfb2acf57df908b316c117d7ee15a935d0db446b05ce1220"
+    },
+    {
+      "name": "vessel-unicode",
+      "candidate": {
+        "schemaVersion": 1,
+        "candidateId": "EBESExQVFhcYGRobHB0eHw",
+        "capturedAtMs": 1720000000999,
+        "kind": "vessel",
+        "latitudeE7": 0,
+        "longitudeE7": 0,
+        "accuracyMillimeters": 250000,
+        "vesselId": "船-α",
+        "sailingId": "航路-β:1720000000"
+      },
+      "canonicalHex": "010000000676657373656c0000001645424553457851564668635947526f624842306548770000019077fd33e700000000000000000003d09000000006e888b92dceb100000014e888aae8b7af2dceb23a31373230303030303030",
+      "digestHex": "9ce4966cbfae7b87479607fd458214a9c7d9cf0a2f421847a3e53a3117ed132f"
+    },
+    {
+      "name": "vessel-ascii-accuracy-low-bit",
+      "candidate": {
+        "schemaVersion": 1,
+        "candidateId": "AAECAwQFBgcICQoLDA0ODw",
+        "capturedAtMs": 1720000000123,
+        "kind": "vessel",
+        "latitudeE7": 473000001,
+        "longitudeE7": -1225000001,
+        "accuracyMillimeters": 12501,
+        "vesselId": "144",
+        "sailingId": "144:1720000000"
+      },
+      "canonicalHex": "010000000676657373656c0000001641414543417751464267634943516f4c4441304f44770000019077fd307b1c316841b6fbfbbf000030d5000000033134340000000e3134343a31373230303030303030",
+      "digestHex": "f64eb34e3f737bf182c34dc6f4979e6e8c845281a7a685e2af1fde0aa0737d91"
+    }
+  ]
+}

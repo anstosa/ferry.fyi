@@ -44,12 +44,14 @@ if (process.env.NODE_ENV === "development") {
   adminRouter.use("/camera-detection", createCameraDetectionDebuggerRouter());
 }
 
-// Legacy compact feature response retained for deployed admin clients.
+// retain the legacy compact feature response
 adminRouter.get("/features", async (_request, response) => {
   const { getLeaderboardFlags } = await import("~/lib/leaderboardFlags");
   response.send(await getLeaderboardFlags());
 });
+// preserve the legacy parent-only feature mutation
 adminRouter.put("/features", async (request, response) => {
+  // reject automatic enablement through the legacy route
   if (
     !isObject(request.body) ||
     typeof request.body.leaderboardsEnabled !== "boolean" ||
@@ -58,20 +60,13 @@ adminRouter.put("/features", async (request, response) => {
   ) {
     return response.status(400).send({ error: "Invalid feature settings" });
   }
-  const { setAutomaticLeaderboardCheckinsEnabled, setLeaderboardsEnabled } =
+  const { getLeaderboardFlags, setLeaderboardsEnabled } =
     await import("~/lib/leaderboardFlags");
-  await setAutomaticLeaderboardCheckinsEnabled(false);
-  return response.send({
-    automaticLeaderboardCheckinsEnabled: false,
-    leaderboardsEnabled: await setLeaderboardsEnabled(
-      request.body.leaderboardsEnabled
-    ),
-  });
+  await setLeaderboardsEnabled(request.body.leaderboardsEnabled);
+  return response.send(await getLeaderboardFlags());
 });
 
-// This route exists only to exercise the confirmation boundary in server
-// tests. Production mutations opt into the same middleware with a target
-// derived from their trusted route resource.
+// exercise the confirmation boundary in server tests
 if (process.env.NODE_ENV === "test") {
   adminRouter.post(
     "/__test/confirmed-safe-action",

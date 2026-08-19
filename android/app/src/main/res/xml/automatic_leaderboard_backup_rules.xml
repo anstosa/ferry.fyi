@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- exclude the secure runtime from legacy backup -->
+<full-backup-content>
+    <!-- exclude any compatibility-path secure runtime data -->
+    <exclude domain="file" path="leaderboard-automatic/" />
+    <exclude domain="root" path="leaderboard-automatic/" />
+    <exclude domain="sharedpref" path="leaderboard-automatic.xml" />
+</full-backup-content>

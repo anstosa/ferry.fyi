@@ -3,7 +3,7 @@ import { Browser } from "@capacitor/browser";
 import clsx from "clsx";
 import { useAtomValue } from "jotai";
 import { DateTime } from "luxon";
-import React, { type ReactElement, useState } from "react";
+import React, { type ReactElement, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   ACCOUNT_DELETION_CONFIRMATION,
@@ -35,6 +35,7 @@ import {
 } from "~/lib/auth";
 import { clearCameraDetectionDebuggerAuthorization } from "~/lib/cameraDetectionDebugger";
 import { useDevice } from "~/lib/device";
+import { disableAutomaticLeaderboardAccount } from "~/lib/leaderboardAutomatic";
 import { getSlug, useTerminals } from "~/lib/terminals";
 import { type ThemePreference, useThemePreference } from "~/lib/theme";
 import { useUser } from "~/lib/user";
@@ -307,7 +308,7 @@ export const AccountLoadingState = (): ReactElement => (
 
 export const Account = withAuthenticationRequired(
   (): ReactElement => {
-    const { user: authUser, logout } = useAuth0();
+    const { getAccessTokenSilently, user: authUser, logout } = useAuth0();
     const [
       { alertRules, isUserLoading, tickets, user: accountUser, userError },
       { deleteAccount, refreshUser },
@@ -319,6 +320,7 @@ export const Account = withAuthenticationRequired(
     const [deletionError, setDeletionError] = useState<string | null>(null);
     const [deletionState, setDeletionState] =
       useState<AccountDeletionState>("closed");
+    const [logoutError, setLogoutError] = useState<string | null>(null);
     const { terminals } = useTerminals();
     const storedTickets = useAtomValue(ticketsAtom);
     const subscriptionSummaries = getAlertRuleSummaries(alertRules, terminals);
@@ -338,36 +340,64 @@ export const Account = withAuthenticationRequired(
     const locale = getStringClaim(userClaims, "locale");
     const updatedAt = getDateLabel(getStringClaim(userClaims, "updated_at"));
     const subject = getStringClaim(userClaims, "sub");
+    // track the current cleanup owner across asynchronous auth changes
+    const subjectRef = useRef<string | null>(subject ?? null);
+    subjectRef.current = subject ?? null;
     const provider = getProviderLabel(subject);
     const accountId = email ?? subject;
 
     // logout route
-    const onLogout = async () => {
+    const onLogout = async (): Promise<void> => {
+      setLogoutError(null);
+      try {
+        await disableAutomaticLeaderboardAccount(
+          "identity_lost",
+          subject ?? "",
+          // recheck the active auth owner at every teardown boundary
+          () => subjectRef.current,
+          getAccessTokenSilently
+        );
+      } catch (error) {
+        // preserve authentication until local automatic data is purged
+        console.error("Local pre-logout cleanup failed", error);
+        setLogoutError(
+          "Ferry FYI could not clear automatic check-in data. Retry logout before changing accounts."
+        );
+        return;
+      }
       clearCameraDetectionDebuggerAuthorization();
       const options = {
         logoutParams: { returnTo: getConfiguredAuth0RedirectUri() },
       };
       const mode = getLogoutMode(Boolean(device?.isNativeMobile));
-      // framed browser local logout
-      if (mode === "iframe") {
-        await logoutWithAppFlow({
-          beforeLogout: () => navigate("/", { replace: true }),
-          framed: true,
-          logout,
-          options,
-        });
-        return;
-      }
-      // native browser logout
-      if (mode === "native") {
-        await logout({
-          ...options,
-          openUrl: async (url) => {
-            await Browser.open({ url });
-          },
-        });
-      } else {
-        await logoutWithAppFlow({ framed: false, logout, options });
+      try {
+        // framed browser local logout
+        if (mode === "iframe") {
+          await logoutWithAppFlow({
+            // navigate before framed auth teardown
+            beforeLogout: () => navigate("/", { replace: true }),
+            framed: true,
+            logout,
+            options,
+          });
+          return;
+        }
+        // native browser logout
+        if (mode === "native") {
+          await logout({
+            ...options,
+            // open one reviewed native auth url
+            openUrl: async (url) => {
+              await Browser.open({ url });
+            },
+          });
+        } else {
+          await logoutWithAppFlow({ framed: false, logout, options });
+        }
+      } catch (error) {
+        // report auth teardown separately
+        console.error("Logout failed", error);
+        setLogoutError("Ferry FYI could not log out. Try again.");
       }
     };
 
@@ -402,6 +432,13 @@ export const Account = withAuthenticationRequired(
       setDeletionError(null);
       setDeletionState("deleting");
       try {
+        await disableAutomaticLeaderboardAccount(
+          "account_deleted",
+          subject ?? "",
+          // recheck the active auth owner at every teardown boundary
+          () => subjectRef.current,
+          getAccessTokenSilently
+        );
         await deleteAccount(deletionConfirmation);
       } catch (error) {
         console.error(error);
@@ -474,6 +511,15 @@ export const Account = withAuthenticationRequired(
                 Try again
               </button>
             </section>
+          )}
+          {/* surface one teardown failure */}
+          {logoutError && (
+            <p
+              className="text-sm font-semibold text-red-dark dark:text-red-light"
+              role="alert"
+            >
+              {logoutError}
+            </p>
           )}
           <AccountProfileHeader
             accountId={accountId}

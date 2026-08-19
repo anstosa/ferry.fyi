@@ -1,16 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const transaction = { id: "deletion-transaction" };
+// share deletion mocks
 const db = vi.hoisted(() => ({ transaction: vi.fn() }));
 const privacy = vi.hoisted(() => ({ anonymizeLeaderboardAccount: vi.fn() }));
+// hoist policy locks
+const policy = vi.hoisted(() => ({ lockLeaderboardAutomaticPolicy: vi.fn() }));
 const revocation = vi.hoisted(() => ({ revokeApplicationTokens: vi.fn() }));
 const settings = vi.hoisted(() => ({ destroy: vi.fn() }));
 const tickets = vi.hoisted(() => ({ destroy: vi.fn() }));
 const allowlist = vi.hoisted(() => ({ destroy: vi.fn() }));
 const auth0 = vi.hoisted(() => ({ deleteAuth0User: vi.fn() }));
 
+// bind deletion dependencies
 vi.mock("~/lib/db", () => ({ db }));
 vi.mock("~/lib/leaderboardPrivacy", () => privacy);
+// bind policy locks
+vi.mock("~/lib/leaderboardAutomaticPolicy", () => policy);
 vi.mock("~/lib/admin/sessionRevocation", () => revocation);
 vi.mock("~/models/UserSettings", () => ({ UserSettings: settings }));
 vi.mock("~/models/UserTicket", () => ({ UserTicket: tickets }));
@@ -24,10 +30,13 @@ import {
   deleteFerryUserData,
 } from "../../../server/lib/accountDeletion";
 
+// cover ordered deletion
 describe("owner user-data deletion service", () => {
+  // reset deletion state
   beforeEach(() => {
     db.transaction
       .mockReset()
+      // execute one fake transaction
       .mockImplementation((callback) => callback(transaction));
     privacy.anonymizeLeaderboardAccount
       .mockReset()
@@ -36,12 +45,16 @@ describe("owner user-data deletion service", () => {
       expiresAt: "2026-07-25T00:00:00.000Z",
       status: "complete",
     });
+    policy.lockLeaderboardAutomaticPolicy.mockReset().mockResolvedValue({
+      transaction,
+    });
     settings.destroy.mockReset().mockResolvedValue(1);
     tickets.destroy.mockReset().mockResolvedValue(1);
     allowlist.destroy.mockReset().mockResolvedValue(1);
     auth0.deleteAuth0User.mockReset().mockResolvedValue(undefined);
   });
 
+  // verify lock and deletion order
   it("writes the token revocation watermark before anonymizing and deleting app-owned identifiers", async () => {
     await expect(deleteFerryUserData("auth0|person")).resolves.toEqual({
       auth0Identity: "retained",
@@ -55,7 +68,17 @@ describe("owner user-data deletion service", () => {
     );
     expect(privacy.anonymizeLeaderboardAccount).toHaveBeenCalledWith(
       "auth0|person",
-      transaction
+      transaction,
+      { transaction }
+    );
+    expect(policy.lockLeaderboardAutomaticPolicy).toHaveBeenCalledWith(
+      transaction,
+      {
+        lockCheckins: true,
+        lockPresence: true,
+        lockReceipts: true,
+        subject: "auth0|person",
+      }
     );
     expect(settings.destroy).toHaveBeenCalledWith({
       transaction,
@@ -73,12 +96,18 @@ describe("owner user-data deletion service", () => {
       privacy.anonymizeLeaderboardAccount.mock.invocationCallOrder[0]
     ).toBeLessThan(settings.destroy.mock.invocationCallOrder[0]);
     expect(
+      policy.lockLeaderboardAutomaticPolicy.mock.invocationCallOrder[0]
+    ).toBeLessThan(
+      revocation.revokeApplicationTokens.mock.invocationCallOrder[0]
+    );
+    expect(
       revocation.revokeApplicationTokens.mock.invocationCallOrder[0]
     ).toBeLessThan(
       privacy.anonymizeLeaderboardAccount.mock.invocationCallOrder[0]
     );
   });
 
+  // preserve identifiers on anonymization failure
   it("does not delete identifiers if leaderboard anonymization fails", async () => {
     privacy.anonymizeLeaderboardAccount.mockRejectedValueOnce(
       new Error("anonymization failed")
@@ -92,6 +121,7 @@ describe("owner user-data deletion service", () => {
     expect(allowlist.destroy).not.toHaveBeenCalled();
   });
 
+  // preserve data on revocation failure
   it("does not anonymize or delete data if creating the revocation watermark fails", async () => {
     revocation.revokeApplicationTokens.mockRejectedValueOnce(
       new Error("revocation failed")
@@ -106,6 +136,7 @@ describe("owner user-data deletion service", () => {
     expect(allowlist.destroy).not.toHaveBeenCalled();
   });
 
+  // delete identity after app data
   it("deletes the Auth0 identity after app-owned data inside one transaction", async () => {
     await expect(deleteFerryUserAccount("auth0|person")).resolves.toEqual({
       status: "complete",
@@ -117,6 +148,7 @@ describe("owner user-data deletion service", () => {
     );
   });
 
+  // surface identity deletion failure
   it("fails account deletion when Auth0 does not delete the identity", async () => {
     auth0.deleteAuth0User.mockRejectedValueOnce(
       new Error("Auth0 deletion failed")

@@ -244,6 +244,10 @@ describe("owner admin authorization", () => {
 
     expect(flags.setAutomaticLeaderboardCheckinsEnabled).not.toHaveBeenCalled();
 
+    flags.getLeaderboardFlags.mockResolvedValueOnce({
+      automaticLeaderboardCheckinsEnabled: true,
+      leaderboardsEnabled: true,
+    });
     const response = await request(createApp())
       .put("/api/admin/features")
       .set("Authorization", "Bearer owner")
@@ -251,12 +255,10 @@ describe("owner admin authorization", () => {
       .expect(200);
 
     expect(response.body).toEqual({
-      automaticLeaderboardCheckinsEnabled: false,
-      leaderboardsEnabled: false,
+      automaticLeaderboardCheckinsEnabled: true,
+      leaderboardsEnabled: true,
     });
-    expect(flags.setAutomaticLeaderboardCheckinsEnabled).toHaveBeenCalledWith(
-      false
-    );
+    expect(flags.setAutomaticLeaderboardCheckinsEnabled).not.toHaveBeenCalled();
     expect(flags.setLeaderboardsEnabled).toHaveBeenCalledWith(true);
   });
 });

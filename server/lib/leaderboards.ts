@@ -7,6 +7,8 @@ export const TERMINAL_GEOFENCE_METERS = 304.8;
 export const MAX_LOCATION_ACCURACY_METERS = 100;
 export const VESSEL_PROXIMITY_METERS = 250;
 export const MAX_VESSEL_STATUS_AGE_MS = 5 * 60_000;
+const MAX_SAILING_AGE_SECONDS = 12 * 60 * 60;
+const MAX_FUTURE_DEPARTURE_SECONDS = 60;
 
 export const MAX_LEADERBOARD_RANKS = 10;
 
@@ -164,11 +166,13 @@ export interface LiveVesselForCheckin {
   statusUpdatedAt?: number;
 }
 
-/** A sailing must have a fresh, internally consistent WSF status identity. */
+/** validates fresh WSF seconds against a millisecond server clock */
 export const stableSailingId = (
   vessel: LiveVesselForCheckin,
   now = Date.now()
 ): string | null => {
+  const nowSeconds = Math.floor(now / 1000);
+  // reject unstable sailing
   if (
     !vessel.inService ||
     vessel.isAtDock ||
@@ -181,8 +185,9 @@ export const stableSailingId = (
     vessel.departingTerminalId === vessel.arrivingTerminalId ||
     !Number.isFinite(vessel.statusUpdatedAt) ||
     (vessel.departedTime as number) <= 0 ||
-    (vessel.departedTime as number) < now - 12 * 60 * 60_000 ||
-    (vessel.departedTime as number) > now + 60_000 ||
+    (vessel.departedTime as number) < nowSeconds - MAX_SAILING_AGE_SECONDS ||
+    (vessel.departedTime as number) >
+      nowSeconds + MAX_FUTURE_DEPARTURE_SECONDS ||
     now - (vessel.statusUpdatedAt as number) > MAX_VESSEL_STATUS_AGE_MS ||
     (vessel.statusUpdatedAt as number) > now + 60_000
   ) {

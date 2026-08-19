@@ -6,6 +6,7 @@ import { useLocation } from "react-router-dom";
 import type { PublicSsrHostProfile } from "shared/lib/ssrRouteMatch";
 
 import { App } from "~/App";
+import { AutomaticEnrollmentIdentityCoordinator } from "~/components/AutomaticEnrollmentIdentityCoordinator";
 import { CameraDetectionDebuggerAuthorization } from "~/components/CameraDetectionDebuggerAuthorization";
 import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { getConfiguredAuth0RedirectUri } from "~/lib/auth";
@@ -91,6 +92,7 @@ export const BrowserPhase = ({
             useRefreshTokens
             useRefreshTokensFallback
           >
+            <AutomaticEnrollmentIdentityCoordinator />
             <CameraDetectionDebuggerAuthorization />
             <FeatureFlagProvider>
               <UserProvider>

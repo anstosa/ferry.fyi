@@ -54,12 +54,43 @@ describe("public HTTP telemetry", () => {
     expect(classify("GET", "/readyz")).toBe("readiness");
     expect(classify("GET", "/openapi.json")).toBe("discovery");
     expect(classify("GET", "/api/features")).toBe("api.anonymous-read");
+    expect(classify("POST", "/api/leaderboards/native/candidates")).toBe(
+      "api.automatic-native"
+    );
     expect(classify("POST", "/api/admin/jobs")).toBe("api.authenticated");
     expect(classify("POST", "/api/ads/measure")).toBe("api.ad-measurement");
     expect(classify("GET", "/seattle/bainbridge?date=private")).toBe(
       "ssr.public"
     );
     expect(classify("GET", "/assets/main.abc123.js")).toBe("asset");
+  });
+
+  // prove native telemetry never derives fields from sensitive request data
+  it("emits only the fixed automatic native route class", async () => {
+    const sink = vi.fn<(event: HttpTelemetryEvent) => void>();
+    const app = express();
+    app.use(createHttpTelemetryMiddleware({ release: "v124", sink }));
+    // emit one fixed test response
+    app.post("/api/leaderboards/native/candidates", (_request, response) =>
+      response.status(429).json({ limited: true })
+    );
+
+    await request(app)
+      .post("/api/leaderboards/native/candidates?candidateId=private-candidate")
+      .set("Authorization", "Bearer private-token")
+      .set("X-Enrollment-Digest", "private-enrollment")
+      .send({ latitudeE7: 473000000, limiterKey: "private-limiter" })
+      .expect(429);
+
+    expect(sink).toHaveBeenCalledWith(
+      expect.objectContaining({
+        routeClass: "api.automatic-native",
+        statusClass: "429",
+      })
+    );
+    expect(JSON.stringify(sink.mock.calls)).not.toMatch(
+      /private|candidateId|authorization|enrollment|latitude|limiter/i
+    );
   });
 
   it("rejects fields outside the privacy boundary", () => {

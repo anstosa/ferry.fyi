@@ -1,5 +1,6 @@
 import { MapPoint } from "shared/contracts/cameras";
 import { Vessel as VesselClass } from "shared/contracts/vessels";
+import { isNil } from "shared/lib/identity";
 
 import { CacheableModel } from "./CacheableModel";
 
@@ -51,10 +52,14 @@ export class Vessel extends CacheableModel implements VesselClass {
   yearRebuilt!: number;
   /* eslint-disable lines-between-class-members */
 
+  // public vessel serialization
   serialize(): VesselClass {
     return CacheableModel.serialize({
       abbreviation: this.abbreviation,
-      arrivingTerminalId: this.arrivingTerminalId,
+      // omit nullish arrival
+      ...(isNil(this.arrivingTerminalId)
+        ? {}
+        : { arrivingTerminalId: this.arrivingTerminalId }),
       departingTerminalId: this.departingTerminalId,
       beam: this.beam,
       classId: this.classId,
@@ -73,7 +78,11 @@ export class Vessel extends CacheableModel implements VesselClass {
       id: this.id,
       inMaintenance: this.inMaintenance,
       inService: this.inService,
-      info: this.info,
+      info: {
+        // omit nullish details
+        ...(isNil(this.info?.ada) ? {} : { ada: this.info.ada }),
+        ...(isNil(this.info?.crossing) ? {} : { crossing: this.info.crossing }),
+      },
       isAdaAccessible: this.isAdaAccessible,
       isAtDock: this.isAtDock,
       length: this.length,
@@ -88,7 +97,8 @@ export class Vessel extends CacheableModel implements VesselClass {
       vehicleCapacity: this.vehicleCapacity,
       weight: this.weight,
       yearBuilt: this.yearBuilt,
-      yearRebuilt: this.yearRebuilt,
+      // omit nullish rebuild
+      ...(isNil(this.yearRebuilt) ? {} : { yearRebuilt: this.yearRebuilt }),
     });
   }
 }

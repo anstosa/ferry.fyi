@@ -52,6 +52,10 @@ jobs:
       AUTH0_DOMAIN: tenant.example.test
       BASE_URL: https://ferry.fyi
       DATABASE_URL: postgres://test:testing@localhost:5432/ferryfyi
+      LEADERBOARD_AUTOMATIC_POLICY_TEST_DATABASE_URL: postgres://test:testing@localhost:5432/ferryfyi
+      LEADERBOARD_AUTOMATIC_RECEIPT_TEST_DATABASE_URL: postgres://test:testing@localhost:5432/ferryfyi
+      LEADERBOARD_TERMINAL_AUTOMATIC_ORDERING_TEST_DATABASE_URL: postgres://test:testing@localhost:5432/ferryfyi
+      LEADERBOARD_VESSEL_SNAPSHOT_TEST_DATABASE_URL: postgres://test:testing@localhost:5432/ferryfyi
       PGSSLMODE: disable
       TZ: America/Los_Angeles
     steps:
@@ -71,6 +75,53 @@ jobs:
           path: dist
       - run: yarn db:migrate
       - run: yarn test
+      - name: Prove real Postgres automatic-checkin suites executed
+        run: |
+          set -euo pipefail
+          REPORT="${RUNNER_TEMP}/automatic-real-postgres.json"
+          yarn vitest run \
+            tests/server/leaderboard-automatic-policy-postgres.test.ts \
+            tests/server/leaderboard-automatic-receipts-postgres.test.ts \
+            tests/server/leaderboard-terminal-automatic-ordering-postgres.test.ts \
+            tests/server/leaderboard-vessel-snapshots-postgres.test.ts \
+            --reporter=json \
+            --outputFile="${REPORT}"
+          python3 - "${REPORT}" <<'PY'
+          # require all four suites and every test
+          import json
+          import sys
+          from pathlib import Path
+
+          report = json.load(open(sys.argv[1], encoding="utf-8"))
+          actual = {
+              "failed_tests": report["numFailedTests"],
+              "passed_tests": report["numPassedTests"],
+              "pending_tests": report["numPendingTests"],
+              "total_tests": report["numTotalTests"],
+          }
+          expected = {
+              "failed_tests": 0,
+              "passed_tests": 25,
+              "pending_tests": 0,
+              "total_tests": 25,
+          }
+          # bind execution to the four mandatory files
+          root = Path.cwd().resolve()
+          files = {
+              str(Path(result["name"]).resolve().relative_to(root))
+              for result in report["testResults"]
+          }
+          expected_files = {
+              "tests/server/leaderboard-automatic-policy-postgres.test.ts",
+              "tests/server/leaderboard-automatic-receipts-postgres.test.ts",
+              "tests/server/leaderboard-terminal-automatic-ordering-postgres.test.ts",
+              "tests/server/leaderboard-vessel-snapshots-postgres.test.ts",
+          }
+          statuses = {result["status"] for result in report["testResults"]}
+          assert actual == expected, (actual, expected)
+          assert files == expected_files, (files, expected_files)
+          assert statuses == {"passed"}, statuses
+          PY
 
   build:
     name: Production build and artifact smokes
@@ -155,4 +206,295 @@ jobs:
       - name: Run the deterministic critical SSR sample
         run: >-
           yarn playwright test --config playwright.ssr.config.ts
-          --grep "serves page-specific React source|serves a hydratable 404 document|keeps static assets cacheable|serves machine discovery|@accessibility"
+          --grep "serves page-specific React source|serves a hydratable 404 document|keeps static assets cacheable|serves machine discovery|@accessibility|@automatic-checkins"
+
+  # define one native verification job
+  android-native:
+    name: Android Debug and N1 unit, build, and static contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      AUTH0_CLIENT_AUDIENCE: https://ferry.fyi/api
+      AUTH0_CLIENT_ID: checks-client
+      AUTH0_CLIENT_REDIRECT: fyi.ferry://callback
+      AUTH0_DOMAIN: tenant.example.test
+      BASE_URL: https://ferry.fyi
+      SENTRY_AUTH_TOKEN: ""
+    steps:
+      # run one bounded native verification step
+      - name: Check out repository
+        uses: actions/checkout@v7
+      # run one bounded native verification step
+      - name: Use Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+          cache-dependency-path: yarn.lock
+      # run one bounded native verification step
+      - name: Use Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+      # run one bounded native verification step
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4.0.1
+      # run one bounded native verification step
+      - name: Install Android API 36
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+      # run one bounded native verification step
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+      # run one bounded native verification step
+      - name: Build production web assets for Android
+        run: yarn build:android:ci
+      # run one bounded native verification step
+      - name: Run production-like Debug checks
+        run: >-
+          ./android/gradlew --no-daemon -p android
+          :app:testDebugUnitTest
+          :app:assembleDebug
+          :app:lintDebug
+      # run one bounded native verification step
+      - name: Run explicit N1 capability checks
+        run: >-
+          ./android/gradlew --no-daemon -p android
+          :app:testN1CapabilityUnitTest
+          :app:assembleN1Capability
+          :app:lintN1Capability
+      # run one bounded native verification step
+      - name: Extract packaged Android manifests
+        run: |
+          set -euo pipefail
+          apkanalyzer manifest print \
+            android/app/build/outputs/apk/debug/app-debug.apk \
+            > "${RUNNER_TEMP}/android-debug-manifest.xml"
+          apkanalyzer manifest print \
+            android/app/build/outputs/apk/n1Capability/app-n1Capability.apk \
+            > "${RUNNER_TEMP}/android-n1-capability-manifest.xml"
+      # run one bounded native verification step
+      - name: Assert Android native build contracts
+        run: |
+          set -euo pipefail
+          python3 scripts/assert-android-native-build.py \
+            --variant debug \
+            --built-manifest "${RUNNER_TEMP}/android-debug-manifest.xml" \
+            --source-manifest android/app/src/main/AndroidManifest.xml \
+            --resource-root android/app/src/main/res/xml
+          python3 scripts/assert-android-native-build.py \
+            --variant n1-capability \
+            --built-manifest "${RUNNER_TEMP}/android-n1-capability-manifest.xml" \
+            --source-manifest android/app/src/main/AndroidManifest.xml \
+            --resource-root android/app/src/main/res/xml
+      # retain partial evidence on failure
+      - name: Upload Android native evidence
+        # retain evidence on every outcome
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-native-evidence-${{ github.sha }}
+          path: |
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android/app/build/outputs/apk/n1Capability/app-n1Capability.apk
+            android/app/build/reports/lint-results-debug.html
+            android/app/build/reports/lint-results-n1Capability.html
+            android/app/build/reports/tests/testDebugUnitTest/
+            android/app/build/reports/tests/testN1CapabilityUnitTest/
+            ${{ runner.temp }}/android-debug-manifest.xml
+            ${{ runner.temp }}/android-n1-capability-manifest.xml
+          if-no-files-found: warn
+          retention-days: 7
+
+  # define one native verification job
+  android-native-device:
+    name: Android Debug and N1 instrumentation (blocking emulator)
+    needs: android-native
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      AUTH0_CLIENT_AUDIENCE: https://ferry.fyi/api
+      AUTH0_CLIENT_ID: checks-client
+      AUTH0_CLIENT_REDIRECT: fyi.ferry://callback
+      AUTH0_DOMAIN: tenant.example.test
+      BASE_URL: https://ferry.fyi
+      SENTRY_AUTH_TOKEN: ""
+    steps:
+      # run one bounded native verification step
+      - name: Check out repository
+        uses: actions/checkout@v7
+      # run one bounded native verification step
+      - name: Enable KVM access
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      # run one bounded native verification step
+      - name: Use Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+          cache-dependency-path: yarn.lock
+      # run one bounded native verification step
+      - name: Use Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+      # run one bounded native verification step
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4.0.1
+      # run one bounded native verification step
+      - name: Install Android API 36
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+      # run one bounded native verification step
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+      # run one bounded native verification step
+      - name: Build production web assets for Android
+        run: yarn build:android:ci
+      # run one bounded native verification step
+      - name: Run Debug and N1 capability instrumentation on API 36
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 36
+          arch: x86_64
+          target: google_apis
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: >-
+            ./android/gradlew --no-daemon -p android :app:connectedDebugAndroidTest &&
+            ./android/gradlew --no-daemon -p android
+            -PautomaticAndroidTestBuildType=n1Capability
+            :app:connectedN1CapabilityAndroidTest
+      # retain partial evidence on failure
+      - name: Upload Android device-test evidence
+        # retain evidence on every outcome
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-native-device-tests-${{ github.sha }}
+          path: |
+            android/app/build/outputs/androidTest-results/connected/
+            android/app/build/reports/androidTests/connected/
+          if-no-files-found: warn
+          retention-days: 7
+
+  # define one native verification job
+  ios-native:
+    name: iOS simulator tests and unsigned Release archive
+    runs-on: macos-26
+    timeout-minutes: 60
+    env:
+      AUTH0_CLIENT_AUDIENCE: https://ferry.fyi/api
+      AUTH0_CLIENT_ID: checks-client
+      AUTH0_CLIENT_REDIRECT: fyi.ferry://callback
+      AUTH0_DOMAIN: tenant.example.test
+      BASE_URL: https://ferry.fyi
+      SENTRY_AUTH_TOKEN: ""
+    steps:
+      # run one bounded native verification step
+      - name: Check out repository
+        uses: actions/checkout@v7
+      # run one bounded native verification step
+      - name: Use Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+          cache-dependency-path: yarn.lock
+      # run one bounded native verification step
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+      # run one bounded native verification step
+      - name: Build production web assets for iOS
+        run: yarn build:ios
+      # run one bounded native verification step
+      - name: Resolve iOS Swift packages
+        run: >-
+          xcodebuild -resolvePackageDependencies
+          -project "ios/App/Ferry FYI.xcodeproj"
+          -scheme "Ferry FYI"
+      # run one bounded native verification step
+      - name: Select an available iPhone simulator
+        id: simulator
+        run: |
+          set -euo pipefail
+          SIMULATOR_UDID="$(
+            xcrun simctl list devices available --json \
+              | jq -r '[.devices[][] | select(.name | startswith("iPhone"))][0].udid'
+          )"
+          # require a real simulator destination
+          if [[ -z "${SIMULATOR_UDID}" || "${SIMULATOR_UDID}" == "null" ]]; then
+            echo 'No available iPhone simulator was found' >&2
+            exit 1
+          fi
+          echo "udid=${SIMULATOR_UDID}" >> "${GITHUB_OUTPUT}"
+      # run one bounded native verification step
+      - name: Run Ferry FYI Tests on the simulator
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project "ios/App/Ferry FYI.xcodeproj" \
+            -scheme "Ferry FYI" \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination "id=${{ steps.simulator.outputs.udid }}" \
+            -resultBundlePath "${RUNNER_TEMP}/FerryFYITests.xcresult" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            "-only-testing:Ferry FYI Tests" \
+            test
+      # run one bounded native verification step
+      - name: Run Automatic N1 integration tests on the simulator
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project "ios/App/Ferry FYI.xcodeproj" \
+            -scheme "Ferry FYI Automatic N1" \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination "id=${{ steps.simulator.outputs.udid }}" \
+            -resultBundlePath "${RUNNER_TEMP}/FerryFYIAutomaticN1Tests.xcresult" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            "-only-testing:Ferry FYI Tests" \
+            test
+      # run one bounded native verification step
+      - name: Build an unsigned Release archive
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project "ios/App/Ferry FYI.xcodeproj" \
+            -scheme "Ferry FYI" \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "${RUNNER_TEMP}/FerryFYI.xcarchive" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            clean archive
+      # run one bounded native verification step
+      - name: Inspect archived privacy declarations
+        run: |
+          set -euo pipefail
+          plutil -p \
+            "${RUNNER_TEMP}/FerryFYI.xcarchive/Products/Applications/Ferry FYI.app/PrivacyInfo.xcprivacy"
+          python3 scripts/assert-ios-native-archive.py \
+            --archive "${RUNNER_TEMP}/FerryFYI.xcarchive"
+      # retain partial evidence on failure
+      - name: Upload iOS native evidence
+        # retain evidence on every outcome
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-native-evidence-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/FerryFYITests.xcresult
+            ${{ runner.temp }}/FerryFYIAutomaticN1Tests.xcresult
+            ${{ runner.temp }}/FerryFYI.xcarchive/Products/Applications/Ferry FYI.app/Info.plist
+            ${{ runner.temp }}/FerryFYI.xcarchive/Products/Applications/Ferry FYI.app/PrivacyInfo.xcprivacy
+          if-no-files-found: warn
+          retention-days: 7

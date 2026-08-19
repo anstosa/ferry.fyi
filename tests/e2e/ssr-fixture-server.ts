@@ -3,7 +3,12 @@ import fs from "node:fs";
 import https, { type Server } from "node:https";
 import path from "node:path";
 
-import { json, type RequestHandler, Router } from "express";
+import {
+  json,
+  type RequestHandler,
+  Router,
+  static as serveStatic,
+} from "express";
 import type { PublicSsrRendererArtifact } from "shared/contracts/ssrRenderer";
 import type { Terminal } from "shared/contracts/terminals";
 
@@ -383,6 +388,11 @@ const makeRuntime = async () => {
 
 const fixtureRouter = Router();
 fixtureRouter.use(json());
+// serve the dedicated production-component browser fixture
+fixtureRouter.use(
+  "/__automatic__",
+  serveStatic(path.join(distributionDirectory, "e2e/automatic-checkins"))
+);
 fixtureRouter.get("/__fixture__/health", (_request, response) =>
   response.json({ ok: true })
 );
@@ -431,6 +441,10 @@ fixtureRouter.post("/__fixture__/control", async (request, response) => {
   response.json({ ok: true });
 });
 const apiRouter = Router();
+// keep browser hydration aligned with the public leaderboard fixture
+apiRouter.get("/features", (_request, response) =>
+  response.json({ leaderboardsEnabled: true })
+);
 apiRouter.all("/schedule/:departing/:arriving/:date", (request, response) => {
   const { arriving, date, departing } = request.params;
   response.json({

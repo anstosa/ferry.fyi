@@ -1,12 +1,19 @@
 import { useAuth0 } from "@auth0/auth0-react";
 import { Share } from "@capacitor/share";
 import clsx from "clsx";
-import React, { ReactElement, ReactNode, useEffect, useState } from "react";
+import React, {
+  ReactElement,
+  ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { Link, Navigate, Route, Routes, useParams } from "react-router-dom";
 import type {
   Leaderboard,
   LeaderboardPeriod,
   LeaderboardPreferences,
+  LeaderboardPreferencesUpdate,
 } from "shared/contracts/leaderboards";
 import {
   getLeaderboardsSeoMetadata,
@@ -15,7 +22,10 @@ import {
   type SeoMetadata,
 } from "shared/lib/seo";
 
-import { LeaderboardLocationEnrollment } from "~/components/LeaderboardLocationEnrollment";
+import {
+  LeaderboardAutomaticCleanupRecovery,
+  LeaderboardAutomaticEnrollment,
+} from "~/components/LeaderboardAutomaticEnrollment";
 import { LeaderboardManualCheckIn } from "~/components/LeaderboardManualCheckIn";
 import { Page } from "~/components/Page";
 import { SeoHelmet } from "~/components/SeoHelmet";
@@ -24,6 +34,7 @@ import { ApiError } from "~/lib/api";
 import { loginWithAppFlow } from "~/lib/auth";
 import { useFavoriteRoutes } from "~/lib/favoriteRoutes";
 import { useFeatureFlags } from "~/lib/featureFlags";
+import { disableAutomaticLeaderboardAccount } from "~/lib/leaderboardAutomatic";
 import { leaderboardInitials } from "~/lib/leaderboardLocation";
 import {
   getFirstNonEmptyLeaderboard,
@@ -263,7 +274,7 @@ const ShareButton = ({ title }: { title: string }): ReactElement => {
       setMessage("Shared!");
       window.setTimeout(() => setMessage("Share"), 3000);
     } catch {
-      // Dismissing the native share dialog is not an error that needs UI noise.
+      // ignore one dismissed native share dialog
     }
   };
   return (
@@ -325,6 +336,9 @@ const Preferences = (): ReactElement => {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [confirmingOptOut, setConfirmingOptOut] = useState(false);
+  // track the current cleanup owner across asynchronous auth changes
+  const subjectRef = useRef<string | null>(user?.sub ?? null);
+  subjectRef.current = user?.sub ?? null;
 
   useEffect(() => {
     if (!leaderboardsEnabled || !isAuthenticated) {
@@ -390,10 +404,13 @@ const Preferences = (): ReactElement => {
       </SkeletonGroup>
     );
   }
-  const save = async (next: LeaderboardPreferences): Promise<boolean> => {
-    const normalized = {
-      ...next,
-      automaticCheckinsEnabled: false,
+  // save one reviewed preference update
+  const save = async (
+    update: LeaderboardPreferencesUpdate
+  ): Promise<boolean> => {
+    const optimistic = {
+      ...preferences,
+      ...update,
       useFullName: false,
       verboseNotificationsEnabled: false,
     };
@@ -402,12 +419,16 @@ const Preferences = (): ReactElement => {
     window.dispatchEvent(
       new CustomEvent<LeaderboardPreferences>(
         "leaderboard-preferences-changed",
-        { detail: normalized }
+        { detail: optimistic }
       )
     );
     try {
       const saved = await updateLeaderboardPreferences(
-        normalized,
+        {
+          ...update,
+          useFullName: false,
+          verboseNotificationsEnabled: false,
+        },
         await getAccessTokenSilently()
       );
       setPreferences(saved);
@@ -419,8 +440,7 @@ const Preferences = (): ReactElement => {
       );
       return true;
     } catch {
-      // Restore the last saved preferences and therefore restart only if the
-      // user was not previously opted out.
+      // restore the last saved preferences after failure
       window.dispatchEvent(
         new CustomEvent<LeaderboardPreferences>(
           "leaderboard-preferences-changed",
@@ -432,6 +452,28 @@ const Preferences = (): ReactElement => {
     } finally {
       setSaving(false);
     }
+  };
+  // purge native material before the server opt-out and revocation transaction
+  const optOut = async (): Promise<boolean> => {
+    setSaving(true);
+    setError(null);
+    try {
+      await disableAutomaticLeaderboardAccount(
+        "profile_opted_out",
+        subjectRef.current ?? "",
+        // recheck the active auth owner at every teardown boundary
+        () => subjectRef.current,
+        getAccessTokenSilently
+      );
+    } catch {
+      setError(
+        "Automatic check-in cleanup did not finish. Retry before opting out."
+      );
+      setSaving(false);
+      return false;
+    }
+    setSaving(false);
+    return await save({ automaticCheckinsEnabled: false, optedOut: true });
   };
   return (
     <section className="mt-4">
@@ -451,24 +493,32 @@ const Preferences = (): ReactElement => {
         className="mt-3"
         disabled={preferences.optedOut || saving}
         enabled={preferences.notificationsEnabled}
+        // save one notification preference
         onClick={() =>
-          save({
-            ...preferences,
-            notificationsEnabled: !preferences.notificationsEnabled,
-          })
+          save({ notificationsEnabled: !preferences.notificationsEnabled })
         }
+      />
+      <LeaderboardAutomaticEnrollment
+        disabled={preferences.optedOut || saving}
+        onPreferencesChange={setPreferences}
+        preferences={preferences}
       />
       <div className="mt-4 flex items-center justify-between gap-2">
         {preferences.optedOut ? (
           <button
             className="button button-primary"
             disabled={saving}
+            // restore one opted-in preference
             onClick={() =>
-              save({ ...preferences, optedOut: false }).then((saved) => {
-                if (saved) {
-                  setConfirmingOptOut(false);
+              save({ optedOut: false }).then(
+                // close confirmation after one saved update
+                (saved) => {
+                  // close only after server confirmation
+                  if (saved) {
+                    setConfirmingOptOut(false);
+                  }
                 }
-              })
+              )
             }
             type="button"
           >
@@ -478,6 +528,7 @@ const Preferences = (): ReactElement => {
           <button
             className="button button-outline border-red-dark text-red-dark hover:bg-red-dark hover:text-white dark:border-red-light dark:text-red-light dark:hover:bg-red-light dark:hover:text-red-dark"
             disabled={saving}
+            // open one explicit opt-out confirmation
             onClick={() => setConfirmingOptOut(true)}
             type="button"
           >
@@ -487,7 +538,8 @@ const Preferences = (): ReactElement => {
         <button
           className="button button-primary"
           disabled={preferences.optedOut || saving}
-          onClick={() => save(preferences)}
+          // save one reviewed display name
+          onClick={() => save({ displayName: preferences.displayName })}
           type="button"
         >
           {saving ? "Saving…" : "Save"}
@@ -510,6 +562,7 @@ const Preferences = (): ReactElement => {
             <button
               className="button"
               disabled={saving}
+              // cancel one opt-out confirmation
               onClick={() => setConfirmingOptOut(false)}
               type="button"
             >
@@ -518,12 +571,17 @@ const Preferences = (): ReactElement => {
             <button
               className="button button-danger"
               disabled={saving}
+              // start one complete opt-out transaction
               onClick={() =>
-                save({ ...preferences, optedOut: true }).then((saved) => {
-                  if (saved) {
-                    setConfirmingOptOut(false);
+                optOut().then(
+                  // close confirmation after one saved opt-out
+                  (saved) => {
+                    // close only after server confirmation
+                    if (saved) {
+                      setConfirmingOptOut(false);
+                    }
                   }
-                })
+                )
               }
               type="button"
             >
@@ -877,9 +935,6 @@ const LeaderboardHome = (): ReactElement => {
         Check in, climb the rankings, and see who leads at each terminal and
         aboard each vessel.
       </LeaderboardHero>
-      <div className="mt-5">
-        <LeaderboardLocationEnrollment />
-      </div>
       <h2 className="mt-8 text-center font-bold text-lg">
         Terminal leaderboards
       </h2>
@@ -955,11 +1010,13 @@ export const Leaderboards = (): ReactElement => {
     robots: "noindex,follow" as const,
   };
   const { leaderboardsEnabled } = useFeatureFlags();
+  // preserve cleanup recovery behind the parent gate
   if (!leaderboardsEnabled) {
     return (
       <Page title="Leaderboards">
         <SnapshotSeoHelmet fallback={disabledSeo} />
         <p className="mt-4">Leaderboards are not available yet.</p>
+        <LeaderboardAutomaticCleanupRecovery />
       </Page>
     );
   }

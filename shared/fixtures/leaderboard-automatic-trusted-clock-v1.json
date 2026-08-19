@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "candidateRetentionMs": 43200000,
+  "anchor": {
+    "bootId": "boot-a",
+    "monotonicTimeMs": 10000,
+    "serverTimeMs": 1720000000000,
+    "wallTimeMs": 1800000000000
+  },
+  "readings": [
+    {
+      "name": "same-boot-normal",
+      "sample": {
+        "bootId": "boot-a",
+        "monotonicTimeMs": 15000,
+        "wallTimeMs": 1800000005000
+      },
+      "expectedCapturedAtMs": 1720000005000,
+      "expectedExpiryNowMs": 1720000005000
+    },
+    {
+      "name": "wall-rollback",
+      "sample": {
+        "bootId": "boot-a",
+        "monotonicTimeMs": 20000,
+        "wallTimeMs": 1799999940000
+      },
+      "expectedCapturedAtMs": 1720000010000,
+      "expectedExpiryNowMs": 1720000010000
+    },
+    {
+      "name": "wall-forward",
+      "sample": {
+        "bootId": "boot-a",
+        "monotonicTimeMs": 15000,
+        "wallTimeMs": 1800000600000
+      },
+      "expectedCapturedAtMs": 1720000005000,
+      "expectedExpiryNowMs": 1720000600000
+    },
+    {
+      "name": "frozen-wall",
+      "sample": {
+        "bootId": "boot-a",
+        "monotonicTimeMs": 130000,
+        "wallTimeMs": 1800000000000
+      },
+      "expectedCapturedAtMs": 1720000120000,
+      "expectedExpiryNowMs": 1720000120000
+    },
+    {
+      "name": "reboot-without-anchor",
+      "sample": {
+        "bootId": "boot-b",
+        "monotonicTimeMs": 100,
+        "wallTimeMs": 1800000001000
+      },
+      "expectedCapturedAtMs": null,
+      "expectedExpiryNowMs": null
+    }
+  ],
+  "expiryBoundaries": [
+    {
+      "name": "eleven-hours-fifty-nine-minutes-fifty-nine-seconds-999ms",
+      "capturedAtMs": 1720000000000,
+      "trustedNowMs": 1720043199999,
+      "expired": false
+    },
+    {
+      "name": "twelve-hours-exact",
+      "capturedAtMs": 1720000000000,
+      "trustedNowMs": 1720043200000,
+      "expired": true
+    }
+  ],
+  "refreshedReboot": {
+    "anchor": {
+      "bootId": "boot-b",
+      "monotonicTimeMs": 100,
+      "serverTimeMs": 1720043200000,
+      "wallTimeMs": 1800043201000
+    },
+    "sample": {
+      "bootId": "boot-b",
+      "monotonicTimeMs": 100,
+      "wallTimeMs": 1800043201000
+    },
+    "queuedCapturedAtMs": 1720000000000,
+    "expectedExpiryNowMs": 1720043200000,
+    "expired": true
+  }
+}

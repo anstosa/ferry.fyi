@@ -10,7 +10,7 @@ export const PrivacyPolicy = (): ReactElement => (
     <SeoHelmet seo={getSeoMetadata("/privacy")} />
 
     <p className="mt-4 text-sm">
-      Last updated: <time dateTime="2026-08-09">August 9, 2026</time>
+      Last updated: <time dateTime="2026-08-18">August 18, 2026</time>
     </p>
     <p className="mt-4">
       Ferry FYI provides Washington State Ferries schedules, service
@@ -34,9 +34,46 @@ export const PrivacyPolicy = (): ReactElement => (
     <h3 className="font-bold mt-4">Location</h3>
     <p className="mt-2">
       With your permission, Ferry FYI accesses your precise location to show
-      nearby terminals and route information. Location is used on your device
-      for these features and is not saved in your Ferry FYI account settings.
-      You can deny or revoke location access in your browser or device settings.
+      nearby terminals and route information and to verify an explicit manual
+      leaderboard check-in. Those foreground coordinates are sent to Ferry FYI
+      only for verification, discarded after the decision, and are not saved in
+      your account settings. You can deny or revoke location access in your
+      browser or device settings.
+    </p>
+    <h3 className="font-bold mt-4">Optional automatic check-ins</h3>
+    <p className="mt-2">
+      In an eligible Android or iOS app build, you may separately enable
+      automatic leaderboard check-ins after a prominent disclosure and precise
+      background-location permission. Terminal-region transitions may then
+      create a short-lived encrypted candidate on your device while the app is
+      not open. A candidate can include coordinates, accuracy, capture time, and
+      a terminal configuration identifier. It stays outside JavaScript, is
+      excluded from device backup and transfer, and becomes ineligible exactly
+      12 hours after capture. Its encrypted file is physically removed at the
+      next eligible operating-system execution and is never uploaded after
+      expiry. Eligible candidates are sent only to Ferry FYI for verification.
+      Ferry FYI discards submitted coordinates after verification and retains
+      only the credited result and coarse eligibility state.
+    </p>
+    <p className="mt-2">
+      The automatic credential is device-only and limited to automatic check-in
+      configuration, status, submission, and revocation. Notifications and the
+      app bridge use a generic check-in-changed signal without terminal, vessel,
+      route, coordinate, or time detail. Automatic check-ins are best-effort GPS
+      self-attestation, not proof that you boarded a ferry, and may pause after
+      permission changes, Android force-stop, iOS force-quit, device restart
+      before first unlock, battery restrictions, or connectivity failures.
+      Manual check-in remains available.
+    </p>
+    <p className="mt-2">
+      Native code binds the installed credential to a keyed device-only owner
+      proof. Your raw Auth0 subject is used only as transient input for that
+      check and is not stored, returned, or logged by the native bridge.
+    </p>
+    <p className="mt-2">
+      Automatic check-ins require Android 10 or newer or iOS 15 or newer, plus
+      an explicitly capable app build. Unsupported devices and ordinary
+      default-off builds do not request background location.
     </p>
     <h3 className="font-bold mt-4">Usage and diagnostic information</h3>
     <p className="mt-2">
@@ -160,10 +197,18 @@ export const PrivacyPolicy = (): ReactElement => (
       matching cached details. You can permanently delete your login and
       associated Ferry FYI account data from Account &gt; Delete account. This
       removes the authentication profile, settings, notification token, cached
-      ticket details, and leaderboard identity. Leaderboard scores may remain
-      only under a new anonymous identifier that cannot be linked back to the
-      deleted account. For access requests or other privacy questions, email us
-      at{" "}
+      ticket details, native automatic enrollment and queued ciphertext, and
+      leaderboard identity. Opt-out and logout also stop monitoring, advance the
+      native work generation, purge local automatic material, and revoke the
+      scoped server enrollment before controllable authentication teardown. If
+      cleanup cannot be confirmed, the app keeps the authenticated action open
+      for retry rather than claiming completion. A separate device-keyed cleanup
+      proof contains no raw account subject, credential, location, or candidate
+      detail; only the exactly matching signed-in account can retry it, and it
+      is removed after local purge and server acknowledgement. Leaderboard
+      scores may remain only under a new anonymous identifier that cannot be
+      linked back to the deleted account. For access requests or other privacy
+      questions, email us at{" "}
       <a className="link" href="mailto:dev@ferry.fyi">
         dev@ferry.fyi
       </a>

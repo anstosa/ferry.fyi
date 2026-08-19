@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- isolate the explicit v0 diagnostic -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- diagnostic-only background authorization -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+
+    <!-- contain the diagnostic receiver -->
+    <application>
+        <!-- explicit diagnostic geofence target -->
+        <receiver
+            android:name="fyi.ferry.leaderboards.AutomaticV0GeofenceReceiver"
+            android:enabled="true"
+            android:exported="false" />
+    </application>
+</manifest>

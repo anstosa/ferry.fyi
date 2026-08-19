@@ -41,14 +41,19 @@
 	<false/>
 	<key>GateABackgroundLocationFeasibilityEnabled</key>
 	<false/>
+	<!-- keep the production capability disabled -->
+	<key>AutomaticLeaderboardCheckinsEnabled</key>
+	<false/>
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright © 2026 Ansel Santosa. All rights reserved.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Ferry FYI uses the camera to scan your saved ferry ticket barcodes.</string>
+	<!-- describe the explicit background authorization -->
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Ferry FYI uses your location to show nearby terminals and route information.</string>
+	<string>When you explicitly enable automatic check-ins, Ferry FYI uses terminal transitions for best-effort check-ins while the app is not open. Manual check-in remains available.</string>
+	<!-- describe foreground location use -->
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Ferry FYI uses your location to show nearby terminals and route information.</string>
+	<string>Ferry FYI uses your location for nearby ferry information, manual check-in, and the setup of automatic check-ins you explicitly enable.</string>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>

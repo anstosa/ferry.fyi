@@ -6,6 +6,8 @@ export class FeatureFlag extends Model {
   enabled!: boolean;
   killSwitch!: boolean;
   name!: string;
+  // persist canonical automatic policy version
+  serverPolicyGeneration!: number | string;
 }
 
 FeatureFlag.init(
@@ -17,6 +19,12 @@ FeatureFlag.init(
       type: DataTypes.BOOLEAN,
     },
     name: { allowNull: false, primaryKey: true, type: DataTypes.STRING },
+    // default existing policy to generation zero
+    serverPolicyGeneration: {
+      allowNull: false,
+      defaultValue: 0,
+      type: DataTypes.BIGINT,
+    },
   },
   { sequelize: db, modelName: "FeatureFlag", tableName: "FeatureFlags" }
 );

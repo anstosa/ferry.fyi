@@ -57,7 +57,7 @@ export interface Vessel {
   vehicleCapacity: number;
   weight: number;
   yearBuilt: number;
-  yearRebuilt: number;
+  yearRebuilt?: number;
 }
 
 /** Current fleet data plus the oldest vessel-status observation in the set. */

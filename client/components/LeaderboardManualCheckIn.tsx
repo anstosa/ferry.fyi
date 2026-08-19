@@ -3,6 +3,7 @@ import React, { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { loginWithAppFlow } from "~/lib/auth";
 import { requestForegroundLocation } from "~/lib/geo";
+import { listenForAutomaticLeaderboardChanges } from "~/lib/leaderboardAutomatic";
 import { vesselSailingId } from "~/lib/leaderboardForeground";
 import type { LeaderboardCheckInKind } from "~/lib/leaderboardNotificationConfig";
 import { notifyLeaderboardCheckIn } from "~/lib/leaderboardNotifications";
@@ -82,6 +83,46 @@ export const LeaderboardManualCheckIn = ({
 
   useEffect(() => {
     refreshStatus().catch(() => setCheckedIn(false));
+  }, [refreshStatus]);
+
+  // refetch the visible entity after one detail-free native credit signal
+  useEffect(() => {
+    let remove: (() => Promise<void>) | null = null;
+    let active = true;
+    listenForAutomaticLeaderboardChanges(
+      // refetch one aggregate entity state
+      () => {
+        refreshStatus().catch(
+          // ignore one stale entity refetch
+          () => undefined
+        );
+      }
+    )
+      .then(
+        // retain one mounted listener
+        (listener) => {
+          // remove a late listener after unmount
+          if (!active) {
+            listener?.().catch(
+              // ignore one late removal failure
+              () => undefined
+            );
+            return;
+          }
+          remove = listener;
+        }
+      )
+      .catch(
+        // keep native listener setup optional
+        () => undefined
+      );
+    return () => {
+      active = false;
+      remove?.().catch(
+        // ignore one cleanup removal failure
+        () => undefined
+      );
+    };
   }, [refreshStatus]);
 
   useEffect(() => {

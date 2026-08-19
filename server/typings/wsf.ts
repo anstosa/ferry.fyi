@@ -285,7 +285,7 @@ export namespace WSF {
     DepartingTerminalID: number;
     DepartingTerminalName: string;
     DepartingTerminalAbbrev: string;
-    ArrivingTerminalID?: number;
+    ArrivingTerminalID?: number | null;
     ArrivingTerminalName?: string;
     ArrivingTerminalAbbrev?: string;
     Latitude: number;
@@ -296,7 +296,7 @@ export namespace WSF {
     AtDock: boolean;
     LeftDock?: string;
     Eta?: string;
-    EtaBasis?: string;
+    EtaBasis?: string | null;
     ScheduledDeparture?: string;
     OpRouteAbbrev: string[];
     VesselPositionNum?: number;
@@ -333,7 +333,7 @@ export namespace WSF {
     MainCabinGalley: boolean;
     MainCabinRestroom: boolean;
     PublicWifi: boolean;
-    ADAInfo?: string;
+    ADAInfo?: string | null;
     AdditionalInfo?: string;
     VesselNameDesc: string;
     VesselHistory?: string;
@@ -354,7 +354,7 @@ export namespace WSF {
     Tonnage?: number;
     Displacement?: number;
     YearBuilt?: number;
-    YearRebuilt?: number;
+    YearRebuilt?: number | null;
     VesselDrawingImg?: string;
     SolasCertified: boolean;
     MaxPassengerCountForInternational?: number;

@@ -16,7 +16,9 @@ describe("privacy and advertising policy", () => {
       </HelmetProvider>
     );
 
-    expect(html).toContain('<time dateTime="2026-08-09">August 9, 2026</time>');
+    expect(html).toContain(
+      '<time dateTime="2026-08-18">August 18, 2026</time>'
+    );
     expect(html).toContain("cached with the account");
     expect(html).toContain("a ticket looked up");
     expect(html).toContain("Removing a saved ticket removes its");
@@ -29,6 +31,13 @@ describe("privacy and advertising policy", () => {
     expect(html).toContain("We do not sell personal information");
     expect(html).toContain("saved-ticket or barcode screens");
     expect(html).toContain("service alerts, or push notifications");
+    expect(html).toContain("Optional automatic check-ins");
+    expect(html).toContain("becomes ineligible exactly 12 hours");
+    expect(html).toContain(
+      "physically removed at the next eligible operating-system execution"
+    );
+    expect(html).toContain("outside JavaScript");
+    expect(html).toContain("not proof that you boarded a ferry");
   });
 
   it("states the advertising disclosure and acceptance rules", () => {

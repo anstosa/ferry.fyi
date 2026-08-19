@@ -62,6 +62,12 @@ type DetailedFeatureSettings = {
   name: string;
   subjects: string[];
 };
+// identify one independently managed feature
+type ManagedFeatureName = "automaticLeaderboardCheckins" | "leaderboards";
+// group subject-aware feature decisions
+type DetailedFeatureMap = Record<ManagedFeatureName, DetailedFeatureSettings>;
+// retain one editable allowlist per feature
+type FeatureAllowlistMap = Record<ManagedFeatureName, string>;
 type AdminNotificationMode = "broadcast" | "targeted" | "test";
 type NotificationPreview = { recipientCount: number };
 type NotificationSendResult = {
@@ -681,9 +687,13 @@ export const Admin = (): ReactElement => {
       : (adminTabs.find(({ id }) => id === requestedAdminTab)?.id ?? "access")
   );
   const [features, setFeatures] = useState<FeatureSettings | null>(null);
-  const [detailedFeature, setDetailedFeature] =
-    useState<DetailedFeatureSettings | null>(null);
-  const [allowlistText, setAllowlistText] = useState("");
+  const [detailedFeatures, setDetailedFeatures] =
+    useState<DetailedFeatureMap | null>(null);
+  const [featureAllowlists, setFeatureAllowlists] =
+    useState<FeatureAllowlistMap>({
+      automaticLeaderboardCheckins: "",
+      leaderboards: "",
+    });
   const [operations, setOperations] = useState<Operation[] | null>(null);
   const [notifications, setNotifications] =
     useState<NotificationDashboard | null>(null);
@@ -764,13 +774,25 @@ export const Admin = (): ReactElement => {
   const token = (): Promise<string> => getAccessTokenSilently();
   const loadFeatures = async (): Promise<void> => {
     const accessToken = await token();
-    const [legacy, detailed] = await Promise.all([
-      get<FeatureSettings>("/admin/features", accessToken),
-      get<DetailedFeatureSettings>("/admin/features/leaderboards", accessToken),
-    ]);
+    const [legacy, leaderboards, automaticLeaderboardCheckins] =
+      await Promise.all([
+        get<FeatureSettings>("/admin/features", accessToken),
+        get<DetailedFeatureSettings>(
+          "/admin/features/leaderboards",
+          accessToken
+        ),
+        get<DetailedFeatureSettings>(
+          "/admin/features/automaticLeaderboardCheckins",
+          accessToken
+        ),
+      ]);
     setFeatures(legacy);
-    setDetailedFeature(detailed);
-    setAllowlistText(detailed.subjects.join("\n"));
+    setDetailedFeatures({ automaticLeaderboardCheckins, leaderboards });
+    setFeatureAllowlists({
+      automaticLeaderboardCheckins:
+        automaticLeaderboardCheckins.subjects.join("\n"),
+      leaderboards: leaderboards.subjects.join("\n"),
+    });
   };
   const loadOperations = async (): Promise<void> => {
     const value = await get<{ operations: Operation[] }>(
@@ -890,22 +912,29 @@ export const Admin = (): ReactElement => {
       setUserError("Could not load this user’s support profile.");
     }
   };
-  const saveDetailedFeature = async (): Promise<void> => {
-    if (!detailedFeature) {
+  // save one subject-aware feature policy
+  const saveDetailedFeature = async (
+    name: ManagedFeatureName
+  ): Promise<void> => {
+    // require loaded subject policy
+    if (!detailedFeatures) {
       return;
     }
     setFeatureError(null);
     try {
       const value = await put<DetailedFeatureSettings>(
-        "/admin/features/leaderboards",
+        `/admin/features/${name}`,
         {
-          enabled: detailedFeature.enabled,
-          subjects: allowlistText.split(/\s+/).filter(Boolean),
+          enabled: detailedFeatures[name].enabled,
+          subjects: featureAllowlists[name].split(/\s+/).filter(Boolean),
         },
         await token()
       );
-      setDetailedFeature(value);
-      setAllowlistText(value.subjects.join("\n"));
+      setDetailedFeatures({ ...detailedFeatures, [name]: value });
+      setFeatureAllowlists({
+        ...featureAllowlists,
+        [name]: value.subjects.join("\n"),
+      });
     } catch {
       setFeatureError("Could not save private feature access.");
     }
@@ -992,7 +1021,7 @@ export const Admin = (): ReactElement => {
       >
         <AdminSection
           active={activeTab === "access"}
-          description="Control public leaderboard availability, a server-enforced emergency kill switch, and explicit private subject access. Automatic check-ins remain disabled."
+          description="Control parent leaderboard access and the independent automatic-check-in rollout with server-enforced kill switches and exact Auth0 subject allowlists."
           id="access"
           load={loadFeatures}
           loadingFallback={
@@ -1000,87 +1029,131 @@ export const Admin = (): ReactElement => {
           }
           title="Feature flags"
         >
-          {features && detailedFeature ? (
+          {features && detailedFeatures ? (
             <div className="mt-4 space-y-4">
-              <label className="flex items-center justify-between gap-4">
-                <span>
-                  <strong>Leaderboards</strong>
-                  <span className="mt-1 block text-sm">
-                    Enable public leaderboard pages and manual check-ins.
-                  </span>
-                </span>
-                <ToggleSwitch
-                  checked={detailedFeature.enabled}
-                  label="Enable leaderboards"
-                  onChange={(enabled) =>
-                    setDetailedFeature({ ...detailedFeature, enabled })
-                  }
-                />
-              </label>
-              <div>
-                <label
-                  className="block font-semibold"
-                  htmlFor="leaderboard-allowlist"
-                >
-                  Private subject allowlist
-                </label>
-                <p className="mt-1 text-sm">
-                  One exact Auth0 subject per line. These grants apply only
-                  while public leaderboards are disabled and never override the
-                  kill switch.
-                </p>
-                <textarea
-                  aria-label="Leaderboard subject allowlist"
-                  className="mt-2 w-full rounded border border-gray-medium bg-white p-2 text-sm text-gray-900 dark:bg-blue-darkest dark:text-gray-100"
-                  id="leaderboard-allowlist"
-                  onChange={(event) => setAllowlistText(event.target.value)}
-                  value={allowlistText}
-                />
-                <button
-                  className="button button-primary mt-3"
-                  onClick={saveDetailedFeature}
-                  type="button"
-                >
-                  Save feature access
-                </button>
-              </div>
-              <p className="text-sm">
-                Emergency kill switch:{" "}
-                <strong>
-                  {detailedFeature.killSwitch ? "active" : "inactive"}
-                </strong>
-                . It disables public and allowlisted access immediately.
-              </p>
-              <ConfirmButton
-                action="set-feature-kill-switch"
-                buttonClassName={
-                  detailedFeature.killSwitch
-                    ? "button button-primary mt-3"
-                    : "button mt-3 border-red-dark bg-transparent text-red-dark hover:bg-red-dark hover:text-white"
-                }
-                label={
-                  detailedFeature.killSwitch
-                    ? "Disable leaderboard kill switch"
-                    : "Enable leaderboard kill switch"
-                }
-                target="feature:leaderboards:kill-switch"
-                onConfirm={async () => {
-                  const value = await put<DetailedFeatureSettings>(
-                    "/admin/features/leaderboards/kill-switch",
-                    {
-                      action: "set-feature-kill-switch",
-                      confirmation: confirmationPhrase(
-                        "set-feature-kill-switch",
-                        "feature:leaderboards:kill-switch"
-                      ),
-                      enabled: !detailedFeature.killSwitch,
-                      target: "feature:leaderboards:kill-switch",
-                    },
-                    await token()
+              {(
+                [
+                  {
+                    description:
+                      "Enable public leaderboard pages and manual check-ins.",
+                    label: "Leaderboards",
+                    name: "leaderboards",
+                  },
+                  {
+                    description:
+                      "Allow explicit native automatic enrollment for eligible subjects. The parent leaderboard flag still applies.",
+                    label: "Automatic leaderboard check-ins",
+                    name: "automaticLeaderboardCheckins",
+                  },
+                ] as const
+              ).map(
+                // render one independently managed feature
+                ({ description, label, name }) => {
+                  const detail = detailedFeatures[name];
+                  const target = `feature:${name}:kill-switch`;
+                  return (
+                    <section
+                      className="rounded border border-gray-light p-4 dark:border-gray-dark"
+                      key={name}
+                    >
+                      <label className="flex items-center justify-between gap-4">
+                        <span>
+                          <strong>{label}</strong>
+                          <span className="mt-1 block text-sm">
+                            {description}
+                          </span>
+                        </span>
+                        <ToggleSwitch
+                          checked={detail.enabled}
+                          label={`Enable ${label.toLowerCase()}`}
+                          // stage one feature decision
+                          onChange={(enabled) =>
+                            setDetailedFeatures({
+                              ...detailedFeatures,
+                              [name]: { ...detail, enabled },
+                            })
+                          }
+                        />
+                      </label>
+                      <div className="mt-3">
+                        <label
+                          className="block font-semibold"
+                          htmlFor={`${name}-allowlist`}
+                        >
+                          Private subject allowlist
+                        </label>
+                        <p className="mt-1 text-sm">
+                          One exact Auth0 subject per line. An allowlist never
+                          overrides this flag&apos;s kill switch or the parent
+                          leaderboard policy.
+                        </p>
+                        <textarea
+                          aria-label={`${label} subject allowlist`}
+                          className="mt-2 w-full rounded border border-gray-medium bg-white p-2 text-sm text-gray-900 dark:bg-blue-darkest dark:text-gray-100"
+                          id={`${name}-allowlist`}
+                          // stage one exact subject allowlist
+                          onChange={(event) =>
+                            setFeatureAllowlists({
+                              ...featureAllowlists,
+                              [name]: event.target.value,
+                            })
+                          }
+                          value={featureAllowlists[name]}
+                        />
+                        <button
+                          className="button button-primary mt-3"
+                          // save one reviewed feature policy
+                          onClick={() => saveDetailedFeature(name)}
+                          type="button"
+                        >
+                          Save {label.toLowerCase()} access
+                        </button>
+                      </div>
+                      <p className="mt-3 text-sm">
+                        Emergency kill switch:{" "}
+                        <strong>
+                          {detail.killSwitch ? "active" : "inactive"}
+                        </strong>
+                        . It disables global and allowlisted access immediately.
+                      </p>
+                      <ConfirmButton
+                        action="set-feature-kill-switch"
+                        buttonClassName={
+                          detail.killSwitch
+                            ? "button button-primary mt-3"
+                            : "button mt-3 border-red-dark bg-transparent text-red-dark hover:bg-red-dark hover:text-white"
+                        }
+                        label={
+                          detail.killSwitch
+                            ? `Disable ${label.toLowerCase()} kill switch`
+                            : `Enable ${label.toLowerCase()} kill switch`
+                        }
+                        target={target}
+                        // commit one confirmed kill-switch change
+                        onConfirm={async () => {
+                          const value = await put<DetailedFeatureSettings>(
+                            `/admin/features/${name}/kill-switch`,
+                            {
+                              action: "set-feature-kill-switch",
+                              confirmation: confirmationPhrase(
+                                "set-feature-kill-switch",
+                                target
+                              ),
+                              enabled: !detail.killSwitch,
+                              target,
+                            },
+                            await token()
+                          );
+                          setDetailedFeatures({
+                            ...detailedFeatures,
+                            [name]: value,
+                          });
+                        }}
+                      />
+                    </section>
                   );
-                  setDetailedFeature(value);
-                }}
-              />
+                }
+              )}
               {featureError && (
                 <p className="text-sm text-red-dark">{featureError}</p>
               )}

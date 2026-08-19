@@ -10,6 +10,10 @@ const auth = vi.hoisted(() => ({
   loginWithRedirect: vi.fn(),
 }));
 const location = vi.hoisted(() => ({ requestForegroundLocation: vi.fn() }));
+// expose one detail-free native listener fixture
+const automatic = vi.hoisted(() => ({
+  listenForAutomaticLeaderboardChanges: vi.fn(async () => null),
+}));
 const leaderboards = vi.hoisted(() => ({
   getLeaderboardPreferences: vi.fn(() =>
     Promise.resolve({
@@ -29,6 +33,7 @@ const leaderboards = vi.hoisted(() => ({
 
 vi.mock("@auth0/auth0-react", () => ({ useAuth0: () => auth }));
 vi.mock("~/lib/geo", () => location);
+vi.mock("~/lib/leaderboardAutomatic", () => automatic);
 vi.mock("~/lib/leaderboards", () => leaderboards);
 vi.mock("~/lib/leaderboardForeground", () => ({ vesselSailingId: vi.fn() }));
 vi.mock("~/lib/vessels", () => ({ getVessels: vi.fn() }));
@@ -99,4 +104,51 @@ describe("LeaderboardManualCheckIn", () => {
     );
     expect(container.textContent).toContain("You're checked in");
   });
+
+  // refetch either entity from one empty native credit signal
+  it.each(["terminal", "vessel"] as const)(
+    "refetches %s status without consuming event detail",
+    async (kind) => {
+      let changed: (() => void) | undefined;
+      automatic.listenForAutomaticLeaderboardChanges.mockImplementation(
+        // capture one detail-free invalidation listener
+        async (listener) => {
+          changed = listener;
+          return null;
+        }
+      );
+      leaderboards.getTerminalCheckInStatus.mockResolvedValue({
+        checkedIn: false,
+      });
+      leaderboards.getVesselCheckInStatus.mockResolvedValue({
+        checkedIn: false,
+      });
+      const container = document.createElement("div");
+      document.body.appendChild(container);
+      root = createRoot(container);
+
+      await act(async () => {
+        root?.render(
+          React.createElement(LeaderboardManualCheckIn, {
+            entityId: "1",
+            kind,
+            name: kind === "terminal" ? "Anacortes" : "Spokane",
+          })
+        );
+        await Promise.resolve();
+      });
+      vi.clearAllMocks();
+      await act(async () => {
+        changed?.();
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      const statusReader =
+        kind === "terminal"
+          ? leaderboards.getTerminalCheckInStatus
+          : leaderboards.getVesselCheckInStatus;
+      expect(statusReader).toHaveBeenCalledWith("1", "access-token");
+    }
+  );
 });

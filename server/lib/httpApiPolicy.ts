@@ -13,6 +13,7 @@ import { getWsfStatus } from "./wsf/api";
 export type ApiRouteClass =
   | "ad-measurement"
   | "anonymous-read"
+  | "automatic-native"
   | "authenticated"
   | "ota"
   | "sensitive-lookup"
@@ -51,6 +52,42 @@ const pathnameFor = (request: Pick<Request, "originalUrl" | "path">) => {
   return source.split("?", 1)[0].replace(/^\/api(?=\/|$)/, "") || "/";
 };
 
+export const AUTOMATIC_NATIVE_RATE_LIMITS = Object.freeze({
+  "enrollment-burst": {
+    limit: 30,
+    limitEnv: "AUTOMATIC_NATIVE_ENROLLMENT_BURST_LIMIT",
+    windowMs: 60_000,
+  },
+  "enrollment-daily": {
+    limit: 500,
+    limitEnv: "AUTOMATIC_NATIVE_ENROLLMENT_DAILY_LIMIT",
+    windowMs: 24 * 60 * 60 * 1000,
+  },
+  "ip-burst": {
+    limit: 120,
+    limitEnv: "AUTOMATIC_NATIVE_IP_BURST_LIMIT",
+    windowMs: 60_000,
+  },
+  "ip-daily": {
+    limit: 2_000,
+    limitEnv: "AUTOMATIC_NATIVE_IP_DAILY_LIMIT",
+    windowMs: 24 * 60 * 60 * 1000,
+  },
+});
+
+export type AutomaticNativeRateLimitClass =
+  keyof typeof AUTOMATIC_NATIVE_RATE_LIMITS;
+
+/** fixed native limiter inputs */
+export interface AutomaticNativeRateLimitOptions {
+  handler: RequestHandler;
+  keyGenerator?: (request: Request) => string;
+  limit?: number;
+  routeClass: AutomaticNativeRateLimitClass;
+  windowMs?: number;
+}
+
+// classify ordinary and native api requests
 export const classifyApiRequest = ({
   method,
   pathname,
@@ -60,18 +97,29 @@ export const classifyApiRequest = ({
 }): ApiRouteClass => {
   const normalizedMethod = method.toUpperCase();
   const path = pathname.replace(/^\/api(?=\/|$)/, "") || "/";
+  // isolate the native boundary
+  if (
+    path === "/leaderboards/native" ||
+    path.startsWith("/leaderboards/native/")
+  ) {
+    return "automatic-native";
+  }
+  // classify ota traffic
   if (path === "/ota" || path.startsWith("/ota/")) {
     return "ota";
   }
+  // classify refresh writes
   if (
     (path === "/vessels/refresh" || path === "/terminals/bulletins/refresh") &&
     normalizedMethod === "POST"
   ) {
     return "upstream-refresh";
   }
+  // classify ticket lookups
   if (path === "/tickets" || path.startsWith("/tickets/")) {
     return "sensitive-lookup";
   }
+  // classify migrations
   if (path === "/ios-migration" || path.startsWith("/ios-migration/")) {
     return "sensitive-lookup";
   }
@@ -79,14 +127,17 @@ export const classifyApiRequest = ({
   if (path === "/user" && normalizedMethod === "DELETE") {
     return "sensitive-lookup";
   }
+  // classify ad traffic
   if (path === "/ads" || path.startsWith("/ads/")) {
     return normalizedMethod === "GET" || normalizedMethod === "HEAD"
       ? "anonymous-read"
       : "ad-measurement";
   }
+  // classify report access
   if (path === "/ad-reports" || path.startsWith("/ad-reports/")) {
     return "sensitive-lookup";
   }
+  // classify authenticated routes
   if (
     path === "/user" ||
     path.startsWith("/user/") ||
@@ -99,6 +150,7 @@ export const classifyApiRequest = ({
   ) {
     return "authenticated";
   }
+  // classify anonymous routes
   if (
     new Set(["GET", "HEAD", "POST", "OPTIONS"]).has(normalizedMethod) &&
     [
@@ -114,6 +166,27 @@ export const classifyApiRequest = ({
     return "anonymous-read";
   }
   return "authenticated";
+};
+
+// create one native limiter
+export const createAutomaticNativeRateLimitMiddleware = ({
+  handler,
+  keyGenerator,
+  limit,
+  routeClass,
+  windowMs,
+}: AutomaticNativeRateLimitOptions): RequestHandler => {
+  const policy = AUTOMATIC_NATIVE_RATE_LIMITS[routeClass];
+  return rateLimit({
+    handler,
+    identifier: `automatic-native-${routeClass}`,
+    keyGenerator,
+    legacyHeaders: false,
+    limit:
+      limit ?? asPositiveInteger(process.env[policy.limitEnv], policy.limit),
+    standardHeaders: "draft-8",
+    windowMs: windowMs ?? policy.windowMs,
+  });
 };
 
 const trustedOrigins = (): Set<string> => {

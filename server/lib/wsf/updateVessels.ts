@@ -12,6 +12,11 @@ import { calculateGpsDelayForLeg, findGpsDelayLeg } from "~/lib/wsf/gpsDelay";
 import { Schedule } from "~/models/Schedule";
 import { Terminal } from "~/models/Terminal";
 import { Vessel } from "~/models/Vessel";
+import {
+  ingestLeaderboardVesselStatusRefresh,
+  pruneLeaderboardVesselVerificationSnapshots,
+  recordSkippedLeaderboardVesselStatusRefresh,
+} from "~/services/leaderboardVesselSnapshotIngestion";
 import { WSF } from "~/typings/wsf";
 
 import { wsfRequest } from "./api";
@@ -33,6 +38,16 @@ const VESSEL_OVERRIDES: Record<string, VesselDataOverride> =
   VESSEL_DATA_OVERRIDES;
 
 let lastFlushDate: number | null = null;
+
+// isolate snapshot pruning from public refreshes
+const pruneLeaderboardVesselHistory = async (nowMs: number): Promise<void> => {
+  // keep refreshes resilient to unexpected prune failures
+  try {
+    await pruneLeaderboardVesselVerificationSnapshots({ nowMs });
+  } catch {
+    logger.info("Leaderboard vessel snapshot prune failed");
+  }
+};
 
 // update vessel metadata
 export const updateVessels = async (): Promise<void> => {
@@ -112,6 +127,7 @@ export const updateVessels = async (): Promise<void> => {
       },
       {
         heading: "refreshed vessels",
+        // list refreshed public ids
         lines: formatVesselList(vessels.map((vessel) => vessel.VesselID)),
       },
     ])
@@ -126,17 +142,21 @@ export const updateVesselStatus = async (): Promise<any> => {
   logger.info("Started vessel status update");
   const vessels =
     await wsfRequest<WSF.VesselsLocationResponse[]>(API_LOCATIONS);
+  const receivedAtMs = Date.now();
   // missing vessels guard
   if (!vessels) {
+    recordSkippedLeaderboardVesselStatusRefresh(receivedAtMs);
+    await pruneLeaderboardVesselHistory(receivedAtMs);
     logger.info("Skipped vessel status update; WSF returned no vessels");
     return;
   }
   const schedules = values(Schedule.getAll());
   const terminals = values(Terminal.getAll());
-  const now = DateTime.local();
+  const now = DateTime.fromMillis(receivedAtMs);
   let skippedVessels = 0;
   let updatedVessels = 0;
   let vesselsAtDock = 0;
+  // hydrate each public vessel status
   vessels.forEach((VesselData) => {
     const vessel = Vessel.getByIndex(String(VesselData.VesselID));
     // require vessel metadata
@@ -163,12 +183,15 @@ export const updateVesselStatus = async (): Promise<any> => {
       terminals,
       vesselId: String(VesselData.VesselID),
     });
+    // calculate dock delay
     const dockDelaySeconds =
       departureTime && departedTime ? departedTime - departureTime : null;
+    // calculate eta delay
     const etaDelaySeconds =
       gpsDelayLeg && estimatedArrivalTime
         ? estimatedArrivalTime - gpsDelayLeg.scheduledArrivalTime
         : null;
+    // calculate gps delay
     const gpsDelay = gpsDelayLeg
       ? calculateGpsDelayForLeg({
           dockDelaySeconds,
@@ -203,7 +226,7 @@ export const updateVesselStatus = async (): Promise<any> => {
       },
       mmsi: VesselData.Mmsi,
       speed: VesselData.Speed,
-      statusUpdatedAt: Date.now(),
+      statusUpdatedAt: receivedAtMs,
       info: {
         ...vessel.info,
         crossing: VesselData.EtaBasis,
@@ -217,7 +240,13 @@ export const updateVesselStatus = async (): Promise<any> => {
     }
     vessel.save();
   });
+  // persist aggregate-verifiable public observations
+  await ingestLeaderboardVesselStatusRefresh(vessels, { receivedAtMs });
+  // enforce retained-history lifecycle
+  await pruneLeaderboardVesselHistory(receivedAtMs);
+  // aggregate public route origins
   const departingTerminalIds = Array.from(
+    // collect each route origin
     new Set(vessels.map((vessel) => vessel.DepartingTerminalID))
   );
   logger.info(

@@ -1,7 +1,12 @@
 import { Capacitor } from "@capacitor/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { ApiError, getApiBaseUrl, processResponse } from "../../client/lib/api";
+import {
+  ApiError,
+  get,
+  getApiBaseUrl,
+  processResponse,
+} from "../../client/lib/api";
 
 describe("API client base URL", () => {
   // restore native mock
@@ -78,5 +83,59 @@ describe("API client response processing", () => {
     } as Parameters<typeof processResponse>[0]);
 
     expect(response).toEqual({ route: "edmonds-kingston" });
+  });
+});
+
+describe("API client authenticated request isolation", () => {
+  // restore request adapters
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  // never share one authenticated response across account tokens
+  it("does not coalesce concurrent same-path reads across identities", async () => {
+    const releases: Array<() => void> = [];
+    vi.spyOn(Capacitor, "isNativePlatform").mockReturnValue(true);
+    vi.stubEnv("BASE_URL", "https://ferry.fyi");
+    // capture each authenticated request independently
+    const request = vi.fn(
+      async (_url: string, input: RequestInit) =>
+        await new Promise(
+          // hold one response until both requests begin
+          (resolve) => {
+            const authorization = new Headers(input.headers).get(
+              "Authorization"
+            );
+            releases.push(
+              // release one identity-bound response
+              () =>
+                resolve(
+                  new Response(JSON.stringify({ authorization }), {
+                    headers: { "Content-Type": "application/json" },
+                    status: 200,
+                  })
+                )
+            );
+          }
+        )
+    );
+    // install the browser capacitor http transport fixture
+    vi.stubGlobal("fetch", request);
+
+    const first = get<{ authorization: string }>("/features/me", "token-one");
+    const second = get<{ authorization: string }>("/features/me", "token-two");
+    await vi.waitFor(() => expect(request).toHaveBeenCalledTimes(2));
+    // release both isolated responses
+    releases.forEach(
+      // release each isolated response
+      (release) => release()
+    );
+
+    await expect(first).resolves.toEqual({ authorization: "Bearer token-one" });
+    await expect(second).resolves.toEqual({
+      authorization: "Bearer token-two",
+    });
   });
 });

@@ -12,6 +12,18 @@
 		50379B232058CBB4000EE86E /* capacitor.config.json in Resources */ = {isa = PBXBuildFile; fileRef = 50379B222058CBB4000EE86E /* capacitor.config.json */; };
 		504EC3081FED79650016851F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504EC3071FED79650016851F /* AppDelegate.swift */; };
 		A1B2C3D4E5F60708090A0B0C /* GateABackgroundLocationFeasibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60708090A0B0D /* GateABackgroundLocationFeasibility.swift */; };
+		F20000000000000000000001 /* LeaderboardAutomaticFoundation.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000011 /* LeaderboardAutomaticFoundation.swift */; };
+		F20000000000000000000002 /* LeaderboardAutomaticFoundationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000012 /* LeaderboardAutomaticFoundationTests.swift */; };
+		F20000000000000000000003 /* XCTest.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F20000000000000000000014 /* XCTest.framework */; };
+		F20000000000000000000004 /* LeaderboardAutomaticEndpoints.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000015 /* LeaderboardAutomaticEndpoints.swift */; };
+		F20000000000000000000005 /* LeaderboardAutomaticEndpointTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000016 /* LeaderboardAutomaticEndpointTests.swift */; };
+		F30000000000000000000001 /* LeaderboardAutomaticV0Diagnostic.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30000000000000000000011 /* LeaderboardAutomaticV0Diagnostic.swift */; };
+		F30000000000000000000002 /* LeaderboardAutomaticV0DiagnosticTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30000000000000000000012 /* LeaderboardAutomaticV0DiagnosticTests.swift */; };
+		F80000000000000000000001 /* LeaderboardAutomaticSecureRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = F80000000000000000000011 /* LeaderboardAutomaticSecureRuntime.swift */; };
+		F80000000000000000000002 /* LeaderboardAutomaticIOSRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = F80000000000000000000012 /* LeaderboardAutomaticIOSRuntime.swift */; };
+		F80000000000000000000003 /* LeaderboardAutomaticSecureRuntimeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F80000000000000000000013 /* LeaderboardAutomaticSecureRuntimeTests.swift */; };
+		F80000000000000000000004 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = F80000000000000000000014 /* PrivacyInfo.xcprivacy */; };
+		F80000000000000000000005 /* LeaderboardAutomaticPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = F80000000000000000000015 /* LeaderboardAutomaticPlugin.swift */; };
 		504EC30D1FED79650016851F /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30B1FED79650016851F /* Main.storyboard */; };
 		504EC30F1FED79650016851F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30E1FED79650016851F /* Assets.xcassets */; };
 		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
@@ -30,7 +42,30 @@
 		504EC3131FED79650016851F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
+		F20000000000000000000011 /* LeaderboardAutomaticFoundation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeaderboardAutomaticFoundation.swift; sourceTree = "<group>"; };
+		F20000000000000000000012 /* LeaderboardAutomaticFoundationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeaderboardAutomaticFoundationTests.swift; sourceTree = "<group>"; };
+		F20000000000000000000013 /* Ferry FYI Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Ferry FYI Tests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		F20000000000000000000014 /* XCTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = XCTest.framework; path = System/Library/Frameworks/XCTest.framework; sourceTree = SDKROOT; };
+		F20000000000000000000015 /* LeaderboardAutomaticEndpoints.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeaderboardAutomaticEndpoints.swift; sourceTree = "<group>"; };
+		F20000000000000000000016 /* LeaderboardAutomaticEndpointTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeaderboardAutomaticEndpointTests.swift; sourceTree = "<group>"; };
+		F30000000000000000000011 /* LeaderboardAutomaticV0Diagnostic.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeaderboardAutomaticV0Diagnostic.swift; sourceTree = "<group>"; };
+		F30000000000000000000012 /* LeaderboardAutomaticV0DiagnosticTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeaderboardAutomaticV0DiagnosticTests.swift; sourceTree = "<group>"; };
+		F80000000000000000000011 /* LeaderboardAutomaticSecureRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeaderboardAutomaticSecureRuntime.swift; sourceTree = "<group>"; };
+		F80000000000000000000012 /* LeaderboardAutomaticIOSRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeaderboardAutomaticIOSRuntime.swift; sourceTree = "<group>"; };
+		F80000000000000000000013 /* LeaderboardAutomaticSecureRuntimeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeaderboardAutomaticSecureRuntimeTests.swift; sourceTree = "<group>"; };
+		F80000000000000000000014 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		F80000000000000000000015 /* LeaderboardAutomaticPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeaderboardAutomaticPlugin.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXContainerItemProxy section */
+		F20000000000000000000051 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 504EC2FC1FED79650016851F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 504EC3031FED79650016851F;
+			remoteInfo = "Ferry FYI";
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		504EC3011FED79650016851F /* Frameworks */ = {
@@ -38,6 +73,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				4D22ABE92AF431CB00220026 /* CapApp-SPM in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F20000000000000000000031 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F20000000000000000000003 /* XCTest.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -49,6 +92,7 @@
 			children = (
 				958DCC722DB07C7200EA8C5F /* debug.xcconfig */,
 				504EC3061FED79650016851F /* App */,
+				F20000000000000000000021 /* AppTests */,
 				504EC3051FED79650016851F /* Products */,
 			);
 			sourceTree = "<group>";
@@ -57,6 +101,7 @@
 			isa = PBXGroup;
 			children = (
 				504EC3041FED79650016851F /* Ferry FYI.app */,
+				F20000000000000000000013 /* Ferry FYI Tests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -67,6 +112,13 @@
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				A1B2C3D4E5F60708090A0B0D /* GateABackgroundLocationFeasibility.swift */,
+				F20000000000000000000011 /* LeaderboardAutomaticFoundation.swift */,
+				F20000000000000000000015 /* LeaderboardAutomaticEndpoints.swift */,
+				F30000000000000000000011 /* LeaderboardAutomaticV0Diagnostic.swift */,
+				F80000000000000000000011 /* LeaderboardAutomaticSecureRuntime.swift */,
+				F80000000000000000000012 /* LeaderboardAutomaticIOSRuntime.swift */,
+				F80000000000000000000015 /* LeaderboardAutomaticPlugin.swift */,
+				F80000000000000000000014 /* PrivacyInfo.xcprivacy */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
 				504EC30E1FED79650016851F /* Assets.xcassets */,
 				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
@@ -75,6 +127,17 @@
 				50B271D01FEDC1A000F3C39B /* public */,
 			);
 			path = App;
+			sourceTree = "<group>";
+		};
+		F20000000000000000000021 /* AppTests */ = {
+			isa = PBXGroup;
+			children = (
+				F20000000000000000000012 /* LeaderboardAutomaticFoundationTests.swift */,
+				F20000000000000000000016 /* LeaderboardAutomaticEndpointTests.swift */,
+				F30000000000000000000012 /* LeaderboardAutomaticV0DiagnosticTests.swift */,
+				F80000000000000000000013 /* LeaderboardAutomaticSecureRuntimeTests.swift */,
+			);
+			path = AppTests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -100,6 +163,24 @@
 			productReference = 504EC3041FED79650016851F /* Ferry FYI.app */;
 			productType = "com.apple.product-type.application";
 		};
+		F20000000000000000000041 /* Ferry FYI Tests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F20000000000000000000063 /* Build configuration list for PBXNativeTarget "Ferry FYI Tests" */;
+			buildPhases = (
+				F20000000000000000000033 /* Sources */,
+				F20000000000000000000031 /* Frameworks */,
+				F20000000000000000000032 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				F20000000000000000000052 /* PBXTargetDependency */,
+			);
+			name = "Ferry FYI Tests";
+			productName = "Ferry FYI Tests";
+			productReference = F20000000000000000000013 /* Ferry FYI Tests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -113,6 +194,10 @@
 						CreatedOnToolsVersion = 9.2;
 						LastSwiftMigration = 1100;
 						ProvisioningStyle = Automatic;
+					};
+					F20000000000000000000041 = {
+						CreatedOnToolsVersion = 16.0;
+						TestTargetID = 504EC3031FED79650016851F;
 					};
 				};
 			};
@@ -133,6 +218,7 @@
 			projectRoot = "";
 			targets = (
 				504EC3031FED79650016851F /* Ferry FYI */,
+				F20000000000000000000041 /* Ferry FYI Tests */,
 			);
 		};
 /* End PBXProject section */
@@ -148,6 +234,14 @@
 				50379B232058CBB4000EE86E /* capacitor.config.json in Resources */,
 				504EC30D1FED79650016851F /* Main.storyboard in Resources */,
 				2FAD9763203C412B000D30F8 /* config.xml in Resources */,
+				F80000000000000000000004 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F20000000000000000000032 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -160,10 +254,35 @@
 			files = (
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				A1B2C3D4E5F60708090A0B0C /* GateABackgroundLocationFeasibility.swift in Sources */,
+				F20000000000000000000001 /* LeaderboardAutomaticFoundation.swift in Sources */,
+				F20000000000000000000004 /* LeaderboardAutomaticEndpoints.swift in Sources */,
+				F30000000000000000000001 /* LeaderboardAutomaticV0Diagnostic.swift in Sources */,
+				F80000000000000000000001 /* LeaderboardAutomaticSecureRuntime.swift in Sources */,
+				F80000000000000000000002 /* LeaderboardAutomaticIOSRuntime.swift in Sources */,
+				F80000000000000000000005 /* LeaderboardAutomaticPlugin.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F20000000000000000000033 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F20000000000000000000002 /* LeaderboardAutomaticFoundationTests.swift in Sources */,
+				F20000000000000000000005 /* LeaderboardAutomaticEndpointTests.swift in Sources */,
+				F30000000000000000000002 /* LeaderboardAutomaticV0DiagnosticTests.swift in Sources */,
+				F80000000000000000000003 /* LeaderboardAutomaticSecureRuntimeTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		F20000000000000000000052 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 504EC3031FED79650016851F /* Ferry FYI */;
+			targetProxy = F20000000000000000000051 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		504EC30B1FED79650016851F /* Main.storyboard */ = {
@@ -345,6 +464,48 @@
 			};
 			name = Release;
 		};
+		F20000000000000000000061 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 6ZM4XD9Q97;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = fyi.ferry.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Ferry FYI.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Ferry FYI";
+			};
+			name = Debug;
+		};
+		F20000000000000000000062 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 6ZM4XD9Q97;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = fyi.ferry.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Ferry FYI.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Ferry FYI";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -362,6 +523,15 @@
 			buildConfigurations = (
 				504EC3171FED79650016851F /* Debug */,
 				504EC3181FED79650016851F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F20000000000000000000063 /* Build configuration list for PBXNativeTarget "Ferry FYI Tests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F20000000000000000000061 /* Debug */,
+				F20000000000000000000062 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

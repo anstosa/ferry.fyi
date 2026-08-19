@@ -6,10 +6,13 @@ import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+// expose one mutable auth fixture
 const auth = vi.hoisted(() => ({
+  getAccessTokenSilently: vi.fn(async () => "access-token"),
   logout: vi.fn(),
   user: undefined as Record<string, unknown> | undefined,
 }));
+// expose one mutable account fixture
 const userState = vi.hoisted(() => ({
   alertRules: [],
   isUserLoading: false,
@@ -19,6 +22,10 @@ const userState = vi.hoisted(() => ({
 }));
 const refreshUser = vi.hoisted(() => vi.fn(() => Promise.resolve()));
 const deleteAccount = vi.hoisted(() => vi.fn(() => Promise.resolve()));
+// expose one automatic cleanup fixture
+const automatic = vi.hoisted(() => ({
+  disableAutomaticLeaderboardAccount: vi.fn(() => Promise.resolve()),
+}));
 vi.mock("@auth0/auth0-react", () => ({
   useAuth0: () => auth,
   withAuthenticationRequired: (component: React.ComponentType) => component,
@@ -27,6 +34,7 @@ vi.mock("~/lib/user", () => ({
   useUser: () => [userState, { deleteAccount, refreshUser }],
 }));
 vi.mock("~/lib/device", () => ({ useDevice: () => null }));
+vi.mock("~/lib/leaderboardAutomatic", () => automatic);
 vi.mock("~/lib/theme", () => ({
   useThemePreference: () => ["system", vi.fn()],
 }));
@@ -91,6 +99,9 @@ afterEach(() => {
   userState.user = null;
   userState.userError = null;
   auth.logout.mockClear();
+  automatic.disableAutomaticLeaderboardAccount
+    .mockReset()
+    .mockResolvedValue(undefined);
   deleteAccount.mockReset().mockResolvedValue(undefined);
   refreshUser.mockClear();
 });
@@ -185,7 +196,7 @@ describe("Account state predicates", () => {
     expect(container.textContent).not.toContain("Account could not load");
   });
 
-  it("renders profile details with an outline logout action in the top bar", () => {
+  it("renders profile details with an outline logout action in the top bar", async () => {
     auth.user = {
       email: "rider@example.com",
       locale: "en-US",
@@ -216,7 +227,16 @@ describe("Account state predicates", () => {
     expect(profile?.textContent).toContain("Google");
     expect(profile?.textContent).toContain("en-US");
 
-    act(() => logout?.click());
+    await act(async () => {
+      logout?.click();
+      await Promise.resolve();
+    });
+    expect(automatic.disableAutomaticLeaderboardAccount).toHaveBeenCalledWith(
+      "identity_lost",
+      "google-oauth2|rider",
+      expect.any(Function),
+      auth.getAccessTokenSilently
+    );
     expect(auth.logout).toHaveBeenCalledOnce();
   });
 
@@ -248,6 +268,12 @@ describe("Account state predicates", () => {
     });
 
     expect(deleteAccount).toHaveBeenCalledWith("DELETE");
+    expect(automatic.disableAutomaticLeaderboardAccount).toHaveBeenCalledWith(
+      "account_deleted",
+      "auth0|rider",
+      expect.any(Function),
+      auth.getAccessTokenSilently
+    );
     expect(auth.logout).toHaveBeenCalledWith({ openUrl: false });
     expect(
       container.querySelector('[data-testid="location"]')?.textContent
@@ -285,6 +311,33 @@ describe("Account state predicates", () => {
     expect(auth.logout).not.toHaveBeenCalled();
   });
 
+  // preserve authentication after one native cleanup failure
+  it("blocks auth teardown when native automatic cleanup fails", async () => {
+    auth.user = { sub: "auth0|rider" };
+    userState.user = {};
+    automatic.disableAutomaticLeaderboardAccount.mockRejectedValueOnce(
+      new Error("cleanup pending")
+    );
+    const consoleError = vi
+      .spyOn(console, "error")
+      // suppress one expected cleanup diagnostic
+      .mockImplementation(() => {});
+    const container = render();
+
+    await act(async () => {
+      [...container.querySelectorAll("button")]
+        .find((button) => button.textContent === "Log Out")
+        ?.click();
+      await Promise.resolve();
+    });
+
+    expect(auth.logout).not.toHaveBeenCalled();
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain(
+      "could not clear automatic check-in data"
+    );
+    consoleError.mockRestore();
+  });
+
   it("continues completed deletion through the forced logout route", async () => {
     auth.user = {
       email: "rider@example.com",
@@ -293,7 +346,9 @@ describe("Account state predicates", () => {
     };
     userState.user = {};
     auth.logout.mockRejectedValueOnce(new Error("Local cache unavailable"));
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
     const container = render();
 
     act(() =>

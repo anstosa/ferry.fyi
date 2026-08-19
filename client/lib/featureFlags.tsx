@@ -18,55 +18,85 @@ import { usePublicSsrSource } from "~/lib/ssrSeed";
 
 export { FeatureFlagContext } from "~/lib/featureFlagContext";
 
-function createFeatureFlags(leaderboardsEnabled: boolean): FeatureFlags {
+// project only reviewed client feature decisions
+function createFeatureFlags(
+  leaderboardsEnabled: boolean,
+  automaticLeaderboardCheckinsEnabled = false
+): FeatureFlags {
   return {
-    // Automatic/background check-ins are permanently unavailable for this launch.
-    automaticLeaderboardCheckinsEnabled: false,
+    automaticLeaderboardCheckinsEnabled:
+      leaderboardsEnabled && automaticLeaderboardCheckinsEnabled,
     leaderboardsEnabled,
     loading: false,
   };
 }
 
-function parseFlags(value: unknown): FeatureFlags {
+// parse subject-aware flags without accepting extra client capabilities
+function parseFlags(value: unknown, authenticated: boolean): FeatureFlags {
+  const record =
+    typeof value === "object" && value !== null
+      ? (value as Record<string, unknown>)
+      : {};
   return createFeatureFlags(
-    typeof value === "object" &&
-      value !== null &&
-      "leaderboardsEnabled" in value &&
-      (value as { leaderboardsEnabled?: unknown }).leaderboardsEnabled === true
+    record.leaderboardsEnabled === true,
+    authenticated && record.automaticLeaderboardCheckinsEnabled === true
   );
 }
 
-/** Fetches public flags anonymously and private flags with the active subject token. */
+/** fetches public flags anonymously and private flags with the active subject token */
 export const FeatureFlagProvider: FunctionComponent<PropsWithChildren> = ({
   children,
 }) => {
-  const { getAccessTokenSilently, isAuthenticated } = useAuth0();
+  const { getAccessTokenSilently, isAuthenticated, user } = useAuth0();
   const seeded = usePublicSsrSource("features");
-  const [flags, setFlags] = useState<FeatureFlags>(() =>
-    seeded ? createFeatureFlags(seeded.leaderboardsEnabled) : disabledFlags
-  );
+  const currentSubject = isAuthenticated ? (user?.sub ?? null) : null;
+  // initialize one subject-bound flag snapshot
+  const [resolved, setResolved] = useState<{
+    flags: FeatureFlags;
+    subject: string | null;
+  }>(() => ({
+    flags: seeded
+      ? createFeatureFlags(seeded.leaderboardsEnabled)
+      : disabledFlags,
+    subject: currentSubject,
+  }));
+  const flags =
+    resolved.subject === currentSubject ? resolved.flags : disabledFlags;
 
   useEffect(() => {
     let cancelled = false;
+    const subject = currentSubject;
+    const authenticated = subject !== null;
+    // clear private decisions before loading another subject
+    setResolved((current) =>
+      current.subject === subject ? current : { flags: disabledFlags, subject }
+    );
+    // load one subject-bound flag snapshot
     const load = async (): Promise<void> => {
       try {
-        const value = isAuthenticated
+        const value = authenticated
           ? await get("/features/me", await getAccessTokenSilently())
           : await get("/features");
+        // discard a stale subject response
         if (!cancelled) {
-          setFlags(parseFlags(value));
+          setResolved({ flags: parseFlags(value, authenticated), subject });
         }
       } catch {
+        // fail closed for the captured subject
         if (!cancelled) {
-          setFlags(disabledFlags);
+          setResolved({ flags: disabledFlags, subject });
         }
       }
     };
-    load().catch(() => undefined);
+    load().catch(
+      // absorb one fail-closed load result
+      () => undefined
+    );
+    // invalidate the captured subject request
     return () => {
       cancelled = true;
     };
-  }, [getAccessTokenSilently, isAuthenticated]);
+  }, [currentSubject, getAccessTokenSilently]);
 
   return (
     <FeatureFlagContext.Provider value={flags}>

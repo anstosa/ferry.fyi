@@ -17,6 +17,7 @@ import { debugRouter } from "./debug";
 import { fareRouter } from "./fares";
 import { featureRouter } from "./features";
 import { iosMigrationRouter } from "./iosMigration";
+import { automaticLeaderboardNativeRouter } from "./leaderboardAutomaticNative";
 import { leaderboardRouter } from "./leaderboards";
 import { otaRouter } from "./ota";
 import { scheduleRouter } from "./schedule";
@@ -57,4 +58,4 @@ apiRouter.use(apiNotFound);
 apiRouter.use(apiErrorHandler);
 
 export { wrapApiResponse };
-export { apiRouter };
+export { apiRouter, automaticLeaderboardNativeRouter };

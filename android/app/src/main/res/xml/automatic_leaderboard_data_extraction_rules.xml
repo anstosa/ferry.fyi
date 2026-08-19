@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- exclude the secure runtime from modern transfer -->
+<data-extraction-rules>
+    <!-- block cloud extraction -->
+    <cloud-backup>
+        <!-- exclude any compatibility-path secure runtime data -->
+        <exclude domain="file" path="leaderboard-automatic/" />
+        <exclude domain="root" path="leaderboard-automatic/" />
+        <exclude domain="sharedpref" path="leaderboard-automatic.xml" />
+        <exclude domain="device_file" path="leaderboard-automatic/" />
+        <exclude domain="device_root" path="leaderboard-automatic/" />
+        <exclude domain="device_sharedpref" path="leaderboard-automatic.xml" />
+    </cloud-backup>
+    <!-- block device transfer -->
+    <device-transfer>
+        <!-- exclude any compatibility-path secure runtime data -->
+        <exclude domain="file" path="leaderboard-automatic/" />
+        <exclude domain="root" path="leaderboard-automatic/" />
+        <exclude domain="sharedpref" path="leaderboard-automatic.xml" />
+        <exclude domain="device_file" path="leaderboard-automatic/" />
+        <exclude domain="device_root" path="leaderboard-automatic/" />
+        <exclude domain="device_sharedpref" path="leaderboard-automatic.xml" />
+    </device-transfer>
+</data-extraction-rules>
