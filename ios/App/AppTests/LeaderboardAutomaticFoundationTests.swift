@@ -288,7 +288,7 @@ final class AutomaticTrustedClockTests: XCTestCase {
         wallTimeMs += 60_000
         XCTAssertNil(clock.capturedAtMs())
         XCTAssertNil(clock.trustedNowMs())
-        XCTAssertFalse(clock().restoreAnchor(anchor))
+        XCTAssertFalse(clock.restoreAnchor(anchor))
     }
 
     // keep one kernel identity across wall movement
