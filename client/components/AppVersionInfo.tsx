@@ -9,9 +9,12 @@ interface Versions {
 
 const COPIED_FEEDBACK_MS = 2_000;
 
-// Keep local browser builds distinct from deployed web releases.
+// keep local browser builds distinct from deployed web releases
 export const getWebVersion = (
-  environment: Record<string, string | undefined> = process.env,
+  environment: Record<string, string | undefined> = {
+    NODE_ENV: process.env.NODE_ENV,
+    HEROKU_RELEASE_VERSION: process.env.HEROKU_RELEASE_VERSION,
+  },
   document: Document | undefined = globalThis.document
 ): string => {
   if (environment.NODE_ENV !== "production") {
