@@ -1384,9 +1384,10 @@ final class AutomaticEncryptedCandidateQueue: AutomaticCandidateQueueing {
 
         // require a readable zero-file proof before clearing the latch
         do {
-            fileCleanupConverged = (try recordKeys(state: .pending)).isEmpty &&
-                (try recordKeys(state: .cleanupRequired)).isEmpty &&
-                (try recordKeys(state: .cleanupTransitionFailed)).isEmpty
+            let pendingEmpty = try recordKeys(state: .pending).isEmpty
+            let cleanupEmpty = try recordKeys(state: .cleanupRequired).isEmpty
+            let transitionEmpty = try recordKeys(state: .cleanupTransitionFailed).isEmpty
+            fileCleanupConverged = pendingEmpty && cleanupEmpty && transitionEmpty
         // fail closed on the error
         } catch {
             _ = cleanupFailureLatchStore.latch()
@@ -1488,9 +1489,10 @@ final class AutomaticEncryptedCandidateQueue: AutomaticCandidateQueueing {
 
         // require a readable zero-file proof before clearing the latch
         do {
-            fileCleanupConverged = (try recordKeys(state: .pending)).isEmpty &&
-                (try recordKeys(state: .cleanupRequired)).isEmpty &&
-                (try recordKeys(state: .cleanupTransitionFailed)).isEmpty
+            let pendingEmpty = try recordKeys(state: .pending).isEmpty
+            let cleanupEmpty = try recordKeys(state: .cleanupRequired).isEmpty
+            let transitionEmpty = try recordKeys(state: .cleanupTransitionFailed).isEmpty
+            fileCleanupConverged = pendingEmpty && cleanupEmpty && transitionEmpty
         // fail closed on the error
         } catch {
             _ = cleanupFailureLatchStore.latch()
@@ -1748,8 +1750,9 @@ final class AutomaticEncryptedCandidateQueue: AutomaticCandidateQueueing {
 
         // fail closed on unreadable queue state
         do {
-            return !(try recordKeys(state: .cleanupRequired)).isEmpty ||
-                !(try recordKeys(state: .cleanupTransitionFailed)).isEmpty
+            let cleanupKeys = try recordKeys(state: .cleanupRequired)
+            let transitionKeys = try recordKeys(state: .cleanupTransitionFailed)
+            return !cleanupKeys.isEmpty || !transitionKeys.isEmpty
         // fail closed on the error
         } catch {
             _ = cleanupFailureLatchStore.latch()
@@ -2558,8 +2561,8 @@ final class AutomaticCheckinUploader {
                 return
             }
             // run the bounded callback
-            let continueProcessing = { [weak self] in
-                self?.processNextWithFreshCredential(
+            let continueProcessing: () -> Void = { [weak self] in
+                _ = self?.processNextWithFreshCredential(
                     localWorkGeneration: localWorkGeneration,
                     blockedEntityKeys: blockedEntityKeys,
                     completion: completion
