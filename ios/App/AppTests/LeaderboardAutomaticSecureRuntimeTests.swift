@@ -1903,7 +1903,7 @@ final class AutomaticSecureRuntimeCoordinatorTests: XCTestCase {
             if failReads {
                 throw AutomaticSecureRuntimeError.blockedBeforeFirstUnlock
             }
-            value
+            return value
         }
 
         // persist or fail one fake protected generation
