@@ -14,6 +14,8 @@ declare module "*.png?inline" {
 
 declare module "*.scss";
 
+type GoogleDataLayerEntry = IArguments | Record<string, unknown>;
+
 interface Window {
-  dataLayer?: unknown[];
+  dataLayer?: GoogleDataLayerEntry[];
 }

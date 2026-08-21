@@ -139,7 +139,12 @@ describe("Admin", () => {
     });
     const confirmation = container.querySelector(
       '[aria-label="Confirmation for Save global ad switch"]'
-    ) as HTMLInputElement;
+    );
+    expect(confirmation).toBeInstanceOf(HTMLInputElement);
+    // stop when the expected control is unavailable
+    if (!(confirmation instanceof HTMLInputElement)) {
+      throw new Error("Missing ad switch confirmation input");
+    }
     // enter the canonical phrase
     await act(async () => {
       Object.getOwnPropertyDescriptor(

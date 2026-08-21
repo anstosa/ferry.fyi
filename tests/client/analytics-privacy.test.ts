@@ -13,9 +13,9 @@ vi.mock("react-ga4", () => ({ default: reactGa }));
 
 // normalize gtag arguments-object commands
 const dataLayerCommands = (): unknown[][] =>
-  (window.dataLayer ?? []).map((value) =>
-    Array.from(value as ArrayLike<unknown>)
-  );
+  (window.dataLayer ?? [])
+    .filter((value): value is IArguments => "length" in value)
+    .map((value) => Array.from(value));
 
 describe("analytics advertising privacy", () => {
   // isolate deferred analytics module state
