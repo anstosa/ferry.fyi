@@ -9,6 +9,7 @@ const ads = vi.hoisted(() => ({
 }));
 vi.mock("~/lib/admin/ads", () => ads);
 const campaigns = vi.hoisted(() => ({
+  getAdInventoryReport: vi.fn(),
   scheduleAdCampaign: vi.fn(),
 }));
 vi.mock("~/lib/admin/adCampaigns", () => campaigns);
@@ -36,6 +37,7 @@ describe("admin ad routes", () => {
     ads.getAdminAds.mockResolvedValue(configuration);
     ads.saveAdPlacement.mockResolvedValue(configuration);
     ads.setAdsEnabled.mockResolvedValue(configuration);
+    campaigns.getAdInventoryReport.mockResolvedValue({ placements: [] });
     campaigns.scheduleAdCampaign.mockResolvedValue({ id: "campaign" });
   });
 
@@ -77,6 +79,20 @@ describe("admin ad routes", () => {
     expect(ads.setAdsEnabled).toHaveBeenCalledWith(
       expect.objectContaining({ adsEnabled: true })
     );
+  });
+
+  it("forwards the selected placement into the inventory drill-down", async () => {
+    await request(app())
+      .get(
+        "/ads/reports/inventory?startDate=2026-08-01&endDate=2026-08-20&placementKey=schedule--3--7"
+      )
+      .expect(200);
+
+    expect(campaigns.getAdInventoryReport).toHaveBeenCalledWith({
+      endDate: "2026-08-20",
+      placementKey: "schedule--3--7",
+      startDate: "2026-08-01",
+    });
   });
 
   it("binds placement saves to the safe route key and returns the full configuration", async () => {

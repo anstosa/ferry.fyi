@@ -82,9 +82,34 @@ export interface AdInventoryDailyMetrics {
   placementKey: string;
 }
 
+export interface AdInventoryPlacementSummary {
+  opportunityCount: string;
+  placementKey: string;
+}
+
+export interface AdInventoryWeekdayMetrics {
+  opportunityCount: string;
+  weekday: number;
+}
+
+export interface AdInventoryHourMetrics {
+  hour: number;
+  opportunityCount: string;
+}
+
+export interface AdInventoryPlacementBreakdown {
+  hourOfDay: AdInventoryHourMetrics[];
+  hourlyDataStartDate: string | null;
+  opportunityCount: string;
+  placementKey: string;
+  weekday: AdInventoryWeekdayMetrics[];
+}
+
 export interface AdInventoryReport {
   daily: AdInventoryDailyMetrics[];
   endDate: string;
+  placements: AdInventoryPlacementSummary[];
+  selectedPlacement: AdInventoryPlacementBreakdown | null;
   startDate: string;
   totalOpportunityCount: string;
 }

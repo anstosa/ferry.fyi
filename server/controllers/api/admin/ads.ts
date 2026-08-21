@@ -90,6 +90,7 @@ adminAdsRouter.get("/reports/inventory", async (request, response) => {
     response.send(
       await getAdInventoryReport({
         endDate: request.query.endDate,
+        placementKey: request.query.placementKey,
         startDate: request.query.startDate,
       })
     );

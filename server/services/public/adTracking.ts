@@ -133,14 +133,15 @@ export const issueAdExposure = async (
   const { campaign, servable } = await getAdServingDecision(placementKey, now);
   const token = `${EXPOSURE_PREFIX}${randomBytes(32).toString("base64url")}`;
   const expiresAt = new Date(now.getTime() + EXPOSURE_TTL_MS);
-  const businessDate = DateTime.fromJSDate(now)
-    .setZone("America/Los_Angeles")
-    .toISODate();
+  // resolve pacific reporting bucket
+  const reportingTime = DateTime.fromJSDate(now).setZone("America/Los_Angeles");
+  const businessDate = reportingTime.toISODate();
   if (!businessDate) {
     throw new Error("Could not determine ad reporting date");
   }
   await AdMeasurementExposure.create({
     businessDate,
+    businessHour: reportingTime.hour,
     campaignId: campaign?.id ?? null,
     expiresAt,
     placementKey,
@@ -154,12 +155,21 @@ export const issueAdExposure = async (
   };
 };
 
+// roll up one placement opportunity
 const incrementPlacementOpportunity = async (
   exposure: AdMeasurementExposure,
   transaction: Transaction
 ): Promise<void> => {
   await db.query(
-    `INSERT INTO "AdPlacementDailyMetrics"
+    `WITH hourly AS (
+       INSERT INTO "AdPlacementHourlyMetrics"
+         ("businessDate", "businessHour", "placementKey", "opportunityCount")
+       VALUES (:businessDate, :businessHour, :placementKey, 1)
+       ON CONFLICT ("businessDate", "businessHour", "placementKey") DO UPDATE
+       SET "opportunityCount" = "AdPlacementHourlyMetrics"."opportunityCount" + 1
+       RETURNING 1
+     )
+     INSERT INTO "AdPlacementDailyMetrics"
       ("businessDate", "placementKey", "opportunityCount")
      VALUES (:businessDate, :placementKey, 1)
      ON CONFLICT ("businessDate", "placementKey") DO UPDATE
@@ -167,6 +177,7 @@ const incrementPlacementOpportunity = async (
     {
       replacements: {
         businessDate: exposure.businessDate,
+        businessHour: exposure.businessHour,
         placementKey: exposure.placementKey,
       },
       transaction,

@@ -32,6 +32,15 @@ const terminals = vi.hoisted(() => ({
   ),
 }));
 
+const emptyInventoryReport = {
+  daily: [],
+  endDate: "2026-08-20",
+  placements: [],
+  selectedPlacement: null,
+  startDate: "2026-07-22",
+  totalOpportunityCount: "0",
+};
+
 vi.mock("@auth0/auth0-react", () => ({ useAuth0: () => auth }));
 vi.mock("~/components/Page", () => ({
   Page: ({ children }: { children: React.ReactNode }) =>
@@ -120,6 +129,10 @@ describe("Admin", () => {
       }
       if (path === "/admin/ads/campaigns") {
         return Promise.resolve([]);
+      }
+      // return default inventory analytics
+      if (path.startsWith("/admin/ads/reports/inventory?")) {
+        return Promise.resolve(emptyInventoryReport);
       }
       return Promise.reject(new Error(`Unexpected request: ${path}`));
     });
@@ -620,6 +633,10 @@ describe("Admin", () => {
       }
       if (path === "/admin/ads/campaigns") {
         return Promise.resolve([]);
+      }
+      // return default inventory analytics
+      if (path.startsWith("/admin/ads/reports/inventory?")) {
+        return Promise.resolve(emptyInventoryReport);
       }
       return Promise.resolve({
         automaticLeaderboardCheckinsEnabled: false,

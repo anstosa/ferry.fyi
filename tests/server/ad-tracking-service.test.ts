@@ -52,6 +52,7 @@ describe("first-party ad measurement", () => {
     expect(exposures.create).toHaveBeenCalledWith(
       expect.objectContaining({
         businessDate: "2026-08-04",
+        businessHour: 23,
         campaignId: null,
         servable: false,
         tokenHash: expect.stringMatching(/^[a-f0-9]{64}$/),
@@ -119,6 +120,7 @@ describe("first-party ad measurement", () => {
   it("atomically fills served when accepting the first viewable claim", async () => {
     const exposure = {
       businessDate: "2026-08-04",
+      businessHour: 23,
       campaignId: "campaign",
       servable: true,
       servedClaimed: false,
@@ -145,6 +147,7 @@ describe("first-party ad measurement", () => {
   it("records paused campaign opportunity separately from delivery", async () => {
     const exposure = {
       businessDate: "2026-08-04",
+      businessHour: 23,
       campaignId: "campaign",
       opportunityClaimed: false,
       placementKey: "schedule--3--7",
@@ -156,6 +159,13 @@ describe("first-party ad measurement", () => {
     await claimAdExposure("adx_example", "opportunity");
 
     expect(database.query).toHaveBeenCalledTimes(2);
+    expect(database.query).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO "AdPlacementHourlyMetrics"'),
+      expect.objectContaining({
+        replacements: expect.objectContaining({ businessHour: 23 }),
+        transaction,
+      })
+    );
     expect(exposure.update).toHaveBeenCalledWith(
       { opportunityClaimed: true },
       { transaction }

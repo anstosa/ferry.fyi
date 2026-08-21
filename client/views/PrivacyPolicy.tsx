@@ -131,11 +131,12 @@ export const PrivacyPolicy = (): ReactElement => (
       A viewable opportunity means the intended ad position remained visible for
       one continuous second, whether or not an ad was active. A viewable
       impression means at least half of an actual advertisement remained visible
-      for one continuous second. Ferry FYI stores these measurements as daily
-      totals. Short-lived anonymous validation tokens suppress duplicate counts
-      and expire automatically; they are not account, visitor, or session
-      histories. Campaign reports are informational and do not represent unique
-      people, audited fraud-free traffic, or billable delivery.
+      for one continuous second. Ferry FYI stores campaign measurements as daily
+      totals and placement opportunities as daily and Pacific-hour totals.
+      Short-lived anonymous validation tokens suppress duplicate counts and
+      expire automatically; they are not account, visitor, or session histories.
+      Campaign reports are informational and do not represent unique people,
+      audited fraud-free traffic, or billable delivery.
     </p>
 
     <h2 className="font-bold text-lg mt-8">

@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "release": "9354363b",
+  "calculations": [
+    {
+      "detector": "terminal",
+      "reliabilityTargetPermille": null,
+      "designSuccessProbabilityPermille": null,
+      "desiredPowerPermille": null,
+      "maximumAttempts": null
+    },
+    {
+      "detector": "vessel",
+      "reliabilityTargetPermille": null,
+      "designSuccessProbabilityPermille": null,
+      "desiredPowerPermille": null,
+      "maximumAttempts": null
+    }
+  ]
+}

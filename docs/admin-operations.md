@@ -252,11 +252,16 @@ counters cannot be edited, reset, reassigned, or backfilled through the admin
 surface.
 
 Measurement stores daily placement/campaign aggregates for opportunities,
-served ads, viewable impressions, and ad clicks. One short-lived hashed
-exposure row suppresses duplicate claims and is removed after expiry. It stores
-no account subject, visitor/session id, IP address, user-agent history, precise
-location, ticket data, or notification state. The global and per-placement ad
-switches suppress delivery but not opportunity measurement. The separate
+served ads, viewable impressions, and ad clicks. Placement opportunities also
+roll up by their Pacific issuance hour. The owner inventory dashboard compares
+every active placement in a selected date range and drills into weekday and
+hour-of-day totals. Weekday charts use the complete daily history; hourly charts
+begin with the hourly-metrics migration and do not reconstruct earlier hours
+from daily totals. One short-lived hashed exposure row suppresses duplicate
+claims and is removed after expiry. It stores no account subject,
+visitor/session id, IP address, user-agent history, precise location, ticket
+data, or notification state. The global and per-placement ad switches suppress
+delivery but not opportunity measurement. The separate
 `AD_MEASUREMENT_ENABLED=false` environment switch is incident-only and creates
 an explicit prospective measurement gap.
 

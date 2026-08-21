@@ -22,6 +22,7 @@ import {
 import type { Terminal } from "shared/contracts/terminals";
 import type { TicketLookupAdminSettings } from "shared/contracts/tickets";
 
+import { AdInventoryCharts } from "~/components/AdInventoryCharts";
 import { Page } from "~/components/Page";
 import { Skeleton, SkeletonGroup } from "~/components/Skeleton";
 import { confirmationPhrase } from "~/lib/adminConfirmation";
@@ -51,6 +52,20 @@ const formatAdCampaignTime = (value: string): string =>
   DateTime.fromISO(value)
     .setZone(AD_TIME_ZONE)
     .toFormat("MMM d, yyyy, h:mm a ZZZZ");
+
+// build one bounded inventory query
+const adInventoryReportPath = (
+  startDate: string,
+  endDate: string,
+  placementKey: string | null
+): string => {
+  const params = new URLSearchParams({ endDate, startDate });
+  // include an optional placement drill-down
+  if (placementKey) {
+    params.set("placementKey", placementKey);
+  }
+  return `/admin/ads/reports/inventory?${params.toString()}`;
+};
 
 type FeatureSettings = {
   automaticLeaderboardCheckinsEnabled: boolean;
@@ -711,6 +726,11 @@ export const Admin = (): ReactElement => {
     useState<AdCampaignReport | null>(null);
   const [adInventoryReport, setAdInventoryReport] =
     useState<AdInventoryReport | null>(null);
+  const [adInventoryPlacementKey, setAdInventoryPlacementKey] = useState<
+    string | null
+  >(requestedAdSelection?.placementKey ?? null);
+  const [adInventoryLoading, setAdInventoryLoading] = useState(false);
+  const [adInventoryError, setAdInventoryError] = useState<string | null>(null);
   const [adReportShares, setAdReportShares] = useState<AdReportShareSummary[]>(
     []
   );
@@ -803,16 +823,27 @@ export const Admin = (): ReactElement => {
   };
   const loadNotifications = async (): Promise<void> =>
     setNotifications(await get("/admin/notifications", await token()));
+  // load ad controls and default analytics
   const loadAds = async (): Promise<void> => {
-    const [configuration, terminals, campaigns] = await Promise.all([
-      get<AdConfiguration>("/admin/ads", await token()),
+    const accessToken = await token();
+    const [configuration, terminals, campaigns, inventory] = await Promise.all([
+      get<AdConfiguration>("/admin/ads", accessToken),
       getTerminals(),
-      get<AdCampaign[]>("/admin/ads/campaigns", await token()),
+      get<AdCampaign[]>("/admin/ads/campaigns", accessToken),
+      get<AdInventoryReport>(
+        adInventoryReportPath(
+          adInventoryStartDate,
+          adInventoryEndDate,
+          adInventoryPlacementKey
+        ),
+        accessToken
+      ),
     ]);
     const directions = getAdDirections(terminals);
     setAds(configuration);
     setAdTerminals(terminals);
     setAdCampaigns(campaigns);
+    setAdInventoryReport(inventory);
     setSelectedAdDirection((current) => current || directions[0]?.key || "");
   };
 
@@ -833,13 +864,34 @@ export const Admin = (): ReactElement => {
     setCreatedAdReportShare(null);
   };
 
-  const loadAdInventoryReport = async (): Promise<void> => {
-    setAdInventoryReport(
-      await get<AdInventoryReport>(
-        `/admin/ads/reports/inventory?startDate=${adInventoryStartDate}&endDate=${adInventoryEndDate}`,
-        await token()
-      )
-    );
+  // refresh aggregate or placement analytics
+  const loadAdInventoryReport = async (
+    placementKey = adInventoryPlacementKey
+  ): Promise<void> => {
+    setAdInventoryError(null);
+    setAdInventoryLoading(true);
+    try {
+      setAdInventoryReport(
+        await get<AdInventoryReport>(
+          adInventoryReportPath(
+            adInventoryStartDate,
+            adInventoryEndDate,
+            placementKey
+          ),
+          await token()
+        )
+      );
+    } catch {
+      setAdInventoryError("Could not load advertising inventory analytics.");
+    } finally {
+      setAdInventoryLoading(false);
+    }
+  };
+
+  // open one placement breakdown
+  const selectAdInventoryPlacement = (placementKey: string): void => {
+    setAdInventoryPlacementKey(placementKey);
+    loadAdInventoryReport(placementKey).catch(() => undefined);
   };
 
   const downloadAdCampaignCsv = async (campaignId: string): Promise<void> => {
@@ -2041,46 +2093,66 @@ export const Admin = (): ReactElement => {
                     </label>
                     <button
                       className="button button-secondary"
+                      disabled={adInventoryLoading}
                       onClick={() =>
                         loadAdInventoryReport().catch(() => undefined)
                       }
                       type="button"
                     >
-                      Load inventory
+                      {adInventoryLoading
+                        ? "Loading charts…"
+                        : "Refresh charts"}
                     </button>
                   </div>
                 </div>
+                {adInventoryError ? (
+                  <p className="mt-3 text-sm text-red-dark" role="alert">
+                    {adInventoryError}
+                  </p>
+                ) : null}
                 {adInventoryReport ? (
-                  <div className="mt-3 overflow-x-auto text-sm">
-                    <p>
-                      {adInventoryReport.startDate}–{adInventoryReport.endDate}:{" "}
-                      <strong>{adInventoryReport.totalOpportunityCount}</strong>{" "}
-                      viewable slot opportunities.
-                    </p>
-                    <table className="mt-2 w-full text-left">
-                      <thead>
-                        <tr>
-                          <th>Date</th>
-                          <th>Placement/direction</th>
-                          <th>Opportunities</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {adInventoryReport.daily
-                          .filter(
-                            (row) =>
-                              !adDraft || row.placementKey === adDraft.key
-                          )
-                          .map((row) => (
-                            <tr key={`${row.businessDate}:${row.placementKey}`}>
-                              <td>{row.businessDate}</td>
-                              <td>{row.placementKey}</td>
-                              <td>{row.opportunityCount}</td>
+                  <>
+                    <AdInventoryCharts
+                      loading={adInventoryLoading}
+                      onSelectPlacement={selectAdInventoryPlacement}
+                      report={adInventoryReport}
+                      selectedPlacementKey={adInventoryPlacementKey}
+                      terminals={adTerminals}
+                    />
+                    <details className="mt-4 text-sm">
+                      <summary className="cursor-pointer font-semibold">
+                        Daily placement rows
+                      </summary>
+                      <div className="mt-2 max-h-96 overflow-auto">
+                        <table className="w-full text-left">
+                          <thead>
+                            <tr>
+                              <th>Date</th>
+                              <th>Placement/direction</th>
+                              <th>Opportunities</th>
                             </tr>
-                          ))}
-                      </tbody>
-                    </table>
-                  </div>
+                          </thead>
+                          <tbody>
+                            {adInventoryReport.daily
+                              .filter(
+                                (row) =>
+                                  !adInventoryPlacementKey ||
+                                  row.placementKey === adInventoryPlacementKey
+                              )
+                              .map((row) => (
+                                <tr
+                                  key={`${row.businessDate}:${row.placementKey}`}
+                                >
+                                  <td>{row.businessDate}</td>
+                                  <td>{row.placementKey}</td>
+                                  <td>{row.opportunityCount}</td>
+                                </tr>
+                              ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </details>
+                  </>
                 ) : null}
                 <ul className="mt-4 space-y-3">
                   {adCampaigns

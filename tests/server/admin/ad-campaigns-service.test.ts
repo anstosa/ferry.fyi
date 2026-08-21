@@ -9,6 +9,7 @@ const campaigns = vi.hoisted(() => ({
 const campaignMetrics = vi.hoisted(() => ({ findAll: vi.fn() }));
 const placements = vi.hoisted(() => ({ findByPk: vi.fn() }));
 const placementMetrics = vi.hoisted(() => ({ findAll: vi.fn() }));
+const placementHourlyMetrics = vi.hoisted(() => ({ findAll: vi.fn() }));
 const shares = vi.hoisted(() => ({
   create: vi.fn(),
   findAll: vi.fn(),
@@ -25,10 +26,14 @@ vi.mock("~/models/AdPlacement", () => ({ AdPlacement: placements }));
 vi.mock("~/models/AdPlacementDailyMetric", () => ({
   AdPlacementDailyMetric: placementMetrics,
 }));
+vi.mock("~/models/AdPlacementHourlyMetric", () => ({
+  AdPlacementHourlyMetric: placementHourlyMetrics,
+}));
 vi.mock("~/models/AdReportShare", () => ({ AdReportShare: shares }));
 
 import {
   getAdCampaignReport,
+  getAdInventoryReport,
   scheduleAdCampaign,
 } from "../../../server/lib/admin/adCampaigns";
 
@@ -51,6 +56,8 @@ describe("admin ad campaigns", () => {
       async (callback) => await callback(transaction)
     );
     database.query.mockResolvedValue([]);
+    placementMetrics.findAll.mockResolvedValue([]);
+    placementHourlyMetrics.findAll.mockResolvedValue([]);
   });
 
   it("locks the placement and snapshots normalized creative into a campaign", async () => {
@@ -112,6 +119,66 @@ describe("admin ad campaigns", () => {
       servedCount: "10",
       viewabilityRate: "50.00%",
       viewableCount: "5",
+    });
+  });
+
+  it("aggregates placements and fills weekday and hour drill-down buckets", async () => {
+    placementMetrics.findAll.mockResolvedValue([
+      {
+        businessDate: "2026-08-03",
+        opportunityCount: "10",
+        placementKey: "schedule--3--7",
+      },
+      {
+        businessDate: "2026-08-04",
+        opportunityCount: "5",
+        placementKey: "home",
+      },
+      {
+        businessDate: "2026-08-10",
+        opportunityCount: "20",
+        placementKey: "schedule--3--7",
+      },
+    ]);
+    placementHourlyMetrics.findAll.mockResolvedValue([
+      {
+        businessDate: "2026-08-05",
+        businessHour: 8,
+        opportunityCount: "12",
+      },
+      {
+        businessDate: "2026-08-06",
+        businessHour: 17,
+        opportunityCount: "18",
+      },
+    ]);
+
+    const report = await getAdInventoryReport({
+      endDate: "2026-08-10",
+      placementKey: "schedule--3--7",
+      startDate: "2026-08-03",
+    });
+
+    expect(report.placements).toEqual([
+      { opportunityCount: "30", placementKey: "schedule--3--7" },
+      { opportunityCount: "5", placementKey: "home" },
+    ]);
+    expect(report.selectedPlacement).toMatchObject({
+      hourlyDataStartDate: "2026-08-05",
+      opportunityCount: "30",
+      placementKey: "schedule--3--7",
+    });
+    expect(report.selectedPlacement?.weekday[0]).toEqual({
+      opportunityCount: "30",
+      weekday: 1,
+    });
+    expect(report.selectedPlacement?.hourOfDay[8]).toEqual({
+      hour: 8,
+      opportunityCount: "12",
+    });
+    expect(report.selectedPlacement?.hourOfDay[17]).toEqual({
+      hour: 17,
+      opportunityCount: "18",
     });
   });
 });

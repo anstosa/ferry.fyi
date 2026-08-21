@@ -179,6 +179,8 @@
     "dev:migrate": "scripts/dev-compose.sh run --rm --no-deps migrate",
     "dev:reset": "scripts/dev-compose.sh down --volumes && scripts/dev-compose.sh up --detach --build --wait",
     "dev:up": "scripts/dev-compose.sh up --detach --build --wait",
+    "evidence:automatic-checkins": "node scripts/summarize-automatic-checkin-evidence.mjs",
+    "evidence:automatic-checkins:r1-plan": "node scripts/plan-automatic-checkin-r1.mjs",
     "forecast:backtest": "cd server && node ../scripts/register-esbuild.js scripts/backtestForecasts.ts",
     "forecast:backtest:assert": "yarn forecast:backtest --assert",
     "forecast:calibrate": "yarn forecast:backtest --persist-calibration",

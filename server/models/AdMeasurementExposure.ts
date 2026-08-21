@@ -4,6 +4,7 @@ import { db } from "~/lib/db";
 
 export class AdMeasurementExposure extends Model {
   businessDate!: string;
+  businessHour!: number;
   campaignId!: string | null;
   clickClaimed!: boolean;
   expiresAt!: Date;
@@ -18,6 +19,7 @@ export class AdMeasurementExposure extends Model {
 AdMeasurementExposure.init(
   {
     businessDate: { allowNull: false, type: DataTypes.DATEONLY },
+    businessHour: { allowNull: false, type: DataTypes.SMALLINT },
     campaignId: { allowNull: true, type: DataTypes.UUID },
     clickClaimed: {
       allowNull: false,

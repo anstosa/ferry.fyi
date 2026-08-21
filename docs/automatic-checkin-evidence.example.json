@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "build": {
+    "version": "3.5",
+    "release": "9354363b",
+    "configGeneration": 1,
+    "serverPolicyGeneration": 0,
+    "localWorkCohort": "cohort-a"
+  },
+  "cells": [
+    {
+      "platform": "android",
+      "osClass": "android-api35",
+      "osReleaseChannel": "stable",
+      "deviceClass": "pixel",
+      "lifecycle": "screen-off",
+      "detector": "vessel",
+      "gate": "v0",
+      "scenario": "battery-ferry-leg",
+      "attempts": 5,
+      "successes": 5,
+      "failureOutcomes": {},
+      "delayBuckets": {
+        "under-1m": 5
+      },
+      "accuracyBuckets": {
+        "under-25m": 5
+      },
+      "outcomeBuckets": {
+        "diagnostic_candidate_wiped": 5
+      },
+      "privacyResult": "pass",
+      "falseCredits": 0,
+      "expiredCredits": 0,
+      "duplicateCredits": 0,
+      "invariantBreaches": 0,
+      "batteryControls": {
+        "energyDiagnostic": "android-batterystats",
+        "networkState": "wifi",
+        "randomizedOrder": true,
+        "screenState": "off",
+        "thermalState": "nominal"
+      },
+      "batteryDeltasPercentagePoints": [0.1, 0.2, 0.0],
+      "artifactLinks": [
+        "https://example.test/redacted-evidence/android-v0-screen-off"
+      ]
+    }
+  ]
+}

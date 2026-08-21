@@ -1,13 +1,16 @@
 import { createHash, randomBytes, randomUUID } from "crypto";
 import { DateTime } from "luxon";
 import { Op, QueryTypes } from "sequelize";
-import type {
-  AdCampaign as AdCampaignContract,
-  AdCampaignReport,
-  AdDailyMetrics,
-  AdInventoryReport,
-  AdReportShareCreated,
-  AdReportShareSummary,
+import {
+  type AdCampaign as AdCampaignContract,
+  type AdCampaignReport,
+  type AdDailyMetrics,
+  type AdInventoryDailyMetrics,
+  type AdInventoryPlacementSummary,
+  type AdInventoryReport,
+  type AdReportShareCreated,
+  type AdReportShareSummary,
+  parseAdPlacementKey,
 } from "shared/contracts/ads";
 import { isObject } from "shared/lib/objects";
 
@@ -16,6 +19,7 @@ import { AdCampaign } from "~/models/AdCampaign";
 import { AdCampaignDailyMetric } from "~/models/AdCampaignDailyMetric";
 import { AdPlacement } from "~/models/AdPlacement";
 import { AdPlacementDailyMetric } from "~/models/AdPlacementDailyMetric";
+import { AdPlacementHourlyMetric } from "~/models/AdPlacementHourlyMetric";
 import { AdReportShare } from "~/models/AdReportShare";
 
 const REPORT_PREFIX = "adr_";
@@ -232,15 +236,55 @@ const parseBusinessDate = (value: unknown): string | null => {
   return date.isValid && date.toISODate() === value ? value : null;
 };
 
+// aggregate inventory by placement
+const placementSummaries = (
+  daily: AdInventoryDailyMetrics[]
+): AdInventoryPlacementSummary[] => {
+  const totals = daily.reduce((result, row) => {
+    result.set(
+      row.placementKey,
+      (result.get(row.placementKey) ?? BigInt(0)) + BigInt(row.opportunityCount)
+    );
+    return result;
+  }, new Map<string, bigint>());
+  return [...totals.entries()]
+    .map(([placementKey, opportunityCount]) => ({
+      opportunityCount: opportunityCount.toString(),
+      placementKey,
+    }))
+    .sort((left, right) => {
+      const leftCount = BigInt(left.opportunityCount);
+      const rightCount = BigInt(right.opportunityCount);
+      // keep stable count ordering
+      if (leftCount === rightCount) {
+        return left.placementKey.localeCompare(right.placementKey);
+      }
+      return leftCount > rightCount ? -1 : 1;
+    });
+};
+
+// build bounded placement analytics
 export const getAdInventoryReport = async ({
   endDate: endValue,
+  placementKey: placementKeyValue,
   startDate: startValue,
 }: {
   endDate: unknown;
+  placementKey?: unknown;
   startDate: unknown;
 }): Promise<AdInventoryReport> => {
   const startDate = parseBusinessDate(startValue);
   const endDate = parseBusinessDate(endValue);
+  const placementKey =
+    typeof placementKeyValue === "string" &&
+    parseAdPlacementKey(placementKeyValue)
+      ? placementKeyValue
+      : null;
+  // validate an optional drill-down key
+  if (placementKeyValue !== undefined && !placementKey) {
+    throw new Error("Invalid ad placement");
+  }
+  // validate the calendar range
   if (!startDate || !endDate || startDate > endDate) {
     throw new Error("Invalid report range");
   }
@@ -248,25 +292,81 @@ export const getAdInventoryReport = async ({
     DateTime.fromISO(startDate),
     "days"
   );
+  // bound report work
   if (days > 366) {
     throw new Error("Report range is too large");
   }
-  const daily = (
-    await AdPlacementDailyMetric.findAll({
+  const [dailyRows, hourlyRows] = await Promise.all([
+    AdPlacementDailyMetric.findAll({
       order: [
         ["businessDate", "ASC"],
         ["placementKey", "ASC"],
       ],
       where: { businessDate: { [Op.between]: [startDate, endDate] } },
-    })
-  ).map((row) => ({
+    }),
+    placementKey
+      ? AdPlacementHourlyMetric.findAll({
+          order: [
+            ["businessDate", "ASC"],
+            ["businessHour", "ASC"],
+          ],
+          where: {
+            businessDate: { [Op.between]: [startDate, endDate] },
+            placementKey,
+          },
+        })
+      : Promise.resolve([]),
+  ]);
+  const daily: AdInventoryDailyMetrics[] = dailyRows.map((row) => ({
     businessDate: row.businessDate,
     opportunityCount: asCount(row.opportunityCount),
     placementKey: row.placementKey,
   }));
+  const placements = placementSummaries(daily);
+  const selectedDaily = placementKey
+    ? daily.filter((row) => row.placementKey === placementKey)
+    : [];
+  const selectedTotal = selectedDaily
+    .reduce((total, row) => total + BigInt(row.opportunityCount), BigInt(0))
+    .toString();
+  const weekdayTotals = selectedDaily.reduce((totals, row) => {
+    const { weekday } = DateTime.fromISO(row.businessDate, {
+      zone: "America/Los_Angeles",
+    });
+    totals.set(
+      weekday,
+      (totals.get(weekday) ?? BigInt(0)) + BigInt(row.opportunityCount)
+    );
+    return totals;
+  }, new Map<number, bigint>());
+  const hourTotals = hourlyRows.reduce((totals, row) => {
+    totals.set(
+      row.businessHour,
+      (totals.get(row.businessHour) ?? BigInt(0)) + BigInt(row.opportunityCount)
+    );
+    return totals;
+  }, new Map<number, bigint>());
   return {
     daily,
     endDate,
+    placements,
+    selectedPlacement: placementKey
+      ? {
+          hourOfDay: Array.from({ length: 24 }, (_, hour) => ({
+            hour,
+            opportunityCount: (hourTotals.get(hour) ?? BigInt(0)).toString(),
+          })),
+          hourlyDataStartDate: hourlyRows[0]?.businessDate ?? null,
+          opportunityCount: selectedTotal,
+          placementKey,
+          weekday: Array.from({ length: 7 }, (_, index) => ({
+            opportunityCount: (
+              weekdayTotals.get(index + 1) ?? BigInt(0)
+            ).toString(),
+            weekday: index + 1,
+          })),
+        }
+      : null,
     startDate,
     totalOpportunityCount: daily
       .reduce((total, row) => total + BigInt(row.opportunityCount), BigInt(0))
