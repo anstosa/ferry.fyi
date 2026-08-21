@@ -58,6 +58,7 @@ const OS_CLASSES = new Set([
   "android-api34",
   "android-api35",
   "android-api36",
+  "android-api37",
   "ios-15",
   "ios-16",
   "ios-17",

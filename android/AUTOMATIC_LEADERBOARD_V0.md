@@ -4,7 +4,7 @@ This document describes the bounded Android diagnostic for the vessel-candidate 
 
 ## Build boundary
 
-- The ordinary `debug` and `release` variants hard-code the V0 diagnostic off. Only the explicitly selected `v0Diagnostic` build type enables it.
+- The ordinary `debug` and `release` variants hard-code the V0 diagnostic off. Only the explicitly selected `v0Diagnostic` build type enables it. That build uses the isolated `fyi.ferry.v0diagnostic` application ID so it can be installed beside the Play-signed app without replacing user data.
 - Android API 26-28 always reports `unsupported_os`; it performs no automatic permission request, native configuration or bearer read, region/work registration, durable queue write, network upload, notification, or credit action. Manual foreground check-in remains available.
 - API 29+ enters the diagnostic path only in an explicitly opted-in diagnostic build.
 - The base production manifest intentionally has no `ACCESS_BACKGROUND_LOCATION` and no enabled production background receiver or service; its automatic receivers are disabled and non-exported. V0 adds no foreground location service.
@@ -49,7 +49,7 @@ adb shell am instrument -w \
   -e latitudeE7 '<scaled-latitude>' \
   -e longitudeE7 '<scaled-longitude>' \
   -e radiusMillimeters '<radius-mm>' \
-  fyi.ferry.test/androidx.test.runner.AndroidJUnitRunner
+  fyi.ferry.v0diagnostic.test/androidx.test.runner.AndroidJUnitRunner
 ```
 
 The harness obtains a direct HTTPS server-date anchor, verifies a complete canonical configuration generation, runs the required due fleet prefetch, and atomically registers the fixed ENTER/EXIT region generation. Moving through the boundary then exercises T0 entry and V0 exit in the non-exported native receiver. Check the fixed readiness status with:
@@ -58,7 +58,7 @@ The harness obtains a direct HTTPS server-date anchor, verifies a complete canon
 adb shell am instrument -w \
   -e class fyi.ferry.leaderboards.AutomaticV0PhysicalHarnessTest#statusConfiguredDiagnostic \
   -e status true \
-  fyi.ferry.test/androidx.test.runner.AndroidJUnitRunner
+  fyi.ferry.v0diagnostic.test/androidx.test.runner.AndroidJUnitRunner
 ```
 
 The status command reports success only when the supported diagnostic build has both location grants, a same-boot trusted time anchor, a validated fleet cache, and a successful redacted registration marker. Remove the diagnostic registration with:
@@ -67,7 +67,14 @@ The status command reports success only when the supported diagnostic build has 
 adb shell am instrument -w \
   -e class fyi.ferry.leaderboards.AutomaticV0PhysicalHarnessTest#removeConfiguredDiagnostic \
   -e cleanup true \
-  fyi.ferry.test/androidx.test.runner.AndroidJUnitRunner
+  fyi.ferry.v0diagnostic.test/androidx.test.runner.AndroidJUnitRunner
 ```
+
+The instrumentation APK also exposes explicit `simulateConfiguredEntry` and
+`simulateConfiguredExit` methods for mock-location debugging. They require
+`-e simulation true` plus an operator-supplied terminal ID and invoke the
+bounded runtime directly. These supporting checks bypass OS geofence delivery
+and never satisfy physical-device, lifecycle, reliability, battery, or release
+evidence.
 
 Physical-device evidence remains required before V0 can pass. Run the approved matrix separately on API 26-28 emulators and supported Pixel and Samsung hardware covering Android 10/API 29, Android 11+ Settings authorization, Android 15 force-stop, and the latest stable OS. Include foreground, background, screen-off, ordinary process death, reboot, and force-stop cells, with five repeated legitimate attempts plus the negative cases per required cell. Battery characterization requires at least three paired randomized feature-off versus diagnostic runs per device/scenario. Publish only redacted counts, fixed outcomes, delay/accuracy/duration buckets, battery observations, and confidence bounds. Do not publish terminal/vessel IDs, routes, coordinates, accuracy values, exact event times, credentials, candidate data, or request bodies.

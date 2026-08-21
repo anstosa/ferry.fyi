@@ -263,6 +263,19 @@ describe("automatic check-in evidence summary", () => {
     );
   });
 
+  // prove Android 17 hardware remains physical evidence
+  it("classifies stable Android API 37 hardware as physical evidence", () => {
+    const input = bundle();
+    input.cells[0].osClass = "android-api37";
+
+    const summary = summarizeAutomaticCheckinEvidence(input);
+
+    expect(summary.cells[0]).toMatchObject({
+      evidenceClass: "physical-device",
+      provisionalCharacterization: "observed-not-release-approved",
+    });
+  });
+
   // prove the current iOS preview cannot be relabeled stable
   it("rejects stable labels for the reviewed iOS preview", () => {
     const input = bundle();

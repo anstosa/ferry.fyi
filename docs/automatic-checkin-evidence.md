@@ -18,7 +18,7 @@ replacing an earlier receipt. Start from
 non-poolable platform, OS class, device class, lifecycle, and detector stratum.
 Each materially different fixed `scenario` is a separate cell rather than being
 pooled into another lifecycle result. Android OS classes use exact API levels 26
-through 36; iOS classes use exact major versions 15 through the currently
+through 37; iOS classes use exact major versions 15 through the currently
 reviewed iOS 27 preview. `osReleaseChannel` records `stable` or `beta`; preview
 evidence cannot satisfy a stable physical cell.
 

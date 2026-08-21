@@ -121,6 +121,8 @@ android {
             initWith debug
             matchingFallbacks = ['debug']
             debuggable true
+            // isolate the diagnostic from installed release apps
+            applicationIdSuffix '.v0diagnostic'
             buildConfigField 'boolean', 'AUTOMATIC_LEADERBOARD_V0_DIAGNOSTIC_ENABLED', 'true'
         }
         release {

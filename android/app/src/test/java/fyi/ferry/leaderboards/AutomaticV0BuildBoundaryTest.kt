@@ -28,5 +28,7 @@ class AutomaticV0BuildBoundaryTest {
             ),
         )
         assertTrue(buildFile.contains("v0Diagnostic"))
+        // require side-by-side installation
+        assertTrue(buildFile.contains("applicationIdSuffix '.v0diagnostic'"))
     }
 }

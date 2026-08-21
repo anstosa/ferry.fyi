@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.Bundle
 import androidx.core.content.ContextCompat
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -12,6 +13,7 @@ import java.net.HttpURLConnection
 import java.net.URI
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
@@ -91,6 +93,61 @@ class AutomaticV0PhysicalHarnessTest {
         assertTrue(AutomaticV0AndroidDiagnosticControl(context).status() == AutomaticV0ControlStatus.READY)
     }
 
+    // run one supporting simulated entry without claiming os delivery
+    @Test
+    fun simulateConfiguredEntry() {
+        val arguments = InstrumentationRegistry.getArguments()
+        // require explicit simulation inputs
+        assumeTrue("simulation flag is required", arguments.getString("simulation") == "true")
+        val terminalId = arguments.getString("terminalId")
+        assertTrue(!terminalId.isNullOrEmpty())
+        val context = ApplicationProvider.getApplicationContext<Context>()
+
+        val evidence = AutomaticV0AndroidRuntime.runEntry(
+            context,
+            AutomaticV0TerminalExitCallback(terminalId!!, ConfigGeneration(1)),
+        )
+
+        assertEquals(AutomaticV0Outcome.TERMINAL_ENTRY_FIX_OBSERVED, evidence.outcome)
+        assertEquals(1, evidence.locationRequestCount)
+        assertEquals(0, evidence.snapshotGetCount)
+        assertEquals(0, evidence.fleetEvaluationCount)
+        assertEquals(AutomaticV0ForbiddenSurfaceEvidence(), evidence.forbidden)
+        reportSimulationEvidence(evidence)
+    }
+
+    // run one supporting simulated exit without claiming os delivery
+    @Test
+    fun simulateConfiguredExit() {
+        val arguments = InstrumentationRegistry.getArguments()
+        // require explicit simulation inputs
+        assumeTrue("simulation flag is required", arguments.getString("simulation") == "true")
+        val terminalId = arguments.getString("terminalId")
+        assertTrue(!terminalId.isNullOrEmpty())
+        val context = ApplicationProvider.getApplicationContext<Context>()
+
+        val evidence = AutomaticV0AndroidRuntime.runExit(
+            context,
+            AutomaticV0TerminalExitCallback(terminalId!!, ConfigGeneration(1)),
+        )
+
+        assertTrue(
+            evidence.outcome in
+                setOf(
+                    AutomaticV0Outcome.NO_PLAUSIBLE_VESSEL,
+                    AutomaticV0Outcome.MULTIPLE_PLAUSIBLE_VESSELS,
+                    AutomaticV0Outcome.DIAGNOSTIC_CANDIDATE_WIPED,
+                ),
+        )
+        assertEquals(1, evidence.locationRequestCount)
+        assertEquals(1, evidence.fleetEvaluationCount)
+        assertTrue(evidence.snapshotGetCount in 0..1)
+        assertTrue(evidence.diagnosticCandidateCount in 0..1)
+        assertEquals(evidence.diagnosticCandidateCount, evidence.candidateWipeCount)
+        assertEquals(AutomaticV0ForbiddenSurfaceEvidence(), evidence.forbidden)
+        reportSimulationEvidence(evidence)
+    }
+
     // remove the installed diagnostic namespace
     @Test
     fun removeConfiguredDiagnostic() {
@@ -136,5 +193,18 @@ class AutomaticV0PhysicalHarnessTest {
         } finally {
             connection.disconnect()
         }
+    }
+
+    // publish only fixed supporting-simulation counters
+    private fun reportSimulationEvidence(evidence: AutomaticV0RunEvidence) {
+        val status = Bundle()
+        status.putString("simulationEvidenceClass", "supporting-only-not-physical")
+        status.putString("simulationOutcome", evidence.outcome.name)
+        status.putInt("simulationLocationRequests", evidence.locationRequestCount)
+        status.putInt("simulationSnapshotGets", evidence.snapshotGetCount)
+        status.putInt("simulationFleetEvaluations", evidence.fleetEvaluationCount)
+        status.putInt("simulationCandidates", evidence.diagnosticCandidateCount)
+        status.putInt("simulationCandidateWipes", evidence.candidateWipeCount)
+        InstrumentationRegistry.getInstrumentation().sendStatus(0, status)
     }
 }
