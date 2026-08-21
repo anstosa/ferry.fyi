@@ -141,6 +141,8 @@ import {
 let root: Root | undefined;
 afterEach(() => {
   act(() => root?.unmount());
+  // restore real clock
+  vi.useRealTimers();
   root = undefined;
   document.body.innerHTML = "";
   window.history.replaceState(null, "", "/");
@@ -330,6 +332,9 @@ const renderSeededMapRoute = (seededVessels: unknown[]) =>
 
 describe("Route route-load errors", () => {
   it("updates the browser URL when the selected schedule date changes", async () => {
+    // keep selected date off today
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-19T12:00:00-07:00"));
     const terminal = {
       id: "terminal-a",
       mates: [{ id: "terminal-b" }, { id: "terminal-c" }],
