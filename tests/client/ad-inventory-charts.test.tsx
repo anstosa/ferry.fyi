@@ -79,19 +79,30 @@ describe("AdInventoryCharts", () => {
       );
     });
 
-    expect(container.textContent).toContain("50");
-    expect(container.textContent).toContain(
+    const opportunities = [...container.querySelectorAll("dt")].find(
+      (term) => term.textContent === "Opportunities"
+    )?.parentElement;
+    expect(opportunities?.querySelector("dd")?.textContent).toBe("50");
+    const selectedPlacement = container.querySelector(
+      'button[aria-pressed="true"]'
+    );
+    expect(selectedPlacement?.textContent).toContain(
       "Schedule · Bainbridge → Seattle"
     );
     expect(container.textContent).toContain("Day of week");
-    expect(container.textContent).toContain("Monday");
     expect(container.textContent).toContain("Time of day");
-    expect(container.textContent).toContain("8 AM");
-    expect(container.textContent).toContain("12");
-
-    const home = [...container.querySelectorAll("button")].find((button) =>
-      button.textContent?.includes("Home")
+    const timeOfDay = [...container.querySelectorAll("figure")].find(
+      (figure) =>
+        figure.querySelector("figcaption")?.textContent === "Time of day"
     );
+    const eightAm = [...(timeOfDay?.querySelectorAll("li") ?? [])].find(
+      (row) => row.querySelector("span")?.textContent === "8 AM"
+    );
+    expect(eightAm?.querySelector("strong")?.textContent).toBe("12");
+
+    const home = [
+      ...container.querySelectorAll('button[aria-pressed="false"]'),
+    ].find((button) => button.textContent?.startsWith("Home"));
     act(() => home?.click());
 
     expect(onSelectPlacement).toHaveBeenCalledWith("home");

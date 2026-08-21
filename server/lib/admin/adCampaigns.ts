@@ -238,15 +238,19 @@ const parseBusinessDate = (value: unknown): string | null => {
 
 // aggregate inventory by placement
 const placementSummaries = (
-  daily: AdInventoryDailyMetrics[]
+  daily: AdInventoryDailyMetrics[],
+  placementKeys: string[]
 ): AdInventoryPlacementSummary[] => {
-  const totals = daily.reduce((result, row) => {
-    result.set(
+  const totals = new Map<string, bigint>(
+    placementKeys.map((placementKey) => [placementKey, BigInt(0)])
+  );
+  // merge measured totals into tracked placements
+  daily.forEach((row) => {
+    totals.set(
       row.placementKey,
-      (result.get(row.placementKey) ?? BigInt(0)) + BigInt(row.opportunityCount)
+      (totals.get(row.placementKey) ?? BigInt(0)) + BigInt(row.opportunityCount)
     );
-    return result;
-  }, new Map<string, bigint>());
+  });
   return [...totals.entries()]
     .map(([placementKey, opportunityCount]) => ({
       opportunityCount: opportunityCount.toString(),
@@ -275,13 +279,14 @@ export const getAdInventoryReport = async ({
 }): Promise<AdInventoryReport> => {
   const startDate = parseBusinessDate(startValue);
   const endDate = parseBusinessDate(endValue);
-  const placementKey =
+  const placementKeyCandidate =
     typeof placementKeyValue === "string" &&
-    parseAdPlacementKey(placementKeyValue)
+    placementKeyValue.length > 0 &&
+    placementKeyValue.length <= 255
       ? placementKeyValue
       : null;
-  // validate an optional drill-down key
-  if (placementKeyValue !== undefined && !placementKey) {
+  // reject malformed drill-down keys before querying
+  if (placementKeyValue !== undefined && !placementKeyCandidate) {
     throw new Error("Invalid ad placement");
   }
   // validate the calendar range
@@ -296,7 +301,7 @@ export const getAdInventoryReport = async ({
   if (days > 366) {
     throw new Error("Report range is too large");
   }
-  const [dailyRows, hourlyRows] = await Promise.all([
+  const [dailyRows, hourlyRows, placementRows] = await Promise.all([
     AdPlacementDailyMetric.findAll({
       order: [
         ["businessDate", "ASC"],
@@ -304,7 +309,7 @@ export const getAdInventoryReport = async ({
       ],
       where: { businessDate: { [Op.between]: [startDate, endDate] } },
     }),
-    placementKey
+    placementKeyCandidate
       ? AdPlacementHourlyMetric.findAll({
           order: [
             ["businessDate", "ASC"],
@@ -312,17 +317,33 @@ export const getAdInventoryReport = async ({
           ],
           where: {
             businessDate: { [Op.between]: [startDate, endDate] },
-            placementKey,
+            placementKey: placementKeyCandidate,
           },
         })
       : Promise.resolve([]),
+    AdPlacement.findAll({ attributes: ["key"], order: [["key", "ASC"]] }),
   ]);
   const daily: AdInventoryDailyMetrics[] = dailyRows.map((row) => ({
     businessDate: row.businessDate,
     opportunityCount: asCount(row.opportunityCount),
     placementKey: row.placementKey,
   }));
-  const placements = placementSummaries(daily);
+  const placements = placementSummaries(
+    daily,
+    placementRows.map((placement) => placement.key)
+  );
+  const placementKey =
+    placementKeyCandidate &&
+    (parseAdPlacementKey(placementKeyCandidate) ||
+      placements.some(
+        (placement) => placement.placementKey === placementKeyCandidate
+      ))
+      ? placementKeyCandidate
+      : null;
+  // accept only canonical or measured historical placements
+  if (placementKeyCandidate && !placementKey) {
+    throw new Error("Invalid ad placement");
+  }
   const selectedDaily = placementKey
     ? daily.filter((row) => row.placementKey === placementKey)
     : [];

@@ -4,7 +4,10 @@ import fs from "node:fs";
 import process from "node:process";
 import { pathToFileURL } from "node:url";
 
-import { wilsonLower95 } from "./summarize-automatic-checkin-evidence.mjs";
+import {
+  wilsonLower95,
+  wilsonLowerBound95,
+} from "./summarize-automatic-checkin-evidence.mjs";
 
 const SCHEMA_VERSION = 1;
 const RELEASE = /^[0-9a-f]{7,12}$/;
@@ -116,7 +119,7 @@ export const requiredSuccessesForWilsonGate = (attempts, target) => {
     throw new Error("invalid R1 power plan");
   }
   // reject attempts that cannot meet the target even with no failures
-  if (wilsonLower95(attempts, attempts).lower < target) {
+  if (wilsonLowerBound95(attempts, attempts) < target) {
     return null;
   }
   let lower = 0;
@@ -125,7 +128,7 @@ export const requiredSuccessesForWilsonGate = (attempts, target) => {
   while (lower < upper) {
     const midpoint = Math.floor((lower + upper) / 2);
     // retain only the half containing the first qualifying count
-    if (wilsonLower95(midpoint, attempts).lower >= target) {
+    if (wilsonLowerBound95(midpoint, attempts) >= target) {
       upper = midpoint;
     } else {
       lower = midpoint + 1;
@@ -279,7 +282,10 @@ const run = () => {
 };
 
 // execute only as the command-line entrypoint
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
   try {
     run();
   } catch {

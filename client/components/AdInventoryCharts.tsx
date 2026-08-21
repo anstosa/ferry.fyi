@@ -38,7 +38,7 @@ const formatHour = (hour: number): string =>
   DateTime.fromObject({ hour }).toFormat("h a");
 
 // label one placement
-export const formatAdInventoryPlacement = (
+const formatAdInventoryPlacement = (
   placementKey: string,
   terminals: Terminal[]
 ): string => {
@@ -147,7 +147,7 @@ export const AdInventoryCharts = ({
         </div>
         <div className="rounded-xl bg-sponsor-lightest p-3 dark:bg-sponsor-darkest">
           <dt className="text-xs font-semibold uppercase tracking-wide">
-            Active placements
+            Tracked placements
           </dt>
           <dd className="mt-1 text-2xl font-bold">
             {formatCount(report.placements.length)}
@@ -164,7 +164,7 @@ export const AdInventoryCharts = ({
         </p>
         {report.placements.length ? (
           <ol className="mt-3 space-y-2">
-            {/* render every active placement */}
+            {/* render every tracked placement */}
             {report.placements.map((placement) => {
               const count = Number(placement.opportunityCount);
               const selectedRow =
@@ -204,7 +204,7 @@ export const AdInventoryCharts = ({
                       className="mt-2 block h-2 overflow-hidden rounded-full bg-gray-light dark:bg-white/10"
                     >
                       <span
-                        className="block h-full min-w-1 rounded-full bg-sponsor-dark dark:bg-sponsor-light"
+                        className="block h-full rounded-full bg-sponsor-dark dark:bg-sponsor-light"
                         style={{
                           width: `${total ? (count / total) * 100 : 0}%`,
                         }}

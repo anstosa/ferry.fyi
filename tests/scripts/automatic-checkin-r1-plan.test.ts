@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import process from "node:process";
+import { pathToFileURL } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
@@ -104,6 +105,29 @@ describe("automatic check-in R1 power plan", () => {
     expect(requiredSuccessesForWilsonGate(1, 0.99)).toBeNull();
   });
 
+  // reject display-rounded threshold matches
+  it("uses the unrounded Wilson bound for minimum sample sizes", () => {
+    const planInput = input();
+    planInput.calculations[0] = {
+      designSuccessProbabilityPermille: 316,
+      desiredPowerPermille: 500,
+      detector: "terminal",
+      maximumAttempts: 100,
+      reliabilityTargetPermille: 239,
+    };
+
+    const plan = planAutomaticCheckinR1(planInput);
+    const terminal = plan.calculations.find(
+      (calculation) => calculation.detector === "terminal"
+    );
+
+    expect(requiredSuccessesForWilsonGate(75, 0.239)).toBe(25);
+    expect(terminal).toMatchObject({
+      minimumAttempts: 78,
+      requiredSuccesses: 25,
+    });
+  });
+
   // prove impossible bounded plans remain unresolved
   it("reports unresolved instead of weakening the requested gate", () => {
     const planInput = input();
@@ -178,6 +202,31 @@ describe("automatic check-in R1 power plan", () => {
     } finally {
       // remove isolated cli artifacts
       fs.rmSync(directory, { force: true, recursive: true });
+    }
+  });
+
+  // prove named imports do not require a cli path
+  it("loads both evidence modules without an entrypoint argument", () => {
+    const moduleUrls = [
+      "../../scripts/summarize-automatic-checkin-evidence.mjs",
+      "../../scripts/plan-automatic-checkin-r1.mjs",
+    ].map(
+      (modulePath) => pathToFileURL(path.resolve(__dirname, modulePath)).href
+    );
+
+    // import each reusable module in an eval process
+    for (const moduleUrl of moduleUrls) {
+      const result = spawnSync(
+        process.execPath,
+        [
+          "--input-type=module",
+          "--eval",
+          `await import(${JSON.stringify(moduleUrl)})`,
+        ],
+        { encoding: "utf8" }
+      );
+
+      expect(result.status).toBe(0);
     }
   });
 });

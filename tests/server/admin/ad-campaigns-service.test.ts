@@ -7,7 +7,7 @@ const campaigns = vi.hoisted(() => ({
   findByPk: vi.fn(),
 }));
 const campaignMetrics = vi.hoisted(() => ({ findAll: vi.fn() }));
-const placements = vi.hoisted(() => ({ findByPk: vi.fn() }));
+const placements = vi.hoisted(() => ({ findAll: vi.fn(), findByPk: vi.fn() }));
 const placementMetrics = vi.hoisted(() => ({ findAll: vi.fn() }));
 const placementHourlyMetrics = vi.hoisted(() => ({ findAll: vi.fn() }));
 const shares = vi.hoisted(() => ({
@@ -56,6 +56,7 @@ describe("admin ad campaigns", () => {
       async (callback) => await callback(transaction)
     );
     database.query.mockResolvedValue([]);
+    placements.findAll.mockResolvedValue([]);
     placementMetrics.findAll.mockResolvedValue([]);
     placementHourlyMetrics.findAll.mockResolvedValue([]);
   });
@@ -123,6 +124,11 @@ describe("admin ad campaigns", () => {
   });
 
   it("aggregates placements and fills weekday and hour drill-down buckets", async () => {
+    placements.findAll.mockResolvedValue([
+      { key: "cameras--3--7" },
+      { key: "home" },
+      { key: "schedule--3--7" },
+    ]);
     placementMetrics.findAll.mockResolvedValue([
       {
         businessDate: "2026-08-03",
@@ -162,6 +168,7 @@ describe("admin ad campaigns", () => {
     expect(report.placements).toEqual([
       { opportunityCount: "30", placementKey: "schedule--3--7" },
       { opportunityCount: "5", placementKey: "home" },
+      { opportunityCount: "0", placementKey: "cameras--3--7" },
     ]);
     expect(report.selectedPlacement).toMatchObject({
       hourlyDataStartDate: "2026-08-05",
@@ -180,5 +187,34 @@ describe("admin ad campaigns", () => {
       hour: 17,
       opportunityCount: "18",
     });
+  });
+
+  it("drills into measured historical placement keys", async () => {
+    placementMetrics.findAll.mockResolvedValue([
+      {
+        businessDate: "2026-08-03",
+        opportunityCount: "7",
+        placementKey: "retired-placement",
+      },
+    ]);
+    placementHourlyMetrics.findAll.mockResolvedValue([
+      {
+        businessDate: "2026-08-03",
+        businessHour: 9,
+        opportunityCount: "7",
+      },
+    ]);
+
+    const report = await getAdInventoryReport({
+      endDate: "2026-08-03",
+      placementKey: "retired-placement",
+      startDate: "2026-08-03",
+    });
+
+    expect(report.selectedPlacement).toMatchObject({
+      opportunityCount: "7",
+      placementKey: "retired-placement",
+    });
+    expect(report.selectedPlacement?.hourOfDay[9].opportunityCount).toBe("7");
   });
 });

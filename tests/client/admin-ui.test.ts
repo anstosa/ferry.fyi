@@ -41,6 +41,41 @@ const emptyInventoryReport = {
   totalOpportunityCount: "0",
 };
 
+const selectedInventoryReport = {
+  daily: [
+    {
+      businessDate: "2026-08-20",
+      opportunityCount: "30",
+      placementKey: "schedule--5--14",
+    },
+    {
+      businessDate: "2026-08-20",
+      opportunityCount: "20",
+      placementKey: "home",
+    },
+  ],
+  endDate: "2026-08-20",
+  placements: [
+    { opportunityCount: "30", placementKey: "schedule--5--14" },
+    { opportunityCount: "20", placementKey: "home" },
+  ],
+  selectedPlacement: {
+    hourOfDay: Array.from({ length: 24 }, (_value, hour) => ({
+      hour,
+      opportunityCount: hour === 8 ? "30" : "0",
+    })),
+    hourlyDataStartDate: "2026-08-20",
+    opportunityCount: "30",
+    placementKey: "schedule--5--14",
+    weekday: Array.from({ length: 7 }, (_value, index) => ({
+      opportunityCount: index === 3 ? "30" : "0",
+      weekday: index + 1,
+    })),
+  },
+  startDate: "2026-08-20",
+  totalOpportunityCount: "50",
+};
+
 vi.mock("@auth0/auth0-react", () => ({ useAuth0: () => auth }));
 vi.mock("~/components/Page", () => ({
   Page: ({ children }: { children: React.ReactNode }) =>
@@ -157,6 +192,64 @@ describe("Admin", () => {
         .value
     ).toBe("5--14");
     expect(document.activeElement?.id).toBe("admin-ad-slot");
+  });
+
+  it("keeps the displayed placement selected when a drill-down fails", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/admin?placement=schedule--5--14&tab=ads#admin-ad-placement"
+    );
+    api.get.mockImplementation((path: string) => {
+      // load the ad controls
+      if (path === "/admin/ads") {
+        return Promise.resolve({ adsEnabled: true, placements: [] });
+      }
+      // load the campaign list
+      if (path === "/admin/ads/campaigns") {
+        return Promise.resolve([]);
+      }
+      // fail only the replacement drill-down
+      if (path.includes("placementKey=home")) {
+        return Promise.reject(new Error("inventory unavailable"));
+      }
+      // load the selected placement analytics
+      if (path.startsWith("/admin/ads/reports/inventory?")) {
+        return Promise.resolve(selectedInventoryReport);
+      }
+      return Promise.reject(new Error(`Unexpected request: ${path}`));
+    });
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    // render the selected placement
+    await act(async () => {
+      root?.render(React.createElement(Admin));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    const home = [...container.querySelectorAll("button")].find((button) =>
+      button.textContent?.startsWith("Home")
+    );
+
+    // request the failing replacement
+    await act(async () => {
+      home?.click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain(
+      "Could not load advertising inventory analytics"
+    );
+    expect(
+      [...container.querySelectorAll('button[aria-pressed="true"]')].some(
+        (button) =>
+          button.textContent?.includes("Schedule · Clinton → Mukilteo")
+      )
+    ).toBe(true);
+    expect(home?.getAttribute("aria-pressed")).toBe("false");
   });
 
   it("shows an accessible feature-flags skeleton until the initial request completes", async () => {

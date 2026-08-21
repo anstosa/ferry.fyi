@@ -373,8 +373,8 @@ const approximateTCritical = (zScore, degreesOfFreedom) => {
   );
 };
 
-// calculate one wilson score interval
-const wilsonInterval = (successes, attempts, zScore) => {
+// calculate unrounded wilson bounds
+const wilsonBounds = (successes, attempts, zScore) => {
   requireInteger(successes);
   requireInteger(attempts, 1);
   // reject impossible success counts
@@ -392,9 +392,18 @@ const wilsonInterval = (successes, attempts, zScore) => {
         zSquared / (4 * attempts ** 2)
     );
   return {
-    lower: rounded(Math.max(0, center - margin)),
+    lower: Math.max(0, center - margin),
+    upper: Math.min(1, center + margin),
+  };
+};
+
+// format one wilson score interval
+const wilsonInterval = (successes, attempts, zScore) => {
+  const bounds = wilsonBounds(successes, attempts, zScore);
+  return {
+    lower: rounded(bounds.lower),
     method: "wilson-95",
-    upper: rounded(Math.min(1, center + margin)),
+    upper: rounded(bounds.upper),
   };
 };
 
@@ -409,6 +418,10 @@ export const wilsonLower95 = (successes, attempts) => ({
   lower: wilsonInterval(successes, attempts, ONE_SIDED_Z_95).lower,
   method: "wilson-one-sided-lower-95",
 });
+
+// retain exact bounds for release calculations
+export const wilsonLowerBound95 = (successes, attempts) =>
+  wilsonBounds(successes, attempts, ONE_SIDED_Z_95).lower;
 
 // select one two-sided t critical value
 const tCritical95 = (degreesOfFreedom) => {
@@ -786,7 +799,10 @@ const run = () => {
 };
 
 // execute only as the command-line entrypoint
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
   try {
     run();
   } catch {

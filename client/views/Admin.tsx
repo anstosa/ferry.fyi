@@ -871,15 +871,17 @@ export const Admin = (): ReactElement => {
     setAdInventoryError(null);
     setAdInventoryLoading(true);
     try {
-      setAdInventoryReport(
-        await get<AdInventoryReport>(
-          adInventoryReportPath(
-            adInventoryStartDate,
-            adInventoryEndDate,
-            placementKey
-          ),
-          await token()
-        )
+      const report = await get<AdInventoryReport>(
+        adInventoryReportPath(
+          adInventoryStartDate,
+          adInventoryEndDate,
+          placementKey
+        ),
+        await token()
+      );
+      setAdInventoryReport(report);
+      setAdInventoryPlacementKey(
+        report.selectedPlacement?.placementKey ?? null
       );
     } catch {
       setAdInventoryError("Could not load advertising inventory analytics.");
@@ -890,7 +892,6 @@ export const Admin = (): ReactElement => {
 
   // open one placement breakdown
   const selectAdInventoryPlacement = (placementKey: string): void => {
-    setAdInventoryPlacementKey(placementKey);
     loadAdInventoryReport(placementKey).catch(() => undefined);
   };
 
