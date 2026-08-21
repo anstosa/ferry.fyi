@@ -35,6 +35,10 @@ def read_plist(path: Path) -> dict[str, Any]:
 # verify the required-reason declaration
 def verify_privacy_manifest(privacy_manifest: Path) -> None:
     privacy = read_plist(privacy_manifest)
+    require(
+        privacy.get("NSPrivacyTracking") is False,
+        "PrivacyInfo.xcprivacy must declare tracking disabled",
+    )
     accessed_types = privacy.get("NSPrivacyAccessedAPITypes")
     require(
         isinstance(accessed_types, list),
@@ -87,6 +91,10 @@ def verify_app_plist(app_plist: Path) -> None:
     require(
         app.get("AutomaticLeaderboardCheckinsEnabled") is False,
         "Release archive must keep automatic leaderboard check-ins disabled",
+    )
+    require(
+        "NSUserTrackingUsageDescription" not in app,
+        "Release archive must not request App Tracking Transparency authorization",
     )
     background_modes = app.get("UIBackgroundModes", [])
     require(

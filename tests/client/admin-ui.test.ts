@@ -99,6 +99,71 @@ afterEach(() => {
 });
 
 describe("Admin", () => {
+  // preserve actionable mutation failures
+  it("shows the server reason when a confirmed admin action fails", async () => {
+    window.history.replaceState({}, "", "/admin?tab=ads");
+    api.get.mockImplementation((path: string) => {
+      // load the ad controls
+      if (path === "/admin/ads") {
+        return Promise.resolve({ adsEnabled: true, placements: [] });
+      }
+      // load the campaign list
+      if (path === "/admin/ads/campaigns") {
+        return Promise.resolve([]);
+      }
+      // load default inventory analytics
+      if (path.startsWith("/admin/ads/reports/inventory?")) {
+        return Promise.resolve(emptyInventoryReport);
+      }
+      return Promise.reject(new Error(`Unexpected request: ${path}`));
+    });
+    api.put.mockRejectedValue({
+      data: { error: "Campaign schedule overlaps an existing campaign" },
+    });
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    // render the advertising controls
+    await act(async () => {
+      root?.render(React.createElement(Admin));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    const save = [...container.querySelectorAll("button")].find(
+      (button) => button.textContent === "Save global ad switch"
+    );
+    // open the typed confirmation dialog
+    await act(async () => {
+      save?.click();
+    });
+    const confirmation = container.querySelector(
+      '[aria-label="Confirmation for Save global ad switch"]'
+    ) as HTMLInputElement;
+    // enter the canonical phrase
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "value"
+      )?.set?.call(confirmation, "CONFIRM save-ad-settings ads:global");
+      confirmation.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    const confirmedSave = [...container.querySelectorAll("button")].find(
+      (button) =>
+        button.textContent === "Save global ad switch" && button !== save
+    );
+    // submit the failing request
+    await act(async () => {
+      confirmedSave?.click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(container.textContent).toContain(
+      "Campaign schedule overlaps an existing campaign"
+    );
+  });
+
   it("offers only truthful canned User-Agent profiles for ticket lookup", async () => {
     window.history.replaceState({}, "", "/admin?tab=tickets");
     api.get.mockImplementation((path: string) => {

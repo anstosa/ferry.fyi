@@ -10,7 +10,7 @@ export const PrivacyPolicy = (): ReactElement => (
     <SeoHelmet seo={getSeoMetadata("/privacy")} />
 
     <p className="mt-4 text-sm">
-      Last updated: <time dateTime="2026-08-18">August 18, 2026</time>
+      Last updated: <time dateTime="2026-08-21">August 21, 2026</time>
     </p>
     <p className="mt-4">
       Ferry FYI provides Washington State Ferries schedules, service
@@ -80,17 +80,33 @@ export const PrivacyPolicy = (): ReactElement => (
       We use Google Analytics to understand aggregate use of Ferry FYI and
       Sentry to diagnose errors and improve reliability. These services may
       receive information such as pages viewed, device and browser details, IP
-      address, and error details. Ferry FYI also uses local storage and cached
-      data to remember app preferences and support offline use.
+      address, and error details. Ferry FYI disables Google advertising signals,
+      advertising storage, advertising user data, and ad personalization for
+      these analytics. Google Analytics is not used to select or measure Ferry
+      FYI advertisements. Ferry FYI also uses local storage and cached data to
+      remember app preferences and support offline use.
     </p>
-    <h3 className="font-bold mt-4">Advertising interactions</h3>
+    <h3 className="font-bold mt-4" id="advertising">
+      Advertising interactions
+    </h3>
     <p className="mt-2">
-      Ferry FYI may display advertisements selected from the route, terminal, or
-      page you are viewing. We may measure aggregate campaign activity such as
-      whether an advertisement was viewable and whether its website, directions,
-      call, or offer link was selected. We do not use account information,
-      precise location, saved tickets, notification settings, or activity across
+      Ferry FYI may display advertisements selected only from the current page
+      and, where applicable, the route direction you are viewing. Ferry FYI
+      serves and measures these advertisements directly without a third-party ad
+      network or advertising SDK. We may measure aggregate campaign activity
+      such as whether an advertisement was viewable and whether its website,
+      directions, call, or offer link was selected. We do not use account
+      information, advertising identifiers, precise location, saved tickets,
+      notification settings, earlier Ferry FYI activity, or activity across
       other websites to select advertisements.
+    </p>
+    <p className="mt-2">
+      Ad measurement uses a random exposure token that is not an account,
+      device, browser, visitor, or session identifier. Ferry FYI stores only a
+      one-way hash of that token with the campaign and page or route placement
+      needed to suppress duplicate counts. The validation record expires after
+      two hours and is deleted by the bounded cleanup job. Advertisers receive
+      aggregate reports rather than token-level or person-level records.
     </p>
     <h3 className="font-bold mt-4">
       Third-party map and notification services
@@ -134,9 +150,9 @@ export const PrivacyPolicy = (): ReactElement => (
       for one continuous second. Ferry FYI stores campaign measurements as daily
       totals and placement opportunities as daily and Pacific-hour totals.
       Short-lived anonymous validation tokens suppress duplicate counts and
-      expire automatically; they are not account, visitor, or session histories.
-      Campaign reports are informational and do not represent unique people,
-      audited fraud-free traffic, or billable delivery.
+      expire after two hours; they are not account, device, browser, visitor, or
+      session histories. Campaign reports are informational and do not represent
+      unique people, audited fraud-free traffic, or billable delivery.
     </p>
 
     <h2 className="font-bold text-lg mt-8">
@@ -185,7 +201,9 @@ export const PrivacyPolicy = (): ReactElement => (
     <p className="mt-2">
       Ferry FYI reviews advertisements before publication and may reject, pause,
       or remove an advertisement that conflicts with this policy, creates a
-      safety or trust concern, or receives substantiated complaints.
+      safety or trust concern, or receives substantiated complaints. Every
+      displayed advertisement includes a report link for inappropriate or
+      age-inappropriate content.
     </p>
 
     <h2 className="font-bold text-lg mt-8">Your choices and retention</h2>

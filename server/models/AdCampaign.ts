@@ -7,6 +7,7 @@ export class AdCampaign extends Model {
   advertiserName!: string;
   arrivalTerminalId!: string | null;
   body!: string;
+  ctaLabel!: string;
   departureTerminalId!: string | null;
   endedEarlyAt!: Date | null;
   endsAt!: Date;
@@ -24,6 +25,7 @@ AdCampaign.init(
     advertiserName: { allowNull: false, type: DataTypes.STRING },
     arrivalTerminalId: { allowNull: true, type: DataTypes.STRING },
     body: { allowNull: false, type: DataTypes.TEXT },
+    ctaLabel: { allowNull: false, defaultValue: "", type: DataTypes.STRING },
     departureTerminalId: { allowNull: true, type: DataTypes.STRING },
     endedEarlyAt: { allowNull: true, type: DataTypes.DATE },
     endsAt: { allowNull: false, type: DataTypes.DATE },

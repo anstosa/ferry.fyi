@@ -2,6 +2,9 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!-- first-party contextual ads never track people across apps or websites -->
+	<key>NSPrivacyTracking</key>
+	<false/>
 	<key>NSPrivacyAccessedAPITypes</key>
 	<array>
 		<!-- declare absolute event timestamp use -->

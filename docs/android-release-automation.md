@@ -32,6 +32,11 @@ handling enabled. Release builds upload obfuscation mappings to the existing
 `SENTRY_DSN` remains a repository Actions variable and the auth token remains a
 secret.
 
+Before the first advertising-enabled store build, complete the Google Play
+declarations in `docs/app-store-advertising.md`. Repeat that checklist whenever
+advertising selection, measurement, sharing, creative formats, or surfaces
+change.
+
 ## Releasing
 
 Use either of these triggers:

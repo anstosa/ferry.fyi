@@ -10,6 +10,17 @@ interface Props extends AnchorHTMLAttributes<HTMLAnchorElement> {
   creative: AdCampaignCreative;
 }
 
+const AD_REPORT_EMAIL = "dev@ferry.fyi";
+
+// build one privacy-safe ad report draft
+const getAdReportHref = (creative: AdCampaignCreative): string => {
+  const parameters = new URLSearchParams({
+    body: `Please describe the concern with this advertisement.\n\nAdvertiser: ${creative.advertiserName}\nCampaign: ${creative.campaignId}\nPlacement: ${creative.placementKey}`,
+    subject: `Report Ferry FYI advertisement from ${creative.advertiserName}`,
+  });
+  return `mailto:${AD_REPORT_EMAIL}?${parameters.toString()}`;
+};
+
 /** Shared cache-safe ad markup used by both SSR and the measured browser slot. */
 export const AdCreativeCard = forwardRef<HTMLAnchorElement, Props>(
   (
@@ -47,7 +58,19 @@ export const AdCreativeCard = forwardRef<HTMLAnchorElement, Props>(
           ) : null}
         </a>
         <p className="mt-1 text-right text-2xs font-semibold text-sponsor-dark dark:text-sponsor-light">
-          Advertisement
+          <span>Advertisement</span>
+          <span aria-hidden="true"> · </span>
+          <a className="link" href="/privacy#advertising">
+            Why this ad?
+          </a>
+          <span aria-hidden="true"> · </span>
+          <a
+            aria-label={`Report advertisement from ${creative.advertiserName}`}
+            className="link"
+            href={getAdReportHref(creative)}
+          >
+            Report ad
+          </a>
         </p>
       </aside>
     );

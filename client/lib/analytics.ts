@@ -9,6 +9,16 @@ type GoogleAnalytics = typeof ReactGA;
 
 const queuedEvents: AnalyticsEvent[] = [];
 const engagementEvents = ["keydown", "pointerdown", "scroll", "touchstart"];
+const googleConsentDefaults = {
+  ad_personalization: "denied",
+  ad_storage: "denied",
+  ad_user_data: "denied",
+  analytics_storage: "granted",
+} as const;
+const googleAdvertisingFeatureDefaults = {
+  allow_ad_personalization_signals: false,
+  allow_google_signals: false,
+} as const;
 let analyticsActivated = false;
 let analyticsDeferred = false;
 let analyticsPromise: Promise<GoogleAnalytics | null> | null = null;
@@ -41,6 +51,7 @@ const reportToGoogleAnalytics = (
   ReactGA.event({ category: event.category, action: event.label });
 };
 
+// load analytics without advertising features
 const loadGoogleAnalytics = async (): Promise<GoogleAnalytics | null> => {
   const measurementId = process.env.GOOGLE_ANALYTICS;
   if (!measurementId) {
@@ -48,11 +59,31 @@ const loadGoogleAnalytics = async (): Promise<GoogleAnalytics | null> => {
   }
   const { default: ReactGA } = await import("react-ga4");
 
-  ReactGA.initialize(measurementId);
+  ReactGA.initialize(measurementId, {
+    gaOptions: {
+      allowAdFeatures: false,
+      allowAdPersonalizationSignals: false,
+    },
+  });
   return ReactGA;
 };
 
+// deny google advertising data use before any tag loads
+const setDefaultGoogleConsent = (): void => {
+  window.dataLayer = window.dataLayer ?? [];
+  // preserve the gtag arguments-object command format
+  const gtag: (...values: unknown[]) => void = function (): void {
+    // google tag requires arguments-object commands
+    // eslint-disable-next-line prefer-rest-params
+    window.dataLayer?.push(arguments);
+  };
+  gtag("consent", "default", googleConsentDefaults);
+  gtag("set", googleAdvertisingFeatureDefaults);
+};
+
+// prepare consent before the deferred tag manager load
 const prepareGoogleTagManager = (): void => {
+  setDefaultGoogleConsent();
   const containerId = process.env.GTM_CONTAINER_ID;
   if (!containerId) {
     return;

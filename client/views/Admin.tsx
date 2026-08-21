@@ -53,6 +53,29 @@ const formatAdCampaignTime = (value: string): string =>
     .setZone(AD_TIME_ZONE)
     .toFormat("MMM d, yyyy, h:mm a ZZZZ");
 
+// surface one actionable admin failure
+const adminActionErrorMessage = (error: unknown): string => {
+  // prefer one bounded server explanation
+  if (error && typeof error === "object" && "data" in error) {
+    const { data } = error;
+    // validate the api error envelope
+    if (
+      data &&
+      typeof data === "object" &&
+      "error" in data &&
+      typeof data.error === "string" &&
+      data.error.trim()
+    ) {
+      return data.error.trim().slice(0, 300);
+    }
+  }
+  // preserve local validation details
+  if (error instanceof Error && error.message.trim()) {
+    return error.message.trim().slice(0, 300);
+  }
+  return "The server did not complete this admin action.";
+};
+
 // build one bounded inventory query
 const adInventoryReportPath = (
   startDate: string,
@@ -492,8 +515,8 @@ const ConfirmButton = ({
       await onConfirm();
       setConfirmation("");
       setOpen(false);
-    } catch {
-      setError("The server did not complete this admin action.");
+    } catch (caught) {
+      setError(adminActionErrorMessage(caught));
     } finally {
       setSaving(false);
     }

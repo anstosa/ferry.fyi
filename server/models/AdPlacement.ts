@@ -7,6 +7,7 @@ export class AdPlacement extends Model {
   advertiserName!: string;
   arrivalTerminalId!: string | null;
   body!: string;
+  ctaLabel!: string;
   departureTerminalId!: string | null;
   enabled!: boolean;
   headline!: string;
@@ -24,6 +25,11 @@ AdPlacement.init(
     },
     arrivalTerminalId: { allowNull: true, type: DataTypes.STRING },
     body: { allowNull: false, defaultValue: "", type: DataTypes.TEXT },
+    ctaLabel: {
+      allowNull: false,
+      defaultValue: "",
+      type: DataTypes.STRING,
+    },
     departureTerminalId: { allowNull: true, type: DataTypes.STRING },
     enabled: { allowNull: false, defaultValue: false, type: DataTypes.BOOLEAN },
     headline: { allowNull: false, defaultValue: "", type: DataTypes.STRING },

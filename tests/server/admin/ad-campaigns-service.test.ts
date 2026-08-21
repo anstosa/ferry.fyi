@@ -42,6 +42,7 @@ const placement = {
   advertiserName: "Island Coffee",
   arrivalTerminalId: "7",
   body: "Open early",
+  ctaLabel: "Visit the cafe",
   departureTerminalId: "3",
   headline: "Coffee near the terminal",
   key: "schedule--3--7",
@@ -82,6 +83,7 @@ describe("admin ad campaigns", () => {
     expect(campaigns.create).toHaveBeenCalledWith(
       expect.objectContaining({
         advertiserName: "Island Coffee",
+        ctaLabel: "Visit the cafe",
         placementKey: placement.key,
         reportName: "September sponsor",
         targetUrl: "https://example.com/menu",

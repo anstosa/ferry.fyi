@@ -245,6 +245,14 @@ global `ads:global` target or the exact `ad:<placement-key>` target. The admin
 surface does not provide arbitrary HTML, scripts, tracking tags, or image
 uploads.
 
+Every enabled creative identifies the advertiser, is labeled `Advertisement`,
+links to an explanation that selection uses only the current page or route, and
+provides a `Report ad` email action. Before launch, verify the advertiser
+identity, destination, creative, and landing page against the assigned Google
+Play and App Store age ratings. Monitor
+`dev@ferry.fyi` while a campaign is active and pause a campaign immediately for
+a credible policy, safety, age-appropriateness, or destination complaint.
+
 Scheduling creates an immutable campaign snapshot with an ordered placement,
 creative, HTTPS destination, start, and end. Overlapping campaigns for one
 placement are rejected. Ending a campaign early is irreversible; collected
@@ -274,6 +282,11 @@ aggregate-only, non-cacheable, non-indexable, and excluded from the main SPA and
 analytics. Never put report or exposure secrets in logs, analytics, query
 strings, support messages, `llms.txt`, OpenAPI, or sitemap entries.
 
+Complete `docs/app-store-advertising.md` before enabling the persisted global
+switch for the first production app-store advertising release. Revisit that
+checklist whenever selection, measurement, data sharing, creative formats,
+destinations, or ad surfaces change.
+
 ## Deliberate no-audit policy
 
 This suite does not keep an actor/action audit history. It does not retain typed
@@ -299,6 +312,8 @@ When adding or changing an admin capability:
 6. Keep draft/disabled advertising creative out of anonymous responses,
    preserve ordered departure/arrival keys, and keep report hosts/secrets out of
    discovery and the main app runtime.
-7. Update this guide, `docs/leaderboards.md` when leaderboard behavior changes,
+7. Re-run `docs/app-store-advertising.md` before changing any advertising data,
+   selection, measurement, sharing, creative, or surface behavior.
+8. Update this guide, `docs/leaderboards.md` when leaderboard behavior changes,
    `client/static/llms.txt` when a public page or AI-useful API changes, and
    focused tests and migrations as applicable.

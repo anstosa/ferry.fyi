@@ -198,6 +198,7 @@ describe("AdSlot", () => {
     );
   });
 
+  // verify contextual disclosure and reporting
   it("matches route advertisements by direction", async () => {
     api.post.mockResolvedValue({
       creative: {
@@ -225,9 +226,25 @@ describe("AdSlot", () => {
     expect(container.querySelector("form")).toBeNull();
     expect(container.querySelector(".button-primary")).toBeNull();
     const disclosure = clickTarget?.nextElementSibling;
-    expect(disclosure?.textContent).toBe("Advertisement");
+    expect(disclosure?.textContent).toBe(
+      "Advertisement · Why this ad? · Report ad"
+    );
     expect(disclosure?.tagName).toBe("P");
-    expect(container.querySelector('a[href="/privacy"]')).toBeNull();
+    expect(
+      container.querySelector('a[href="/privacy#advertising"]')?.textContent
+    ).toBe("Why this ad?");
+    const reportLink = container.querySelector<HTMLAnchorElement>(
+      'a[aria-label="Report advertisement from Island Coffee"]'
+    );
+    const reportUrl = new URL(reportLink?.href ?? "");
+    expect(reportUrl.protocol).toBe("mailto:");
+    expect(reportUrl.pathname).toBe("dev@ferry.fyi");
+    expect(reportUrl.searchParams.get("body")).toContain(
+      "Campaign: 5ed338e9-acbb-4cca-9380-1a923bfca5c8"
+    );
+    expect(reportUrl.searchParams.get("body")).toContain(
+      "Placement: schedule--5--14"
+    );
 
     clickTarget?.addEventListener("click", (event) => event.preventDefault());
     act(() => {

@@ -15,5 +15,5 @@ declare module "*.png?inline" {
 declare module "*.scss";
 
 interface Window {
-  dataLayer?: Array<Record<string, unknown>>;
+  dataLayer?: unknown[];
 }

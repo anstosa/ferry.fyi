@@ -11,6 +11,7 @@ from pathlib import Path
 
 ANDROID_NAMESPACE = "http://schemas.android.com/apk/res/android"
 ANDROID_ATTRIBUTE = f"{{{ANDROID_NAMESPACE}}}"
+GOOGLE_ADVERTISING_ID_PERMISSION = "com.google.android.gms.permission.AD_ID"
 
 
 # stop on a violated build contract
@@ -127,6 +128,10 @@ def verify_built_manifest(built_manifest: Path, capability_enabled: bool) -> Non
     require(
         "android.permission.FOREGROUND_SERVICE_LOCATION" not in permissions,
         "native builds must not request a location foreground service",
+    )
+    require(
+        GOOGLE_ADVERTISING_ID_PERMISSION not in permissions,
+        "first-party contextual ads must not request the Google advertising ID",
     )
 
     application = manifest.find("application")

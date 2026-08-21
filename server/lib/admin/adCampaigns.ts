@@ -120,6 +120,7 @@ export const scheduleAdCampaign = async (
         advertiserName: placement.advertiserName,
         arrivalTerminalId: placement.arrivalTerminalId,
         body: placement.body,
+        ctaLabel: placement.ctaLabel,
         departureTerminalId: placement.departureTerminalId,
         endsAt,
         headline: placement.headline,

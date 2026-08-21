@@ -17,7 +17,7 @@ describe("privacy and advertising policy", () => {
     );
 
     expect(html).toContain(
-      '<time dateTime="2026-08-18">August 18, 2026</time>'
+      '<time dateTime="2026-08-21">August 21, 2026</time>'
     );
     expect(html).toContain("cached with the account");
     expect(html).toContain("a ticket looked up");
@@ -25,6 +25,11 @@ describe("privacy and advertising policy", () => {
     expect(html).toContain("Account &gt; Delete account");
     expect(html).toContain("cannot be linked back to the");
     expect(html).toContain("Advertising interactions");
+    expect(html).toContain("without a third-party ad network");
+    expect(html).toContain("advertising identifiers");
+    expect(html).toContain("one-way hash of that token");
+    expect(html).toContain("expires after two hours");
+    expect(html).toContain("Google advertising signals");
     expect(html).toContain(
       "We do not provide advertisers with personal information"
     );
@@ -54,5 +59,6 @@ describe("privacy and advertising policy", () => {
     expect(html).toContain("political candidate, party, ballot measure");
     expect(html).toContain("resemble official ferry alerts");
     expect(html).toContain("may reject, pause, or remove an advertisement");
+    expect(html).toContain("includes a report link");
   });
 });
