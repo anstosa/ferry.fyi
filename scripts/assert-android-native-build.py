@@ -12,6 +12,7 @@ from pathlib import Path
 ANDROID_NAMESPACE = "http://schemas.android.com/apk/res/android"
 ANDROID_ATTRIBUTE = f"{{{ANDROID_NAMESPACE}}}"
 GOOGLE_ADVERTISING_ID_PERMISSION = "com.google.android.gms.permission.AD_ID"
+GOOGLE_PLAY_BILLING_PERMISSION = "com.android.vending.BILLING"
 
 
 # stop on a violated build contract
@@ -133,9 +134,29 @@ def verify_built_manifest(built_manifest: Path, capability_enabled: bool) -> Non
         GOOGLE_ADVERTISING_ID_PERMISSION not in permissions,
         "first-party contextual ads must not request the Google advertising ID",
     )
+    require(
+        GOOGLE_PLAY_BILLING_PERMISSION in permissions,
+        "RevenueCat builds must include Google Play Billing",
+    )
 
     application = manifest.find("application")
     require(application is not None, "built manifest has no application element")
+    # find the purchase return activity
+    main_activity = next(
+        (
+            activity
+            # inspect every merged activity
+            for activity in application.findall("activity")
+            # select the primary activity
+            if android_attribute(activity, "name") == "fyi.ferry.MainActivity"
+        ),
+        None,
+    )
+    require(main_activity is not None, "built manifest has no Ferry FYI activity")
+    require(
+        android_attribute(main_activity, "launchMode") == "singleTop",
+        "RevenueCat purchase returns require MainActivity launchMode singleTop",
+    )
     expected_receivers = {
         "fyi.ferry.leaderboards.AutomaticGeofenceReceiverV1",
         "fyi.ferry.leaderboards.AutomaticBootReceiverV1",

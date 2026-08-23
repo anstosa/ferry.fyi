@@ -20,6 +20,7 @@ dependencies {
     implementation project(':capacitor-share')
     implementation project(':capawesome-capacitor-app-update')
     implementation project(':capgo-capacitor-updater')
+    implementation project(':revenuecat-purchases-capacitor')
     implementation project(':sentry-capacitor')
 
 }

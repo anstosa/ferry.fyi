@@ -44,6 +44,10 @@
 		"classpath": "ee.forgr.capacitor_updater.CapacitorUpdaterPlugin"
 	},
 	{
+		"pkg": "@revenuecat/purchases-capacitor",
+		"classpath": "com.revenuecat.purchases.capacitor.PurchasesPlugin"
+	},
+	{
 		"pkg": "@sentry/capacitor",
 		"classpath": "io.sentry.capacitor.SentryCapacitor"
 	}

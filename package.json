@@ -21,6 +21,7 @@
     "@capacitor/share": "^8.0.1",
     "@capawesome/capacitor-app-update": "8.0.3",
     "@capgo/capacitor-updater": "^8.50.2",
+    "@revenuecat/purchases-capacitor": "13.4.1",
     "@sentry/capacitor": "4.2.0",
     "@sentry/react": "10.60.0",
     "compression": "^1.8.1",

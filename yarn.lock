@@ -2876,6 +2876,18 @@
   resolved "https://registry.yarnpkg.com/@redocly/cli/-/cli-2.43.3.tgz#09d6d1a88aa71036d1ecabb2ebcbfca625054061"
   integrity sha512-c6qQnH7N29FkpBAFDw+7cAsR+F5LXWWuS66BzHuC7zUsqqeZeUVxONRAAZHzwWG/N1zuqXMQZigVIh+ZC4OIFg==
 
+"@revenuecat/purchases-capacitor@13.4.1":
+  version "13.4.1"
+  resolved "https://registry.yarnpkg.com/@revenuecat/purchases-capacitor/-/purchases-capacitor-13.4.1.tgz#74db52255e6579496f26d4a8859a8d9b970659d3"
+  integrity sha512-S8I0T1P3jr7ONxhn3V0UP4yoVLQAApu/+4abHDzBFHg127ipn4OKqSqJqdtXxN8QLfuAUQW3SAEzO9bLRNj/Iw==
+  dependencies:
+    "@revenuecat/purchases-typescript-internal-esm" "18.31.0"
+
+"@revenuecat/purchases-typescript-internal-esm@18.31.0":
+  version "18.31.0"
+  resolved "https://registry.yarnpkg.com/@revenuecat/purchases-typescript-internal-esm/-/purchases-typescript-internal-esm-18.31.0.tgz#eb7ce7e775e7064b21fcf1d5f52094f91f8e3bd4"
+  integrity sha512-EveTVQoT0oVa7Ex5fjBJ6UMLh00FT5s2Ta8lsm7DZ+NB+YXGRVtkkX76VQ1qh/F/qFpTDvLr2mpYWOhUYQi/ew==
+
 "@rolldown/binding-android-arm64@1.0.3":
   version "1.0.3"
   resolved "https://registry.yarnpkg.com/@rolldown/binding-android-arm64/-/binding-android-arm64-1.0.3.tgz#54ce8f8382213f4a314a0c2f7ba83f81ffeae592"
