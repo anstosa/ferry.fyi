@@ -13,6 +13,7 @@ ANDROID_NAMESPACE = "http://schemas.android.com/apk/res/android"
 ANDROID_ATTRIBUTE = f"{{{ANDROID_NAMESPACE}}}"
 GOOGLE_ADVERTISING_ID_PERMISSION = "com.google.android.gms.permission.AD_ID"
 GOOGLE_PLAY_BILLING_PERMISSION = "com.android.vending.BILLING"
+SINGLE_TOP_LAUNCH_MODES = {"singleTop", "1"}
 
 
 # stop on a violated build contract
@@ -154,7 +155,8 @@ def verify_built_manifest(built_manifest: Path, capability_enabled: bool) -> Non
     )
     require(main_activity is not None, "built manifest has no Ferry FYI activity")
     require(
-        android_attribute(main_activity, "launchMode") == "singleTop",
+        # accept source and packaged enum forms
+        android_attribute(main_activity, "launchMode") in SINGLE_TOP_LAUNCH_MODES,
         "RevenueCat purchase returns require MainActivity launchMode singleTop",
     )
     expected_receivers = {
