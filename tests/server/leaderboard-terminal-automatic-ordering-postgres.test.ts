@@ -41,6 +41,7 @@ const addPolicyGeneration = require("../../server/migrations/20260817000600-add-
 const addExpiryObservedAt = require("../../server/migrations/20260817000700-add-expiry-observed-at-to-leaderboard-automatic-enrollments.js");
 const restrictEnrollmentDeletion = require("../../server/migrations/20260817000800-restrict-automatic-receipt-enrollment-deletion.js");
 const storeFinalPolicyGeneration = require("../../server/migrations/20260817000900-store-final-policy-generation-on-automatic-receipts.js");
+const createSupporterBilling = require("../../server/migrations/20260823000100-create-supporter-billing.js");
 
 const externalDatabaseUrl =
   process.env.LEADERBOARD_TERMINAL_AUTOMATIC_ORDERING_TEST_DATABASE_URL;
@@ -264,6 +265,8 @@ describePostgres("terminal automatic ordering Postgres integration", () => {
     await addExpiryObservedAt.up(queryInterface, Sequelize);
     await restrictEnrollmentDeletion.up(queryInterface, Sequelize);
     await storeFinalPolicyGeneration.up(queryInterface, Sequelize);
+    // keep isolated profile schema current
+    await createSupporterBilling.up(queryInterface, Sequelize);
 
     const checkinModule =
       await import("../../server/models/LeaderboardCheckin");
