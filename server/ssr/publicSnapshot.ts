@@ -830,6 +830,8 @@ export const createPublicSsrSnapshotLoader = ({
         case "privacy":
         case "forecasting":
         case "support":
+        case "supporter":
+        case "terms":
           // load editorial support content
           sources.editorial = source("editorial", editorial());
           break;

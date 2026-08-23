@@ -302,6 +302,8 @@ describe("public SSR snapshot loader", () => {
     ["/privacy", "privacy"],
     ["/forecasting", "forecasting"],
     ["/support", "support"],
+    ["/supporter", "supporter"],
+    ["/terms", "terms"],
   ])(
     "builds editorial-only %s snapshots without operational calls",
     async (path, routeId) => {
