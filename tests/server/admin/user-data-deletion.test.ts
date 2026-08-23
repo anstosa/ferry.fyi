@@ -1,12 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const transaction = { id: "deletion-transaction" };
+const transaction = { id: "deletion-transaction", LOCK: { UPDATE: "UPDATE" } };
 // share deletion mocks
 const db = vi.hoisted(() => ({ transaction: vi.fn() }));
 const privacy = vi.hoisted(() => ({ anonymizeLeaderboardAccount: vi.fn() }));
 // hoist policy locks
 const policy = vi.hoisted(() => ({ lockLeaderboardAutomaticPolicy: vi.fn() }));
-const revocation = vi.hoisted(() => ({ revokeApplicationTokens: vi.fn() }));
+const revocation = vi.hoisted(() => ({
+  lockSubjectAuthorization: vi.fn(),
+  revokeApplicationTokens: vi.fn(),
+}));
+const supporter = vi.hoisted(() => ({ detachSupporterCustomer: vi.fn() }));
+const supporterCustomer = vi.hoisted(() => ({ findOne: vi.fn() }));
+const supporterWork = vi.hoisted(() => ({ findAll: vi.fn() }));
+const supporterSubscription = vi.hoisted(() => ({ findAll: vi.fn() }));
 const settings = vi.hoisted(() => ({ destroy: vi.fn() }));
 const tickets = vi.hoisted(() => ({ destroy: vi.fn() }));
 const allowlist = vi.hoisted(() => ({ destroy: vi.fn() }));
@@ -18,6 +25,16 @@ vi.mock("~/lib/leaderboardPrivacy", () => privacy);
 // bind policy locks
 vi.mock("~/lib/leaderboardAutomaticPolicy", () => policy);
 vi.mock("~/lib/admin/sessionRevocation", () => revocation);
+vi.mock("~/lib/supporter", () => supporter);
+vi.mock("~/models/SupporterCustomer", () => ({
+  SupporterCustomer: supporterCustomer,
+}));
+vi.mock("~/models/SupporterReconcileWork", () => ({
+  SupporterReconcileWork: supporterWork,
+}));
+vi.mock("~/models/SupporterSubscription", () => ({
+  SupporterSubscription: supporterSubscription,
+}));
 vi.mock("~/models/UserSettings", () => ({ UserSettings: settings }));
 vi.mock("~/models/UserTicket", () => ({ UserTicket: tickets }));
 vi.mock("~/models/FeatureFlagAllowlist", () => ({
@@ -26,6 +43,7 @@ vi.mock("~/models/FeatureFlagAllowlist", () => ({
 vi.mock("~/lib/auth0Admin", () => auth0);
 
 import {
+  ContinuingBillingAcknowledgementRequiredError,
   deleteFerryUserAccount,
   deleteFerryUserData,
 } from "../../../server/lib/accountDeletion";
@@ -45,6 +63,11 @@ describe("owner user-data deletion service", () => {
       expiresAt: "2026-07-25T00:00:00.000Z",
       status: "complete",
     });
+    revocation.lockSubjectAuthorization.mockReset().mockResolvedValue(undefined);
+    supporter.detachSupporterCustomer.mockReset().mockResolvedValue(undefined);
+    supporterCustomer.findOne.mockReset().mockResolvedValue(null);
+    supporterWork.findAll.mockReset().mockResolvedValue([]);
+    supporterSubscription.findAll.mockReset().mockResolvedValue([]);
     policy.lockLeaderboardAutomaticPolicy.mockReset().mockResolvedValue({
       transaction,
     });
@@ -64,6 +87,10 @@ describe("owner user-data deletion service", () => {
     expect(revocation.revokeApplicationTokens).toHaveBeenCalledWith(
       "auth0|person",
       expect.any(Date),
+      transaction
+    );
+    expect(supporter.detachSupporterCustomer).toHaveBeenCalledWith(
+      "auth0|person",
       transaction
     );
     expect(privacy.anonymizeLeaderboardAccount).toHaveBeenCalledWith(
@@ -146,6 +173,20 @@ describe("owner user-data deletion service", () => {
     expect(settings.destroy.mock.invocationCallOrder[0]).toBeLessThan(
       auth0.deleteAuth0User.mock.invocationCallOrder[0]
     );
+  });
+
+  // require billing continuity acknowledgement
+  it("blocks account deletion while continuing billing is unacknowledged", async () => {
+    supporterCustomer.findOne.mockResolvedValueOnce({ id: "customer-1" });
+    supporterWork.findAll.mockResolvedValueOnce([
+      { environment: "production", state: "pending" },
+    ]);
+
+    await expect(deleteFerryUserAccount("auth0|person")).rejects.toBeInstanceOf(
+      ContinuingBillingAcknowledgementRequiredError
+    );
+    expect(auth0.deleteAuth0User).not.toHaveBeenCalled();
+    expect(settings.destroy).not.toHaveBeenCalled();
   });
 
   // surface identity deletion failure

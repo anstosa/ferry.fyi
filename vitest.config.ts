@@ -42,6 +42,10 @@ export default defineConfig({
         replacement: path.resolve(__dirname, "client/lib/$1"),
       },
       {
+        find: /^~\/lib\/(revenueCat|supporter)$/,
+        replacement: path.resolve(__dirname, "server/lib/$1"),
+      },
+      {
         find: /^~\/components\/DateButton$/,
         replacement: path.resolve(__dirname, "client/components/DateButton"),
       },

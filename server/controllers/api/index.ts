@@ -21,6 +21,7 @@ import { automaticLeaderboardNativeRouter } from "./leaderboardAutomaticNative";
 import { leaderboardRouter } from "./leaderboards";
 import { otaRouter } from "./ota";
 import { scheduleRouter } from "./schedule";
+import { supporterRouter } from "./supporter";
 import { terminalRouter } from "./terminals";
 import { ticketRouter } from "./tickets";
 import { userRouter } from "./user";
@@ -38,7 +39,7 @@ apiRouter.use(denyUntrustedSensitivePreflight);
 apiRouter.use(createApiRateLimitMiddleware());
 
 apiRouter.use("/cameras", cameraRouter);
-apiRouter.use("/ads", adsRouter);
+apiRouter.use("/ads", assignOptionalAuthUser, adsRouter);
 apiRouter.use("/vessels", vesselRouter);
 apiRouter.use("/terminals", terminalRouter);
 apiRouter.use("/schedule", scheduleRouter);
@@ -53,6 +54,7 @@ if (process.env.NODE_ENV === "development") {
 apiRouter.use("/admin", preventAdminCaching, requireAuth, adminRouter);
 apiRouter.use("/ios-migration", requireAuth, iosMigrationRouter);
 apiRouter.use("/user", requireAuth, userRouter);
+apiRouter.use("/supporter", requireAuth, supporterRouter);
 
 apiRouter.use(apiNotFound);
 apiRouter.use(apiErrorHandler);

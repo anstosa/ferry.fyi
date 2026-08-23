@@ -62,6 +62,12 @@ const Install = lazy(loadInstall);
 const loadSupport = () =>
   import("~/views/Support").then(({ Support }) => ({ default: Support }));
 const Support = lazy(loadSupport);
+const loadSupporter = () =>
+  import("~/views/Supporter").then(({ Supporter }) => ({ default: Supporter }));
+const Supporter = lazy(loadSupporter);
+const loadTerms = () =>
+  import("~/views/Terms").then(({ Terms }) => ({ default: Terms }));
+const Terms = lazy(loadTerms);
 const loadForecastingExplained = () =>
   import("~/views/ForecastingExplained").then(({ ForecastingExplained }) => ({
     default: ForecastingExplained,
@@ -155,6 +161,16 @@ export const preloadBrowserRoute = async (
     await loadSupport();
     return;
   }
+  // supporter preload
+  if (pathname === "/supporter") {
+    await loadSupporter();
+    return;
+  }
+  // terms preload
+  if (pathname === "/terms") {
+    await loadTerms();
+    return;
+  }
   if (
     /^\/[^/]+(?:\/[^/]+)?(?:\/(?:cameras|terminal|fare|map|alerts|subscribe))?\/?$/.test(
       pathname
@@ -219,6 +235,10 @@ const browserRouteElement = (route: PublicSsrRouteDefinition): ReactElement => {
       return <ForecastingExplained />;
     case "support":
       return <Support />;
+    case "supporter":
+      return <Supporter />;
+    case "terms":
+      return <Terms />;
     case "unknown-public-path":
       return <NotFound />;
     default:
@@ -274,7 +294,9 @@ const universalRouteElement = (
     route.id === "install" ||
     route.id === "privacy" ||
     route.id === "forecasting" ||
-    route.id === "support"
+    route.id === "support" ||
+    route.id === "supporter" ||
+    route.id === "terms"
   ) {
     return <PublicEditorialPage page={route.id} />;
   }

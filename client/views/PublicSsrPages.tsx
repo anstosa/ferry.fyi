@@ -635,7 +635,13 @@ export const PublicHome = (): ReactElement => {
 };
 
 const EDITORIAL_PAGES: Record<
-  "data-sources" | "install" | "privacy" | "forecasting" | "support",
+  | "data-sources"
+  | "install"
+  | "privacy"
+  | "forecasting"
+  | "support"
+  | "supporter"
+  | "terms",
   { body: string; path: string; title: string }
 > = {
   "data-sources": {
@@ -662,6 +668,16 @@ const EDITORIAL_PAGES: Record<
     body: "Ferry FYI keeps account and notification controls private and lets signed-in users permanently delete their account from the Account page. Contextual advertisements may use the route, terminal, or page being viewed, but not account information, precise location, saved tickets, notification settings, or activity across other websites.",
     path: "/privacy",
     title: "Privacy Policy",
+  },
+  supporter: {
+    body: "Ferry FYI Supporter is an optional monthly or yearly subscription that removes Ferry FYI advertisements while signed in and can show an optional cosmetic leaderboard badge. Core ferry information remains free.",
+    path: "/supporter",
+    title: "Ferry FYI Supporter",
+  },
+  terms: {
+    body: "Ferry FYI is an independent trip-planning service. Supporter subscriptions renew until cancelled through the provider that processed the purchase, and deleting a Ferry FYI account does not cancel billing.",
+    path: "/terms",
+    title: "Terms of Service",
   },
 };
 

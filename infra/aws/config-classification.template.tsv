@@ -20,6 +20,19 @@ GOOGLE_ANALYTICS	build-time public	GitHub variable / Docker build arg	value come
 GTM_CONTAINER_ID	build-time public	GitHub variable / Docker build arg	value comes from Heroku classification or provider public config; do not commit
 MAPBOX_ACCESS_TOKEN	build-time public	GitHub variable / Docker build arg	value comes from Heroku classification or provider public config; do not commit
 REPORT_BASE_URL	runtime server config	AWS Secrets Manager app config JSON	dedicated HTTPS advertiser-report origin
+REVENUECAT_ANDROID_PUBLIC_API_KEY	build-time public	GitHub variable / Docker build arg	public Google app SDK key
+REVENUECAT_IOS_PUBLIC_API_KEY	build-time public	GitHub variable / Docker build arg	public Apple app SDK key
+REVENUECAT_PROJECT_ID	runtime server config	AWS Secrets Manager app config JSON	RevenueCat project identifier
+REVENUECAT_PRODUCTION_WEBHOOK_AUTHORIZATION	runtime server secret	AWS Secrets Manager app config JSON	never expose to client builds
+REVENUECAT_PRODUCTION_WEBHOOK_HMAC_SECRET	runtime server secret	AWS Secrets Manager app config JSON	never expose to client builds
+REVENUECAT_SANDBOX_WEBHOOK_AUTHORIZATION	runtime server secret	AWS Secrets Manager app config JSON	never expose to client builds
+REVENUECAT_SANDBOX_WEBHOOK_HMAC_SECRET	runtime server secret	AWS Secrets Manager app config JSON	never expose to client builds
+REVENUECAT_V2_SECRET_API_KEY	runtime server secret	AWS Secrets Manager app config JSON	least-privilege customer subscription and portal access
+REVENUECAT_WEB_PUBLIC_API_KEY	build-time public	GitHub variable / Docker build arg	public RevenueCat Billing SDK key
+SUPPORTER_ACTION_HMAC_SECRET	runtime server secret	AWS Secrets Manager app config JSON	versioned portal IP digest key
+SUPPORTER_ANDROID_CHECKOUT_ENABLED	runtime server config	AWS Secrets Manager app config JSON	server-owned Android checkout kill switch
+SUPPORTER_IOS_CHECKOUT_ENABLED	runtime server config	AWS Secrets Manager app config JSON	server-owned iOS checkout kill switch
+SUPPORTER_WEB_CHECKOUT_ENABLED	runtime server config	AWS Secrets Manager app config JSON	server-owned web checkout kill switch
 NODE_ENV	AWS/ECS platform config	Terraform task environment	production
 PORT	AWS/ECS platform config	Terraform task environment	4040
 PROCESS_ROLE	AWS/ECS platform config	Terraform task environment	web

@@ -8,7 +8,10 @@ import {
 import { isObject } from "shared/lib/objects";
 import { getSavedTicketLookupId } from "shared/lib/tickets";
 
-import { deleteFerryUserAccount } from "~/lib/accountDeletion";
+import {
+  ContinuingBillingAcknowledgementRequiredError,
+  deleteFerryUserAccount,
+} from "~/lib/accountDeletion";
 import {
   getAlertRules,
   getAlertSubscriptions,
@@ -16,6 +19,7 @@ import {
   hasAppMetadataChanged,
   normalizeAppMetadata,
 } from "~/lib/alertMetadata";
+import { getSupporterSummaryForSubject } from "~/lib/supporter";
 import { deleteUnsavedUserTickets } from "~/lib/wsf/userTicketCache";
 import { UserSettings } from "~/models/UserSettings";
 
@@ -114,11 +118,13 @@ const getNormalizedAppMetadata = async (
 // user response body
 const serializeUserSettings = (
   settings: UserSettings,
-  appMetadata: AppMetadata
+  appMetadata: AppMetadata,
+  supporter: CurrentUser["supporter"]
 ): CurrentUser => {
   return {
     app_metadata: appMetadata,
     favoriteRouteIds: normalizeFavoriteRouteIds(settings.favoriteRouteIds),
+    supporter,
     user_id: settings.subject,
   };
 };
@@ -126,7 +132,10 @@ const serializeUserSettings = (
 userRouter.get("/", async (request, response) => {
   const settings = await getUserSettings(response.locals.user.sub);
   const appMetadata = await getNormalizedAppMetadata(settings);
-  return response.send(serializeUserSettings(settings, appMetadata));
+  const supporter = await getSupporterSummaryForSubject(
+    response.locals.user.sub
+  );
+  return response.send(serializeUserSettings(settings, appMetadata, supporter));
 });
 
 userRouter.post("/", async (request, response) => {
@@ -148,7 +157,10 @@ userRouter.post("/", async (request, response) => {
       update.app_metadata.tickets.map(getSavedTicketLookupId)
     );
   }
-  return response.send(serializeUserSettings(settings, appMetadata));
+  const supporter = await getSupporterSummaryForSubject(
+    response.locals.user.sub
+  );
+  return response.send(serializeUserSettings(settings, appMetadata, supporter));
 });
 
 userRouter.delete("/", async (request, response) => {
@@ -157,7 +169,23 @@ userRouter.delete("/", async (request, response) => {
   if (request.body?.confirmation !== ACCOUNT_DELETION_CONFIRMATION) {
     return response.status(400).send({ error: "confirmation_required" });
   }
-  return response.send(await deleteFerryUserAccount(response.locals.user.sub));
+  // isolate continuing billing acknowledgement
+  try {
+    return response.send(
+      await deleteFerryUserAccount(
+        response.locals.user.sub,
+        request.body?.continuingBillingAcknowledged === true
+      )
+    );
+  } catch (error) {
+    // billing acknowledgement guard
+    if (error instanceof ContinuingBillingAcknowledgementRequiredError) {
+      return response.status(409).send({
+        error: "continuing_billing_acknowledgement_required",
+      });
+    }
+    throw error;
+  }
 });
 
 export { userRouter };

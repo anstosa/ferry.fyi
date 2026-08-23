@@ -299,6 +299,10 @@ export default defineConfig(() => ({
         entryFileNames: "assets/[name].[hash].js",
         // consolidate automatic check-in runtime code
         manualChunks: (id: string): string | undefined => {
+          // isolate optional web billing sdk
+          if (id.includes("/node_modules/@revenuecat/purchases-js/")) {
+            return "revenuecat-web-billing";
+          }
           // feature module guard
           if (
             id.endsWith("/client/lib/leaderboardAutomatic.ts") ||

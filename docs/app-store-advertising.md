@@ -30,6 +30,10 @@ The app-store builds enforce these advertising boundaries:
   are also disabled in the Google Analytics configuration.
 - Ads remain out of account, sign-in, saved-ticket, barcode, notification, and
   service-alert surfaces.
+- A signed-in account with an active Ferry FYI Supporter entitlement receives
+  no ad creative, placeholder, exposure issuance, measurement, or click
+  recording. The server rechecks entitlement state for every ad mutation and
+  does not add account or subscription identity to ad records.
 
 These controls support the current declarations. Reassess every store answer
 before adding an ad SDK, device identifier, behavioral selection, user profile,

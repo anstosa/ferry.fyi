@@ -7,7 +7,10 @@ import {
 } from "shared/contracts/ads";
 import type { CameraFrameStatusEnvelope } from "shared/contracts/cameraFrames";
 import type { FareTripRequest } from "shared/contracts/fares";
-import type { LeaderboardPeriod } from "shared/contracts/leaderboards";
+import type {
+  Leaderboard,
+  LeaderboardPeriod,
+} from "shared/contracts/leaderboards";
 import type {
   CrossingEstimate,
   Schedule,
@@ -111,11 +114,7 @@ export interface PublicSsrSnapshotServices {
     entityId: string;
     kind: "terminal" | "vessel";
     period: LeaderboardPeriod;
-  }): Promise<{
-    entityId: string;
-    period: LeaderboardPeriod;
-    ranks: { label: string; rank: number; score: number }[];
-  }>;
+  }): Promise<Leaderboard>;
   getPublicLeaderboardsEnabled(): Promise<boolean>;
   getSchedule(input: {
     arrivingId: string;

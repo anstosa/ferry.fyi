@@ -7,6 +7,7 @@ import {
 } from "node-schedule";
 
 import { apiRouter, automaticLeaderboardNativeRouter } from "~/controllers/api";
+import { revenueCatWebhookRouter } from "~/controllers/revenueCatWebhook";
 import { createStaticRouter, staticRouter } from "~/controllers/static";
 import { createAdReportRouter } from "~/controllers/static/adReports";
 import {
@@ -35,6 +36,10 @@ import {
   type ReadinessController,
   shouldRunScheduler,
 } from "~/lib/serverRuntime";
+import {
+  cleanupProviderActionWindows,
+  processPendingSupporterWork,
+} from "~/lib/supporter";
 import { initializeWsfSeed } from "~/lib/wsf";
 import { pruneExpiredLeaderboardAutomaticCandidateReceipts } from "~/services/leaderboardAutomaticCandidateReceipts";
 import { cleanupAutomaticEnrollments } from "~/services/leaderboardAutomaticEnrollment";
@@ -155,6 +160,8 @@ export function createApp({
   // The dedicated advertiser-report origin is a separate, minimal surface.
   // Gate it before API, development middleware, and the normal app.
   app.use(createAdReportRouter());
+  // preserve exact RevenueCat webhook bytes
+  app.use("/api/supporter/revenuecat/webhook", revenueCatWebhookRouter);
   // isolate native parsing and policy before ordinary api middleware
   app.use("/api/leaderboards/native", nativeAutomaticHandler);
   app.use("/api/ads", express.json({ limit: "2kb" }));
@@ -232,6 +239,24 @@ export function scheduleAdExposureCleanup(): void {
             break;
           }
         }
+      })
+    )
+  );
+}
+
+// schedule durable supporter work recovery
+export function scheduleSupporterMaintenance(): void {
+  scheduleJob(
+    { second: 20 },
+    safeScheduledTask("supporter reconciliation recovery", () =>
+      serverBackgroundRegistry.runTask(processPendingSupporterWork)
+    )
+  );
+  scheduleJob(
+    { minute: 35, second: 30 },
+    safeScheduledTask("supporter action window cleanup", () =>
+      serverBackgroundRegistry.runTask(async () => {
+        await cleanupProviderActionWindows();
       })
     )
   );
@@ -408,6 +433,7 @@ export async function startServer(): Promise<void> {
   initializeWsfSeed();
   scheduleAdExposureCleanup();
   scheduleAutomaticLeaderboardCleanup();
+  scheduleSupporterMaintenance();
   readiness.markInitialized();
   const server = app.listen(process.env.PORT, () => {
     reportRuntimeLifecycleTelemetry("ready");

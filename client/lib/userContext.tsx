@@ -15,9 +15,12 @@ export interface UserState extends AppMetadata, UserMetadata {
 }
 
 export interface UserActions {
-  deleteAccount: (confirmation: string) => Promise<void>;
+  deleteAccount: (
+    confirmation: string,
+    continuingBillingAcknowledged?: boolean
+  ) => Promise<void>;
   getAccessToken: () => Promise<string | undefined>;
-  refreshUser: () => Promise<void>;
+  refreshUser: (inputToken?: string) => Promise<void>;
   updateUser: (data: UserUpdatePayload) => Promise<void>;
 }
 

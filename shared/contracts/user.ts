@@ -1,3 +1,5 @@
+import type { SupporterSummary } from "./supporter";
+
 export type AlertSubscriptionChannel =
   | "cancellations"
   | "delays"
@@ -33,6 +35,8 @@ export type UserMetadata = Record<string, unknown>;
 export interface CurrentUser extends Record<string, unknown> {
   app_metadata?: AppMetadata;
   favoriteRouteIds?: string[];
+  supporter?: SupporterSummary;
+  user_id?: string;
   user_metadata?: UserMetadata;
 }
 
@@ -45,6 +49,7 @@ export const ACCOUNT_DELETION_CONFIRMATION = "DELETE";
 
 export interface AccountDeletionPayload extends Record<string, unknown> {
   confirmation: string;
+  continuingBillingAcknowledged?: boolean;
 }
 
 export interface AccountDeletionResult extends Record<string, unknown> {

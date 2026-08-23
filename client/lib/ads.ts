@@ -52,17 +52,19 @@ const wait = async (milliseconds: number): Promise<void> =>
   });
 
 export const issueAdExposure = async (
-  placementKey: string
+  placementKey: string,
+  accessToken?: string
 ): Promise<AdExposure> =>
-  await post<AdExposure>("/ads/exposures", { placementKey });
+  await post<AdExposure>("/ads/exposures", { placementKey }, accessToken);
 
 export const measureAdExposure = async (
   token: string,
-  event: AdMeasurementEvent
+  event: AdMeasurementEvent,
+  accessToken?: string
 ): Promise<void> => {
   for (let attempt = 1; attempt <= MEASUREMENT_ATTEMPTS; attempt += 1) {
     try {
-      await postKeepalive("/ads/measure", { event, token });
+      await postKeepalive("/ads/measure", { event, token }, accessToken);
       return;
     } catch (error) {
       if (attempt === MEASUREMENT_ATTEMPTS) {
@@ -76,30 +78,35 @@ export const measureAdExposure = async (
 /** Records a web click without delaying the browser's direct navigation. */
 export const recordWebAdClick = async ({
   campaignId,
+  accessToken,
   token,
 }: {
+  accessToken?: string;
   campaignId: string;
   token: string;
 }): Promise<void> => {
-  await postKeepalive("/ads/click", { campaignId, token });
+  await postKeepalive("/ads/click", { campaignId, token }, accessToken);
 };
 
 /** Records a native click through the API before opening the persisted target. */
 export const openNativeAdClick = async ({
   campaignId,
+  accessToken,
   fallbackTargetUrl,
   token,
 }: {
+  accessToken?: string;
   campaignId: string;
   fallbackTargetUrl: string;
   token: string;
 }): Promise<void> => {
   let targetUrl = fallbackTargetUrl;
   try {
-    const response = await post<{ targetUrl: string }>("/ads/click", {
-      campaignId,
-      token,
-    });
+    const response = await post<{ targetUrl: string }>(
+      "/ads/click",
+      { campaignId, token },
+      accessToken
+    );
     ({ targetUrl } = response);
   } catch {
     // The immutable creative target remains the rider-continuity fallback.

@@ -174,11 +174,15 @@ export const post = async <T = Record<string, unknown>>(
 /** Posts a small best-effort payload that may outlive a page transition. */
 export const postKeepalive = async <T = Record<string, unknown>>(
   path: string,
-  data: Record<string, unknown>
+  data: Record<string, unknown>,
+  accessToken?: string
 ): Promise<T> => {
   const response = await request({
     data,
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeader(accessToken),
+    },
     method: "POST",
     url: path,
     webFetchExtra: { keepalive: true },

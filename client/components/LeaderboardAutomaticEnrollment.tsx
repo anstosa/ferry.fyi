@@ -48,6 +48,7 @@ const cleanupRecoveryPreferences: LeaderboardPreferences = {
   displayName: "",
   notificationsEnabled: true,
   optedOut: false,
+  supporterBadgeVisible: false,
   useFullName: false,
   verboseNotificationsEnabled: false,
 };

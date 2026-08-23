@@ -7,6 +7,7 @@ import {
 import { isObject } from "shared/lib/objects";
 
 import { isTrustedAdMutationOrigin } from "~/lib/adOrigin";
+import { getSupporterSummaryForSubject } from "~/lib/supporter";
 import {
   claimAdExposure,
   issueAdExposure,
@@ -14,6 +15,16 @@ import {
 } from "~/services/public/adTracking";
 
 export const adsRouter = Router();
+
+// deny paid-account ad work
+const shouldSuppressAds = async (response: Response): Promise<boolean> => {
+  const subject = response.locals.user?.sub;
+  // anonymous traffic guard
+  if (!subject) {
+    return false;
+  }
+  return (await getSupporterSummaryForSubject(subject)).active;
+};
 
 adsRouter.use((_request, response, next) => {
   response.set({
@@ -52,6 +63,11 @@ adsRouter.post(
       response.status(400).send({ error: "invalid_request" });
       return;
     }
+    // active supporter guard
+    if (await shouldSuppressAds(response)) {
+      response.send({ creative: null, expiresAt: null, token: null });
+      return;
+    }
     response.send(await issueAdExposure(request.body.placementKey));
   }
 );
@@ -68,6 +84,11 @@ adsRouter.post(
       )
     ) {
       response.status(400).send({ error: "invalid_request" });
+      return;
+    }
+    // active supporter guard
+    if (await shouldSuppressAds(response)) {
+      response.status(204).send();
       return;
     }
     await claimAdExposure(
@@ -88,6 +109,11 @@ adsRouter.post(
       typeof request.body.token !== "string"
     ) {
       response.status(400).send({ error: "invalid_request" });
+      return;
+    }
+    // active supporter guard
+    if (await shouldSuppressAds(response)) {
+      response.status(404).send({ error: "resource_not_found" });
       return;
     }
     const targetUrl = await resolveAdClick({

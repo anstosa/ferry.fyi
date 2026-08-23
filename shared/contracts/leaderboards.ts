@@ -4,6 +4,7 @@ export interface LeaderboardRank {
   label: string;
   rank: number;
   score: number;
+  supporterBadge: boolean;
 }
 
 export interface Leaderboard {
@@ -428,6 +429,7 @@ export interface LeaderboardPreferences {
   displayName: string;
   notificationsEnabled: boolean;
   optedOut: boolean;
+  supporterBadgeVisible: boolean;
   /** @deprecated Retained for wire compatibility; displayName is the chosen public label. */
   useFullName: boolean;
   verboseNotificationsEnabled: boolean;

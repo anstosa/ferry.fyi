@@ -24,6 +24,8 @@ export type PublicSsrRouteId =
   | "data-sources"
   | "install"
   | "privacy"
+  | "supporter"
+  | "terms"
   | "forecasting"
   | "forecasting-explained"
   | "support"

@@ -23,6 +23,9 @@ const revocation = vi.hoisted(() => ({
 const accountDeletion = vi.hoisted(() => ({
   deleteFerryUserAccount: vi.fn(),
 }));
+const supporter = vi.hoisted(() => ({
+  getSupporterSummaryForSubject: vi.fn(),
+}));
 
 vi.mock("~/models/UserSettings", () => ({
   UserSettings: userSettings,
@@ -30,6 +33,7 @@ vi.mock("~/models/UserSettings", () => ({
 vi.mock("~/lib/wsf/userTicketCache", () => ticketCache);
 vi.mock("~/lib/admin/sessionRevocation", () => revocation);
 vi.mock("~/lib/accountDeletion", () => accountDeletion);
+vi.mock("~/lib/supporter", () => supporter);
 
 vi.mock("~/lib/wsf/api", () => ({
   getWsfStatus: () => {
@@ -104,6 +108,13 @@ describe("user API", () => {
     accountDeletion.deleteFerryUserAccount
       .mockReset()
       .mockResolvedValue({ status: "complete" });
+    supporter.getSupporterSummaryForSubject.mockReset().mockResolvedValue({
+      active: false,
+      activeUntil: null,
+      lifecycleState: "none",
+      resolved: true,
+      revision: "v1:0:1",
+    });
   });
 
   // missing token case
@@ -147,6 +158,13 @@ describe("user API", () => {
     expect(response.body).toEqual({
       app_metadata: { tickets: ["abc"] },
       favoriteRouteIds: ["3", "9"],
+      supporter: {
+        active: false,
+        activeUntil: null,
+        lifecycleState: "none",
+        resolved: true,
+        revision: "v1:0:1",
+      },
       user_id: "auth0|123",
     });
   }, 15_000);
@@ -200,6 +218,13 @@ describe("user API", () => {
     expect(response.body).toEqual({
       app_metadata: settings.update.mock.calls[0][0].appMetadata,
       favoriteRouteIds: [],
+      supporter: {
+        active: false,
+        activeUntil: null,
+        lifecycleState: "none",
+        resolved: true,
+        revision: "v1:0:1",
+      },
       user_id: "auth0|123",
     });
   });
@@ -299,6 +324,13 @@ describe("user API", () => {
         tickets: ["abc"],
       },
       favoriteRouteIds: ["3", "9"],
+      supporter: {
+        active: false,
+        activeUntil: null,
+        lifecycleState: "none",
+        resolved: true,
+        revision: "v1:0:1",
+      },
       user_id: "auth0|123",
     });
     expect(ticketCache.deleteUnsavedUserTickets).toHaveBeenCalledWith(
@@ -319,7 +351,8 @@ describe("user API", () => {
     expect(response.body).toEqual({ status: "complete" });
     expect(response.headers["cache-control"]).toBe("no-store");
     expect(accountDeletion.deleteFerryUserAccount).toHaveBeenCalledWith(
-      "auth0|123"
+      "auth0|123",
+      false
     );
   });
 

@@ -6,7 +6,9 @@ import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const auth = vi.hoisted(() => ({
+  getAccessTokenSilently: vi.fn().mockResolvedValue("test-access-token"),
   isAuthenticated: false,
+  isLoading: false,
   user: { email: "rider@example.com" },
 }));
 const api = vi.hoisted(() => ({ post: vi.fn(), postKeepalive: vi.fn() }));
@@ -14,9 +16,22 @@ const navigation = vi.hoisted(() => ({ navigate: vi.fn() }));
 const seed = vi.hoisted(
   (): { ad?: import("../../shared/contracts/ssr").PublicSsrAd } => ({})
 );
+const user = vi.hoisted(() => ({
+  isUserLoading: false,
+  user: {
+    supporter: {
+      active: false,
+      activeUntil: null,
+      lifecycleState: "none",
+      resolved: true,
+      revision: "v1:0:1",
+    },
+  },
+}));
 
 vi.mock("@auth0/auth0-react", () => ({ useAuth0: () => auth }));
 vi.mock("~/lib/api", () => api);
+vi.mock("~/lib/user", () => ({ useUser: () => [user] }));
 vi.mock("~/lib/ssrSeed", () => ({
   usePublicSsrSource: (key: string) => (key === "ad" ? seed.ad : undefined),
 }));
@@ -82,9 +97,11 @@ describe("AdSlot", () => {
 
     expect(container.textContent).toContain("Island Coffee");
     expect(container.textContent).toContain("Fuel up before sailing");
-    expect(api.post).toHaveBeenCalledWith("/ads/exposures", {
-      placementKey: "schedule--5--14",
-    });
+    expect(api.post).toHaveBeenCalledWith(
+      "/ads/exposures",
+      { placementKey: "schedule--5--14" },
+      undefined
+    );
   });
 
   it("removes a stale server-seeded creative when live serving is disabled", async () => {
@@ -252,10 +269,14 @@ describe("AdSlot", () => {
         new MouseEvent("click", { bubbles: true, cancelable: true })
       );
     });
-    expect(api.postKeepalive).toHaveBeenCalledWith("/ads/click", {
-      campaignId: "5ed338e9-acbb-4cca-9380-1a923bfca5c8",
-      token: "adx_test",
-    });
+    expect(api.postKeepalive).toHaveBeenCalledWith(
+      "/ads/click",
+      {
+        campaignId: "5ed338e9-acbb-4cca-9380-1a923bfca5c8",
+        token: "adx_test",
+      },
+      undefined
+    );
   });
 
   it("opens the matching placement configuration when an owner long presses an active ad", async () => {

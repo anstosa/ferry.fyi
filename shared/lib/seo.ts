@@ -75,7 +75,9 @@ export const SEO_INDEXABLE_PATHS = [
   "/install",
   "/tickets",
   "/privacy",
+  "/supporter",
   "/support",
+  "/terms",
 ] as const;
 
 const fixedPages: Record<string, Pick<SeoMetadata, "title" | "description">> = {
@@ -119,10 +121,20 @@ const fixedPages: Record<string, Pick<SeoMetadata, "title" | "description">> = {
     description:
       "Read how Ferry FYI handles account, location, ticket, notification, analytics, diagnostic, and contextual advertising data across the web and mobile apps.",
   },
+  "/supporter": {
+    title: "Ferry FYI Supporter - Ad-Free Subscription",
+    description:
+      "Support Ferry FYI with a small monthly or yearly subscription for an ad-free signed-in experience and an optional leaderboard badge.",
+  },
   "/support": {
     title: "Ferry FYI Support",
     description:
       "Email Ferry FYI support with questions, inaccurate ferry information, app issues, or ideas that could improve trip planning.",
+  },
+  "/terms": {
+    title: "Terms of Service - Ferry FYI",
+    description:
+      "Read the Ferry FYI service and Supporter subscription terms, renewal and cancellation rules, account requirements, and availability limitations.",
   },
 };
 

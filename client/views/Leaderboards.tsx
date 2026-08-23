@@ -223,6 +223,11 @@ const RankList = ({
             </strong>
             <span className="min-w-0 flex-1 truncate font-medium">
               {rank.label}
+              {rank.supporterBadge && (
+                <span className="ml-2 rounded-full bg-green-lightest px-2 py-0.5 text-2xs font-bold uppercase tracking-wide text-green-dark dark:bg-green-dark dark:text-green-lightest">
+                  Supporter
+                </span>
+              )}
             </span>
             <span className="font-bold">{rank.score}</span>
           </li>

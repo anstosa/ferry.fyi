@@ -7,6 +7,7 @@ import type {
 
 import { db } from "~/lib/db";
 import { leaderboardsEnabled } from "~/lib/leaderboardFlags";
+import { getActiveSupporterSubjects } from "~/lib/supporter";
 import { LeaderboardCheckin } from "~/models/LeaderboardCheckin";
 import { LeaderboardProfile } from "~/models/LeaderboardProfile";
 
@@ -65,6 +66,11 @@ export const getPublicLeaderboard = async ({
   const profileBySubject = new Map(
     profiles.map((profile) => [profile.subject, profile])
   );
+  const supporterSubjects = await getActiveSupporterSubjects(
+    profiles
+      .filter((profile) => !profile.optedOut && profile.supporterBadgeVisible)
+      .map((profile) => profile.subject)
+  );
   const ranks = rows
     .map((row): Omit<LeaderboardRank, "rank"> | null => {
       const profile = profileBySubject.get(row.subject);
@@ -74,6 +80,7 @@ export const getPublicLeaderboard = async ({
       return {
         label: profile ? leaderboardLabel(profile.displayName) : "Anonymous",
         score: Number(row.score),
+        supporterBadge: supporterSubjects.has(row.subject),
       };
     })
     .filter((rank): rank is Omit<LeaderboardRank, "rank"> => rank !== null);

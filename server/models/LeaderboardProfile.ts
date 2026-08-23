@@ -7,6 +7,7 @@ export class LeaderboardProfile extends Model {
   displayName!: string;
   notificationsEnabled!: boolean;
   optedOut!: boolean;
+  supporterBadgeVisible!: boolean;
   subject!: string;
   useFullName!: boolean;
   verboseNotificationsEnabled!: boolean;
@@ -26,6 +27,11 @@ LeaderboardProfile.init(
       type: DataTypes.BOOLEAN,
     },
     optedOut: {
+      allowNull: false,
+      defaultValue: false,
+      type: DataTypes.BOOLEAN,
+    },
+    supporterBadgeVisible: {
       allowNull: false,
       defaultValue: false,
       type: DataTypes.BOOLEAN,

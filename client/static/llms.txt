@@ -13,6 +13,8 @@ Ferry information changes quickly. Treat times, vehicle space, camera images, fo
 - [About Ferry FYI](https://ferry.fyi/about): App background, data credits, privacy, and tap-to-copy web, native-build, and OTA version information.
 - [Tickets](https://ferry.fyi/tickets): Store eligible tickets and scan supported ticket barcodes. Detail refreshes are best-effort and occur when a ticket is added, opened, or explicitly refreshed; loading the wallet does not bulk-refresh saved tickets. For signed-in users, the latest successful ticket details are cached with the account so another device can reuse a recent result. When Wave2Go lookup is unavailable, Ferry FYI keeps the saved code usable and shows a neutral ticket placeholder instead of guessing the product type. Ticket data is sensitive and requires the ticket holder's authorization.
 - [Privacy and advertising policy](https://ferry.fyi/privacy): Explains how Ferry FYI handles user information, limits contextual advertising, reports aggregate campaign results, and reviews prohibited ad categories.
+- [Ferry FYI Supporter](https://ferry.fyi/supporter): Optional monthly or yearly account-linked subscription with an ad-free signed-in experience and an optional public leaderboard badge. Prices and availability come from the current storefront.
+- [Terms of Service](https://ferry.fyi/terms): Service limitations and Supporter renewal, cancellation, account, and deletion terms.
 - [Support](https://ferry.fyi/support): Email Ferry FYI support with questions, inaccurate ferry information, app issues, or ideas that could improve trip planning.
 - [Install](https://ferry.fyi/install): Open the appropriate App Store or Google Play listing on mobile, or request installation of the Ferry FYI progressive web app on a supported desktop browser.
 - [Sitemap](https://ferry.fyi/sitemap.xml): Indexable schedules, route tabs, terminal pages, and informational pages.
@@ -38,6 +40,7 @@ Date-selected schedule URLs are noindex variants of the undated route canonical.
 - **Alerts and favorites:** Signed-in users can save favorite routes and configure service, capacity, or sailing alerts.
 - **Forecast explanations:** Learn how weather, tide conditions, and observed data inform capacity and delay forecasts.
 - **Contextual advertising:** Clearly labeled local ads may appear on home, schedule, camera, terminal-detail, and fare pages. Ferry FYI serves them directly without a third-party ad network or ad SDK. Route ads can differ by travel direction; ad selection does not use account information, advertising identifiers, precise location, saved tickets, notification settings, earlier Ferry FYI activity, or activity across other websites. Each ad links to the contextual explanation and includes a report action.
+- **Ferry FYI Supporter:** An optional account-linked subscription removes Ferry FYI advertisements while the subscriber is signed in and can show an optional public Supporter leaderboard badge. Core ferry data, alerts, tickets, and manual check-ins remain free. Automatic check-ins are not currently a paid benefit.
 - **Advertising measurement:** Ferry FYI may report aggregate viewable opportunities by placement, weekday, and Pacific hour, plus daily served ads, viewable impressions (at least 50% visible for one continuous second), and ad clicks. Measurement uses a random two-hour exposure token stored by the server only as a one-way hash; it is not an account, device, browser, visitor, installation, or session identifier. Advertiser reports contain aggregate totals, are private bearer links, and are intentionally not listed here. These figures are not unique-person counts, audited fraud-free traffic, or billable delivery.
 - **Mobile and PWA support:** Install Ferry FYI as a web app or use the native mobile app for device-aware features, OTA web-asset updates, and prompts when a newer native build is available from Google Play or the App Store.
 - **iOS account migration:** [Move an existing Google account to username and password login](https://ferry.fyi/ios). The private, noindex flow sends verification email only to the exact matching database identity, requires separate authentication of the verified Google and database identities before linking them, and preserves the existing Google identity as the primary Ferry FYI account. Never infer account existence from an email address or link identities based only on matching email.
@@ -110,6 +113,9 @@ Fare responses include a `state` such as `current`, `no-fare`, `stale`, or `unav
 
 - `GET /api/user` and `POST /api/user` — Signed-in user's favorites, alert settings, and app metadata. Require an Auth0 bearer token; never request, log, or expose another user's token.
 - `DELETE /api/user` — Permanently deletes the bearer token owner's Ferry FYI account only after the body contains the exact confirmation `{ "confirmation": "DELETE" }`. Never initiate deletion automatically or on a user's behalf.
+- `GET /api/supporter` — Returns the signed-in account's normalized Supporter status and platform checkout availability. Purchase operations require direct user interaction and must never be automated by an agent.
+- `POST /api/supporter/reconcile` — Rechecks the bearer token owner's provider subscription after that user completes purchase or restore. Do not invoke on another user's behalf or use it to infer payment details.
+- `POST /api/supporter/management` — Creates a short-lived, single-use web billing management destination for the signed-in owner. Never request, follow, expose, or retain this URL for a user.
 - `GET /api/tickets/:ticketId` — Looks up a user-provided ticket identifier. A valid account bearer token enables an account-scoped recent-result cache; anonymous lookups remain available and are not persisted. Ticket data is sensitive; do not guess identifiers or expose returned barcodes.
 
 <!-- LEADERBOARDS:START -->
@@ -141,6 +147,7 @@ Eligible signed-in users in an explicitly capable Android 10/API 29 or newer or 
 - Ask for a route, direction, travel date, and vehicle/passenger context when they materially affect the answer.
 - Do not imply reservation, boarding, cancellation, delay, or vehicle-space certainty from forecasts or camera observations.
 - Do not perform authenticated account, alert, ticket, refresh, or update actions without the user's explicit request and authorization.
+- Never initiate a subscription purchase, restore, cancellation, billing-management session, refund, or account deletion for a user.
 
 ## Citation guidance
 

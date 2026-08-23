@@ -105,6 +105,8 @@ data-health API.
 | `fare-catalog-refresh`                               | Warms current ferry-day and due fare catalogs.                            | Hourly at `:15`, daily at 00:05 America/Los_Angeles, and deferred after startup. |
 | `leaderboard-rebuild`                                | Rebuilds leaderboard aggregates from retained check-ins.                  | Manual only.                                                                     |
 | `schedule-refresh`                                   | Refreshes WSF sailing schedules and schedule cache data.                  | Daily at 04:05 server time.                                                      |
+| `supporter-entitlement-reconcile`                    | Retries pending RevenueCat webhooks and Supporter entitlement work.        | Every minute at `:20`; also available manually.                                  |
+| `supporter-provider-action-window-cleanup`            | Deletes expired privacy-minimal Supporter portal rate-limit windows.       | Hourly at `:35:30`; also available manually.                                      |
 | `tide-forecast-refresh` / `weather-forecast-refresh` | Forces forecast inputs used by route forecasting.                         | Best-effort after short WSF refreshes, rate-limited by the environment.          |
 | `wsf-daily-refresh`                                  | Runs daily WSF route-to-vessel inference.                                 | Daily at 04:10 server time.                                                      |
 | `wsf-long-refresh`                                   | Refreshes WSF cameras, vessels, routes, and terminals.                    | Every 5 minutes.                                                                 |

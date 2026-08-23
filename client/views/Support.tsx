@@ -17,6 +17,11 @@ const Content = (): ReactElement => (
       Send an email with any helpful details, such as the route or terminal you
       were viewing, what you expected to happen, and the device you were using.
     </p>
+    <p className="mt-3">
+      For Supporter billing help, include the platform where you subscribed and
+      the approximate purchase date. Do not email payment-card details, store
+      receipts, passwords, or authentication tokens.
+    </p>
     <div className="flex mt-5">
       <a
         className="button button-primary flex-grow"

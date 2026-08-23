@@ -49,4 +49,23 @@ export SENTRY_DSN="<get from sentry>"
 # Required only for release builds that upload source maps and native symbols.
 export SENTRY_AUTH_TOKEN="<get from sentry>"
 
+# RevenueCat public client configuration
+export REVENUECAT_PROJECT_ID="<get from revenuecat>"
+export REVENUECAT_ANDROID_PUBLIC_API_KEY="<public google app key>"
+export REVENUECAT_IOS_PUBLIC_API_KEY="<public apple app key>"
+export REVENUECAT_WEB_PUBLIC_API_KEY="<public web billing key>"
+
+# RevenueCat server configuration
+export REVENUECAT_V2_SECRET_API_KEY="<restricted revenuecat api v2 key>"
+export REVENUECAT_PRODUCTION_WEBHOOK_AUTHORIZATION="<production authorization header>"
+export REVENUECAT_PRODUCTION_WEBHOOK_HMAC_SECRET="<production hmac secret>"
+export REVENUECAT_SANDBOX_WEBHOOK_AUTHORIZATION="<sandbox authorization header>"
+export REVENUECAT_SANDBOX_WEBHOOK_HMAC_SECRET="<sandbox hmac secret>"
+export SUPPORTER_ACTION_HMAC_SECRET="<random server-only hmac secret>"
+
+# Checkout kill switches default closed unless explicitly enabled.
+export SUPPORTER_WEB_CHECKOUT_ENABLED="false"
+export SUPPORTER_IOS_CHECKOUT_ENABLED="false"
+export SUPPORTER_ANDROID_CHECKOUT_ENABLED="false"
+
 # Leaderboards are disabled unless explicitly enabled together.

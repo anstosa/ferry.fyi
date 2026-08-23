@@ -267,7 +267,7 @@ describe("Account state predicates", () => {
       await Promise.resolve();
     });
 
-    expect(deleteAccount).toHaveBeenCalledWith("DELETE");
+    expect(deleteAccount).toHaveBeenCalledWith("DELETE", false);
     expect(automatic.disableAutomaticLeaderboardAccount).toHaveBeenCalledWith(
       "account_deleted",
       "auth0|rider",

@@ -6,6 +6,10 @@ import { db } from "~/lib/db";
 import { updateMajorSportsEvents } from "~/lib/demandEvents/updateMajorSportsEvents";
 import { updateSchoolBreakEvents } from "~/lib/demandEvents/updateSchoolBreakEvents";
 import { warmDueFareCatalogs, warmTodayFareCatalogs } from "~/lib/fareCache";
+import {
+  cleanupProviderActionWindows,
+  processPendingSupporterWork,
+} from "~/lib/supporter";
 import { updateTideForecasts } from "~/lib/tides/updateForecasts";
 import { updateWeatherForecasts } from "~/lib/weather/updateForecasts";
 import {
@@ -28,6 +32,8 @@ export type AdminOperationName =
   | "fare-catalog-refresh"
   | "leaderboard-rebuild"
   | "schedule-refresh"
+  | "supporter-entitlement-reconcile"
+  | "supporter-provider-action-window-cleanup"
   | "tide-forecast-refresh"
   | "weather-forecast-refresh"
   | "wsf-daily-refresh"
@@ -128,6 +134,24 @@ const operationRegistry: Record<AdminOperationName, OperationDefinition> = {
     destructive: false,
     run: updateScheduleCache,
     trigger: "Daily at 04:05 server time.",
+  },
+  "supporter-entitlement-reconcile": {
+    adminAllowed: true,
+    description:
+      "Retries bounded pending RevenueCat webhook and Supporter entitlement reconciliation work.",
+    destructive: false,
+    run: processPendingSupporterWork,
+    trigger: "Every minute at :20 on the web process.",
+  },
+  "supporter-provider-action-window-cleanup": {
+    adminAllowed: true,
+    description:
+      "Deletes expired privacy-minimal Supporter provider-action rate-limit windows.",
+    destructive: false,
+    run: async () => {
+      await cleanupProviderActionWindows();
+    },
+    trigger: "Hourly at :35:30 on the web process.",
   },
   "tide-forecast-refresh": {
     adminAllowed: true,

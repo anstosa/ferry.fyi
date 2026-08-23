@@ -10,7 +10,7 @@ export const PrivacyPolicy = (): ReactElement => (
     <SeoHelmet seo={getSeoMetadata("/privacy")} />
 
     <p className="mt-4 text-sm">
-      Last updated: <time dateTime="2026-08-21">August 21, 2026</time>
+      Last updated: <time dateTime="2026-08-23">August 23, 2026</time>
     </p>
     <p className="mt-4">
       Ferry FYI provides Washington State Ferries schedules, service
@@ -30,6 +30,18 @@ export const PrivacyPolicy = (): ReactElement => (
       For signed-in users, the latest successful details for a ticket looked up
       while signed in may also be cached with the account so the same lookup
       does not need to be repeated on each device.
+    </p>
+    <h3 className="font-bold mt-4">Supporter subscriptions</h3>
+    <p className="mt-2">
+      If you open or purchase Ferry FYI Supporter, Ferry FYI creates a random
+      subscription customer identifier and links it to your signed-in account.
+      RevenueCat processes subscription status and purchase history. Apple,
+      Google, or RevenueCat Billing and Stripe process the transaction,
+      depending on where you subscribe. Ferry FYI does not store payment-card
+      details, receipts, billing addresses, or store-account identifiers. It
+      stores the subscription source, product, billing interval, lifecycle
+      state, renewal state, and paid-through date needed to provide and support
+      access.
     </p>
     <h3 className="font-bold mt-4">Location</h3>
     <p className="mt-2">
@@ -101,6 +113,12 @@ export const PrivacyPolicy = (): ReactElement => (
       other websites to select advertisements.
     </p>
     <p className="mt-2">
+      While a signed-in account has an active Supporter subscription, Ferry FYI
+      does not request, display, or measure these advertisements for that
+      account. Authentication is used transiently to enforce ad-free access and
+      is not added to advertising records.
+    </p>
+    <p className="mt-2">
       Ad measurement uses a random exposure token that is not an account,
       device, browser, visitor, or session identifier. Ferry FYI stores only a
       one-way hash of that token with the campaign and page or route placement
@@ -136,12 +154,15 @@ export const PrivacyPolicy = (): ReactElement => (
       We share personal information only with service providers that help
       operate Ferry FYI, including Auth0 for authentication, Google for
       analytics and notifications, Sentry for error monitoring, and Mapbox for
-      maps. We may also disclose information when required by law or to protect
-      Ferry FYI, its users, or the public. Advertisers may receive aggregate
-      campaign reports, such as total viewable opportunities, served ads,
-      viewable impressions, and link selections. We do not provide advertisers
-      with personal information or individual browsing histories. We do not sell
-      personal information or use it for targeted advertising.
+      maps. For Supporter subscriptions, RevenueCat receives the random
+      subscription customer identifier and purchase lifecycle; Apple, Google, or
+      Stripe processes payment according to the purchase channel. We may also
+      disclose information when required by law or to protect Ferry FYI, its
+      users, or the public. Advertisers may receive aggregate campaign reports,
+      such as total viewable opportunities, served ads, viewable impressions,
+      and link selections. We do not provide advertisers with personal
+      information or individual browsing histories. We do not sell personal
+      information or use it for targeted advertising.
     </p>
     <p className="mt-2">
       A viewable opportunity means the intended ad position remained visible for
@@ -226,8 +247,15 @@ export const PrivacyPolicy = (): ReactElement => (
       detail; only the exactly matching signed-in account can retry it, and it
       is removed after local purge and server acknowledgement. Leaderboard
       scores may remain only under a new anonymous identifier that cannot be
-      linked back to the deleted account. For access requests or other privacy
-      questions, email us at{" "}
+      linked back to the deleted account. Deleting Ferry FYI does not cancel an
+      App Store, Google Play, or web subscription. Ferry FYI removes the link
+      between the account and its random subscription customer identifier but
+      retains privacy-minimal subscription lifecycle and webhook audit records
+      for billing support, fraud prevention, reconciliation, and legal
+      obligations. Future billing events cannot recreate the deleted account.
+      Cancel through the billing provider before deletion if you do not want
+      renewal to continue. For access requests or other privacy questions, email
+      us at{" "}
       <a className="link" href="mailto:dev@ferry.fyi">
         dev@ferry.fyi
       </a>

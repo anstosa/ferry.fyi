@@ -286,6 +286,8 @@ export type PublicSsrRouteSourceMap = {
   "data-sources": "editorial";
   install: "editorial";
   privacy: "editorial";
+  supporter: "editorial";
+  terms: "editorial";
   forecasting: "editorial";
   "forecasting-explained": never;
   support: "editorial";

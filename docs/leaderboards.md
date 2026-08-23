@@ -34,6 +34,11 @@ Coordinates, accuracy, and device timestamps are used only for server policy che
 
 Leaderboard identity is intentionally separate from a login profile. `PUT /api/leaderboards/preferences` accepts either a moderated `displayName` or an `initials` field (for example `"AL"`), never both. The submitted value is the public leaderboard label: an automatically proposed default contains initials only, while a name or alias appears only after the user explicitly enters it. Clients must not infer or submit a full account-profile name without that explicit choice. The legacy `useFullName` preference remains in the wire contract but no longer changes the chosen label. `notificationsEnabled` defaults to on for silent check-in summaries; `verboseNotificationsEnabled` defaults to off and is reserved for optional detailed leaderboard notifications. `optedOut` is always returned by the preferences API and prevents future check-ins while preserving anonymized existing scores after account deletion.
 
+An active Ferry FYI Supporter can separately enable `supporterBadgeVisible`.
+The preference defaults off and the public leaderboard emits a Supporter badge
+only while the server-authoritative production entitlement remains active.
+Supporter status does not change scoring or enable automatic check-ins.
+
 The client turns an accepted check-in response into a silent local notification. The server deliberately does not persist an unconsumed notification outbox.
 
 ## Automatic native enrollment

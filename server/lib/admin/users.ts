@@ -3,6 +3,7 @@ import type { AlertRule, AlertSubscriptions } from "shared/contracts/user";
 import { deleteFerryUserData } from "~/lib/accountDeletion";
 import {
   ApplicationRevocationResult,
+  lockSubjectAuthorization,
   revokeApplicationTokens,
 } from "~/lib/admin/sessionRevocation";
 import {
@@ -13,6 +14,7 @@ import {
   listAuth0Users,
   revokeAuth0UserCredentials,
 } from "~/lib/auth0Admin";
+import { db } from "~/lib/db";
 import { UserSettings } from "~/models/UserSettings";
 
 export interface ForceSignOutResult {
@@ -30,7 +32,10 @@ export interface ForceSignOutResult {
 export const forceSignOutFerryUser = async (
   subject: string
 ): Promise<ForceSignOutResult> => {
-  const applicationTokens = await revokeApplicationTokens(subject);
+  const applicationTokens = await db.transaction(async (transaction) => {
+    await lockSubjectAuthorization(subject, transaction);
+    return await revokeApplicationTokens(subject, new Date(), transaction);
+  });
   const auth0 = await revokeAuth0UserCredentials(subject);
   return {
     applicationTokens,

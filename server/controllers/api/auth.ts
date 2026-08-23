@@ -27,7 +27,7 @@ const applyTokenRevocation = (
         response.status(401).send({ error: "unauthorized" });
         return;
       }
-      response.locals.user = { sub: subject };
+      response.locals.user = { iat: issuedAtSeconds, sub: subject };
       next();
     })
     .catch(next);

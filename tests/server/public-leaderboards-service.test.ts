@@ -8,9 +8,13 @@ const db = vi.hoisted(() => ({
   literal: vi.fn((value: string) => value),
 }));
 const flags = vi.hoisted(() => ({ leaderboardsEnabled: vi.fn() }));
+const supporter = vi.hoisted(() => ({
+  getActiveSupporterSubjects: vi.fn(),
+}));
 
 vi.mock("~/lib/db", () => ({ db }));
 vi.mock("~/lib/leaderboardFlags", () => flags);
+vi.mock("~/lib/supporter", () => supporter);
 vi.mock("~/models/LeaderboardCheckin", () => ({
   LeaderboardCheckin: checkins,
 }));
@@ -29,6 +33,9 @@ describe("public leaderboard query service", () => {
     checkins.findAll.mockReset();
     profiles.findAll.mockReset();
     flags.leaderboardsEnabled.mockReset();
+    supporter.getActiveSupporterSubjects
+      .mockReset()
+      .mockResolvedValue(new Set());
   });
 
   it("accepts only public period values", () => {
@@ -55,15 +62,20 @@ describe("public leaderboard query service", () => {
         displayName: "Ada Lovelace",
         optedOut: false,
         subject: "subject-0",
+        supporterBadgeVisible: true,
         useFullName: false,
       },
       {
         displayName: "Hidden Person",
         optedOut: true,
         subject: "subject-1",
+        supporterBadgeVisible: true,
         useFullName: true,
       },
     ]);
+    supporter.getActiveSupporterSubjects.mockResolvedValueOnce(
+      new Set(["subject-0"])
+    );
 
     await expect(
       getPublicLeaderboard({
@@ -75,11 +87,17 @@ describe("public leaderboard query service", () => {
       entityId: "terminal-1",
       period: "all",
       ranks: [
-        { label: "Ada Lovelace", rank: 1, score: 20 },
+        {
+          label: "Ada Lovelace",
+          rank: 1,
+          score: 20,
+          supporterBadge: true,
+        },
         ...Array.from({ length: 9 }, (_, index) => ({
           label: "Anonymous",
           rank: index + 2,
           score: 18 - index,
+          supporterBadge: false,
         })),
       ],
     });
@@ -93,5 +111,8 @@ describe("public leaderboard query service", () => {
         subject: expect.any(Object),
       },
     });
+    expect(supporter.getActiveSupporterSubjects).toHaveBeenCalledWith([
+      "subject-0",
+    ]);
   });
 });

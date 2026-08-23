@@ -17,7 +17,7 @@ describe("privacy and advertising policy", () => {
     );
 
     expect(html).toContain(
-      '<time dateTime="2026-08-21">August 21, 2026</time>'
+      '<time dateTime="2026-08-23">August 23, 2026</time>'
     );
     expect(html).toContain("cached with the account");
     expect(html).toContain("a ticket looked up");

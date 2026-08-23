@@ -22,6 +22,8 @@ export const OPERATION_CADENCE_MS: Record<AdminOperationName, number> = {
   "fare-catalog-refresh": HOUR_MS,
   "leaderboard-rebuild": 30 * DAY_MS,
   "schedule-refresh": DAY_MS,
+  "supporter-entitlement-reconcile": MINUTE_MS,
+  "supporter-provider-action-window-cleanup": HOUR_MS,
   "tide-forecast-refresh": 5 * MINUTE_MS,
   "weather-forecast-refresh": 5 * MINUTE_MS,
   "wsf-daily-refresh": DAY_MS,

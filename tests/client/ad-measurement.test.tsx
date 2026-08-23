@@ -136,22 +136,25 @@ describe("client ad measurement", () => {
       await Promise.resolve();
     });
 
-    expect(api.postKeepalive).toHaveBeenCalledWith("/ads/measure", {
-      event: "served",
-      token: "adx_example",
-    });
+    expect(api.postKeepalive).toHaveBeenCalledWith(
+      "/ads/measure",
+      { event: "served", token: "adx_example" },
+      undefined
+    );
 
     act(() => intersect("[data-ad-campaign]", 0.5));
     await act(async () => vi.advanceTimersByTime(999));
-    expect(api.postKeepalive).not.toHaveBeenCalledWith("/ads/measure", {
-      event: "viewable",
-      token: "adx_example",
-    });
+    expect(api.postKeepalive).not.toHaveBeenCalledWith(
+      "/ads/measure",
+      { event: "viewable", token: "adx_example" },
+      undefined
+    );
     await act(async () => vi.advanceTimersByTime(1));
-    expect(api.postKeepalive).toHaveBeenCalledWith("/ads/measure", {
-      event: "viewable",
-      token: "adx_example",
-    });
+    expect(api.postKeepalive).toHaveBeenCalledWith(
+      "/ads/measure",
+      { event: "viewable", token: "adx_example" },
+      undefined
+    );
 
     act(() => {
       intersect("[data-ad-campaign]", 0);
@@ -166,9 +169,10 @@ describe("client ad measurement", () => {
 
     act(() => intersect("[data-ad-opportunity-anchor]", 1));
     await act(async () => vi.advanceTimersByTime(1_000));
-    expect(api.postKeepalive).toHaveBeenCalledWith("/ads/measure", {
-      event: "opportunity",
-      token: "adx_example",
-    });
+    expect(api.postKeepalive).toHaveBeenCalledWith(
+      "/ads/measure",
+      { event: "opportunity", token: "adx_example" },
+      undefined
+    );
   });
 });

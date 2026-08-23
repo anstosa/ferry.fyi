@@ -24,6 +24,7 @@ import {
   recordWebAdClick,
 } from "~/lib/ads";
 import { usePublicSsrSource } from "~/lib/ssrSeed";
+import { useUser } from "~/lib/user";
 
 import { AdCreativeCard } from "./AdCreativeCard";
 
@@ -101,10 +102,14 @@ const useContinuousVisibility = (
 
 const sendMeasurement = (
   exposure: AdExposure | null,
-  event: "opportunity" | "served" | "viewable"
+  event: "opportunity" | "served" | "viewable",
+  accessToken?: string
 ): void => {
+  // active exposure guard
   if (exposure?.token) {
-    measureAdExposure(exposure.token, event).catch(() => undefined);
+    measureAdExposure(exposure.token, event, accessToken).catch(
+      () => undefined
+    );
   }
 };
 
@@ -182,20 +187,22 @@ const useAdminLongPress = (
 const AdCard = ({
   creative,
   exposure,
+  accessToken,
   onAdminLongPress,
 }: {
   creative: AdCampaignCreative;
   exposure: AdExposure | null;
+  accessToken?: string;
   onAdminLongPress?: () => void;
 }): ReactElement => {
   const cardRef = useRef<HTMLAnchorElement>(null);
   const longPressHandlers = useAdminLongPress(onAdminLongPress);
   useContinuousVisibility(cardRef, 0.5, () =>
-    sendMeasurement(exposure, "viewable")
+    sendMeasurement(exposure, "viewable", accessToken)
   );
   useEffect(() => {
-    sendMeasurement(exposure, "served");
-  }, [exposure]);
+    sendMeasurement(exposure, "served", accessToken);
+  }, [accessToken, exposure]);
   const onClick = (event: MouseEvent<HTMLAnchorElement>): void => {
     if (!exposure?.token) {
       return;
@@ -203,6 +210,7 @@ const AdCard = ({
     if (isNativeAdPlatform()) {
       event.preventDefault();
       openNativeAdClick({
+        accessToken,
         campaignId: creative.campaignId,
         fallbackTargetUrl: creative.targetUrl,
         token: exposure.token,
@@ -210,6 +218,7 @@ const AdCard = ({
       return;
     }
     recordWebAdClick({
+      accessToken,
       campaignId: creative.campaignId,
       token: exposure.token,
     }).catch(() => undefined);
@@ -268,15 +277,28 @@ export const AdSlot = ({
   departureTerminalId,
   slot,
 }: Props): ReactElement | null => {
-  const { isAuthenticated, user } = useAuth0();
+  const {
+    getAccessTokenSilently,
+    isAuthenticated,
+    isLoading: isAuthLoading,
+    user: auth0User,
+  } = useAuth0();
+  const [{ isUserLoading, user: accountUser }] = useUser();
   const navigate = useNavigate();
   const ssrAd = usePublicSsrSource("ad");
   const [exposure, setExposure] = useState<AdExposure | null>(null);
   const [exposureResolved, setExposureResolved] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [accessToken, setAccessToken] = useState<string | undefined>();
   const opportunityRef = useRef<HTMLSpanElement>(null);
   const isAdmin =
-    isAuthenticated && user?.email?.toLocaleLowerCase("en-US") === ADMIN_EMAIL;
+    isAuthenticated &&
+    auth0User?.email?.toLocaleLowerCase("en-US") === ADMIN_EMAIL;
+  const supporter = accountUser?.supporter;
+  const policyResolved =
+    !isAuthLoading &&
+    (!isAuthenticated || (!isUserLoading && supporter?.resolved === true));
+  const suppressAds = !policyResolved || supporter?.active === true;
   const hasDirection = Boolean(arrivalTerminalId && departureTerminalId);
   const key =
     slot === "home" || hasDirection
@@ -286,21 +308,42 @@ export const AdSlot = ({
           slot,
         })
       : null;
-  const hasSsrAd = Boolean(key && ssrAd?.placementKey === key);
+  const hasSsrAd = Boolean(
+    key && !isAuthenticated && policyResolved && ssrAd?.placementKey === key
+  );
 
   useEffect(() => {
     let active = true;
     setExposure(null);
     setExposureResolved(false);
+    setAccessToken(undefined);
     setLoading(Boolean(key) && !hasSsrAd);
-    if (!key) {
+    // unresolved or suppressed guard
+    if (!key || suppressAds) {
+      setLoading(false);
       return () => {
         active = false;
       };
     }
-    issueAdExposure(key)
+    const getPolicyToken = async (): Promise<string | undefined> => {
+      // anonymous ad guard
+      if (!isAuthenticated) {
+        return undefined;
+      }
+      return await getAccessTokenSilently();
+    };
+    getPolicyToken()
+      .then(async (token) => {
+        // stale token guard
+        if (!active) {
+          return null;
+        }
+        setAccessToken(token);
+        return await issueAdExposure(key, token);
+      })
       .then((value) => {
-        if (active) {
+        // stale exposure guard
+        if (active && value) {
           setExposure(value);
         }
       })
@@ -314,16 +357,26 @@ export const AdSlot = ({
     return () => {
       active = false;
     };
-  }, [hasSsrAd, key, ssrAd?.creative?.campaignId]);
+  }, [
+    auth0User?.sub,
+    getAccessTokenSilently,
+    hasSsrAd,
+    isAuthenticated,
+    key,
+    ssrAd?.creative?.campaignId,
+    supporter?.revision,
+    suppressAds,
+  ]);
 
   useContinuousVisibility(
     opportunityRef,
     1,
-    () => sendMeasurement(exposure, "opportunity"),
-    exposure?.token
+    () => sendMeasurement(exposure, "opportunity", accessToken),
+    `${exposure?.token ?? ""}:${supporter?.revision ?? "anonymous"}`
   );
 
-  if (!key) {
+  // hidden policy guard
+  if (!key || suppressAds) {
     return null;
   }
   let creative = exposure?.creative ?? null;
@@ -337,6 +390,7 @@ export const AdSlot = ({
   if (creative) {
     content = (
       <AdCard
+        accessToken={accessToken}
         creative={creative}
         exposure={exposure}
         onAdminLongPress={isAdmin ? configure : undefined}

@@ -8,6 +8,11 @@ An OTA release contains only the web application assets. It can update React, Ty
 
 An OTA release cannot change a native app binary. Changes to Capacitor plugins, plugin configuration, Android or iOS permissions, `android/`, `ios/`, `capacitor.config.ts`, or native code require a signed store release. Follow the Android or iOS release procedure in `README.md`; use internal testing before production rollout. Do not use OTA to distribute native/plugin/permission changes.
 
+Ferry FYI Supporter checkout is capability-gated at runtime. OTA bundles may
+update its shared purchase UI only after the installed signed shell already
+contains the RevenueCat Capacitor plugin. Older shells remain on the free app
+experience and never receive a web-checkout workaround inside the native app.
+
 ## Native store updates
 
 Signed Android and iOS builds check their platform store for a newer native

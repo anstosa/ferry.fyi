@@ -49,6 +49,7 @@ describe("client asset budgets", () => {
       javascriptBytes: 150,
       javascriptFiles: 2,
       largestJavascriptBytes: 100,
+      optionalBillingJavascriptBytes: 0,
     });
     expect(() =>
       assertClientBudgets(summary, {
@@ -56,6 +57,7 @@ describe("client asset budgets", () => {
         javascriptBytes: 150,
         javascriptFiles: 2,
         largestJavascriptBytes: 100,
+        optionalBillingJavascriptBytes: 0,
       })
     ).not.toThrow();
   });
@@ -68,7 +70,26 @@ describe("client asset budgets", () => {
         javascriptBytes: 100,
         javascriptFiles: 1,
         largestJavascriptBytes: 100,
+        optionalBillingJavascriptBytes: 0,
       })
     ).toThrow(/javascriptBytes.*largestJavascriptBytes/s);
+  });
+
+  // isolate optional billing code
+  it("budgets optional RevenueCat billing separately from core code", () => {
+    const summary = summarizeClientAssets(
+      fixture({
+        "main.js": 100,
+        "revenuecat-web-billing.example.js": 80,
+      })
+    );
+
+    expect(summary).toEqual({
+      cssBytes: 0,
+      javascriptBytes: 100,
+      javascriptFiles: 2,
+      largestJavascriptBytes: 100,
+      optionalBillingJavascriptBytes: 80,
+    });
   });
 });

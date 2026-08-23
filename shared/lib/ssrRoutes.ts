@@ -296,6 +296,8 @@ export const PUBLIC_SSR_ROUTE_MANIFEST = [
   staticRoute("data-sources", "/data-sources", "Data sources and API guide"),
   staticRoute("install", "/install", "Install"),
   staticRoute("privacy", "/privacy", "Privacy Policy"),
+  staticRoute("supporter", "/supporter", "Ferry FYI Supporter"),
+  staticRoute("terms", "/terms", "Terms of Service"),
   staticRoute("forecasting", "/forecasting", "Forecasting"),
   define({
     allowedQuery: [],

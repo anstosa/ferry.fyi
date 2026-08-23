@@ -28,6 +28,8 @@ import { Page } from "~/components/Page";
 import { PageLoadError } from "~/components/PageLoadError";
 import { SeoHelmet } from "~/components/SeoHelmet";
 import { Skeleton, SkeletonGroup } from "~/components/Skeleton";
+import { SupporterCard } from "~/components/SupporterCard";
+import { ApiError } from "~/lib/api";
 import {
   getConfiguredAuth0RedirectUri,
   getLogoutMode,
@@ -36,6 +38,7 @@ import {
 import { clearCameraDetectionDebuggerAuthorization } from "~/lib/cameraDetectionDebugger";
 import { useDevice } from "~/lib/device";
 import { disableAutomaticLeaderboardAccount } from "~/lib/leaderboardAutomatic";
+import { useSupporter } from "~/lib/supporterContext";
 import { getSlug, useTerminals } from "~/lib/terminals";
 import { type ThemePreference, useThemePreference } from "~/lib/theme";
 import { useUser } from "~/lib/user";
@@ -314,9 +317,16 @@ export const Account = withAuthenticationRequired(
       { deleteAccount, refreshUser },
     ] = useUser();
     const device = useDevice();
+    const supporter = useSupporter();
     const navigate = useNavigate();
     const [themePreference, setThemePreference] = useThemePreference();
     const [deletionConfirmation, setDeletionConfirmation] = useState("");
+    const [continuingBillingAcknowledged, setContinuingBillingAcknowledged] =
+      useState(false);
+    const [
+      continuingBillingWarningRequired,
+      setContinuingBillingWarningRequired,
+    ] = useState(false);
     const [deletionError, setDeletionError] = useState<string | null>(null);
     const [deletionState, setDeletionState] =
       useState<AccountDeletionState>("closed");
@@ -412,6 +422,8 @@ export const Account = withAuthenticationRequired(
     // open deletion confirmation
     const openDeletion = (): void => {
       setDeletionConfirmation("");
+      setContinuingBillingAcknowledged(false);
+      setContinuingBillingWarningRequired(false);
       setDeletionError(null);
       setDeletionState("confirming");
     };
@@ -419,6 +431,8 @@ export const Account = withAuthenticationRequired(
     // close deletion confirmation
     const closeDeletion = (): void => {
       setDeletionConfirmation("");
+      setContinuingBillingAcknowledged(false);
+      setContinuingBillingWarningRequired(false);
       setDeletionError(null);
       setDeletionState("closed");
     };
@@ -439,9 +453,28 @@ export const Account = withAuthenticationRequired(
           () => subjectRef.current,
           getAccessTokenSilently
         );
-        await deleteAccount(deletionConfirmation);
+        await deleteAccount(
+          deletionConfirmation,
+          continuingBillingAcknowledged
+        );
       } catch (error) {
         console.error(error);
+        // stale billing warning guard
+        if (
+          error instanceof ApiError &&
+          error.status === 409 &&
+          typeof error.data === "object" &&
+          error.data !== null &&
+          "error" in error.data &&
+          error.data.error === "continuing_billing_acknowledgement_required"
+        ) {
+          setContinuingBillingWarningRequired(true);
+          setDeletionError(
+            "Confirm that you understand subscription billing can continue, then retry deletion."
+          );
+          setDeletionState("confirming");
+          return;
+        }
         setDeletionError(
           "Ferry FYI could not confirm account deletion. Sign in again; if your account is still active, retry."
         );
@@ -531,6 +564,8 @@ export const Account = withAuthenticationRequired(
             updatedAt={updatedAt}
             username={username}
           />
+
+          <SupporterCard />
 
           <section className="rounded bg-white p-6 shadow dark:bg-black">
             <h3 className="text-xl font-bold">Appearance</h3>
@@ -687,6 +722,26 @@ export const Account = withAuthenticationRequired(
                   This cannot be undone. You will need to create a new account
                   to use signed-in features again.
                 </p>
+                {(supporter.status?.active ||
+                  continuingBillingWarningRequired) && (
+                  <label className="mt-4 flex items-start gap-3 rounded-xl border border-red-dark/40 p-3 text-sm">
+                    <input
+                      checked={continuingBillingAcknowledged}
+                      className="mt-1"
+                      disabled={deletionState === "deleting"}
+                      onChange={(event) =>
+                        setContinuingBillingAcknowledged(event.target.checked)
+                      }
+                      type="checkbox"
+                    />
+                    <span>
+                      I understand deleting Ferry FYI does not cancel my
+                      subscription. Billing can continue until I cancel through
+                      the App Store, Google Play, or web billing portal, and
+                      restore can require this original Ferry FYI account.
+                    </span>
+                  </label>
+                )}
                 <label
                   className="mt-4 block text-sm font-semibold"
                   htmlFor="account-deletion-confirmation"
@@ -729,7 +784,10 @@ export const Account = withAuthenticationRequired(
                     className="button button-danger"
                     disabled={
                       deletionState === "deleting" ||
-                      deletionConfirmation !== ACCOUNT_DELETION_CONFIRMATION
+                      deletionConfirmation !== ACCOUNT_DELETION_CONFIRMATION ||
+                      ((supporter.status?.active === true ||
+                        continuingBillingWarningRequired) &&
+                        !continuingBillingAcknowledged)
                     }
                     onClick={confirmDeletion}
                     type="button"

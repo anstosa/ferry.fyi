@@ -12,6 +12,7 @@ import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { getConfiguredAuth0RedirectUri } from "~/lib/auth";
 import { FeatureFlagProvider } from "~/lib/featureFlags";
 import { AppRenderProvider } from "~/lib/renderContext";
+import { SupporterProvider } from "~/lib/supporterProvider";
 import { initializeTheme } from "~/lib/theme";
 import { UserProvider } from "~/lib/user";
 import { initializeServiceWorker } from "~/lib/worker";
@@ -96,7 +97,9 @@ export const BrowserPhase = ({
             <CameraDetectionDebuggerAuthorization />
             <FeatureFlagProvider>
               <UserProvider>
-                <App suspendInitialRoute={suspendInitialRoute} />
+                <SupporterProvider>
+                  <App suspendInitialRoute={suspendInitialRoute} />
+                </SupporterProvider>
               </UserProvider>
             </FeatureFlagProvider>
           </Auth0Provider>

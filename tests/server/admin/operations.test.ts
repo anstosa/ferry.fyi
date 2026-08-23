@@ -42,6 +42,10 @@ vi.mock("~/lib/fareCache", () => ({
   warmDueFareCatalogs: operations.warmDueFareCatalogs,
   warmTodayFareCatalogs: operations.warmTodayFareCatalogs,
 }));
+vi.mock("~/lib/supporter", () => ({
+  cleanupProviderActionWindows: vi.fn().mockResolvedValue(0),
+  processPendingSupporterWork: vi.fn().mockResolvedValue(undefined),
+}));
 vi.mock("~/lib/tides/updateForecasts", () => ({
   updateTideForecasts: operations.updateTideForecasts,
 }));

@@ -28,6 +28,25 @@ export interface ApplicationRevocationResult {
   status: "complete";
 }
 
+/** Serializes account authorization mutations for one Auth0 subject. */
+export const lockSubjectAuthorization = async (
+  subject: string,
+  transaction: Transaction
+): Promise<void> => {
+  const subjectHash = hashRevocationSubject(subject);
+  // configured identity guard
+  if (!subjectHash) {
+    throw new Error("Application token revocation is not configured");
+  }
+  const firstKey = Buffer.from(subjectHash.slice(0, 8), "hex").readInt32BE(0);
+  const secondKey = Buffer.from(subjectHash.slice(8, 16), "hex").readInt32BE(0);
+  const { db } = await import("~/lib/db");
+  await db.query("SELECT pg_advisory_xact_lock(:firstKey, :secondKey)", {
+    replacements: { firstKey, secondKey },
+    transaction,
+  });
+};
+
 /**
  * Invalidates application JWTs issued at or before this action. The stored
  * value expires after the maximum accepted application-token lifetime.
@@ -49,6 +68,7 @@ export const revokeApplicationTokens = async (
     revokedAfter: now,
     subjectHash,
   };
+  // caller-owned transaction guard
   if (transaction) {
     await AdminSessionRevocation.upsert(values, { transaction });
   } else {
@@ -69,16 +89,24 @@ export const cleanupExpiredApplicationTokenRevocations = (
 export const isApplicationTokenRevoked = async (
   subject: string,
   issuedAtSeconds: number,
-  now = new Date()
+  now = new Date(),
+  transaction?: Transaction,
+  lock = false
 ): Promise<boolean> => {
   const subjectHash = hashRevocationSubject(subject);
   if (!subjectHash) {
     return false;
   }
-  await cleanupExpiredApplicationTokenRevocations(now);
+  // avoid unrelated cleanup inside caller transactions
+  if (!transaction) {
+    await cleanupExpiredApplicationTokenRevocations(now);
+  }
   const { AdminSessionRevocation } =
     await import("~/models/AdminSessionRevocation");
-  const revocation = await AdminSessionRevocation.findByPk(subjectHash);
+  const revocation = await AdminSessionRevocation.findByPk(subjectHash, {
+    ...(lock && transaction ? { lock: transaction.LOCK.UPDATE } : {}),
+    transaction,
+  });
   if (!revocation || revocation.expiresAt.getTime() <= now.getTime()) {
     return false;
   }

@@ -83,6 +83,7 @@ const getProfile = async (
       displayName: "",
       notificationsEnabled: true,
       optedOut: false,
+      supporterBadgeVisible: false,
       subject,
       useFullName: false,
       verboseNotificationsEnabled: false,
@@ -104,6 +105,7 @@ const serializePreferences = (
   displayName: profile.displayName,
   notificationsEnabled: profile.notificationsEnabled,
   optedOut: profile.optedOut,
+  supporterBadgeVisible: profile.supporterBadgeVisible,
   useFullName: profile.useFullName,
   verboseNotificationsEnabled: profile.verboseNotificationsEnabled,
 });
@@ -140,6 +142,7 @@ const sanitizePreferences = (
     "automaticCheckinsEnabled",
     "notificationsEnabled",
     "optedOut",
+    "supporterBadgeVisible",
     "useFullName",
     "verboseNotificationsEnabled",
   ] as const) {

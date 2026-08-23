@@ -247,6 +247,9 @@ const _useUser = (): Response => {
       await getAccessToken({ forceInteractive: true });
       return;
     }
+    // bypass the prior account snapshot
+    userPromise = null;
+    userPromiseSubject = null;
     await loadUser(token);
   };
 
@@ -272,13 +275,17 @@ const _useUser = (): Response => {
 
   const actions: Actions = {
     // permanently delete account
-    deleteAccount: async (confirmation) => {
+    deleteAccount: async (confirmation, continuingBillingAcknowledged) => {
       const token = await getAccessToken();
       // authenticated deletion guard
       if (!token) {
         throw new Error("Sign in again before deleting your account.");
       }
-      await del("/user", { confirmation }, token);
+      await del(
+        "/user",
+        { confirmation, continuingBillingAcknowledged },
+        token
+      );
       userPromise = null;
       userPromiseSubject = null;
       setUser(null);

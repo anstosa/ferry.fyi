@@ -56,6 +56,19 @@ describe("deferred browser phase", () => {
     vi.doMock("~/lib/theme", () => ({ initializeTheme }));
     vi.doMock("~/lib/user", () => ({
       UserProvider: ({ children }: React.PropsWithChildren) => children,
+      useUser: () => [
+        {
+          favoriteRouteIds: [],
+          isAuthenticated: false,
+          isUserLoading: false,
+          user: null,
+          userError: null,
+        },
+        {
+          getAccessToken: vi.fn(),
+          refreshUser: vi.fn(),
+        },
+      ],
     }));
     vi.doMock("~/lib/worker", () => ({ initializeServiceWorker }));
     vi.doMock("~/routes", () => ({ preloadBrowserRoute }));

@@ -7,10 +7,11 @@ import { fileURLToPath } from "node:url";
 
 export const DEFAULT_CLIENT_BUDGETS = Object.freeze({
   cssBytes: 140_000,
-  javascriptBytes: 5_150_000,
+  javascriptBytes: 5_200_000,
   // reserve bounded route-chunk headroom
   javascriptFiles: 140,
   largestJavascriptBytes: 1_900_000,
+  optionalBillingJavascriptBytes: 900_000,
 });
 
 export const summarizeClientAssets = (directory) => {
@@ -25,10 +26,16 @@ export const summarizeClientAssets = (directory) => {
       name: entry.name,
     }));
   const javascript = entries.filter(({ name }) => name.endsWith(".js"));
+  const optionalBillingJavascript = javascript.filter(({ name }) =>
+    name.startsWith("revenuecat-web-billing.")
+  );
+  const coreJavascript = javascript.filter(
+    ({ name }) => !name.startsWith("revenuecat-web-billing.")
+  );
   const css = entries.filter(({ name }) => name.endsWith(".css"));
   return {
     cssBytes: css.reduce((total, entry) => total + entry.bytes, 0),
-    javascriptBytes: javascript.reduce(
+    javascriptBytes: coreJavascript.reduce(
       (total, entry) => total + entry.bytes,
       0
     ),
@@ -36,6 +43,10 @@ export const summarizeClientAssets = (directory) => {
     largestJavascriptBytes: Math.max(
       0,
       ...javascript.map(({ bytes }) => bytes)
+    ),
+    optionalBillingJavascriptBytes: optionalBillingJavascript.reduce(
+      (total, entry) => total + entry.bytes,
+      0
     ),
   };
 };
