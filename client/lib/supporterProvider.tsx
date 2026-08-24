@@ -5,19 +5,18 @@ import React, {
   type PropsWithChildren,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
-import type { LeaderboardPreferences } from "shared/contracts/leaderboards";
 import type {
-  SupporterManagementResult,
   SupporterProductOption,
   SupporterPurchaseResult,
   SupporterReconcileResult,
   SupporterStatus,
 } from "shared/contracts/supporter";
 
-import { get, post, put } from "~/lib/api";
+import { get, post } from "~/lib/api";
 import { SupporterContext } from "~/lib/supporterContext";
 import {
   getNativeSupporterManagementUrl,
@@ -28,9 +27,32 @@ import {
 } from "~/lib/supporterNative";
 import {
   loadWebSupporterProducts,
+  openWebSupporterManagement,
   purchaseWebSupporter,
 } from "~/lib/supporterWeb";
 import { useUser } from "~/lib/user";
+
+const SUPPORTER_LOAD_TIMEOUT_MS = 12_000;
+
+// bound one external loading step
+const withSupporterLoadTimeout = async <T,>(
+  operation: Promise<T>
+): Promise<T> => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_resolve, reject) => {
+    timer = setTimeout(() => {
+      reject(new Error("Supporter plans took too long to load. Try again."));
+    }, SUPPORTER_LOAD_TIMEOUT_MS);
+  });
+  try {
+    return await Promise.race([operation, timeout]);
+  } finally {
+    // clear the bounded timer
+    if (timer) {
+      clearTimeout(timer);
+    }
+  }
+};
 
 // normalize one unknown error
 const getSupporterError = (error: unknown): string =>
@@ -80,18 +102,26 @@ export const SupporterProvider: FunctionComponent<PropsWithChildren> = ({
     setError(null);
     // isolate account status failures
     try {
-      const token = await userActionsRef.current.getAccessToken();
+      const token = await withSupporterLoadTimeout(
+        userActionsRef.current.getAccessToken()
+      );
       // token readiness guard
       if (!token || requestGeneration !== generation.current) {
         return;
       }
-      const nextStatus = await get<SupporterStatus>("/supporter", token);
+      const nextStatus = await withSupporterLoadTimeout(
+        get<SupporterStatus>("/supporter", token)
+      );
       // stale account guard
       if (requestGeneration !== generation.current) {
         return;
       }
       setStatus(nextStatus);
       setProducts([]);
+      // synchronize ad and upgrade policy
+      if (userState.user?.supporter?.revision !== nextStatus.revision) {
+        await userActionsRef.current.refreshUser(token);
+      }
       // active account guard
       if (nextStatus.active || !isCheckoutAvailable(nextStatus)) {
         return;
@@ -103,8 +133,12 @@ export const SupporterProvider: FunctionComponent<PropsWithChildren> = ({
         return;
       }
       const nextProducts = native
-        ? await loadNativeSupporterProducts(nextStatus.appUserId)
-        : await loadWebSupporterProducts(nextStatus.appUserId);
+        ? await withSupporterLoadTimeout(
+            loadNativeSupporterProducts(nextStatus.appUserId)
+          )
+        : await withSupporterLoadTimeout(
+            loadWebSupporterProducts(nextStatus.appUserId)
+          );
       // stale offering guard
       if (requestGeneration === generation.current) {
         setProducts(nextProducts);
@@ -120,14 +154,16 @@ export const SupporterProvider: FunctionComponent<PropsWithChildren> = ({
         setLoading(false);
       }
     }
-  }, [userState.isAuthenticated]);
+  }, [userState.isAuthenticated, userState.user?.supporter?.revision]);
 
   // reset on auth ownership changes
-  useEffect(() => {
+  useLayoutEffect(() => {
     generation.current += 1;
     setStatus(null);
     setProducts([]);
     setError(null);
+    setLoading(false);
+    setBusy(false);
   }, [userState.user?.user_id]);
 
   // refresh on foreground return
@@ -239,38 +275,13 @@ export const SupporterProvider: FunctionComponent<PropsWithChildren> = ({
         await Browser.open({ url });
         return;
       }
-      const token = await userActionsRef.current.getAccessToken();
-      // token readiness guard
-      if (!token) {
-        throw new Error("Sign in again to manage your subscription.");
-      }
-      const result = await post<SupporterManagementResult>(
-        "/supporter/management",
-        {},
-        token
-      );
-      window.location.assign(result.url);
+      await openWebSupporterManagement(status.appUserId);
     } catch (managementError) {
       setError(getSupporterError(managementError));
       throw managementError;
     } finally {
       setBusy(false);
     }
-  };
-
-  // save public badge consent
-  const setBadgeVisible = async (visible: boolean): Promise<void> => {
-    const token = await userActionsRef.current.getAccessToken();
-    // token readiness guard
-    if (!token || !status) {
-      throw new Error("Sign in again to change Supporter badge visibility.");
-    }
-    await put<LeaderboardPreferences>(
-      "/leaderboards/preferences",
-      { supporterBadgeVisible: visible },
-      token
-    );
-    setStatus({ ...status, supporterBadgeVisible: visible });
   };
 
   return (
@@ -284,7 +295,6 @@ export const SupporterProvider: FunctionComponent<PropsWithChildren> = ({
         purchase,
         refresh,
         restore,
-        setBadgeVisible,
         status,
       }}
     >

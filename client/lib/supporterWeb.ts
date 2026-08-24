@@ -75,6 +75,20 @@ export const loadWebSupporterProducts = async (
   ];
 };
 
+/** Opens RevenueCat's source-appropriate web management portal. */
+export const openWebSupporterManagement = async (
+  appUserId: string
+): Promise<void> => {
+  const instance = await bindWebPurchases(appUserId);
+  const customerInfo = await instance.getCustomerInfo();
+  const url = customerInfo.managementURL;
+  // secure destination guard
+  if (!url?.startsWith("https://")) {
+    throw new Error("Subscription management is unavailable");
+  }
+  window.location.assign(url);
+};
+
 /** Purchases one current web offering package. */
 export const purchaseWebSupporter = async (
   appUserId: string,

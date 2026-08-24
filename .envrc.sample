@@ -67,5 +67,7 @@ export SUPPORTER_ACTION_HMAC_SECRET="<random server-only hmac secret>"
 export SUPPORTER_WEB_CHECKOUT_ENABLED="false"
 export SUPPORTER_IOS_CHECKOUT_ENABLED="false"
 export SUPPORTER_ANDROID_CHECKOUT_ENABLED="false"
+# allow sandbox entitlements only in isolated development environments
+export SUPPORTER_SANDBOX_RUNTIME_ENABLED="false"
 
 # Leaderboards are disabled unless explicitly enabled together.

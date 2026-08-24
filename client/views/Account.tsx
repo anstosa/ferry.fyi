@@ -29,6 +29,7 @@ import { PageLoadError } from "~/components/PageLoadError";
 import { SeoHelmet } from "~/components/SeoHelmet";
 import { Skeleton, SkeletonGroup } from "~/components/Skeleton";
 import { SupporterCard } from "~/components/SupporterCard";
+import { SupporterUpgradeNudge } from "~/components/SupporterUpgradeNudge";
 import { ApiError } from "~/lib/api";
 import {
   getConfiguredAuth0RedirectUri,
@@ -565,7 +566,14 @@ export const Account = withAuthenticationRequired(
             username={username}
           />
 
-          <SupporterCard />
+          <SupporterUpgradeNudge
+            active={accountUser?.supporter?.active === true}
+            resolved={accountUser?.supporter?.resolved === true}
+          />
+
+          {/* preserve management for active and unresolved accounts */}
+          {(!accountUser?.supporter?.resolved ||
+            accountUser.supporter.active) && <SupporterCard />}
 
           <section className="rounded bg-white p-6 shadow dark:bg-black">
             <h3 className="text-xl font-bold">Appearance</h3>

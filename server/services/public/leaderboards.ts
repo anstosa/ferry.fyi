@@ -68,7 +68,13 @@ export const getPublicLeaderboard = async ({
   );
   const supporterSubjects = await getActiveSupporterSubjects(
     profiles
-      .filter((profile) => !profile.optedOut && profile.supporterBadgeVisible)
+      // include default-on or explicitly enabled badge preferences
+      .filter(
+        (profile) =>
+          !profile.optedOut &&
+          (!profile.supporterBadgePreferenceSet ||
+            profile.supporterBadgeVisible)
+      )
       .map((profile) => profile.subject)
   );
   const ranks = rows

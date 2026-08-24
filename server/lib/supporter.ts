@@ -129,12 +129,14 @@ const getRuntimeAuthority = async (
   if (!policy) {
     return { generation: "1", scopes: [] };
   }
-  const sandboxAllowed = Boolean(
-    subject &&
-    (await FeatureFlagAllowlist.findOne({
-      where: { name: SANDBOX_ALLOWLIST, subject },
-    }))
-  );
+  const sandboxAllowed =
+    isEnabled("SUPPORTER_SANDBOX_RUNTIME_ENABLED") ||
+    Boolean(
+      subject &&
+      (await FeatureFlagAllowlist.findOne({
+        where: { name: SANDBOX_ALLOWLIST, subject },
+      }))
+    );
   const scopes = parseAuthoritySet(policy.authoritySet)
     .filter((entry) => entry.environment !== "sandbox" || sandboxAllowed)
     .map(({ environment, providerProjectKey }) => ({
@@ -806,6 +808,10 @@ export const getSupporterStatus = async (
     where: { customerId: customer.id },
   });
   const profile = await LeaderboardProfile.findByPk(subject);
+  // default active unconfigured accounts on
+  const supporterBadgeVisible = profile?.supporterBadgePreferenceSet
+    ? profile.supporterBadgeVisible
+    : projection.active;
   return {
     active: projection.active,
     activeUntil: projection.activeUntil?.toISOString() ?? null,
@@ -822,7 +828,7 @@ export const getSupporterStatus = async (
     resolved: true,
     revision: `v1:${customer.runtimeProjectionGeneration}:${authorityGeneration}`,
     sources: projection.sources,
-    supporterBadgeVisible: profile?.supporterBadgeVisible ?? false,
+    supporterBadgeVisible,
   };
 };
 

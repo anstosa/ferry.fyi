@@ -83,7 +83,8 @@ const getProfile = async (
       displayName: "",
       notificationsEnabled: true,
       optedOut: false,
-      supporterBadgeVisible: false,
+      supporterBadgePreferenceSet: false,
+      supporterBadgeVisible: true,
       subject,
       useFullName: false,
       verboseNotificationsEnabled: false,
@@ -105,7 +106,10 @@ const serializePreferences = (
   displayName: profile.displayName,
   notificationsEnabled: profile.notificationsEnabled,
   optedOut: profile.optedOut,
-  supporterBadgeVisible: profile.supporterBadgeVisible,
+  // default unconfigured badge consent on
+  supporterBadgeVisible: profile.supporterBadgePreferenceSet
+    ? profile.supporterBadgeVisible
+    : true,
   useFullName: profile.useFullName,
   verboseNotificationsEnabled: profile.verboseNotificationsEnabled,
 });
@@ -652,9 +656,15 @@ leaderboardRouter.put("/preferences", async (request, response) => {
       }
 
       const optedOut = sanitized.update.optedOut ?? profile.optedOut;
-      const update: LeaderboardPreferencesUpdate = {
+      const update: LeaderboardPreferencesUpdate & {
+        supporterBadgePreferenceSet?: boolean;
+      } = {
         ...sanitized.update,
         ...(optedOut ? { automaticCheckinsEnabled: false } : {}),
+        // remember one explicit badge choice
+        ...(sanitized.update.supporterBadgeVisible === undefined
+          ? {}
+          : { supporterBadgePreferenceSet: true }),
       };
       const policyChanged =
         (update.optedOut !== undefined &&

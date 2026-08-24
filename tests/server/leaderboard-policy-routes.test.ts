@@ -164,6 +164,8 @@ describe("leaderboard policy routes", () => {
       displayName: "Pilot",
       notificationsEnabled: false,
       optedOut: false,
+      supporterBadgePreferenceSet: false,
+      supporterBadgeVisible: false,
       // mutate profile fixtures
       update: vi.fn((update) => Object.assign(profile, update)),
       useFullName: false,
@@ -440,6 +442,37 @@ describe("leaderboard policy routes", () => {
       { transaction }
     );
     expect(policy.advanceServerPolicyGeneration).toHaveBeenCalledTimes(2);
+  });
+
+  // default subscribed badge consent until explicitly changed
+  it("defaults the supporter badge on and records an explicit choice", async () => {
+    const current = await request(app())
+      .get("/leaderboards/preferences")
+      .expect(200);
+
+    expect(current.body.supporterBadgeVisible).toBe(true);
+    expect(profiles.findOrCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        defaults: expect.objectContaining({
+          supporterBadgePreferenceSet: false,
+          supporterBadgeVisible: true,
+        }),
+      })
+    );
+
+    const updated = await request(app())
+      .put("/leaderboards/preferences")
+      .send({ supporterBadgeVisible: false })
+      .expect(200);
+
+    expect(updated.body.supporterBadgeVisible).toBe(false);
+    expect(profile.update).toHaveBeenCalledWith(
+      {
+        supporterBadgePreferenceSet: true,
+        supporterBadgeVisible: false,
+      },
+      { transaction }
+    );
   });
 
   // prove opt-out credential revocation

@@ -60,6 +60,10 @@ export const AdCreativeCard = forwardRef<HTMLAnchorElement, Props>(
         <p className="mt-1 text-right text-2xs font-semibold text-sponsor-dark dark:text-sponsor-light">
           <span>Advertisement</span>
           <span aria-hidden="true"> · </span>
+          <a className="link" href="/supporter">
+            Go ad-free
+          </a>
+          <span aria-hidden="true"> · </span>
           <a className="link" href="/privacy#advertising">
             Why this ad?
           </a>

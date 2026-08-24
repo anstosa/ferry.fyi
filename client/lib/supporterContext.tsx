@@ -16,7 +16,6 @@ export interface SupporterContextValue {
   ) => Promise<SupporterPurchaseResult | null>;
   refresh: () => Promise<void>;
   restore: () => Promise<void>;
-  setBadgeVisible: (visible: boolean) => Promise<void>;
   status: SupporterStatus | null;
 }
 
@@ -29,7 +28,6 @@ const anonymousSupporter: SupporterContextValue = {
   purchase: () => Promise.resolve(null),
   refresh: () => Promise.resolve(),
   restore: () => Promise.resolve(),
-  setBadgeVisible: () => Promise.resolve(),
   status: null,
 };
 

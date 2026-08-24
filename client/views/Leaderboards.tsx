@@ -27,9 +27,14 @@ import {
   LeaderboardAutomaticEnrollment,
 } from "~/components/LeaderboardAutomaticEnrollment";
 import { LeaderboardManualCheckIn } from "~/components/LeaderboardManualCheckIn";
+import {
+  LeaderboardIdentity,
+  LeaderboardSupporterBadgePreference,
+} from "~/components/LeaderboardSupporterBadgePreference";
 import { Page } from "~/components/Page";
 import { SeoHelmet } from "~/components/SeoHelmet";
 import { Skeleton, SkeletonGroup } from "~/components/Skeleton";
+import { SupporterUpgradeNudge } from "~/components/SupporterUpgradeNudge";
 import { ApiError } from "~/lib/api";
 import { loginWithAppFlow } from "~/lib/auth";
 import { useFavoriteRoutes } from "~/lib/favoriteRoutes";
@@ -49,7 +54,9 @@ import {
   hasFavoriteRoute,
   sortRouteGroups,
 } from "~/lib/routeGroups";
+import { useSupporter } from "~/lib/supporterContext";
 import { useTerminals } from "~/lib/terminals";
+import { useUser } from "~/lib/user";
 import { getVessel, useLiveVessels } from "~/lib/vessels";
 import ArrowLeftIcon from "~/static/images/icons/solid/arrow-left.svg";
 import BellIcon from "~/static/images/icons/solid/bell.svg";
@@ -221,14 +228,11 @@ const RankList = ({
                 rank.rank
               )}
             </strong>
-            <span className="min-w-0 flex-1 truncate font-medium">
-              {rank.label}
-              {rank.supporterBadge && (
-                <span className="ml-2 rounded-full bg-green-lightest px-2 py-0.5 text-2xs font-bold uppercase tracking-wide text-green-dark dark:bg-green-dark dark:text-green-lightest">
-                  Supporter
-                </span>
-              )}
-            </span>
+            <LeaderboardIdentity
+              className="flex-1"
+              label={rank.label}
+              supporterBadge={rank.supporterBadge}
+            />
             <span className="font-bold">{rank.score}</span>
           </li>
         );
@@ -334,6 +338,9 @@ const Preferences = (): ReactElement => {
     loginWithRedirect,
     user,
   } = useAuth0();
+  // read authoritative supporter state for upgrade visibility
+  const [{ user: accountUser }] = useUser();
+  const supporter = useSupporter();
   const { leaderboardsEnabled } = useFeatureFlags();
   const [preferences, setPreferences] = useState<LeaderboardPreferences | null>(
     null
@@ -480,6 +487,14 @@ const Preferences = (): ReactElement => {
     setSaving(false);
     return await save({ automaticCheckinsEnabled: false, optedOut: true });
   };
+  // save and synchronize supporter badge consent
+  const saveSupporterBadge = async (visible: boolean): Promise<void> => {
+    const saved = await save({ supporterBadgeVisible: visible });
+    // refresh supporter surfaces after confirmation
+    if (saved) {
+      await supporter.refresh();
+    }
+  };
   return (
     <section className="mt-4">
       <label className="block text-sm">
@@ -507,6 +522,18 @@ const Preferences = (): ReactElement => {
         disabled={preferences.optedOut || saving}
         onPreferencesChange={setPreferences}
         preferences={preferences}
+      />
+      <LeaderboardSupporterBadgePreference
+        active={accountUser?.supporter?.active === true}
+        disabled={preferences.optedOut || saving}
+        displayName={preferences.displayName}
+        onChange={saveSupporterBadge}
+        visible={preferences.supporterBadgeVisible}
+      />
+      <SupporterUpgradeNudge
+        active={accountUser?.supporter?.active === true}
+        heading="Enjoy leaderboards without ads"
+        resolved={accountUser?.supporter?.resolved === true}
       />
       <div className="mt-4 flex items-center justify-between gap-2">
         {preferences.optedOut ? (

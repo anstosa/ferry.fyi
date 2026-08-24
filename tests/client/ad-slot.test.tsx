@@ -73,12 +73,68 @@ afterEach(() => {
   document.body.innerHTML = "";
   auth.isAuthenticated = false;
   auth.user = { email: "rider@example.com" };
+  // restore supporter policy
+  user.user.supporter.active = false;
   seed.ad = undefined;
   vi.clearAllMocks();
   vi.useRealTimers();
 });
 
 describe("AdSlot", () => {
+  // replace the homepage slot for active supporters
+  it("opens a homepage thank-you from the Supporter crown", async () => {
+    auth.isAuthenticated = true;
+    user.user.supporter.active = true;
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root?.render(
+        <MemoryRouter>
+          <AdSlot
+            className="mx-auto w-full max-w-6xl px-4 pb-4"
+            contextLabel="Home"
+            slot="home"
+          />
+        </MemoryRouter>
+      );
+      await Promise.resolve();
+    });
+
+    const crown = container.querySelector<HTMLButtonElement>(
+      '[aria-label="Show Supporter thank-you"]'
+    );
+    expect(crown?.getAttribute("aria-expanded")).toBe("false");
+    expect(container.textContent).not.toContain(
+      "Thank you for supporting Ferry FYI"
+    );
+    expect(
+      container.querySelector("[data-supporter-thank-you] svg")
+    ).not.toBeNull();
+    expect(crown?.classList).toContain("rounded-xl");
+    expect(crown?.classList).not.toContain("rounded-full");
+    await act(async () => crown?.click());
+    expect(crown?.getAttribute("aria-expanded")).toBe("true");
+    expect(container.textContent).toContain(
+      "Thank you for supporting Ferry FYI"
+    );
+    expect(container.textContent).toContain(
+      "Your subscription helps keep schedules, alerts, forecasts, cameras, and ticket tools available for every ferry rider. Enjoy your ad-free experience."
+    );
+    const panel = container.querySelector(
+      "#homepage-supporter-thank-you-panel"
+    );
+    expect(panel?.classList).toContain("fixed");
+    expect(panel?.classList).toContain("left-2");
+    expect(panel?.classList).toContain("right-2");
+    expect(
+      container.querySelector("[data-supporter-thank-you]")
+    ).not.toBeNull();
+    expect(container.querySelector("[data-ad-opportunity-anchor]")).toBeNull();
+    expect(api.post).not.toHaveBeenCalled();
+  });
+
   it("renders the server-seeded creative before the exposure request settles", async () => {
     seed.ad = {
       creative: {
@@ -244,9 +300,12 @@ describe("AdSlot", () => {
     expect(container.querySelector(".button-primary")).toBeNull();
     const disclosure = clickTarget?.nextElementSibling;
     expect(disclosure?.textContent).toBe(
-      "Advertisement · Why this ad? · Report ad"
+      "Advertisement · Go ad-free · Why this ad? · Report ad"
     );
     expect(disclosure?.tagName).toBe("P");
+    expect(container.querySelector('a[href="/supporter"]')?.textContent).toBe(
+      "Go ad-free"
+    );
     expect(
       container.querySelector('a[href="/privacy#advertising"]')?.textContent
     ).toBe("Why this ad?");

@@ -25,6 +25,7 @@ import {
 } from "~/lib/ads";
 import { usePublicSsrSource } from "~/lib/ssrSeed";
 import { useUser } from "~/lib/user";
+import CrownIcon from "~/static/images/icons/solid/crown.svg";
 
 import { AdCreativeCard } from "./AdCreativeCard";
 
@@ -269,6 +270,72 @@ const AdPlaceholder = ({
   </aside>
 );
 
+/** Replaces the homepage advertisement with an active Supporter thank-you. */
+const SupporterThankYou = (): ReactElement => {
+  const [isOpen, setIsOpen] = useState(false);
+  // toggle supporter message
+  const toggleMessage = (): void => setIsOpen((current) => !current);
+  return (
+    <div
+      className="absolute right-2 top-2 z-20 mt-safe-top"
+      data-supporter-thank-you="true"
+    >
+      <button
+        aria-controls="homepage-supporter-thank-you-panel"
+        aria-expanded={isOpen}
+        aria-label={`${isOpen ? "Hide" : "Show"} Supporter thank-you`}
+        className="group relative isolate flex h-10 w-10 items-center justify-center rounded-xl border border-[#ffec9f] bg-[linear-gradient(135deg,#fff6bb_0%,#f8d65a_28%,#d99a0a_58%,#ffe681_82%,#be7800_100%)] text-[#4b3100] shadow-[0_4px_16px_rgba(242,183,5,0.55)] transition hover:scale-105 hover:shadow-[0_6px_22px_rgba(242,183,5,0.7)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+        onClick={toggleMessage}
+        type="button"
+      >
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-x-1 top-1 h-1/2 rounded-full bg-gradient-to-b from-white/80 to-transparent"
+        />
+        <CrownIcon aria-hidden className="relative h-6 w-6" />
+        <span
+          aria-hidden
+          className="supporter-crown-sparkle pointer-events-none absolute -right-1 -top-1 text-sm text-yellow-lightest"
+        >
+          ✦
+        </span>
+        <span
+          aria-hidden
+          className="supporter-crown-sparkle supporter-crown-sparkle--delayed pointer-events-none absolute -bottom-1 -left-1 text-xs text-yellow-lightest"
+        >
+          ✦
+        </span>
+      </button>
+      {/* open supporter message */}
+      {isOpen && (
+        <aside
+          aria-labelledby="homepage-supporter-thank-you-title"
+          className="supporter-thank-you-drop fixed left-2 right-2 top-[calc(var(--safe-area-inset-top)+3.5rem)] overflow-hidden rounded-2xl border border-[#b97804] bg-[linear-gradient(135deg,#fff6bb_0%,#f8d65a_26%,#d99a0a_52%,#ffe681_76%,#be7800_100%)] p-4 text-[#3d2800] shadow-[0_12px_30px_rgba(0,0,0,0.28)] sm:left-auto sm:w-96"
+          id="homepage-supporter-thank-you-panel"
+        >
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-br from-white/65 to-transparent"
+          />
+          <div className="relative">
+            <h2
+              className="text-base font-black"
+              id="homepage-supporter-thank-you-title"
+            >
+              Thank you for supporting Ferry FYI
+            </h2>
+            <p className="mt-1 text-sm leading-relaxed text-[#614000]">
+              Your subscription helps keep schedules, alerts, forecasts,
+              cameras, and ticket tools available for every ferry rider. Enjoy
+              your ad-free experience.
+            </p>
+          </div>
+        </aside>
+      )}
+    </div>
+  );
+};
+
 /** Renders a contextual campaign and measures its anonymous opportunity. */
 export const AdSlot = ({
   arrivalTerminalId,
@@ -299,6 +366,11 @@ export const AdSlot = ({
     !isAuthLoading &&
     (!isAuthenticated || (!isUserLoading && supporter?.resolved === true));
   const suppressAds = !policyResolved || supporter?.active === true;
+  const showSupporterThankYou =
+    policyResolved &&
+    isAuthenticated &&
+    supporter?.active === true &&
+    slot === "home";
   const hasDirection = Boolean(arrivalTerminalId && departureTerminalId);
   const key =
     slot === "home" || hasDirection
@@ -375,6 +447,10 @@ export const AdSlot = ({
     `${exposure?.token ?? ""}:${supporter?.revision ?? "anonymous"}`
   );
 
+  // replace only the resolved homepage placement
+  if (showSupporterThankYou) {
+    return <SupporterThankYou />;
+  }
   // hidden policy guard
   if (!key || suppressAds) {
     return null;

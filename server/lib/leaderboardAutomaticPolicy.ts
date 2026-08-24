@@ -134,6 +134,8 @@ const lockProfile = async (
         notificationsEnabled: true,
         optedOut: false,
         subject,
+        supporterBadgePreferenceSet: false,
+        supporterBadgeVisible: true,
         useFullName: false,
         verboseNotificationsEnabled: false,
       },
