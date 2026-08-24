@@ -58,6 +58,13 @@ Public client build configuration:
 - `REVENUECAT_IOS_PUBLIC_API_KEY`
 - `REVENUECAT_ANDROID_PUBLIC_API_KEY`
 
+Production web builds require the RevenueCat Billing production key, which
+starts with `rcb_` but not `rcb_sb_`. A sandbox Stripe connection or an account
+that is not live-capable prevents production checkout. If a live-capable
+account still does not expose a production key, contact RevenueCat support.
+Keep `SUPPORTER_WEB_CHECKOUT_ENABLED=false` until the live key exists, is stored
+in the GitHub Actions variable, and has been deployed.
+
 Checkout kill switches are server-owned and default closed:
 
 - `SUPPORTER_WEB_CHECKOUT_ENABLED`

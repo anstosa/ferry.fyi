@@ -53,7 +53,7 @@ export SENTRY_AUTH_TOKEN="<get from sentry>"
 export REVENUECAT_PROJECT_ID="<get from revenuecat>"
 export REVENUECAT_ANDROID_PUBLIC_API_KEY="<public google app key>"
 export REVENUECAT_IOS_PUBLIC_API_KEY="<public apple app key>"
-export REVENUECAT_WEB_PUBLIC_API_KEY="<public web billing key>"
+export REVENUECAT_WEB_PUBLIC_API_KEY="<production web billing key; rcb_... not rcb_sb_...>"
 
 # RevenueCat server configuration
 export REVENUECAT_V2_SECRET_API_KEY="<restricted revenuecat api v2 key>"

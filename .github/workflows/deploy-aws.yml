@@ -153,6 +153,11 @@ jobs:
             echo "RevenueCat public SDK keys are incomplete" >&2
             exit 1
           fi
+          # reject sandbox web billing from production
+          if [[ "${REVENUECAT_WEB_PUBLIC_API_KEY}" == rcb_sb_* || "${REVENUECAT_WEB_PUBLIC_API_KEY}" != rcb_* ]]; then
+            echo "REVENUECAT_WEB_PUBLIC_API_KEY must be a production RevenueCat Billing key" >&2
+            exit 1
+          fi
           grep -F -- "${FIREBASE_PROJECT_ID}" dist/client/service-worker.js > /dev/null
 
       - name: Log in to Amazon ECR

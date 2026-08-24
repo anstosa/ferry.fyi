@@ -266,8 +266,16 @@ describe("SupporterCard", () => {
       supporterBadgeVisible: false,
     };
     supporter.products = [
-      { interval: "month", price: "$2.49" },
-      { interval: "year", price: "$19.99" },
+      {
+        identifier: "supporter_monthly",
+        interval: "month",
+        price: "$2.49",
+      },
+      {
+        identifier: "supporter_yearly",
+        interval: "year",
+        price: "$19.99",
+      },
     ];
 
     await renderCard();
@@ -279,7 +287,17 @@ describe("SupporterCard", () => {
     expect(container?.textContent).toContain("33% OFF");
     expect(container?.textContent).not.toContain("Best value");
     expect(container?.textContent).not.toContain("About 33% less");
-    expect(container?.textContent).toContain("Applicable tax may be added");
+    expect(container?.textContent).toContain(
+      "selected storefront price—$2.49 each month or $19.99 each year—until canceled"
+    );
+    expect(container?.textContent).toContain(
+      "Payment is charged by Ferry FYI's billing provider when you confirm"
+    );
+    expect(container?.textContent).toContain(
+      "Manage or cancel your subscription through the Ferry FYI billing portal"
+    );
+    expect(container?.textContent).not.toContain("Restore Purchases");
+    expect(container?.textContent).not.toContain("Applicable tax may be added");
     expect(container?.textContent).not.toContain("On the US website");
     expect(monthlyButton?.getAttribute("aria-pressed")).toBe("false");
     expect(yearlyButton?.getAttribute("aria-pressed")).toBe("true");
@@ -304,5 +322,78 @@ describe("SupporterCard", () => {
 
     expect(supporter.purchase).toHaveBeenCalledOnce();
     expect(supporter.purchase).toHaveBeenCalledWith("month");
+  });
+
+  // disclose apple subscription terms
+  it("uses app store purchase language on ios", async () => {
+    platform.value = "ios";
+    supporter.status = {
+      active: false,
+      activeUntil: null,
+      sources: [],
+      supporterBadgeVisible: false,
+    };
+    supporter.products = [
+      {
+        identifier: "supporter_monthly",
+        interval: "month",
+        price: "$2.49",
+      },
+      {
+        identifier: "supporter_yearly",
+        interval: "year",
+        price: "$19.99",
+      },
+    ];
+
+    await renderCard();
+
+    expect(container?.textContent).toContain(
+      "Payment is charged to your Apple Account when you confirm"
+    );
+    expect(container?.textContent).toContain(
+      "Manage or cancel your subscription in App Store subscription settings"
+    );
+    expect(container?.textContent).toContain(
+      "existing subscribers can use Restore Purchases"
+    );
+    expect(container?.textContent).toContain(
+      "Sign in to your Ferry FYI account to use Supporter benefits"
+    );
+  });
+
+  // disclose google subscription terms
+  it("uses google play purchase language on android", async () => {
+    platform.value = "android";
+    supporter.status = {
+      active: false,
+      activeUntil: null,
+      sources: [],
+      supporterBadgeVisible: false,
+    };
+    supporter.products = [
+      {
+        identifier: "supporter_monthly",
+        interval: "month",
+        price: "$2.49",
+      },
+      {
+        identifier: "supporter_yearly",
+        interval: "year",
+        price: "$19.99",
+      },
+    ];
+
+    await renderCard();
+
+    expect(container?.textContent).toContain(
+      "Payment is charged to your Google Play account when you confirm"
+    );
+    expect(container?.textContent).toContain(
+      "Manage or cancel your subscription in Google Play subscription settings"
+    );
+    expect(container?.textContent).toContain(
+      "existing subscribers can use Restore Purchases"
+    );
   });
 });

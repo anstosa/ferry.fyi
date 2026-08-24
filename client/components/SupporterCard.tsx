@@ -11,7 +11,10 @@ import React, {
   useState,
 } from "react";
 import { Link } from "react-router-dom";
-import type { SupporterSource } from "shared/contracts/supporter";
+import type {
+  SupporterProductOption,
+  SupporterSource,
+} from "shared/contracts/supporter";
 
 import { getConfiguredAuth0RedirectUri, loginWithAppFlow } from "~/lib/auth";
 import { useSupporter } from "~/lib/supporterContext";
@@ -27,6 +30,12 @@ export type SupporterPurchaseState = "purchased" | "verification_pending";
 
 interface BenefitProps {
   children: ReactNode;
+}
+
+interface PurchaseDisclosureCopy {
+  management: string;
+  payment: string;
+  restore: string | null;
 }
 
 /** Renders one plain checkmark benefit. */
@@ -80,6 +89,53 @@ const getSourceRenewalLabel = (source: SupporterSource): string => {
     : "does not renew";
 };
 
+/** Finds one localized product price. */
+const getProductPrice = (
+  products: SupporterProductOption[],
+  interval: SupporterProductOption["interval"]
+): string | null => {
+  // scan current product options
+  for (const product of products) {
+    // matching interval guard
+    if (product.interval === interval) {
+      return product.price;
+    }
+  }
+  return null;
+};
+
+/** Selects storefront billing language. */
+const getPurchaseDisclosureCopy = (
+  platform: string
+): PurchaseDisclosureCopy => {
+  // apple billing guard
+  if (platform === "ios") {
+    return {
+      management:
+        "Manage or cancel your subscription in App Store subscription settings.",
+      payment: "Payment is charged to your Apple Account when you confirm.",
+      restore: "existing subscribers can use Restore Purchases.",
+    };
+  }
+  // google billing guard
+  if (platform === "android") {
+    return {
+      management:
+        "Manage or cancel your subscription in Google Play subscription settings.",
+      payment:
+        "Payment is charged to your Google Play account when you confirm.",
+      restore: "existing subscribers can use Restore Purchases.",
+    };
+  }
+  return {
+    management:
+      "Manage or cancel your subscription through the Ferry FYI billing portal.",
+    payment:
+      "Payment is charged by Ferry FYI's billing provider when you confirm.",
+    restore: null,
+  };
+};
+
 /** Account-bound Supporter purchase and status surface. */
 export const SupporterCard = ({
   embedded = false,
@@ -94,6 +150,9 @@ export const SupporterCard = ({
   );
   const loadedSubject = useRef<string | null>(null);
   const platform = Capacitor.getPlatform();
+  const monthlyPrice = getProductPrice(supporter.products, "month");
+  const yearlyPrice = getProductPrice(supporter.products, "year");
+  const purchaseDisclosure = getPurchaseDisclosureCopy(platform);
   const activeUntil = getActiveUntilLabel(
     supporter.status?.activeUntil ?? null
   );
@@ -387,14 +446,22 @@ export const SupporterCard = ({
                 onClick={restore}
                 type="button"
               >
-                Restore purchases
+                Restore Purchases
               </button>
             )}
             <p className="mt-5 text-xs leading-relaxed text-gray-dark dark:text-gray-light">
-              Subscriptions renew automatically until cancelled. Cancel through
-              the store or billing portal that processed your purchase. Access
-              normally continues through the paid period. Applicable tax may be
-              added. By subscribing, you agree to the{" "}
+              Ferry FYI Supporter renews automatically at the selected
+              storefront price—
+              {monthlyPrice ?? "the displayed monthly price"} each month or{" "}
+              {yearlyPrice ?? "the displayed yearly price"} each year—until
+              canceled. {purchaseDisclosure.payment}{" "}
+              {purchaseDisclosure.management} Sign in to your Ferry FYI account
+              to use Supporter benefits
+              {purchaseDisclosure.restore
+                ? `; ${purchaseDisclosure.restore}`
+                : "."}{" "}
+              Access normally continues through the paid period. By subscribing,
+              you agree to the{" "}
               <Link className="link" to="/terms">
                 Terms
               </Link>{" "}

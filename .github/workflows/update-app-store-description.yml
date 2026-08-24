@@ -1,0 +1,75 @@
+name: Update App Store description
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: Existing or new App Store version, such as 3.6
+        required: true
+        type: string
+      create_version_if_missing:
+        description: Create the App Store version when it does not exist
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: app-store-description
+  cancel-in-progress: false
+
+jobs:
+  update:
+    name: Update App Store description
+    runs-on: ubuntu-24.04
+    env:
+      APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+      APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+      APP_STORE_CREATE_VERSION_IF_MISSING: ${{ inputs.create_version_if_missing }}
+      APP_STORE_DESCRIPTION_PATH: store-metadata/apple/en-US/description.txt
+      APP_STORE_VERSION: ${{ inputs.version_name }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Use Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+
+      - name: Restore App Store Connect key
+        env:
+          APP_STORE_CONNECT_API_KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_API_KEY_BASE64 }}
+        run: |
+          # fail on shell mistakes
+          set -euo pipefail
+          # require metadata credentials
+          for required_secret in \
+            APP_STORE_CONNECT_API_KEY_BASE64 \
+            APP_STORE_CONNECT_API_KEY_ID \
+            APP_STORE_CONNECT_ISSUER_ID; do
+            # missing credential guard
+            if [[ -z "${!required_secret}" ]]; then
+              echo "Missing GitHub Actions secret: ${required_secret}" >&2
+              exit 1
+            fi
+          done
+          # restore the ephemeral api key
+          APP_STORE_CONNECT_PRIVATE_KEY_PATH="${RUNNER_TEMP}/AuthKey_${APP_STORE_CONNECT_API_KEY_ID}.p8"
+          printf '%s' "${APP_STORE_CONNECT_API_KEY_BASE64}" | base64 --decode > "${APP_STORE_CONNECT_PRIVATE_KEY_PATH}"
+          chmod 600 "${APP_STORE_CONNECT_PRIVATE_KEY_PATH}"
+          echo "APP_STORE_CONNECT_PRIVATE_KEY_PATH=${APP_STORE_CONNECT_PRIVATE_KEY_PATH}" >> "${GITHUB_ENV}"
+
+      - name: Update App Store description
+        run: node scripts/update-app-store-description.mjs
+
+      - name: Remove App Store Connect key
+        if: always()
+        run: |
+          # remove only a restored key
+          if [[ -n "${APP_STORE_CONNECT_PRIVATE_KEY_PATH:-}" ]]; then
+            rm -f "${APP_STORE_CONNECT_PRIVATE_KEY_PATH}"
+          fi

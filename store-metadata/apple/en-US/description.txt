@@ -1,0 +1,31 @@
+Not just a re-skinned WSF app. Trained on almost 90,000 sailings over 8 years, Ferry FYI integrates predictive modeling with weather and tide data, local events, school breaks, holidays and more to:
+• Forecast how full future sailings will be
+• More accurate and up to date delay reporting based on GPS instead of employee reports. Also forecasts if/when the boats will catch up
+• Predict probable cancellations before WSF announces them
+• Completely customizable alerts based on terminal, direction, time of day, and more
+
+Plus everything you'd expect:
+• Polished, modern UI with dark mode support
+• Filtered WSF bulletins
+• Traffic cameras: ordered, tagged, and enhanced
+• Scan, save, and share tickets
+• Detailed reference for vessels and terminals
+• Supports all WSF routes
+• Built-in maps
+
+Ferry FYI Supporter
+
+Ferry FYI Supporter is an optional auto-renewing subscription that helps fund schedules, alerts, forecasts, traffic cameras, and ticket tools while keeping core ferry information free for everyone.
+
+Supporter benefits include:
+
+• No Ferry FYI advertisements while signed in
+• An optional Supporter badge on public leaderboards
+• Support for the continued development and operation of Ferry FYI
+
+Choose a monthly or yearly subscription. U.S. pricing is $2.49 per month or $19.99 per year; the App Store displays the applicable price in your local currency before purchase. Payment is charged to your Apple Account when you confirm the purchase. Your subscription renews automatically at the selected price and duration until canceled. You can manage or cancel it through your App Store subscription settings.
+
+Sign in to your Ferry FYI account to use Supporter benefits. Existing subscribers can use Restore Purchases in the app.
+
+Terms of Service: https://ferry.fyi/terms
+Privacy Policy: https://ferry.fyi/privacy

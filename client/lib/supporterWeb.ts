@@ -15,6 +15,13 @@ const getWebApiKey = (): string => {
   if (!key) {
     throw new Error("Web subscriptions are not configured");
   }
+  // production sandbox guard
+  if (
+    process.env.NODE_ENV === "production" &&
+    (key.startsWith("rcb_sb_") || !key.startsWith("rcb_"))
+  ) {
+    throw new Error("Web subscriptions are not configured for production");
+  }
   return key;
 };
 

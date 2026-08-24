@@ -9,7 +9,7 @@ import React, {
 import { useLocation } from "react-router-dom";
 import { CurrentUser } from "shared/contracts/user";
 
-import { del, get, post } from "~/lib/api";
+import { ApiError, del, get, post } from "~/lib/api";
 import { getConfiguredAuth0RedirectUri, loginWithAppFlow } from "~/lib/auth";
 import { useDevice } from "~/lib/device";
 import {
@@ -23,6 +23,7 @@ export { useUser } from "~/lib/userContext";
 
 const USER_AUTH_SCOPE = "openid profile email read:current_user offline_access";
 interface GetAccessTokenOptions {
+  bypassCache?: boolean;
   forceInteractive?: boolean;
 }
 
@@ -68,6 +69,10 @@ const requiresInteractiveAuth = (error: unknown): boolean => {
   );
 };
 
+// api authorization guard
+const isApiUnauthorized = (error: unknown): boolean =>
+  error instanceof ApiError && error.status === 401;
+
 // friendly auth error
 const getUserError = (error: unknown): Error => {
   const userError = error instanceof Error ? error : new Error(String(error));
@@ -87,6 +92,10 @@ const getUserError = (error: unknown): Error => {
     return new Error(
       "Your login session needs to be refreshed. Sign in again to continue."
     );
+  }
+  // api session recovery copy
+  if (isApiUnauthorized(error)) {
+    return new Error("Your login session expired. Sign in again to continue.");
   }
   return userError;
 };
@@ -159,6 +168,10 @@ const _useUser = (): Response => {
       clearUserPromise(nextUserPromise);
       setUserError(getUserError(error));
       console.error(error);
+      // authorization recovery guard
+      if (isApiUnauthorized(error)) {
+        throw error;
+      }
     } finally {
       setUserLoading(false);
     }
@@ -171,7 +184,7 @@ const _useUser = (): Response => {
       authorizationParams: {
         audience: process.env.AUTH0_CLIENT_AUDIENCE as string,
         prompt: "consent" as const,
-        redirect_uri: getConfiguredAuth0RedirectUri(),
+        redirect_uri: getConfiguredAuth0RedirectUri(device?.platform),
         scope: USER_AUTH_SCOPE,
       },
     };
@@ -203,6 +216,7 @@ const _useUser = (): Response => {
     }
     try {
       const nextAccessToken = await getAccessTokenSilently({
+        ...(options.bypassCache ? { cacheMode: "off" as const } : {}),
         authorizationParams: {
           audience: process.env.AUTH0_CLIENT_AUDIENCE as string,
           scope: USER_AUTH_SCOPE,
@@ -213,8 +227,15 @@ const _useUser = (): Response => {
       return nextAccessToken;
     } catch (error) {
       setHasRequestedUser(true);
+      // stale token recovery guard
+      if (isApiUnauthorized(error) && !options.bypassCache) {
+        return await getAccessToken({
+          ...options,
+          bypassCache: true,
+        });
+      }
       // interactive recovery guard
-      if (requiresInteractiveAuth(error)) {
+      if (isApiUnauthorized(error) || requiresInteractiveAuth(error)) {
         // duplicate redirect guard
         if (
           isInteractiveAuthLaunchingRef.current &&

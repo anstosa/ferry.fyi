@@ -51,4 +51,18 @@ describe("CI workflow contract", () => {
       "deployment action did not report the intended task definition"
     );
   });
+
+  // keep test billing out of production
+  it("rejects RevenueCat sandbox web keys during production deploys", () => {
+    const deploy = workflow("deploy-aws.yml");
+    expect(deploy).toContain(
+      '"${REVENUECAT_WEB_PUBLIC_API_KEY}" == rcb_sb_*'
+    );
+    expect(deploy).toContain(
+      '"${REVENUECAT_WEB_PUBLIC_API_KEY}" != rcb_*'
+    );
+    expect(deploy).toContain(
+      "REVENUECAT_WEB_PUBLIC_API_KEY must be a production RevenueCat Billing key"
+    );
+  });
 });

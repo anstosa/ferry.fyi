@@ -236,7 +236,7 @@ export const normalizeAlertRule = (rule: AlertRule): AlertRule => {
     channels,
     ...(date ? { date } : {}),
     daysOfWeek: normalizeAlertRuleDays(rule.daysOfWeek),
-    nickname: nickname || undefined,
+    ...(nickname ? { nickname } : {}),
     routeKey: getRouteSubscriptionKey(routeTerminalIds),
     terminalIds: Array.from(new Set(rule.terminalIds)).filter((terminalId) => {
       return routeTerminalIds.includes(terminalId);

@@ -54,6 +54,20 @@ TestFlight upload is monotonically newer. It retains the signed IPA as a
 30-day Actions artifact, then uploads it to App Store Connect. Apple still
 processes the build before it appears in TestFlight.
 
+## App Store description
+
+The canonical U.S. English App Store description is
+`store-metadata/apple/en-US/description.txt`. Keep the full listing there,
+including the Ferry FYI Supporter benefits, renewal terms, account and restore
+instructions, privacy policy, and terms link.
+
+Run **Update App Store description** from the Actions tab with the exact App
+Store version name. The workflow uses the existing App Store Connect API key to
+create that version when requested and then creates or updates its `en-US`
+description. It does not submit the version for review or release it. Review the
+remaining screenshots, age rating, privacy answers, review notes, subscription
+products, and selected build in App Store Connect before submission.
+
 ## First release
 
 After Apple processes the first build, add internal TestFlight testers in App
