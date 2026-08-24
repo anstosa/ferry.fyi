@@ -153,6 +153,11 @@ export const SupporterCard = ({
   const monthlyPrice = getProductPrice(supporter.products, "month");
   const yearlyPrice = getProductPrice(supporter.products, "year");
   const purchaseDisclosure = getPurchaseDisclosureCopy(platform);
+  // describe only verified storefront prices
+  const renewalPriceCopy =
+    monthlyPrice && yearlyPrice
+      ? ` at the selected storefront price—${monthlyPrice} each month or ${yearlyPrice} each year—`
+      : " ";
   const activeUntil = getActiveUntilLabel(
     supporter.status?.activeUntil ?? null
   );
@@ -450,10 +455,7 @@ export const SupporterCard = ({
               </button>
             )}
             <p className="mt-5 text-xs leading-relaxed text-gray-dark dark:text-gray-light">
-              Ferry FYI Supporter renews automatically at the selected
-              storefront price—
-              {monthlyPrice ?? "the displayed monthly price"} each month or{" "}
-              {yearlyPrice ?? "the displayed yearly price"} each year—until
+              Ferry FYI Supporter renews automatically{renewalPriceCopy}until
               canceled. {purchaseDisclosure.payment}{" "}
               {purchaseDisclosure.management} Sign in to your Ferry FYI account
               to use Supporter benefits

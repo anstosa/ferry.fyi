@@ -34,4 +34,11 @@ describe("alert rule windows", () => {
   it("keeps a trimmed nickname when normalizing a rule", () => {
     expect(normalizeAlertRule(rule).nickname).toBe("Morning commute");
   });
+
+  // omit empty normalized nicknames
+  it.each(["", "   "])("omits the nickname for %j", (nickname) => {
+    expect(normalizeAlertRule({ ...rule, nickname })).not.toHaveProperty(
+      "nickname"
+    );
+  });
 });

@@ -219,6 +219,9 @@ export const normalizeAlertRule = (rule: AlertRule): AlertRule => {
   const routeTerminalIds = rule.routeKey.split(":");
   const date = isAlertRuleDate(rule.date) ? rule.date : undefined;
   const nickname = rule.nickname?.trim();
+  const normalizedRule = { ...rule };
+  // remove the unnormalized optional value
+  delete normalizedRule.nickname;
   const channels = Array.from(new Set(rule.channels)).filter(
     isAlertSubscriptionChannel
   );
@@ -232,7 +235,7 @@ export const normalizeAlertRule = (rule: AlertRule): AlertRule => {
     });
   }
   return {
-    ...rule,
+    ...normalizedRule,
     channels,
     ...(date ? { date } : {}),
     daysOfWeek: normalizeAlertRuleDays(rule.daysOfWeek),

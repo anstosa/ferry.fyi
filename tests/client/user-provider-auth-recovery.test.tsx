@@ -18,17 +18,22 @@ const auth = vi.hoisted(() => ({
 const api = vi.hoisted(() => ({
   get: vi.fn(),
 }));
-// create mutable device state
-const device = vi.hoisted(() => ({
-  current: null as null | { isNativeMobile: boolean; platform: string },
+// create synchronous capacitor state
+const capacitor = vi.hoisted(() => ({
+  platform: "web",
 }));
 
 // provide mutable auth state
 vi.mock("@auth0/auth0-react", () => ({ useAuth0: () => auth }));
 // isolate native browser loading
 vi.mock("@capacitor/browser", () => ({ Browser: { open: vi.fn() } }));
-// provide mutable device state
-vi.mock("~/lib/device", () => ({ useDevice: () => device.current }));
+// isolate the native runtime boundary
+vi.mock("@capacitor/core", () => ({
+  Capacitor: {
+    getPlatform: () => capacitor.platform,
+    isNativePlatform: () => capacitor.platform !== "web",
+  },
+}));
 // retain api error behavior
 vi.mock("~/lib/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../client/lib/api")>()),
@@ -36,7 +41,7 @@ vi.mock("~/lib/api", async (importOriginal) => ({
 }));
 
 import { ApiError } from "../../client/lib/api";
-import { useUser, UserProvider } from "../../client/lib/user";
+import { UserProvider, useUser } from "../../client/lib/user";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -79,7 +84,7 @@ beforeEach(() => {
   auth.loginWithPopup.mockReset().mockResolvedValue(undefined);
   auth.loginWithRedirect.mockReset().mockResolvedValue(undefined);
   api.get.mockReset();
-  device.current = null;
+  capacitor.platform = "web";
   vi.stubEnv("AUTH0_CLIENT_AUDIENCE", "https://ferry.fyi/api");
   vi.stubEnv("AUTH0_CLIENT_REDIRECT", "https://ferry.fyi/callback");
   vi.stubEnv("AUTH0_DOMAIN", "ferryfyi.us.auth0.com");
@@ -135,9 +140,7 @@ describe("UserProvider auth recovery", () => {
     auth.getAccessTokenSilently
       .mockResolvedValueOnce("stale-token")
       .mockResolvedValueOnce("rejected-fresh-token");
-    api.get.mockRejectedValue(
-      new ApiError(401, { error: "Unauthorized" })
-    );
+    api.get.mockRejectedValue(new ApiError(401, { error: "Unauthorized" }));
 
     const container = await renderProvider();
 
@@ -151,7 +154,7 @@ describe("UserProvider auth recovery", () => {
 
   // preserve the native callback during recovery
   it("opens Android reauthentication with the registered custom callback", async () => {
-    device.current = { isNativeMobile: true, platform: "android" };
+    capacitor.platform = "android";
     auth.getAccessTokenSilently.mockRejectedValueOnce({
       error: "missing_refresh_token",
       error_description: "Missing Refresh Token",

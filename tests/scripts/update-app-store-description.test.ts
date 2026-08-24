@@ -141,6 +141,37 @@ describe("App Store description automation", () => {
     });
   });
 
+  // fail closed on a mistyped version
+  it("does not create a missing version unless explicitly enabled", async () => {
+    const responses = [
+      jsonResponse({ data: [{ id: "app-1", type: "apps" }] }),
+      jsonResponse({ data: [] }),
+    ];
+    // return staged api responses
+    const fetchImplementation = vi.fn(() => {
+      const response = responses.shift();
+      // complete response guard
+      if (!response) {
+        throw new Error("Unexpected App Store Connect request");
+      }
+      return response;
+    });
+
+    await expect(
+      updateAppStoreDescription({
+        bundleId: "fyi.ferry",
+        description: "Updated description",
+        fetchImplementation,
+        locale: "en-US",
+        token: "signed-token",
+        versionName: "3.60",
+      })
+    ).rejects.toThrow(
+      "App Store version 3.60 does not exist; create it or enable version creation"
+    );
+    expect(fetchImplementation).toHaveBeenCalledTimes(2);
+  });
+
   // create missing version metadata
   it("creates an explicitly allowed version and localization", async () => {
     const responses = [

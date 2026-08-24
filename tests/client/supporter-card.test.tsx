@@ -228,6 +228,27 @@ describe("SupporterCard", () => {
     expect(firstBenefit?.querySelector("svg")).not.toBeNull();
   });
 
+  // avoid inventing unavailable prices
+  it("omits price claims when checkout products are unavailable", async () => {
+    supporter.status = {
+      active: false,
+      activeUntil: null,
+      sources: [],
+      supporterBadgeVisible: false,
+    };
+
+    await renderCard();
+
+    expect(container?.textContent).toContain(
+      "Subscription checkout is not available"
+    );
+    expect(container?.textContent).toContain(
+      "Ferry FYI Supporter renews automatically until canceled"
+    );
+    expect(container?.textContent).not.toContain("the displayed monthly price");
+    expect(container?.textContent).not.toContain("the displayed yearly price");
+  });
+
   // keep badge consent in leaderboard settings only
   it("does not render a duplicate badge setting for active supporters", async () => {
     supporter.status = {

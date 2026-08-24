@@ -1,17 +1,17 @@
 import { useAuth0 } from "@auth0/auth0-react";
+import { Capacitor } from "@capacitor/core";
 import React, {
-  FunctionComponent,
-  PropsWithChildren,
+  type FunctionComponent,
+  type PropsWithChildren,
   useEffect,
   useRef,
   useState,
 } from "react";
 import { useLocation } from "react-router-dom";
-import { CurrentUser } from "shared/contracts/user";
+import type { CurrentUser } from "shared/contracts/user";
 
 import { ApiError, del, get, post } from "~/lib/api";
 import { getConfiguredAuth0RedirectUri, loginWithAppFlow } from "~/lib/auth";
-import { useDevice } from "~/lib/device";
 import {
   type UserActions as Actions,
   UserContext,
@@ -116,7 +116,6 @@ const isCurrentUser = (input: unknown): input is CurrentUser => {
 
 // synchronize account state
 const _useUser = (): Response => {
-  const device = useDevice();
   const location = useLocation();
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [isUserLoading, setUserLoading] = useState<boolean>(false);
@@ -132,6 +131,8 @@ const _useUser = (): Response => {
   } = useAuth0();
   const [accessToken, setAccessToken] = useState<string>("");
   const isInteractiveAuthLaunchingRef = useRef<boolean>(false);
+  // capture the native callback platform synchronously
+  const platform = Capacitor.getPlatform();
 
   // load account profile
   const loadUser = async (token: string) => {
@@ -184,13 +185,12 @@ const _useUser = (): Response => {
       authorizationParams: {
         audience: process.env.AUTH0_CLIENT_AUDIENCE as string,
         prompt: "consent" as const,
-        redirect_uri: getConfiguredAuth0RedirectUri(device?.platform),
+        redirect_uri: getConfiguredAuth0RedirectUri(platform),
         scope: USER_AUTH_SCOPE,
       },
     };
-    const isNativeMobile = device?.isNativeMobile === true;
     // native browser guard
-    if (isNativeMobile) {
+    if (Capacitor.isNativePlatform()) {
       await loginWithRedirect({
         ...loginOptions,
         openUrl: async (url) => {

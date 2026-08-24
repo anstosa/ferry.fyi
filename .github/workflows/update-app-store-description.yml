@@ -8,9 +8,9 @@ on:
         required: true
         type: string
       create_version_if_missing:
-        description: Create the App Store version when it does not exist
+        description: Create the App Store version when it does not exist (off by default)
         required: true
-        default: true
+        default: false
         type: boolean
 
 permissions:

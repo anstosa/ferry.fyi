@@ -56,13 +56,21 @@ describe("CI workflow contract", () => {
   it("rejects RevenueCat sandbox web keys during production deploys", () => {
     const deploy = workflow("deploy-aws.yml");
     expect(deploy).toContain(
-      '"${REVENUECAT_WEB_PUBLIC_API_KEY}" == rcb_sb_*'
+      ['"', "$", "{REVENUECAT_WEB_PUBLIC_API_KEY}", '" == rcb_sb_*'].join("")
     );
     expect(deploy).toContain(
-      '"${REVENUECAT_WEB_PUBLIC_API_KEY}" != rcb_*'
+      ['"', "$", "{REVENUECAT_WEB_PUBLIC_API_KEY}", '" != rcb_*'].join("")
     );
     expect(deploy).toContain(
       "REVENUECAT_WEB_PUBLIC_API_KEY must be a production RevenueCat Billing key"
+    );
+  });
+
+  // keep app store version creation explicit
+  it("defaults App Store metadata updates to existing versions", () => {
+    const update = workflow("update-app-store-description.yml");
+    expect(update).toMatch(
+      /create_version_if_missing:[\s\S]*?default: false[\s\S]*?type: boolean/
     );
   });
 });
