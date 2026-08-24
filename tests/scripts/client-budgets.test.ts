@@ -29,14 +29,14 @@ describe("client asset budgets", () => {
   it("allows bounded production route chunk growth", () => {
     const files: Record<string, number> = {};
     // create the allowed route chunks
-    for (let index = 0; index < 140; index += 1) {
+    for (let index = 0; index < 145; index += 1) {
       files[`route-${index}.js`] = 1;
     }
     const summary = summarizeClientAssets(fixture(files));
 
     expect(() => assertClientBudgets(summary)).not.toThrow();
     expect(() =>
-      assertClientBudgets({ ...summary, javascriptFiles: 141 })
+      assertClientBudgets({ ...summary, javascriptFiles: 146 })
     ).toThrow(/javascriptFiles/);
   });
 

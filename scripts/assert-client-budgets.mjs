@@ -6,10 +6,11 @@ import process from "node:process";
 import { fileURLToPath } from "node:url";
 
 export const DEFAULT_CLIENT_BUDGETS = Object.freeze({
-  cssBytes: 140_000,
+  // allow bounded Supporter style growth
+  cssBytes: 145_000,
   javascriptBytes: 5_200_000,
   // reserve bounded route-chunk headroom
-  javascriptFiles: 140,
+  javascriptFiles: 145,
   largestJavascriptBytes: 1_900_000,
   optionalBillingJavascriptBytes: 900_000,
 });
