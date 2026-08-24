@@ -268,10 +268,9 @@ export const SupporterProvider: FunctionComponent<PropsWithChildren> = ({
     setError(null);
     // isolate management failures
     try {
-      let url: string;
       // native management guard
       if (Capacitor.isNativePlatform()) {
-        url = await getNativeSupporterManagementUrl(status.appUserId);
+        const url = await getNativeSupporterManagementUrl(status.appUserId);
         await Browser.open({ url });
         return;
       }

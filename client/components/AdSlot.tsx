@@ -276,10 +276,7 @@ const SupporterThankYou = (): ReactElement => {
   // toggle supporter message
   const toggleMessage = (): void => setIsOpen((current) => !current);
   return (
-    <div
-      className="absolute right-2 top-2 z-20 mt-safe-top"
-      data-supporter-thank-you="true"
-    >
+    <div className="absolute right-2 top-2 z-20 mt-safe-top">
       <button
         aria-controls="homepage-supporter-thank-you-panel"
         aria-expanded={isOpen}

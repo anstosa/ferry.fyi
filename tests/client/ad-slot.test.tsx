@@ -109,9 +109,7 @@ describe("AdSlot", () => {
     expect(container.textContent).not.toContain(
       "Thank you for supporting Ferry FYI"
     );
-    expect(
-      container.querySelector("[data-supporter-thank-you] svg")
-    ).not.toBeNull();
+    expect(crown?.querySelector("svg")).not.toBeNull();
     expect(crown?.classList).toContain("rounded-xl");
     expect(crown?.classList).not.toContain("rounded-full");
     await act(async () => crown?.click());
@@ -128,9 +126,6 @@ describe("AdSlot", () => {
     expect(panel?.classList).toContain("fixed");
     expect(panel?.classList).toContain("left-2");
     expect(panel?.classList).toContain("right-2");
-    expect(
-      container.querySelector("[data-supporter-thank-you]")
-    ).not.toBeNull();
     expect(container.querySelector("[data-ad-opportunity-anchor]")).toBeNull();
     expect(api.post).not.toHaveBeenCalled();
   });

@@ -50,11 +50,23 @@ export const Supporter = (): ReactElement => {
     if (purchaseState !== "verification_pending") {
       return;
     }
-    const timer = window.setInterval(() => {
-      supporter.refresh().catch(() => undefined);
-    }, SUPPORTER_VERIFICATION_POLL_MS);
+    let cancelled = false;
+    let timer: number | undefined;
+    // schedule one non-overlapping verification refresh
+    const poll = async (): Promise<void> => {
+      await supporter.refresh().catch(() => undefined);
+      // active polling guard
+      if (!cancelled) {
+        timer = window.setTimeout(poll, SUPPORTER_VERIFICATION_POLL_MS);
+      }
+    };
+    timer = window.setTimeout(poll, SUPPORTER_VERIFICATION_POLL_MS);
     return () => {
-      window.clearInterval(timer);
+      cancelled = true;
+      // scheduled refresh guard
+      if (timer !== undefined) {
+        window.clearTimeout(timer);
+      }
     };
   }, [purchaseState, supporter.refresh]);
 

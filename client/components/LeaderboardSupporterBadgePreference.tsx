@@ -22,9 +22,7 @@ interface IdentityProps {
 }
 
 /** Renders the public leaderboard Supporter badge. */
-export const LeaderboardSupporterBadge = ({
-  className,
-}: BadgeProps): ReactElement => (
+const LeaderboardSupporterBadge = ({ className }: BadgeProps): ReactElement => (
   <span
     className={clsx(
       "inline-flex shrink-0 items-center rounded-full bg-green-lightest px-2 py-0.5 text-2xs font-bold uppercase tracking-wide text-green-dark dark:bg-green-dark dark:text-green-lightest",
