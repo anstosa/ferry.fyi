@@ -86,23 +86,50 @@ describe("AdInventoryCharts", () => {
     const selectedPlacement = container.querySelector(
       'button[aria-pressed="true"]'
     );
+    const selectedCard = selectedPlacement?.closest("li");
     expect(selectedPlacement?.textContent).toContain(
       "Schedule · Bainbridge → Seattle"
     );
-    expect(container.textContent).toContain("Day of week");
-    expect(container.textContent).toContain("Time of day");
-    const timeOfDay = [...container.querySelectorAll("figure")].find(
+    expect(selectedPlacement?.getAttribute("aria-expanded")).toBe("true");
+    expect(selectedCard?.textContent).toContain("Day of week");
+    expect(selectedCard?.textContent).toContain("Time of day");
+    expect(selectedCard?.querySelectorAll("figure")).toHaveLength(2);
+    expect(
+      [...container.querySelectorAll("figure")].every((figure) =>
+        selectedCard?.contains(figure)
+      )
+    ).toBe(true);
+    const dayOfWeek = [
+      ...(selectedCard?.querySelectorAll("figure") ?? []),
+    ].find(
+      (figure) =>
+        figure.querySelector("figcaption")?.textContent === "Day of week"
+    );
+    const dayAxis = dayOfWeek?.querySelector(
+      'ul[aria-label="Day of week x-axis"]'
+    );
+    expect(
+      dayAxis?.querySelector('li[aria-label="Monday: 30"]')
+    ).not.toBeNull();
+    expect(dayAxis?.textContent).toContain("Mon");
+    const timeOfDay = [
+      ...(selectedCard?.querySelectorAll("figure") ?? []),
+    ].find(
       (figure) =>
         figure.querySelector("figcaption")?.textContent === "Time of day"
     );
-    const eightAm = [...(timeOfDay?.querySelectorAll("li") ?? [])].find(
-      (row) => row.querySelector("span")?.textContent === "8 AM"
+    const hourAxis = timeOfDay?.querySelector(
+      'ul[aria-label="Time of day x-axis"]'
     );
+    expect(hourAxis?.children).toHaveLength(24);
+    const eightAm = hourAxis?.querySelector('li[aria-label="8 AM: 12"]');
     expect(eightAm?.querySelector("strong")?.textContent).toBe("12");
+    expect(eightAm?.lastElementChild?.textContent).toBe("8 AM");
 
     const home = [
       ...container.querySelectorAll('button[aria-pressed="false"]'),
     ].find((button) => button.textContent?.startsWith("Home"));
+    expect(home?.closest("li")?.querySelector("figure")).toBeNull();
     act(() => home?.click());
 
     expect(onSelectPlacement).toHaveBeenCalledWith("home");

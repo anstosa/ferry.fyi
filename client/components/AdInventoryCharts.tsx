@@ -1,5 +1,5 @@
 import { DateTime } from "luxon";
-import React, { ReactElement } from "react";
+import React, { type ReactElement } from "react";
 import {
   type AdInventoryReport,
   parseAdPlacementKey,
@@ -24,7 +24,8 @@ const weekdayLabels = [
   "Sunday",
 ] as const;
 
-interface BarChartRow {
+interface BarChartColumn {
+  axisLabel: string;
   label: string;
   value: number;
 }
@@ -60,38 +61,54 @@ const formatAdInventoryPlacement = (
   return `${slotLabels[parsed.slot]} · ${departure?.name ?? parsed.departureTerminalId} → ${arrival?.name ?? parsed.arrivalTerminalId}`;
 };
 
-// render one accessible horizontal chart
-const HorizontalBarChart = ({
-  rows,
+// render one accessible vertical chart
+const VerticalBarChart = ({
+  columns,
   title,
 }: {
-  rows: BarChartRow[];
+  columns: BarChartColumn[];
   title: string;
 }): ReactElement => {
-  const maximum = Math.max(1, ...rows.map(({ value }) => value));
+  const maximum = Math.max(1, ...columns.map(({ value }) => value));
+  // keep dense hourly labels readable
+  const minimumWidth = columns.length > 12 ? "min-w-[60rem]" : "min-w-full";
   return (
-    <figure className="rounded-xl border border-gray-light p-3 dark:border-gray-dark">
+    <figure className="min-w-0">
       <figcaption className="font-semibold">{title}</figcaption>
-      <ul className="mt-3 space-y-2">
-        {/* render exact accessible buckets */}
-        {rows.map((row) => (
-          <li key={row.label}>
-            <div className="flex items-baseline justify-between gap-3 text-sm">
-              <span>{row.label}</span>
-              <strong>{formatCount(row.value)}</strong>
-            </div>
-            <div
-              aria-hidden="true"
-              className="mt-1 h-2 overflow-hidden rounded-full bg-gray-light dark:bg-white/10"
+      <div className="mt-3 overflow-x-auto pb-2">
+        <ul
+          aria-label={`${title} x-axis`}
+          className={`flex h-44 items-end gap-2 ${minimumWidth}`}
+        >
+          {/* render exact accessible columns */}
+          {columns.map((column) => (
+            <li
+              aria-label={`${column.label}: ${formatCount(column.value)}`}
+              className="flex h-full min-w-0 flex-1 flex-col items-center justify-end"
+              key={column.label}
             >
-              <div
-                className="h-full rounded-full bg-sponsor-dark dark:bg-sponsor-light"
-                style={{ width: `${(row.value / maximum) * 100}%` }}
-              />
-            </div>
-          </li>
-        ))}
-      </ul>
+              <strong aria-hidden="true" className="text-xs tabular-nums">
+                {formatCount(column.value)}
+              </strong>
+              <span
+                aria-hidden="true"
+                className="mt-1 flex h-28 w-full items-end justify-center border-b border-gray-medium"
+              >
+                <span
+                  className="block w-full max-w-8 rounded-t bg-sponsor-dark dark:bg-sponsor-light"
+                  style={{ height: `${(column.value / maximum) * 100}%` }}
+                />
+              </span>
+              <span
+                aria-hidden="true"
+                className="mt-1 whitespace-nowrap text-xs"
+              >
+                {column.axisLabel}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
     </figure>
   );
 };
@@ -117,11 +134,16 @@ export const AdInventoryCharts = ({
   const selected = report.selectedPlacement;
   const weekdayRows =
     selected?.weekday.map((row) => ({
+      axisLabel: (weekdayLabels[row.weekday - 1] ?? String(row.weekday)).slice(
+        0,
+        3
+      ),
       label: weekdayLabels[row.weekday - 1] ?? String(row.weekday),
       value: Number(row.opportunityCount),
     })) ?? [];
   const hourRows =
     selected?.hourOfDay.map((row) => ({
+      axisLabel: formatHour(row.hour),
       label: formatHour(row.hour),
       value: Number(row.opportunityCount),
     })) ?? [];
@@ -165,19 +187,29 @@ export const AdInventoryCharts = ({
         {report.placements.length ? (
           <ol className="mt-3 space-y-2">
             {/* render every tracked placement */}
-            {report.placements.map((placement) => {
+            {report.placements.map((placement, index) => {
               const count = Number(placement.opportunityCount);
               const selectedRow =
                 selectedPlacementKey === placement.placementKey;
+              const detailId = `admin-ad-placement-breakdown-${index}`;
+              const expandedPlacement =
+                selectedRow && selected?.placementKey === placement.placementKey
+                  ? selected
+                  : null;
               return (
-                <li key={placement.placementKey}>
+                <li
+                  className={`overflow-hidden rounded-xl border transition ${
+                    selectedRow
+                      ? "border-sponsor-dark bg-sponsor-lightest dark:border-sponsor-light dark:bg-sponsor-darkest"
+                      : "border-gray-light dark:border-gray-dark"
+                  }`}
+                  key={placement.placementKey}
+                >
                   <button
+                    aria-controls={expandedPlacement ? detailId : undefined}
+                    aria-expanded={Boolean(expandedPlacement)}
                     aria-pressed={selectedRow}
-                    className={`w-full rounded-xl border p-3 text-left transition hover:border-sponsor-dark hover:bg-sponsor-lightest dark:hover:border-sponsor-light dark:hover:bg-sponsor-darkest ${
-                      selectedRow
-                        ? "border-sponsor-dark bg-sponsor-lightest dark:border-sponsor-light dark:bg-sponsor-darkest"
-                        : "border-gray-light dark:border-gray-dark"
-                    }`}
+                    className="w-full p-3 text-left transition hover:bg-sponsor-lightest dark:hover:bg-sponsor-darkest"
                     disabled={loading}
                     onClick={() => onSelectPlacement(placement.placementKey)}
                     type="button"
@@ -211,6 +243,43 @@ export const AdInventoryCharts = ({
                       />
                     </span>
                   </button>
+                  {expandedPlacement ? (
+                    <section
+                      aria-labelledby={`${detailId}-title`}
+                      className="border-t border-sponsor-light px-3 pb-4 pt-3 dark:border-sponsor-dark"
+                      id={detailId}
+                    >
+                      <h5 className="sr-only" id={`${detailId}-title`}>
+                        {formatAdInventoryPlacement(
+                          placement.placementKey,
+                          terminals
+                        )}{" "}
+                        detail
+                      </h5>
+                      <p className="text-sm">
+                        {formatCount(expandedPlacement.opportunityCount)}
+                        {" opportunities across the selected date range."}
+                      </p>
+                      <div className="mt-4 space-y-6">
+                        <VerticalBarChart
+                          columns={weekdayRows}
+                          title="Day of week"
+                        />
+                        <VerticalBarChart
+                          columns={hourRows}
+                          title="Time of day"
+                        />
+                      </div>
+                      <p className="mt-3 text-xs text-gray-dark dark:text-gray-light">
+                        Times use America/Los_Angeles. Hourly measurement in
+                        this range
+                        {expandedPlacement.hourlyDataStartDate
+                          ? ` begins ${expandedPlacement.hourlyDataStartDate}`
+                          : " has not started yet"}
+                        ; earlier daily totals cannot be reconstructed by hour.
+                      </p>
+                    </section>
+                  ) : null}
                 </li>
               );
             })}
@@ -221,32 +290,6 @@ export const AdInventoryCharts = ({
           </p>
         )}
       </section>
-
-      {selected ? (
-        <section
-          aria-labelledby="admin-ad-placement-breakdown-title"
-          className="rounded-xl border border-sponsor-light p-4 dark:border-sponsor-dark"
-        >
-          <h4 className="font-semibold" id="admin-ad-placement-breakdown-title">
-            {formatAdInventoryPlacement(selected.placementKey, terminals)}
-          </h4>
-          <p className="mt-1 text-sm">
-            {formatCount(selected.opportunityCount)} opportunities across the
-            selected date range.
-          </p>
-          <div className="mt-4 grid gap-4 xl:grid-cols-2">
-            <HorizontalBarChart rows={weekdayRows} title="Day of week" />
-            <HorizontalBarChart rows={hourRows} title="Time of day" />
-          </div>
-          <p className="mt-3 text-xs text-gray-dark dark:text-gray-light">
-            Times use America/Los_Angeles. Hourly measurement in this range
-            {selected.hourlyDataStartDate
-              ? ` begins ${selected.hourlyDataStartDate}`
-              : " has not started yet"}
-            ; earlier daily totals cannot be reconstructed by hour.
-          </p>
-        </section>
-      ) : null}
     </div>
   );
 };
