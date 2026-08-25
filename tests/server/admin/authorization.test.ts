@@ -69,11 +69,8 @@ const createApp = (): express.Express => {
 // create one isolated authorization boundary
 const createAuthorizationApp = (): express.Express => {
   const app = express();
-  app.get(
-    "/protected",
-    requireAuth,
-    requireOwnerAdmin,
-    (_request, response) => response.send({ authorized: true })
+  app.get("/protected", requireAuth, requireOwnerAdmin, (_request, response) =>
+    response.send({ authorized: true })
   );
   return app;
 };
@@ -241,6 +238,44 @@ describe("owner admin authorization", () => {
     ]);
     expect(auth0.getAuth0UserInfo).toHaveBeenCalledOnce();
     expect(auth0.getAuth0UserEmail).not.toHaveBeenCalled();
+  });
+
+  // discard one rejected shared verification
+  it("retries verification after a coalesced provider failure", async () => {
+    let rejectVerification: ((reason?: unknown) => void) | undefined;
+    auth0.getAuth0UserEmail.mockReturnValue(
+      new Promise((_resolve, reject) => {
+        rejectVerification = reject;
+      })
+    );
+
+    const pendingResponses = Promise.all([
+      request(createAuthorizationApp())
+        .get("/protected")
+        .set("Authorization", "Bearer owner"),
+      request(createAuthorizationApp())
+        .get("/protected")
+        .set("Authorization", "Bearer owner"),
+    ]);
+    await vi.waitFor(() =>
+      expect(auth0.getAuth0UserEmail).toHaveBeenCalledOnce()
+    );
+    rejectVerification?.(new Error("Management API unavailable"));
+    const failedResponses = await pendingResponses;
+
+    expect(failedResponses.map(({ status }) => status)).toEqual([503, 503]);
+    auth0.getAuth0UserInfo.mockResolvedValue({
+      email: "anstosa@gmail.com",
+      subject: "auth0|owner",
+    });
+
+    await request(createAuthorizationApp())
+      .get("/protected")
+      .set("Authorization", "Bearer owner")
+      .expect(200);
+
+    expect(auth0.getAuth0UserInfo).toHaveBeenCalledTimes(3);
+    expect(auth0.getAuth0UserEmail).toHaveBeenCalledOnce();
   });
 
   it("reuses recent positive owner verification during provider failures", async () => {

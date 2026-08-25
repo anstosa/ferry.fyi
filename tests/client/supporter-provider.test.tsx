@@ -34,7 +34,11 @@ vi.mock("@capacitor/core", () => ({
     isNativePlatform: () => false,
   },
 }));
-vi.mock("~/lib/api", () => api);
+// preserve the real API error contract
+vi.mock("~/lib/api", async (importActual) => ({
+  ...(await importActual<typeof import("~/lib/api")>()),
+  ...api,
+}));
 vi.mock("~/lib/user", () => ({
   useUser: () => [userState, userActions],
 }));
@@ -51,6 +55,7 @@ vi.mock("~/lib/supporterWeb", () => ({
   purchaseWebSupporter: web.purchase,
 }));
 
+import { ApiError } from "../../client/lib/api";
 import { useSupporter } from "../../client/lib/supporterContext";
 import { SupporterProvider } from "../../client/lib/supporterProvider";
 
@@ -168,7 +173,7 @@ describe("SupporterProvider", () => {
       .mockResolvedValueOnce("stale-token")
       .mockResolvedValueOnce("fresh-token");
     api.get
-      .mockRejectedValueOnce({ status: 401 })
+      .mockRejectedValueOnce(new ApiError(401, { error: "unauthorized" }))
       .mockResolvedValueOnce(makeSupporterStatus(false, "v1:1:1"));
 
     const container = await renderProvider();

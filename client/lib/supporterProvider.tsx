@@ -16,7 +16,7 @@ import type {
   SupporterStatus,
 } from "shared/contracts/supporter";
 
-import { get, post, put } from "~/lib/api";
+import { ApiError, get, post, put } from "~/lib/api";
 import { SupporterContext } from "~/lib/supporterContext";
 import {
   getNativeSupporterManagementUrl,
@@ -37,12 +37,7 @@ const SUPPORTER_LOAD_TIMEOUT_MS = 12_000;
 
 // identify one rejected application token
 const isUnauthorizedRequest = (error: unknown): boolean =>
-  Boolean(
-    error &&
-    typeof error === "object" &&
-    "status" in error &&
-    error.status === 401
-  );
+  error instanceof ApiError && error.status === 401;
 
 // retry one authenticated supporter request
 const requestSupporterApi = async <T,>(

@@ -262,6 +262,26 @@ describe("Admin", () => {
         .value
     ).toBe("5--14");
     expect(document.activeElement?.id).toBe("admin-ad-slot");
+  });
+
+  // bypass one stale owner credential
+  it("requests an uncached token for admin operations", async () => {
+    window.history.replaceState({}, "", "/admin?tab=tickets");
+    api.get.mockResolvedValue({
+      cacheTtlSeconds: 1_800,
+      selectedUserAgentProfile: "identified-minimal",
+      userAgentProfiles: [],
+    });
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root?.render(React.createElement(Admin));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
     expect(auth.getAccessTokenSilently).toHaveBeenCalledWith({
       cacheMode: "off",
     });
