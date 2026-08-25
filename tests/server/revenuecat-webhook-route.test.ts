@@ -28,6 +28,7 @@ const signBody = (body: string, timestamp: number): string => {
 // create one raw-body test app
 const createApp = (limit = 120): express.Express => {
   const app = express();
+  app.set("trust proxy", "loopback");
   app.use(
     "/api/supporter/revenuecat/webhook",
     createRevenueCatWebhookRouter({ limit })
@@ -36,9 +37,12 @@ const createApp = (limit = 120): express.Express => {
 };
 
 describe("RevenueCat webhook route", () => {
+  // reset webhook test state
   beforeEach(() => {
     process.env.REVENUECAT_PRODUCTION_WEBHOOK_AUTHORIZATION = AUTHORIZATION;
     process.env.REVENUECAT_PRODUCTION_WEBHOOK_HMAC_SECRET = HMAC_SECRET;
+    process.env.REVENUECAT_SANDBOX_WEBHOOK_AUTHORIZATION = AUTHORIZATION;
+    process.env.REVENUECAT_SANDBOX_WEBHOOK_HMAC_SECRET = HMAC_SECRET;
     supporter.ingestRevenueCatWebhook.mockReset().mockResolvedValue({
       duplicate: false,
       eventId: "event-route-1",
@@ -58,24 +62,36 @@ describe("RevenueCat webhook route", () => {
     expect(supporter.ingestRevenueCatWebhook).not.toHaveBeenCalled();
   });
 
-  // bound invalid provider traffic before verification
-  it("rate-limits repeated webhook authorization attempts", async () => {
-    const app = createApp(1);
-    await request(app)
-      .post("/api/supporter/revenuecat/webhook/production")
-      .set("Content-Type", "application/json")
-      .send("{}")
-      .expect(401);
+  // prove both routes bound traffic before body parsing
+  it.each(["production", "sandbox"])(
+    "rate-limits %s webhook attempts per source before parsing",
+    async (environment) => {
+      const app = createApp(1);
+      const path = `/api/supporter/revenuecat/webhook/${environment}`;
+      await request(app)
+        .post(path)
+        .set("Content-Type", "application/json")
+        .set("X-Forwarded-For", "198.51.100.1")
+        .send("{}")
+        .expect(401);
 
-    const response = await request(app)
-      .post("/api/supporter/revenuecat/webhook/production")
-      .set("Content-Type", "application/json")
-      .send("{}")
-      .expect(429);
+      const response = await request(app)
+        .post(path)
+        .set("Content-Type", "application/json")
+        .set("X-Forwarded-For", "198.51.100.1")
+        .send("x".repeat(256 * 1_024 + 1))
+        .expect(429);
 
-    expect(response.body).toEqual({ error: "rate_limited" });
-    expect(supporter.ingestRevenueCatWebhook).not.toHaveBeenCalled();
-  });
+      expect(response.body).toEqual({ error: "rate_limited" });
+      await request(app)
+        .post(path)
+        .set("Content-Type", "application/json")
+        .set("X-Forwarded-For", "198.51.100.2")
+        .send("{}")
+        .expect(401);
+      expect(supporter.ingestRevenueCatWebhook).not.toHaveBeenCalled();
+    }
+  );
 
   it("persists a valid exact-byte webhook before acknowledgement", async () => {
     const timestamp = Math.floor(Date.now() / 1_000);
