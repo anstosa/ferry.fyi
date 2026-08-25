@@ -6,6 +6,10 @@ import path from "node:path";
 const clientDirectory = path.resolve("dist/client");
 const readClientFile = (file) =>
   readFile(path.join(clientDirectory, file), "utf8");
+// stable branding contract
+const fullResolutionLogo = await readFile(
+  path.join(clientDirectory, "static/images/ferry-fyi-logo.png")
+);
 
 const [
   serviceWorker,
@@ -38,6 +42,16 @@ assert.match(
   llmsTxt,
   /^## AI API guide$/m,
   "built llms.txt must include the public API guide"
+);
+assert.equal(
+  fullResolutionLogo.subarray(0, 8).toString("hex"),
+  "89504e470d0a1a0a",
+  "full-resolution logo must be a PNG"
+);
+assert.deepEqual(
+  [fullResolutionLogo.readUInt32BE(16), fullResolutionLogo.readUInt32BE(20)],
+  [1024, 1024],
+  "full-resolution logo must remain 1024 by 1024 pixels"
 );
 
 const precacheUrls = [

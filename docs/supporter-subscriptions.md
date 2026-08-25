@@ -1,6 +1,6 @@
 # Ferry FYI Supporter subscriptions
 
-Last reviewed: August 23, 2026.
+Last reviewed: August 24, 2026.
 
 Ferry FYI Supporter is one account-linked RevenueCat entitlement sold through
 RevenueCat Billing on the website, Apple in-app purchase, and Google Play
@@ -78,15 +78,18 @@ is off.
 
 ### RevenueCat
 
-1. Keep monthly and annual packages in the current `default` offering for all
+1. Use the canonical 1024-by-1024 Ferry FYI logo at
+   `https://ferry.fyi/static/images/ferry-fyi-logo.png` for hosted purchase
+   branding.
+2. Keep monthly and annual packages in the current `default` offering for all
    three production apps.
-2. Keep production restore behavior at **Keep with original App User ID**.
-3. Keep webhook Authorization and HMAC enabled for both endpoints.
-4. Keep App Store server notifications and Google real-time developer
+3. Keep production restore behavior at **Keep with original App User ID**.
+4. Keep webhook Authorization and HMAC enabled for both endpoints.
+5. Keep App Store server notifications and Google real-time developer
    notifications connected.
-5. Keep RevenueCat Billing connected to the intended Stripe account and enable
+6. Keep RevenueCat Billing connected to the intended Stripe account and enable
    tax collection appropriate to the business and customer jurisdictions.
-6. Do not add subscriber email/name attributes, advertising identifiers,
+7. Do not add subscriber email/name attributes, advertising identifiers,
    attribution integrations, or a RevenueCat advertising integration.
 
 ### App Store Connect
