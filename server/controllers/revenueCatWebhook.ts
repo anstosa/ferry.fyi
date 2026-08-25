@@ -1,4 +1,5 @@
 import express, { Router } from "express";
+import { MINUTE, rateLimit } from "express-rate-limit";
 import logger from "heroku-logger";
 import type { SupporterEnvironment } from "shared/contracts/supporter";
 
@@ -11,13 +12,6 @@ import {
   ingestRevenueCatWebhook,
   processRevenueCatWebhookEvent,
 } from "~/lib/supporter";
-
-export const revenueCatWebhookRouter = Router();
-
-// install exact-byte parsing before global json
-revenueCatWebhookRouter.use(
-  express.raw({ limit: "256kb", type: "application/json" })
-);
 
 // handle one closure-bound provider environment
 const handleWebhook =
@@ -78,5 +72,30 @@ const handleWebhook =
     }
   };
 
-revenueCatWebhookRouter.post("/production", handleWebhook("production"));
-revenueCatWebhookRouter.post("/sandbox", handleWebhook("sandbox"));
+// create one independently bounded webhook surface
+export const createRevenueCatWebhookRouter = ({
+  limit = 120,
+  windowMs = MINUTE,
+}: {
+  limit?: number;
+  windowMs?: number;
+} = {}): Router => {
+  const router = Router();
+  const limiter = rateLimit({
+    // keep limiter failures machine-readable
+    handler: (_request, response) => {
+      response.status(429).send({ error: "rate_limited" });
+    },
+    identifier: "revenuecat-webhook",
+    legacyHeaders: false,
+    limit,
+    standardHeaders: "draft-8",
+    windowMs,
+  });
+  const rawBody = express.raw({ limit: "256kb", type: "application/json" });
+  router.post("/production", limiter, rawBody, handleWebhook("production"));
+  router.post("/sandbox", limiter, rawBody, handleWebhook("sandbox"));
+  return router;
+};
+
+export const revenueCatWebhookRouter = createRevenueCatWebhookRouter();

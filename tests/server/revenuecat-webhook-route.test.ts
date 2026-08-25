@@ -12,7 +12,7 @@ const supporter = vi.hoisted(() => ({
 vi.mock("~/lib/supporter", () => supporter);
 vi.mock("heroku-logger", () => ({ default: { error: vi.fn() } }));
 
-import { revenueCatWebhookRouter } from "../../server/controllers/revenueCatWebhook";
+import { createRevenueCatWebhookRouter } from "../../server/controllers/revenueCatWebhook";
 
 const AUTHORIZATION = "Bearer webhook-route-test";
 const HMAC_SECRET = "webhook-route-hmac-test";
@@ -26,9 +26,12 @@ const signBody = (body: string, timestamp: number): string => {
 };
 
 // create one raw-body test app
-const createApp = (): express.Express => {
+const createApp = (limit = 120): express.Express => {
   const app = express();
-  app.use("/api/supporter/revenuecat/webhook", revenueCatWebhookRouter);
+  app.use(
+    "/api/supporter/revenuecat/webhook",
+    createRevenueCatWebhookRouter({ limit })
+  );
   return app;
 };
 
@@ -52,6 +55,25 @@ describe("RevenueCat webhook route", () => {
       .send("{}")
       .expect(401);
 
+    expect(supporter.ingestRevenueCatWebhook).not.toHaveBeenCalled();
+  });
+
+  // bound invalid provider traffic before verification
+  it("rate-limits repeated webhook authorization attempts", async () => {
+    const app = createApp(1);
+    await request(app)
+      .post("/api/supporter/revenuecat/webhook/production")
+      .set("Content-Type", "application/json")
+      .send("{}")
+      .expect(401);
+
+    const response = await request(app)
+      .post("/api/supporter/revenuecat/webhook/production")
+      .set("Content-Type", "application/json")
+      .send("{}")
+      .expect(429);
+
+    expect(response.body).toEqual({ error: "rate_limited" });
     expect(supporter.ingestRevenueCatWebhook).not.toHaveBeenCalled();
   });
 

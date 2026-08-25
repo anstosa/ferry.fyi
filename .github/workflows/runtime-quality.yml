@@ -45,8 +45,29 @@ jobs:
   accessibility-and-performance:
     name: Variable browser quality
     runs-on: ubuntu-latest
+    # support production server imports in the SSR fixture
+    services:
+      postgres:
+        image: postgres:16-bookworm
+        env:
+          POSTGRES_DB: ferryfyi
+          POSTGRES_PASSWORD: testing
+          POSTGRES_USER: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U test -d ferryfyi"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     env:
+      AUTH0_CLIENT_AUDIENCE: https://ferry.fyi/api
+      AUTH0_DOMAIN: tenant.example.test
+      BASE_URL: https://ferry.fyi
+      DATABASE_URL: postgres://test:testing@localhost:5432/ferryfyi
+      PGSSLMODE: disable
       SENTRY_AUTH_TOKEN: ""
+      TZ: America/Los_Angeles
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
@@ -57,6 +78,7 @@ jobs:
       - run: yarn install --frozen-lockfile
       - run: yarn build
       - run: yarn build:e2e:ssr
+      - run: yarn db:migrate
       - run: yarn playwright install --with-deps chromium
       - run: yarn test:e2e:accessibility
       - run: yarn budget:client

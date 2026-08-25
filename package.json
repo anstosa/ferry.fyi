@@ -33,7 +33,7 @@
     "firebase": "^12.15.0",
     "firebase-admin": "^14.0.0",
     "heroku-logger": "^0.3.3",
-    "html-to-text": "^10.0.0",
+    "html-to-text": "^10.0.1",
     "jsdom": "^29.1.1",
     "jsqr": "^1.4.0",
     "luxon": "^3.7.2",
