@@ -11,12 +11,14 @@ const identityUnavailable = {
 const OWNER_VERIFICATION_TTL_MS = 5 * 60 * 1000;
 const OWNER_VERIFICATION_ATTEMPTS = 2;
 const verifiedOwnerSubjects = new Map<string, number>();
+const pendingOwnerVerifications = new Map<string, Promise<boolean>>();
 const isOwnerEmail = (email: string | undefined): boolean =>
   email?.toLocaleLowerCase("en-US") === OWNER_EMAIL;
 
 // clear cached owner verification
 export const clearOwnerAdminVerificationCache = (): void => {
   verifiedOwnerSubjects.clear();
+  pendingOwnerVerifications.clear();
 };
 
 // check one cached owner subject
@@ -55,6 +57,42 @@ const verifyOwnerUserInfo = async (
   return false;
 };
 
+// resolve one owner identity against auth0
+const verifyOwnerIdentity = async (
+  accessToken: string | undefined,
+  subject: string
+): Promise<boolean> => {
+  // user-info compatibility branch
+  if (accessToken) {
+    try {
+      return await verifyOwnerUserInfo(accessToken, subject);
+    } catch {
+      // support older tokens without userinfo
+    }
+  }
+  return isOwnerEmail(await getAuth0UserEmail(subject));
+};
+
+// coalesce concurrent verification for one subject
+const getOwnerVerification = (
+  accessToken: string | undefined,
+  subject: string
+): Promise<boolean> => {
+  const pending = pendingOwnerVerifications.get(subject);
+  // pending verification guard
+  if (pending) {
+    return pending;
+  }
+  const verification = verifyOwnerIdentity(accessToken, subject).finally(() => {
+    // matching cleanup guard
+    if (pendingOwnerVerifications.get(subject) === verification) {
+      pendingOwnerVerifications.delete(subject);
+    }
+  });
+  pendingOwnerVerifications.set(subject, verification);
+  return verification;
+};
+
 /**
  * Verifies the authenticated Auth0 subject belongs to Ferry FYI's single owner.
  * Successful verification is briefly cached after JWT validation so transient
@@ -77,23 +115,11 @@ export const requireOwnerAdmin = async (
     return;
   }
 
-  const accessToken = request.auth?.token;
-  if (typeof accessToken === "string") {
-    try {
-      if (!(await verifyOwnerUserInfo(accessToken, subject))) {
-        response.status(403).send(accessDenied);
-        return;
-      }
-      cacheOwnerSubject(subject);
-      next();
-      return;
-    } catch {
-      // Compatibility fallback for older tokens that cannot call /userinfo.
-    }
-  }
-
   try {
-    if (!isOwnerEmail(await getAuth0UserEmail(subject))) {
+    const accessToken =
+      typeof request.auth?.token === "string" ? request.auth.token : undefined;
+    // owner identity guard
+    if (!(await getOwnerVerification(accessToken, subject))) {
       response.status(403).send(accessDenied);
       return;
     }

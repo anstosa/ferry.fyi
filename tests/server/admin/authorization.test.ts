@@ -53,13 +53,28 @@ import {
   adminRouter,
   preventAdminCaching,
 } from "../../../server/controllers/api/admin";
-import { clearOwnerAdminVerificationCache } from "../../../server/controllers/api/admin/authorization";
+import {
+  clearOwnerAdminVerificationCache,
+  requireOwnerAdmin,
+} from "../../../server/controllers/api/admin/authorization";
 import { requireAuth } from "../../../server/controllers/api/auth";
 
 const createApp = (): express.Express => {
   const app = express();
   app.use(express.json());
   app.use("/api/admin", preventAdminCaching, requireAuth, adminRouter);
+  return app;
+};
+
+// create one isolated authorization boundary
+const createAuthorizationApp = (): express.Express => {
+  const app = express();
+  app.get(
+    "/protected",
+    requireAuth,
+    requireOwnerAdmin,
+    (_request, response) => response.send({ authorized: true })
+  );
   return app;
 };
 
@@ -190,6 +205,41 @@ describe("owner admin authorization", () => {
       .expect(200);
 
     expect(auth0.getAuth0UserInfo).toHaveBeenCalledTimes(2);
+    expect(auth0.getAuth0UserEmail).not.toHaveBeenCalled();
+  });
+
+  it("coalesces concurrent verification for the same owner subject", async () => {
+    let completeVerification:
+      | ((identity: { email: string; subject: string }) => void)
+      | undefined;
+    auth0.getAuth0UserInfo.mockReturnValue(
+      new Promise((resolve) => {
+        completeVerification = resolve;
+      })
+    );
+
+    const pendingResponses = Promise.all([
+      request(createAuthorizationApp())
+        .get("/protected")
+        .set("Authorization", "Bearer owner"),
+      request(createAuthorizationApp())
+        .get("/protected")
+        .set("Authorization", "Bearer owner"),
+    ]);
+    await vi.waitFor(() =>
+      expect(auth0.getAuth0UserInfo).toHaveBeenCalledOnce()
+    );
+    completeVerification?.({
+      email: "anstosa@gmail.com",
+      subject: "auth0|owner",
+    });
+    const responses = await pendingResponses;
+
+    expect(responses.map(({ body, status }) => ({ body, status }))).toEqual([
+      { body: { authorized: true }, status: 200 },
+      { body: { authorized: true }, status: 200 },
+    ]);
+    expect(auth0.getAuth0UserInfo).toHaveBeenCalledOnce();
     expect(auth0.getAuth0UserEmail).not.toHaveBeenCalled();
   });
 

@@ -785,7 +785,9 @@ export const Admin = (): ReactElement => {
     user?.sub ?? "",
     notificationRecipient?.subject ?? ""
   );
-  const token = (): Promise<string> => getAccessTokenSilently();
+  // bypass stale local auth0 tokens for owner operations
+  const token = (): Promise<string> =>
+    getAccessTokenSilently({ cacheMode: "off" });
   const loadFeatures = async (): Promise<void> => {
     const accessToken = await token();
     const [legacy, leaderboards, automaticLeaderboardCheckins] =

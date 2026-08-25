@@ -31,8 +31,49 @@ import {
   purchaseWebSupporter,
 } from "~/lib/supporterWeb";
 import { useUser } from "~/lib/user";
+import type { UserActions } from "~/lib/userContext";
 
 const SUPPORTER_LOAD_TIMEOUT_MS = 12_000;
+
+// identify one rejected application token
+const isUnauthorizedRequest = (error: unknown): boolean =>
+  Boolean(
+    error &&
+    typeof error === "object" &&
+    "status" in error &&
+    error.status === 401
+  );
+
+// retry one authenticated supporter request
+const requestSupporterApi = async <T,>(
+  getAccessToken: UserActions["getAccessToken"],
+  request: (accessToken: string) => Promise<T>,
+  missingTokenMessage: string,
+  initialAccessToken?: string
+): Promise<{ accessToken: string; value: T }> => {
+  const accessToken = initialAccessToken ?? (await getAccessToken());
+  // initial token guard
+  if (!accessToken) {
+    throw new Error(missingTokenMessage);
+  }
+  try {
+    return { accessToken, value: await request(accessToken) };
+  } catch (error) {
+    // non-authentication failure guard
+    if (!isUnauthorizedRequest(error)) {
+      throw error;
+    }
+    const refreshedAccessToken = await getAccessToken({ bypassCache: true });
+    // refreshed token guard
+    if (!refreshedAccessToken) {
+      throw error;
+    }
+    return {
+      accessToken: refreshedAccessToken,
+      value: await request(refreshedAccessToken),
+    };
+  }
+};
 
 // bound one external loading step
 const withSupporterLoadTimeout = async <T,>(
@@ -102,17 +143,14 @@ export const SupporterProvider: FunctionComponent<PropsWithChildren> = ({
     setError(null);
     // isolate account status failures
     try {
-      const token = await withSupporterLoadTimeout(
-        userActionsRef.current.getAccessToken()
+      const { accessToken, value: nextStatus } = await withSupporterLoadTimeout(
+        requestSupporterApi(
+          userActionsRef.current.getAccessToken,
+          async (token) => await get<SupporterStatus>("/supporter", token),
+          "Sign in again to load your Supporter subscription."
+        )
       );
-      // token readiness guard
-      if (!token || requestGeneration !== generation.current) {
-        return;
-      }
-      const nextStatus = await withSupporterLoadTimeout(
-        get<SupporterStatus>("/supporter", token)
-      );
-      // stale account guard
+      // account ownership guard
       if (requestGeneration !== generation.current) {
         return;
       }
@@ -120,7 +158,7 @@ export const SupporterProvider: FunctionComponent<PropsWithChildren> = ({
       setProducts([]);
       // synchronize ad and upgrade policy
       if (userState.user?.supporter?.revision !== nextStatus.revision) {
-        await userActionsRef.current.refreshUser(token);
+        await userActionsRef.current.refreshUser(accessToken);
       }
       // active account guard
       if (nextStatus.active || !isCheckoutAvailable(nextStatus)) {
@@ -181,18 +219,22 @@ export const SupporterProvider: FunctionComponent<PropsWithChildren> = ({
   }, [refresh, status]);
 
   // reconcile the provider result with server authority
-  const reconcile = async (token: string): Promise<SupporterStatus> => {
-    const result = await post<SupporterReconcileResult>(
-      "/supporter/reconcile",
-      {},
-      token
+  const reconcile = async (
+    initialAccessToken?: string
+  ): Promise<SupporterStatus> => {
+    const { accessToken, value: result } = await requestSupporterApi(
+      userActionsRef.current.getAccessToken,
+      async (token) =>
+        await post<SupporterReconcileResult>("/supporter/reconcile", {}, token),
+      "Sign in again to verify your Supporter subscription.",
+      initialAccessToken
     );
     // status response guard
     if (!result.status) {
       throw new Error("Purchase received; verifying access.");
     }
     setStatus(result.status);
-    await userActionsRef.current.refreshUser(token);
+    await userActionsRef.current.refreshUser(accessToken);
     return result.status;
   };
 
@@ -208,9 +250,9 @@ export const SupporterProvider: FunctionComponent<PropsWithChildren> = ({
     setError(null);
     // isolate purchase failures
     try {
-      const token = await userActionsRef.current.getAccessToken();
-      // token readiness guard
-      if (!token) {
+      const accessToken = await userActionsRef.current.getAccessToken();
+      // authenticated checkout guard
+      if (!accessToken) {
         throw new Error("Sign in again before subscribing.");
       }
       const outcome = Capacitor.isNativePlatform()
@@ -220,7 +262,7 @@ export const SupporterProvider: FunctionComponent<PropsWithChildren> = ({
       if (outcome === "cancelled") {
         return { outcome: "cancelled", status };
       }
-      const nextStatus = await reconcile(token);
+      const nextStatus = await reconcile(accessToken);
       return {
         outcome: nextStatus.active ? "purchased" : "verification_pending",
         status: nextStatus,
@@ -243,13 +285,13 @@ export const SupporterProvider: FunctionComponent<PropsWithChildren> = ({
     setError(null);
     // isolate restore failures
     try {
-      const token = await userActionsRef.current.getAccessToken();
-      // token readiness guard
-      if (!token) {
+      const accessToken = await userActionsRef.current.getAccessToken();
+      // authenticated restore guard
+      if (!accessToken) {
         throw new Error("Sign in again before restoring purchases.");
       }
       await restoreNativeSupporter(status.appUserId);
-      await reconcile(token);
+      await reconcile(accessToken);
     } catch (restoreError) {
       setError(getSupporterError(restoreError));
       throw restoreError;
@@ -268,18 +310,18 @@ export const SupporterProvider: FunctionComponent<PropsWithChildren> = ({
     setError(null);
     // isolate preference failures
     try {
-      const token = await userActionsRef.current.getAccessToken();
-      // token readiness guard
-      if (!token) {
-        throw new Error("Sign in again before changing your ad preference.");
-      }
-      const nextStatus = await put<SupporterStatus>(
-        "/supporter/preferences",
-        { adsEnabled: enabled },
-        token
+      const { accessToken, value: nextStatus } = await requestSupporterApi(
+        userActionsRef.current.getAccessToken,
+        async (token) =>
+          await put<SupporterStatus>(
+            "/supporter/preferences",
+            { adsEnabled: enabled },
+            token
+          ),
+        "Sign in again before changing your ad preference."
       );
       setStatus(nextStatus);
-      await userActionsRef.current.refreshUser(token);
+      await userActionsRef.current.refreshUser(accessToken);
     } catch (preferenceError) {
       setError(getSupporterError(preferenceError));
       throw preferenceError;

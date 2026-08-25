@@ -14,12 +14,18 @@ export interface UserState extends AppMetadata, UserMetadata {
   userError: Error | null;
 }
 
+/** controls token-cache and interactive recovery */
+export interface AccessTokenOptions {
+  bypassCache?: boolean;
+  forceInteractive?: boolean;
+}
+
 export interface UserActions {
   deleteAccount: (
     confirmation: string,
     continuingBillingAcknowledged?: boolean
   ) => Promise<void>;
-  getAccessToken: () => Promise<string | undefined>;
+  getAccessToken: (options?: AccessTokenOptions) => Promise<string | undefined>;
   refreshUser: (inputToken?: string) => Promise<void>;
   updateUser: (data: UserUpdatePayload) => Promise<void>;
 }

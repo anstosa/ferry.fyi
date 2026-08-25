@@ -13,6 +13,7 @@ import type { CurrentUser } from "shared/contracts/user";
 import { ApiError, del, get, post } from "~/lib/api";
 import { getConfiguredAuth0RedirectUri, loginWithAppFlow } from "~/lib/auth";
 import {
+  type AccessTokenOptions as GetAccessTokenOptions,
   type UserActions as Actions,
   UserContext,
   type UserResponse as Response,
@@ -22,10 +23,6 @@ import {
 export { useUser } from "~/lib/userContext";
 
 const USER_AUTH_SCOPE = "openid profile email read:current_user offline_access";
-interface GetAccessTokenOptions {
-  bypassCache?: boolean;
-  forceInteractive?: boolean;
-}
 
 let userPromise: Promise<CurrentUser> | null = null;
 let userPromiseSubject: string | null = null;

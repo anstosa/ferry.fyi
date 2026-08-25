@@ -262,6 +262,9 @@ describe("Admin", () => {
         .value
     ).toBe("5--14");
     expect(document.activeElement?.id).toBe("admin-ad-slot");
+    expect(auth.getAccessTokenSilently).toHaveBeenCalledWith({
+      cacheMode: "off",
+    });
   });
 
   it("keeps the displayed placement selected when a drill-down fails", async () => {

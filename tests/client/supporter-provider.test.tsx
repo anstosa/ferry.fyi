@@ -162,6 +162,27 @@ describe("SupporterProvider", () => {
     expect(userActions.refreshUser).toHaveBeenCalledWith("access-token");
   });
 
+  // recover one stale cached auth0 token
+  it("retries a supporter request with an uncached token after 401", async () => {
+    userActions.getAccessToken
+      .mockResolvedValueOnce("stale-token")
+      .mockResolvedValueOnce("fresh-token");
+    api.get
+      .mockRejectedValueOnce({ status: 401 })
+      .mockResolvedValueOnce(makeSupporterStatus(false, "v1:1:1"));
+
+    const container = await renderProvider();
+
+    await vi.waitFor(() => expect(container.textContent).toContain("ready"));
+    expect(userActions.getAccessToken).toHaveBeenNthCalledWith(1);
+    expect(userActions.getAccessToken).toHaveBeenNthCalledWith(2, {
+      bypassCache: true,
+    });
+    expect(api.get).toHaveBeenNthCalledWith(1, "/supporter", "stale-token");
+    expect(api.get).toHaveBeenNthCalledWith(2, "/supporter", "fresh-token");
+    expect(userActions.refreshUser).toHaveBeenCalledWith("fresh-token");
+  });
+
   // bound an external request that never settles
   it("replaces a stalled load with retryable guidance", async () => {
     vi.useFakeTimers();
