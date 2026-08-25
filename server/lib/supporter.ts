@@ -841,11 +841,26 @@ export const setSupporterAdsEnabled = async (
   issuedAtSeconds: number,
   adsEnabled: boolean
 ): Promise<SupporterStatus> => {
-  const customer = await getOrCreateSupporterCustomer(subject, issuedAtSeconds);
-  // avoid an unnecessary preference write
-  if (customer.adsEnabled !== adsEnabled) {
-    await customer.update({ adsEnabled });
-  }
+  await getOrCreateSupporterCustomer(subject, issuedAtSeconds);
+  await db.transaction(async (transaction) => {
+    const customer = await findLockedCustomer(subject, transaction);
+    // detached account guard
+    if (!customer) {
+      throw new SupporterAuthorizationError();
+    }
+    // advance the policy revision with each preference change
+    if (customer.adsEnabled !== adsEnabled) {
+      await customer.update(
+        {
+          adsEnabled,
+          runtimeProjectionGeneration: (
+            BigInt(customer.runtimeProjectionGeneration) + BigInt(1)
+          ).toString(),
+        },
+        { transaction }
+      );
+    }
+  });
   return await getSupporterStatus(subject, issuedAtSeconds);
 };
 

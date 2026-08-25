@@ -670,7 +670,7 @@ const EDITORIAL_PAGES: Record<
     title: "Privacy Policy",
   },
   supporter: {
-    body: "Ferry FYI Supporter is an optional monthly or yearly subscription that removes Ferry FYI advertisements while signed in and can show an optional cosmetic leaderboard badge. Core ferry information remains free.",
+    body: "Ferry FYI Supporter is an optional monthly or yearly subscription that removes Ferry FYI advertisements by default while signed in and can show an optional cosmetic leaderboard badge. Active supporters can voluntarily show ads from Account and turn them off again at any time. Core ferry information remains free.",
     path: "/supporter",
     title: "Ferry FYI Supporter",
   },

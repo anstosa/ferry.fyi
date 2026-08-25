@@ -21,6 +21,8 @@ import { useSupporter } from "~/lib/supporterContext";
 import { useUser } from "~/lib/user";
 import CheckIcon from "~/static/images/icons/solid/check.svg";
 
+import { ToggleSwitch } from "./ToggleSwitch";
+
 interface Props {
   embedded?: boolean;
   onPurchaseStateChange?: (state: SupporterPurchaseState) => void;
@@ -382,32 +384,16 @@ export const SupporterCard = ({
                   any time while subscribed.
                 </p>
               </div>
-              <button
-                aria-checked={supporter.status.adsEnabled}
-                aria-label="Show Ferry FYI advertisements"
-                className={clsx(
-                  "relative mt-1 h-7 w-12 shrink-0 rounded-full transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-dark dark:focus-visible:outline-green-light",
-                  supporter.status.adsEnabled
-                    ? "bg-green-dark dark:bg-green-light"
-                    : "bg-gray-300 dark:bg-white/20"
-                )}
+              <ToggleSwitch
+                checked={supporter.status.adsEnabled}
+                className="mt-1"
                 disabled={supporter.isBusy}
-                onClick={() => {
+                label="Show Ferry FYI advertisements"
+                onChange={(enabled) => {
                   // toggle supporter advertisements
-                  supporter
-                    .setAdsEnabled(!supporter.status?.adsEnabled)
-                    .catch(() => undefined);
+                  supporter.setAdsEnabled(enabled).catch(() => undefined);
                 }}
-                role="switch"
-                type="button"
-              >
-                <span
-                  className={clsx(
-                    "absolute top-1 h-5 w-5 rounded-full bg-white shadow transition",
-                    supporter.status.adsEnabled ? "left-6" : "left-1"
-                  )}
-                />
-              </button>
+              />
             </div>
           )}
           <button

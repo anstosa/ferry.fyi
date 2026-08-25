@@ -3,6 +3,8 @@ import React, { type ReactElement } from "react";
 
 import CrownIcon from "~/static/images/icons/solid/crown.svg";
 
+import { ToggleSwitch } from "./ToggleSwitch";
+
 interface BadgeProps {
   className?: string;
 }
@@ -76,30 +78,13 @@ export const LeaderboardSupporterBadgePreference = ({
             leaderboards.
           </p>
         </div>
-        <button
-          aria-checked={visible}
-          aria-label="Show Supporter badge on public leaderboards"
-          className={clsx(
-            "relative mt-1 h-7 w-12 shrink-0 rounded-full transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-dark dark:focus-visible:outline-green-light",
-            visible
-              ? "bg-green-dark dark:bg-green-light"
-              : "bg-gray-300 dark:bg-white/20"
-          )}
+        <ToggleSwitch
+          checked={visible}
+          className="mt-1"
           disabled={disabled}
-          onClick={() => {
-            // toggle public badge consent
-            onChange(!visible);
-          }}
-          role="switch"
-          type="button"
-        >
-          <span
-            className={clsx(
-              "absolute top-1 h-5 w-5 rounded-full bg-white shadow transition",
-              visible ? "left-6" : "left-1"
-            )}
-          />
-        </button>
+          label="Show Supporter badge on public leaderboards"
+          onChange={onChange}
+        />
       </div>
       <p className="mt-4 text-2xs font-black uppercase tracking-[0.14em] text-gray-dark dark:text-gray-light">
         Preview

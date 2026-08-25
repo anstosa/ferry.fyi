@@ -297,7 +297,9 @@ describe("SupporterCard", () => {
       '[role="switch"][aria-label="Show Ferry FYI advertisements"]'
     );
     expect(toggle?.getAttribute("aria-checked")).toBe("false");
-    expect(container?.textContent).toContain("Your ad-free experience is active");
+    expect(container?.textContent).toContain(
+      "Your ad-free experience is active"
+    );
     expect(container?.textContent).toContain("Support local advertisers too");
 
     await act(async () => {

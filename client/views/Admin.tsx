@@ -25,6 +25,7 @@ import type { TicketLookupAdminSettings } from "shared/contracts/tickets";
 import { AdInventoryCharts } from "~/components/AdInventoryCharts";
 import { Page } from "~/components/Page";
 import { Skeleton, SkeletonGroup } from "~/components/Skeleton";
+import { ToggleSwitch } from "~/components/ToggleSwitch";
 import { confirmationPhrase } from "~/lib/adminConfirmation";
 import { getAdAdminSelection } from "~/lib/ads";
 import { del, get, post, put } from "~/lib/api";
@@ -261,36 +262,6 @@ const emptyAdPlacement = ({
   slot,
   targetUrl: "",
 });
-
-const ToggleSwitch = ({
-  checked,
-  disabled = false,
-  label,
-  onChange,
-}: {
-  checked: boolean;
-  disabled?: boolean;
-  label: string;
-  onChange: (checked: boolean) => void;
-}): ReactElement => (
-  <button
-    aria-checked={checked}
-    aria-label={label}
-    className={`relative h-7 w-12 shrink-0 rounded-full transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-dark ${
-      checked ? "bg-green-dark" : "bg-gray-300 dark:bg-white/20"
-    }`}
-    disabled={disabled}
-    onClick={() => onChange(!checked)}
-    role="switch"
-    type="button"
-  >
-    <span
-      className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition ${
-        checked ? "left-6" : "left-1"
-      }`}
-    />
-  </button>
-);
 
 const notificationRequest = (
   mode: AdminNotificationMode,

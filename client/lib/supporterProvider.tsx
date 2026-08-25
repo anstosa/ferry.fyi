@@ -119,10 +119,7 @@ export const SupporterProvider: FunctionComponent<PropsWithChildren> = ({
       setStatus(nextStatus);
       setProducts([]);
       // synchronize ad and upgrade policy
-      if (
-        userState.user?.supporter?.revision !== nextStatus.revision ||
-        userState.user?.supporter?.adsEnabled !== nextStatus.adsEnabled
-      ) {
+      if (userState.user?.supporter?.revision !== nextStatus.revision) {
         await userActionsRef.current.refreshUser(token);
       }
       // active account guard

@@ -2,6 +2,7 @@
 
 import React, { act, type ReactElement, useEffect } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import type { SupporterStatus } from "shared/contracts/supporter";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const api = vi.hoisted(() => ({
@@ -57,6 +58,26 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 let root: Root | undefined;
 
+// build one complete provider response
+const makeSupporterStatus = (
+  adsEnabled: boolean,
+  revision: string
+): SupporterStatus => ({
+  active: true,
+  activeUntil: null,
+  adsEnabled,
+  appUserId: "customer-1",
+  checkoutAvailability: { android: true, ios: true, web: true },
+  degradedCode: null,
+  lastReconciledAt: null,
+  lastVerifiedAt: null,
+  lifecycleState: "active",
+  resolved: true,
+  revision,
+  sources: [],
+  supporterBadgeVisible: false,
+});
+
 /** Starts the same child-owned refresh used by the checkout card. */
 const SupporterHarness = (): ReactElement => {
   const supporter = useSupporter();
@@ -69,7 +90,7 @@ const SupporterHarness = (): ReactElement => {
     label = "loading";
   } else if (supporter.status?.resolved) {
     // expose resolved state
-    label = "ready";
+    label = supporter.status.adsEnabled ? "ready:ads-on" : "ready:ads-off";
   }
   // start checkout loading after provider ownership settles
   useEffect(() => {
@@ -83,11 +104,16 @@ const SupporterHarness = (): ReactElement => {
   const showAds = (): void => {
     supporter.setAdsEnabled(true).catch(() => undefined);
   };
+  // expose the inverse supporter ad preference action
+  const hideAds = (): void => {
+    supporter.setAdsEnabled(false).catch(() => undefined);
+  };
   return (
     <div>
       <span>{label}</span>
       <button aria-label="Manage" onClick={manage} type="button" />
       <button aria-label="Show ads" onClick={showAds} type="button" />
+      <button aria-label="Hide ads" onClick={hideAds} type="button" />
     </div>
   );
 };
@@ -114,36 +140,8 @@ beforeEach(() => {
   web.loadProducts.mockReset().mockResolvedValue([]);
   web.openManagement.mockReset().mockResolvedValue(undefined);
   web.purchase.mockReset().mockResolvedValue("cancelled");
-  api.get.mockReset().mockResolvedValue({
-    active: true,
-    activeUntil: null,
-    adsEnabled: false,
-    appUserId: "customer-1",
-    checkoutAvailability: { android: true, ios: true, web: true },
-    degradedCode: null,
-    lastReconciledAt: null,
-    lastVerifiedAt: null,
-    lifecycleState: "active",
-    resolved: true,
-    revision: "v1:1:1",
-    sources: [],
-    supporterBadgeVisible: false,
-  });
-  api.put.mockReset().mockResolvedValue({
-    active: true,
-    activeUntil: null,
-    adsEnabled: true,
-    appUserId: "customer-1",
-    checkoutAvailability: { android: true, ios: true, web: true },
-    degradedCode: null,
-    lastReconciledAt: null,
-    lastVerifiedAt: null,
-    lifecycleState: "active",
-    resolved: true,
-    revision: "v1:1:1",
-    sources: [],
-    supporterBadgeVisible: false,
-  });
+  api.get.mockReset().mockResolvedValue(makeSupporterStatus(false, "v1:1:1"));
+  api.put.mockReset().mockResolvedValue(makeSupporterStatus(true, "v1:2:1"));
 });
 
 afterEach(() => {
@@ -159,7 +157,7 @@ describe("SupporterProvider", () => {
   it("settles the first supporter refresh instead of loading forever", async () => {
     const container = await renderProvider();
 
-    await vi.waitFor(() => expect(container.textContent).toBe("ready"));
+    await vi.waitFor(() => expect(container.textContent).toContain("ready"));
     expect(api.get).toHaveBeenCalledWith("/supporter", "access-token");
     expect(userActions.refreshUser).toHaveBeenCalledWith("access-token");
   });
@@ -193,14 +191,17 @@ describe("SupporterProvider", () => {
     expect(api.post).not.toHaveBeenCalled();
   });
 
-  // synchronize the persisted ad preference with account policy
-  it("enables advertisements for an active supporter", async () => {
+  // expose both persisted ad preference states
+  it("updates the active supporter's advertisement preference", async () => {
     const container = await renderProvider();
 
-    await vi.waitFor(() => expect(container.textContent).toContain("ready"));
-    userActions.refreshUser.mockClear();
+    await vi.waitFor(() =>
+      expect(container.textContent).toContain("ready:ads-off")
+    );
     await act(async () => {
-      container.querySelector<HTMLButtonElement>('[aria-label="Show ads"]')?.click();
+      container
+        .querySelector<HTMLButtonElement>('[aria-label="Show ads"]')
+        ?.click();
       await Promise.resolve();
     });
 
@@ -209,6 +210,24 @@ describe("SupporterProvider", () => {
       { adsEnabled: true },
       "access-token"
     );
-    expect(userActions.refreshUser).toHaveBeenCalledWith("access-token");
+    await vi.waitFor(() =>
+      expect(container.textContent).toContain("ready:ads-on")
+    );
+
+    api.put.mockResolvedValueOnce(makeSupporterStatus(false, "v1:3:1"));
+    await act(async () => {
+      container
+        .querySelector<HTMLButtonElement>('[aria-label="Hide ads"]')
+        ?.click();
+      await Promise.resolve();
+    });
+    expect(api.put).toHaveBeenLastCalledWith(
+      "/supporter/preferences",
+      { adsEnabled: false },
+      "access-token"
+    );
+    await vi.waitFor(() =>
+      expect(container.textContent).toContain("ready:ads-off")
+    );
   });
 });

@@ -35,6 +35,7 @@ import { AppTeaser } from "~/components/AppTeaser";
 import { HeaderDropdown } from "~/components/HeaderDropdown";
 import { NotificationPermissionWarning } from "~/components/NotificationPermissionWarning";
 import { Skeleton, SkeletonGroup } from "~/components/Skeleton";
+import { ToggleSwitch } from "~/components/ToggleSwitch";
 import { getConfiguredAuth0RedirectUri, loginWithAppFlow } from "~/lib/auth";
 import { useDevice } from "~/lib/device";
 import {
@@ -863,29 +864,14 @@ const AlertRuleSummary = ({
       >
         Edit
       </button>
-      <button
-        aria-checked={rule.enabled}
-        aria-label={`Turn ${rule.nickname || "alert window"} ${
+      <ToggleSwitch
+        checked={rule.enabled}
+        disabled={disabled}
+        label={`Turn ${rule.nickname || "alert window"} ${
           rule.enabled ? "off" : "on"
         }`}
-        className={clsx(
-          "relative h-7 w-12 shrink-0 rounded-full transition",
-          rule.enabled
-            ? "bg-green-dark dark:bg-green-light"
-            : "bg-gray-300 dark:bg-white/20"
-        )}
-        disabled={disabled}
-        onClick={onToggleEnabled}
-        role="switch"
-        type="button"
-      >
-        <span
-          className={clsx(
-            "absolute top-1 h-5 w-5 rounded-full bg-white shadow transition",
-            rule.enabled ? "left-6" : "left-1"
-          )}
-        />
-      </button>
+        onChange={() => onToggleEnabled()}
+      />
     </div>
   );
 };
