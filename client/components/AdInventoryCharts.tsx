@@ -71,11 +71,21 @@ const VerticalBarChart = ({
 }): ReactElement => {
   const maximum = Math.max(1, ...columns.map(({ value }) => value));
   // keep dense hourly labels readable
-  const minimumWidth = columns.length > 12 ? "min-w-[60rem]" : "min-w-full";
+  const horizontallyScrollable = columns.length > 12;
+  const minimumWidth = horizontallyScrollable ? "min-w-[60rem]" : "min-w-full";
   return (
     <figure className="min-w-0">
       <figcaption className="font-semibold">{title}</figcaption>
-      <div className="mt-3 overflow-x-auto pb-2">
+      <div
+        aria-label={
+          horizontallyScrollable
+            ? `${title} chart, scroll horizontally to view all columns`
+            : undefined
+        }
+        className="mt-3 overflow-x-auto pb-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sponsor-dark dark:focus-visible:outline-sponsor-light"
+        role={horizontallyScrollable ? "region" : undefined}
+        tabIndex={horizontallyScrollable ? 0 : undefined}
+      >
         <ul
           aria-label={`${title} x-axis`}
           className={`flex h-44 items-end gap-2 ${minimumWidth}`}

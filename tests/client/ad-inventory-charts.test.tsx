@@ -121,6 +121,10 @@ describe("AdInventoryCharts", () => {
     const hourAxis = timeOfDay?.querySelector(
       'ul[aria-label="Time of day x-axis"]'
     );
+    const hourViewport = timeOfDay?.querySelector(
+      '[role="region"][aria-label="Time of day chart, scroll horizontally to view all columns"]'
+    );
+    expect(hourViewport?.getAttribute("tabindex")).toBe("0");
     expect(hourAxis?.children).toHaveLength(24);
     const eightAm = hourAxis?.querySelector('li[aria-label="8 AM: 12"]');
     expect(eightAm?.querySelector("strong")?.textContent).toBe("12");
