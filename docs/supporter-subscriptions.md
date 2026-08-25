@@ -17,8 +17,11 @@ pricing can vary.
 - Google subscriptions/base plans: `supporter_monthly:supporter-monthly` and
   `supporter_yearly:supporter-yearly`
 - RevenueCat Billing products: `supporter_monthly` and `supporter_annual`
-- Launch benefits: no Ferry FYI ads while signed in and an optional public
-  Supporter leaderboard badge that defaults off
+- Launch benefits: no Ferry FYI ads while signed in by default and an optional
+  public Supporter leaderboard badge that defaults on until disabled in
+  Leaderboard settings
+- Active supporters can voluntarily show first-party contextual ads from the
+  Account page and turn them off again at any time while subscribed
 - Free features: schedules, service information, alerts, cameras, forecasts,
   tickets, and manual check-ins
 - Automatic check-ins remain deferred and are not enabled by subscription

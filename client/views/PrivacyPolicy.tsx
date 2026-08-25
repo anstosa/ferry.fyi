@@ -10,7 +10,7 @@ export const PrivacyPolicy = (): ReactElement => (
     <SeoHelmet seo={getSeoMetadata("/privacy")} />
 
     <p className="mt-4 text-sm">
-      Last updated: <time dateTime="2026-08-23">August 23, 2026</time>
+      Last updated: <time dateTime="2026-08-24">August 24, 2026</time>
     </p>
     <p className="mt-4">
       Ferry FYI provides Washington State Ferries schedules, service
@@ -114,9 +114,11 @@ export const PrivacyPolicy = (): ReactElement => (
     </p>
     <p className="mt-2">
       While a signed-in account has an active Supporter subscription, Ferry FYI
-      does not request, display, or measure these advertisements for that
-      account. Authentication is used transiently to enforce ad-free access and
-      is not added to advertising records.
+      does not request, display, or measure these advertisements unless the
+      supporter voluntarily turns advertisements back on from the Account page.
+      The supporter can turn them off again at any time while subscribed.
+      Authentication is used transiently to enforce that preference and is not
+      added to advertising records.
     </p>
     <p className="mt-2">
       Ad measurement uses a random exposure token that is not an account,

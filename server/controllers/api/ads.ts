@@ -23,7 +23,8 @@ const shouldSuppressAds = async (response: Response): Promise<boolean> => {
   if (!subject) {
     return false;
   }
-  return (await getSupporterSummaryForSubject(subject)).active;
+  const supporter = await getSupporterSummaryForSubject(subject);
+  return supporter.active && !supporter.adsEnabled;
 };
 
 adsRouter.use((_request, response, next) => {

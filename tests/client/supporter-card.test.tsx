@@ -20,6 +20,7 @@ const supporter = vi.hoisted(() => ({
   purchase: vi.fn(),
   refresh: vi.fn(),
   restore: vi.fn(),
+  setAdsEnabled: vi.fn(),
   status: null,
 }));
 const user = vi.hoisted(
@@ -68,6 +69,7 @@ describe("SupporterCard", () => {
     browser.open.mockReset().mockResolvedValue(undefined);
     platform.value = "web";
     supporter.refresh.mockReset().mockResolvedValue(undefined);
+    supporter.setAdsEnabled.mockReset().mockResolvedValue(undefined);
     supporter.purchase.mockReset().mockResolvedValue({ outcome: "cancelled" });
     supporter.products = [];
     supporter.status = null;
@@ -254,6 +256,7 @@ describe("SupporterCard", () => {
     supporter.status = {
       active: true,
       activeUntil: "2026-09-24T18:07:12.118Z",
+      adsEnabled: false,
       sources: [
         {
           activeUntil: "2026-09-24T18:07:12.118Z",
@@ -276,6 +279,44 @@ describe("SupporterCard", () => {
     );
     expect(container?.textContent).not.toContain("Show my Supporter badge");
     expect(container?.querySelector('input[type="checkbox"]')).toBeNull();
+  });
+
+  // let active supporters voluntarily restore ads from Account
+  it("toggles advertisements only from the account supporter block", async () => {
+    supporter.status = {
+      active: true,
+      activeUntil: "2026-09-24T18:07:12.118Z",
+      adsEnabled: false,
+      sources: [],
+      supporterBadgeVisible: true,
+    };
+
+    await renderCard();
+
+    const toggle = container?.querySelector<HTMLButtonElement>(
+      '[role="switch"][aria-label="Show Ferry FYI advertisements"]'
+    );
+    expect(toggle?.getAttribute("aria-checked")).toBe("false");
+    expect(container?.textContent).toContain("Your ad-free experience is active");
+    expect(container?.textContent).toContain("Support local advertisers too");
+
+    await act(async () => {
+      toggle?.click();
+      await Promise.resolve();
+    });
+
+    expect(supporter.setAdsEnabled).toHaveBeenCalledWith(true);
+
+    act(() => root?.unmount());
+    root = undefined;
+    container?.remove();
+    container = undefined;
+    await renderCard(true);
+    expect(
+      container?.querySelector(
+        '[role="switch"][aria-label="Show Ferry FYI advertisements"]'
+      )
+    ).toBeNull();
   });
 
   // separate plan choice from checkout

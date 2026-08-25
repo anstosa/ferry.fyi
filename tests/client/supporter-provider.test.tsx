@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const api = vi.hoisted(() => ({
   get: vi.fn(),
   post: vi.fn(),
+  put: vi.fn(),
 }));
 const userActions = vi.hoisted(() => ({
   getAccessToken: vi.fn(),
@@ -14,7 +15,10 @@ const userActions = vi.hoisted(() => ({
 }));
 const userState = vi.hoisted(() => ({
   isAuthenticated: true,
-  user: { user_id: "auth0|supporter-rider" },
+  user: {
+    supporter: { adsEnabled: false, revision: "v1:0:1" },
+    user_id: "auth0|supporter-rider",
+  },
 }));
 const web = vi.hoisted(() => ({
   loadProducts: vi.fn(),
@@ -75,10 +79,15 @@ const SupporterHarness = (): ReactElement => {
   const manage = (): void => {
     supporter.manage().catch(() => undefined);
   };
+  // expose the supporter ad preference action
+  const showAds = (): void => {
+    supporter.setAdsEnabled(true).catch(() => undefined);
+  };
   return (
     <div>
       <span>{label}</span>
       <button aria-label="Manage" onClick={manage} type="button" />
+      <button aria-label="Show ads" onClick={showAds} type="button" />
     </div>
   );
 };
@@ -108,6 +117,22 @@ beforeEach(() => {
   api.get.mockReset().mockResolvedValue({
     active: true,
     activeUntil: null,
+    adsEnabled: false,
+    appUserId: "customer-1",
+    checkoutAvailability: { android: true, ios: true, web: true },
+    degradedCode: null,
+    lastReconciledAt: null,
+    lastVerifiedAt: null,
+    lifecycleState: "active",
+    resolved: true,
+    revision: "v1:1:1",
+    sources: [],
+    supporterBadgeVisible: false,
+  });
+  api.put.mockReset().mockResolvedValue({
+    active: true,
+    activeUntil: null,
+    adsEnabled: true,
     appUserId: "customer-1",
     checkoutAvailability: { android: true, ios: true, web: true },
     degradedCode: null,
@@ -166,5 +191,24 @@ describe("SupporterProvider", () => {
 
     expect(web.openManagement).toHaveBeenCalledWith("customer-1");
     expect(api.post).not.toHaveBeenCalled();
+  });
+
+  // synchronize the persisted ad preference with account policy
+  it("enables advertisements for an active supporter", async () => {
+    const container = await renderProvider();
+
+    await vi.waitFor(() => expect(container.textContent).toContain("ready"));
+    userActions.refreshUser.mockClear();
+    await act(async () => {
+      container.querySelector<HTMLButtonElement>('[aria-label="Show ads"]')?.click();
+      await Promise.resolve();
+    });
+
+    expect(api.put).toHaveBeenCalledWith(
+      "/supporter/preferences",
+      { adsEnabled: true },
+      "access-token"
+    );
+    expect(userActions.refreshUser).toHaveBeenCalledWith("access-token");
   });
 });

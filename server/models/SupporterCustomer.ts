@@ -4,6 +4,7 @@ import { db } from "~/lib/db";
 
 /** Pseudonymous RevenueCat identity linked to one current account. */
 export class SupporterCustomer extends Model {
+  adsEnabled!: boolean;
   createdAt!: Date;
   detachedAt!: Date | null;
   id!: string;
@@ -14,6 +15,11 @@ export class SupporterCustomer extends Model {
 
 SupporterCustomer.init(
   {
+    adsEnabled: {
+      allowNull: false,
+      defaultValue: false,
+      type: DataTypes.BOOLEAN,
+    },
     detachedAt: { allowNull: true, type: DataTypes.DATE },
     id: {
       allowNull: false,

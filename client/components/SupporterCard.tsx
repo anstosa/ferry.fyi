@@ -352,7 +352,11 @@ export const SupporterCard = ({
       {supporter.status?.active && (
         <div className="mt-6 space-y-4 text-left">
           <div className="rounded-2xl bg-green-lightest p-5 text-sm text-green-dark dark:bg-green-dark dark:text-green-lightest">
-            <p className="font-bold">Your ad-free experience is active.</p>
+            <p className="font-bold">
+              {supporter.status.adsEnabled
+                ? "You have chosen to see Ferry FYI advertisements."
+                : "Your ad-free experience is active."}
+            </p>
             {activeUntil && (
               <p className="mt-1">
                 Current access is verified through {activeUntil}.
@@ -368,6 +372,44 @@ export const SupporterCard = ({
               </p>
             ))}
           </div>
+          {/* keep ad controls on the account page */}
+          {!embedded && (
+            <div className="flex items-start justify-between gap-4 rounded-2xl border border-gray-light p-4 dark:border-gray-dark">
+              <div>
+                <p className="font-bold">Show Ferry FYI advertisements</p>
+                <p className="mt-1 text-sm text-gray-dark dark:text-gray-light">
+                  Support local advertisers too. You can turn ads off again at
+                  any time while subscribed.
+                </p>
+              </div>
+              <button
+                aria-checked={supporter.status.adsEnabled}
+                aria-label="Show Ferry FYI advertisements"
+                className={clsx(
+                  "relative mt-1 h-7 w-12 shrink-0 rounded-full transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-dark dark:focus-visible:outline-green-light",
+                  supporter.status.adsEnabled
+                    ? "bg-green-dark dark:bg-green-light"
+                    : "bg-gray-300 dark:bg-white/20"
+                )}
+                disabled={supporter.isBusy}
+                onClick={() => {
+                  // toggle supporter advertisements
+                  supporter
+                    .setAdsEnabled(!supporter.status?.adsEnabled)
+                    .catch(() => undefined);
+                }}
+                role="switch"
+                type="button"
+              >
+                <span
+                  className={clsx(
+                    "absolute top-1 h-5 w-5 rounded-full bg-white shadow transition",
+                    supporter.status.adsEnabled ? "left-6" : "left-1"
+                  )}
+                />
+              </button>
+            </div>
+          )}
           <button
             className="button button-outline"
             disabled={supporter.isBusy}

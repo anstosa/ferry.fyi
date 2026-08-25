@@ -733,6 +733,7 @@ export const getSupporterSummaryForSubject = async (
     return {
       active: false,
       activeUntil: null,
+      adsEnabled: false,
       lifecycleState: "none",
       resolved: true,
       revision: `v1:0:${authority.generation}`,
@@ -742,6 +743,7 @@ export const getSupporterSummaryForSubject = async (
   return {
     active: projection.active,
     activeUntil: projection.activeUntil?.toISOString() ?? null,
+    adsEnabled: customer.adsEnabled,
     lifecycleState: projection.lifecycleState,
     resolved: true,
     revision: `v1:${customer.runtimeProjectionGeneration}:${authority.generation}`,
@@ -815,6 +817,7 @@ export const getSupporterStatus = async (
   return {
     active: projection.active,
     activeUntil: projection.activeUntil?.toISOString() ?? null,
+    adsEnabled: customer.adsEnabled,
     appUserId: customer.id,
     checkoutAvailability: {
       android: isEnabled("SUPPORTER_ANDROID_CHECKOUT_ENABLED"),
@@ -830,6 +833,20 @@ export const getSupporterStatus = async (
     sources: projection.sources,
     supporterBadgeVisible,
   };
+};
+
+/** Persists one supporter account's voluntary ad preference. */
+export const setSupporterAdsEnabled = async (
+  subject: string,
+  issuedAtSeconds: number,
+  adsEnabled: boolean
+): Promise<SupporterStatus> => {
+  const customer = await getOrCreateSupporterCustomer(subject, issuedAtSeconds);
+  // avoid an unnecessary preference write
+  if (customer.adsEnabled !== adsEnabled) {
+    await customer.update({ adsEnabled });
+  }
+  return await getSupporterStatus(subject, issuedAtSeconds);
 };
 
 /** Reconciles every current runtime scope for one authenticated account. */

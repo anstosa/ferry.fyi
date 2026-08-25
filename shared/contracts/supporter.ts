@@ -23,6 +23,7 @@ export type SupporterStore =
 export interface SupporterSummary {
   active: boolean;
   activeUntil: string | null;
+  adsEnabled: boolean;
   lifecycleState: SupporterLifecycleState;
   resolved: boolean;
   revision: string;
@@ -102,6 +103,7 @@ export const getInactiveSupporterSummary = (
 ): SupporterSummary => ({
   active: false,
   activeUntil: null,
+  adsEnabled: false,
   lifecycleState: "none",
   resolved: true,
   revision: `v1:0:${authorityGeneration}`,

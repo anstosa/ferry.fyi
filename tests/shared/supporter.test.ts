@@ -18,6 +18,7 @@ describe("supporter contract", () => {
     expect(getInactiveSupporterSummary("7")).toEqual({
       active: false,
       activeUntil: null,
+      adsEnabled: false,
       lifecycleState: "none",
       resolved: true,
       revision: "v1:0:7",

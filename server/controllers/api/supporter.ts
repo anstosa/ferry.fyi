@@ -1,9 +1,11 @@
 import { Router } from "express";
+import { isObject } from "shared/lib/objects";
 
 import {
   createSupporterManagementLink,
   getSupporterStatus,
   reconcileSupporterSubject,
+  setSupporterAdsEnabled,
   SupporterAuthorizationError,
   SupporterRateLimitError,
 } from "~/lib/supporter";
@@ -63,6 +65,32 @@ supporterRouter.post("/reconcile", async (_request, response) => {
     } catch {
       response.status(503).send({ error: "verification_unavailable" });
     }
+  }
+});
+
+// update one supporter preference
+supporterRouter.put("/preferences", async (request, response, next) => {
+  // strict preference payload guard
+  if (!isObject(request.body) || typeof request.body.adsEnabled !== "boolean") {
+    response.status(400).send({ error: "invalid_request" });
+    return;
+  }
+  // isolate supporter preference failures
+  try {
+    response.send(
+      await setSupporterAdsEnabled(
+        response.locals.user.sub,
+        response.locals.user.iat,
+        request.body.adsEnabled
+      )
+    );
+  } catch (error) {
+    // stale authentication guard
+    if (error instanceof SupporterAuthorizationError) {
+      response.status(401).send({ error: "unauthorized" });
+      return;
+    }
+    next(error);
   }
 });
 

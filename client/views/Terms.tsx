@@ -9,7 +9,7 @@ export const Terms = (): ReactElement => (
   <Page title="Terms of Service">
     <SeoHelmet seo={getSeoMetadata("/terms")} />
     <p className="mt-4 text-sm">
-      Last updated: <time dateTime="2026-08-23">August 23, 2026</time>
+      Last updated: <time dateTime="2026-08-24">August 24, 2026</time>
     </p>
     <p className="mt-4">
       Ferry FYI is an independent trip-planning service and is not operated by
@@ -28,10 +28,12 @@ export const Terms = (): ReactElement => (
       through the paid period, subject to provider and local-law rules.
     </p>
     <p className="mt-2">
-      Supporter currently removes Ferry FYI advertisements while you are signed
-      in and lets you optionally show a cosmetic Supporter badge on public
-      leaderboards. Core ferry information, alerts, tickets, and manual
-      check-ins remain free. Automatic check-ins are not currently included.
+      Supporter removes Ferry FYI advertisements while you are signed in by
+      default and lets you optionally show a cosmetic Supporter badge on public
+      leaderboards. You may voluntarily turn advertisements back on from the
+      Account page and turn them off again at any time while subscribed. Core
+      ferry information, alerts, tickets, and manual check-ins remain free.
+      Automatic check-ins are not currently included.
     </p>
     <p className="mt-2">
       Purchases are linked to the Ferry FYI account used at checkout. Do not

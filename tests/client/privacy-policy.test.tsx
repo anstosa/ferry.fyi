@@ -17,7 +17,7 @@ describe("privacy and advertising policy", () => {
     );
 
     expect(html).toContain(
-      '<time dateTime="2026-08-23">August 23, 2026</time>'
+      '<time dateTime="2026-08-24">August 24, 2026</time>'
     );
     expect(html).toContain("cached with the account");
     expect(html).toContain("a ticket looked up");
@@ -30,6 +30,9 @@ describe("privacy and advertising policy", () => {
     expect(html).toContain("one-way hash of that token");
     expect(html).toContain("expires after two hours");
     expect(html).toContain("Google advertising signals");
+    expect(html).toContain(
+      "voluntarily turns advertisements back on from the Account page"
+    );
     expect(html).toContain(
       "We do not provide advertisers with personal information"
     );

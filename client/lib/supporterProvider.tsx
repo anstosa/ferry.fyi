@@ -16,7 +16,7 @@ import type {
   SupporterStatus,
 } from "shared/contracts/supporter";
 
-import { get, post } from "~/lib/api";
+import { get, post, put } from "~/lib/api";
 import { SupporterContext } from "~/lib/supporterContext";
 import {
   getNativeSupporterManagementUrl,
@@ -119,7 +119,10 @@ export const SupporterProvider: FunctionComponent<PropsWithChildren> = ({
       setStatus(nextStatus);
       setProducts([]);
       // synchronize ad and upgrade policy
-      if (userState.user?.supporter?.revision !== nextStatus.revision) {
+      if (
+        userState.user?.supporter?.revision !== nextStatus.revision ||
+        userState.user?.supporter?.adsEnabled !== nextStatus.adsEnabled
+      ) {
         await userActionsRef.current.refreshUser(token);
       }
       // active account guard
@@ -258,6 +261,36 @@ export const SupporterProvider: FunctionComponent<PropsWithChildren> = ({
     }
   };
 
+  // update the account-wide supporter ad preference
+  const setAdsEnabled = async (enabled: boolean): Promise<void> => {
+    // active supporter guard
+    if (!status?.active || isBusy) {
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    // isolate preference failures
+    try {
+      const token = await userActionsRef.current.getAccessToken();
+      // token readiness guard
+      if (!token) {
+        throw new Error("Sign in again before changing your ad preference.");
+      }
+      const nextStatus = await put<SupporterStatus>(
+        "/supporter/preferences",
+        { adsEnabled: enabled },
+        token
+      );
+      setStatus(nextStatus);
+      await userActionsRef.current.refreshUser(token);
+    } catch (preferenceError) {
+      setError(getSupporterError(preferenceError));
+      throw preferenceError;
+    } finally {
+      setBusy(false);
+    }
+  };
+
   // open source-appropriate subscription management
   const manage = async (): Promise<void> => {
     // management readiness guard
@@ -294,6 +327,7 @@ export const SupporterProvider: FunctionComponent<PropsWithChildren> = ({
         purchase,
         refresh,
         restore,
+        setAdsEnabled,
         status,
       }}
     >

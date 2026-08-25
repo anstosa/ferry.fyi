@@ -22,6 +22,7 @@ const user = vi.hoisted(() => ({
     supporter: {
       active: false,
       activeUntil: null,
+      adsEnabled: false,
       lifecycleState: "none",
       resolved: true,
       revision: "v1:0:1",
@@ -75,6 +76,7 @@ afterEach(() => {
   auth.user = { email: "rider@example.com" };
   // restore supporter policy
   user.user.supporter.active = false;
+  user.user.supporter.adsEnabled = false;
   seed.ad = undefined;
   vi.clearAllMocks();
   vi.useRealTimers();
@@ -128,6 +130,37 @@ describe("AdSlot", () => {
     expect(panel?.classList).toContain("right-2");
     expect(container.querySelector("[data-ad-opportunity-anchor]")).toBeNull();
     expect(api.post).not.toHaveBeenCalled();
+  });
+
+  // keep active supporters ad-free by default
+  it("suppresses ads for an active supporter by default", async () => {
+    auth.isAuthenticated = true;
+    user.user.supporter.active = true;
+
+    const container = await renderSlot();
+
+    expect(container.textContent).toBe("");
+    expect(api.post).not.toHaveBeenCalled();
+  });
+
+  // honor one supporter's voluntary ad preference
+  it("serves ads when an active supporter opts back in", async () => {
+    auth.isAuthenticated = true;
+    user.user.supporter.active = true;
+    user.user.supporter.adsEnabled = true;
+    api.post.mockResolvedValue({
+      creative: null,
+      expiresAt: "2026-08-04T18:00:00.000Z",
+      token: "adx_test",
+    });
+
+    await renderSlot();
+
+    expect(api.post).toHaveBeenCalledWith(
+      "/ads/exposures",
+      { placementKey: "schedule--5--14" },
+      "test-access-token"
+    );
   });
 
   it("renders the server-seeded creative before the exposure request settles", async () => {

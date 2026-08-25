@@ -16,6 +16,7 @@ export interface SupporterContextValue {
   ) => Promise<SupporterPurchaseResult | null>;
   refresh: () => Promise<void>;
   restore: () => Promise<void>;
+  setAdsEnabled: (enabled: boolean) => Promise<void>;
   status: SupporterStatus | null;
 }
 
@@ -28,6 +29,7 @@ const anonymousSupporter: SupporterContextValue = {
   purchase: () => Promise.resolve(null),
   refresh: () => Promise.resolve(),
   restore: () => Promise.resolve(),
+  setAdsEnabled: () => Promise.resolve(),
   status: null,
 };
 

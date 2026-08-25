@@ -362,11 +362,14 @@ export const AdSlot = ({
   const policyResolved =
     !isAuthLoading &&
     (!isAuthenticated || (!isUserLoading && supporter?.resolved === true));
-  const suppressAds = !policyResolved || supporter?.active === true;
+  const suppressAds =
+    !policyResolved ||
+    (supporter?.active === true && supporter.adsEnabled !== true);
   const showSupporterThankYou =
     policyResolved &&
     isAuthenticated &&
     supporter?.active === true &&
+    supporter.adsEnabled !== true &&
     slot === "home";
   const hasDirection = Boolean(arrivalTerminalId && departureTerminalId);
   const key =
@@ -433,6 +436,7 @@ export const AdSlot = ({
     isAuthenticated,
     key,
     ssrAd?.creative?.campaignId,
+    supporter?.adsEnabled,
     supporter?.revision,
     suppressAds,
   ]);
