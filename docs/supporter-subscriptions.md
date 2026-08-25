@@ -78,7 +78,7 @@ is off.
 
 ### RevenueCat
 
-1. Use the canonical 1024-by-1024 Ferry FYI logo at
+1. Use the canonical 1024-by-1024 gradient Ferry FYI logo at
    `https://ferry.fyi/static/images/ferry-fyi-logo.png` for hosted purchase
    branding.
 2. Keep monthly and annual packages in the current `default` offering for all

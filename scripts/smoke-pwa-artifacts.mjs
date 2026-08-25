@@ -1,5 +1,6 @@
 /* global console */
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -52,6 +53,11 @@ assert.deepEqual(
   [fullResolutionLogo.readUInt32BE(16), fullResolutionLogo.readUInt32BE(20)],
   [1024, 1024],
   "full-resolution logo must remain 1024 by 1024 pixels"
+);
+assert.equal(
+  createHash("sha256").update(fullResolutionLogo).digest("hex"),
+  "51ead5f7d9ce47de2eff4224c246a2741f78b0a3cb58b4e88e798961a9a2764e",
+  "full-resolution logo must use the current green-to-blue gradient artwork"
 );
 
 const precacheUrls = [
