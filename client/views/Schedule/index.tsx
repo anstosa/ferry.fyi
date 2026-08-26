@@ -1,7 +1,13 @@
 import clsx from "clsx";
 import { AnimatePresence } from "framer-motion";
 import { DateTime } from "luxon";
-import React, { ReactElement, useEffect, useState } from "react";
+import React, {
+  ReactElement,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import scrollIntoView from "scroll-into-view";
 import type { Route } from "shared/contracts/routes";
 import type {
@@ -25,6 +31,7 @@ import {
   isDetailTab,
 } from "~/lib/sailingDeepLink";
 import { useTerminals } from "~/lib/terminals";
+import { useUser } from "~/lib/user";
 import IslandIcon from "~/static/images/icons/solid/island-tropical.svg";
 
 import { getCurrentSlot, shouldRenderNowDivider } from "./nowDivider";
@@ -46,6 +53,16 @@ interface Props {
   route?: Route;
   schedule: ScheduleClass | null;
   time: DateTime;
+}
+
+interface CurrentElementState {
+  element: HTMLDivElement | null;
+  scheduleIdentity: string;
+}
+
+interface AdReadinessState {
+  ready: boolean;
+  scheduleIdentity: string;
 }
 
 // sailing query parser
@@ -72,26 +89,74 @@ export const Schedule = ({
 }: Props): ReactElement => {
   const { sailing: sailingInput, tab: tabInput } = useQuery();
   const { terminals } = useTerminals();
-  const [currentElement, setCurrentElement] = useState<HTMLDivElement | null>(
-    null
-  );
+  const [{ isUserLoading }] = useUser();
+  const [currentElement, setCurrentElement] = useState<CurrentElementState>({
+    element: null,
+    scheduleIdentity: "",
+  });
+  const [adReadiness, setAdReadiness] = useState<AdReadinessState>({
+    ready: false,
+    scheduleIdentity: "",
+  });
   const [capacityWarningDismissed, setCapacityWarningDismissed] =
     useState<boolean>(false);
   const [expanded, setExpanded] = useState<Slot | null>(null);
+  const scrolledSchedule = useRef<string | null>(null);
   const linkedSailingTime = getLinkedSailingTime(sailingInput);
   const linkedDetailTab = isDetailTab(tabInput) ? tabInput : undefined;
+  const scheduleIdentity = schedule?.key ?? "";
+  const currentSlot = schedule?.slots
+    ? getCurrentSlot(schedule.slots, time)
+    : null;
+  const showNowDividerForCurrentSlot = Boolean(
+    currentSlot &&
+    schedule?.slots &&
+    shouldRenderNowDivider({
+      schedule: schedule.slots,
+      slot: currentSlot,
+      time,
+    })
+  );
+  const hasScheduleAd = Boolean(
+    arrivalTerminalId && departureTerminalId && showNowDividerForCurrentSlot
+  );
+  const isScheduleAdReady =
+    !hasScheduleAd ||
+    (adReadiness.scheduleIdentity === scheduleIdentity && adReadiness.ready);
 
-  // update schedule on parameter change
-  // useEffect(() => {
-  //   setCurrentElement(null);
-  // }, [schedule]);
+  // record the active schedule ad outcome
+  const handleAdReadyChange = useCallback(
+    (ready: boolean): void => {
+      setAdReadiness((current) => {
+        // unchanged readiness guard
+        if (
+          current.scheduleIdentity === scheduleIdentity &&
+          current.ready === ready
+        ) {
+          return current;
+        }
+        return { ready, scheduleIdentity };
+      });
+    },
+    [scheduleIdentity]
+  );
 
+  // scroll once after schedule, entitlement, and ad settlement
   useEffect(() => {
-    // current row scroll guard
-    if (currentElement) {
-      scrollIntoView(currentElement, { align: { top: 0.3 } });
+    // scroll readiness guard
+    if (
+      !scheduleIdentity ||
+      currentElement.scheduleIdentity !== scheduleIdentity ||
+      !currentElement.element ||
+      isUserLoading ||
+      !isScheduleAdReady ||
+      scrolledSchedule.current === scheduleIdentity
+    ) {
+      return;
     }
-  }, [currentElement, schedule]);
+    scrolledSchedule.current = scheduleIdentity;
+    scrollIntoView(currentElement.element, { align: { top: 0.3 } });
+  }, [currentElement, isScheduleAdReady, isUserLoading, scheduleIdentity]);
 
   // expand deep-linked sailing
   useEffect(() => {
@@ -166,7 +231,6 @@ export const Schedule = ({
         </div>
       );
     }
-    const currentSlot = getCurrentSlot(schedule.slots, time);
     const currentRouteMaxVehicleCapacity = getCurrentRouteMaxVehicleCapacity(
       slots.map(({ vessel }) => {
         // collect scheduled capacity
@@ -191,11 +255,8 @@ export const Schedule = ({
         currentRouteMaxVehicleCapacity,
         route?.normalVehicleMaxCapacity
       );
-      const showNowDivider = shouldRenderNowDivider({
-        schedule: slots,
-        slot,
-        time,
-      });
+      const showNowDivider =
+        slot === currentSlot && showNowDividerForCurrentSlot;
       return (
         <React.Fragment key={slotTime}>
           {/* current-time boundary */}
@@ -208,6 +269,7 @@ export const Schedule = ({
                     className="p-2"
                     contextLabel="Schedule"
                     departureTerminalId={departureTerminalId}
+                    onReadyChange={handleAdReadyChange}
                     slot="schedule"
                   />
                 </li>
@@ -239,7 +301,7 @@ export const Schedule = ({
               setElement={(element: HTMLDivElement) => {
                 // current slot anchor
                 if (slot === currentSlot) {
-                  setCurrentElement(element);
+                  setCurrentElement({ element, scheduleIdentity });
                 }
               }}
               slot={slot}

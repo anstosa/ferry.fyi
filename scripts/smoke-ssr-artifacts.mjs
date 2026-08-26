@@ -13,6 +13,10 @@ import { pathToFileURL } from "node:url";
 const repoRoot = path.resolve(import.meta.dirname, "..");
 const clientDir = path.join(repoRoot, "dist/client");
 const rendererPath = path.join(repoRoot, "dist/ssr/entry-server.mjs");
+const forecastWorkerPath = path.join(
+  repoRoot,
+  "dist/server/forecast-worker.js"
+);
 const serverPath = path.join(repoRoot, "dist/server/server.js");
 const serverArtifactSmokePath = path.join(
   repoRoot,
@@ -32,6 +36,7 @@ await Promise.all([
   requireFile(path.join(clientDir, "index.html")),
   requireFile(manifestPath),
   requireFile(rendererPath),
+  requireFile(forecastWorkerPath),
   requireFile(serverPath),
   requireFile(serverArtifactSmokePath),
 ]);

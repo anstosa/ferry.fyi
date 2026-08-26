@@ -25,6 +25,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         "artifact-smoke": path.resolve(configDir, "ssr/artifactSmokeEntry.ts"),
+        "forecast-worker": path.resolve(configDir, "forecastWorkerEntry.ts"),
         server: path.resolve(configDir, "main.ts"),
       },
       output: {

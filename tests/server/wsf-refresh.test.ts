@@ -75,7 +75,9 @@ vi.mock("~/lib/cancellationNotifications", () => cancellationNotificationModel);
 
 vi.mock("~/lib/delayNotifications", () => delayNotificationModel);
 
-vi.mock("~/lib/forecast", () => forecastModel);
+vi.mock("../../server/lib/forecastIsolation", () => ({
+  updateEstimatesIsolated: forecastModel.updateEstimates,
+}));
 
 vi.mock(
   "~/lib/sailingLifecycleNotifications",

@@ -3,7 +3,7 @@ import logger from "heroku-logger";
 import { getErrorMessage, getLogError } from "~/lib/errors";
 import type { Schedule } from "~/models/Schedule";
 
-import { updateEstimates } from "../forecast";
+import { updateEstimatesIsolated } from "../forecastIsolation";
 import { updateTideForecasts } from "../tides/updateForecasts";
 import { updateWeatherForecasts } from "../weather/updateForecasts";
 import { setWsfCoreReady, setWsfWarming } from "./api";
@@ -67,7 +67,7 @@ const refreshEstimatesBestEffort = (schedules: Schedule[]): void => {
     return;
   }
   lastEstimateRefreshStartedAt = now;
-  estimateRefreshPromise = updateEstimates(schedules)
+  estimateRefreshPromise = updateEstimatesIsolated(schedules)
     .catch((error: unknown) => {
       // estimate failure log
       logger.error(

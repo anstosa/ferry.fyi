@@ -38,6 +38,7 @@ interface Props {
   className?: string;
   contextLabel: string;
   departureTerminalId?: string;
+  onReadyChange?: (ready: boolean) => void;
   slot: AdSlotId;
 }
 
@@ -339,6 +340,7 @@ export const AdSlot = ({
   className = "",
   contextLabel,
   departureTerminalId,
+  onReadyChange,
   slot,
 }: Props): ReactElement | null => {
   const {
@@ -359,11 +361,10 @@ export const AdSlot = ({
     isAuthenticated &&
     auth0User?.email?.toLocaleLowerCase("en-US") === ADMIN_EMAIL;
   const supporter = accountUser?.supporter;
-  const policyResolved =
-    !isAuthLoading &&
-    (!isAuthenticated || (!isUserLoading && supporter?.resolved === true));
+  const policyResolved = !isAuthLoading && (!isAuthenticated || !isUserLoading);
   const clientSuppressAds =
     policyResolved &&
+    supporter?.resolved === true &&
     supporter?.active === true &&
     supporter.adsEnabled !== true;
   const exposureRequestBlocked = isAuthLoading || clientSuppressAds;
@@ -385,6 +386,13 @@ export const AdSlot = ({
   const hasSsrAd = Boolean(
     key && !isAuthenticated && policyResolved && ssrAd?.placementKey === key
   );
+  const placementReady =
+    !key || (policyResolved && (clientSuppressAds || exposureResolved));
+
+  // publish final placement readiness to layout owners
+  useEffect(() => {
+    onReadyChange?.(placementReady);
+  }, [onReadyChange, placementReady]);
 
   useEffect(() => {
     let active = true;

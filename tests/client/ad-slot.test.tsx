@@ -61,7 +61,10 @@ const ACTIVE_AD_EXPOSURE = {
   token: "adx_test",
 };
 
-const renderSlot = async (className?: string): Promise<HTMLDivElement> => {
+const renderSlot = async (
+  className?: string,
+  onReadyChange?: (ready: boolean) => void
+): Promise<HTMLDivElement> => {
   const container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container);
@@ -73,6 +76,7 @@ const renderSlot = async (className?: string): Promise<HTMLDivElement> => {
           className={className}
           contextLabel="Schedule · Clinton to Mukilteo"
           departureTerminalId="5"
+          onReadyChange={onReadyChange}
           slot="schedule"
         />
       </MemoryRouter>
@@ -98,6 +102,36 @@ afterEach(() => {
 });
 
 describe("AdSlot", () => {
+  // wait for both authoritative outcomes
+  it("reports readiness after account policy and exposure settle", async () => {
+    const onReadyChange = vi.fn();
+    auth.isAuthenticated = true;
+    user.isUserLoading = true;
+    api.post.mockResolvedValue(ACTIVE_AD_EXPOSURE);
+
+    await renderSlot(undefined, onReadyChange);
+
+    expect(onReadyChange).toHaveBeenLastCalledWith(false);
+    user.isUserLoading = false;
+    await act(async () => {
+      root?.render(
+        <MemoryRouter>
+          <AdSlot
+            arrivalTerminalId="14"
+            contextLabel="Schedule · Clinton to Mukilteo"
+            departureTerminalId="5"
+            onReadyChange={onReadyChange}
+            slot="schedule"
+          />
+        </MemoryRouter>
+      );
+      await Promise.resolve();
+    });
+
+    expect(onReadyChange).toHaveBeenLastCalledWith(true);
+    expect(api.post).toHaveBeenCalledOnce();
+  });
+
   // replace the homepage slot for active supporters
   it("opens a homepage thank-you from the Supporter crown", async () => {
     auth.isAuthenticated = true;
