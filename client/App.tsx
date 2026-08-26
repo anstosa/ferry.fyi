@@ -18,6 +18,7 @@ import { Prompt } from "~/components/Prompt";
 import { deferAnalytics, useRecordPageViews } from "~/lib/analytics";
 import { useOnline, useWSF } from "~/lib/api";
 import {
+  getConfiguredAuth0RedirectUri,
   getIosAuthFailurePath,
   isAuth0CallbackUrl,
   isStaleAuth0CallbackError,
@@ -110,7 +111,9 @@ export const App = ({
     } catch {
       return;
     }
-    if (isAuth0CallbackUrl(url)) {
+    if (
+      isAuth0CallbackUrl(url, getConfiguredAuth0RedirectUri(device?.platform))
+    ) {
       if (
         appUrl.searchParams.has("state") &&
         (appUrl.searchParams.has("code") || appUrl.searchParams.has("error"))

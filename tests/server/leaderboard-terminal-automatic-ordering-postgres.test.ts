@@ -20,7 +20,10 @@ import {
   automaticTerminalRegionContentHashV1,
   canonicalAutomaticTerminalRegionBytesV1,
 } from "../../shared/lib/leaderboardAutomaticContracts";
-import { acquirePostgresIntegrationLock } from "./helpers/postgresIntegrationLock";
+import {
+  acquirePostgresIntegrationLock,
+  POSTGRES_INTEGRATION_HOOK_TIMEOUT_MS,
+} from "./helpers/postgresIntegrationLock";
 
 // preserve server helpers under the mixed client/server alias
 vi.mock("~/lib/leaderboards", () => import("../../server/lib/leaderboards"));
@@ -42,6 +45,7 @@ const addExpiryObservedAt = require("../../server/migrations/20260817000700-add-
 const restrictEnrollmentDeletion = require("../../server/migrations/20260817000800-restrict-automatic-receipt-enrollment-deletion.js");
 const storeFinalPolicyGeneration = require("../../server/migrations/20260817000900-store-final-policy-generation-on-automatic-receipts.js");
 const createSupporterBilling = require("../../server/migrations/20260823000100-create-supporter-billing.js");
+const defaultSupporterBadge = require("../../server/migrations/20260824000200-default-supporter-badge-visible.js");
 
 const externalDatabaseUrl =
   process.env.LEADERBOARD_TERMINAL_AUTOMATIC_ORDERING_TEST_DATABASE_URL;
@@ -181,6 +185,12 @@ describePostgres("terminal automatic ordering Postgres integration", () => {
       // scope seeded rows
       bulkInsert: (tableName: string, ...args: unknown[]) =>
         queryInterface.bulkInsert(table(tableName), ...(args as [object[]])),
+      // scope changed columns
+      changeColumn: (tableName: string, ...args: unknown[]) =>
+        queryInterface.changeColumn(
+          table(tableName),
+          ...(args as [string, object, object?])
+        ),
       // scope created tables
       createTable: (tableName: string, ...args: unknown[]) =>
         queryInterface.createTable(table(tableName), ...(args as [object])),
@@ -267,6 +277,7 @@ describePostgres("terminal automatic ordering Postgres integration", () => {
     await storeFinalPolicyGeneration.up(queryInterface, Sequelize);
     // keep isolated profile schema current
     await createSupporterBilling.up(queryInterface, Sequelize);
+    await defaultSupporterBadge.up(queryInterface, Sequelize);
 
     const checkinModule =
       await import("../../server/models/LeaderboardCheckin");
@@ -303,7 +314,7 @@ describePostgres("terminal automatic ordering Postgres integration", () => {
       id: "ordering-route",
       terminalIds: [terminalId, secondTerminalId],
     });
-  });
+  }, POSTGRES_INTEGRATION_HOOK_TIMEOUT_MS);
 
   // remove only the isolated integration schema
   afterAll(async () => {

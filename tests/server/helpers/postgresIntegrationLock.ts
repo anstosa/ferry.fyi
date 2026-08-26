@@ -1,5 +1,7 @@
 import { Sequelize, type Transaction } from "sequelize";
 
+export const POSTGRES_INTEGRATION_HOOK_TIMEOUT_MS = 120_000;
+
 /** serializes process-global Postgres integration harness state */
 export const acquirePostgresIntegrationLock = async (
   database: Sequelize

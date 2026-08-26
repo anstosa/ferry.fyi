@@ -3,7 +3,10 @@ import { createRequire } from "node:module";
 import { QueryTypes, Sequelize, type Transaction } from "sequelize";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
-import { acquirePostgresIntegrationLock } from "./helpers/postgresIntegrationLock";
+import {
+  acquirePostgresIntegrationLock,
+  POSTGRES_INTEGRATION_HOOK_TIMEOUT_MS,
+} from "./helpers/postgresIntegrationLock";
 
 const require = createRequire(import.meta.url);
 const createPublicContent = require("../../server/migrations/20260724000800-create-public-content-controls.js");
@@ -98,7 +101,7 @@ describePostgres("ad placement hourly Postgres integration", () => {
     await createHourlyMetrics.up(queryInterface, Sequelize);
     const tracking = await import("../../server/services/public/adTracking");
     ({ claimAdExposure, issueAdExposure } = tracking);
-  });
+  }, POSTGRES_INTEGRATION_HOOK_TIMEOUT_MS);
 
   // remove only the isolated integration schema
   afterAll(async () => {

@@ -104,6 +104,8 @@ export const Menu = ({
   const { leaderboardsEnabled } = useFeatureFlags();
   const [canShare, setShare] = useState<boolean>(false);
   const location = useLocation();
+  // preserve the complete login return route
+  const authRedirectPath = `${location.pathname}${location.search}${location.hash}`;
   const isOwner = user?.email === "anstosa@gmail.com";
   const detectorEnabled = isOwner && environment === "development";
 
@@ -126,7 +128,7 @@ export const Menu = ({
     // native browser login
     if (device?.isNativeMobile) {
       await loginWithRedirect({
-        appState: { redirectPath: location.pathname },
+        appState: { redirectPath: authRedirectPath },
         authorizationParams: {
           redirect_uri: getConfiguredAuth0RedirectUri(),
         },
@@ -139,7 +141,7 @@ export const Menu = ({
         loginWithPopup,
         loginWithRedirect,
         options: {
-          appState: { redirectPath: location.pathname },
+          appState: { redirectPath: authRedirectPath },
           authorizationParams: {
             redirect_uri: getConfiguredAuth0RedirectUri(),
           },

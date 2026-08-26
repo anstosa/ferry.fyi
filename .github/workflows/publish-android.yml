@@ -95,8 +95,8 @@ jobs:
             fi
           done
           # require production Auth0 settings for Play internal testing
-          if [[ "${AUTH0_DOMAIN}" != "ferryfyi.us.auth0.com" ]]; then
-            echo "AUTH0_DOMAIN must be ferryfyi.us.auth0.com for Android internal testing" >&2
+          if [[ "${AUTH0_DOMAIN}" != "auth.ferry.fyi" ]]; then
+            echo "AUTH0_DOMAIN must be auth.ferry.fyi for Android internal testing" >&2
             exit 1
           fi
           if [[ "${AUTH0_CLIENT_AUDIENCE}" != "https://ferry.fyi/api" ]]; then

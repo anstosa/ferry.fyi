@@ -2,12 +2,14 @@
 
 import React, { act } from "react";
 import { createRoot, Root } from "react-dom/client";
+import { BrowserRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const auth = vi.hoisted(() => ({
   getAccessTokenSilently: vi.fn(() => Promise.resolve("access-token")),
   isAuthenticated: true,
-  user: { email: "anstosa@gmail.com" },
+  isLoading: false,
+  user: { email: "anstosa@gmail.com" } as { email: string } | undefined,
 }));
 const api = vi.hoisted(() => ({
   del: vi.fn(),
@@ -90,15 +92,114 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 let root: Root | undefined;
 
+// render the routed admin page
+const renderAdmin = (): React.ReactElement =>
+  React.createElement(BrowserRouter, undefined, React.createElement(Admin));
+
 afterEach(() => {
   act(() => root?.unmount());
   root = undefined;
   document.body.innerHTML = "";
   window.history.replaceState({}, "", "/");
+  auth.isAuthenticated = true;
+  auth.isLoading = false;
+  auth.user = { email: "anstosa@gmail.com" };
   vi.clearAllMocks();
 });
 
 describe("Admin", () => {
+  // preserve deep links during auth restoration
+  it("keeps the admin URL while Auth0 restores the owner session", async () => {
+    window.history.replaceState({}, "", "/admin?tab=ads");
+    auth.isAuthenticated = false;
+    auth.isLoading = true;
+    auth.user = undefined;
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    act(() => {
+      root?.render(renderAdmin());
+    });
+
+    expect(window.location.pathname + window.location.search).toBe(
+      "/admin?tab=ads"
+    );
+    expect(
+      container.querySelector('[role="status"]')?.getAttribute("aria-label")
+    ).toBe("Loading admin session");
+    expect(api.get).not.toHaveBeenCalled();
+  });
+
+  // persist tab navigation in browser history
+  it("updates and restores the selected admin tab URL", async () => {
+    window.history.replaceState({}, "", "/admin");
+    api.get.mockImplementation((path: string) => {
+      // load the legacy feature summary
+      if (path === "/admin/features") {
+        return Promise.resolve({
+          automaticLeaderboardCheckinsEnabled: false,
+          leaderboardsEnabled: false,
+        });
+      }
+      // load one detailed feature policy
+      if (path.startsWith("/admin/features/")) {
+        return Promise.resolve({
+          enabled: false,
+          killSwitch: false,
+          name: "feature",
+          subjects: [],
+        });
+      }
+      // load the destination tab
+      if (path === "/admin/tickets") {
+        return Promise.resolve({
+          cacheTtlSeconds: 1_800,
+          selectedUserAgentProfile: "identified-minimal",
+          userAgentProfiles: [],
+        });
+      }
+      return Promise.reject(new Error(`Unexpected request: ${path}`));
+    });
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    // normalize the default tab URL
+    await act(async () => {
+      root?.render(renderAdmin());
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(window.location.pathname + window.location.search).toBe(
+      "/admin?tab=access"
+    );
+
+    // select a different tab
+    await act(async () => {
+      [...container.querySelectorAll("button")]
+        .find((button) => button.textContent === "Ticket lookup")
+        ?.click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(window.location.pathname + window.location.search).toBe(
+      "/admin?tab=tickets"
+    );
+
+    // simulate a refresh at the current URL
+    act(() => root?.unmount());
+    root = createRoot(container);
+    await act(async () => {
+      root?.render(renderAdmin());
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(
+      container.querySelector('#admin-tab-tickets[aria-selected="true"]')
+    ).not.toBeNull();
+  });
+
   // preserve actionable mutation failures
   it("shows the server reason when a confirmed admin action fails", async () => {
     window.history.replaceState({}, "", "/admin?tab=ads");
@@ -126,7 +227,7 @@ describe("Admin", () => {
 
     // render the advertising controls
     await act(async () => {
-      root?.render(React.createElement(Admin));
+      root?.render(renderAdmin());
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -203,7 +304,7 @@ describe("Admin", () => {
 
     // render one complete feature policy surface
     await act(async () => {
-      root?.render(React.createElement(Admin));
+      root?.render(renderAdmin());
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -246,7 +347,7 @@ describe("Admin", () => {
     root = createRoot(container);
 
     await act(async () => {
-      root?.render(React.createElement(Admin));
+      root?.render(renderAdmin());
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -277,7 +378,7 @@ describe("Admin", () => {
     root = createRoot(container);
 
     await act(async () => {
-      root?.render(React.createElement(Admin));
+      root?.render(renderAdmin());
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -318,7 +419,7 @@ describe("Admin", () => {
 
     // render the selected placement
     await act(async () => {
-      root?.render(React.createElement(Admin));
+      root?.render(renderAdmin());
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -387,7 +488,7 @@ describe("Admin", () => {
     root = createRoot(container);
 
     await act(async () => {
-      root?.render(React.createElement(Admin));
+      root?.render(renderAdmin());
     });
 
     expect(
@@ -470,7 +571,7 @@ describe("Admin", () => {
     root = createRoot(container);
 
     await act(async () => {
-      root?.render(React.createElement(Admin));
+      root?.render(renderAdmin());
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -535,7 +636,7 @@ describe("Admin", () => {
     root = createRoot(container);
 
     await act(async () => {
-      root?.render(React.createElement(Admin));
+      root?.render(renderAdmin());
     });
     await act(async () => {
       [...container.querySelectorAll("button")]
@@ -555,7 +656,7 @@ describe("Admin", () => {
     root = createRoot(container);
 
     await act(async () => {
-      root?.render(React.createElement(Admin));
+      root?.render(renderAdmin());
     });
 
     expect(container.querySelector('[role="tablist"]')?.className).toContain(
@@ -611,7 +712,7 @@ describe("Admin", () => {
     root = createRoot(container);
 
     await act(async () => {
-      root?.render(React.createElement(Admin));
+      root?.render(renderAdmin());
     });
     await act(async () => {
       [...container.querySelectorAll("button")]
@@ -683,7 +784,7 @@ describe("Admin", () => {
     root = createRoot(container);
 
     await act(async () => {
-      root?.render(React.createElement(Admin));
+      root?.render(renderAdmin());
     });
     await act(async () => {
       [...container.querySelectorAll("button")]
@@ -731,7 +832,7 @@ describe("Admin", () => {
     root = createRoot(container);
 
     await act(async () => {
-      root?.render(React.createElement(Admin));
+      root?.render(renderAdmin());
     });
     await act(async () => {
       [...container.querySelectorAll("button")]
@@ -834,7 +935,7 @@ describe("Admin", () => {
     root = createRoot(container);
 
     await act(async () => {
-      root?.render(React.createElement(Admin));
+      root?.render(renderAdmin());
     });
     await act(async () => {
       [...container.querySelectorAll("button")]

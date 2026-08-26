@@ -1,3 +1,9 @@
+import {
+  getAuth0ManagementAudience,
+  getAuth0ManagementDomain,
+  getAuth0UserInfoDomain,
+} from "~/lib/auth0Config";
+
 interface TokenResponse {
   access_token?: unknown;
   expires_in?: unknown;
@@ -33,22 +39,21 @@ export interface Auth0UserProfile extends Auth0UserIdentity {
 let token: string | undefined;
 let tokenExpiresAt = 0;
 
-const managementAudience = (): string =>
-  `https://${process.env.AUTH0_DOMAIN}/api/v2/`;
-
 const getManagementToken = async (): Promise<string> => {
+  // cached token branch
   if (token && Date.now() < tokenExpiresAt) {
     return token;
   }
-  const domain = process.env.AUTH0_DOMAIN;
+  const domain = getAuth0ManagementDomain();
   const clientId = process.env.AUTH0_SERVER_ID;
   const clientSecret = process.env.AUTH0_SERVER_SECRET;
+  // credential guard
   if (!domain || !clientId || !clientSecret) {
     throw new Error("Auth0 server credentials are not configured");
   }
   const response = await fetch(`https://${domain}/oauth/token`, {
     body: JSON.stringify({
-      audience: managementAudience(),
+      audience: getAuth0ManagementAudience(),
       client_id: clientId,
       client_secret: clientSecret,
       grant_type: "client_credentials",
@@ -56,12 +61,14 @@ const getManagementToken = async (): Promise<string> => {
     headers: { "Content-Type": "application/json" },
     method: "POST",
   });
+  // token response guard
   if (!response.ok) {
     throw new Error(
       `Auth0 management token request failed: ${response.status}`
     );
   }
   const body = (await response.json()) as TokenResponse;
+  // access token guard
   if (typeof body.access_token !== "string") {
     throw new Error("Auth0 management token was missing");
   }
@@ -80,8 +87,11 @@ const requestManagementApi = async (
   path: string | URL,
   init: RequestInit = {}
 ): Promise<Response> => {
+  // request url resolution
   const url =
-    typeof path === "string" ? new URL(path, managementAudience()) : path;
+    typeof path === "string"
+      ? new URL(path, getAuth0ManagementAudience())
+      : path;
   // authenticated request
   const send = async (): Promise<Response> => {
     const headers = new Headers(init.headers);
@@ -104,7 +114,7 @@ export const getAuth0UserEmail = async (
 ): Promise<string | undefined> => {
   const url = new URL(
     `users/${encodeURIComponent(subject)}`,
-    managementAudience()
+    getAuth0ManagementAudience()
   );
   url.searchParams.set("fields", "email");
   url.searchParams.set("include_fields", "true");
@@ -136,13 +146,11 @@ export const deleteAuth0User = async (subject: string): Promise<void> => {
 export const getAuth0UserInfo = async (
   accessToken: string
 ): Promise<Auth0UserIdentity> => {
-  const domain = process.env.AUTH0_DOMAIN;
-  if (!domain) {
-    throw new Error("Auth0 domain is not configured");
-  }
+  const domain = getAuth0UserInfoDomain(accessToken);
   const response = await fetch(`https://${domain}/userinfo`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
+  // user-info response guard
   if (!response.ok) {
     throw new Error(`Auth0 user info request failed: ${response.status}`);
   }
@@ -151,6 +159,7 @@ export const getAuth0UserInfo = async (
     email_verified?: unknown;
     sub?: unknown;
   };
+  // subject response guard
   if (typeof body.sub !== "string") {
     throw new Error("Auth0 user info subject was missing");
   }
@@ -198,7 +207,7 @@ export const getAuth0UserProfile = async (
 ): Promise<Auth0UserProfile> => {
   const url = new URL(
     `users/${encodeURIComponent(subject)}`,
-    managementAudience()
+    getAuth0ManagementAudience()
   );
   url.searchParams.set("fields", "user_id,email,email_verified,identities");
   url.searchParams.set("include_fields", "true");
@@ -293,7 +302,7 @@ export const listAuth0Users = async ({
   pageSize: number;
   query?: string;
 }): Promise<Auth0UserPage> => {
-  const url = new URL("users", managementAudience());
+  const url = new URL("users", getAuth0ManagementAudience());
   url.searchParams.set("fields", "user_id,email");
   url.searchParams.set("include_fields", "true");
   url.searchParams.set("include_totals", "true");
@@ -343,7 +352,7 @@ const getAuth0UsersByExactEmail = async (
   if (!normalized || normalized.length > 320) {
     return [];
   }
-  const url = new URL("users-by-email", managementAudience());
+  const url = new URL("users-by-email", getAuth0ManagementAudience());
   url.searchParams.set("email", email.trim());
   const response = await requestManagementApi(url);
   if (!response.ok) {

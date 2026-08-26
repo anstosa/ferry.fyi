@@ -3,7 +3,10 @@ import { createRequire } from "node:module";
 import { QueryTypes, Sequelize, type Transaction } from "sequelize";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { acquirePostgresIntegrationLock } from "./helpers/postgresIntegrationLock";
+import {
+  acquirePostgresIntegrationLock,
+  POSTGRES_INTEGRATION_HOOK_TIMEOUT_MS,
+} from "./helpers/postgresIntegrationLock";
 
 const require = createRequire(import.meta.url);
 const createFeatureFlags = require("../../server/migrations/20260724000200-create-feature-flags.js");
@@ -69,7 +72,7 @@ describePostgres("leaderboard automatic policy Postgres integration", () => {
     updateFeatureFlagState = updateFlag;
     ({ withLeaderboardAutomaticPolicyTransaction } =
       await import("../../server/lib/leaderboardAutomaticPolicy"));
-  });
+  }, POSTGRES_INTEGRATION_HOOK_TIMEOUT_MS);
 
   // remove only the isolated integration schema
   afterAll(async () => {

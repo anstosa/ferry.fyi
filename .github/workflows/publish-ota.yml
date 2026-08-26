@@ -126,8 +126,8 @@ jobs:
         run: |
           # fail before publishing a bundle with the wrong Auth0 tenant
           set -euo pipefail
-          if [[ "${AUTH0_DOMAIN}" != "ferryfyi.us.auth0.com" ]]; then
-            echo "AUTH0_DOMAIN must be ferryfyi.us.auth0.com for production OTA" >&2
+          if [[ "${AUTH0_DOMAIN}" != "auth.ferry.fyi" ]]; then
+            echo "AUTH0_DOMAIN must be auth.ferry.fyi for production OTA" >&2
             exit 1
           fi
           if [[ "${AUTH0_CLIENT_AUDIENCE}" != "https://ferry.fyi/api" ]]; then

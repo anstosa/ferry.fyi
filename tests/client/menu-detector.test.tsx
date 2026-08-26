@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
-import React from "react";
+import React, { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -10,8 +11,9 @@ const auth = vi.hoisted(() => ({
   isAuthenticated: true,
   loginWithPopup: vi.fn(),
   loginWithRedirect: vi.fn(),
-  user: { email: "anstosa@gmail.com" },
+  user: { email: "anstosa@gmail.com" } as { email: string } | undefined,
 }));
+const appAuth = vi.hoisted(() => ({ loginWithAppFlow: vi.fn() }));
 
 vi.mock("@auth0/auth0-react", () => ({ useAuth0: () => auth }));
 vi.mock("@capacitor/browser", () => ({ Browser: { open: vi.fn() } }));
@@ -24,7 +26,7 @@ vi.mock("~/lib/appInstall", () => ({
 }));
 vi.mock("~/lib/auth", () => ({
   getConfiguredAuth0RedirectUri: vi.fn(() => "http://localhost/callback"),
-  loginWithAppFlow: vi.fn(),
+  loginWithAppFlow: appAuth.loginWithAppFlow,
 }));
 vi.mock("~/lib/device", () => ({
   isInstalledApp: vi.fn(() => true),
@@ -44,6 +46,10 @@ import {
 } from "../../client/lib/cameraDetectionDebugger";
 import { Menu } from "../../client/views/Menu";
 
+globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+
+let root: Root | undefined;
+
 // render one menu environment
 const renderMenu = (environment: string, email: string): string => {
   auth.user = { email };
@@ -61,6 +67,10 @@ const renderMenu = (environment: string, email: string): string => {
 };
 
 afterEach(() => {
+  act(() => root?.unmount());
+  root = undefined;
+  document.body.innerHTML = "";
+  auth.isAuthenticated = true;
   auth.user = { email: "anstosa@gmail.com" };
   sessionStorage.clear();
   vi.clearAllMocks();
@@ -96,6 +106,52 @@ describe("Detector menu shortcut", () => {
     );
     expect(renderMenu("development", "passenger@example.com")).not.toContain(
       ">Detector<"
+    );
+  });
+
+  // retain deep links through interactive login
+  it("returns to the complete admin URL after login", async () => {
+    auth.isAuthenticated = false;
+    auth.user = undefined;
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root?.render(
+        <MemoryRouter
+          initialEntries={[
+            "/admin?placement=schedule--5--14&tab=ads#admin-ad-placement",
+          ]}
+        >
+          <Menu
+            hasTopBanner={false}
+            isOpen
+            onClose={vi.fn()}
+            onOpen={vi.fn()}
+          />
+        </MemoryRouter>
+      );
+      await Promise.resolve();
+    });
+
+    const login = [...container.querySelectorAll("span")]
+      .find((label) => label.textContent === "Log In")
+      ?.closest("div");
+    await act(async () => {
+      login?.click();
+      await Promise.resolve();
+    });
+
+    expect(appAuth.loginWithAppFlow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        options: expect.objectContaining({
+          appState: {
+            redirectPath:
+              "/admin?placement=schedule--5--14&tab=ads#admin-ad-placement",
+          },
+        }),
+      })
     );
   });
 

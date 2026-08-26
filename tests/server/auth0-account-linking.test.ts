@@ -10,6 +10,10 @@ const jsonResponse = (value: unknown, status = 200): Response =>
 // auth0 environment fixture
 const configureAuth0 = (): void => {
   vi.stubEnv("AUTH0_DOMAIN", "tenant.example.test");
+  vi.stubEnv(
+    "AUTH0_SERVER_AUDIENCE",
+    "https://tenant.example.test/api/v2/"
+  );
   vi.stubEnv("AUTH0_SERVER_ID", "server-id");
   vi.stubEnv("AUTH0_SERVER_SECRET", "server-secret");
 };

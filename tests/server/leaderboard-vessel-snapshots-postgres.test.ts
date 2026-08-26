@@ -7,7 +7,10 @@ import type {
   LeaderboardVesselSnapshotPersistence,
   LeaderboardVesselSnapshotRow,
 } from "../../server/services/leaderboardVesselSnapshotIngestion";
-import { acquirePostgresIntegrationLock } from "./helpers/postgresIntegrationLock";
+import {
+  acquirePostgresIntegrationLock,
+  POSTGRES_INTEGRATION_HOOK_TIMEOUT_MS,
+} from "./helpers/postgresIntegrationLock";
 
 const require = createRequire(import.meta.url);
 const migration = require("../../server/migrations/20260817000500-create-leaderboard-vessel-verification-snapshots.js");
@@ -48,7 +51,7 @@ describePostgres("leaderboard vessel snapshot Postgres integration", () => {
       service.LEADERBOARD_VESSEL_SNAPSHOT_STORAGE_RETENTION_MS;
     await database.authenticate();
     await migration.up(database.getQueryInterface(), Sequelize);
-  });
+  }, POSTGRES_INTEGRATION_HOOK_TIMEOUT_MS);
 
   // remove only the isolated integration schema
   afterAll(async () => {

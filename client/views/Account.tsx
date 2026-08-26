@@ -378,7 +378,9 @@ export const Account = withAuthenticationRequired(
       }
       clearCameraDetectionDebuggerAuthorization();
       const options = {
-        logoutParams: { returnTo: getConfiguredAuth0RedirectUri() },
+        logoutParams: {
+          returnTo: getConfiguredAuth0RedirectUri(device?.platform),
+        },
       };
       const mode = getLogoutMode(Boolean(device?.isNativeMobile));
       try {

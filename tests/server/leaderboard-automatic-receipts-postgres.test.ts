@@ -4,7 +4,10 @@ import { QueryTypes, Sequelize, type Transaction } from "sequelize";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import type { AutomaticCheckinCandidateV1 } from "../../shared/contracts/leaderboards";
-import { acquirePostgresIntegrationLock } from "./helpers/postgresIntegrationLock";
+import {
+  acquirePostgresIntegrationLock,
+  POSTGRES_INTEGRATION_HOOK_TIMEOUT_MS,
+} from "./helpers/postgresIntegrationLock";
 
 const require = createRequire(import.meta.url);
 const createLeaderboards = require("../../server/migrations/20260723000100-create-leaderboards.js");
@@ -21,6 +24,7 @@ const addExpiryObservedAt = require("../../server/migrations/20260817000700-add-
 const restrictEnrollmentDeletion = require("../../server/migrations/20260817000800-restrict-automatic-receipt-enrollment-deletion.js");
 const storeFinalPolicyGeneration = require("../../server/migrations/20260817000900-store-final-policy-generation-on-automatic-receipts.js");
 const createSupporterBilling = require("../../server/migrations/20260823000100-create-supporter-billing.js");
+const defaultSupporterBadge = require("../../server/migrations/20260824000200-default-supporter-badge-visible.js");
 
 const externalDatabaseUrl =
   process.env.LEADERBOARD_AUTOMATIC_RECEIPT_TEST_DATABASE_URL;
@@ -103,6 +107,12 @@ describePostgres("automatic candidate receipt Postgres integration", () => {
       // scope seeded rows
       bulkInsert: (tableName: string, ...args: unknown[]) =>
         queryInterface.bulkInsert(table(tableName), ...(args as [object[]])),
+      // scope changed columns
+      changeColumn: (tableName: string, ...args: unknown[]) =>
+        queryInterface.changeColumn(
+          table(tableName),
+          ...(args as [string, object, object?])
+        ),
       // scope created tables
       createTable: (tableName: string, ...args: unknown[]) =>
         queryInterface.createTable(table(tableName), ...(args as [object])),
@@ -127,6 +137,7 @@ describePostgres("automatic candidate receipt Postgres integration", () => {
     await restrictEnrollmentDeletion.up(scopedQueryInterface, Sequelize);
     // keep isolated profile schema current
     await createSupporterBilling.up(scopedQueryInterface, Sequelize);
+    await defaultSupporterBadge.up(scopedQueryInterface, Sequelize);
     const now = new Date();
     await database.query(
       `UPDATE "FeatureFlags" SET "enabled" = true, "updatedAt" = :now`,
@@ -220,7 +231,7 @@ describePostgres("automatic candidate receipt Postgres integration", () => {
       candidateKeyPepper: pepper,
       proofEvaluator,
     });
-  });
+  }, POSTGRES_INTEGRATION_HOOK_TIMEOUT_MS);
 
   // remove only the isolated integration schema
   afterAll(async () => {

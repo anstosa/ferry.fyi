@@ -31,17 +31,17 @@ describe("getAuth0RedirectUri", () => {
   it("uses Capacitor's Android callback URI on Android", () => {
     expect(
       getAuth0RedirectUri({
-        domain: "ferryfyi.us.auth0.com",
+        domain: "auth.ferry.fyi",
         platform: "android",
         redirectUri: "fyi.ferry://callback",
       })
-    ).toBe("fyi.ferry://ferryfyi.us.auth0.com/capacitor/fyi.ferry/callback");
+    ).toBe("fyi.ferry://auth.ferry.fyi/capacitor/fyi.ferry/callback");
   });
 
   it("keeps the configured callback URI on other platforms", () => {
     expect(
       getAuth0RedirectUri({
-        domain: "ferryfyi.us.auth0.com",
+        domain: "auth.ferry.fyi",
         platform: "ios",
         redirectUri: "fyi.ferry://callback",
       })
@@ -59,7 +59,7 @@ describe("isStaleAuth0CallbackError", () => {
 
 describe("isAuth0CallbackUrl", () => {
   const nativeRedirectUri =
-    "fyi.ferry://ferryfyi.us.auth0.com/capacitor/fyi.ferry/callback";
+    "fyi.ferry://auth.ferry.fyi/capacitor/fyi.ferry/callback";
 
   it("recognizes the full Capacitor Android callback path", () => {
     expect(
@@ -73,7 +73,7 @@ describe("isAuth0CallbackUrl", () => {
   it("does not treat another app deep link as an Auth0 callback", () => {
     expect(
       isAuth0CallbackUrl(
-        "fyi.ferry://ferryfyi.us.auth0.com/tickets?code=code&state=state",
+        "fyi.ferry://auth.ferry.fyi/tickets?code=code&state=state",
         nativeRedirectUri
       )
     ).toBe(false);

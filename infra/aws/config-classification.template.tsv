@@ -3,8 +3,8 @@ ANDROID_CERT_FINGERPRINT	runtime server secret/config	AWS Secrets Manager app co
 AUTH0_CLIENT_AUDIENCE	build-time public	GitHub variable / Docker build arg and AWS Secrets Manager app config JSON if server runtime requires it	value comes from Heroku classification or provider public config; do not commit
 AUTH0_CLIENT_ID	build-time public	GitHub variable / Docker build arg and AWS Secrets Manager app config JSON if server runtime requires it	value comes from Heroku classification or provider public config; do not commit
 AUTH0_CLIENT_REDIRECT	build-time public	GitHub variable / Docker build arg and AWS Secrets Manager app config JSON if server runtime requires it	value comes from Heroku classification or provider public config; do not commit
-AUTH0_DOMAIN	build-time public	GitHub variable / Docker build arg and AWS Secrets Manager app config JSON if server runtime requires it	value comes from Heroku classification or provider public config; do not commit
-AUTH0_SERVER_AUDIENCE	runtime server secret/config	AWS Secrets Manager app config JSON	value redacted
+AUTH0_DOMAIN	build-time public	GitHub variable / Docker build arg and AWS Secrets Manager app config JSON if server runtime requires it	use the branded authentication and token issuer domain; do not commit
+AUTH0_SERVER_AUDIENCE	runtime server secret/config	AWS Secrets Manager app config JSON	keep the canonical tenant Management API audience; value redacted
 AUTH0_SERVER_ID	runtime server secret/config	AWS Secrets Manager app config JSON	value redacted
 AUTH0_SERVER_SECRET	runtime server secret/config	AWS Secrets Manager app config JSON	value redacted
 AW_TAG_ID	build-time public	GitHub variable / Docker build arg	value comes from Heroku classification or provider public config; do not commit

@@ -26,14 +26,23 @@ const deleteAccount = vi.hoisted(() => vi.fn(() => Promise.resolve()));
 const automatic = vi.hoisted(() => ({
   disableAutomaticLeaderboardAccount: vi.fn(() => Promise.resolve()),
 }));
+// expose one native browser fixture
+const nativeBrowser = vi.hoisted(() => ({
+  open: vi.fn(() => Promise.resolve()),
+}));
+// expose one mutable device fixture
+const device = vi.hoisted(() => ({
+  current: null as null | { isNativeMobile: boolean; platform: string },
+}));
 vi.mock("@auth0/auth0-react", () => ({
   useAuth0: () => auth,
   withAuthenticationRequired: (component: React.ComponentType) => component,
 }));
+vi.mock("@capacitor/browser", () => ({ Browser: nativeBrowser }));
 vi.mock("~/lib/user", () => ({
   useUser: () => [userState, { deleteAccount, refreshUser }],
 }));
-vi.mock("~/lib/device", () => ({ useDevice: () => null }));
+vi.mock("~/lib/device", () => ({ useDevice: () => device.current }));
 vi.mock("~/lib/leaderboardAutomatic", () => automatic);
 vi.mock("~/lib/theme", () => ({
   useThemePreference: () => ["system", vi.fn()],
@@ -98,12 +107,15 @@ afterEach(() => {
   userState.isUserLoading = false;
   userState.user = null;
   userState.userError = null;
+  device.current = null;
   auth.logout.mockClear();
+  nativeBrowser.open.mockClear();
   automatic.disableAutomaticLeaderboardAccount
     .mockReset()
     .mockResolvedValue(undefined);
   deleteAccount.mockReset().mockResolvedValue(undefined);
   refreshUser.mockClear();
+  vi.unstubAllEnvs();
 });
 
 // controlled input fixture
@@ -238,6 +250,41 @@ describe("Account state predicates", () => {
       auth.getAccessTokenSilently
     );
     expect(auth.logout).toHaveBeenCalledOnce();
+  });
+
+  // native callback contract
+  it("returns Android logout through the registered Auth0 app URI", async () => {
+    auth.user = {
+      email: "rider@example.com",
+      name: "Rider",
+      sub: "auth0|rider",
+    };
+    userState.user = {};
+    device.current = { isNativeMobile: true, platform: "android" };
+    vi.stubEnv("AUTH0_DOMAIN", "auth.ferry.fyi");
+    vi.stubEnv("AUTH0_CLIENT_REDIRECT", "fyi.ferry://callback");
+    const container = render();
+
+    await act(async () => {
+      [...container.querySelectorAll("button")]
+        .find((button) => button.textContent === "Log Out")
+        ?.click();
+      await Promise.resolve();
+    });
+
+    expect(auth.logout).toHaveBeenCalledWith({
+      logoutParams: {
+        returnTo:
+          "fyi.ferry://auth.ferry.fyi/capacitor/fyi.ferry/callback",
+      },
+      openUrl: expect.any(Function),
+    });
+    const [[{ openUrl }]] = auth.logout.mock.calls;
+    // exercise the native browser handoff
+    await openUrl("https://auth.ferry.fyi/v2/logout");
+    expect(nativeBrowser.open).toHaveBeenCalledWith({
+      url: "https://auth.ferry.fyi/v2/logout",
+    });
   });
 
   it("requires typed confirmation and redirects home after deletion", async () => {

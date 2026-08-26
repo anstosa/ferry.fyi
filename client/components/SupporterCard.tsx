@@ -413,7 +413,7 @@ export const SupporterCard = ({
         !supporter.status.active &&
         !supporter.isLoading && (
           <div className="mt-6 text-left">
-            {supporter.products.length === 2 ? (
+            {supporter.products.length === 2 && (
               <div className="grid gap-3 sm:grid-cols-2">
                 {/* list current product options */}
                 {supporter.products.map((product) => (
@@ -466,7 +466,8 @@ export const SupporterCard = ({
                   Continue
                 </button>
               </div>
-            ) : (
+            )}
+            {supporter.products.length !== 2 && !supporter.error && (
               <p className="rounded-2xl bg-gray-lightest p-4 text-sm dark:bg-white/10">
                 Subscription checkout is not available on this app version or
                 platform yet.

@@ -2,6 +2,10 @@ import { AppMetadata } from "shared/contracts/user";
 import { isObject } from "shared/lib/objects";
 
 import { sanitizeUserUpdate } from "~/controllers/api/user";
+import {
+  getAuth0ManagementAudience,
+  getAuth0ManagementDomain,
+} from "~/lib/auth0Config";
 import { db, dbInit } from "~/lib/db";
 import { UserSettings } from "~/models/UserSettings";
 
@@ -33,10 +37,6 @@ const getRequiredEnv = (name: string): string => {
   }
   return value;
 };
-
-// auth0 management api base url
-const getAuth0ManagementAudience = (domain: string): string =>
-  `https://${domain}/api/v2/`;
 
 // auth0 management token
 const getManagementToken = async ({
@@ -119,10 +119,10 @@ const migrateUserSettings = async ({
 }: {
   dryRun: boolean;
 }): Promise<MigrationReport> => {
-  const domain = getRequiredEnv("AUTH0_DOMAIN");
+  const domain = getAuth0ManagementDomain();
   const clientId = getRequiredEnv("AUTH0_SERVER_ID");
   const clientSecret = getRequiredEnv("AUTH0_SERVER_SECRET");
-  const audience = getAuth0ManagementAudience(domain);
+  const audience = getAuth0ManagementAudience();
   const token = await getManagementToken({
     audience,
     clientId,

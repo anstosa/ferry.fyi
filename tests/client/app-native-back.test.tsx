@@ -6,6 +6,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   addListener: vi.fn(),
+  browserClose: vi.fn(() => Promise.resolve()),
+  device: { isNativeMobile: false, platform: "web" },
+  isAuth0CallbackUrl: vi.fn(() => false),
   navigate: vi.fn(),
   remove: vi.fn(),
 }));
@@ -17,7 +20,7 @@ vi.mock("@capacitor/app", () => ({
   App: { addListener: mocks.addListener },
 }));
 vi.mock("@capacitor/browser", () => ({
-  Browser: { close: vi.fn() },
+  Browser: { close: mocks.browserClose },
 }));
 vi.mock("framer-motion", () => ({
   AnimatePresence: ({ children }: React.PropsWithChildren) => children,
@@ -57,10 +60,16 @@ vi.mock("~/lib/api", () => ({
   useWSF: () => ({ offline: false }),
 }));
 vi.mock("~/lib/auth", () => ({
-  isAuth0CallbackUrl: () => false,
+  getConfiguredAuth0RedirectUri: (platform?: string) =>
+    platform === "android"
+      ? "fyi.ferry://auth.ferry.fyi/capacitor/fyi.ferry/callback"
+      : "fyi.ferry://callback",
+  getIosAuthFailurePath: () => undefined,
+  isAuth0CallbackUrl: mocks.isAuth0CallbackUrl,
+  isStaleAuth0CallbackError: () => false,
 }));
 vi.mock("~/lib/device", () => ({
-  useDevice: () => ({ isNativeMobile: false }),
+  useDevice: () => mocks.device,
 }));
 vi.mock("~/lib/ota", () => ({
   initializeOtaUpdater: () => Promise.resolve(),
@@ -109,8 +118,23 @@ const backButtonCallback = (): ((event: { canGoBack: boolean }) => void) => {
   return call[1];
 };
 
+// native URL callback fixture
+const appUrlOpenCallback = (): ((event: { url: string }) => Promise<void>) => {
+  const call = mocks.addListener.mock.calls.find(
+    ([eventName]) => eventName === "appUrlOpen"
+  );
+  // required callback guard
+  if (!call) {
+    throw new Error("Native URL listener was not registered");
+  }
+  return call[1];
+};
+
 beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  mocks.device.isNativeMobile = false;
+  mocks.device.platform = "web";
+  mocks.isAuth0CallbackUrl.mockReturnValue(false);
   mocks.addListener.mockImplementation(() =>
     Promise.resolve({ remove: mocks.remove })
   );
@@ -161,5 +185,27 @@ describe("App native back-button lifecycle", () => {
     });
 
     expect(mocks.remove).toHaveBeenCalledOnce();
+  });
+
+  // android callback contract
+  it("recognizes Android Auth0 callbacks with the native redirect URI", async () => {
+    mocks.device.isNativeMobile = true;
+    mocks.device.platform = "android";
+    mocks.isAuth0CallbackUrl.mockReturnValue(true);
+    await renderApp();
+    mocks.isAuth0CallbackUrl.mockClear();
+
+    await act(async () => {
+      await appUrlOpenCallback()({
+        url: "fyi.ferry://auth.ferry.fyi/capacitor/fyi.ferry/callback",
+      });
+    });
+
+    expect(mocks.browserClose).toHaveBeenCalledOnce();
+    expect(mocks.isAuth0CallbackUrl).toHaveBeenCalledWith(
+      "fyi.ferry://auth.ferry.fyi/capacitor/fyi.ferry/callback",
+      "fyi.ferry://auth.ferry.fyi/capacitor/fyi.ferry/callback"
+    );
+    expect(mocks.navigate).toHaveBeenCalledWith("/");
   });
 });

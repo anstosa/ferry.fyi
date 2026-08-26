@@ -181,7 +181,8 @@ const _useUser = (): Response => {
       appState: { redirectPath: `${location.pathname}${location.search}` },
       authorizationParams: {
         audience: process.env.AUTH0_CLIENT_AUDIENCE as string,
-        prompt: "consent" as const,
+        // force fresh login before renewed authorization
+        prompt: "login" as const,
         redirect_uri: getConfiguredAuth0RedirectUri(platform),
         scope: USER_AUTH_SCOPE,
       },

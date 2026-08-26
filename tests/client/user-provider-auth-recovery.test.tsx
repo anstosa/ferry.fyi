@@ -87,7 +87,7 @@ beforeEach(() => {
   capacitor.platform = "web";
   vi.stubEnv("AUTH0_CLIENT_AUDIENCE", "https://ferry.fyi/api");
   vi.stubEnv("AUTH0_CLIENT_REDIRECT", "https://ferry.fyi/callback");
-  vi.stubEnv("AUTH0_DOMAIN", "ferryfyi.us.auth0.com");
+  vi.stubEnv("AUTH0_DOMAIN", "auth.ferry.fyi");
 });
 
 // remove provider fixtures
@@ -169,9 +169,9 @@ describe("UserProvider auth recovery", () => {
       appState: { redirectPath: "/account" },
       authorizationParams: {
         audience: "https://ferry.fyi/api",
-        prompt: "consent",
+        prompt: "login",
         redirect_uri:
-          "fyi.ferry://ferryfyi.us.auth0.com/capacitor/fyi.ferry/callback",
+          "fyi.ferry://auth.ferry.fyi/capacitor/fyi.ferry/callback",
         scope: "openid profile email read:current_user offline_access",
       },
       openUrl: expect.any(Function),

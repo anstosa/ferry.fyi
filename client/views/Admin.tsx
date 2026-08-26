@@ -1,7 +1,13 @@
 import { useAuth0 } from "@auth0/auth0-react";
 import { DateTime } from "luxon";
-import React, { ReactElement, ReactNode, useEffect, useState } from "react";
-import { Navigate } from "react-router-dom";
+import React, {
+  ReactElement,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import type {
   AdminConfirmationAction,
   AdminUserList,
@@ -685,16 +691,43 @@ const TicketLookupAdminSection = ({
 };
 
 export const Admin = (): ReactElement => {
-  const { getAccessTokenSilently, isAuthenticated, user } = useAuth0();
-  const adminSearch =
-    typeof window === "undefined" ? "" : window.location.search;
+  const { getAccessTokenSilently, isAuthenticated, isLoading, user } =
+    useAuth0();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const adminSearch = location.search;
   const requestedAdSelection = getAdAdminSelection(adminSearch);
   const requestedAdminTab = new URLSearchParams(adminSearch).get("tab");
-  const [activeTab, setActiveTab] = useState<AdminTab>(() =>
-    requestedAdSelection
-      ? "ads"
-      : (adminTabs.find(({ id }) => id === requestedAdminTab)?.id ?? "access")
+  const activeTab: AdminTab = requestedAdSelection
+    ? "ads"
+    : (adminTabs.find(({ id }) => id === requestedAdminTab)?.id ?? "access");
+  // persist one canonical tab route
+  const navigateToAdminTab = useCallback(
+    (tab: AdminTab, replace = false): void => {
+      const params = new URLSearchParams(location.search);
+      params.set("tab", tab);
+      // remove stale advertising deep-link state
+      if (tab !== "ads") {
+        params.delete("placement");
+      }
+      navigate(
+        {
+          hash: tab === "ads" ? location.hash : "",
+          pathname: location.pathname,
+          search: params.toString(),
+        },
+        { replace }
+      );
+    },
+    [location.hash, location.pathname, location.search, navigate]
   );
+  useEffect(() => {
+    // normalize missing or conflicting tab state
+    if (requestedAdminTab === activeTab) {
+      return;
+    }
+    navigateToAdminTab(activeTab, true);
+  }, [activeTab, navigateToAdminTab, requestedAdminTab]);
   const [features, setFeatures] = useState<FeatureSettings | null>(null);
   const [detailedFeatures, setDetailedFeatures] =
     useState<DetailedFeatureMap | null>(null);
@@ -1028,6 +1061,14 @@ export const Admin = (): ReactElement => {
     document.getElementById("admin-ad-slot")?.focus();
   }, [ads, requestedAdSelection?.placementKey]);
 
+  // preserve direct links while auth0 restores its session
+  if (isLoading) {
+    return (
+      <Page title="Admin">
+        <AdminLoadingSkeleton label="Loading admin session" />
+      </Page>
+    );
+  }
   if (!isAuthenticated || user?.email !== ADMIN_EMAIL) {
     return <Navigate replace to="/" />;
   }
@@ -1054,7 +1095,7 @@ export const Admin = (): ReactElement => {
             }`}
             id={`admin-tab-${tab.id}`}
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => navigateToAdminTab(tab.id)}
             role="tab"
             type="button"
           >

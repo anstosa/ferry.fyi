@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ANDROID_AUTH0_DOMAIN_PRODUCTION="ferryfyi.us.auth0.com"
+ANDROID_AUTH0_DOMAIN_PRODUCTION="auth.ferry.fyi"
 ANDROID_AUTH0_AUDIENCE_PRODUCTION="https://ferry.fyi/api"
 ANDROID_REDIRECT_URI="fyi.ferry://${ANDROID_AUTH0_DOMAIN_PRODUCTION}/capacitor/fyi.ferry/callback"
 HAS_ANDROID_ENV=0

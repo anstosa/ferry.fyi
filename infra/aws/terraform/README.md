@@ -152,7 +152,7 @@ Configure these non-secret GitHub variables at the repository or organization le
 | `AUTH0_CLIENT_AUDIENCE` | Browser Auth0 audience from Heroku config classification or Auth0 public app config |
 | `AUTH0_CLIENT_ID` | Browser Auth0 client ID from Heroku config classification or Auth0 public app config |
 | `AUTH0_CLIENT_REDIRECT` | Browser Auth0 redirect URL for the deployed hostname |
-| `AUTH0_DOMAIN` | Browser Auth0 domain from Heroku config classification or Auth0 public app config |
+| `AUTH0_DOMAIN` | Branded browser and token issuer domain, `auth.ferry.fyi` in production |
 | `AW_TAG_ID` | Browser Ads conversion tag ID if enabled |
 | `BASE_URL` | Production public URL, usually the Terraform `base_url` value |
 | `DETECTOR_CONTEXT` | Optional detector Docker build context; defaults to `detector-runtime` when unset |
@@ -179,6 +179,8 @@ Configure these non-secret GitHub variables at the repository or organization le
 
 Keep application runtime secrets in AWS Secrets Manager.
 Do not copy `DATABASE_URL`, Firebase service account JSON, Auth0 server secret, WSDOT API key, or `SENTRY_AUTH_TOKEN` into GitHub variables for ECS runtime deployment. If sourcemap upload is enabled later, store `SENTRY_AUTH_TOKEN` only as a GitHub build secret and do not pass it to ECS runtime.
+Keep `AUTH0_SERVER_AUDIENCE` on the canonical tenant Management API URL even
+when `AUTH0_DOMAIN` uses the branded custom domain.
 
 ## Auth0 email through Amazon SES
 

@@ -1,7 +1,10 @@
 import { Sequelize } from "sequelize";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { acquirePostgresIntegrationLock } from "./helpers/postgresIntegrationLock";
+import {
+  acquirePostgresIntegrationLock,
+  POSTGRES_INTEGRATION_HOOK_TIMEOUT_MS,
+} from "./helpers/postgresIntegrationLock";
 
 const externalDatabaseUrl =
   process.env.SUPPORTER_ADS_PREFERENCE_TEST_DATABASE_URL;
@@ -52,7 +55,7 @@ describePostgres("supporter ads preference Postgres integration", () => {
     await SupporterCustomer.sync();
     await SupporterEntitlement.sync();
     ({ setSupporterAdsEnabled } = await import("../../server/lib/supporter"));
-  });
+  }, POSTGRES_INTEGRATION_HOOK_TIMEOUT_MS);
 
   // remove only the isolated integration schema
   afterAll(async () => {

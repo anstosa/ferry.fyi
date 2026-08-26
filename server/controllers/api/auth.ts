@@ -2,15 +2,19 @@ import { NextFunction, RequestHandler, Response } from "express";
 import { auth } from "express-oauth2-jwt-bearer";
 
 import { isApplicationTokenRevoked } from "~/lib/admin/sessionRevocation";
+import { getAuth0IssuerUrls } from "~/lib/auth0Config";
 
-const validateJwt = auth({
+// migration-safe issuer configuration
+const jwtValidationOptions = {
   audience: process.env.AUTH0_CLIENT_AUDIENCE as string,
-  issuerBaseURL: `https://${process.env.AUTH0_DOMAIN as string}/`,
+  mcd: { issuers: getAuth0IssuerUrls() },
+};
+const validateJwt = auth({
+  ...jwtValidationOptions,
 });
 const validateOptionalJwt = auth({
-  audience: process.env.AUTH0_CLIENT_AUDIENCE as string,
+  ...jwtValidationOptions,
   authRequired: false,
-  issuerBaseURL: `https://${process.env.AUTH0_DOMAIN as string}/`,
 });
 
 // revocation watermark enforcement

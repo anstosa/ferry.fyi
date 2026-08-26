@@ -12,7 +12,7 @@ const auth0 = vi.hoisted(() => ({
 const browser = vi.hoisted(() => ({ open: vi.fn() }));
 const platform = vi.hoisted(() => ({ value: "web" }));
 const supporter = vi.hoisted(() => ({
-  error: null,
+  error: null as string | null,
   isBusy: false,
   isLoading: false,
   manage: vi.fn(),
@@ -68,6 +68,7 @@ describe("SupporterCard", () => {
     auth0.loginWithRedirect.mockReset().mockResolvedValue(undefined);
     browser.open.mockReset().mockResolvedValue(undefined);
     platform.value = "web";
+    supporter.error = null;
     supporter.refresh.mockReset().mockResolvedValue(undefined);
     supporter.setAdsEnabled.mockReset().mockResolvedValue(undefined);
     supporter.purchase.mockReset().mockResolvedValue({ outcome: "cancelled" });
@@ -249,6 +250,26 @@ describe("SupporterCard", () => {
     );
     expect(container?.textContent).not.toContain("the displayed monthly price");
     expect(container?.textContent).not.toContain("the displayed yearly price");
+  });
+
+  // prefer the actionable provider failure
+  it("does not cover a product loading error with generic availability copy", async () => {
+    supporter.error = "The Supporter offering is incomplete";
+    supporter.status = {
+      active: false,
+      activeUntil: null,
+      sources: [],
+      supporterBadgeVisible: false,
+    };
+
+    await renderCard();
+
+    expect(container?.textContent).toContain(
+      "The Supporter offering is incomplete"
+    );
+    expect(container?.textContent).not.toContain(
+      "Subscription checkout is not available"
+    );
   });
 
   // keep badge consent in leaderboard settings only

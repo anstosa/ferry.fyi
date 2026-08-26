@@ -34,6 +34,7 @@ jobs:
       GOOGLE_ANALYTICS: ${{ vars.GOOGLE_ANALYTICS }}
       GTM_CONTAINER_ID: ${{ vars.GTM_CONTAINER_ID }}
       HEROKU_RELEASE_VERSION: ${{ github.sha }}
+      IOS_ENFORCE_PROD_AUTH0: '1'
       MAPBOX_ACCESS_TOKEN: ${{ vars.MAPBOX_ACCESS_TOKEN }}
       REQUESTED_VERSION_NAME: ${{ inputs.version_name }}
       REVENUECAT_ANDROID_PUBLIC_API_KEY: ${{ vars.REVENUECAT_ANDROID_PUBLIC_API_KEY }}
@@ -84,6 +85,23 @@ jobs:
               exit 1
             fi
           done
+          # require production Auth0 settings for TestFlight
+          if [[ "${AUTH0_DOMAIN}" != "auth.ferry.fyi" ]]; then
+            echo "AUTH0_DOMAIN must be auth.ferry.fyi for TestFlight" >&2
+            exit 1
+          fi
+          if [[ "${AUTH0_CLIENT_AUDIENCE}" != "https://ferry.fyi/api" ]]; then
+            echo "AUTH0_CLIENT_AUDIENCE must be https://ferry.fyi/api for TestFlight" >&2
+            exit 1
+          fi
+          if [[ -z "${AUTH0_CLIENT_ID}" ]]; then
+            echo "AUTH0_CLIENT_ID is required for TestFlight" >&2
+            exit 1
+          fi
+          if [[ "${AUTH0_CLIENT_REDIRECT}" != "fyi.ferry://callback" ]]; then
+            echo "AUTH0_CLIENT_REDIRECT must be fyi.ferry://callback for TestFlight" >&2
+            exit 1
+          fi
           # verify encoded signing assets before mutating the keychain
           for encoded_secret in \
             APP_STORE_CONNECT_API_KEY_BASE64 \
