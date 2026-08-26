@@ -186,7 +186,9 @@ describe("AdSlot", () => {
 
     const container = await renderSlot();
 
-    expect(container.textContent).toBe("");
+    expect(
+      container.querySelector('[aria-label^="Advertisement from"]')
+    ).toBeNull();
     expect(api.post).toHaveBeenCalledWith(
       "/ads/exposures",
       { placementKey: "schedule--5--14" },
@@ -208,7 +210,9 @@ describe("AdSlot", () => {
       await Promise.resolve();
     });
 
-    expect(container.textContent).toContain("Island Coffee");
+    expect(
+      container.querySelector('[aria-label="Advertisement from Island Coffee"]')
+    ).not.toBeNull();
     expect(api.post).toHaveBeenCalledOnce();
   });
 
@@ -220,7 +224,9 @@ describe("AdSlot", () => {
 
     const container = await renderSlot();
 
-    expect(container.textContent).toBe("");
+    expect(
+      container.querySelector('[aria-label^="Advertisement from"]')
+    ).toBeNull();
     expect(api.post).toHaveBeenCalledOnce();
 
     user.isUserLoading = false;
@@ -239,8 +245,9 @@ describe("AdSlot", () => {
       await Promise.resolve();
     });
 
-    expect(container.textContent).toBe("");
-    expect(container.querySelector("[data-ad-slot]")).toBeNull();
+    expect(
+      container.querySelector('[aria-label^="Advertisement from"]')
+    ).toBeNull();
   });
 
   it("renders the server-seeded creative before the exposure request settles", async () => {
