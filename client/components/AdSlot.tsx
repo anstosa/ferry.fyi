@@ -362,9 +362,12 @@ export const AdSlot = ({
   const policyResolved =
     !isAuthLoading &&
     (!isAuthenticated || (!isUserLoading && supporter?.resolved === true));
-  const suppressAds =
-    !policyResolved ||
-    (supporter?.active === true && supporter.adsEnabled !== true);
+  const clientSuppressAds =
+    policyResolved &&
+    supporter?.active === true &&
+    supporter.adsEnabled !== true;
+  const suppressAds = !policyResolved || clientSuppressAds;
+  const exposureRequestBlocked = isAuthLoading || clientSuppressAds;
   const showSupporterThankYou =
     policyResolved &&
     isAuthenticated &&
@@ -390,8 +393,8 @@ export const AdSlot = ({
     setExposureResolved(false);
     setAccessToken(undefined);
     setLoading(Boolean(key) && !hasSsrAd);
-    // unresolved or suppressed guard
-    if (!key || suppressAds) {
+    // invalid or locally suppressed guard
+    if (!key || exposureRequestBlocked) {
       setLoading(false);
       return () => {
         active = false;
@@ -431,14 +434,12 @@ export const AdSlot = ({
     };
   }, [
     auth0User?.sub,
+    exposureRequestBlocked,
     getAccessTokenSilently,
     hasSsrAd,
     isAuthenticated,
     key,
     ssrAd?.creative?.campaignId,
-    supporter?.adsEnabled,
-    supporter?.revision,
-    suppressAds,
   ]);
 
   useContinuousVisibility(

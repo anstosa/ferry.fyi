@@ -47,6 +47,20 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 let root: Root | undefined;
 
+// reuse one active exposure fixture
+const ACTIVE_AD_EXPOSURE = {
+  creative: {
+    advertiserName: "Island Coffee",
+    body: "Coffee near the dock.",
+    campaignId: "5ed338e9-acbb-4cca-9380-1a923bfca5c8",
+    headline: "Fuel up before sailing",
+    placementKey: "schedule--5--14",
+    targetUrl: "https://example.com/menu",
+  },
+  expiresAt: "2026-08-04T18:00:00.000Z",
+  token: "adx_test",
+};
+
 const renderSlot = async (className?: string): Promise<HTMLDivElement> => {
   const container = document.createElement("div");
   document.body.appendChild(container);
@@ -75,6 +89,7 @@ afterEach(() => {
   auth.isAuthenticated = false;
   auth.user = { email: "rider@example.com" };
   // restore supporter policy
+  user.isUserLoading = false;
   user.user.supporter.active = false;
   user.user.supporter.adsEnabled = false;
   seed.ad = undefined;
@@ -161,6 +176,71 @@ describe("AdSlot", () => {
       { placementKey: "schedule--5--14" },
       "test-access-token"
     );
+  });
+
+  // overlap account policy and exposure requests
+  it("starts authenticated exposure loading while account policy resolves", async () => {
+    auth.isAuthenticated = true;
+    user.isUserLoading = true;
+    api.post.mockResolvedValue(ACTIVE_AD_EXPOSURE);
+
+    const container = await renderSlot();
+
+    expect(container.textContent).toBe("");
+    expect(api.post).toHaveBeenCalledWith(
+      "/ads/exposures",
+      { placementKey: "schedule--5--14" },
+      "test-access-token"
+    );
+
+    user.isUserLoading = false;
+    await act(async () => {
+      root?.render(
+        <MemoryRouter>
+          <AdSlot
+            arrivalTerminalId="14"
+            contextLabel="Schedule · Clinton to Mukilteo"
+            departureTerminalId="5"
+            slot="schedule"
+          />
+        </MemoryRouter>
+      );
+      await Promise.resolve();
+    });
+
+    expect(container.textContent).toContain("Island Coffee");
+    expect(api.post).toHaveBeenCalledOnce();
+  });
+
+  // preserve ad-free policy after speculative loading
+  it("does not reveal a prefetched ad when policy resolves ad-free", async () => {
+    auth.isAuthenticated = true;
+    user.isUserLoading = true;
+    api.post.mockResolvedValue(ACTIVE_AD_EXPOSURE);
+
+    const container = await renderSlot();
+
+    expect(container.textContent).toBe("");
+    expect(api.post).toHaveBeenCalledOnce();
+
+    user.isUserLoading = false;
+    user.user.supporter.active = true;
+    await act(async () => {
+      root?.render(
+        <MemoryRouter>
+          <AdSlot
+            arrivalTerminalId="14"
+            contextLabel="Schedule · Clinton to Mukilteo"
+            departureTerminalId="5"
+            slot="schedule"
+          />
+        </MemoryRouter>
+      );
+      await Promise.resolve();
+    });
+
+    expect(container.textContent).toBe("");
+    expect(container.querySelector("[data-ad-slot]")).toBeNull();
   });
 
   it("renders the server-seeded creative before the exposure request settles", async () => {
