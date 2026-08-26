@@ -182,7 +182,7 @@ describe("schedule API", () => {
       .expect(200);
 
     expect(updateSchedules).toHaveBeenCalledWith("2026-06-21", "1", "10");
-    expect(updateEstimates).toHaveBeenCalledWith([scheduleRecord]);
+    expect(updateEstimates).not.toHaveBeenCalled();
     expect(response.body.schedule).toEqual(liveSchedule);
   });
 

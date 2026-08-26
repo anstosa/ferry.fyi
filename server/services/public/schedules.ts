@@ -9,7 +9,6 @@ import type {
 import type { Vessel } from "shared/contracts/vessels";
 
 import { getErrorMessage, getLogError } from "~/lib/errors";
-import { updateEstimates } from "~/lib/forecast";
 import { getWsfStatus } from "~/lib/wsf/api";
 import { updateSchedules } from "~/lib/wsf/updateSchedules";
 import Crossing from "~/models/Crossing";
@@ -30,31 +29,15 @@ const wait = (milliseconds: number): Promise<void> =>
 
 const timestamp = (): number => DateTime.local().toSeconds();
 
-const refreshEstimatesInBackground = (scheduleKey: string): void => {
-  const schedule = Schedule.getByIndex(scheduleKey);
-  if (!schedule) {
-    return;
-  }
-  updateEstimates([schedule]).catch((error: unknown) => {
-    logger.error(
-      `Schedule estimate refresh failed for ${scheduleKey}: ${getErrorMessage(
-        error
-      )}`,
-      getLogError(error)
-    );
-  });
-};
-
+// refresh one missing live schedule without forecast recomputation
 const refreshScheduleInBackground = ({
   arrivingId,
   date,
   departingId,
-  scheduleKey,
 }: {
   arrivingId: string;
   date: string;
   departingId: string;
-  scheduleKey: string;
 }): Promise<void> => {
   const refreshKey = `${date}:${departingId}:${arrivingId}`;
   const activeRefresh = backgroundScheduleRefreshes.get(refreshKey);
@@ -63,8 +46,8 @@ const refreshScheduleInBackground = ({
   }
   const refreshPromise = (async (): Promise<void> => {
     try {
+      // defer CPU-heavy forecasts to the bounded scheduled refresh
       await updateSchedules(date, departingId, arrivingId);
-      refreshEstimatesInBackground(scheduleKey);
     } catch (error: unknown) {
       logger.error(
         `Schedule refresh failed for ${refreshKey}: ${getErrorMessage(error)}`,
@@ -286,7 +269,6 @@ export const getPublicSchedule = async ({
       arrivingId,
       date,
       departingId,
-      scheduleKey,
     });
     const { didRefreshFinish, schedule } = await waitForScheduleRefresh(
       refreshPromise,

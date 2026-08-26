@@ -366,7 +366,6 @@ export const AdSlot = ({
     policyResolved &&
     supporter?.active === true &&
     supporter.adsEnabled !== true;
-  const suppressAds = !policyResolved || clientSuppressAds;
   const exposureRequestBlocked = isAuthLoading || clientSuppressAds;
   const showSupporterThankYou =
     policyResolved &&
@@ -454,7 +453,7 @@ export const AdSlot = ({
     return <SupporterThankYou />;
   }
   // hidden policy guard
-  if (!key || suppressAds) {
+  if (!key || clientSuppressAds) {
     return null;
   }
   let creative = exposure?.creative ?? null;

@@ -178,8 +178,8 @@ describe("AdSlot", () => {
     );
   });
 
-  // overlap account policy and exposure requests
-  it("starts authenticated exposure loading while account policy resolves", async () => {
+  // trust the server-authorized exposure before account policy resolves
+  it("renders an authenticated exposure while account policy resolves", async () => {
     auth.isAuthenticated = true;
     user.isUserLoading = true;
     api.post.mockResolvedValue(ACTIVE_AD_EXPOSURE);
@@ -187,8 +187,8 @@ describe("AdSlot", () => {
     const container = await renderSlot();
 
     expect(
-      container.querySelector('[aria-label^="Advertisement from"]')
-    ).toBeNull();
+      container.querySelector('[aria-label="Advertisement from Island Coffee"]')
+    ).not.toBeNull();
     expect(api.post).toHaveBeenCalledWith(
       "/ads/exposures",
       { placementKey: "schedule--5--14" },
@@ -216,8 +216,8 @@ describe("AdSlot", () => {
     expect(api.post).toHaveBeenCalledOnce();
   });
 
-  // preserve ad-free policy after speculative loading
-  it("does not reveal a prefetched ad when policy resolves ad-free", async () => {
+  // preserve local ad-free policy after server-authorized loading
+  it("hides a prefetched ad when policy resolves ad-free", async () => {
     auth.isAuthenticated = true;
     user.isUserLoading = true;
     api.post.mockResolvedValue(ACTIVE_AD_EXPOSURE);
@@ -225,8 +225,8 @@ describe("AdSlot", () => {
     const container = await renderSlot();
 
     expect(
-      container.querySelector('[aria-label^="Advertisement from"]')
-    ).toBeNull();
+      container.querySelector('[aria-label="Advertisement from Island Coffee"]')
+    ).not.toBeNull();
     expect(api.post).toHaveBeenCalledOnce();
 
     user.isUserLoading = false;
