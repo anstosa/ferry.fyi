@@ -1,4 +1,14 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+const capacitor = vi.hoisted(() => ({
+  isNativePlatform: vi.fn(() => true),
+  registerPlugin: vi.fn(),
+}));
+
+vi.mock("@capacitor/core", () => ({
+  Capacitor: { isNativePlatform: capacitor.isNativePlatform },
+  registerPlugin: capacitor.registerPlugin,
+}));
 
 import {
   assertAutomaticEnrollmentOperation,
@@ -14,6 +24,7 @@ import {
   disableAutomaticLeaderboardAccount,
   disableAutomaticLeaderboardCheckins,
   enrollAutomaticLeaderboardCheckins,
+  getAutomaticLeaderboardPlugin,
   isAutomaticEnrollmentHealthy,
   listenForAutomaticLeaderboardChanges,
   openAutomaticEnrollmentSettings,
@@ -24,7 +35,6 @@ import {
   retryAutomaticEnrollmentCleanup,
   stageAutomaticEnrollmentCleanup,
 } from "../../client/lib/leaderboardAutomatic";
-import { createNonThenableCapacitorPlugin } from "../../client/lib/capacitorPlugin";
 import type {
   AutomaticEnrollmentCredentialV1,
   AutomaticEnrollmentStatusV1,
@@ -182,6 +192,11 @@ const deferred = () => {
   return { promise, resolve };
 };
 
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.clearAllMocks();
+});
+
 describe("automatic leaderboard client boundary", () => {
   // prevent capacitor proxy promise assimilation
   it("loads the native plugin without invoking a synthetic then method", async () => {
@@ -202,10 +217,17 @@ describe("automatic leaderboard client boundary", () => {
       },
     });
 
-    const safePlugin = createNonThenableCapacitorPlugin(capacitorProxy);
+    vi.stubGlobal("window", {
+      Capacitor: { isNativePlatform: capacitor.isNativePlatform },
+    });
+    capacitor.registerPlugin.mockReturnValue(capacitorProxy);
+    const safePlugin = await getAutomaticLeaderboardPlugin();
 
-    await expect(Promise.resolve(safePlugin)).resolves.toBe(safePlugin);
-    await expect(safePlugin.getStatus()).resolves.toEqual(status());
+    expect(safePlugin).not.toBeNull();
+    await expect(safePlugin?.getStatus()).resolves.toEqual(status());
+    expect(capacitor.registerPlugin).toHaveBeenCalledWith(
+      "AutomaticLeaderboardCheckins"
+    );
     expect(syntheticThen).not.toHaveBeenCalled();
   });
 
