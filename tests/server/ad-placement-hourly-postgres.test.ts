@@ -13,6 +13,7 @@ const createPublicContent = require("../../server/migrations/20260724000800-crea
 const createAdPlacements = require("../../server/migrations/20260804000100-create-ad-placements.js");
 const createAdTracking = require("../../server/migrations/20260804000200-create-ad-tracking.js");
 const createHourlyMetrics = require("../../server/migrations/20260820000100-create-ad-placement-hourly-metrics.js");
+const preserveAdCtaLabels = require("../../server/migrations/20260821000100-preserve-ad-cta-labels.js");
 const externalDatabaseUrl = process.env.AD_PLACEMENT_HOURLY_TEST_DATABASE_URL;
 // gate real database coverage
 const describePostgres = externalDatabaseUrl ? describe : describe.skip;
@@ -50,8 +51,12 @@ describePostgres("ad placement hourly Postgres integration", () => {
         scopedCall(queryInterface.addConstraint, tableName, argumentsList),
       addIndex: (tableName: string, ...argumentsList: unknown[]) =>
         scopedCall(queryInterface.addIndex, tableName, argumentsList),
+      changeColumn: (tableName: string, ...argumentsList: unknown[]) =>
+        scopedCall(queryInterface.changeColumn, tableName, argumentsList),
       createTable: (tableName: string, ...argumentsList: unknown[]) =>
         scopedCall(queryInterface.createTable, tableName, argumentsList),
+      describeTable: (tableName: string, ...argumentsList: unknown[]) =>
+        scopedCall(queryInterface.describeTable, tableName, argumentsList),
       sequelize: queryInterface.sequelize,
     };
   };
@@ -79,6 +84,8 @@ describePostgres("ad placement hourly Postgres integration", () => {
     await createPublicContent.up(queryInterface, Sequelize);
     await createAdPlacements.up(queryInterface, Sequelize);
     await createAdTracking.up(queryInterface, Sequelize);
+    // match the current placement model
+    await preserveAdCtaLabels.up(queryInterface, Sequelize);
     const createdAt = new Date("2026-08-05T06:30:00.000Z");
     await database.query(
       `INSERT INTO "AdPlacements"

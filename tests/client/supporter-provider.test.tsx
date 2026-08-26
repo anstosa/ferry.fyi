@@ -203,6 +203,49 @@ describe("SupporterProvider", () => {
     );
   });
 
+  // allow slow storefront metadata to finish
+  it("does not reject a valid storefront response after twelve seconds", async () => {
+    vi.useFakeTimers();
+    api.get.mockResolvedValue({
+      ...makeSupporterStatus(false, "v1:1:1"),
+      active: false,
+      lifecycleState: "none",
+    });
+    web.loadProducts.mockImplementation(
+      async () =>
+        await new Promise((resolve) => {
+          setTimeout(
+            () =>
+              resolve([
+                {
+                  identifier: "supporter_monthly",
+                  interval: "month",
+                  price: "$2.49",
+                },
+                {
+                  identifier: "supporter_yearly",
+                  interval: "year",
+                  price: "$19.99",
+                },
+              ]),
+            20_000
+          );
+        })
+    );
+    const container = await renderProvider();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(12_000);
+    });
+    expect(container.textContent).toBe("loading");
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(8_000);
+    });
+    expect(container.textContent).toBe("ready:ads-off");
+    expect(web.loadProducts).toHaveBeenCalledWith("customer-1");
+  });
+
   // use the sdk-provided web portal
   it("opens web management without requesting a server token", async () => {
     const container = await renderProvider();

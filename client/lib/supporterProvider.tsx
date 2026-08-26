@@ -33,7 +33,11 @@ import {
 import { useUser } from "~/lib/user";
 import type { UserActions } from "~/lib/userContext";
 
-const SUPPORTER_LOAD_TIMEOUT_MS = 12_000;
+// fail account requests quickly while allowing slower storefront metadata
+const SUPPORTER_ACCOUNT_LOAD_TIMEOUT_MS = 12_000;
+const SUPPORTER_PRODUCT_LOAD_TIMEOUT_MS = 45_000;
+const SUPPORTER_LOAD_TIMEOUT_MESSAGE =
+  "Supporter plans took too long to load. Try again.";
 
 // identify one rejected application token
 const isUnauthorizedRequest = (error: unknown): boolean =>
@@ -72,13 +76,14 @@ const requestSupporterApi = async <T,>(
 
 // bound one external loading step
 const withSupporterLoadTimeout = async <T,>(
-  operation: Promise<T>
+  operation: Promise<T>,
+  timeoutMs: number
 ): Promise<T> => {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_resolve, reject) => {
     timer = setTimeout(() => {
-      reject(new Error("Supporter plans took too long to load. Try again."));
-    }, SUPPORTER_LOAD_TIMEOUT_MS);
+      reject(new Error(SUPPORTER_LOAD_TIMEOUT_MESSAGE));
+    }, timeoutMs);
   });
   try {
     return await Promise.race([operation, timeout]);
@@ -143,7 +148,8 @@ export const SupporterProvider: FunctionComponent<PropsWithChildren> = ({
           userActionsRef.current.getAccessToken,
           async (token) => await get<SupporterStatus>("/supporter", token),
           "Sign in again to load your Supporter subscription."
-        )
+        ),
+        SUPPORTER_ACCOUNT_LOAD_TIMEOUT_MS
       );
       // account ownership guard
       if (requestGeneration !== generation.current) {
@@ -167,10 +173,12 @@ export const SupporterProvider: FunctionComponent<PropsWithChildren> = ({
       }
       const nextProducts = native
         ? await withSupporterLoadTimeout(
-            loadNativeSupporterProducts(nextStatus.appUserId)
+            loadNativeSupporterProducts(nextStatus.appUserId),
+            SUPPORTER_PRODUCT_LOAD_TIMEOUT_MS
           )
         : await withSupporterLoadTimeout(
-            loadWebSupporterProducts(nextStatus.appUserId)
+            loadWebSupporterProducts(nextStatus.appUserId),
+            SUPPORTER_PRODUCT_LOAD_TIMEOUT_MS
           );
       // stale offering guard
       if (requestGeneration === generation.current) {
