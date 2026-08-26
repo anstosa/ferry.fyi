@@ -5,6 +5,8 @@ import type {
 } from "@revenuecat/purchases-capacitor";
 import type { SupporterProductOption } from "shared/contracts/supporter";
 
+import { createNonThenableCapacitorPlugin } from "~/lib/capacitorPlugin";
+
 let purchases: PurchasesPlugin | null = null;
 let identityTransition: Promise<void> = Promise.resolve();
 let packages: Record<"month" | "year", PurchasesPackage> | null = null;
@@ -43,7 +45,7 @@ const bindNativePurchases = async (
     .then(async () => {
       // singleton configuration guard
       if (!purchases) {
-        purchases = Purchases;
+        purchases = createNonThenableCapacitorPlugin(Purchases);
         await purchases.configure({
           apiKey: getNativeApiKey(),
           appUserID: appUserId,

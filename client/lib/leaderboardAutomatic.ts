@@ -24,6 +24,8 @@ import {
 } from "shared/contracts/leaderboards";
 import { parseAutomaticEnrollmentStatusV1 } from "shared/lib/leaderboardAutomaticContracts";
 
+import { createNonThenableCapacitorPlugin } from "~/lib/capacitorPlugin";
+
 export const AUTOMATIC_LEADERBOARD_CHANGED_EVENT =
   "leaderboard-checkins-changed";
 
@@ -681,8 +683,10 @@ export const getAutomaticLeaderboardPlugin =
       return null;
     }
     const { registerPlugin } = await import("@capacitor/core");
-    return registerPlugin<AutomaticLeaderboardCheckinsPluginV1>(
-      "AutomaticLeaderboardCheckins"
+    return createNonThenableCapacitorPlugin(
+      registerPlugin<AutomaticLeaderboardCheckinsPluginV1>(
+        "AutomaticLeaderboardCheckins"
+      )
     );
   };
 

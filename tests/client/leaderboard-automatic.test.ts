@@ -24,6 +24,7 @@ import {
   retryAutomaticEnrollmentCleanup,
   stageAutomaticEnrollmentCleanup,
 } from "../../client/lib/leaderboardAutomatic";
+import { createNonThenableCapacitorPlugin } from "../../client/lib/capacitorPlugin";
 import type {
   AutomaticEnrollmentCredentialV1,
   AutomaticEnrollmentStatusV1,
@@ -182,6 +183,32 @@ const deferred = () => {
 };
 
 describe("automatic leaderboard client boundary", () => {
+  // prevent capacitor proxy promise assimilation
+  it("loads the native plugin without invoking a synthetic then method", async () => {
+    const bridge = plugin();
+    const syntheticThen = vi.fn(() => {
+      throw new Error(
+        '"AutomaticLeaderboardCheckins.then()" is not implemented on android'
+      );
+    });
+    const capacitorProxy = new Proxy(bridge, {
+      // reproduce capacitor's dynamic plugin method lookup
+      get(target, property, receiver) {
+        // expose the synthetic method that breaks async returns
+        if (property === "then") {
+          return syntheticThen;
+        }
+        return Reflect.get(target, property, receiver);
+      },
+    });
+
+    const safePlugin = createNonThenableCapacitorPlugin(capacitorProxy);
+
+    await expect(Promise.resolve(safePlugin)).resolves.toBe(safePlugin);
+    await expect(safePlugin.getStatus()).resolves.toEqual(status());
+    expect(syntheticThen).not.toHaveBeenCalled();
+  });
+
   // reject one stale owner before the next asynchronous phase
   it("binds enrollment operations to the current auth subject", () => {
     const subject = { current: "auth0|one" };
