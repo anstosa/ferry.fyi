@@ -111,19 +111,14 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
 
-      - name: Verify production billing, Firebase, and report configuration
+      - name: Verify production billing and Firebase configuration
         env:
           WEB_TASK_DEFINITION_FAMILY: ${{ vars.ECS_WEB_TASK_DEFINITION_FAMILY }}
         run: |
           set -euo pipefail
           TASK_DEFINITION="$(aws ecs describe-task-definition --task-definition "${WEB_TASK_DEFINITION_FAMILY}")"
-          REPORT_VALUE_FROM="$(jq -r '.taskDefinition.containerDefinitions[] | select(.name == "web") | .secrets[] | select(.name == "REPORT_BASE_URL") | .valueFrom' <<< "${TASK_DEFINITION}")"
           PROJECT_VALUE_FROM="$(jq -r '.taskDefinition.containerDefinitions[] | select(.name == "web") | .secrets[] | select(.name == "FIREBASE_PROJECT_ID") | .valueFrom' <<< "${TASK_DEFINITION}")"
           SERVICE_ACCOUNT_VALUE_FROM="$(jq -r '.taskDefinition.containerDefinitions[] | select(.name == "web") | .secrets[] | select(.name == "FIREBASE_SERVICE_ACCOUNT") | .valueFrom' <<< "${TASK_DEFINITION}")"
-          if [[ -z "${REPORT_VALUE_FROM}" || "${REPORT_VALUE_FROM}" == "null" ]]; then
-            echo "REPORT_BASE_URL is missing from the active task-definition family" >&2
-            exit 1
-          fi
           PROJECT_SECRET_ARN="${PROJECT_VALUE_FROM%:FIREBASE_PROJECT_ID::}"
           SERVICE_ACCOUNT_SECRET_ARN="${SERVICE_ACCOUNT_VALUE_FROM%:FIREBASE_SERVICE_ACCOUNT::}"
           if [[ -z "${PROJECT_VALUE_FROM}" || "${PROJECT_VALUE_FROM}" == "null" || -z "${SERVICE_ACCOUNT_VALUE_FROM}" || "${SERVICE_ACCOUNT_VALUE_FROM}" == "null" || "${PROJECT_SECRET_ARN}" != "${SERVICE_ACCOUNT_SECRET_ARN}" ]]; then

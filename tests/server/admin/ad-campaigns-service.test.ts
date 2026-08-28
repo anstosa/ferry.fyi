@@ -32,6 +32,7 @@ vi.mock("~/models/AdPlacementHourlyMetric", () => ({
 vi.mock("~/models/AdReportShare", () => ({ AdReportShare: shares }));
 
 import {
+  createAdReportShare,
   getAdCampaignReport,
   getAdInventoryReport,
   scheduleAdCampaign,
@@ -123,6 +124,32 @@ describe("admin ad campaigns", () => {
       viewabilityRate: "50.00%",
       viewableCount: "5",
     });
+  });
+
+  it("creates private report links on the Ferry FYI app origin", async () => {
+    const originalBaseUrl = process.env.BASE_URL;
+    process.env.BASE_URL = "https://ferry.fyi";
+    campaigns.findByPk.mockResolvedValue({ id: "campaign" });
+    shares.create.mockImplementation(async (value) => ({
+      ...value,
+      createdAt: new Date("2026-08-28T12:00:00.000Z"),
+      revokedAt: null,
+    }));
+
+    try {
+      const created = await createAdReportShare("campaign");
+
+      expect(created.url).toMatch(
+        /^https:\/\/ferry\.fyi\/ad-reports\/#adr_[A-Za-z0-9_-]+$/
+      );
+    } finally {
+      // restore the shared environment
+      if (originalBaseUrl === undefined) {
+        delete process.env.BASE_URL;
+      } else {
+        process.env.BASE_URL = originalBaseUrl;
+      }
+    }
   });
 
   it("aggregates placements and fills weekday and hour drill-down buckets", async () => {

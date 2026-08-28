@@ -118,32 +118,27 @@ describe("wrapApiResponse", () => {
 });
 
 describe("full API error boundary", () => {
-  it("does not expose the application API on the advertiser report host", async () => {
-    vi.stubEnv("REPORT_BASE_URL", "https://reports.santosa.family");
+  it("serves advertiser reports on the app origin outside the API", async () => {
     const api = vi.fn((_request, response) => response.send({ exposed: true }));
-    try {
-      const response = await request(
-        createApp({
-          apiHandler: api,
-          staticHandler: express
-            .Router()
-            .use((_request, fallbackResponse) =>
-              fallbackResponse.sendStatus(404)
-            ),
-        })
-      )
-        .get("/api/ads/exposures")
-        .set("Host", "reports.santosa.family")
-        .expect(404);
+    const response = await request(
+      createApp({
+        apiHandler: api,
+        staticHandler: express
+          .Router()
+          .use((_request, fallbackResponse) =>
+            fallbackResponse.sendStatus(404)
+          ),
+      })
+    )
+      .get("/ad-reports/")
+      .set("Host", "ferry.fyi")
+      .expect(200);
 
-      expect(response.text).toBe("Not found");
-      expect(api).not.toHaveBeenCalled();
-      expect(response.headers["x-robots-tag"]).toBe(
-        "noindex, noarchive, nofollow"
-      );
-    } finally {
-      vi.unstubAllEnvs();
-    }
+    expect(response.text).toContain("Ferry FYI campaign report");
+    expect(api).not.toHaveBeenCalled();
+    expect(response.headers["x-robots-tag"]).toBe(
+      "noindex, noarchive, nofollow"
+    );
   });
 
   it("keeps body-parser failures in the JSON envelope", async () => {

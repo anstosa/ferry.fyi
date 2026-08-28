@@ -42,6 +42,12 @@ const InitialRouteReady = ({
   return <>{children}</>;
 };
 
+// identify canonical advertiser reports
+const isAdvertiserReportUrl = (url: URL): boolean =>
+  url.protocol === "https:" &&
+  url.hostname === "ferry.fyi" &&
+  (url.pathname === "/ad-reports" || url.pathname.startsWith("/ad-reports/"));
+
 // application shell
 export const App = ({
   suspendInitialRoute = false,
@@ -109,6 +115,11 @@ export const App = ({
     try {
       appUrl = new URL(url);
     } catch {
+      return;
+    }
+    // keep private reports in the browser
+    if (device?.isNativeMobile && isAdvertiserReportUrl(appUrl)) {
+      await Browser.open({ url: appUrl.toString() });
       return;
     }
     if (

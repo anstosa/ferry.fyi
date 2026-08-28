@@ -19,7 +19,6 @@ FIREBASE_VAPID_KEY	build-time public	GitHub variable / Docker build arg	value co
 GOOGLE_ANALYTICS	build-time public	GitHub variable / Docker build arg	value comes from Heroku classification or provider public config; do not commit
 GTM_CONTAINER_ID	build-time public	GitHub variable / Docker build arg	value comes from Heroku classification or provider public config; do not commit
 MAPBOX_ACCESS_TOKEN	build-time public	GitHub variable / Docker build arg	value comes from Heroku classification or provider public config; do not commit
-REPORT_BASE_URL	runtime server config	AWS Secrets Manager app config JSON	dedicated HTTPS advertiser-report origin
 REVENUECAT_ANDROID_PUBLIC_API_KEY	build-time public	GitHub variable / Docker build arg	public Google app SDK key
 REVENUECAT_IOS_PUBLIC_API_KEY	build-time public	GitHub variable / Docker build arg	public Apple app SDK key
 REVENUECAT_PROJECT_ID	runtime server config	AWS Secrets Manager app config JSON	RevenueCat project identifier

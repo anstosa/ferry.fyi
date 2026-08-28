@@ -8,41 +8,55 @@ const reports = vi.hoisted(() => ({
 }));
 vi.mock("~/lib/admin/adCampaigns", () => reports);
 
-import { createAdReportRouter } from "../../server/controllers/static/adReports";
+import {
+  createAdReportRouter,
+  createLegacyAdReportRedirectRouter,
+} from "../../server/controllers/static/adReports";
 
-describe("advertiser report host", () => {
+// mount the production report path
+const reportApp = (): express.Express =>
+  express().use("/ad-reports", createAdReportRouter());
+
+describe("same-origin advertiser reports", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.REPORT_BASE_URL = "https://reports.santosa.family";
   });
 
-  it("serves an analytics-free no-store shell only on the report host", async () => {
-    const app = express().use(createAdReportRouter());
-    const response = await request(app)
-      .get("/")
-      .set("Host", "reports.santosa.family")
-      .expect(200);
+  it("serves a branded analytics-free no-store shell", async () => {
+    const response = await request(reportApp()).get("/ad-reports/").expect(200);
 
     expect(response.text).toContain("Ferry FYI campaign report");
+    expect(response.text).toContain("/static/images/ferry-fyi-logo.png");
+    expect(response.text).toContain("/ad-reports/report.css");
     expect(response.text).not.toMatch(/google|sentry|dataLayer/i);
     expect(response.headers["cache-control"]).toBe("no-store");
+    expect(response.headers["content-security-policy"]).toContain(
+      "style-src 'self'"
+    );
     expect(response.headers["x-robots-tag"]).toContain("noindex");
+  });
 
-    await request(app).get("/").set("Host", "ferry.fyi").expect(404);
+  it("serves app-styled report assets from the same path", async () => {
+    const app = reportApp();
+    const css = await request(app).get("/ad-reports/report.css").expect(200);
+    const script = await request(app).get("/ad-reports/report.js").expect(200);
+
+    expect(css.text).toContain("linear-gradient(135deg, #016f52");
+    expect(css.headers["content-type"]).toContain("text/css");
+    expect(script.text).toContain("/ad-reports/report-data");
+    expect(script.headers["content-type"]).toContain("javascript");
   });
 
   it("exchanges a body secret for one campaign-scoped aggregate report", async () => {
     reports.getSharedAdCampaignReport.mockResolvedValue({
-      campaign: { reportName: "Coffee launch" },
+      campaign: { advertiserName: "Island Coffee", reportName: "Coffee launch" },
       daily: [],
       methodology: "Aggregate only",
       totals: {},
     });
-    const app = express().use(createAdReportRouter());
 
-    const response = await request(app)
-      .post("/report-data")
-      .set("Host", "reports.santosa.family")
+    const response = await request(reportApp())
+      .post("/ad-reports/report-data")
       .send({ token: "adr_secret" })
       .expect(200);
 
@@ -52,24 +66,27 @@ describe("advertiser report host", () => {
     );
   });
 
-  it("blocks ordinary app paths on the report host", async () => {
-    await request(express().use(createAdReportRouter()))
-      .get("/schedule/3/7")
-      .set("Host", "reports.santosa.family")
-      .expect(404);
+  it("does not claim ordinary app paths", async () => {
+    await request(reportApp()).get("/schedule/3/7").expect(404);
   });
 
-  it("rejects a report origin that would replace the normal app", () => {
-    const originalBaseUrl = process.env.BASE_URL;
-    try {
-      process.env.BASE_URL = "https://reports.santosa.family";
-      expect(() => createAdReportRouter()).toThrow("dedicated origin");
-    } finally {
-      if (originalBaseUrl === undefined) {
-        delete process.env.BASE_URL;
-      } else {
-        process.env.BASE_URL = originalBaseUrl;
-      }
-    }
+  it("moves previously issued links to the canonical report path", async () => {
+    const app = express()
+      .use(createLegacyAdReportRedirectRouter())
+      .use((_request, response) => response.sendStatus(404));
+    const shell = await request(app)
+      .get("/")
+      .set("Host", "reports.santosa.family")
+      .expect(200);
+    const script = await request(app)
+      .get("/legacy-ad-report-redirect.js")
+      .set("Host", "reports.santosa.family")
+      .expect(200);
+
+    expect(shell.text).toContain("/legacy-ad-report-redirect.js");
+    expect(shell.headers["cache-control"]).toBe("no-store");
+    expect(script.text).toContain('new URL("/ad-reports/", "https://ferry.fyi")');
+    expect(script.text).toContain("target.hash = location.hash");
+    await request(app).get("/").set("Host", "ferry.fyi").expect(404);
   });
 });

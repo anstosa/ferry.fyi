@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   addListener: vi.fn(),
   browserClose: vi.fn(() => Promise.resolve()),
+  browserOpen: vi.fn(() => Promise.resolve()),
   device: { isNativeMobile: false, platform: "web" },
   isAuth0CallbackUrl: vi.fn(() => false),
   navigate: vi.fn(),
@@ -20,7 +21,7 @@ vi.mock("@capacitor/app", () => ({
   App: { addListener: mocks.addListener },
 }));
 vi.mock("@capacitor/browser", () => ({
-  Browser: { close: mocks.browserClose },
+  Browser: { close: mocks.browserClose, open: mocks.browserOpen },
 }));
 vi.mock("framer-motion", () => ({
   AnimatePresence: ({ children }: React.PropsWithChildren) => children,
@@ -207,5 +208,26 @@ describe("App native back-button lifecycle", () => {
       "fyi.ferry://auth.ferry.fyi/capacitor/fyi.ferry/callback"
     );
     expect(mocks.navigate).toHaveBeenCalledWith("/");
+  });
+
+  // advertiser report browser handoff
+  it("opens same-domain advertiser reports outside the native app", async () => {
+    mocks.device.isNativeMobile = true;
+    mocks.device.platform = "android";
+    await renderApp();
+    mocks.browserOpen.mockClear();
+    mocks.navigate.mockClear();
+
+    await act(async () => {
+      await appUrlOpenCallback()({
+        url: "https://ferry.fyi/ad-reports/#adr_private-token",
+      });
+    });
+
+    expect(mocks.browserClose).toHaveBeenCalledOnce();
+    expect(mocks.browserOpen).toHaveBeenCalledWith({
+      url: "https://ferry.fyi/ad-reports/#adr_private-token",
+    });
+    expect(mocks.navigate).not.toHaveBeenCalled();
   });
 });

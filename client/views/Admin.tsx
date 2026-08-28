@@ -461,6 +461,7 @@ const AdminSection = ({
   );
 };
 
+// require one explicit confirmation click
 const ConfirmButton = ({
   action,
   buttonClassName = "button button-primary mt-3",
@@ -480,17 +481,15 @@ const ConfirmButton = ({
   target: string;
   trigger?: (props: { disabled: boolean; onClick: () => void }) => ReactElement;
 }): ReactElement => {
-  const phrase = confirmationPhrase(action, target);
-  const [confirmation, setConfirmation] = useState("");
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // execute one confirmed mutation
   const execute = async (): Promise<void> => {
     setSaving(true);
     setError(null);
     try {
       await onConfirm();
-      setConfirmation("");
       setOpen(false);
     } catch (caught) {
       setError(adminActionErrorMessage(caught));
@@ -529,21 +528,10 @@ const ConfirmButton = ({
             <h3 className="font-bold text-lg" id={`${action}-${target}-title`}>
               Confirm {label}
             </h3>
-            <label
-              className="mt-3 block text-sm font-semibold"
-              htmlFor={`${action}-${target}`}
-            >
-              Type <code className="break-all text-xs">{phrase}</code> to{" "}
-              {label.toLowerCase()}.
-            </label>
-            <input
-              aria-label={`Confirmation for ${label}`}
-              autoFocus
-              className="mt-2 w-full rounded border border-gray-medium bg-white p-2 text-sm text-gray-900 dark:bg-blue-darkest dark:text-gray-100"
-              id={`${action}-${target}`}
-              onChange={(event) => setConfirmation(event.target.value)}
-              value={confirmation}
-            />
+            <p className="mt-3 text-sm text-gray-dark dark:text-gray-light">
+              Confirm this action for{" "}
+              <code className="break-all text-xs">{target}</code>.
+            </p>
             {error && <p className="mt-2 text-sm text-red-dark">{error}</p>}
             <div className="mt-4 flex justify-end gap-2">
               <button
@@ -555,8 +543,9 @@ const ConfirmButton = ({
                 Cancel
               </button>
               <button
+                autoFocus
                 className="button button-primary"
-                disabled={saving || confirmation !== phrase}
+                disabled={saving}
                 onClick={execute}
                 type="button"
               >
@@ -763,6 +752,7 @@ export const Admin = (): ReactElement => {
   );
   const [createdAdReportShare, setCreatedAdReportShare] =
     useState<AdReportShareCreated | null>(null);
+  const [adReportShareCopied, setAdReportShareCopied] = useState(false);
   const [adReportName, setAdReportName] = useState("");
   const [adStartsAt, setAdStartsAt] = useState("");
   const [adEndsAt, setAdEndsAt] = useState("");
@@ -891,6 +881,7 @@ export const Admin = (): ReactElement => {
     setAdCampaignReport(report);
     setAdReportShares(shares);
     setCreatedAdReportShare(null);
+    setAdReportShareCopied(false);
   };
 
   // refresh aggregate or placement analytics
@@ -935,6 +926,21 @@ export const Admin = (): ReactElement => {
     link.download = `ad-campaign-${campaignId}.csv`;
     link.click();
     URL.revokeObjectURL(url);
+  };
+  // copy the one-time report link
+  const copyCreatedAdReportShare = async (): Promise<void> => {
+    // require one readable share
+    if (!createdAdReportShare || !navigator.clipboard) {
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(createdAdReportShare.url);
+      setAdReportShareCopied(true);
+      // reset copy feedback
+      setTimeout(() => setAdReportShareCopied(false), 2500);
+    } catch {
+      setAdReportShareCopied(false);
+    }
   };
   const loadContent = async (): Promise<void> => {
     const value = await get<Content>("/admin/content", await token());
@@ -1075,9 +1081,9 @@ export const Admin = (): ReactElement => {
   return (
     <Page title="Admin">
       <p className="my-4 text-sm text-gray-dark dark:text-gray-light">
-        Owner-only controls. Destructive actions require the exact
-        server-validated phrase; this console does not load user data until a
-        supported lookup exists.
+        Owner-only controls. Destructive actions require a separate confirm
+        click; this console does not load user data until a supported lookup
+        exists.
       </p>
       <div
         aria-label="Admin tools"
@@ -2334,19 +2340,37 @@ export const Admin = (): ReactElement => {
                           await token()
                         );
                         setCreatedAdReportShare(created);
+                        setAdReportShareCopied(false);
                         setAdReportShares((current) => [created, ...current]);
                       }}
                     />
                     {createdAdReportShare ? (
-                      <label className="mt-3 block text-sm">
-                        Copy this link now; the secret is not stored in readable
-                        form.
-                        <input
-                          className="mt-1 w-full rounded border border-gray-medium bg-white p-2 text-gray-900 dark:bg-blue-darkest dark:text-gray-100"
-                          readOnly
-                          value={createdAdReportShare.url}
-                        />
-                      </label>
+                      <div className="mt-3 text-sm">
+                        <p>
+                          Copy this link now; the secret is not stored in
+                          readable form.
+                        </p>
+                        <div className="mt-1 flex flex-wrap items-center gap-2">
+                          <a
+                            className="link min-w-0 break-all"
+                            href={createdAdReportShare.url}
+                            rel="noopener noreferrer"
+                            target="_blank"
+                          >
+                            {createdAdReportShare.url}
+                          </a>
+                          {/* copy the private link */}
+                          <button
+                            className="button button-secondary button-small shrink-0"
+                            onClick={() =>
+                              copyCreatedAdReportShare().catch(() => undefined)
+                            }
+                            type="button"
+                          >
+                            {adReportShareCopied ? "Copied" : "Copy link"}
+                          </button>
+                        </div>
+                      </div>
                     ) : null}
                     <ul className="mt-3 space-y-2 text-sm">
                       {adReportShares.map((share) => (

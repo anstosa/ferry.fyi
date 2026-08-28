@@ -201,7 +201,7 @@ describe("Admin", () => {
   });
 
   // preserve actionable mutation failures
-  it("shows the server reason when a confirmed admin action fails", async () => {
+  it("confirms with one click and shows the server reason on failure", async () => {
     window.history.replaceState({}, "", "/admin?tab=ads");
     api.get.mockImplementation((path: string) => {
       // load the ad controls
@@ -234,30 +234,17 @@ describe("Admin", () => {
     const save = [...container.querySelectorAll("button")].find(
       (button) => button.textContent === "Save global ad switch"
     );
-    // open the typed confirmation dialog
+    // open the confirmation dialog
     await act(async () => {
       save?.click();
     });
-    const confirmation = container.querySelector(
-      '[aria-label="Confirmation for Save global ad switch"]'
+    const dialog = container.querySelector<HTMLElement>('[role="dialog"]');
+    expect(dialog).toBeInstanceOf(HTMLElement);
+    expect(dialog?.querySelector("input")).toBeNull();
+    const confirmedSave = [...(dialog?.querySelectorAll("button") ?? [])].find(
+      (button) => button.textContent === "Save global ad switch"
     );
-    expect(confirmation).toBeInstanceOf(HTMLInputElement);
-    // stop when the expected control is unavailable
-    if (!(confirmation instanceof HTMLInputElement)) {
-      throw new Error("Missing ad switch confirmation input");
-    }
-    // enter the canonical phrase
-    await act(async () => {
-      Object.getOwnPropertyDescriptor(
-        HTMLInputElement.prototype,
-        "value"
-      )?.set?.call(confirmation, "CONFIRM save-ad-settings ads:global");
-      confirmation.dispatchEvent(new Event("input", { bubbles: true }));
-    });
-    const confirmedSave = [...container.querySelectorAll("button")].find(
-      (button) =>
-        button.textContent === "Save global ad switch" && button !== save
-    );
+    expect(confirmedSave?.disabled).toBe(false);
     // submit the failing request
     await act(async () => {
       confirmedSave?.click();
@@ -267,6 +254,16 @@ describe("Admin", () => {
 
     expect(container.textContent).toContain(
       "Campaign schedule overlaps an existing campaign"
+    );
+    expect(api.put).toHaveBeenCalledWith(
+      "/admin/ads/global",
+      {
+        action: "save-ad-settings",
+        adsEnabled: true,
+        confirmation: "CONFIRM save-ad-settings ads:global",
+        target: "ads:global",
+      },
+      "access-token"
     );
   });
 
@@ -978,5 +975,151 @@ describe("Admin", () => {
     expect(
       container.querySelector<HTMLInputElement>("#admin-ad-headline")?.value
     ).toBe("Mukilteo offer");
+  });
+
+  it("shows a linked advertiser report URL with clipboard copy", async () => {
+    const reportUrl = "https://ferry.fyi/ad-reports/#adr_private";
+    const writeText = vi.fn(() => Promise.resolve());
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+    window.history.replaceState(
+      {},
+      "",
+      "/admin?tab=ads&placement=schedule--5--14"
+    );
+    api.get.mockImplementation((path: string) => {
+      // load one report placement
+      if (path === "/admin/ads") {
+        return Promise.resolve({
+          adsEnabled: true,
+          placements: [
+            {
+              advertiserName: "Island Coffee",
+              arrivalTerminalId: "14",
+              body: "",
+              departureTerminalId: "5",
+              enabled: true,
+              headline: "Coffee offer",
+              key: "schedule--5--14",
+              slot: "schedule",
+              targetUrl: "https://example.com",
+            },
+          ],
+        });
+      }
+      // load one campaign
+      if (path === "/admin/ads/campaigns") {
+        return Promise.resolve([
+          {
+            advertiserName: "Island Coffee",
+            arrivalTerminalId: "14",
+            body: "",
+            departureTerminalId: "5",
+            endedEarlyAt: null,
+            endsAt: "2026-09-01T07:00:00.000Z",
+            headline: "Coffee offer",
+            id: "campaign",
+            placementKey: "schedule--5--14",
+            reportName: "Coffee launch",
+            slot: "schedule",
+            startsAt: "2026-08-01T07:00:00.000Z",
+            targetUrl: "https://example.com",
+          },
+        ]);
+      }
+      // load inventory analytics
+      if (path.startsWith("/admin/ads/reports/inventory?")) {
+        return Promise.resolve(emptyInventoryReport);
+      }
+      // load campaign reporting
+      if (path === "/admin/ads/reports/campaigns/campaign") {
+        return Promise.resolve({
+          campaign: {
+            id: "campaign",
+            reportName: "Coffee launch",
+          },
+          daily: [],
+          methodology: "Aggregate only",
+          totals: {
+            clickCount: "0",
+            clickThroughRate: null,
+            opportunityCount: "1",
+            servedCount: "1",
+            viewabilityRate: "100.00%",
+            viewableCount: "1",
+          },
+        });
+      }
+      // load existing shares
+      if (path === "/admin/ads/campaigns/campaign/shares") {
+        return Promise.resolve([]);
+      }
+      return Promise.reject(new Error(`Unexpected request: ${path}`));
+    });
+    api.post.mockResolvedValue({
+      campaignId: "campaign",
+      createdAt: "2026-08-28T12:00:00.000Z",
+      id: "share",
+      revokedAt: null,
+      url: reportUrl,
+    });
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    // render the report controls
+    await act(async () => {
+      root?.render(renderAdmin());
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    // load the campaign report
+    await act(async () => {
+      [...container.querySelectorAll("button")]
+        .find((button) => button.textContent === "View report")
+        ?.click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    // open the share confirmation
+    await act(async () => {
+      [...container.querySelectorAll("button")]
+        .find(
+          (button) => button.textContent === "Create advertiser report link"
+        )
+        ?.click();
+    });
+    const dialog = container.querySelector<HTMLElement>('[role="dialog"]');
+    // create the private share
+    await act(async () => {
+      [...(dialog?.querySelectorAll("button") ?? [])]
+        .find(
+          (button) => button.textContent === "Create advertiser report link"
+        )
+        ?.click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const link = container.querySelector<HTMLAnchorElement>(
+      `a[href="${reportUrl}"]`
+    );
+    expect(link?.textContent).toBe(reportUrl);
+    expect(
+      [...container.querySelectorAll("input")].some(
+        (input) => input.value === reportUrl
+      )
+    ).toBe(false);
+    // copy the rendered link
+    await act(async () => {
+      [...container.querySelectorAll("button")]
+        .find((button) => button.textContent === "Copy link")
+        ?.click();
+      await Promise.resolve();
+    });
+    expect(writeText).toHaveBeenCalledWith(reportUrl);
+    expect(container.textContent).toContain("Copied");
   });
 });

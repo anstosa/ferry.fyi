@@ -9,7 +9,10 @@ import {
 import { apiRouter, automaticLeaderboardNativeRouter } from "~/controllers/api";
 import { revenueCatWebhookRouter } from "~/controllers/revenueCatWebhook";
 import { createStaticRouter, staticRouter } from "~/controllers/static";
-import { createAdReportRouter } from "~/controllers/static/adReports";
+import {
+  createAdReportRouter,
+  createLegacyAdReportRedirectRouter,
+} from "~/controllers/static/adReports";
 import {
   type AdminOperationName,
   runAdminOperation,
@@ -157,16 +160,15 @@ export function createApp({
       forceHttps(request, response, next);
     });
   }
-  // The dedicated advertiser-report origin is a separate, minimal surface.
-  // Gate it before API, development middleware, and the normal app.
-  app.use(createAdReportRouter());
+  // move previously issued report links to the canonical app domain
+  app.use(createLegacyAdReportRedirectRouter());
+  // Keep private reports outside the SPA and its analytics runtime.
+  app.use("/ad-reports", createAdReportRouter());
   // preserve exact RevenueCat webhook bytes
   app.use("/api/supporter/revenuecat/webhook", revenueCatWebhookRouter);
   // isolate native parsing and policy before ordinary api middleware
   app.use("/api/leaderboards/native", nativeAutomaticHandler);
   app.use("/api/ads", express.json({ limit: "2kb" }));
-  app.use("/report-data", express.json({ limit: "4kb" }));
-  app.use("/report-export", express.json({ limit: "4kb" }));
   app.use(express.json());
   // mount routes
   app.use("/api", apiHandler);

@@ -276,6 +276,10 @@ export default defineConfig(() => ({
       "/auth":
         process.env.VITE_API_PROXY_TARGET ??
         `http://localhost:${process.env.PORT ?? "4040"}`,
+      // proxy private advertiser reports
+      "/ad-reports":
+        process.env.VITE_API_PROXY_TARGET ??
+        `http://localhost:${process.env.PORT ?? "4040"}`,
     },
   },
   css: {

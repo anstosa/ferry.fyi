@@ -12,15 +12,17 @@ owner. Authentication, ownership lookup, or ownership mismatch failures deny
 access. Client-side menu or route visibility does not grant access. Admin
 responses use `Cache-Control: no-store`.
 
-Mutations require an action-specific typed confirmation. The server derives the
-canonical target from the trusted route resource and accepts only the normalized
-phrase `CONFIRM <action> <target>`. A client cannot choose another target or
-replace the phrase with a boolean. The server removes the phrase before calling
-the domain handler and does not store or log it.
+Mutations require an action-specific confirmation dialog, but the owner does
+not type a confirmation phrase. The admin UI displays the trusted target and
+runs the mutation only after the owner selects its confirm button. The client
+then supplies the normalized phrase `CONFIRM <action> <target>` automatically.
+The server derives the canonical target from the trusted route resource and
+accepts only the matching action, target, and phrase. It removes the phrase
+before calling the domain handler and does not store or log it.
 
-Use the admin UI to obtain the exact target and confirmation prompt. Do not
-reuse a confirmation intended for one user, operation, or content item on
-another target.
+Use the admin UI to review the exact target before confirming. A confirmation
+intended for one user, operation, or content item cannot be reused for another
+target.
 
 ## Feature delivery and manual check-ins
 
@@ -37,7 +39,7 @@ never makes a feature public. There is no percentage rollout or expiry.
 
 Automatic check-ins have an independent `automaticLeaderboardCheckins` child
 flag. The owner admin UI manages its global state, exact Auth0 subject allowlist,
-and typed-confirmation kill switch separately from `leaderboards`. Evaluation is
+and confirmation-gated kill switch separately from `leaderboards`. Evaluation is
 kill switch, global enable, then subject allowlist, and the parent leaderboard
 decision must also pass. The legacy compact feature update mutates only the
 parent and cannot enable or disable the child. Production native capability
@@ -276,13 +278,16 @@ delivery but not opportunity measurement. The separate
 `AD_MEASUREMENT_ENABLED=false` environment switch is incident-only and creates
 an explicit prospective measurement gap.
 
-Advertiser report links use `REPORT_BASE_URL`, which must be a report-only host
-not claimed by Android App Links. The bearer secret is in the URL fragment,
-stored only as a hash, removed from the browser location after load, and valid
-until the owner irrevocably revokes it. Report responses are campaign-scoped,
-aggregate-only, non-cacheable, non-indexable, and excluded from the main SPA and
-analytics. Never put report or exposure secrets in logs, analytics, query
-strings, support messages, `llms.txt`, OpenAPI, or sitemap entries.
+Advertiser report links use the canonical `BASE_URL` and the private
+`/ad-reports/` path. The standalone same-origin page uses Ferry FYI branding
+without loading the main SPA or analytics. The bearer secret is in the URL
+fragment, stored only as a hash, removed from the browser location after load,
+and valid until the owner irrevocably revokes it. Report responses are
+campaign-scoped, aggregate-only, non-cacheable, and non-indexable. Never put
+report or exposure secrets in logs, analytics, query strings, support messages,
+`llms.txt`, OpenAPI, or sitemap entries. Previously issued links on the legacy
+report host immediately move to the canonical path while preserving the
+fragment secret.
 
 Complete `docs/app-store-advertising.md` before enabling the persisted global
 switch for the first production app-store advertising release. Revisit that
@@ -291,7 +296,7 @@ destinations, or ad surfaces change.
 
 ## Deliberate no-audit policy
 
-This suite does not keep an actor/action audit history. It does not retain typed
+This suite does not keep an actor/action audit history. It does not retain
 confirmation values, notification delivery history, recipients, message bodies,
 or an operation run log. The current operation-status row, temporary aggregate
 notification status, and short-lived non-identifying token-revocation watermark
@@ -306,14 +311,15 @@ one.
 When adding or changing an admin capability:
 
 1. Mount it only below the authenticated owner composition root.
-2. Require a server-derived typed confirmation for every destructive mutation.
+2. Require an explicit confirm-button step and server-derived action/target
+   confirmation for every destructive mutation.
 3. Keep production native automatic capability flags off until G010 evidence is approved.
 4. Route all provider notifications through the final shared policy boundary.
 5. Put public crawler, sitemap, and `llms.txt` behavior behind the persisted
    content controls before static-file middleware.
 6. Keep draft/disabled advertising creative out of anonymous responses,
-   preserve ordered departure/arrival keys, and keep report hosts/secrets out of
-   discovery and the main app runtime.
+   preserve ordered departure/arrival keys, and keep report paths/secrets out of
+   discovery, analytics, and ordinary SPA state.
 7. Re-run `docs/app-store-advertising.md` before changing any advertising data,
    selection, measurement, sharing, creative, or surface behavior.
 8. Update this guide, `docs/leaderboards.md` when leaderboard behavior changes,

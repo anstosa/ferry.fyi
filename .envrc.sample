@@ -1,5 +1,4 @@
 export BASE_URL="http://localhost:4040"
-export REPORT_BASE_URL="http://reports.localhost:4040"
 export AD_MEASUREMENT_ENABLED="true"
 export DATABASE_URL="postgres://test:testing@localhost:5432/ferryfyi"
 

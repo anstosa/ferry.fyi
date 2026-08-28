@@ -213,8 +213,4 @@ Auth0 requires AWS API credentials for its native SES integration. Do not enter
 SES SMTP credentials in the AWS provider form; API credentials and SMTP
 credentials are different credential types.
 
-Set `REPORT_BASE_URL` in the runtime app-config secret to the dedicated HTTPS
-origin `https://reports.santosa.family`. The report hostname must route to the
-web service but remain separate from the main app origin.
-
 Keep `web_desired_count = 1` while the web process owns scheduled work. The shared database operation leases prevent deploy/startup overlap, but multiple long-lived web schedulers would maintain independent notification transition state.

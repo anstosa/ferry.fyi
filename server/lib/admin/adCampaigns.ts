@@ -413,25 +413,17 @@ export const listAdReportShares = async (
     })
   ).map(asShare);
 
+// resolve the same-origin report base
 const reportBaseUrl = (): string => {
-  const configured = process.env.REPORT_BASE_URL;
+  const configured = process.env.BASE_URL;
+  // require production configuration
   if (!configured && process.env.NODE_ENV === "production") {
-    throw new Error("REPORT_BASE_URL is required");
+    throw new Error("BASE_URL is required");
   }
-  const url = new URL(configured ?? "http://reports.localhost:4040");
+  const url = new URL(configured ?? "http://localhost:4040");
+  // require production transport
   if (process.env.NODE_ENV === "production" && url.protocol !== "https:") {
-    throw new Error("REPORT_BASE_URL must use HTTPS in production");
-  }
-  let appOrigin: string | null = null;
-  try {
-    appOrigin = process.env.BASE_URL
-      ? new URL(process.env.BASE_URL).origin
-      : null;
-  } catch {
-    // BASE_URL validation belongs to the main server configuration boundary.
-  }
-  if (url.origin === appOrigin) {
-    throw new Error("REPORT_BASE_URL must use a dedicated origin");
+    throw new Error("BASE_URL must use HTTPS in production");
   }
   return url.origin;
 };
@@ -450,7 +442,7 @@ export const createAdReportShare = async (
     id: randomUUID(),
     tokenHash: hashSecret(token),
   });
-  return { ...asShare(share), url: `${baseUrl}/#${token}` };
+  return { ...asShare(share), url: `${baseUrl}/ad-reports/#${token}` };
 };
 
 export const revokeAdReportShare = async (

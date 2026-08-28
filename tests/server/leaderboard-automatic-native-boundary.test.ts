@@ -777,7 +777,6 @@ describe("automatic native transport and limits", () => {
   it("bypasses global forceHttps redirect only for the native rejection", async () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("BASE_URL", "https://ferry.fyi");
-    vi.stubEnv("REPORT_BASE_URL", "https://reports.ferry.fyi");
     const nativeHandler = createAutomaticLeaderboardNativeRouter(
       nativeDependencies({ enforceHttps: true, enforceOrigin: true })
     );
