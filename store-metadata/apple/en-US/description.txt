@@ -27,5 +27,6 @@ Choose a monthly or yearly subscription. U.S. pricing is $2.49 per month or $19.
 
 Sign in to your Ferry FYI account to use Supporter benefits. Existing subscribers can use Restore Purchases in the app.
 
-Terms of Service: https://ferry.fyi/terms
+Ferry FYI Terms of Service: https://ferry.fyi/terms
+Terms of Use (EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
 Privacy Policy: https://ferry.fyi/privacy

@@ -14,6 +14,7 @@ import {
 
 interface Props {
   time: DateTime;
+  hasDeparted: boolean;
   isExpanded: boolean;
   isNext: boolean;
   context: ScheduleSailingContext;
@@ -24,6 +25,7 @@ interface Props {
 // render schedule time
 export const Time = ({
   context,
+  hasDeparted,
   isExpanded,
   isNext,
   rowState,
@@ -32,7 +34,6 @@ export const Time = ({
 }: Props): ReactElement => {
   const { delayMins, departureTime, isCancelled, scheduledTime } = timing;
   const displayDepartureTime = isCancelled ? scheduledTime : departureTime;
-  const hasDeparted = displayDepartureTime.toMillis() < time.toMillis();
   const diff = displayDepartureTime.diff(time);
 
   let majorTime;

@@ -26,6 +26,7 @@ export interface Vessel {
   classId: string;
   departedTime?: number;
   departureDelta?: number;
+  scheduledDepartureTime?: number;
   gpsDelay?: GpsDelayDetails;
   dockedTime?: number;
   estimatedArrivalTime?: number;

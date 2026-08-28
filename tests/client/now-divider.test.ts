@@ -27,6 +27,16 @@ const withDelay = (slot: Slot, delayMins: number): Slot =>
     },
   }) as Slot;
 
+// add matching live vessel state
+const withLiveVessel = (slot: Slot, isAtDock: boolean): Slot =>
+  ({
+    ...slot,
+    vessel: {
+      isAtDock,
+      scheduledDepartureTime: slot.time,
+    },
+  }) as Slot;
+
 // now divider boundary
 describe("shouldRenderNowDivider", () => {
   // boundary case
@@ -72,6 +82,24 @@ describe("shouldRenderNowDivider", () => {
     });
 
     expect(getCurrentSlot(schedule, time)).toBe(delayedSlot);
+  });
+
+  // active loading case
+  it("keeps a loading sailing current after its projected departure", () => {
+    const loadingSlot = withLiveVessel(
+      makeSlot("2026-06-23T10:30:00", true),
+      true
+    );
+    const schedule = [
+      makeSlot("2026-06-23T10:00:00", true),
+      loadingSlot,
+      makeSlot("2026-06-23T11:00:00", false),
+    ];
+    const time = DateTime.fromISO("2026-06-23T10:35:00", {
+      zone: "America/Los_Angeles",
+    });
+
+    expect(getCurrentSlot(schedule, time)).toBe(loadingSlot);
   });
 
   // past row case

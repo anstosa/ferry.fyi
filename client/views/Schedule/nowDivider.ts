@@ -1,6 +1,7 @@
 import { DateTime } from "luxon";
 import type { Slot } from "shared/contracts/schedules";
 
+import { hasSailingDeparted } from "./departureState";
 import { getProjectedTiming } from "./projectedTiming";
 
 interface ShouldRenderNowDividerOptions {
@@ -19,12 +20,12 @@ export const getCurrentSlot = (
   );
   // current slot search
   for (const scheduleSlot of sortedSlots) {
-    const { departureTime } = getProjectedTiming({
+    const timing = getProjectedTiming({
       schedule,
       slot: scheduleSlot,
     });
-    // future departure guard
-    if (departureTime.toMillis() >= time.toMillis()) {
+    // active departure guard
+    if (!hasSailingDeparted({ slot: scheduleSlot, time, timing })) {
       return scheduleSlot;
     }
   }
@@ -47,11 +48,11 @@ const hasPreviousDeparture = (
   }
   // prior sailing search
   return sortedSlots.slice(0, slotIndex).some((previousSlot) => {
-    const { departureTime } = getProjectedTiming({
+    const timing = getProjectedTiming({
       schedule,
       slot: previousSlot,
     });
-    return departureTime.toMillis() < time.toMillis();
+    return hasSailingDeparted({ slot: previousSlot, time, timing });
   });
 };
 

@@ -74,6 +74,7 @@ import {
   getCapacityFillClassName,
   getForecastCapacityFillClassName,
 } from "./capacityStyles";
+import { hasSailingDeparted } from "./departureState";
 import { getGalleyStatus } from "./galleyHours";
 import { getCurrentSlot } from "./nowDivider";
 import { getProjectedTiming } from "./projectedTiming";
@@ -308,7 +309,7 @@ export const SlotInfo = (props: Props): ReactElement => {
   });
   const isConfirmedCancelled = timing.isCancelled;
   const hasTidalCancellationRisk = Boolean(tidalCancellationRisk);
-  const hasDeparted = timing.departureTime.toMillis() < time.toMillis();
+  const hasDeparted = hasSailingDeparted({ slot, time, timing });
   const isDaylight = isDuringDaylight(
     DateTime.fromSeconds(slot.time),
     location
@@ -593,10 +594,11 @@ export const SlotInfo = (props: Props): ReactElement => {
       )}
       <div className="flex flex-col justify-between items-start z-0">
         <div className="flex-grow" />
-        <Status className="" time={time} timing={timing} />
+        <Status className="" hasDeparted={hasDeparted} timing={timing} />
       </div>
       <Time
         context={sailingContext}
+        hasDeparted={hasDeparted}
         isExpanded={isExpanded}
         isNext={isNext}
         rowState={timeRowState}

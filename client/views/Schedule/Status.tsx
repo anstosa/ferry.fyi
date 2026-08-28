@@ -1,5 +1,4 @@
 import clsx from "clsx";
-import { DateTime } from "luxon";
 import React, { ReactElement } from "react";
 import { pluralize } from "shared/lib/strings";
 
@@ -9,15 +8,18 @@ import { getLateTextClassName } from "./scheduleColors";
 
 interface Props {
   className?: string;
-  time: DateTime;
+  hasDeparted: boolean;
   timing: ProjectedTiming;
 }
 
 const textYellow = "text-yellow-dark dark:text-yellow-medium";
 
-export const Status = ({ className, time, timing }: Props): ReactElement => {
-  const { delayMins, departureTime, isCancelled, scheduledTime } = timing;
-  const hasDeparted = departureTime.toMillis() < time.toMillis();
+export const Status = ({
+  className,
+  hasDeparted,
+  timing,
+}: Props): ReactElement => {
+  const { delayMins, isCancelled, scheduledTime } = timing;
   const formattedScheduledTime = `${scheduledTime.toFormat("h:mm a")}`;
 
   let statusText;

@@ -509,6 +509,13 @@ const toPublicSsrScheduleSlot = (
       tallVehicleCapacity: slot.vessel.tallVehicleCapacity,
       vehicleCapacity: slot.vessel.vehicleCapacity,
       vesselWatchUrl: slot.vessel.vesselWatchUrl,
+      // include live departure state for stable schedule rendering
+      ...(typeof slot.vessel.isAtDock === "boolean"
+        ? { isAtDock: slot.vessel.isAtDock }
+        : {}),
+      ...(Number.isFinite(slot.vessel.scheduledDepartureTime)
+        ? { scheduledDepartureTime: slot.vessel.scheduledDepartureTime }
+        : {}),
     } as Schedule["slots"][number]["vessel"],
     wuid: slot.wuid,
     ...(Number.isFinite(slot.arrivalTime)

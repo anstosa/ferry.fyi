@@ -214,6 +214,7 @@ export const updateVesselStatus = async (): Promise<any> => {
       departingTerminalId: VesselData.DepartingTerminalID,
       departedTime,
       departureDelta,
+      scheduledDepartureTime: departureTime,
       gpsDelay: gpsDelay ?? undefined,
       dockedTime,
       estimatedArrivalTime,

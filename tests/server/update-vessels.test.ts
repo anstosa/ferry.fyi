@@ -154,6 +154,7 @@ describe("vessel status GPS delay", () => {
       expect.objectContaining({
         departedTime: departureTime + 8 * 60,
         departureDelta: 8 * 60,
+        scheduledDepartureTime: departureTime,
         gpsDelay: expect.objectContaining({
           confidence: "high",
           delaySeconds: 12 * 60,
@@ -211,6 +212,7 @@ describe("vessel status GPS delay", () => {
       expect.objectContaining({
         departureDelta: 5 * 60,
         gpsDelay: undefined,
+        scheduledDepartureTime: departureTime,
       })
     );
   });

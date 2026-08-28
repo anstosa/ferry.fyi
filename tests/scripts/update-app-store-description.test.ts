@@ -35,6 +35,9 @@ describe("App Store description automation", () => {
     expect(description).toContain("renews automatically");
     expect(description).toContain("Restore Purchases");
     expect(description).toContain("https://ferry.fyi/terms");
+    expect(description).toContain(
+      "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/"
+    );
     expect(description).toContain("https://ferry.fyi/privacy");
   });
 

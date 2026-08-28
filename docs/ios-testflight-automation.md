@@ -59,7 +59,8 @@ processes the build before it appears in TestFlight.
 The canonical U.S. English App Store description is
 `store-metadata/apple/en-US/description.txt`. Keep the full listing there,
 including the Ferry FYI Supporter benefits, renewal terms, account and restore
-instructions, privacy policy, and terms link.
+instructions, privacy policy, Ferry FYI service terms, and Apple standard EULA
+link.
 
 Run **Update App Store description** from the Actions tab with the exact App
 Store version name. The workflow uses the existing App Store Connect API key to

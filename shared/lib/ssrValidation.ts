@@ -282,15 +282,22 @@ const tide = (value: unknown) =>
     }
   );
 const scheduleVessel = (value: unknown) =>
-  fields(value, {
-    abbreviation: string,
-    id,
-    name: string,
-    speed: finite,
-    tallVehicleCapacity: finite,
-    vehicleCapacity: finite,
-    vesselWatchUrl: string,
-  });
+  fields(
+    value,
+    {
+      abbreviation: string,
+      id,
+      name: string,
+      speed: finite,
+      tallVehicleCapacity: finite,
+      vehicleCapacity: finite,
+      vesselWatchUrl: string,
+    },
+    {
+      isAtDock: (item) => typeof item === "boolean",
+      scheduledDepartureTime: finite,
+    }
+  );
 const slot = (value: unknown) =>
   fields(
     value,

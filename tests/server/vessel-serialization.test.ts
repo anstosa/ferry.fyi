@@ -24,6 +24,7 @@ describe("vessel serialization", () => {
       },
       id: "33",
       info: { ada: null, crossing: null },
+      scheduledDepartureTime: null,
       yearRebuilt: null,
     });
 
@@ -33,6 +34,7 @@ describe("vessel serialization", () => {
     expect(jsonReady).not.toHaveProperty("arrivingTerminalId");
     expect(jsonReady.info).not.toHaveProperty("ada");
     expect(jsonReady.info).not.toHaveProperty("crossing");
+    expect(jsonReady).not.toHaveProperty("scheduledDepartureTime");
     expect(jsonReady).not.toHaveProperty("yearRebuilt");
     expect(jsonReady.gpsDelay.signals).toMatchObject({
       dockDelaySeconds: null,
@@ -47,12 +49,14 @@ describe("vessel serialization", () => {
       arrivingTerminalId: 7,
       id: "33",
       info: { ada: "accessible", crossing: "GPS" },
+      scheduledDepartureTime: 1_000,
       yearRebuilt: 2004,
     });
 
     expect(vessel.serialize()).toMatchObject({
       arrivingTerminalId: 7,
       info: { ada: "accessible", crossing: "GPS" },
+      scheduledDepartureTime: 1_000,
       yearRebuilt: 2004,
     });
   });
