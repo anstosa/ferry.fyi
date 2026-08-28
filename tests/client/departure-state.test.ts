@@ -67,4 +67,18 @@ describe("schedule departure state", () => {
       })
     ).toBe(true);
   });
+
+  // cancelled sailing fallback
+  it("uses schedule timing when the sailing is cancelled", () => {
+    expect(
+      hasSailingDeparted({
+        slot: makeSlot({ isAtDock: true }),
+        time: scheduledTime.plus({ minutes: 2 }),
+        timing: {
+          ...makeTiming(),
+          isCancelled: true,
+        },
+      })
+    ).toBe(true);
+  });
 });
