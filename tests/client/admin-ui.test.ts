@@ -101,6 +101,8 @@ afterEach(() => {
   root = undefined;
   document.body.innerHTML = "";
   window.history.replaceState({}, "", "/");
+  // remove per-test clipboard overrides
+  Reflect.deleteProperty(navigator, "clipboard");
   auth.isAuthenticated = true;
   auth.isLoading = false;
   auth.user = { email: "anstosa@gmail.com" };
