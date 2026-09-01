@@ -1,12 +1,16 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const capacitor = vi.hoisted(() => ({
+  isPluginAvailable: vi.fn(() => true),
   isNativePlatform: vi.fn(() => true),
   registerPlugin: vi.fn(),
 }));
 
 vi.mock("@capacitor/core", () => ({
-  Capacitor: { isNativePlatform: capacitor.isNativePlatform },
+  Capacitor: {
+    isNativePlatform: capacitor.isNativePlatform,
+    isPluginAvailable: capacitor.isPluginAvailable,
+  },
   registerPlugin: capacitor.registerPlugin,
 }));
 
@@ -229,6 +233,17 @@ describe("automatic leaderboard client boundary", () => {
       "AutomaticLeaderboardCheckins"
     );
     expect(syntheticThen).not.toHaveBeenCalled();
+  });
+
+  // keep missing native bridges inert
+  it("returns no plugin when the native bridge is unavailable", async () => {
+    vi.stubGlobal("window", {
+      Capacitor: { isNativePlatform: capacitor.isNativePlatform },
+    });
+    capacitor.isPluginAvailable.mockReturnValueOnce(false);
+
+    await expect(getAutomaticLeaderboardPlugin()).resolves.toBeNull();
+    expect(capacitor.registerPlugin).not.toHaveBeenCalled();
   });
 
   // reject one stale owner before the next asynchronous phase

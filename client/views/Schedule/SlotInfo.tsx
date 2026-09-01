@@ -515,12 +515,17 @@ export const SlotInfo = (props: Props): ReactElement => {
     if (!navigator.clipboard) {
       return false;
     }
-    await navigator.clipboard.writeText(url);
-    setSailingShareCopied(true);
-    setTimeout(() => {
-      setSailingShareCopied(false);
-    }, 2500);
-    return true;
+    try {
+      await navigator.clipboard.writeText(url);
+      setSailingShareCopied(true);
+      setTimeout(() => {
+        setSailingShareCopied(false);
+      }, 2500);
+      return true;
+    } catch {
+      // contain user-agent clipboard denials
+      return false;
+    }
   };
 
   // share sailing tab

@@ -281,7 +281,12 @@ function freshnessTimestamp(container: HTMLElement): string | null {
   );
 }
 
-const view = (routeSnapshot = snapshot, path = "/clinton/mukilteo/map") =>
+// render one map route
+const view = (
+  routeSnapshot = snapshot,
+  path = "/clinton/mukilteo/map",
+  routeTerminal = terminal
+) =>
   React.createElement(
     PublicSsrSeedProvider,
     { snapshot: routeSnapshot },
@@ -292,7 +297,7 @@ const view = (routeSnapshot = snapshot, path = "/clinton/mukilteo/map") =>
         mate,
         requestIdentity: initialIdentity,
         setRoute: () => undefined,
-        terminal,
+        terminal: routeTerminal,
         vesselIdentity: "",
         vessels: [],
       })
@@ -418,6 +423,28 @@ describe("map hydration seed freshness", () => {
     mocks.deferMapLoad = false;
     mocks.maps.length = 0;
     mocks.theme = "light";
+  });
+
+  // skip incomplete terminal payloads
+  it("skips a terminal mate without runtime location data", async () => {
+    const incompleteTerminal = {
+      ...terminal,
+      mates: [{ id: "14", name: "Mukilteo" } as Terminal],
+    } as Terminal;
+    mocks.getVesselSnapshot.mockReturnValue(new Promise(() => undefined));
+    const container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root?.render(
+        view(snapshot, "/clinton/mukilteo/map", incompleteTerminal)
+      );
+      await Promise.resolve();
+    });
+
+    expect(mocks.maps).toHaveLength(1);
+    expect(container.textContent).toContain("Clinton");
   });
 
   it("ignores a late load event from a map removed during a theme change", async () => {

@@ -81,9 +81,12 @@ export const initializeServiceWorker = (): (() => void) => {
     // left behind by an older build instead of waiting forever for a browser
     // registration that cannot exist in the native runtime.
     const unregister = () => {
-      navigator.serviceWorker.getRegistrations().then((registrations) => {
-        registrations.forEach((entry) => entry.unregister());
-      });
+      navigator.serviceWorker
+        .getRegistrations()
+        .then((registrations) =>
+          Promise.allSettled(registrations.map((entry) => entry.unregister()))
+        )
+        .catch(() => undefined);
     };
     if (document.readyState === "complete") {
       unregister();

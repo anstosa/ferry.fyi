@@ -682,7 +682,11 @@ export const getAutomaticLeaderboardPlugin =
     ) {
       return null;
     }
-    const { registerPlugin } = await import("@capacitor/core");
+    const { Capacitor, registerPlugin } = await import("@capacitor/core");
+    // keep native builds without the reviewed bridge inert
+    if (!Capacitor.isPluginAvailable("AutomaticLeaderboardCheckins")) {
+      return null;
+    }
     return createNonThenableCapacitorPlugin(
       registerPlugin<AutomaticLeaderboardCheckinsPluginV1>(
         "AutomaticLeaderboardCheckins"

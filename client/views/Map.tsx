@@ -135,6 +135,9 @@ interface RouteDropdownProps {
 }
 
 type LocatedVessel = Vessel & { location: NonNullable<Vessel["location"]> };
+type LocatedTerminal = Terminal & {
+  location: NonNullable<Terminal["location"]>;
+};
 type LabelPlacement = keyof typeof LABEL_PLACEMENTS;
 
 interface LabelRect {
@@ -456,6 +459,16 @@ const removeRenderedMarkers = (renderedMarkers: RenderedMarker[]): void => {
 const hasVesselLocation = (vessel: Vessel): vessel is LocatedVessel =>
   Boolean(vessel.location);
 
+// located terminal check
+const hasTerminalLocation = (
+  terminal: Terminal | null | undefined
+): terminal is LocatedTerminal =>
+  Boolean(
+    terminal?.location &&
+    Number.isFinite(terminal.location.latitude) &&
+    Number.isFinite(terminal.location.longitude)
+  );
+
 // vessel label text
 const getVesselLabel = (vessel: Vessel): string => {
   // docked vessel guard
@@ -735,7 +748,12 @@ export const Map = ({
     const newMarkers: RenderedMarker[] = [];
 
     // map readiness guard
-    if (!map || map !== activeMapRef.current || !terminal || !mate) {
+    if (
+      !map ||
+      map !== activeMapRef.current ||
+      !hasTerminalLocation(terminal) ||
+      !hasTerminalLocation(mate)
+    ) {
       return;
     }
 
@@ -774,8 +792,11 @@ export const Map = ({
     }
 
     // add terminal markers
+    const locatedTerminals = [terminal, ...(terminal.mates || [])].filter(
+      hasTerminalLocation
+    );
     newMarkers.push(
-      ...[terminal, ...(terminal.mates || [])].map((targetTerminal) => {
+      ...locatedTerminals.map((targetTerminal) => {
         const marker = document.createElement("div");
         const lngLat = {
           lon: targetTerminal.location.longitude,

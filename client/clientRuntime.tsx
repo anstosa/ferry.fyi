@@ -1,3 +1,4 @@
+import { Capacitor } from "@capacitor/core";
 import React, { startTransition, useEffect, useState } from "react";
 import { createRoot, hydrateRoot, type Root } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
@@ -189,6 +190,7 @@ export const bootstrapClientApp = ({
   createRootFactory = createRoot,
   document = window.document,
   hydrateRootFactory = hydrateRoot,
+  native = Capacitor.isNativePlatform(),
   onCompatibleCommit,
   reporter = defaultDiagnosticReporter,
 }: {
@@ -196,6 +198,7 @@ export const bootstrapClientApp = ({
   createRootFactory?: RootFactory;
   document?: Document;
   hydrateRootFactory?: HydrateFactory;
+  native?: boolean;
   onCompatibleCommit?: () => void;
   reporter?: ClientRenderDiagnosticReporter;
 } = {}): "create" | "hydrate" => {
@@ -207,9 +210,11 @@ export const bootstrapClientApp = ({
   const snapshotScripts = document.querySelectorAll(
     `script#${PUBLIC_SSR_SNAPSHOT_SCRIPT_ID}`
   );
-  if (!mode) {
+  const hasDocumentMode = root.hasAttribute(PUBLIC_SSR_DOCUMENT_MODE_ATTRIBUTE);
+  // native shells intentionally omit server document metadata
+  if (!mode && (hasDocumentMode || !native)) {
     reporter({
-      category: root.hasAttribute(PUBLIC_SSR_DOCUMENT_MODE_ATTRIBUTE)
+      category: hasDocumentMode
         ? "public-ssr-integrity-invalid-mode"
         : "public-ssr-integrity-missing-mode",
     });

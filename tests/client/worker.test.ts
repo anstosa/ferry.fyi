@@ -151,4 +151,27 @@ describe("service worker runtime setup", () => {
     expect(register).toHaveBeenCalledOnce();
     await expect(getRegistration()).resolves.toBe(registration);
   });
+
+  // contain native cleanup rejection
+  it("contains native service-worker cleanup failures", async () => {
+    capacitor.isNativePlatform.mockReturnValue(true);
+    const getRegistrations = vi
+      .fn()
+      .mockRejectedValue(new Error("native service workers unavailable"));
+    vi.stubGlobal("window", {
+      addEventListener: vi.fn(),
+      location: { reload: vi.fn() },
+      removeEventListener: vi.fn(),
+    });
+    vi.stubGlobal("document", { readyState: "complete" });
+    vi.stubGlobal("navigator", { serviceWorker: { getRegistrations } });
+
+    const { initializeServiceWorker } = await import("../../client/lib/worker");
+    initializeServiceWorker();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(workbox.Workbox).not.toHaveBeenCalled();
+    expect(getRegistrations).toHaveBeenCalledOnce();
+  });
 });

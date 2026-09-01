@@ -112,6 +112,8 @@ export const initializeSentry = async ({
       ...commonOptions,
       attachThreads: true,
       enableAppHangTracking: true,
+      // schedule warming responses remain application-level retry states
+      enableCaptureFailedRequests: false,
       enableNative: true,
       enableNativeCrashHandling: true,
       integrations: [Sentry.browserTracingIntegration()],

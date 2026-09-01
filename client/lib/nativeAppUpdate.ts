@@ -24,7 +24,8 @@ type NativeAppUpdatePlugin = Pick<
   "getAppUpdateInfo" | "openAppStore"
 >;
 
-type LoadNativeAppUpdatePlugin = () => Promise<NativeAppUpdatePlugin>;
+type NativeAppUpdateModule = { AppUpdate: NativeAppUpdatePlugin };
+type LoadNativeAppUpdateModule = () => Promise<NativeAppUpdateModule>;
 
 // Mirror the plugin enum without eagerly importing its native runtime on the web.
 const UPDATE_AVAILABLE = 2;
@@ -33,8 +34,9 @@ const IOS_STORE_COUNTRY = "US";
 
 export const NATIVE_APP_UPDATE_REPROMPT_MS = 24 * 60 * 60 * 1000;
 
-const loadNativeAppUpdatePlugin: LoadNativeAppUpdatePlugin = async () =>
-  (await import("@capawesome/capacitor-app-update")).AppUpdate;
+// keep the capacitor proxy inside its plain module wrapper
+const loadNativeAppUpdateModule: LoadNativeAppUpdateModule = () =>
+  import("@capawesome/capacitor-app-update");
 
 const parseAndroidVersionCode = (value: string): number | undefined => {
   if (!/^\d+$/u.test(value)) {
@@ -87,13 +89,13 @@ const getCandidate = (
 
 /** Checks the platform store without loading a native plugin in web builds. */
 export const checkForNativeAppUpdate = async ({
-  loadPlugin = loadNativeAppUpdatePlugin,
+  loadModule = loadNativeAppUpdateModule,
   platform,
 }: {
-  loadPlugin?: LoadNativeAppUpdatePlugin;
+  loadModule?: LoadNativeAppUpdateModule;
   platform: NativeAppUpdatePlatform;
 }): Promise<NativeAppUpdateCandidate | null> => {
-  const plugin = await loadPlugin();
+  const { AppUpdate: plugin } = await loadModule();
   const info = await plugin.getAppUpdateInfo(
     platform === "ios" ? { country: IOS_STORE_COUNTRY } : undefined
   );
@@ -102,13 +104,13 @@ export const checkForNativeAppUpdate = async ({
 
 /** Opens the correct store listing after an explicit user action. */
 export const openNativeAppStore = async ({
-  loadPlugin = loadNativeAppUpdatePlugin,
+  loadModule = loadNativeAppUpdateModule,
   platform,
 }: {
-  loadPlugin?: LoadNativeAppUpdatePlugin;
+  loadModule?: LoadNativeAppUpdateModule;
   platform: NativeAppUpdatePlatform;
 }): Promise<void> => {
-  const plugin = await loadPlugin();
+  const { AppUpdate: plugin } = await loadModule();
   await plugin.openAppStore(
     platform === "ios" ? { appId: APPLE_APP_STORE_ID } : undefined
   );

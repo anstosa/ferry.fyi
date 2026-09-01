@@ -10,6 +10,11 @@ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 const updateUser = vi.hoisted(() => vi.fn());
+// define the sailing-share fixture
+const share = vi.hoisted(() => ({
+  canShare: vi.fn(async () => ({ value: false })),
+  share: vi.fn(async () => undefined),
+}));
 
 vi.mock("@auth0/auth0-react", () => ({
   useAuth0: () => ({
@@ -29,6 +34,7 @@ vi.mock("framer-motion", async () => {
     },
   };
 });
+vi.mock("@capacitor/share", () => ({ Share: share }));
 vi.mock("~/lib/device", () => ({ useDevice: () => null }));
 vi.mock("~/lib/featureFlags", () => ({
   useFeatureFlags: () => ({ leaderboardsEnabled: false }),
@@ -70,6 +76,10 @@ afterEach(() => {
   act(() => root?.unmount());
   root = undefined;
   document.body.innerHTML = "";
+  Object.defineProperty(navigator, "clipboard", {
+    configurable: true,
+    value: undefined,
+  });
   vi.clearAllMocks();
 });
 
@@ -166,6 +176,37 @@ const renderSlotInfo = (slot: Slot): HTMLElement =>
   );
 
 describe("forecast capacity display", () => {
+  // contain denied clipboard fallback
+  it("keeps a denied sailing-share copy handled", async () => {
+    const writeText = vi
+      .fn()
+      .mockRejectedValue(new DOMException("Write permission denied"));
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const container = renderSlotInfo(
+      createSlot({ fullRisk: "unlikely", spacesLeft: 15 })
+    );
+    const button = container.querySelector<HTMLButtonElement>(
+      '[aria-label="Share this sailing tab"]'
+    );
+
+    await act(async () => {
+      button?.click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(share.canShare).toHaveBeenCalledOnce();
+    expect(writeText).toHaveBeenCalledOnce();
+    expect(consoleError).not.toHaveBeenCalled();
+    consoleError.mockRestore();
+  });
+
   // schedule-row practical-full boundary
   it("rounds forecasts over ninety percent full to full", () => {
     const slot = createSlot({ fullRisk: "unlikely", spacesLeft: 3 });

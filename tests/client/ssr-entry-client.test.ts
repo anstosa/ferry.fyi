@@ -83,7 +83,13 @@ const notFoundSnapshot = {
 const script = (value: unknown = snapshot) =>
   `<script id="${PUBLIC_SSR_SNAPSHOT_SCRIPT_ID}" type="application/json">${JSON.stringify(value)}</script>`;
 
-const prepare = (mode?: string, scripts = "", rootContent = "") => {
+// prepare one client bootstrap fixture
+const prepare = (
+  mode?: string,
+  scripts = "",
+  rootContent = "",
+  native = false
+) => {
   document.body.innerHTML = `<div id="root"${mode ? ` ${PUBLIC_SSR_DOCUMENT_MODE_ATTRIBUTE}="${mode}"` : ""}>${rootContent}</div>${scripts}`;
   const rendered = vi.fn();
   const hydrated = vi.fn();
@@ -93,6 +99,7 @@ const prepare = (mode?: string, scripts = "", rootContent = "") => {
     createApp: app,
     createRootFactory: () => ({ render: rendered }) as unknown as Root,
     hydrateRootFactory: hydrated as never,
+    native,
     reporter: diagnostic,
   });
   return { app, diagnostic, hydrated, rendered, result };
@@ -228,6 +235,20 @@ describe("client SSR document bootstrap", () => {
     expect(diagnostic).toHaveBeenCalledWith({
       category: "public-ssr-integrity-missing-mode",
     });
+  });
+
+  // accept the packaged native shell
+  it("accepts the marker-free native document shell", () => {
+    const { diagnostic, hydrated, result } = prepare(
+      undefined,
+      "",
+      "",
+      true
+    );
+
+    expect(result).toBe("create");
+    expect(hydrated).not.toHaveBeenCalled();
+    expect(diagnostic).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -392,6 +413,7 @@ describe("client SSR document bootstrap", () => {
         attachThreads: true,
         dsn: "https://public@example.invalid/1",
         enableAppHangTracking: true,
+        enableCaptureFailedRequests: false,
         enableNative: true,
         enableNativeCrashHandling: true,
       }),

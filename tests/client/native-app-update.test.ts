@@ -22,10 +22,12 @@ describe("native app update store integration", () => {
 
     await expect(
       checkForNativeAppUpdate({
-        loadPlugin: () =>
+        loadModule: () =>
           Promise.resolve({
-            getAppUpdateInfo,
-            openAppStore: vi.fn(),
+            AppUpdate: {
+              getAppUpdateInfo,
+              openAppStore: vi.fn(),
+            },
           }),
         platform: "android",
       })
@@ -47,10 +49,12 @@ describe("native app update store integration", () => {
 
     await expect(
       checkForNativeAppUpdate({
-        loadPlugin: () =>
+        loadModule: () =>
           Promise.resolve({
-            getAppUpdateInfo,
-            openAppStore: vi.fn(),
+            AppUpdate: {
+              getAppUpdateInfo,
+              openAppStore: vi.fn(),
+            },
           }),
         platform: "android",
       })
@@ -70,9 +74,11 @@ describe("native app update store integration", () => {
 
     await expect(
       checkForNativeAppUpdate({
-        loadPlugin: async () => ({
-          getAppUpdateInfo,
-          openAppStore: vi.fn(),
+        loadModule: async () => ({
+          AppUpdate: {
+            getAppUpdateInfo,
+            openAppStore: vi.fn(),
+          },
         }),
         platform: "android",
       })
@@ -87,10 +93,12 @@ describe("native app update store integration", () => {
 
     await expect(
       checkForNativeAppUpdate({
-        loadPlugin: () =>
+        loadModule: () =>
           Promise.resolve({
-            getAppUpdateInfo,
-            openAppStore: vi.fn(),
+            AppUpdate: {
+              getAppUpdateInfo,
+              openAppStore: vi.fn(),
+            },
           }),
         platform: "android",
       })
@@ -105,9 +113,11 @@ describe("native app update store integration", () => {
 
     await expect(
       checkForNativeAppUpdate({
-        loadPlugin: async () => ({
-          getAppUpdateInfo,
-          openAppStore: vi.fn(),
+        loadModule: async () => ({
+          AppUpdate: {
+            getAppUpdateInfo,
+            openAppStore: vi.fn(),
+          },
         }),
         platform: "ios",
       })
@@ -129,10 +139,12 @@ describe("native app update store integration", () => {
 
     await expect(
       checkForNativeAppUpdate({
-        loadPlugin: () =>
+        loadModule: () =>
           Promise.resolve({
-            getAppUpdateInfo,
-            openAppStore: vi.fn(),
+            AppUpdate: {
+              getAppUpdateInfo,
+              openAppStore: vi.fn(),
+            },
           }),
         platform: "ios",
       })
@@ -144,28 +156,64 @@ describe("native app update store integration", () => {
       .fn()
       .mockResolvedValueOnce({ ...info, updateAvailability: 1 })
       .mockResolvedValueOnce(info);
-    const loadPlugin = async () => ({
-      getAppUpdateInfo,
-      openAppStore: vi.fn(),
+    const loadModule = async () => ({
+      AppUpdate: {
+        getAppUpdateInfo,
+        openAppStore: vi.fn(),
+      },
     });
 
     await expect(
-      checkForNativeAppUpdate({ loadPlugin, platform: "android" })
+      checkForNativeAppUpdate({ loadModule, platform: "android" })
     ).resolves.toBeNull();
     await expect(
-      checkForNativeAppUpdate({ loadPlugin, platform: "ios" })
+      checkForNativeAppUpdate({ loadModule, platform: "ios" })
     ).resolves.toBeNull();
+  });
+
+  // prevent capacitor proxy promise assimilation
+  it("keeps the plugin proxy out of promise resolution", async () => {
+    const getAppUpdateInfo = vi.fn().mockResolvedValue({
+      ...info,
+      availableVersionCode: "21",
+    });
+    const syntheticThen = vi.fn(() => {
+      throw new Error('"AppUpdate.then()" is not implemented on android');
+    });
+    const appUpdate = new Proxy(
+      { getAppUpdateInfo, openAppStore: vi.fn() },
+      {
+        // reproduce capacitor's synthetic methods
+        get(target, property, receiver) {
+          // expose the failing synthetic method
+          if (property === "then") {
+            return syntheticThen;
+          }
+          return Reflect.get(target, property, receiver);
+        },
+      }
+    );
+
+    await expect(
+      checkForNativeAppUpdate({
+        loadModule: async () => ({ AppUpdate: appUpdate }),
+        platform: "android",
+      })
+    ).resolves.toMatchObject({ availableVersion: "21" });
+    expect(syntheticThen).not.toHaveBeenCalled();
   });
 
   it("opens each platform's canonical store entry", async () => {
     const openAppStore = vi.fn().mockResolvedValue(undefined);
-    const loadPlugin = async () => ({
-      getAppUpdateInfo: vi.fn(),
-      openAppStore,
+    const loadModule = async () => ({
+      AppUpdate: {
+        getAppUpdateInfo: vi.fn(),
+        openAppStore,
+      },
     });
 
-    await openNativeAppStore({ loadPlugin, platform: "android" });
-    await openNativeAppStore({ loadPlugin, platform: "ios" });
+    await openNativeAppStore({ loadModule, platform: "android" });
+    await openNativeAppStore({ loadModule, platform: "ios" });
 
     expect(openAppStore).toHaveBeenNthCalledWith(1, undefined);
     expect(openAppStore).toHaveBeenNthCalledWith(2, {
