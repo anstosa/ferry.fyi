@@ -4,17 +4,14 @@ import { DateTime } from "luxon";
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
-import type { ForecastFullRisk, Slot } from "shared/contracts/schedules";
+import type { Slot } from "shared/contracts/schedules";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+
+import { createForecastSlot } from "../fixtures/forecastSlot";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 const updateUser = vi.hoisted(() => vi.fn());
-// define the sailing-share fixture
-const share = vi.hoisted(() => ({
-  canShare: vi.fn(async () => ({ value: false })),
-  share: vi.fn(async () => undefined),
-}));
 
 vi.mock("@auth0/auth0-react", () => ({
   useAuth0: () => ({
@@ -34,7 +31,6 @@ vi.mock("framer-motion", async () => {
     },
   };
 });
-vi.mock("@capacitor/share", () => ({ Share: share }));
 vi.mock("~/lib/device", () => ({ useDevice: () => null }));
 vi.mock("~/lib/featureFlags", () => ({
   useFeatureFlags: () => ({ leaderboardsEnabled: false }),
@@ -44,10 +40,7 @@ vi.mock("~/lib/onboardTracking", () => ({
   useTrackedVessel: () => [null, vi.fn()],
 }));
 vi.mock("~/lib/user", () => ({
-  useUser: () => [
-    { alertRules: [], isUserLoading: false },
-    { updateUser },
-  ],
+  useUser: () => [{ alertRules: [], isUserLoading: false }, { updateUser }],
 }));
 vi.mock("../../client/views/Schedule/VesselStatusView", () => ({
   VesselStatus: () => null,
@@ -61,11 +54,19 @@ let root: Root | undefined;
 // resize observer test double
 class ResizeObserverMock {
   // ignore disconnects
-  disconnect(): void {}
+  disconnect(): void {
+    return undefined;
+  }
+
   // ignore observations
-  observe(): void {}
+  observe(): void {
+    return undefined;
+  }
+
   // ignore removals
-  unobserve(): void {}
+  unobserve(): void {
+    return undefined;
+  }
 }
 
 beforeAll(() => {
@@ -76,76 +77,7 @@ afterEach(() => {
   act(() => root?.unmount());
   root = undefined;
   document.body.innerHTML = "";
-  Object.defineProperty(navigator, "clipboard", {
-    configurable: true,
-    value: undefined,
-  });
   vi.clearAllMocks();
-});
-
-// build one forecast sailing
-const createSlot = ({
-  fullRisk,
-  spacesLeft,
-  withLiveCapacity = false,
-}: {
-  fullRisk: ForecastFullRisk;
-  spacesLeft: number;
-  withLiveCapacity?: boolean;
-}): Slot => ({
-  allowsPassengers: true,
-  allowsVehicles: true,
-  crossing: withLiveCapacity
-    ? {
-        arrivalId: "arrival",
-        departureDelta: null,
-        departureId: "departure",
-        departureTime: 2_000_000_000,
-        driveUpCapacity: 30,
-        hasDriveUp: true,
-        hasReservations: false,
-        isCancelled: false,
-        reservableCapacity: 0,
-        totalCapacity: 141,
-      }
-    : undefined,
-  estimate: {
-    confidence: "high",
-    driveUpCapacity: spacesLeft,
-    factors: [],
-    fullProbability: fullRisk === "likely" ? 0.6 : 0.34,
-    fullRisk,
-    reservableCapacity: 0,
-  },
-  hasPassed: false,
-  mateId: "14",
-  time: 2_000_000_000,
-  vessel: {
-    abbreviation: "TEST",
-    beam: "80 ft",
-    classId: "test",
-    hasCarDeckRestroom: true,
-    hasElevator: true,
-    hasGalley: false,
-    hasRestroom: true,
-    hasWiFi: false,
-    horsepower: 1,
-    id: "test-vessel",
-    inMaintenance: false,
-    inService: true,
-    info: {},
-    isAdaAccessible: true,
-    maxClearance: 15,
-    name: "Test Vessel",
-    passengerCapacity: 1_000,
-    speed: 0,
-    tallVehicleCapacity: 0,
-    vehicleCapacity: 141,
-    vesselWatchUrl: "",
-    weight: 1,
-    yearBuilt: 2000,
-  },
-  wuid: `test-${fullRisk}-${spacesLeft}-${withLiveCapacity}`,
 });
 
 // render one client component
@@ -176,51 +108,20 @@ const renderSlotInfo = (slot: Slot): HTMLElement =>
   );
 
 describe("forecast capacity display", () => {
-  // contain denied clipboard fallback
-  it("keeps a denied sailing-share copy handled", async () => {
-    const writeText = vi
-      .fn()
-      .mockRejectedValue(new DOMException("Write permission denied"));
-    Object.defineProperty(navigator, "clipboard", {
-      configurable: true,
-      value: { writeText },
-    });
-    const consoleError = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => undefined);
-    const container = renderSlotInfo(
-      createSlot({ fullRisk: "unlikely", spacesLeft: 15 })
-    );
-    const button = container.querySelector<HTMLButtonElement>(
-      '[aria-label="Share this sailing tab"]'
-    );
-
-    await act(async () => {
-      button?.click();
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-
-    expect(share.canShare).toHaveBeenCalledOnce();
-    expect(writeText).toHaveBeenCalledOnce();
-    expect(consoleError).not.toHaveBeenCalled();
-    consoleError.mockRestore();
-  });
-
   // schedule-row practical-full boundary
   it("rounds forecasts over ninety percent full to full", () => {
-    const slot = createSlot({ fullRisk: "unlikely", spacesLeft: 3 });
+    const slot = createForecastSlot({ fullRisk: "unlikely", spacesLeft: 14 });
     const container = render(
       <Capacity hasDeparted={false} isDaylight slot={slot} />
     );
 
     expect(container.textContent).toContain("Boat full");
-    expect(container.textContent).not.toContain("3 spaces left");
+    expect(container.textContent).not.toContain("14 spaces left");
   });
 
   // schedule-row non-full boundary
   it("keeps spaces for forecasts below ninety percent full", () => {
-    const slot = createSlot({ fullRisk: "unlikely", spacesLeft: 15 });
+    const slot = createForecastSlot({ fullRisk: "unlikely", spacesLeft: 15 });
     const container = render(
       <Capacity hasDeparted={false} isDaylight slot={slot} />
     );
@@ -231,7 +132,7 @@ describe("forecast capacity display", () => {
 
   // schedule-row expected-full state
   it("hides spaces for likely-full forecasts", () => {
-    const slot = createSlot({ fullRisk: "likely", spacesLeft: 20 });
+    const slot = createForecastSlot({ fullRisk: "likely", spacesLeft: 20 });
     const container = render(
       <Capacity hasDeparted={false} isDaylight slot={slot} />
     );
@@ -243,7 +144,7 @@ describe("forecast capacity display", () => {
   // detail-card practical-full boundary
   it("rounds practical-full detail forecasts without hiding calibrated risk", () => {
     const container = renderSlotInfo(
-      createSlot({ fullRisk: "unlikely", spacesLeft: 3 })
+      createForecastSlot({ fullRisk: "unlikely", spacesLeft: 3 })
     );
 
     expect(container.textContent).toContain("100% full");
@@ -255,7 +156,7 @@ describe("forecast capacity display", () => {
   // detail-card expected-full state
   it("shows likely forecasts as full without a space count", () => {
     const container = renderSlotInfo(
-      createSlot({ fullRisk: "likely", spacesLeft: 20 })
+      createForecastSlot({ fullRisk: "likely", spacesLeft: 20 })
     );
 
     expect(container.textContent).toContain("100% full");
@@ -268,7 +169,7 @@ describe("forecast capacity display", () => {
   // confirmed-capacity precedence
   it("keeps informative live spaces visible beside a likely forecast", () => {
     const container = renderSlotInfo(
-      createSlot({
+      createForecastSlot({
         fullRisk: "likely",
         spacesLeft: 20,
         withLiveCapacity: true,

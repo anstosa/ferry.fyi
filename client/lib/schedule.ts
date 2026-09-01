@@ -3,6 +3,7 @@ import { GetScheduleResponse } from "shared/api/schedules";
 import type { Terminal } from "shared/contracts/terminals";
 
 import { ApiError, get, post } from "~/lib/api";
+import { getTransientScheduleStatus } from "~/lib/scheduleAvailability";
 
 const SCHEDULE_REFRESH_RETRY_COUNT = 12;
 const SCHEDULE_REFRESH_RETRY_DELAY_MS = 1000;
@@ -30,28 +31,12 @@ export const refreshSchedule = (
 ): Promise<GetScheduleResponse> =>
   post<GetScheduleResponse>(getApiSchedule(terminal.id, mate.id, date), {});
 
-// schedule refresh status guard
-const isScheduleRefreshing = (error: unknown): boolean => {
+// transient schedule status guard
+const isScheduleTransientlyUnavailable = (error: unknown): boolean => {
   if (!(error instanceof ApiError) || error.status !== 503) {
     return false;
   }
-  const { data } = error;
-  if (
-    data &&
-    typeof data === "object" &&
-    "status" in data &&
-    (data as { status?: unknown }).status === "refreshing"
-  ) {
-    return true;
-  }
-  return Boolean(
-    data &&
-    typeof data === "object" &&
-    "body" in data &&
-    (data as { body?: unknown }).body &&
-    typeof (data as { body?: unknown }).body === "object" &&
-    (data as { body: { status?: unknown } }).body.status === "refreshing"
-  );
+  return getTransientScheduleStatus(error.data) !== null;
 };
 
 // refresh retry wait
@@ -69,7 +54,7 @@ const getScheduleWithRefreshRetry = async (
       return await get<GetScheduleResponse>(path);
     } catch (error) {
       if (
-        !isScheduleRefreshing(error) ||
+        !isScheduleTransientlyUnavailable(error) ||
         attempt === SCHEDULE_REFRESH_RETRY_COUNT
       ) {
         throw error;

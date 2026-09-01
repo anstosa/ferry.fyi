@@ -55,4 +55,19 @@ describe("getSchedule", () => {
     await expect(schedule).resolves.toEqual(response);
     vi.useRealTimers();
   });
+
+  // retry initial schedule warming
+  it("retries an unwrapped warming response", async () => {
+    vi.useFakeTimers();
+    const response = { schedule: { slots: [] }, timestamp: 1 };
+    api.get
+      .mockRejectedValueOnce(new api.ApiError(503, { status: "warming" }))
+      .mockResolvedValueOnce(response);
+
+    const schedule = getSchedule({ id: "8" } as never, { id: "12" } as never);
+    await vi.advanceTimersByTimeAsync(1000);
+
+    await expect(schedule).resolves.toEqual(response);
+    vi.useRealTimers();
+  });
 });

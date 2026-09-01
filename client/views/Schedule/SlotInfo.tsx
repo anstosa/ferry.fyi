@@ -289,6 +289,9 @@ export const SlotInfo = (props: Props): ReactElement => {
   const [activeDetailTab, setActiveDetailTab] = useState<DetailTab>("sailing");
   const [isSailingShareCopied, setSailingShareCopied] =
     useState<boolean>(false);
+  const [sailingShareError, setSailingShareError] = useState<string | null>(
+    null
+  );
   const [, setTrackedVesselId] = useTrackedVessel();
   const currentSlot = getCurrentSlot(schedule, time);
   const isNext = slot === currentSlot;
@@ -517,6 +520,7 @@ export const SlotInfo = (props: Props): ReactElement => {
     }
     try {
       await navigator.clipboard.writeText(url);
+      setSailingShareError(null);
       setSailingShareCopied(true);
       setTimeout(() => {
         setSailingShareCopied(false);
@@ -538,6 +542,7 @@ export const SlotInfo = (props: Props): ReactElement => {
     const title = `Ferry FYI sailing ${sailingTime.toFormat(
       "ccc, LLL d · h:mm a"
     )}`;
+    setSailingShareError(null);
     try {
       const { value: canShare } = await Share.canShare();
       // native share guard
@@ -550,10 +555,15 @@ export const SlotInfo = (props: Props): ReactElement => {
         });
         return;
       }
-      await copySailingShareUrl(url);
     } catch (error) {
       console.error("Failed to share sailing", error);
-      await copySailingShareUrl(url);
+    }
+    const copied = await copySailingShareUrl(url);
+    // visible fallback guard
+    if (!copied) {
+      setSailingShareError(
+        "Unable to share this sailing link. Copy it from the address bar."
+      );
     }
   };
 
@@ -1438,6 +1448,15 @@ export const SlotInfo = (props: Props): ReactElement => {
             <ShareIcon className="h-4 w-4" />
           </button>
         </div>
+        {/* sailing share error */}
+        {sailingShareError && (
+          <p
+            className="mb-3 rounded bg-red-light p-2 text-xs font-semibold text-red-dark dark:bg-red-dark dark:text-white"
+            role="alert"
+          >
+            {sailingShareError}
+          </p>
+        )}
         <div role="tabpanel">{activePanel}</div>
       </div>
     );

@@ -1,9 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const capacitor = vi.hoisted(() => ({ isNativePlatform: vi.fn() }));
+const errorReporting = vi.hoisted(() => ({
+  captureReportedException: vi.fn(),
+}));
 const workbox = vi.hoisted(() => ({ Workbox: vi.fn() }));
 
 vi.mock("@capacitor/core", () => ({ Capacitor: capacitor }));
+vi.mock("~/lib/errorReporting", () => errorReporting);
 vi.mock("workbox-window", () => workbox);
 
 describe("service worker runtime setup", () => {
@@ -152,12 +156,11 @@ describe("service worker runtime setup", () => {
     await expect(getRegistration()).resolves.toBe(registration);
   });
 
-  // contain native cleanup rejection
-  it("contains native service-worker cleanup failures", async () => {
+  // report native cleanup lookup rejection
+  it("reports native service-worker lookup failures", async () => {
     capacitor.isNativePlatform.mockReturnValue(true);
-    const getRegistrations = vi
-      .fn()
-      .mockRejectedValue(new Error("native service workers unavailable"));
+    const error = new Error("native service workers unavailable");
+    const getRegistrations = vi.fn().mockRejectedValue(error);
     vi.stubGlobal("window", {
       addEventListener: vi.fn(),
       location: { reload: vi.fn() },
@@ -168,10 +171,43 @@ describe("service worker runtime setup", () => {
 
     const { initializeServiceWorker } = await import("../../client/lib/worker");
     initializeServiceWorker();
-    await Promise.resolve();
-    await Promise.resolve();
 
     expect(workbox.Workbox).not.toHaveBeenCalled();
     expect(getRegistrations).toHaveBeenCalledOnce();
+    await vi.waitFor(() =>
+      expect(errorReporting.captureReportedException).toHaveBeenCalledWith(
+        error
+      )
+    );
+  });
+
+  // report one rejected native unregister
+  it("unregisters every native worker and reports individual failures", async () => {
+    capacitor.isNativePlatform.mockReturnValue(true);
+    const error = new Error("stale worker remained active");
+    const firstUnregister = vi.fn().mockResolvedValue(true);
+    const secondUnregister = vi.fn().mockRejectedValue(error);
+    const getRegistrations = vi
+      .fn()
+      .mockResolvedValue([
+        { unregister: firstUnregister },
+        { unregister: secondUnregister },
+      ]);
+    vi.stubGlobal("window", {
+      addEventListener: vi.fn(),
+      location: { reload: vi.fn() },
+      removeEventListener: vi.fn(),
+    });
+    vi.stubGlobal("document", { readyState: "complete" });
+    vi.stubGlobal("navigator", { serviceWorker: { getRegistrations } });
+
+    const { initializeServiceWorker } = await import("../../client/lib/worker");
+    initializeServiceWorker();
+
+    await vi.waitFor(() => {
+      expect(firstUnregister).toHaveBeenCalledOnce();
+      expect(secondUnregister).toHaveBeenCalledOnce();
+    });
+    expect(errorReporting.captureReportedException).toHaveBeenCalledWith(error);
   });
 });

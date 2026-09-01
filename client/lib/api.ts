@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import type { WSFStatus } from "shared/contracts/api";
 import { isEqual } from "shared/lib/objects";
 
+import { captureReportedException } from "~/lib/errorReporting";
+import { getTransientScheduleStatus } from "~/lib/scheduleAvailability";
+
 interface HttpResponse {
   data: unknown;
   status: number;
@@ -23,19 +26,20 @@ export function getApiBaseUrl(): string {
 
 const request = async (input: HttpRequest): Promise<HttpResponse> => {
   const { Capacitor, CapacitorHttp } = await import("@capacitor/core");
-  const baseUrl = Capacitor.isNativePlatform()
-    ? `${process.env.BASE_URL}/api`
-    : getApiBaseUrl();
+  const native = Capacitor.isNativePlatform();
+  const baseUrl = native ? `${process.env.BASE_URL}/api` : getApiBaseUrl();
   const headers = Object.fromEntries(
     Object.entries(input.headers ?? {}).filter(
       (entry): entry is [string, string] => typeof entry[1] === "string"
     )
   );
-  return await CapacitorHttp.request({
+  const response = await CapacitorHttp.request({
     ...input,
     headers,
     url: `${baseUrl}${input.url}`,
   });
+  reportNativeServerFailure(input, response, native);
+  return response;
 };
 
 const defaultWsfStatus: WSFStatus = { offline: false };
@@ -74,6 +78,65 @@ export class ApiError extends Error {
     this.status = status;
     this.data = data;
   }
+}
+
+// safe native server diagnostic
+class NativeApiServerError extends Error {
+  method: HttpRequest["method"];
+  operation: string;
+  status: number;
+
+  // native diagnostic details
+  constructor(
+    method: HttpRequest["method"],
+    operation: string,
+    status: number
+  ) {
+    super(`${method} ${operation} failed with status ${status}`);
+    this.name = "NativeApiServerError";
+    this.method = method;
+    this.operation = operation;
+    this.status = status;
+  }
+}
+
+// remove identifiers and query data from one API operation
+const getApiOperation = (path: string): string => {
+  const [operation = "unknown"] = path.split(/[/?#]/u).filter(Boolean);
+  return `/${operation}`;
+};
+
+// expected native schedule retry guard
+const isExpectedScheduleRetry = (
+  path: string,
+  response: HttpResponse
+): boolean =>
+  path.startsWith("/schedule/") &&
+  response.status === 503 &&
+  getTransientScheduleStatus(getResponseData(response.data)) !== null;
+
+// preserve actionable native server diagnostics
+function reportNativeServerFailure(
+  requestInput: HttpRequest,
+  response: HttpResponse,
+  native: boolean
+): void {
+  // report only unexpected native server failures
+  if (
+    !native ||
+    response.status < 500 ||
+    response.status >= 600 ||
+    isExpectedScheduleRetry(requestInput.url, response)
+  ) {
+    return;
+  }
+  captureReportedException(
+    new NativeApiServerError(
+      requestInput.method,
+      getApiOperation(requestInput.url),
+      response.status
+    )
+  );
 }
 
 // request cache key

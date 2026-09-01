@@ -7,6 +7,7 @@ import {
   getApiBaseUrl,
   processResponse,
 } from "../../client/lib/api";
+import { installExceptionReporter } from "../../client/lib/errorReporting";
 
 describe("API client base URL", () => {
   // restore native mock
@@ -137,5 +138,79 @@ describe("API client authenticated request isolation", () => {
     await expect(second).resolves.toEqual({
       authorization: "Bearer token-two",
     });
+  });
+});
+
+describe("API client native failure reporting", () => {
+  // restore native reporting fixtures
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  // ignore an expected schedule retry response
+  it("does not report native schedule warming", async () => {
+    const captureException = vi.fn();
+    const removeReporter = installExceptionReporter(captureException);
+    vi.spyOn(Capacitor, "isNativePlatform").mockReturnValue(true);
+    vi.stubEnv("BASE_URL", "https://ferry.fyi");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() =>
+        Promise.resolve(
+          new Response(JSON.stringify({ status: "warming" }), {
+            headers: { "Content-Type": "application/json" },
+            status: 503,
+          })
+        )
+      )
+    );
+
+    await expect(get("/schedule/22/20/2026-09-01")).rejects.toMatchObject({
+      status: 503,
+    });
+
+    expect(captureException).not.toHaveBeenCalled();
+    removeReporter();
+  });
+
+  // retain an unexpected server failure
+  it("reports an unrelated native server failure", async () => {
+    const captureException = vi.fn();
+    const removeReporter = installExceptionReporter(captureException);
+    vi.spyOn(Capacitor, "isNativePlatform").mockReturnValue(true);
+    vi.stubEnv("BASE_URL", "https://ferry.fyi");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() =>
+        Promise.resolve(
+          new Response(JSON.stringify({ error: "ticket_lookup_unavailable" }), {
+            headers: { "Content-Type": "application/json" },
+            status: 503,
+          })
+        )
+      )
+    );
+
+    await expect(
+      get("/tickets/private-ticket-id?token=private-token")
+    ).rejects.toMatchObject({ status: 503 });
+
+    expect(captureException).toHaveBeenCalledOnce();
+    expect(captureException.mock.calls[0][0]).toMatchObject({
+      message: "GET /tickets failed with status 503",
+      method: "GET",
+      name: "NativeApiServerError",
+      operation: "/tickets",
+      status: 503,
+    });
+    expect(JSON.stringify(captureException.mock.calls)).not.toContain(
+      "private-ticket-id"
+    );
+    expect(JSON.stringify(captureException.mock.calls)).not.toContain(
+      "private-token"
+    );
+    removeReporter();
   });
 });

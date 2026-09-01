@@ -13,6 +13,15 @@ const info = {
   updateAvailability: 2,
 };
 
+// build one native module loader
+const createLoadModule =
+  (
+    getAppUpdateInfo: ReturnType<typeof vi.fn>,
+    openAppStore: ReturnType<typeof vi.fn> = vi.fn()
+  ) =>
+  () =>
+    Promise.resolve({ AppUpdate: { getAppUpdateInfo, openAppStore } });
+
 describe("native app update store integration", () => {
   it("maps an available Android version code", async () => {
     const getAppUpdateInfo = vi.fn().mockResolvedValue({
@@ -22,13 +31,7 @@ describe("native app update store integration", () => {
 
     await expect(
       checkForNativeAppUpdate({
-        loadModule: () =>
-          Promise.resolve({
-            AppUpdate: {
-              getAppUpdateInfo,
-              openAppStore: vi.fn(),
-            },
-          }),
+        loadModule: createLoadModule(getAppUpdateInfo),
         platform: "android",
       })
     ).resolves.toEqual({
@@ -49,13 +52,7 @@ describe("native app update store integration", () => {
 
     await expect(
       checkForNativeAppUpdate({
-        loadModule: () =>
-          Promise.resolve({
-            AppUpdate: {
-              getAppUpdateInfo,
-              openAppStore: vi.fn(),
-            },
-          }),
+        loadModule: createLoadModule(getAppUpdateInfo),
         platform: "android",
       })
     ).resolves.toEqual({
@@ -74,12 +71,7 @@ describe("native app update store integration", () => {
 
     await expect(
       checkForNativeAppUpdate({
-        loadModule: async () => ({
-          AppUpdate: {
-            getAppUpdateInfo,
-            openAppStore: vi.fn(),
-          },
-        }),
+        loadModule: createLoadModule(getAppUpdateInfo),
         platform: "android",
       })
     ).resolves.toBeNull();
@@ -93,13 +85,7 @@ describe("native app update store integration", () => {
 
     await expect(
       checkForNativeAppUpdate({
-        loadModule: () =>
-          Promise.resolve({
-            AppUpdate: {
-              getAppUpdateInfo,
-              openAppStore: vi.fn(),
-            },
-          }),
+        loadModule: createLoadModule(getAppUpdateInfo),
         platform: "android",
       })
     ).resolves.toBeNull();
@@ -113,12 +99,7 @@ describe("native app update store integration", () => {
 
     await expect(
       checkForNativeAppUpdate({
-        loadModule: async () => ({
-          AppUpdate: {
-            getAppUpdateInfo,
-            openAppStore: vi.fn(),
-          },
-        }),
+        loadModule: createLoadModule(getAppUpdateInfo),
         platform: "ios",
       })
     ).resolves.toEqual({
@@ -139,13 +120,7 @@ describe("native app update store integration", () => {
 
     await expect(
       checkForNativeAppUpdate({
-        loadModule: () =>
-          Promise.resolve({
-            AppUpdate: {
-              getAppUpdateInfo,
-              openAppStore: vi.fn(),
-            },
-          }),
+        loadModule: createLoadModule(getAppUpdateInfo),
         platform: "ios",
       })
     ).resolves.toBeNull();
@@ -156,12 +131,7 @@ describe("native app update store integration", () => {
       .fn()
       .mockResolvedValueOnce({ ...info, updateAvailability: 1 })
       .mockResolvedValueOnce(info);
-    const loadModule = async () => ({
-      AppUpdate: {
-        getAppUpdateInfo,
-        openAppStore: vi.fn(),
-      },
-    });
+    const loadModule = createLoadModule(getAppUpdateInfo);
 
     await expect(
       checkForNativeAppUpdate({ loadModule, platform: "android" })
@@ -196,7 +166,7 @@ describe("native app update store integration", () => {
 
     await expect(
       checkForNativeAppUpdate({
-        loadModule: async () => ({ AppUpdate: appUpdate }),
+        loadModule: () => Promise.resolve({ AppUpdate: appUpdate }),
         platform: "android",
       })
     ).resolves.toMatchObject({ availableVersion: "21" });
@@ -205,12 +175,7 @@ describe("native app update store integration", () => {
 
   it("opens each platform's canonical store entry", async () => {
     const openAppStore = vi.fn().mockResolvedValue(undefined);
-    const loadModule = async () => ({
-      AppUpdate: {
-        getAppUpdateInfo: vi.fn(),
-        openAppStore,
-      },
-    });
+    const loadModule = createLoadModule(vi.fn(), openAppStore);
 
     await openNativeAppStore({ loadModule, platform: "android" });
     await openNativeAppStore({ loadModule, platform: "ios" });

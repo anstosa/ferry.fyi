@@ -112,7 +112,7 @@ export const initializeSentry = async ({
       ...commonOptions,
       attachThreads: true,
       enableAppHangTracking: true,
-      // schedule warming responses remain application-level retry states
+      // classify server failures at the application boundary instead
       enableCaptureFailedRequests: false,
       enableNative: true,
       enableNativeCrashHandling: true,

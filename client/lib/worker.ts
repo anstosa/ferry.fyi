@@ -1,6 +1,8 @@
 import { Capacitor } from "@capacitor/core";
 import { Workbox } from "workbox-window";
 
+import { captureReportedException } from "~/lib/errorReporting";
+
 let registration: ServiceWorkerRegistration | undefined;
 let registrationPromise = Promise.resolve<
   ServiceWorkerRegistration | undefined
@@ -80,13 +82,23 @@ export const initializeServiceWorker = (): (() => void) => {
     // Native WebViews do not use the browser service worker. Remove any worker
     // left behind by an older build instead of waiting forever for a browser
     // registration that cannot exist in the native runtime.
-    const unregister = () => {
-      navigator.serviceWorker
-        .getRegistrations()
-        .then((registrations) =>
-          Promise.allSettled(registrations.map((entry) => entry.unregister()))
-        )
-        .catch(() => undefined);
+    const unregister = async () => {
+      try {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        const results = await Promise.allSettled(
+          registrations.map((entry) => entry.unregister())
+        );
+        // report each failed cleanup without rejecting the caller
+        results.forEach((result) => {
+          // rejected cleanup guard
+          if (result.status === "rejected") {
+            captureReportedException(result.reason);
+          }
+        });
+      } catch (error) {
+        // report registration lookup failures without rejecting the caller
+        captureReportedException(error);
+      }
     };
     if (document.readyState === "complete") {
       unregister();
