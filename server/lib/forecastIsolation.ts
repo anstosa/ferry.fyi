@@ -11,6 +11,7 @@ import type {
 } from "shared/contracts/schedules";
 
 import { updateEstimates } from "~/lib/forecast";
+import { toPublicVessel } from "~/lib/publicScheduleProjection";
 import type { Schedule } from "~/models/Schedule";
 
 export interface ForecastSlotSnapshot {
@@ -108,7 +109,7 @@ export const normalizeForecastScheduleInput = (
     hasPassed: slot.hasPassed,
     mateId: slot.mateId,
     time: slot.time,
-    vessel: { ...slot.vessel },
+    vessel: toPublicVessel(slot.vessel),
     wuid: slot.wuid,
     // retain forecast-owned optional slot data
     ...(Number.isFinite(slot.arrivalTime)

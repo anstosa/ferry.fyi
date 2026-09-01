@@ -119,7 +119,7 @@ const toPublicGpsDelay = (gpsDelay: Vessel["gpsDelay"]): Vessel["gpsDelay"] => {
 };
 
 // project one public vessel
-const toPublicVessel = (vessel: Vessel): Vessel => ({
+export const toPublicVessel = (vessel: Vessel): Vessel => ({
   abbreviation: vessel.abbreviation,
   beam: vessel.beam,
   classId: vessel.classId,

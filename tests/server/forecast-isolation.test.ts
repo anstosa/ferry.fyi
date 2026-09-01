@@ -43,6 +43,8 @@ describe("forecast isolation", () => {
           time: 123,
           vessel: {
             abbreviation: "SUQ",
+            // model-owned enumerable method
+            getIndex: vi.fn(),
             id: "22",
             name: "Suquamish",
             speed: 18,
@@ -73,7 +75,7 @@ describe("forecast isolation", () => {
         ],
       }),
     ]);
-    expect(JSON.parse(JSON.stringify(result))).toEqual(result);
+    expect(structuredClone(result)).toEqual(result);
   });
 
   // normalize mixed-version private state
