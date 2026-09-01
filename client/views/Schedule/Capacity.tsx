@@ -21,7 +21,7 @@ import {
   getCapacityOpacityClassName,
   getForecastCapacityFillClassName,
 } from "./capacityStyles";
-import { isForecastExpectedFull } from "./forecastRiskPresentation";
+import { isForecastFull } from "./forecastRiskPresentation";
 import {
   getScheduleLiveSpaceState,
   getScheduleSailingContext,
@@ -160,8 +160,13 @@ export const Capacity = ({
     return estimateLeft ?? null;
   };
 
+  // classify forecast capacity
   const isEstimateFull = (): boolean =>
-    isForecastExpectedFull(estimate?.fullRisk);
+    isForecastFull({
+      fullRisk: estimate?.fullRisk,
+      percentFull: estimateFull,
+      spacesLeft: estimateLeft,
+    });
 
   const isFull = (): boolean => {
     // forecast-only full state

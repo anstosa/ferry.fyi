@@ -82,7 +82,7 @@ import {
 import { hasSailingDeparted } from "./departureState";
 import {
   getForecastRiskPresentation,
-  isForecastExpectedFull,
+  isForecastFull,
 } from "./forecastRiskPresentation";
 import { getGalleyStatus } from "./galleyHours";
 import { getCurrentSlot } from "./nowDivider";
@@ -349,15 +349,17 @@ export const SlotInfo = (props: Props): ReactElement => {
     percentFull: estimatePercentFull,
     spacesLeft: estimateSpacesLeft,
   });
-  const isEstimateExpectedFull = isForecastExpectedFull(
-    slot.estimate?.fullRisk
-  );
+  const isEstimateFull = isForecastFull({
+    fullRisk: slot.estimate?.fullRisk,
+    percentFull: estimatePercentFull,
+    spacesLeft: estimateSpacesLeft,
+  });
   const isFull = slot.crossing
     ? isCapacityFull({
         percentFull: livePercentFull,
         spacesLeft: liveSpacesLeft,
       })
-    : isEstimateExpectedFull;
+    : isEstimateFull;
   const timeRowState = getScheduleRowState({
     hasConfirmedCapacity: false,
     isFull,
@@ -713,7 +715,7 @@ export const SlotInfo = (props: Props): ReactElement => {
       spacesLeft,
     });
     const isFullCapacity = isForecast
-      ? isEstimateExpectedFull
+      ? isEstimateFull
       : isPracticalFullCapacity;
     const displayPercent = getCapacityDisplayPercent({
       isFull: isFullCapacity,

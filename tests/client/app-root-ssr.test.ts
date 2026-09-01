@@ -421,7 +421,8 @@ describe("AppRoot server rendering", () => {
           expect(markup).toContain('data-public-ssr-freshness="schedule"');
           expect(markup).toContain("<time");
           expect(markup).toContain("18 vehicle spaces reported");
-          expect(markup).toContain("forecast 12 vehicle spaces");
+          expect(markup).toContain("forecast full");
+          expect(markup).not.toContain("forecast 12 vehicle spaces");
           expect(markup).toContain("Near capacity · 46% full risk");
           expect(markup).not.toContain("unlikely full risk");
           expect(markup).toContain("Dock change");

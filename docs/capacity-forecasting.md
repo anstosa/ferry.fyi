@@ -67,10 +67,10 @@ percent.
 
 The final forecast reconciles full-probability and full-risk after live capacity,
 weather, bounds, and rollover are applied; it does not rewrite the final capacity
-point or its probability-derived risk band. The client separately presents a
-near-capacity warning when fewer than 10 percent of vehicle spaces are forecast
-to remain, so a practical-full point does not appear as an all-clear. A likely
-or high probability-derived risk hides the point space count and presents the
+point or its probability-derived risk band. The client presents a forecast as
+full when fewer than 10 percent of vehicle spaces are forecast to remain, while
+showing its probability-derived risk separately. A likely or high
+probability-derived risk also hides the point space count and presents the
 forecast as full. Live capacity remains authoritative when it is informative.
 
 ## Runtime modes

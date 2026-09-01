@@ -87,17 +87,19 @@ describe("forecast risk presentation", () => {
 
   // public forecast copy
   it("formats practical and expected-full forecast copy", () => {
-    expect(
-      formatForecast(
-        {
-          driveUpCapacity: 3,
-          fullProbability: 0.46,
-          fullRisk: "unlikely",
-          reservableCapacity: 0,
-        },
-        141
-      )
-    ).toContain("Near capacity · 46% full risk");
+    const practicalFullForecast = formatForecast(
+      {
+        driveUpCapacity: 3,
+        fullProbability: 0.46,
+        fullRisk: "unlikely",
+        reservableCapacity: 0,
+      },
+      141
+    );
+    expect(practicalFullForecast).toContain(
+      "forecast full, Near capacity · 46% full risk"
+    );
+    expect(practicalFullForecast).not.toContain("3 vehicle spaces");
     expect(
       formatForecast(
         {

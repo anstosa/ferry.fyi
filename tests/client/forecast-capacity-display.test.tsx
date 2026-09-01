@@ -166,14 +166,25 @@ const renderSlotInfo = (slot: Slot): HTMLElement =>
   );
 
 describe("forecast capacity display", () => {
-  // schedule-row categorical boundary
-  it("keeps spaces for unlikely near-capacity forecasts", () => {
+  // schedule-row practical-full boundary
+  it("rounds forecasts over ninety percent full to full", () => {
     const slot = createSlot({ fullRisk: "unlikely", spacesLeft: 3 });
     const container = render(
       <Capacity hasDeparted={false} isDaylight slot={slot} />
     );
 
-    expect(container.textContent).toContain("3 spaces left");
+    expect(container.textContent).toContain("Boat full");
+    expect(container.textContent).not.toContain("3 spaces left");
+  });
+
+  // schedule-row non-full boundary
+  it("keeps spaces for forecasts below ninety percent full", () => {
+    const slot = createSlot({ fullRisk: "unlikely", spacesLeft: 15 });
+    const container = render(
+      <Capacity hasDeparted={false} isDaylight slot={slot} />
+    );
+
+    expect(container.textContent).toContain("15 spaces left");
     expect(container.textContent).not.toContain("Boat full");
   });
 
@@ -188,16 +199,16 @@ describe("forecast capacity display", () => {
     expect(container.textContent).not.toContain("20 spaces left");
   });
 
-  // detail-card categorical boundary
-  it("shows near-capacity spaces separately from unlikely full risk", () => {
+  // detail-card practical-full boundary
+  it("rounds practical-full detail forecasts without hiding calibrated risk", () => {
     const container = renderSlotInfo(
       createSlot({ fullRisk: "unlikely", spacesLeft: 3 })
     );
 
-    expect(container.textContent).toContain("98% full");
-    expect(container.textContent).toContain("3 spaces left");
+    expect(container.textContent).toContain("100% full");
+    expect(container.textContent).toContain("Boat full");
     expect(container.textContent).toContain("Near capacity");
-    expect(container.textContent).not.toContain("Boat full");
+    expect(container.textContent).not.toContain("3 spaces left");
   });
 
   // detail-card expected-full state

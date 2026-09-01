@@ -11,6 +11,12 @@ interface ForecastRiskPresentationInput {
   isPracticalFull: boolean;
 }
 
+interface ForecastFullInput {
+  fullRisk?: ForecastFullRisk;
+  percentFull?: number | null;
+  spacesLeft?: number | null;
+}
+
 export interface ForecastRiskPresentation {
   compactText: string | null;
   detail: string;
@@ -30,6 +36,15 @@ const COMPACT_RISK_LABELS: Record<ForecastFullRisk, string | null> = {
 export const isForecastExpectedFull = (
   fullRisk: ForecastFullRisk | undefined
 ): boolean => fullRisk === "likely" || fullRisk === "high";
+
+// classify forecast display fullness
+export const isForecastFull = ({
+  fullRisk,
+  percentFull,
+  spacesLeft,
+}: ForecastFullInput): boolean =>
+  isCapacityFull({ percentFull, spacesLeft }) ||
+  isForecastExpectedFull(fullRisk);
 
 // build point-aware risk copy
 export const getForecastRiskPresentation = ({
@@ -95,7 +110,11 @@ export const formatForecast = (
     riskPresentation?.compactText ??
     (estimate.fullRisk ? `${estimate.fullRisk} full risk` : null);
   const risk = riskText ? `, ${riskText}` : "";
-  const forecast = isForecastExpectedFull(estimate.fullRisk)
+  const forecast = isForecastFull({
+    fullRisk: estimate.fullRisk,
+    percentFull: capacity.percentFull,
+    spacesLeft: capacity.spacesLeft,
+  })
     ? " — forecast full"
     : ` — forecast ${capacity.spacesLeft ?? 0} vehicle spaces`;
   return `${forecast}${risk}`;

@@ -22,9 +22,9 @@ describe("forecasting explanation", () => {
     expect(html).toContain("starts actively reporting capacity");
     expect(html).toContain("fresh WSF counts remain the strongest input");
     expect(html).toContain("fewer than 10 percent");
-    expect(html).toContain("near-capacity warning");
+    expect(html).toContain("shows the forecast as full");
     expect(html).toContain("fill completely");
-    expect(html).toContain("forecast is shown as full");
+    expect(html).toContain("likely or high calibrated");
     expect(html).toContain("specific number of spaces");
   });
 });

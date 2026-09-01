@@ -70,10 +70,10 @@ export const ForecastingExplained = (): ReactElement => (
     </p>
     <p className="mt-2">
       When fewer than 10 percent of vehicle spaces are forecast to remain, Ferry
-      FYI shows a near-capacity warning separately from the calibrated chance
-      that the sailing will fill completely. When that calibrated risk is likely
-      or high, the forecast is shown as full instead of displaying a specific
-      number of spaces.
+      FYI shows the forecast as full instead of displaying a specific number of
+      spaces. The calibrated chance that the sailing will fill completely
+      remains visible separately. Forecasts with a likely or high calibrated
+      full risk are also shown as full.
     </p>
 
     <h2 className="font-bold text-lg mt-8">How delay forecasts work</h2>
