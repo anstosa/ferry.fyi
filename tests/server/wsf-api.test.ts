@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("heroku-logger", () => ({
+vi.mock("~/lib/logger", () => ({
   default: { error: vi.fn() },
 }));
 

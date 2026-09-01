@@ -115,7 +115,7 @@ const receipt = {
   collectedAt: new Date().toISOString(),
   outcome: "passed",
   phase,
-  release: process.env.HEROKU_RELEASE_VERSION ?? process.env.GITHUB_SHA ?? null,
+  release: process.env.RELEASE_VERSION ?? process.env.GITHUB_SHA ?? null,
   schemaVersion: 1,
   sourceSamples: [],
 };

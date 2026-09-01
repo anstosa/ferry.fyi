@@ -1,8 +1,8 @@
-import logger from "heroku-logger";
 import { DateTime } from "luxon";
 import { Op } from "sequelize";
 import { values } from "shared/lib/objects";
 
+import logger from "~/lib/logger";
 import { formatLogBlock, formatRouteList } from "~/lib/logging";
 import { NormalRouteVessel } from "~/models/NormalRouteVessel";
 import { Route } from "~/models/Route";

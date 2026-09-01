@@ -14,7 +14,7 @@ x-app-build: &app-build
     FIREBASE_VAPID_KEY: ${FIREBASE_VAPID_KEY:-local-container-vapid-key}
     GOOGLE_ANALYTICS: ${GOOGLE_ANALYTICS:-}
     GTM_CONTAINER_ID: ${GTM_CONTAINER_ID:-}
-    HEROKU_RELEASE_VERSION: ${HEROKU_RELEASE_VERSION:-LOCAL-CONTAINER}
+    RELEASE_VERSION: ${RELEASE_VERSION:-LOCAL-CONTAINER}
     LOG_LEVEL: ${LOG_LEVEL:-info}
     MAPBOX_ACCESS_TOKEN: ${MAPBOX_ACCESS_TOKEN:-local-container-mapbox-token}
     NODE_ENV: ${BUILD_NODE_ENV:-production}
@@ -86,6 +86,7 @@ services:
       CHOKIDAR_USEPOLLING: "true"
       DATABASE_URL: postgres://test:testing@postgres:5432/ferryfyi
       FIREBASE_SERVICE_ACCOUNT: ${FIREBASE_SERVICE_ACCOUNT:-}
+      FORECAST_DEMAND_SHOCK_MODE: ${FORECAST_DEMAND_SHOCK_MODE:-on}
       NODE_ENV: development
       PGSSLMODE: disable
       PORT: 4040

@@ -1,6 +1,6 @@
-import logger from "heroku-logger";
 import { DateTime } from "luxon";
 
+import logger from "~/lib/logger";
 import { formatLogBlock, formatTerminalName } from "~/lib/logging";
 import { Terminal } from "~/models/Terminal";
 import { WeatherForecast } from "~/models/WeatherForecast";

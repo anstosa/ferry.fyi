@@ -4,7 +4,7 @@ const logger = vi.hoisted(() => ({
   error: vi.fn(),
 }));
 
-vi.mock("heroku-logger", () => ({
+vi.mock("~/lib/logger", () => ({
   default: logger,
 }));
 

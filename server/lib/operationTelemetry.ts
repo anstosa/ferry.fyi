@@ -1,9 +1,10 @@
-import logger from "heroku-logger";
 import {
   calculateOperationLag,
   OBSERVABILITY_SCHEMA_VERSION,
   type OperationLagOutcome,
 } from "shared/lib/observability";
+
+import logger from "~/lib/logger";
 
 import type {
   AdminOperationName,
@@ -83,7 +84,7 @@ export const operationStateToTelemetry = (
     operation,
     outcome: lag.outcome,
     release: normalizeRelease(
-      process.env.HEROKU_RELEASE_VERSION ?? process.env.SOURCE_VERSION
+      process.env.RELEASE_VERSION ?? process.env.SOURCE_VERSION
     ),
     schemaVersion: OBSERVABILITY_SCHEMA_VERSION,
   };
@@ -105,7 +106,7 @@ export const reportRuntimeLifecycleTelemetry = (
   const event: RuntimeLifecycleTelemetryEvent = {
     event: "server_lifecycle",
     release: normalizeRelease(
-      process.env.HEROKU_RELEASE_VERSION ?? process.env.SOURCE_VERSION
+      process.env.RELEASE_VERSION ?? process.env.SOURCE_VERSION
     ),
     schemaVersion: OBSERVABILITY_SCHEMA_VERSION,
     stage,

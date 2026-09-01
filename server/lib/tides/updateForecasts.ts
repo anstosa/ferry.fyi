@@ -1,6 +1,6 @@
-import logger from "heroku-logger";
 import { DateTime } from "luxon";
 
+import logger from "~/lib/logger";
 import { formatLogBlock, formatTerminalList } from "~/lib/logging";
 import { TideForecast } from "~/models/TideForecast";
 

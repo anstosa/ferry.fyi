@@ -1,7 +1,7 @@
-import logger from "heroku-logger";
 import type { Route as RouteClass } from "shared/contracts/routes";
 import wsfCore from "shared/data/wsf-core.json";
 
+import logger from "~/lib/logger";
 import {
   formatLogBlock,
   formatRouteLegName,

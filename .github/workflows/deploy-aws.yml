@@ -55,7 +55,7 @@ jobs:
       FIREBASE_VAPID_KEY: ${{ vars.FIREBASE_VAPID_KEY }}
       GOOGLE_ANALYTICS: ${{ vars.GOOGLE_ANALYTICS }}
       GTM_CONTAINER_ID: ${{ vars.GTM_CONTAINER_ID }}
-      HEROKU_RELEASE_VERSION: ${{ github.sha }}
+      RELEASE_VERSION: ${{ github.sha }}
       LOG_LEVEL: ${{ vars.LOG_LEVEL }}
       MAPBOX_ACCESS_TOKEN: ${{ vars.MAPBOX_ACCESS_TOKEN }}
       PGSSLMODE: disable
@@ -192,7 +192,7 @@ jobs:
             --build-arg FIREBASE_VAPID_KEY="${FIREBASE_VAPID_KEY}" \
             --build-arg GOOGLE_ANALYTICS="${GOOGLE_ANALYTICS}" \
             --build-arg GTM_CONTAINER_ID="${GTM_CONTAINER_ID}" \
-            --build-arg HEROKU_RELEASE_VERSION="${HEROKU_RELEASE_VERSION}" \
+            --build-arg RELEASE_VERSION="${RELEASE_VERSION}" \
             --build-arg LOG_LEVEL="${LOG_LEVEL}" \
             --build-arg MAPBOX_ACCESS_TOKEN="${MAPBOX_ACCESS_TOKEN}" \
             --build-arg NODE_ENV="production" \

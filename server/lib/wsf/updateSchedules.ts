@@ -1,9 +1,9 @@
-import logger from "heroku-logger";
 import { DateTime } from "luxon";
 import { Slot, ValidRange } from "shared/contracts/schedules";
 import { isNull } from "shared/lib/identity";
 import { values } from "shared/lib/objects";
 
+import logger from "~/lib/logger";
 import {
   formatLogBlock,
   formatRouteLegName,

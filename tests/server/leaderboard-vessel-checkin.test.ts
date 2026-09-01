@@ -49,7 +49,7 @@ const vesselModel = vi.hoisted(() => ({
 }));
 const wsfApi = vi.hoisted(() => ({ wsfRequest: vi.fn() }));
 
-vi.mock("heroku-logger", () => ({ default: { info: vi.fn() } }));
+vi.mock("~/lib/logger", () => ({ default: { info: vi.fn() } }));
 vi.mock("../../server/controllers/api/auth", () => auth);
 vi.mock("~/lib/db", () => ({ db: database }));
 vi.mock("~/lib/leaderboardFlags", () => flags);

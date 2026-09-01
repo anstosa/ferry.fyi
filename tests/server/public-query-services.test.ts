@@ -47,22 +47,38 @@ import {
 } from "../../server/services/public/vessels";
 
 describe("public query services", () => {
-  it("uses the cached schedule serializer without starting a refresh", () => {
-    const schedule = { date: "2026-06-21", slots: [] };
+  it("uses the cached public projection without starting a refresh", () => {
+    const schedule = {
+      date: "2026-06-21",
+      internalScheduleField: "private",
+      key: "1-2-2026-06-21",
+      mateId: "2",
+      slots: [],
+      terminalId: "1",
+      validRange: null,
+    };
     scheduleModel.generateKey.mockReturnValue("1-2-2026-06-21");
-    scheduleModel.getByIndex.mockReturnValue({ serialize: () => schedule });
+    scheduleModel.getByIndex.mockReturnValue(schedule);
 
-    expect(
-      getCachedPublicSchedule({
-        arrivingId: "2",
+    const result = getCachedPublicSchedule({
+      arrivingId: "2",
+      date: "2026-06-21",
+      departingId: "1",
+    });
+
+    expect(result).toMatchObject({
+      schedule: {
         date: "2026-06-21",
-        departingId: "1",
-      })
-    ).toMatchObject({
-      schedule,
+        key: "1-2-2026-06-21",
+        mateId: "2",
+        slots: [],
+        terminalId: "1",
+        validRange: null,
+      },
       status: "available",
       timestamp: expect.any(Number),
     });
+    expect(result).not.toHaveProperty("schedule.internalScheduleField");
   });
 
   it("keeps SSR schedule misses cache-only", async () => {

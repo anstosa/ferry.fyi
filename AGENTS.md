@@ -2,7 +2,7 @@
 
 ## Project overview
 
-Ferry FYI is a TypeScript web and Android app for Washington State Ferries schedules, route status, vehicle-capacity forecasts, bulletins, traffic cameras, tickets, account alerts, and native mobile conveniences. The app is deployed as a Heroku-hosted web service and packaged for Android with Capacitor.
+Ferry FYI is a TypeScript web and Android app for Washington State Ferries schedules, route status, vehicle-capacity forecasts, bulletins, traffic cameras, tickets, account alerts, and native mobile conveniences. The web service runs on AWS ECS Fargate with PostgreSQL on Amazon RDS and is packaged for Android with Capacitor.
 
 ## Repository layout
 

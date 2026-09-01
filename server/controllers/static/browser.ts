@@ -104,7 +104,7 @@ export const getRuntimeReleaseVersion = (
   if (environment.NODE_ENV === "development") {
     return "DEVELOPMENT";
   }
-  return environment.HEROKU_RELEASE_VERSION;
+  return environment.RELEASE_VERSION;
 };
 
 const getPublicContentHtml = (content: PublicContent): string => {

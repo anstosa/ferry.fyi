@@ -38,7 +38,7 @@ jobs:
       FIREBASE_VAPID_KEY: ${{ vars.FIREBASE_VAPID_KEY }}
       GOOGLE_ANALYTICS: ${{ vars.GOOGLE_ANALYTICS }}
       GTM_CONTAINER_ID: ${{ vars.GTM_CONTAINER_ID }}
-      HEROKU_RELEASE_VERSION: ${{ github.sha }}
+      RELEASE_VERSION: ${{ github.sha }}
       MAPBOX_ACCESS_TOKEN: ${{ vars.MAPBOX_ACCESS_TOKEN }}
       OTA_BUCKET_NAME: ${{ vars.OTA_BUCKET_NAME }}
       OTA_BUNDLE_BASE_URL: ${{ vars.OTA_BUNDLE_BASE_URL }}

@@ -4,7 +4,6 @@ import path from "node:path";
 
 import { type RequestHandler, type Response, Router } from "express";
 import { MINUTE, rateLimit } from "express-rate-limit";
-import logger from "heroku-logger";
 import type {
   CameraAreaOccupancyState,
   CameraDetectionArea,
@@ -22,6 +21,7 @@ import {
   validateCameraCaptureRunRequest,
 } from "~/lib/cameraDetectionCaptureRuns";
 import { getErrorMessage } from "~/lib/errors";
+import logger from "~/lib/logger";
 
 const CAMERA_IMAGE_HOST = "images.wsdot.wa.gov";
 const OCCUPANCY_STATES = new Set<CameraAreaOccupancyState>([

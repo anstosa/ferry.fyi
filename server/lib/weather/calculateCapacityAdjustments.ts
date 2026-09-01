@@ -1,9 +1,9 @@
-import logger from "heroku-logger";
 import { DateTime } from "luxon";
 import { Op, QueryTypes } from "sequelize";
 import { round } from "shared/lib/math";
 
 import { db } from "~/lib/db";
+import logger from "~/lib/logger";
 import Crossing from "~/models/Crossing";
 import { WeatherCapacityAdjustment } from "~/models/WeatherCapacityAdjustment";
 import { WeatherObservation } from "~/models/WeatherObservation";

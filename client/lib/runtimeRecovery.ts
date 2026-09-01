@@ -33,7 +33,7 @@ export const installArrayAtPolyfill = (): void => {
 };
 
 export const installPreloadRecovery = ({
-  build = process.env.HEROKU_RELEASE_VERSION || "development",
+  build = process.env.RELEASE_VERSION || "development",
   location = window.location,
   storage = window.sessionStorage,
   target = window,

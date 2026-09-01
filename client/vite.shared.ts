@@ -18,7 +18,7 @@ const clientEnvKeys = [
   "FIREBASE_VAPID_KEY",
   "GOOGLE_ANALYTICS",
   "GTM_CONTAINER_ID",
-  "HEROKU_RELEASE_VERSION",
+  "RELEASE_VERSION",
   "LOG_LEVEL",
   "MAPBOX_ACCESS_TOKEN",
   "NODE_ENV",
@@ -42,7 +42,7 @@ export const clientBuildEnvDefines = (): Record<string, string> => {
   for (const key of clientEnvKeys) {
     const value =
       process.env[key] ??
-      (key === "HEROKU_RELEASE_VERSION" ? "DEVELOPMENT" : undefined);
+      (key === "RELEASE_VERSION" ? "DEVELOPMENT" : undefined);
     defines[`process.env.${key}`] = JSON.stringify(value);
   }
   return defines;

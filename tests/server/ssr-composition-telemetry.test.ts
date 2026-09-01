@@ -1,4 +1,4 @@
-import logger from "heroku-logger";
+import logger from "~/lib/logger";
 import { describe, expect, it, vi } from "vitest";
 
 import { createSsrRuntime } from "../../server/ssr/composition";

@@ -2,8 +2,10 @@ import path from "node:path";
 import { Worker } from "node:worker_threads";
 
 import type {
+  Crossing as CrossingContract,
   CrossingEstimate,
-  Schedule as ScheduleContract,
+  Schedule as PublicScheduleContract,
+  Slot as PublicSlotContract,
   SlotTide,
   SlotWeather,
 } from "shared/contracts/schedules";
@@ -23,8 +25,26 @@ export interface ForecastScheduleSnapshot {
   slots: ForecastSlotSnapshot[];
 }
 
+export interface ForecastCrossingInput extends CrossingContract {
+  capacityReportingStartedAt: number | null;
+}
+
+export interface ForecastSlotInput extends Omit<
+  PublicSlotContract,
+  "crossing"
+> {
+  crossing?: ForecastCrossingInput;
+}
+
+export interface ForecastScheduleInput extends Omit<
+  PublicScheduleContract,
+  "slots"
+> {
+  slots: ForecastSlotInput[];
+}
+
 export interface ForecastWorkerData {
-  schedules: ScheduleContract[];
+  schedules: ForecastScheduleInput[];
 }
 
 interface ForecastWorkerSuccess {
@@ -41,14 +61,87 @@ export type ForecastWorkerResponse =
   | ForecastWorkerFailure
   | ForecastWorkerSuccess;
 
-// serialize mutable schedules for the worker boundary
+// serialize one private worker crossing
+const serializeForecastCrossing = (
+  crossing: CrossingContract & {
+    capacityReportingStartedAt?: number | null;
+  }
+): ForecastCrossingInput => ({
+  arrivalId: crossing.arrivalId,
+  capacityReportUpdatedAt: crossing.capacityReportUpdatedAt ?? null,
+  capacityReportingStartedAt: Number.isFinite(
+    crossing.capacityReportingStartedAt
+  )
+    ? (crossing.capacityReportingStartedAt as number)
+    : null,
+  departureDelta: crossing.departureDelta,
+  departureId: crossing.departureId,
+  departureTime: crossing.departureTime,
+  driveUpCapacity: crossing.driveUpCapacity,
+  hasDriveUp: crossing.hasDriveUp,
+  hasReservations: crossing.hasReservations,
+  isCancelled: crossing.isCancelled,
+  reservableCapacity: crossing.reservableCapacity,
+  totalCapacity: crossing.totalCapacity,
+  vesselId: crossing.vesselId ?? null,
+  vesselName: crossing.vesselName ?? null,
+});
+
+// normalize one private worker schedule
+export const normalizeForecastScheduleInput = (
+  schedule: Omit<PublicScheduleContract, "slots"> & {
+    slots: Array<
+      Omit<PublicSlotContract, "crossing"> & {
+        crossing?: CrossingContract & {
+          capacityReportingStartedAt?: number | null;
+        };
+      }
+    >;
+  }
+): ForecastScheduleInput => ({
+  date: schedule.date,
+  key: schedule.key,
+  mateId: schedule.mateId,
+  slots: schedule.slots.map((slot) => ({
+    allowsPassengers: slot.allowsPassengers,
+    allowsVehicles: slot.allowsVehicles,
+    hasPassed: slot.hasPassed,
+    mateId: slot.mateId,
+    time: slot.time,
+    vessel: { ...slot.vessel },
+    wuid: slot.wuid,
+    // retain forecast-owned optional slot data
+    ...(Number.isFinite(slot.arrivalTime)
+      ? { arrivalTime: slot.arrivalTime }
+      : {}),
+    ...(slot.cancellationReason
+      ? { cancellationReason: slot.cancellationReason }
+      : {}),
+    ...(slot.crossing
+      ? { crossing: serializeForecastCrossing(slot.crossing) }
+      : {}),
+    ...(slot.estimate ? { estimate: { ...slot.estimate } } : {}),
+    ...(slot.tide ? { tide: { ...slot.tide } } : {}),
+    ...(Number.isFinite(slot.vesselPosition)
+      ? { vesselPosition: slot.vesselPosition }
+      : {}),
+    ...(slot.weather ? { weather: { ...slot.weather } } : {}),
+  })),
+  terminalId: schedule.terminalId,
+  validRange: schedule.validRange
+    ? { from: schedule.validRange.from, to: schedule.validRange.to }
+    : null,
+  // retain schedule freshness privately
+  ...(Number.isFinite(schedule.sourceUpdatedAt) ||
+  schedule.sourceUpdatedAt === null
+    ? { sourceUpdatedAt: schedule.sourceUpdatedAt }
+    : {}),
+});
+
+// serialize mutable schedules for the private worker boundary
 export const serializeForecastSchedules = (
   schedules: Schedule[]
-): ScheduleContract[] => {
-  return schedules.map((schedule) => {
-    return JSON.parse(JSON.stringify(schedule.serialize())) as ScheduleContract;
-  });
-};
+): ForecastScheduleInput[] => schedules.map(normalizeForecastScheduleInput);
 
 // capture only forecast fields returned by the worker
 export const createForecastSnapshots = (

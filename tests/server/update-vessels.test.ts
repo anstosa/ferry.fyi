@@ -31,7 +31,7 @@ const vesselSnapshotIngestion = vi.hoisted(() => ({
 }));
 
 // silence fixed logger output
-vi.mock("heroku-logger", () => ({
+vi.mock("~/lib/logger", () => ({
   default: { info: vi.fn() },
 }));
 

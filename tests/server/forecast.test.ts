@@ -26,8 +26,8 @@ const weatherAdjustmentModel = vi.hoisted(() => ({
   getWeatherAdjustedCapacity: vi.fn(),
 }));
 
-vi.mock("heroku-logger", () => ({
-  default: { info: vi.fn() },
+vi.mock("~/lib/logger", () => ({
+  default: { info: vi.fn(), warn: vi.fn() },
 }));
 
 vi.mock("~/models/Schedule", () => ({
@@ -46,7 +46,17 @@ vi.mock("~/lib/holidays", () => holidayModel);
 
 vi.mock("~/lib/weather/capacityAdjustment", () => weatherAdjustmentModel);
 
-const { updateEstimates } = await import("../../server/lib/forecast");
+const {
+  getCapacityReportingGate,
+  getDemandShockMode,
+  getHistoricalEstimate,
+  isUninformativeFullLiveCapacityLegacy,
+  isUninformativeFullLiveCapacityStateful,
+  reconcileForecastCoherence,
+  runDemandShockMode,
+  selectUninformativeFullLiveCapacityClassifier,
+  updateEstimates,
+} = await import("../../server/lib/forecast");
 
 const terminal = {
   id: "1",
@@ -66,6 +76,7 @@ const createCrossing = (input: Record<string, unknown>) => ({
   departureId: "1",
   departureTime: toSeconds("2026-06-21T12:00:00"),
   capacityReportUpdatedAt: toSeconds("2026-06-21T09:45:00"),
+  capacityReportingStartedAt: toSeconds("2026-06-21T08:00:00"),
   driveUpCapacity: 80,
   hasDriveUp: true,
   hasReservations: true,
@@ -119,12 +130,320 @@ describe("forecast estimates", () => {
     weatherAdjustmentModel.getWeatherAdjustedCapacity.mockImplementation(
       async ({ capacity }) => capacity
     );
+    process.env.FORECAST_CAPACITY_REPORTING_GATE = "on";
+    process.env.FORECAST_DEMAND_SHOCK_MODE = "on";
   });
 
   // timer cleanup
   afterEach(() => {
+    delete process.env.FORECAST_CAPACITY_REPORTING_GATE;
+    delete process.env.FORECAST_DEMAND_SHOCK_MODE;
     vi.useRealTimers();
   });
+
+  // runtime mode parsing
+  it("uses documented forecast rollout defaults and fallbacks", () => {
+    delete process.env.FORECAST_CAPACITY_REPORTING_GATE;
+    delete process.env.FORECAST_DEMAND_SHOCK_MODE;
+
+    expect(getCapacityReportingGate()).toBe("on");
+    expect(getDemandShockMode()).toBe("on");
+
+    process.env.NODE_ENV = "production";
+    expect(getDemandShockMode()).toBe("shadow");
+
+    process.env.FORECAST_CAPACITY_REPORTING_GATE = "invalid";
+    process.env.FORECAST_DEMAND_SHOCK_MODE = "invalid";
+
+    expect(getCapacityReportingGate()).toBe("on");
+    expect(getDemandShockMode()).toBe("shadow");
+    process.env.NODE_ENV = "test";
+  });
+
+  // classifier selection
+  it("selects the capacity classifier independently from demand mode", () => {
+    expect(selectUninformativeFullLiveCapacityClassifier("on")).toBe(
+      isUninformativeFullLiveCapacityStateful
+    );
+    expect(selectUninformativeFullLiveCapacityClassifier("off")).toBe(
+      isUninformativeFullLiveCapacityLegacy
+    );
+  });
+
+  // stateful capacity reporting
+  it.each([
+    ["never started at 15 minutes", 15 * 60, 120, null, 60, true],
+    ["never started at two hours", 2 * 60 * 60, 120, null, 60, true],
+    ["never started at eight hours", 8 * 60 * 60, 120, null, 60, true],
+    [
+      "fresh after starting",
+      30 * 60,
+      120,
+      toSeconds("2026-06-21T08:00:00"),
+      60,
+      false,
+    ],
+    [
+      "stale after starting",
+      30 * 60,
+      120,
+      toSeconds("2026-06-21T08:00:00"),
+      31 * 60,
+      true,
+    ],
+    ["partial and stale", 30 * 60, 80, null, 31 * 60, false],
+    ["above maximum and never started", 30 * 60, 121, null, 60, true],
+    ["just below maximum", 30 * 60, 119, null, 60, false],
+  ])(
+    "classifies %s with reporting state",
+    (_label, horizonSeconds, available, startedAt, ageSeconds, expected) => {
+      const now = DateTime.fromISO("2026-06-21T10:00:00", {
+        zone: "America/Los_Angeles",
+      });
+      const crossing = createCrossing({
+        capacityReportUpdatedAt: now.toSeconds() - Number(ageSeconds),
+        capacityReportingStartedAt: startedAt,
+        departureTime: now.toSeconds() + Number(horizonSeconds),
+        driveUpCapacity: available,
+        reservableCapacity: 0,
+        totalCapacity: 120,
+      });
+
+      expect(
+        isUninformativeFullLiveCapacityStateful(
+          crossing as never,
+          DateTime.fromSeconds(crossing.departureTime),
+          now,
+          120
+        )
+      ).toBe(expected);
+    }
+  );
+
+  // legacy capacity reporting
+  it.each([
+    ["fresh at thirty minutes", 30 * 60, 120, 60, false],
+    ["fresh at exactly four hours", 4 * 60 * 60, 120, 60, false],
+    ["fresh just beyond four hours", 4 * 60 * 60 + 1, 120, 60, true],
+    ["stale at thirty minutes", 30 * 60, 120, 31 * 60, true],
+    ["partial and stale", 8 * 60 * 60, 119, 31 * 60, false],
+  ])(
+    "preserves legacy behavior for %s",
+    (_label, horizonSeconds, available, ageSeconds, expected) => {
+      const now = DateTime.fromISO("2026-06-21T10:00:00", {
+        zone: "America/Los_Angeles",
+      });
+      const crossing = createCrossing({
+        capacityReportUpdatedAt: now.toSeconds() - Number(ageSeconds),
+        departureTime: now.toSeconds() + Number(horizonSeconds),
+        driveUpCapacity: available,
+        reservableCapacity: 0,
+        totalCapacity: 120,
+      });
+
+      expect(
+        isUninformativeFullLiveCapacityLegacy(
+          crossing as never,
+          DateTime.fromSeconds(crossing.departureTime),
+          now,
+          120
+        )
+      ).toBe(expected);
+    }
+  );
+
+  // demand mode isolation
+  it("keeps shadow output byte-equivalent while computing the candidate", async () => {
+    const baseline = {
+      driveUpCapacity: 40,
+      factors: [{ detail: "", impact: "neutral" as const, label: "baseline" }],
+      reservableCapacity: 0,
+    };
+    const candidate = {
+      driveUpCapacity: 0,
+      factors: [{ detail: "", impact: "higher" as const, label: "candidate" }],
+      reservableCapacity: 0,
+    };
+    const buildCandidate = vi.fn(() => Promise.resolve(candidate));
+
+    const shadow = await runDemandShockMode("shadow", baseline, buildCandidate);
+    const off = await runDemandShockMode("off", baseline, buildCandidate);
+    const on = await runDemandShockMode("on", baseline, buildCandidate);
+
+    expect(JSON.stringify(shadow.selected)).toBe(JSON.stringify(baseline));
+    expect(off).toEqual({ candidate: null, selected: baseline });
+    expect(on.selected).toBe(candidate);
+    expect(buildCandidate).toHaveBeenCalledTimes(2);
+
+    candidate.factors.push({
+      detail: "",
+      impact: "higher",
+      label: "candidate mutation",
+    });
+    expect(JSON.stringify(shadow.selected)).toBe(JSON.stringify(baseline));
+  });
+
+  // serving mode isolation
+  it("returns the same baseline in off and shadow before enabling candidate coherence", async () => {
+    const history = [
+      createCrossing({
+        departureTime: toSeconds("2026-06-14T12:00:00"),
+        driveUpCapacity: 0,
+        reservableCapacity: 0,
+      }),
+    ];
+    crossingModel.findAll.mockResolvedValue(history);
+
+    // run one isolated serving mode
+    const runMode = async (mode: "off" | "on" | "shadow") => {
+      process.env.FORECAST_DEMAND_SHOCK_MODE = mode;
+      const schedule = createSchedule({
+        crossing: createCrossing({
+          capacityReportUpdatedAt: toSeconds("2026-06-21T09:59:00"),
+          capacityReportingStartedAt: toSeconds("2026-06-21T09:00:00"),
+          driveUpCapacity: 100,
+          reservableCapacity: 0,
+        }),
+      });
+
+      await updateEstimates([schedule as never]);
+
+      return JSON.parse(JSON.stringify(schedule.slots[0].estimate));
+    };
+
+    const off = await runMode("off");
+    const shadow = await runMode("shadow");
+    const on = await runMode("on");
+
+    expect(shadow).toEqual(off);
+    expect(on).not.toEqual(off);
+    expect(on).toMatchObject({ fullProbability: 0.19, fullRisk: "low" });
+  });
+
+  // historical distribution integration
+  it("shifts exact historical samples before recalibrating demand risk", () => {
+    const asOf = DateTime.fromISO("2026-08-31T12:00:00", {
+      zone: "America/Los_Angeles",
+    });
+    const targetTime = asOf.set({ hour: 14 });
+    const reference = Array.from({ length: 20 }, (_, index) => {
+      // build established weekly outcomes
+      return createCrossing({
+        departureTime: asOf
+          .minus({ weeks: 4 + index })
+          .set({ hour: 14, minute: 0, second: 0, millisecond: 0 })
+          .toSeconds(),
+        driveUpCapacity: 60,
+        reservableCapacity: 0,
+        totalCapacity: 200,
+      });
+    });
+    const recent = Array.from({ length: 8 }, (_, index) => {
+      // build dense recent outcomes
+      return createCrossing({
+        departureTime: asOf
+          .minus({ weeks: 1 + Math.floor(index / 3) })
+          .set({
+            hour: 12 + (index % 3),
+            minute: 0,
+            second: 0,
+            millisecond: 0,
+          })
+          .toSeconds(),
+        driveUpCapacity: 20,
+        reservableCapacity: 0,
+        totalCapacity: 200,
+      });
+    });
+    const holidays = {
+      2025: new Set<string>(),
+      2026: new Set<string>(),
+    };
+    const route = { arrivalId: "2", departureId: "1" };
+    const baseline = getHistoricalEstimate(
+      targetTime,
+      reference.slice(0, 8) as never,
+      null,
+      asOf,
+      holidays,
+      200,
+      route,
+      true
+    );
+    const candidate = getHistoricalEstimate(
+      targetTime,
+      reference.slice(0, 8) as never,
+      null,
+      asOf,
+      holidays,
+      200,
+      {
+        ...route,
+        demandShock: {
+          asOf: asOf.toSeconds(),
+          baselineFullProbability: baseline?.fullProbability ?? 0,
+          history: [...reference, ...recent] as never,
+        },
+      },
+      true
+    );
+
+    expect(candidate?.driveUpCapacity).toBeLessThan(
+      baseline?.driveUpCapacity ?? 0
+    );
+    expect(candidate?.factors).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          impact: "higher",
+          label: "Recent route demand",
+        }),
+      ])
+    );
+    expect(candidate?.fullRisk).toBe(
+      reconcileForecastCoherence(
+        {
+          driveUpCapacity: candidate?.driveUpCapacity ?? 0,
+          fullProbability: candidate?.fullProbability,
+          fullRisk: candidate?.fullRisk,
+          reservableCapacity: candidate?.reservableCapacity ?? 0,
+        },
+        200
+      ).fullRisk
+    );
+  });
+
+  // final candidate coherence
+  it.each([
+    [0, 120, 0.2, 0.5, "likely"],
+    [3, 141, 0.46, 0.46, "unlikely"],
+    [4, 141, 0.34, 0.34, "unlikely"],
+    [11, 120, 0.2, 0.2, "unlikely"],
+    [12, 120, 0.8, 0.49, "unlikely"],
+    [42, 120, 0.8, 0.49, "unlikely"],
+    [43, 120, 0.8, 0.19, "low"],
+  ])(
+    "reconciles %s available spaces with probability bounds",
+    (
+      available,
+      totalCapacity,
+      probability,
+      expectedProbability,
+      expectedRisk
+    ) => {
+      const estimate = reconcileForecastCoherence(
+        {
+          driveUpCapacity: available,
+          fullProbability: probability,
+          fullRisk: "high",
+          reservableCapacity: 0,
+        },
+        totalCapacity
+      );
+
+      expect(estimate.fullProbability).toBe(expectedProbability);
+      expect(estimate.fullRisk).toBe(expectedRisk);
+    }
+  );
 
   // blend behavior
   it("loads two years of history for each estimate", async () => {
@@ -185,7 +504,9 @@ describe("forecast estimates", () => {
       confidence: "medium",
       factors: expect.arrayContaining([
         expect.objectContaining({ label: "Historical pattern" }),
-        expect.objectContaining({ label: "Current WSF vehicle-space report data included" }),
+        expect.objectContaining({
+          label: "Current WSF vehicle-space report data included",
+        }),
       ]),
       sampleSize: 2,
       source: "blended",
@@ -279,7 +600,6 @@ describe("forecast estimates", () => {
     );
   });
 
-
   // dry weather detail copy
   it("uses clear and none for dry weather details", async () => {
     const schedule = createSchedule({});
@@ -315,15 +635,14 @@ describe("forecast estimates", () => {
         return factor.label === "No weather impact";
       }
     );
-    expect(weatherFactor?.detail).toBe(
-      "68°F high, clear, None, 5 mph wind"
-    );
+    expect(weatherFactor?.detail).toBe("68°F high, clear, None, 5 mph wind");
   });
 
   // stale live behavior
   it("uses history when a future live row still reports every space open", async () => {
     const liveCrossing = createCrossing({
-      capacityReportUpdatedAt: null,
+      capacityReportUpdatedAt: toSeconds("2026-06-21T09:59:00"),
+      capacityReportingStartedAt: null,
       driveUpCapacity: 100,
       reservableCapacity: 0,
     });
@@ -350,7 +669,73 @@ describe("forecast estimates", () => {
       reservableCapacity: 0,
       source: "historical",
     });
+    expect(schedule.slots[0].estimate.factors).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          label: "Current WSF vehicle-space report data included",
+        }),
+      ])
+    );
   });
+
+  // legacy rollback behavior
+  it("trusts a fresh never-started all-open row when the state gate is off", async () => {
+    process.env.FORECAST_CAPACITY_REPORTING_GATE = "off";
+    process.env.FORECAST_DEMAND_SHOCK_MODE = "off";
+    const liveCrossing = createCrossing({
+      capacityReportUpdatedAt: toSeconds("2026-06-21T09:59:00"),
+      capacityReportingStartedAt: null,
+      driveUpCapacity: 100,
+      reservableCapacity: 0,
+    });
+    const schedule = createSchedule({ crossing: liveCrossing });
+    scheduleModel.getAll.mockReturnValue({ [schedule.key]: schedule });
+    crossingModel.findAll.mockResolvedValue([
+      createCrossing({
+        departureTime: toSeconds("2026-06-14T12:00:00"),
+        driveUpCapacity: 10,
+        reservableCapacity: 0,
+      }),
+    ]);
+
+    await updateEstimates();
+
+    expect(schedule.slots[0].estimate).toMatchObject({
+      source: "blended",
+    });
+    expect(schedule.slots[0].estimate.driveUpCapacity).toBeGreaterThan(10);
+  });
+
+  // legacy live-only rollback
+  it.each(["off", "shadow", "on"] as const)(
+    "preserves a legacy-classified live row without history in %s mode",
+    async (mode) => {
+    process.env.FORECAST_CAPACITY_REPORTING_GATE = "off";
+    process.env.FORECAST_DEMAND_SHOCK_MODE = mode;
+    const departureTime = toSeconds("2026-06-21T15:00:01");
+    const liveCrossing = createCrossing({
+      capacityReportUpdatedAt: toSeconds("2026-06-21T09:59:00"),
+      capacityReportingStartedAt: null,
+      departureTime,
+      driveUpCapacity: 100,
+      reservableCapacity: 0,
+    });
+    const schedule = createSchedule({
+      crossing: liveCrossing,
+      time: departureTime,
+    });
+    scheduleModel.getAll.mockReturnValue({ [schedule.key]: schedule });
+    crossingModel.findAll.mockResolvedValue([]);
+
+    await updateEstimates();
+
+    expect(schedule.slots[0].estimate).toMatchObject({
+      driveUpCapacity: 100,
+      reservableCapacity: 0,
+      source: "live",
+    });
+    }
+  );
 
   // fresh live behavior
   it("trusts a fresh all-open capacity report", async () => {

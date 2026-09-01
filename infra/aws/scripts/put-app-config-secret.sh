@@ -4,11 +4,11 @@ set -euo pipefail
 usage() {
   # usage text
   cat <<'USAGE'
-Usage: put-app-config-secret.sh --secret-id ARN_OR_NAME --from-json infra/aws/local/APP-heroku-config.raw.secret.json
+Usage: put-app-config-secret.sh --secret-id ARN_OR_NAME --from-json infra/aws/local/app-config.secret.json
 
-Builds the Ferry FYI app-config JSON from an ignored local Heroku config export
-and updates the existing AWS Secrets Manager secret. Secret values are never
-printed. Set CONFIRM_AWS_SECRET_UPDATE=yes to allow the write.
+Merges an ignored Ferry FYI partial app-config JSON file into the existing AWS
+Secrets Manager secret. Secret values are never printed. Set
+CONFIRM_AWS_SECRET_UPDATE=yes to allow the write.
 USAGE
 }
 
@@ -69,52 +69,40 @@ if [[ ! -f "${FROM_JSON}" ]]; then
   exit 2
 fi
 
-TMP_SECRET="$(mktemp)"
+# restrict temporary secrets
+umask 077
+TMP_DIRECTORY="$(mktemp -d)"
+TMP_CURRENT_SECRET="${TMP_DIRECTORY}/current.json"
+TMP_MERGED_SECRET="${TMP_DIRECTORY}/merged.json"
 cleanup() {
-  # remove temp secret
-  rm -f "${TMP_SECRET}"
+  # remove temporary secrets
+  rm -rf -- "${TMP_DIRECTORY}"
 }
 trap cleanup EXIT
 
-jq '{
-  ANDROID_CERT_FINGERPRINT: (.ANDROID_CERT_FINGERPRINT // ""),
-  AUTH0_CLIENT_AUDIENCE: (.AUTH0_CLIENT_AUDIENCE // ""),
-  AUTH0_CLIENT_ID: (.AUTH0_CLIENT_ID // ""),
-  AUTH0_CLIENT_REDIRECT: (.AUTH0_CLIENT_REDIRECT // ""),
-  AUTH0_DOMAIN: (.AUTH0_DOMAIN // ""),
-  AUTH0_SERVER_AUDIENCE: (.AUTH0_SERVER_AUDIENCE // ""),
-  AUTH0_SERVER_ID: (.AUTH0_SERVER_ID // ""),
-  AUTH0_SERVER_SECRET: (.AUTH0_SERVER_SECRET // ""),
-  AW_TAG_ID: (.AW_TAG_ID // ""),
-  FCM_PUBLIC_KEY: (.FCM_PUBLIC_KEY // ""),
-  FIREBASE_API_KEY: (.FIREBASE_API_KEY // ""),
-  FIREBASE_APP_ID: (.FIREBASE_APP_ID // ""),
-  FIREBASE_PROJECT_ID: (.FIREBASE_PROJECT_ID // ""),
-  FIREBASE_SENDER_ID: (.FIREBASE_SENDER_ID // ""),
-  FIREBASE_SERVICE_ACCOUNT: (.FIREBASE_SERVICE_ACCOUNT // ""),
-  FIREBASE_VAPID_KEY: (.FIREBASE_VAPID_KEY // ""),
-  GCM_SENDER_ID: (.GCM_SENDER_ID // ""),
-  GOOGLE_ANALYTICS: (.GOOGLE_ANALYTICS // ""),
-  GTM_CONTAINER_ID: (.GTM_CONTAINER_ID // ""),
-  MAPBOX_ACCESS_TOKEN: (.MAPBOX_ACCESS_TOKEN // ""),
-  REVENUECAT_PROJECT_ID: (.REVENUECAT_PROJECT_ID // ""),
-  REVENUECAT_PRODUCTION_WEBHOOK_AUTHORIZATION: (.REVENUECAT_PRODUCTION_WEBHOOK_AUTHORIZATION // ""),
-  REVENUECAT_PRODUCTION_WEBHOOK_HMAC_SECRET: (.REVENUECAT_PRODUCTION_WEBHOOK_HMAC_SECRET // ""),
-  REVENUECAT_SANDBOX_WEBHOOK_AUTHORIZATION: (.REVENUECAT_SANDBOX_WEBHOOK_AUTHORIZATION // ""),
-  REVENUECAT_SANDBOX_WEBHOOK_HMAC_SECRET: (.REVENUECAT_SANDBOX_WEBHOOK_HMAC_SECRET // ""),
-  REVENUECAT_V2_SECRET_API_KEY: (.REVENUECAT_V2_SECRET_API_KEY // ""),
-  SENTRY_DSN: (.SENTRY_DSN // ""),
-  SUPPORTER_ACTION_HMAC_SECRET: (.SUPPORTER_ACTION_HMAC_SECRET // ""),
-  SUPPORTER_ANDROID_CHECKOUT_ENABLED: (.SUPPORTER_ANDROID_CHECKOUT_ENABLED // "false"),
-  SUPPORTER_IOS_CHECKOUT_ENABLED: (.SUPPORTER_IOS_CHECKOUT_ENABLED // "false"),
-  SUPPORTER_WEB_CHECKOUT_ENABLED: (.SUPPORTER_WEB_CHECKOUT_ENABLED // "false"),
-  WSDOT_API_KEY: (.WSDOT_API_KEY // "")
-}' "${FROM_JSON}" > "${TMP_SECRET}"
-chmod 600 "${TMP_SECRET}"
+aws secretsmanager get-secret-value \
+  --secret-id "${SECRET_ID}" \
+  --query SecretString \
+  --output text > "${TMP_CURRENT_SECRET}"
+
+jq -s -e '
+  # require two config objects
+  if length != 2 or (.[0] | type) != "object" or (.[1] | type) != "object" then
+    error("current secret and override must be JSON objects")
+  # require one partial override
+  elif (.[1] | length) == 0 then
+    error("app config override must be a non-empty JSON object")
+  # merge without dropping existing keys
+  elif ((.[0] + .[1]) | length) > 0 then
+    .[0] + .[1]
+  else
+    error("merged app config must be a non-empty JSON object")
+  end
+' "${TMP_CURRENT_SECRET}" "${FROM_JSON}" > "${TMP_MERGED_SECRET}"
 
 aws secretsmanager put-secret-value \
   --secret-id "${SECRET_ID}" \
-  --secret-string "file://${TMP_SECRET}" \
+  --secret-string "file://${TMP_MERGED_SECRET}" \
   --output json \
   --query '{ARN:ARN,VersionId:VersionId,VersionStages:VersionStages}'
 

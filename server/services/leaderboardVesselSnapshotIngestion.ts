@@ -1,7 +1,7 @@
-import logger from "heroku-logger";
 import { AUTOMATIC_CHECKIN_CANDIDATE_RETENTION_MS } from "shared/contracts/leaderboards";
 
 import { db } from "~/lib/db";
+import logger from "~/lib/logger";
 import { wsfDateToTimestamp } from "~/lib/wsf/date";
 import { Vessel } from "~/models/Vessel";
 import { WSF } from "~/typings/wsf";

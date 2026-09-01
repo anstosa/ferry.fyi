@@ -1,6 +1,5 @@
-import logger from "heroku-logger";
-
 import { getErrorMessage, getLogError } from "~/lib/errors";
+import logger from "~/lib/logger";
 import type { Schedule } from "~/models/Schedule";
 
 import { updateEstimatesIsolated } from "../forecastIsolation";

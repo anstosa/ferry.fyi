@@ -1,4 +1,3 @@
-import logger from "heroku-logger";
 import { isEmpty } from "shared/lib/arrays";
 import { entries } from "shared/lib/objects";
 import {
@@ -16,6 +15,7 @@ import {
 } from "shared/lib/seo";
 import { SitemapStream, streamToPromise } from "sitemap";
 
+import logger from "~/lib/logger";
 import { Terminal } from "~/models/Terminal";
 import { Vessel } from "~/models/Vessel";
 

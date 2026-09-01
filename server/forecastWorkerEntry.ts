@@ -6,6 +6,7 @@ import {
   createForecastSnapshots,
   type ForecastWorkerData,
   type ForecastWorkerResponse,
+  normalizeForecastScheduleInput,
 } from "~/lib/forecastIsolation";
 import { hydrateWsfSeed } from "~/lib/wsf/seed";
 import { Schedule } from "~/models/Schedule";
@@ -24,7 +25,9 @@ const runForecastWorker = async (): Promise<void> => {
   const data = workerData as ForecastWorkerData;
   await dbInit;
   hydrateWsfSeed();
-  const schedules = data.schedules.map((schedule) => new Schedule(schedule));
+  const schedules = data.schedules.map(
+    (schedule) => new Schedule(normalizeForecastScheduleInput(schedule))
+  );
   await updateEstimates(schedules);
   postResult({
     snapshots: createForecastSnapshots(schedules),

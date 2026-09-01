@@ -1,7 +1,7 @@
-import logger from "heroku-logger";
 import { DateTime } from "luxon";
 import { Op } from "sequelize";
 
+import logger from "~/lib/logger";
 import { formatLogBlock, formatTerminalList } from "~/lib/logging";
 import Crossing from "~/models/Crossing";
 import { TideObservation } from "~/models/TideObservation";

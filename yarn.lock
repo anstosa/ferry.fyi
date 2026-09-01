@@ -3699,11 +3699,6 @@
   resolved "https://registry.yarnpkg.com/@types/gtag.js/-/gtag.js-0.0.20.tgz#e47edabb4ed5ecac90a079275958e6c929d7c08a"
   integrity sha512-wwAbk3SA2QeU67unN7zPxjEHmPmlXwZXZvQEpbEUQuMCRGgKyE1m6XDuTUA9b6pCGb/GqJmdfMOY5LuDjJSbbg==
 
-"@types/heroku-logger@^1.0.3":
-  version "1.0.3"
-  resolved "https://registry.yarnpkg.com/@types/heroku-logger/-/heroku-logger-1.0.3.tgz#094bc1cac7a986dd1acf76458e591e1e3a5bf56a"
-  integrity sha512-mQopHeZTYm5WZ/QUJp2uZbWVZ3OITIt39sSXuulPuRhlLnQ32LublZsnZslyUpBuJM5+EnOM74jPzMZnMUFS4w==
-
 "@types/html-to-text@^9.0.4":
   version "9.0.4"
   resolved "https://registry.yarnpkg.com/@types/html-to-text/-/html-to-text-9.0.4.tgz#4a83dd8ae8bfa91457d0b1ffc26f4d0537eff58c"
@@ -5353,11 +5348,6 @@ depd@^2.0.0, depd@~2.0.0:
   resolved "https://registry.yarnpkg.com/depd/-/depd-2.0.0.tgz#b696163cc757560d09cf22cc8fad1571b79e76df"
   integrity sha512-g7nH6P6dyDioJogAAGprGpCtVImJhpPk/roCzdb3fIh61/s/nPsfR6onyMwkCAR/OlC3yBC0lESvUoQEAssIrw==
 
-destroy-circular@^1.1.0:
-  version "1.1.0"
-  resolved "https://registry.yarnpkg.com/destroy-circular/-/destroy-circular-1.1.0.tgz#f76624b76f999f1ac18b0ab444495118293a3ce0"
-  integrity sha1-92Ykt2+ZnxrBiwq0RElRGCk6POA=
-
 detect-libc@^2.0.3, detect-libc@^2.1.2:
   version "2.1.2"
   resolved "https://registry.yarnpkg.com/detect-libc/-/detect-libc-2.1.2.tgz#689c5dcdc1900ef5583a4cb9f6d7b473742074ad"
@@ -6359,13 +6349,6 @@ flat-cache@^6.1.23:
     flatted "^3.4.2"
     hookified "^1.15.0"
 
-flat@^2.0.1:
-  version "2.0.2"
-  resolved "https://registry.yarnpkg.com/flat/-/flat-2.0.2.tgz#d631430678b023a2f9bc10a23ac4ffad7e16b0f2"
-  integrity sha512-b/cdFAr468cVs8XoG62dbGf9YegchdgEPX6sP7rppE0a4+RZF19kseTiDKGA1rIr3hOvOD0QIlSmaFlOlT0gfA==
-  dependencies:
-    is-buffer "~1.1.2"
-
 flatted@^3.2.9:
   version "3.4.2"
   resolved "https://registry.yarnpkg.com/flatted/-/flatted-3.4.2.tgz#f5c23c107f0f37de8dbdf24f13722b3b98d52726"
@@ -6952,17 +6935,6 @@ hasown@^2.0.2, hasown@^2.0.3, hasown@^2.0.4:
   dependencies:
     function-bind "^1.1.2"
 
-heroku-logger@^0.3.3:
-  version "0.3.3"
-  resolved "https://registry.yarnpkg.com/heroku-logger/-/heroku-logger-0.3.3.tgz#8c507c1cf1d14b94279db3336b804911e45214cf"
-  integrity sha512-uzbAvE/6rykxlisRosVn6/EbJwPMg49Fo7SbsgUhfnj0GtTiCGP4PN9xuGwfBqM4UBGiaxGIcE1dXfBsely21A==
-  dependencies:
-    chalk "^1.1.3"
-    destroy-circular "^1.1.0"
-    flat "^2.0.1"
-    is "^3.2.1"
-    logfmt "^1.2.0"
-
 hookified@^1.15.0, hookified@^1.15.1:
   version "1.15.1"
   resolved "https://registry.yarnpkg.com/hookified/-/hookified-1.15.1.tgz#b1fafeaa5489cdc29cb85546a8f837ed4ffbbcb6"
@@ -7304,11 +7276,6 @@ is-boolean-object@^1.2.1:
     call-bound "^1.0.3"
     has-tostringtag "^1.0.2"
 
-is-buffer@~1.1.2:
-  version "1.1.6"
-  resolved "https://registry.yarnpkg.com/is-buffer/-/is-buffer-1.1.6.tgz#efaa2ea9daa0d7ab2ea13a97b2b8ad51fefbe8be"
-  integrity sha512-NcdALwpXkTm5Zvvbk7owOUSvVvBKDgKP5/ewfXEznmQFfs4ZRmanOeKBTjRVjka3QFoN6XJ+9F3USqfHqTaU5w==
-
 is-callable@^1.1.4, is-callable@^1.2.4:
   version "1.2.4"
   resolved "https://registry.yarnpkg.com/is-callable/-/is-callable-1.2.4.tgz#47301d58dd0259407865547853df6d61fe471945"
@@ -7619,11 +7586,6 @@ is-wsl@^2.2.0:
   integrity sha512-fKzAra0rGJUUBwGBgNkHZuToZcn+TtXHpeCgmkMJMMYx1sQDYaCSyjJBSCa2nH1DGm7s3n1oBnohoVTBaN7Lww==
   dependencies:
     is-docker "^2.0.0"
-
-is@^3.2.1:
-  version "3.3.0"
-  resolved "https://registry.yarnpkg.com/is/-/is-3.3.0.tgz#61cff6dd3c4193db94a3d62582072b44e5645d79"
-  integrity sha512-nW24QBoPcFGGHJGUwnfpI7Yc5CdqWNdsyHQszVE/z2pKHXzh7FZ5GWhJqSyaQ9wMkQnsTx+kAI8bHlCX4tKdbg==
 
 isarray@^2.0.5:
   version "2.0.5"
@@ -8133,14 +8095,6 @@ lodash@>=4.17.21, lodash@^4.17.21:
   version "4.18.1"
   resolved "https://registry.yarnpkg.com/lodash/-/lodash-4.18.1.tgz#ff2b66c1f6326d59513de2407bf881439812771c"
   integrity sha512-dMInicTPVE8d1e5otfwmmjlxkZoUpiVLwyeTdUsi/Caj/gfzzblBcCE5sRHV/AsjuCmxWrte2TNGSYuCeCq+0Q==
-
-logfmt@^1.2.0:
-  version "1.3.2"
-  resolved "https://registry.yarnpkg.com/logfmt/-/logfmt-1.3.2.tgz#be34020b7390b8201212a12f533e3cb4c92d70c2"
-  integrity sha512-U0lelcaGWEfEITZQXs8y5HrJp2xa0BJ+KDfkkLJRmuKbQIEVGNv145FbaNekY4ZYHJSBBx8NLJitaPtRqLEkxQ==
-  dependencies:
-    split "0.2.x"
-    through "2.3.x"
 
 loglevel-colored-level-prefix@^1.0.0:
   version "1.0.0"
@@ -10150,13 +10104,6 @@ split2@^4.1.0, split2@^4.2.0:
   resolved "https://registry.yarnpkg.com/split2/-/split2-4.2.0.tgz#c9c5920904d148bab0b9f67145f245a86aadbfa4"
   integrity sha512-UcjcJOWknrNkF6PLX83qcHM6KHgVKNkV62Y8a5uYDVv9ydGQVwAHMKqHdJje1VTWpljG0WYpCDhrCdAOYH4TWg==
 
-split@0.2.x:
-  version "0.2.10"
-  resolved "https://registry.yarnpkg.com/split/-/split-0.2.10.tgz#67097c601d697ce1368f418f06cd201cf0521a57"
-  integrity sha1-Zwl8YB1pfOE2j0GPBs0gHPBSGlc=
-  dependencies:
-    through "2"
-
 stable-hash-x@^0.2.0:
   version "0.2.0"
   resolved "https://registry.yarnpkg.com/stable-hash-x/-/stable-hash-x-0.2.0.tgz#dfd76bfa5d839a7470125c6a6b3c8b22061793e9"
@@ -10708,11 +10655,6 @@ through2@^4.0.2:
   integrity sha512-iOqSav00cVxEEICeD7TjLB1sueEL+81Wpzp2bY17uZjZN0pWZPuo4suZ/61VujxmqSGFfgOcNuTZ85QJwNZQpw==
   dependencies:
     readable-stream "3"
-
-through@2, through@2.3.x:
-  version "2.3.8"
-  resolved "https://registry.yarnpkg.com/through/-/through-2.3.8.tgz#0dd4c9ffaabc357960b1b724115d7e0e86a2e1f5"
-  integrity sha1-DdTJ/6q8NXlgsbckEV1+Doai4fU=
 
 tiny-case@^1.0.3:
   version "1.0.3"

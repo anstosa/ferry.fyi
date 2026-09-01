@@ -35,7 +35,7 @@ const tidalCancellations = vi.hoisted(() => ({
   getTidalCancellationsForDate: vi.fn(),
 }));
 
-vi.mock("heroku-logger", () => ({
+vi.mock("~/lib/logger", () => ({
   default: { info: vi.fn() },
 }));
 

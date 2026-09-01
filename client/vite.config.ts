@@ -231,7 +231,7 @@ const htmlTemplatePlugin = (): Plugin => {
       const values: Record<string, string> = {
         "%APP_DESCRIPTION%": SEO_DEFAULT_DESCRIPTION,
         "%APP_RELEASE_VERSION%":
-          getEnv("HEROKU_RELEASE_VERSION", "UNKNOWN") ?? "UNKNOWN",
+          getEnv("RELEASE_VERSION", "UNKNOWN") ?? "UNKNOWN",
         "%APP_TITLE%": SEO_DEFAULT_TITLE,
         "%SEO_BASE_URL%": baseUrl,
         "%SOCIAL_IMAGE%": `${baseUrl}/static/images/social.png`,
@@ -429,7 +429,7 @@ export default defineConfig(() => ({
             org: "ferry-fyi",
             project: "web",
             release: {
-              name: `web@${process.env.HEROKU_RELEASE_VERSION || "DEVELOPMENT"}`,
+              name: `web@${process.env.RELEASE_VERSION || "DEVELOPMENT"}`,
             },
             sourcemaps: {
               assets: path.resolve(clientOutDir, "**/*"),

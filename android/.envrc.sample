@@ -8,7 +8,7 @@ export GCM_SENDER_ID="<get from firebase>"
 export GOOGLE_ANALYTICS="<get from google analytics>"
 export GTM_CONTAINER_ID="<get from google tag manager>"
 
-# Heroku
+# Runtime
 export LOG_LEVEL="INFO"
 export NODE_ENV="production"
 

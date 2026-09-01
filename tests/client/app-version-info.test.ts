@@ -74,7 +74,7 @@ describe("getWebVersion", () => {
   it("uses DEVELOPMENT for local browser builds", () => {
     expect(
       getWebVersion({
-        HEROKU_RELEASE_VERSION: "production-hash",
+        RELEASE_VERSION: "production-hash",
         NODE_ENV: "development",
       })
     ).toBe("DEVELOPMENT");
@@ -83,7 +83,7 @@ describe("getWebVersion", () => {
   it("uses the deployed release hash for production browser builds", () => {
     expect(
       getWebVersion({
-        HEROKU_RELEASE_VERSION: "0123456789abcdef0123456789abcdef01234567",
+        RELEASE_VERSION: "0123456789abcdef0123456789abcdef01234567",
         NODE_ENV: "production",
       })
     ).toBe("01234567");
@@ -93,7 +93,7 @@ describe("getWebVersion", () => {
   it("keeps non-hash production version labels intact", () => {
     expect(
       getWebVersion({
-        HEROKU_RELEASE_VERSION: "production-release",
+        RELEASE_VERSION: "production-release",
         NODE_ENV: "production",
       })
     ).toBe("production-release");
@@ -106,7 +106,7 @@ describe("getWebVersion", () => {
 
     expect(
       getWebVersion(
-        { HEROKU_RELEASE_VERSION: "build-hash", NODE_ENV: "production" },
+        { RELEASE_VERSION: "build-hash", NODE_ENV: "production" },
         document
       )
     ).toBe("fedcba98");
@@ -116,7 +116,7 @@ describe("getWebVersion", () => {
   it("reads build-inlined production values without an environment argument", () => {
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv(
-      "HEROKU_RELEASE_VERSION",
+      "RELEASE_VERSION",
       "0123456789abcdef0123456789abcdef01234567"
     );
     document.head.innerHTML =

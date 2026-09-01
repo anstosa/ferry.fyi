@@ -171,6 +171,7 @@ const createPublicSsrFixtures = () => {
               },
               estimate: {
                 driveUpCapacity: 12,
+                fullProbability: 0.46,
                 fullRisk: "unlikely",
                 reservableCapacity: 0,
               },
@@ -212,6 +213,60 @@ const createTodaySnapshot = (
 
 describe("AppRoot server rendering", () => {
   afterEach(() => vi.unstubAllGlobals());
+
+  // SSR practical-full boundary
+  it("separates near-capacity copy from calibrated SSR risk", async () => {
+    const { formatForecast } = await import(
+      "../../client/views/PublicSsrPages"
+    );
+
+    expect(
+      formatForecast(
+        {
+          driveUpCapacity: 3,
+          fullProbability: 0.46,
+          fullRisk: "unlikely",
+          reservableCapacity: 0,
+        },
+        141
+      )
+    ).toContain("Near capacity · 46% full risk");
+    expect(
+      formatForecast(
+        {
+          driveUpCapacity: 4,
+          fullProbability: 0.34,
+          fullRisk: "unlikely",
+          reservableCapacity: 0,
+        },
+        141
+      )
+    ).toContain("Near capacity · 34% full risk");
+    expect(
+      formatForecast(
+        {
+          driveUpCapacity: 12,
+          fullProbability: 0.46,
+          fullRisk: "unlikely",
+          reservableCapacity: 0,
+        },
+        120
+      )
+    ).toContain("Unlikely full · 46% full risk");
+    const likelyFullForecast = formatForecast(
+      {
+        driveUpCapacity: 20,
+        fullProbability: 0.6,
+        fullRisk: "likely",
+        reservableCapacity: 0,
+      },
+      120
+    );
+    expect(likelyFullForecast).toContain(
+      "forecast full, Likely full · 60% full risk"
+    );
+    expect(likelyFullForecast).not.toContain("20 vehicle spaces");
+  });
 
   it(
     "renders ad content into the initial route HTML",
@@ -421,6 +476,8 @@ describe("AppRoot server rendering", () => {
           expect(markup).toContain("<time");
           expect(markup).toContain("18 vehicle spaces reported");
           expect(markup).toContain("forecast 12 vehicle spaces");
+          expect(markup).toContain("Near capacity · 46% full risk");
+          expect(markup).not.toContain("unlikely full risk");
           expect(markup).toContain("Dock change");
         }
         if (path.endsWith("/cameras")) {

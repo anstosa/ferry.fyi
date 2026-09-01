@@ -1,7 +1,7 @@
-import logger from "heroku-logger";
 import wsfCore from "shared/data/wsf-core.json";
 import { values } from "shared/lib/objects";
 
+import logger from "~/lib/logger";
 import { Camera } from "~/models/Camera";
 import { Route } from "~/models/Route";
 import { Terminal } from "~/models/Terminal";

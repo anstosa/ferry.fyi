@@ -22,6 +22,12 @@ import {
   usePublicSsrSourceOutcome,
 } from "~/lib/ssrSeed";
 
+import { isCapacityFull } from "./Schedule/capacityFullness";
+import {
+  getForecastRiskPresentation,
+  isForecastExpectedFull,
+} from "./Schedule/forecastRiskPresentation";
+
 function formatSnapshotTime(value: string): string {
   return DateTime.fromISO(value, { zone: "America/Los_Angeles" }).toFormat(
     "MMM d, h:mm a ZZZZ"
@@ -41,14 +47,36 @@ const PublicAd = ({
   ) : null;
 };
 
-function formatForecast(estimate: CrossingEstimate | undefined): string {
+// format one public forecast
+export function formatForecast(
+  estimate: CrossingEstimate | undefined,
+  totalCapacity: number
+): string {
+  // missing estimate guard
   if (!estimate) {
     return "";
   }
   const capacity =
     estimate.driveUpCapacity + (estimate.reservableCapacity ?? 0);
-  const risk = estimate.fullRisk ? `, ${estimate.fullRisk} full risk` : "";
-  return ` — forecast ${capacity} vehicle spaces${risk}`;
+  const percentFull =
+    totalCapacity > 0
+      ? Math.min(((totalCapacity - capacity) / totalCapacity) * 100, 100)
+      : null;
+  const riskPresentation = estimate.fullRisk
+    ? getForecastRiskPresentation({
+        fullProbability: estimate.fullProbability,
+        fullRisk: estimate.fullRisk,
+        isPracticalFull: isCapacityFull({ percentFull, spacesLeft: capacity }),
+      })
+    : null;
+  const riskText =
+    riskPresentation?.compactText ??
+    (estimate.fullRisk ? `${estimate.fullRisk} full risk` : null);
+  const risk = riskText ? `, ${riskText}` : "";
+  const forecast = isForecastExpectedFull(estimate.fullRisk)
+    ? " — forecast full"
+    : ` — forecast ${capacity} vehicle spaces`;
+  return `${forecast}${risk}`;
 }
 
 const UNAVAILABLE_REASON_LABELS = {
@@ -433,19 +461,29 @@ export const PublicSchedule = (): ReactElement => {
       <PublicAd className="my-4" />
       {schedule ? (
         <ul>
-          {schedule.slots.map((slot) => (
-            <li key={slot.wuid}>
-              {DateTime.fromSeconds(slot.time, {
-                zone: "America/Los_Angeles",
-              }).toFormat("h:mm a")}
-              {slot.crossing?.isCancelled ? " — cancelled" : ""}
-              {slot.vessel?.name ? ` — ${slot.vessel.name}` : ""}
-              {slot.crossing && !slot.crossing.isCancelled
-                ? ` — ${slot.crossing.driveUpCapacity + slot.crossing.reservableCapacity} vehicle spaces reported`
-                : ""}
-              {formatForecast(slot.estimate)}
-            </li>
-          ))}
+          {schedule.slots.map((slot) => {
+            // schedule slot capacity
+            const totalCapacity =
+              slot.crossing?.totalCapacity ??
+              Math.max(
+                0,
+                (slot.vessel.vehicleCapacity ?? 0) -
+                  (slot.vessel.tallVehicleCapacity ?? 0)
+              );
+            return (
+              <li key={slot.wuid}>
+                {DateTime.fromSeconds(slot.time, {
+                  zone: "America/Los_Angeles",
+                }).toFormat("h:mm a")}
+                {slot.crossing?.isCancelled ? " — cancelled" : ""}
+                {slot.vessel?.name ? ` — ${slot.vessel.name}` : ""}
+                {slot.crossing && !slot.crossing.isCancelled
+                  ? ` — ${slot.crossing.driveUpCapacity + slot.crossing.reservableCapacity} vehicle spaces reported`
+                  : ""}
+                {formatForecast(slot.estimate, totalCapacity)}
+              </li>
+            );
+          })}
         </ul>
       ) : (
         <p>Schedule data is temporarily unavailable.</p>

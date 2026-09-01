@@ -6,7 +6,8 @@ import {
 import { keyBy } from "shared/lib/arrays";
 import { entries } from "shared/lib/objects";
 
-import Crossing from "~/models/Crossing";
+import { toPublicSchedule } from "~/lib/publicScheduleProjection";
+import type Crossing from "~/models/Crossing";
 
 import { CacheableModel } from "./CacheableModel";
 
@@ -55,14 +56,6 @@ export class Schedule extends CacheableModel implements ScheduleClass {
   };
 
   serialize(): ScheduleClass {
-    return CacheableModel.serialize({
-      date: this.date,
-      key: this.key,
-      mateId: this.mateId,
-      sourceUpdatedAt: this.sourceUpdatedAt ?? null,
-      validRange: this.validRange,
-      slots: this.slots,
-      terminalId: this.terminalId,
-    });
+    return toPublicSchedule(this);
   }
 }

@@ -21,7 +21,7 @@ const formatReleaseVersion = (version: string): string => {
 export const getWebVersion = (
   environment: Record<string, string | undefined> = {
     NODE_ENV: process.env.NODE_ENV,
-    HEROKU_RELEASE_VERSION: process.env.HEROKU_RELEASE_VERSION,
+    RELEASE_VERSION: process.env.RELEASE_VERSION,
   },
   document: Document | undefined = globalThis.document
 ): string => {
@@ -32,7 +32,7 @@ export const getWebVersion = (
     ?.querySelector<HTMLMetaElement>('meta[name="ferry-fyi-release"]')
     ?.content.trim();
   return formatReleaseVersion(
-    runtimeVersion || environment.HEROKU_RELEASE_VERSION || "UNKNOWN"
+    runtimeVersion || environment.RELEASE_VERSION || "UNKNOWN"
   );
 };
 

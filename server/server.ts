@@ -1,5 +1,4 @@
 import express from "express";
-import logger from "heroku-logger";
 import {
   type JobCallback,
   scheduleJob as createScheduledJob,
@@ -22,6 +21,7 @@ import { apiErrorHandler } from "~/lib/httpApiPolicy";
 import { httpCachePolicy } from "~/lib/httpCachePolicy";
 import { createHttpSecurityMiddleware } from "~/lib/httpSecurity";
 import { createHttpTelemetryMiddleware } from "~/lib/httpTelemetry";
+import logger from "~/lib/logger";
 import {
   reportOperationTelemetry,
   reportRuntimeLifecycleTelemetry,

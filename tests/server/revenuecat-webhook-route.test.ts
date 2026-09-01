@@ -10,7 +10,7 @@ const supporter = vi.hoisted(() => ({
 }));
 
 vi.mock("~/lib/supporter", () => supporter);
-vi.mock("heroku-logger", () => ({ default: { error: vi.fn() } }));
+vi.mock("~/lib/logger", () => ({ default: { error: vi.fn() } }));
 
 import { createRevenueCatWebhookRouter } from "../../server/controllers/revenueCatWebhook";
 

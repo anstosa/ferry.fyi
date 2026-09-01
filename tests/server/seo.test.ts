@@ -80,7 +80,7 @@ describe("SEO metadata", () => {
   it("injects the running release version into browser HTML", () => {
     expect(
       getRuntimeReleaseVersion({
-        HEROKU_RELEASE_VERSION: "runtime-hash",
+        RELEASE_VERSION: "runtime-hash",
         NODE_ENV: "production",
       })
     ).toBe("runtime-hash");

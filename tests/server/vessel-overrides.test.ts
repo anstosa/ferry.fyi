@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const wsfRequest = vi.hoisted(() => vi.fn());
 
-vi.mock("heroku-logger", () => ({
+vi.mock("~/lib/logger", () => ({
   default: { error: vi.fn(), info: vi.fn() },
 }));
 

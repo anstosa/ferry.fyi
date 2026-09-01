@@ -1,6 +1,5 @@
 import { setImmediate as waitForImmediate } from "node:timers/promises";
 
-import logger from "heroku-logger";
 import { DateTime } from "luxon";
 import { Op } from "sequelize";
 import {
@@ -26,7 +25,18 @@ import {
   getDemandCalendarProfile,
 } from "~/lib/demandCalendar";
 import { getForecastDaypart } from "~/lib/forecastDaypart";
+import {
+  alignDemandShockPointEstimate,
+  createDemandShockHistoryIndex,
+  type DemandShockAdjustment,
+  type DemandShockHistorySource,
+  getDemandShockAdjustment,
+  regularizeDemandShockProbability,
+  shiftCapacitySamplesForDemand,
+} from "~/lib/forecastDemandShock";
 import { getWashingtonHolidayDates } from "~/lib/holidays";
+import logger from "~/lib/logger";
+import { formatLogBlock } from "~/lib/logging";
 import {
   createTideForecastContext,
   type TideConditions,
@@ -48,7 +58,8 @@ const CANCELLED_CAPACITY_ROLLOVER_SHARE = 0.6;
 const HOLIDAY_WINDOW_DAYS = 2;
 const MIN_WEIGHT = 0.1;
 const CAPACITY_REPORT_STALE_SECONDS = 30 * 60;
-const EARLY_PLACEHOLDER_CAPACITY_HOURS = 4;
+const LEGACY_EARLY_PLACEHOLDER_CAPACITY_HOURS = 4;
+const MIN_TELEMETRY_COMPONENT_DELTA = 0.01;
 const ZENITH = 90.833;
 const HISTORY_YEAR_SECONDS = 365.25 * 24 * 60 * 60;
 
@@ -64,12 +75,21 @@ interface CapacityPair {
   reservableCapacity: number | null;
 }
 
+export type CapacityReportingGate = "off" | "on";
+export type DemandShockMode = "off" | "on" | "shadow";
+
+export interface DemandShockModeResult<T> {
+  candidate: T | null;
+  selected: T;
+}
+
 interface HistoricalSample extends CapacityPair {
   crossing: Crossing;
   weight: number;
 }
 
 export interface HistoricalEstimate extends CapacityPair {
+  demandShockAdjustment?: DemandShockAdjustment;
   factors: ForecastFactor[];
   fullProbability: number;
   fullRisk: ForecastFullRisk;
@@ -94,6 +114,26 @@ interface NormalizedCapacitySample extends CapacityPair {
   weight: number;
 }
 
+export interface HistoricalEstimateInputAudit {
+  arrivalId: string;
+  asOf: number;
+  departureId: string;
+  samples: Array<{
+    arrivalId: string;
+    departureId: string;
+    departureTime: number;
+    driveUpCapacity: number;
+    id: number | string | null;
+    normalizedDriveUpCapacity: number;
+    normalizedReservableCapacity: number | null;
+    reservableCapacity: number | null;
+    totalCapacity: number;
+    weight: number;
+  }>;
+  targetCapacity: number;
+  targetDepartureTime: number;
+}
+
 interface HistoricalRecordSummary {
   historyYears: number;
   totalSailings: number;
@@ -112,8 +152,14 @@ interface DemandProfile {
 interface HistoricalRouteContext {
   arrivalId: string;
   calibration?: ForecastCalibration | null;
+  demandShock?: {
+    asOf: number;
+    baselineFullProbability: number;
+    history: DemandShockHistorySource;
+  };
   departureId: string;
   events?: DemandEvent[];
+  onInputAudit?: (audit: HistoricalEstimateInputAudit) => void;
   recordSummary?: HistoricalRecordSummary;
 }
 
@@ -123,6 +169,66 @@ interface HistoricalCrossingCandidate {
   isHolidayWindow: boolean;
   time: DateTime;
 }
+
+const warnedForecastSettings = new Set<string>();
+
+// parse one rollout setting
+const getForecastSetting = <T extends string>(
+  name: string,
+  allowed: readonly T[],
+  fallback: T
+): T => {
+  const value = process.env[name];
+  // use the documented default
+  if (!value) {
+    return fallback;
+  }
+  // accept a supported value
+  if (allowed.includes(value as T)) {
+    return value as T;
+  }
+  // warn once per invalid setting
+  if (!warnedForecastSettings.has(`${name}:${value}`)) {
+    warnedForecastSettings.add(`${name}:${value}`);
+    logger.warn(`${name}=${value} is invalid; using ${fallback}`);
+  }
+  return fallback;
+};
+
+// read the reporting-state gate
+export const getCapacityReportingGate = (): CapacityReportingGate =>
+  getForecastSetting(
+    "FORECAST_CAPACITY_REPORTING_GATE",
+    ["off", "on"] as const,
+    "on"
+  );
+
+// read the demand-shock mode
+export const getDemandShockMode = (): DemandShockMode => {
+  const fallback = process.env.NODE_ENV === "production" ? "shadow" : "on";
+  return getForecastSetting(
+    "FORECAST_DEMAND_SHOCK_MODE",
+    ["off", "shadow", "on"] as const,
+    fallback
+  );
+};
+
+// execute one lazy demand candidate
+export const runDemandShockMode = async <T>(
+  mode: DemandShockMode,
+  baseline: T,
+  buildCandidate: () => Promise<T>
+): Promise<DemandShockModeResult<T>> => {
+  // skip candidate work when disabled
+  if (mode === "off") {
+    return { candidate: null, selected: baseline };
+  }
+  const candidate = await buildCandidate();
+  return {
+    candidate,
+    selected: mode === "on" ? candidate : baseline,
+  };
+};
 
 // normalize degrees
 const normalizeDegrees = (degrees: number): number =>
@@ -809,6 +915,39 @@ const getFullRisk = (fullProbability: number): ForecastFullRisk => {
   return "low";
 };
 
+// reconcile candidate point and probability outputs
+export const reconcileForecastCoherence = (
+  estimate: CrossingEstimate,
+  totalCapacity: number
+): CrossingEstimate => {
+  const availableCapacity = constrain(
+    estimate.driveUpCapacity + (estimate.reservableCapacity ?? 0),
+    0,
+    Math.max(0, totalCapacity)
+  );
+  let fullProbability = constrain(estimate.fullProbability ?? 0, 0, 1);
+  const availableShare =
+    totalCapacity > 0 ? availableCapacity / totalCapacity : 0;
+  // enforce a full-sailing floor
+  if (availableCapacity === 0) {
+    fullProbability = Math.max(fullProbability, 0.5);
+  }
+  // exclude practical-full probability
+  if (availableShare >= 0.1) {
+    fullProbability = Math.min(fullProbability, 0.49);
+  }
+  // enforce ample-capacity probability
+  if (availableShare > 0.35) {
+    fullProbability = Math.min(fullProbability, 0.19);
+  }
+  fullProbability = round(fullProbability, 2);
+  return {
+    ...estimate,
+    fullProbability,
+    fullRisk: getFullRisk(fullProbability),
+  };
+};
+
 // formatted count
 const formatForecastCount = (count: number): string =>
   FORECAST_COUNT_FORMATTER.format(count);
@@ -1201,6 +1340,58 @@ const addCancelledRolloverDemand = (
   };
 };
 
+// format a signed target-space vehicle count
+const formatDemandVehicleDelta = (
+  occupiedShareDelta: number,
+  targetTotalCapacity: number
+): string => {
+  const vehicles = round(occupiedShareDelta * targetTotalCapacity);
+  return `${vehicles >= 0 ? "+" : ""}${vehicles} vehicles for this sailing's assigned capacity`;
+};
+
+// build demand-shock explanations
+const getDemandShockFactors = (
+  adjustment: DemandShockAdjustment,
+  targetTotalCapacity: number,
+  asOf: number,
+  targetDepartureTime: number
+): ForecastFactor[] => {
+  const factors: ForecastFactor[] = [];
+  // suppress cancelled component movement
+  if (adjustment.occupiedShareDelta === 0) {
+    return factors;
+  }
+  const { recentRegime } = adjustment;
+  // explain a material recent regime
+  if (recentRegime && Math.abs(recentRegime.occupiedShareDelta) >= 0.01) {
+    factors.push({
+      detail: `${recentRegime.sampleSize} sailings in the last 21 days; ${formatDemandVehicleDelta(
+        recentRegime.occupiedShareDelta,
+        targetTotalCapacity
+      )}`,
+      impact: recentRegime.occupiedShareDelta > 0 ? "higher" : "lower",
+      label: "Recent route demand",
+    });
+  }
+  const { sameDay } = adjustment;
+  // explain a material same-day signal
+  if (sameDay && Math.abs(sameDay.occupiedShareDelta) >= 0.01) {
+    const hoursUntilTarget = Math.max(
+      0,
+      (targetDepartureTime - asOf) / (60 * 60)
+    );
+    factors.push({
+      detail: `${sameDay.sampleSize} completed sailings today; ${formatDemandVehicleDelta(
+        sameDay.occupiedShareDelta,
+        targetTotalCapacity
+      )} after ${round(hoursUntilTarget, 1)}h horizon decay`,
+      impact: sameDay.occupiedShareDelta > 0 ? "higher" : "lower",
+      label: "Sustained same-day demand",
+    });
+  }
+  return factors;
+};
+
 // historical estimate
 export const getHistoricalEstimate = (
   slotTime: DateTime,
@@ -1246,10 +1437,56 @@ export const getHistoricalEstimate = (
     // normalize boat size
     return normalizeHistoricalSample(sample, targetTotalCapacity);
   });
+  // emit an audit of the exact estimator input
+  if (routeContext.onInputAudit) {
+    routeContext.onInputAudit({
+      arrivalId: routeContext.arrivalId,
+      asOf: now.toSeconds(),
+      departureId: routeContext.departureId,
+      samples: normalizedSamples.map((sample, index) => {
+        const crossing = comparableCrossings[index];
+        const crossingId = (crossing as Crossing & { id?: number | string }).id;
+        return {
+          arrivalId: crossing.arrivalId,
+          departureId: crossing.departureId,
+          departureTime: crossing.departureTime,
+          driveUpCapacity: crossing.driveUpCapacity,
+          id: crossingId ?? null,
+          normalizedDriveUpCapacity: sample.driveUpCapacity,
+          normalizedReservableCapacity: sample.reservableCapacity,
+          reservableCapacity: crossing.reservableCapacity,
+          totalCapacity: crossing.totalCapacity,
+          weight: sample.weight,
+        };
+      }),
+      targetCapacity: targetTotalCapacity,
+      targetDepartureTime: slotTime.toSeconds(),
+    });
+  }
+  const demandShockAdjustment = routeContext.demandShock
+    ? getDemandShockAdjustment({
+        asOf: routeContext.demandShock.asOf,
+        baseSamples: normalizedSamples,
+        history: routeContext.demandShock.history,
+        target: {
+          arrivalId: routeContext.arrivalId,
+          departureId: routeContext.departureId,
+          departureTime: slotTime.toSeconds(),
+          targetCapacity: targetTotalCapacity,
+        },
+      })
+    : undefined;
+  const estimationSamples = demandShockAdjustment
+    ? shiftCapacitySamplesForDemand(
+        normalizedSamples,
+        demandShockAdjustment.occupiedShareDelta,
+        targetTotalCapacity
+      )
+    : normalizedSamples;
   const meanCapacity = {
     driveUpCapacity: round(
       weightedMean(
-        normalizedSamples.map(({ driveUpCapacity, weight }) => ({
+        estimationSamples.map(({ driveUpCapacity, weight }) => ({
           value: driveUpCapacity,
           weight,
         }))
@@ -1257,7 +1494,7 @@ export const getHistoricalEstimate = (
     ),
     reservableCapacity: round(
       weightedMean(
-        normalizedSamples.map(({ reservableCapacity, weight }) => ({
+        estimationSamples.map(({ reservableCapacity, weight }) => ({
           value: reservableCapacity ?? 0,
           weight,
         }))
@@ -1265,27 +1502,58 @@ export const getHistoricalEstimate = (
     ),
   };
   const demandCapacity = getPeakDemandCapacity(
-    normalizedSamples,
+    estimationSamples,
     meanCapacity,
     targetProfile,
     targetTotalCapacity,
     routeContext.calibration
   );
+  const candidateFullProbability = routeContext.demandShock
+    ? regularizeDemandShockProbability(
+        routeContext.demandShock.baselineFullProbability,
+        demandCapacity.calibration.fullProbability,
+        demandShockAdjustment?.occupiedShareDelta ?? 0
+      )
+    : demandCapacity.calibration.fullProbability;
+  const candidateCalibration = {
+    ...demandCapacity.calibration,
+    fullProbability: candidateFullProbability,
+    fullRisk: getFullRisk(candidateFullProbability),
+  };
+  const candidateCapacity = demandShockAdjustment
+    ? alignDemandShockPointEstimate(
+        demandCapacity,
+        candidateFullProbability,
+        demandShockAdjustment.occupiedShareDelta,
+        targetTotalCapacity
+      )
+    : demandCapacity;
 
   return {
-    driveUpCapacity: demandCapacity.driveUpCapacity,
-    factors: getHistoricalForecastFactors({
-      calibration: demandCapacity.calibration,
-      persistedCalibration: routeContext.calibration,
-      profile: targetProfile,
-      recordSummary:
-        routeContext.recordSummary ?? getHistoricalRecordSummary(crossings),
-      sampleSize: samples.length,
-    }),
-    fullProbability: demandCapacity.calibration.fullProbability,
-    fullRisk: demandCapacity.calibration.fullRisk,
-    reservableCapacity: demandCapacity.reservableCapacity,
-    routeClass: demandCapacity.calibration.routeClass,
+    demandShockAdjustment,
+    driveUpCapacity: candidateCapacity.driveUpCapacity,
+    factors: [
+      ...getHistoricalForecastFactors({
+        calibration: candidateCalibration,
+        persistedCalibration: routeContext.calibration,
+        profile: targetProfile,
+        recordSummary:
+          routeContext.recordSummary ?? getHistoricalRecordSummary(crossings),
+        sampleSize: samples.length,
+      }),
+      ...(demandShockAdjustment && routeContext.demandShock
+        ? getDemandShockFactors(
+            demandShockAdjustment,
+            targetTotalCapacity,
+            routeContext.demandShock.asOf,
+            slotTime.toSeconds()
+          )
+        : []),
+    ],
+    fullProbability: candidateCalibration.fullProbability,
+    fullRisk: candidateCalibration.fullRisk,
+    reservableCapacity: candidateCapacity.reservableCapacity,
+    routeClass: candidateCalibration.routeClass,
     sampleSize: samples.length,
     weight: round(
       samples.reduce((total, { weight }) => total + weight, 0),
@@ -1318,12 +1586,11 @@ const hasStaleCapacityReport = (crossing: Crossing, now: DateTime): boolean => {
   return reportAgeSeconds > CAPACITY_REPORT_STALE_SECONDS;
 };
 
-// uninformative live capacity check
-const isUninformativeFullLiveCapacity = (
+// shared live-capacity guards
+const shouldClassifyFullLiveCapacity = (
   crossing: Crossing | undefined,
   slotTime: DateTime,
-  now: DateTime,
-  totalCapacity: number
+  now: DateTime
 ): boolean => {
   // missing crossing guard
   if (!crossing) {
@@ -1337,32 +1604,83 @@ const isUninformativeFullLiveCapacity = (
   if (crossing.isCancelled) {
     return false;
   }
+  return true;
+};
+
+// retain pre-rollout placeholder behavior
+export const isUninformativeFullLiveCapacityLegacy = (
+  crossing: Crossing | undefined,
+  slotTime: DateTime,
+  now: DateTime,
+  totalCapacity: number
+): boolean => {
+  // preserve shared guards
+  if (!shouldClassifyFullLiveCapacity(crossing, slotTime, now)) {
+    return false;
+  }
   const hoursUntilDeparture = slotTime.diff(now, "hours").hours;
   const isOpenPlaceholder =
-    getAvailableCapacity(crossing) >= totalCapacity &&
-    hoursUntilDeparture > EARLY_PLACEHOLDER_CAPACITY_HOURS;
+    getAvailableCapacity(crossing as Crossing) >= totalCapacity &&
+    hoursUntilDeparture > LEGACY_EARLY_PLACEHOLDER_CAPACITY_HOURS;
   // early placeholder guard
   if (isOpenPlaceholder) {
     return true;
   }
   return (
-    getAvailableCapacity(crossing) >= totalCapacity &&
-    hasStaleCapacityReport(crossing, now)
+    getAvailableCapacity(crossing as Crossing) >= totalCapacity &&
+    hasStaleCapacityReport(crossing as Crossing, now)
   );
 };
 
-// blend capacities
-const blendCapacity = (
-  historical: HistoricalEstimate | null,
+// classify using durable reporting state
+export const isUninformativeFullLiveCapacityStateful = (
   crossing: Crossing | undefined,
   slotTime: DateTime,
   now: DateTime,
   totalCapacity: number
+): boolean => {
+  // preserve shared guards
+  if (!shouldClassifyFullLiveCapacity(crossing, slotTime, now)) {
+    return false;
+  }
+  const liveCrossing = crossing as Crossing;
+  // preserve partial live reports
+  if (getAvailableCapacity(liveCrossing) < totalCapacity) {
+    return false;
+  }
+  // suppress never-started placeholders
+  if (!Number.isFinite(liveCrossing.capacityReportingStartedAt)) {
+    return true;
+  }
+  return hasStaleCapacityReport(liveCrossing, now);
+};
+
+// select the independent capacity classifier
+export const selectUninformativeFullLiveCapacityClassifier = (
+  gate: CapacityReportingGate
+): typeof isUninformativeFullLiveCapacityStateful =>
+  gate === "on"
+    ? isUninformativeFullLiveCapacityStateful
+    : isUninformativeFullLiveCapacityLegacy;
+
+// blend capacities
+export const blendCapacity = (
+  historical: HistoricalEstimate | null,
+  crossing: Crossing | undefined,
+  slotTime: DateTime,
+  now: DateTime,
+  totalCapacity: number,
+  gate: CapacityReportingGate = getCapacityReportingGate()
 ): CapacityPair | null => {
   // stale live guard
   if (
-    historical &&
-    isUninformativeFullLiveCapacity(crossing, slotTime, now, totalCapacity)
+    (gate === "on" || historical) &&
+    selectUninformativeFullLiveCapacityClassifier(gate)(
+      crossing,
+      slotTime,
+      now,
+      totalCapacity
+    )
   ) {
     return historical;
   }
@@ -1826,12 +2144,262 @@ const findForecastCalibrations = async (
 // yield forecast work
 const yieldEstimateRefresh = (): Promise<void> => waitForImmediate();
 
+interface SlotForecastPipelineResult {
+  coherenceRewritten: boolean;
+  estimate: CrossingEstimate;
+  nextRolloverDemand: number;
+  preCoherenceProbability: number;
+}
+
+interface ForecastTelemetry {
+  acceptedAllOpenRows: number;
+  appliedRecentRegimeSignals: number;
+  appliedSameDaySignals: number;
+  appliedSignals: number;
+  cappedSignals: number;
+  coherenceRewrites: number;
+  eligibleRecentRegimeSignals: number;
+  eligibleSameDaySignals: number;
+  maxAbsoluteSpaces: number;
+  probabilityAfter: [number, number, number, number];
+  probabilityBefore: [number, number, number, number];
+  staleAllOpenRows: number;
+  suppressedAllOpenRows: number;
+  totalAbsoluteSpaces: number;
+}
+
+// create aggregate-only telemetry state
+const createForecastTelemetry = (): ForecastTelemetry => ({
+  acceptedAllOpenRows: 0,
+  appliedRecentRegimeSignals: 0,
+  appliedSameDaySignals: 0,
+  appliedSignals: 0,
+  cappedSignals: 0,
+  coherenceRewrites: 0,
+  eligibleRecentRegimeSignals: 0,
+  eligibleSameDaySignals: 0,
+  maxAbsoluteSpaces: 0,
+  probabilityAfter: [0, 0, 0, 0],
+  probabilityBefore: [0, 0, 0, 0],
+  staleAllOpenRows: 0,
+  suppressedAllOpenRows: 0,
+  totalAbsoluteSpaces: 0,
+});
+
+// map one probability to an aggregate bin
+const getProbabilityBin = (probability: number): 0 | 1 | 2 | 3 => {
+  // low bin
+  if (probability < 0.2) {
+    return 0;
+  }
+  // moderate bin
+  if (probability < 0.5) {
+    return 1;
+  }
+  // likely bin
+  if (probability <= 0.8) {
+    return 2;
+  }
+  return 3;
+};
+
+// record aggregate candidate evidence
+const recordCandidateTelemetry = (
+  telemetry: ForecastTelemetry,
+  historical: HistoricalEstimate | null,
+  result: SlotForecastPipelineResult,
+  totalCapacity: number
+): void => {
+  const adjustment = historical?.demandShockAdjustment;
+  // record recent-regime eligibility
+  if (adjustment?.recentRegime) {
+    telemetry.eligibleRecentRegimeSignals += 1;
+    // record material recent-regime movement
+    if (
+      Math.abs(adjustment.recentRegime.occupiedShareDelta) >=
+      MIN_TELEMETRY_COMPONENT_DELTA
+    ) {
+      telemetry.appliedRecentRegimeSignals += 1;
+    }
+  }
+  // record same-day eligibility
+  if (adjustment?.sameDay) {
+    telemetry.eligibleSameDaySignals += 1;
+    // record material same-day movement
+    if (
+      Math.abs(adjustment.sameDay.occupiedShareDelta) >=
+      MIN_TELEMETRY_COMPONENT_DELTA
+    ) {
+      telemetry.appliedSameDaySignals += 1;
+    }
+  }
+  // record applied signal magnitude
+  if (adjustment && adjustment.occupiedShareDelta !== 0) {
+    telemetry.appliedSignals += 1;
+    const absoluteSpaces = Math.abs(
+      adjustment.occupiedShareDelta * totalCapacity
+    );
+    telemetry.totalAbsoluteSpaces += absoluteSpaces;
+    telemetry.maxAbsoluteSpaces = Math.max(
+      telemetry.maxAbsoluteSpaces,
+      absoluteSpaces
+    );
+    const componentTotal =
+      (adjustment.recentRegime?.occupiedShareDelta ?? 0) +
+      (adjustment.sameDay?.occupiedShareDelta ?? 0);
+    // record combined caps
+    if (Math.abs(componentTotal) > 0.25 + Number.EPSILON) {
+      telemetry.cappedSignals += 1;
+    }
+  }
+  // record coherence changes
+  if (result.coherenceRewritten) {
+    telemetry.coherenceRewrites += 1;
+  }
+  telemetry.probabilityBefore[
+    getProbabilityBin(result.preCoherenceProbability)
+  ] += 1;
+  telemetry.probabilityAfter[
+    getProbabilityBin(result.estimate.fullProbability ?? 0)
+  ] += 1;
+};
+
+// build one complete slot pipeline
+const buildSlotForecast = async ({
+  capacityGate,
+  cancelledRunLabels,
+  departureTerminalId,
+  disrupted,
+  forecastCrossing,
+  historical,
+  liveIsUninformative,
+  now,
+  reconcile,
+  rolloverDemand,
+  slot,
+  slotTime,
+  terminal,
+  totalCapacity,
+  weatherAdjustmentContext,
+}: {
+  capacityGate: CapacityReportingGate;
+  cancelledRunLabels: string[];
+  departureTerminalId: string;
+  disrupted: boolean;
+  forecastCrossing: Crossing | undefined;
+  historical: HistoricalEstimate | null;
+  liveIsUninformative: boolean;
+  now: DateTime;
+  reconcile: boolean;
+  rolloverDemand: number;
+  slot: Slot;
+  slotTime: DateTime;
+  terminal: Terminal | null;
+  totalCapacity: number;
+  weatherAdjustmentContext: Awaited<
+    ReturnType<typeof createWeatherAdjustmentContext>
+  >;
+}): Promise<SlotForecastPipelineResult | null> => {
+  const blended = blendCapacity(
+    historical,
+    forecastCrossing,
+    slotTime,
+    now,
+    totalCapacity,
+    capacityGate
+  );
+  const liveDriveCapacity = slot.crossing?.driveUpCapacity ?? totalCapacity;
+  const liveReservableCapacity =
+    slot.crossing?.reservableCapacity ?? totalCapacity;
+  // require one forecast source
+  if (!blended) {
+    return null;
+  }
+  let adjusted = blended;
+  // apply weather only before departure
+  if (!slot.hasPassed) {
+    adjusted = await getWeatherAdjustedCapacity({
+      capacity: blended,
+      context: weatherAdjustmentContext,
+      liveCapacity: {
+        driveUpCapacity: liveDriveCapacity,
+        reservableCapacity: liveReservableCapacity,
+      },
+      slotTime,
+      terminal,
+    });
+  }
+  const constrained = constrainCapacityPair(
+    adjusted,
+    liveDriveCapacity,
+    liveReservableCapacity,
+    totalCapacity
+  );
+  let rolloverAdjusted = constrained;
+  let nextRolloverDemand = rolloverDemand;
+  // consume active rollover demand
+  if (rolloverDemand > 0 && !slot.crossing?.isCancelled) {
+    rolloverAdjusted = addCancelledRolloverDemand(constrained, rolloverDemand);
+    nextRolloverDemand = 0;
+  }
+  let estimate: CrossingEstimate = {
+    confidence: getConfidence(historical, forecastCrossing, disrupted),
+    driveUpCapacity: rolloverAdjusted.driveUpCapacity,
+    factors: getOperationalForecastFactors({
+      adjusted,
+      blended,
+      cancelledRunLabels,
+      departureTerminalId,
+      disrupted,
+      forecastCrossing,
+      historical,
+      liveIsUninformative,
+      rolloverDemand,
+      slot,
+    }),
+    fullProbability: historical?.fullProbability ?? 0,
+    fullRisk: historical?.fullRisk ?? "low",
+    reservableCapacity: rolloverAdjusted.reservableCapacity,
+    routeClass: historical?.routeClass ?? "standard",
+    sampleSize: historical?.sampleSize ?? 0,
+    source: getSource(historical, forecastCrossing, disrupted),
+  };
+  const preCoherenceProbability = estimate.fullProbability ?? 0;
+  // reconcile only a live candidate
+  if (reconcile && !slot.crossing?.isCancelled) {
+    estimate = reconcileForecastCoherence(estimate, totalCapacity);
+  }
+  const coherenceRewritten =
+    preCoherenceProbability !== (estimate.fullProbability ?? 0) ||
+    (historical?.fullRisk ?? "low") !== estimate.fullRisk;
+  // preserve cancelled live capacity
+  if (slot.crossing?.isCancelled) {
+    nextRolloverDemand +=
+      getForecastedOccupiedCapacity(constrained, totalCapacity) *
+      CANCELLED_CAPACITY_ROLLOVER_SHARE;
+    estimate.driveUpCapacity = slot.crossing.driveUpCapacity;
+    estimate.reservableCapacity = slot.crossing.reservableCapacity;
+  }
+  return {
+    coherenceRewritten,
+    estimate,
+    nextRolloverDemand,
+    preCoherenceProbability,
+  };
+};
+
 // exported functions
 
 export const updateEstimates = async (
   schedules: Schedule[] = values(Schedule.getAll())
 ): Promise<void> => {
+  const startedAt = Date.now();
   const now = DateTime.local();
+  const capacityGate = getCapacityReportingGate();
+  const demandShockMode = getDemandShockMode();
+  const capacityClassifier =
+    selectUninformativeFullLiveCapacityClassifier(capacityGate);
+  const telemetry = createForecastTelemetry();
   // schedule estimate queue
   for (const schedule of schedules) {
     await yieldEstimateRefresh();
@@ -1873,6 +2441,10 @@ export const updateEstimates = async (
       now,
       holidays
     );
+    const demandShockHistory =
+      demandShockMode === "off"
+        ? null
+        : createDemandShockHistoryIndex(crossings);
 
     const slotTimes = schedule.slots.map((slot) =>
       DateTime.fromSeconds(slot.time)
@@ -1907,7 +2479,8 @@ export const updateEstimates = async (
       );
     }
 
-    let rolloverDemand = 0;
+    let baselineRolloverDemand = 0;
+    let candidateRolloverDemand = 0;
     const cancelledRunLabels: string[] = [];
     // estimate slots sequentially for cancellation spillover
     for (const [index, slot] of schedule.slots.entries()) {
@@ -1927,118 +2500,197 @@ export const updateEstimates = async (
       slot.tide = getSlotTide(departureTide, arrivalTide);
       const totalCapacity =
         slot.crossing?.totalCapacity ?? getSlotVehicleCapacity(slot);
-      const liveIsUninformative = isUninformativeFullLiveCapacity(
+      const liveIsUninformative = capacityClassifier(
         slot.crossing,
         slotTime,
         now,
         totalCapacity
       );
+      const isClassifiableAllOpen =
+        Boolean(slot.crossing) &&
+        slotTime > now &&
+        !slot.crossing?.isCancelled &&
+        getAvailableCapacity(slot.crossing as Crossing) >= totalCapacity;
       const daypart = getForecastDaypart(slotTime);
       const persistedCalibration =
         persistedCalibrations.get(daypart) ?? persistedCalibrations.get("all");
-      const historical = getHistoricalEstimate(
+      const comparableCrossings = getComparableCrossingsFromCandidates(
         slotTime,
-        getComparableCrossingsFromCandidates(
-          slotTime,
-          historicalCandidates,
-          holidays
-        ),
+        historicalCandidates,
+        holidays
+      );
+      const routeContext: HistoricalRouteContext = {
+        arrivalId: schedule.mateId,
+        calibration: persistedCalibration,
+        departureId: schedule.terminalId,
+        events: demandEvents,
+        recordSummary: historicalRecordSummary,
+      };
+      const baselineHistorical = getHistoricalEstimate(
+        slotTime,
+        comparableCrossings,
         terminal,
         now,
         holidays,
         totalCapacity,
-        {
-          arrivalId: schedule.mateId,
-          calibration: persistedCalibration,
-          departureId: schedule.terminalId,
-          events: demandEvents,
-          recordSummary: historicalRecordSummary,
-        },
+        routeContext,
         true
       );
-      const forecastCrossing =
-        historical && liveIsUninformative ? undefined : slot.crossing;
+      const shouldSuppressLiveCrossing =
+        liveIsUninformative &&
+        (capacityGate === "on" || Boolean(baselineHistorical));
+      // record actual all-open handling
+      if (isClassifiableAllOpen) {
+        // record suppressed rows
+        if (shouldSuppressLiveCrossing) {
+          telemetry.suppressedAllOpenRows += 1;
+          // record stale established rows
+          if (
+            Number.isFinite(slot.crossing?.capacityReportingStartedAt) &&
+            hasStaleCapacityReport(slot.crossing as Crossing, now)
+          ) {
+            telemetry.staleAllOpenRows += 1;
+          }
+        } else {
+          telemetry.acceptedAllOpenRows += 1;
+        }
+      }
+      const forecastCrossing = shouldSuppressLiveCrossing
+        ? undefined
+        : slot.crossing;
       const disrupted = isDisrupted(slot.crossing);
-      const blended = blendCapacity(
-        historical,
+      const activeCancelledRunLabels = [...cancelledRunLabels];
+      const baselineResult = await buildSlotForecast({
+        cancelledRunLabels: activeCancelledRunLabels,
+        capacityGate,
+        departureTerminalId: schedule.terminalId,
+        disrupted,
         forecastCrossing,
-        slotTime,
+        historical: baselineHistorical,
+        liveIsUninformative,
         now,
-        totalCapacity
-      );
-      // capacity already resolved
-      const liveDriveCapacity = slot.crossing?.driveUpCapacity ?? totalCapacity;
-      const liveReservableCapacity =
-        slot.crossing?.reservableCapacity ?? totalCapacity;
-      // estimate availability guard
-      if (!blended) {
+        reconcile: false,
+        rolloverDemand: baselineRolloverDemand,
+        slot,
+        slotTime,
+        terminal,
+        totalCapacity,
+        weatherAdjustmentContext,
+      });
+      // baseline availability guard
+      if (!baselineResult) {
         continue;
       }
-      let adjusted = blended;
-      // future sailing guard
-      if (!slot.hasPassed) {
-        adjusted = await getWeatherAdjustedCapacity({
-          capacity: blended,
-          context: weatherAdjustmentContext,
-          liveCapacity: {
-            driveUpCapacity: liveDriveCapacity,
-            reservableCapacity: liveReservableCapacity,
-          },
-          slotTime,
-          terminal,
-        });
-      }
-      const constrained = constrainCapacityPair(
-        adjusted,
-        liveDriveCapacity,
-        liveReservableCapacity,
-        totalCapacity
+      baselineRolloverDemand = baselineResult.nextRolloverDemand;
+      const activeCandidateRolloverDemand = candidateRolloverDemand;
+      const modeResult = await runDemandShockMode(
+        demandShockMode,
+        baselineResult,
+        async () => {
+          const candidateHistorical = getHistoricalEstimate(
+            slotTime,
+            comparableCrossings,
+            terminal,
+            now,
+            holidays,
+            totalCapacity,
+            {
+              ...routeContext,
+              demandShock: {
+                asOf: now.toSeconds(),
+                baselineFullProbability:
+                  baselineHistorical?.fullProbability ?? 0,
+                history: demandShockHistory ?? [],
+              },
+            },
+            true
+          );
+          const candidateForecastCrossing = shouldSuppressLiveCrossing
+            ? undefined
+            : slot.crossing;
+          const candidateResult = await buildSlotForecast({
+            cancelledRunLabels: activeCancelledRunLabels,
+            capacityGate,
+            departureTerminalId: schedule.terminalId,
+            disrupted,
+            forecastCrossing: candidateForecastCrossing,
+            historical: candidateHistorical,
+            liveIsUninformative,
+            now,
+            reconcile: true,
+            rolloverDemand: activeCandidateRolloverDemand,
+            slot,
+            slotTime,
+            terminal,
+            totalCapacity,
+            weatherAdjustmentContext,
+          });
+          // enforce paired candidate construction
+          if (!candidateResult) {
+            throw new Error(
+              "Forecast candidate invariant failed after baseline construction"
+            );
+          }
+          recordCandidateTelemetry(
+            telemetry,
+            candidateHistorical,
+            candidateResult,
+            totalCapacity
+          );
+          return candidateResult;
+        }
       );
-      let rolloverAdjusted = constrained;
-      const activeRolloverDemand = rolloverDemand;
-      const activeCancelledRunLabels = [...cancelledRunLabels];
-      // active rollover guard
-      if (rolloverDemand > 0 && !slot.crossing?.isCancelled) {
-        rolloverAdjusted = addCancelledRolloverDemand(
-          constrained,
-          rolloverDemand
-        );
-        rolloverDemand = 0;
+      // advance the private candidate rollover
+      if (modeResult.candidate) {
+        candidateRolloverDemand = modeResult.candidate.nextRolloverDemand;
       }
-      const estimate: CrossingEstimate = {
-        confidence: getConfidence(historical, forecastCrossing, disrupted),
-        driveUpCapacity: rolloverAdjusted.driveUpCapacity,
-        factors: getOperationalForecastFactors({
-          adjusted,
-          blended,
-          cancelledRunLabels: activeCancelledRunLabels,
-          departureTerminalId: schedule.terminalId,
-          disrupted,
-          forecastCrossing,
-          historical,
-          liveIsUninformative,
-          rolloverDemand: activeRolloverDemand,
-          slot,
-        }),
-        fullProbability: historical?.fullProbability ?? 0,
-        fullRisk: historical?.fullRisk ?? "low",
-        reservableCapacity: rolloverAdjusted.reservableCapacity,
-        routeClass: historical?.routeClass ?? "standard",
-        sampleSize: historical?.sampleSize ?? 0,
-        source: getSource(historical, forecastCrossing, disrupted),
-      };
-      // cancelled sailings are treated as low-confidence live estimates
+      // record cancelled labels once
       if (slot.crossing?.isCancelled) {
-        rolloverDemand +=
-          getForecastedOccupiedCapacity(constrained, totalCapacity) *
-          CANCELLED_CAPACITY_ROLLOVER_SHARE;
-        // cancelled run label
         cancelledRunLabels.push(slotTime.toFormat("h:mm a"));
-        estimate.driveUpCapacity = slot.crossing.driveUpCapacity;
-        estimate.reservableCapacity = slot.crossing.reservableCapacity;
       }
-      slot.estimate = estimate;
+      slot.estimate = modeResult.selected.estimate;
     }
   }
-  logger.info("Updated Estimates");
+  const meanAbsoluteSpaces = telemetry.appliedSignals
+    ? telemetry.totalAbsoluteSpaces / telemetry.appliedSignals
+    : 0;
+  logger.info(
+    formatLogBlock("Forecast update complete", [
+      {
+        heading: "runtime",
+        lines: [
+          `capacity reporting gate: ${capacityGate}`,
+          `demand shock mode: ${demandShockMode}`,
+          `elapsed milliseconds: ${Date.now() - startedAt}`,
+        ],
+      },
+      {
+        heading: "capacity reports",
+        lines: [
+          `suppressed all-open rows: ${telemetry.suppressedAllOpenRows}`,
+          `accepted all-open rows: ${telemetry.acceptedAllOpenRows}`,
+          `stale all-open rows: ${telemetry.staleAllOpenRows}`,
+        ],
+      },
+      {
+        heading: "demand signals",
+        lines: [
+          `recent-regime eligible/applied: ${telemetry.eligibleRecentRegimeSignals}/${telemetry.appliedRecentRegimeSignals}`,
+          `same-day eligible/applied: ${telemetry.eligibleSameDaySignals}/${telemetry.appliedSameDaySignals}`,
+          `applied targets: ${telemetry.appliedSignals}`,
+          `capped targets: ${telemetry.cappedSignals}`,
+          `mean absolute spaces: ${round(meanAbsoluteSpaces, 2)}`,
+          `max absolute spaces: ${round(telemetry.maxAbsoluteSpaces, 2)}`,
+        ],
+      },
+      {
+        heading: "candidate coherence",
+        lines: [
+          `rewrites: ${telemetry.coherenceRewrites}`,
+          `probability bins before: ${telemetry.probabilityBefore.join("/")}`,
+          `probability bins after: ${telemetry.probabilityAfter.join("/")}`,
+        ],
+      },
+    ])
+  );
 };

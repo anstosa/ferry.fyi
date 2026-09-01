@@ -1,10 +1,10 @@
-import logger from "heroku-logger";
 import { DateTime } from "luxon";
 
 import {
   type DemandEventInput,
   persistDemandEvents,
 } from "~/lib/demandEvents/persistDemandEvents";
+import logger from "~/lib/logger";
 
 const DEFAULT_YEARS_AHEAD = 1;
 const SEATTLE_ZONE = "America/Los_Angeles";

@@ -66,8 +66,8 @@ export const createSsrRuntime = async ({
     getWsfStatus: () => Promise.resolve(getWsfStatus()),
   };
   const release = () => ({
-    publishedAt: process.env.HEROKU_RELEASE_CREATED_AT ?? null,
-    version: process.env.HEROKU_RELEASE_VERSION ?? "development",
+    publishedAt: process.env.RELEASE_CREATED_AT ?? null,
+    version: process.env.RELEASE_VERSION ?? "development",
   });
   return createSsrDocumentRuntime({
     cache: new SsrDocumentCache<SsrRuntimeFill>(),

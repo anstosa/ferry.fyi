@@ -24,7 +24,6 @@ An alternative to the WSDOT mobile app. With Ferry FYI, you get:
 
 - [Docker](https://docs.docker.com/get-docker/)
 - [Git LFS](https://git-lfs.com/)
-- [Heroku CLI](https://devcenter.heroku.com/articles/heroku-cli#install-the-heroku-cli)
 
 ## Setting up dev environment
 
@@ -42,6 +41,13 @@ An alternative to the WSDOT mobile app. With Ferry FYI, you get:
 For a prod-like local Docker Compose setup with the app, detector runtime, Postgres, and automatic database migrations, see [Local container development](docs/local-container-development.md).
 
 Run the full containerized development stack with `yarn dev:up`.
+
+## Production hosting
+
+Ferry FYI runs on AWS ECS Fargate with PostgreSQL on Amazon RDS. Production
+images are built and deployed by `.github/workflows/deploy-aws.yml`; runtime
+configuration is stored in AWS Secrets Manager and exposed through the ECS task
+definition.
 
 ## Running locally
 

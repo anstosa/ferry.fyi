@@ -1,7 +1,7 @@
-import logger from "heroku-logger";
 import cameras from "shared/data/cameras.json";
 import { values } from "shared/lib/objects";
 
+import logger from "~/lib/logger";
 import { formatLogBlock, formatTerminalList } from "~/lib/logging";
 import { Camera } from "~/models/Camera";
 import { WSF } from "~/typings/wsf";

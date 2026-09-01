@@ -1,8 +1,8 @@
 import express, { Router } from "express";
 import { MINUTE, rateLimit } from "express-rate-limit";
-import logger from "heroku-logger";
 import type { SupporterEnvironment } from "shared/contracts/supporter";
 
+import logger from "~/lib/logger";
 import {
   hashRevenueCatWebhookBody,
   parseRevenueCatWebhook,

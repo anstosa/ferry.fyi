@@ -14,7 +14,7 @@ const { info, scheduleJob } = vi.hoisted(() => ({
 }));
 
 // bind cleanup telemetry
-vi.mock("heroku-logger", () => ({
+vi.mock("~/lib/logger", () => ({
   default: {
     error: vi.fn(),
     info,

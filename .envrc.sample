@@ -15,13 +15,16 @@ export FIREBASE_SERVICE_ACCOUNT="<base64 firebase service account json>"
 export GOOGLE_ANALYTICS="<get from google analytics>"
 export GTM_CONTAINER_ID="<get from google tag manager>"
 
-# Heroku
+# Runtime
 export LOG_LEVEL="DEBUG"
 export NODE_ENV="development"
 export PGSSLMODE="disable"
 
 # Server
 export PORT="4041"
+# Enable forecast safety gates locally.
+export FORECAST_CAPACITY_REPORTING_GATE="on"
+export FORECAST_DEMAND_SHOCK_MODE="on"
 
 # WSDOT
 export WSDOT_API_KEY="<get from wsdot>"

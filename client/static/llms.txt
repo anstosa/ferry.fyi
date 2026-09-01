@@ -32,7 +32,7 @@ Date-selected schedule URLs are noindex variants of the undated route canonical.
 
 - **Route schedules:** Browse ferry routes, choose a service date, and see upcoming or historical sailings.
 - **Live sailing context:** See vessel assignments, positions, route status, delays, cancellations, and service bulletins when available.
-- **Vehicle-capacity forecasts:** View projected vehicle space and fullness for upcoming sailings; these are estimates, not boarding guarantees.
+- **Vehicle-capacity forecasts:** View projected vehicle space and fullness for upcoming sailings. Forecasts combine informative live WSF reports with comparable historical sailings and may react to sustained recent demand in the same route direction. Initial all-open WSF placeholders are not treated as proof that a terminal is empty. Forecasts with fewer than 10 percent of vehicle spaces remaining receive a near-capacity warning separate from the calibrated chance of filling completely. When the calibrated full risk is likely or high, Ferry FYI shows the forecast as full instead of displaying a specific space count. These are estimates, not boarding guarantees.
 - **Traffic cameras:** View terminal camera images, their update/check time, and driving directions.
 - **Map:** Explore vessel locations and terminal context on an interactive map.
 - **Fare planner:** Browse route/date fare options and calculate a quote from selected fare line items.
@@ -94,6 +94,13 @@ The schedule endpoints above are the AI-facing source for a route's forecast and
 - `cancellationReason` — Present for recognized tidal cancellations.
 
 For service bulletins and terminal wait-time context, read `body.bulletins` and `body.waitTimes` from `/api/terminals/:terminalId`. Explain the distinction between observed values (`crossing` and GPS delay) and predictive values (`estimate`, weather, tide, and projected delay). Never describe a forecast as a confirmed cancellation, delay, or vehicle-space outcome.
+
+Capacity factors can describe recent route demand or sustained same-day demand
+when enough completed same-direction sailings support an adjustment. These
+factors are directional and time-bounded, not a statement about the reverse
+route or a guarantee that the same pattern will continue. Internal capacity
+reporting state and model diagnostics are intentionally omitted from public
+schedule responses.
 
 ### Cameras and observed conditions
 

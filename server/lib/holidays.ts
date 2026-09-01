@@ -1,5 +1,6 @@
-import logger from "heroku-logger";
 import { DateTime } from "luxon";
+
+import logger from "~/lib/logger";
 
 import { getErrorMessage } from "./errors";
 

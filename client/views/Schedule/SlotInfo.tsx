@@ -75,6 +75,10 @@ import {
   getForecastCapacityFillClassName,
 } from "./capacityStyles";
 import { hasSailingDeparted } from "./departureState";
+import {
+  getForecastRiskPresentation,
+  isForecastExpectedFull,
+} from "./forecastRiskPresentation";
 import { getGalleyStatus } from "./galleyHours";
 import { getCurrentSlot } from "./nowDivider";
 import { getProjectedTiming } from "./projectedTiming";
@@ -104,6 +108,8 @@ const FORECAST_FACTOR_ORDER = [
   "Reservation-heavy route",
   "Less predictable terminal",
   "Full-boat spikes on this route",
+  "Recent route demand",
+  "Sustained same-day demand",
   "Only the current WSF vehicle-space report is available.",
   "Tidal cancellation risk",
   "Busier than average pattern",
@@ -343,15 +349,19 @@ export const SlotInfo = (props: Props): ReactElement => {
           100
         )
       : null;
+  const isEstimatePracticalFull = isCapacityFull({
+    percentFull: estimatePercentFull,
+    spacesLeft: estimateSpacesLeft,
+  });
+  const isEstimateExpectedFull = isForecastExpectedFull(
+    slot.estimate?.fullRisk
+  );
   const isFull = slot.crossing
     ? isCapacityFull({
         percentFull: livePercentFull,
         spacesLeft: liveSpacesLeft,
       })
-    : isCapacityFull({
-        percentFull: estimatePercentFull,
-        spacesLeft: estimateSpacesLeft,
-      });
+    : isEstimateExpectedFull;
   const timeRowState = getScheduleRowState({
     hasConfirmedCapacity: false,
     isFull,
@@ -702,7 +712,13 @@ export const SlotInfo = (props: Props): ReactElement => {
     spacesLeft: number | null;
   }): ReactNode => {
     const isUnavailable = percentFull === null || spacesLeft === null;
-    const isFullCapacity = isCapacityFull({ percentFull, spacesLeft });
+    const isPracticalFullCapacity = isCapacityFull({
+      percentFull,
+      spacesLeft,
+    });
+    const isFullCapacity = isForecast
+      ? isEstimateExpectedFull
+      : isPracticalFullCapacity;
     const displayPercent = getCapacityDisplayPercent({
       isFull: isFullCapacity,
       percentFull,
@@ -726,33 +742,21 @@ export const SlotInfo = (props: Props): ReactElement => {
     let detail = isForecast ? "No forecast yet" : "No confirmed count yet";
     // available capacity copy
     if (!isUnavailable) {
-      headline = `${Math.round(percentFull)}% full`;
+      headline = `${Math.round(displayPercent)}% full`;
       detail = isFullCapacity
         ? "Boat full"
         : `${pluralize(spacesLeft, "space")} left`;
     }
-    let riskText: string | null = null;
     // risk card copy
-    if (showRisk && isForecast && slot.estimate?.fullRisk === "high") {
-      const riskPercent = slot.estimate.fullProbability
-        ? ` · ${Math.round(slot.estimate.fullProbability * 100)}% risk`
-        : "";
-      riskText = `High full risk${riskPercent}`;
-    } else if (showRisk && isForecast && slot.estimate?.fullRisk === "likely") {
-      const riskPercent = slot.estimate.fullProbability
-        ? ` · ${Math.round(slot.estimate.fullProbability * 100)}% risk`
-        : "";
-      riskText = `Likely full${riskPercent}`;
-    } else if (
-      showRisk &&
-      isForecast &&
-      slot.estimate?.fullRisk === "unlikely"
-    ) {
-      const riskPercent = slot.estimate.fullProbability
-        ? ` · ${Math.round(slot.estimate.fullProbability * 100)}% risk`
-        : "";
-      riskText = `Unlikely full${riskPercent}`;
-    }
+    const riskPresentation = slot.estimate?.fullRisk
+      ? getForecastRiskPresentation({
+          fullProbability: slot.estimate.fullProbability,
+          fullRisk: slot.estimate.fullRisk,
+          isPracticalFull: isPracticalFullCapacity,
+        })
+      : null;
+    const riskText =
+      showRisk && isForecast ? (riskPresentation?.compactText ?? null) : null;
     return (
       <section
         className={clsx(
@@ -1216,10 +1220,12 @@ export const SlotInfo = (props: Props): ReactElement => {
         return getForecastFactorOrder(left) - getForecastFactorOrder(right);
       });
     const confidence = slot.estimate?.confidence ?? "low";
-    const riskPercent = slot.estimate?.fullProbability
-      ? Math.round(slot.estimate.fullProbability * 100)
-      : 0;
     const fullRisk = slot.estimate?.fullRisk ?? "low";
+    const riskPresentation = getForecastRiskPresentation({
+      fullProbability: slot.estimate?.fullProbability,
+      fullRisk,
+      isPracticalFull: isEstimatePracticalFull,
+    });
     return (
       <article
         className={clsx(
@@ -1266,17 +1272,17 @@ export const SlotInfo = (props: Props): ReactElement => {
             <section
               className={clsx(
                 "rounded-lg border p-3",
-                getForecastRiskClassName(fullRisk)
+                getForecastRiskClassName(riskPresentation.tone)
               )}
             >
               <p className="text-2xs font-bold uppercase tracking-wide opacity-80">
-                Full Sailing Risk
+                {riskPresentation.heading}
               </p>
               <p className="mt-1 text-xl font-black uppercase leading-tight">
-                {fullRisk}
+                {riskPresentation.label}
               </p>
               <p className="mt-1 text-xs font-semibold opacity-80">
-                {riskPercent}% likelihood
+                {riskPresentation.detail}
               </p>
             </section>
           </div>

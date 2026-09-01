@@ -39,6 +39,14 @@ export const ForecastingExplained = (): ReactElement => (
         of day, and on similar days of the week.
       </li>
       <li>
+        <strong>Recent direction-specific demand:</strong> when enough completed
+        sailings show that one direction has become consistently busier or
+        quieter than its established pattern, the model can adjust upcoming
+        sailings in that direction. The adjustment fades for sailings farther in
+        the future and is limited so a short-term pattern cannot overwhelm the
+        historical forecast.
+      </li>
+      <li>
         <strong>Calendar patterns:</strong> holidays, seasonality, recency, and
         daylight all influence which historical sailings are most comparable.
       </li>
@@ -53,6 +61,20 @@ export const ForecastingExplained = (): ReactElement => (
         shows that similar weather affected traffic on that route.
       </li>
     </ul>
+
+    <p className="mt-4">
+      A future sailing may briefly show every vehicle space available before WSF
+      starts actively reporting capacity. Ferry FYI treats that initial all-open
+      value as unavailable evidence instead of assuming the terminal is empty.
+      Once live reporting begins, fresh WSF counts remain the strongest input.
+    </p>
+    <p className="mt-2">
+      When fewer than 10 percent of vehicle spaces are forecast to remain, Ferry
+      FYI shows a near-capacity warning separately from the calibrated chance
+      that the sailing will fill completely. When that calibrated risk is likely
+      or high, the forecast is shown as full instead of displaying a specific
+      number of spaces.
+    </p>
 
     <h2 className="font-bold text-lg mt-8">How delay forecasts work</h2>
     <p className="mt-2">

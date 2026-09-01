@@ -67,7 +67,7 @@ const loggerModel = vi.hoisted(() => ({
   info: vi.fn(),
 }));
 
-vi.mock("heroku-logger", () => ({
+vi.mock("~/lib/logger", () => ({
   default: loggerModel,
 }));
 

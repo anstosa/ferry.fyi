@@ -16,6 +16,7 @@ import {
   getCapacityOpacityClassName,
   getForecastCapacityFillClassName,
 } from "./capacityStyles";
+import { isForecastExpectedFull } from "./forecastRiskPresentation";
 import {
   getScheduleLiveSpaceState,
   getScheduleSailingContext,
@@ -157,14 +158,19 @@ export const Capacity = ({
     return estimateLeft ?? null;
   };
 
-  const isFull = (): boolean =>
-    isCapacityFull({
+  const isEstimateFull = (): boolean =>
+    isForecastExpectedFull(estimate?.fullRisk);
+
+  const isFull = (): boolean => {
+    // forecast-only full state
+    if (!crossing) {
+      return isEstimateFull();
+    }
+    return isCapacityFull({
       percentFull: getActiveCapacityFullness(),
       spacesLeft: getActiveCapacityLeft(),
     });
-
-  const isEstimateFull = (): boolean =>
-    isCapacityFull({ percentFull: estimateFull, spacesLeft: estimateLeft });
+  };
 
   const getCapacityDisplayFullness = (): number => {
     // cancelled sailing guard

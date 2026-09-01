@@ -1,5 +1,6 @@
-import logger from "heroku-logger";
 import { WSFStatus } from "shared/contracts/api";
+
+import logger from "~/lib/logger";
 
 const API_ACCESS = `?apiaccesscode=${encodeURIComponent(
   process.env.WSDOT_API_KEY ?? ""

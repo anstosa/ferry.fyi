@@ -40,6 +40,10 @@ Terraform creates the app config secret container but does not create placeholde
 Populate the JSON secret shown by `app_config_secret_arn` manually before starting ECS tasks.
 Expected keys are controlled by `var.app_secret_keys` and include runtime Auth0, Firebase, Mapbox, Sentry DSN, and WSDOT settings. `SENTRY_AUTH_TOKEN` is build-only for optional sourcemap upload and must not be imported into this ECS runtime secret.
 
+Set `FORECAST_DEMAND_SHOCK_MODE` to `on` in the production app-config secret so
+recent direction-specific and same-day demand adjustments affect selected
+forecasts rather than running only for comparison telemetry.
+
 Terraform does create a generated `DATABASE_URL` secret from the RDS endpoint and generated password.
 The secret value is sensitive and will be present in Terraform state; store state in a protected backend before production use.
 
@@ -149,8 +153,8 @@ Configure these non-secret GitHub variables at the repository or organization le
 | --- | --- |
 | `AWS_REGION` | `region` output, expected `us-west-2` |
 | `AWS_ROLE_ARN` | `github_deploy_role_arn` output |
-| `AUTH0_CLIENT_AUDIENCE` | Browser Auth0 audience from Heroku config classification or Auth0 public app config |
-| `AUTH0_CLIENT_ID` | Browser Auth0 client ID from Heroku config classification or Auth0 public app config |
+| `AUTH0_CLIENT_AUDIENCE` | Browser Auth0 audience from Auth0 public app config |
+| `AUTH0_CLIENT_ID` | Browser Auth0 client ID from Auth0 public app config |
 | `AUTH0_CLIENT_REDIRECT` | Browser Auth0 redirect URL for the deployed hostname |
 | `AUTH0_DOMAIN` | Branded browser and token issuer domain, `auth.ferry.fyi` in production |
 | `AW_TAG_ID` | Browser Ads conversion tag ID if enabled |
@@ -166,15 +170,15 @@ Configure these non-secret GitHub variables at the repository or organization le
 | `ECS_DETECTOR_TASK_DEFINITION_FAMILY` | `detector_task_definition_family` output |
 | `ECS_TASK_SUBNETS` | Comma-separated `ecs_task_subnet_ids` output |
 | `ECS_TASK_SECURITY_GROUPS` | `ecs_task_security_group_id` output |
-| `FIREBASE_API_KEY` | Browser Firebase API key from Heroku config classification or Firebase public app config |
-| `FIREBASE_APP_ID` | Browser Firebase app ID from Heroku config classification or Firebase public app config |
-| `FIREBASE_PROJECT_ID` | Browser Firebase project ID from Heroku config classification or Firebase public app config |
-| `FIREBASE_SENDER_ID` | Browser Firebase sender ID from Heroku config classification or Firebase public app config |
-| `FIREBASE_VAPID_KEY` | Browser Firebase VAPID public key from Heroku config classification or Firebase public app config |
+| `FIREBASE_API_KEY` | Browser Firebase API key from Firebase public app config |
+| `FIREBASE_APP_ID` | Browser Firebase app ID from Firebase public app config |
+| `FIREBASE_PROJECT_ID` | Browser Firebase project ID from Firebase public app config |
+| `FIREBASE_SENDER_ID` | Browser Firebase sender ID from Firebase public app config |
+| `FIREBASE_VAPID_KEY` | Browser Firebase VAPID public key from Firebase public app config |
 | `GOOGLE_ANALYTICS` | Browser Google Analytics ID if enabled |
 | `GTM_CONTAINER_ID` | Browser Google Tag Manager container ID if enabled |
 | `LOG_LEVEL` | Browser log-level override if needed |
-| `MAPBOX_ACCESS_TOKEN` | Browser Mapbox public token from Heroku config classification or Mapbox public token config |
+| `MAPBOX_ACCESS_TOKEN` | Browser Mapbox public token from Mapbox public token config |
 | `SENTRY_DSN` | Browser Sentry DSN if enabled |
 
 Keep application runtime secrets in AWS Secrets Manager.

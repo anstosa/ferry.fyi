@@ -1,5 +1,6 @@
 import type { Request, RequestHandler } from "express";
-import logger from "heroku-logger";
+
+import logger from "~/lib/logger";
 
 import { classifyApiRequest } from "./httpApiPolicy";
 
@@ -201,7 +202,7 @@ export const createHttpTelemetryMiddleware =
   ({
     now = () => process.hrtime.bigint(),
     release = normalizeRelease(
-      process.env.HEROKU_RELEASE_VERSION ??
+      process.env.RELEASE_VERSION ??
         process.env.SOURCE_VERSION ??
         process.env.GITHUB_SHA
     ),

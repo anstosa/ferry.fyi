@@ -37,7 +37,7 @@ resources/ios/splash
 resources/windows/icon
 resources/windows/splash
 
-# AWS migration local secrets and dumps
+# AWS operations local secrets and dumps
 infra/aws/local/
 infra/aws/**/*.secret.*
 infra/aws/**/*.dump

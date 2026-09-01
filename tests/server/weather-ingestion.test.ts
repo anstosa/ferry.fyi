@@ -19,7 +19,7 @@ const forecastModel = vi.hoisted(() => ({
   bulkCreate: vi.fn(),
 }));
 
-vi.mock("heroku-logger", () => ({
+vi.mock("~/lib/logger", () => ({
   default: { error: vi.fn(), info: vi.fn() },
 }));
 

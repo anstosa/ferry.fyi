@@ -15,7 +15,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const logs = vi.hoisted(() => ({ error: vi.fn() }));
 
-vi.mock("heroku-logger", () => ({ default: logs }));
+vi.mock("~/lib/logger", () => ({ default: logs }));
 
 import {
   createCameraDetectionDebuggerPageRouter,

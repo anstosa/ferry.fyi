@@ -1,5 +1,4 @@
-import logger from "heroku-logger";
-
+import logger from "~/lib/logger";
 import { formatLogBlock } from "~/lib/logging";
 import Crossing from "~/models/Crossing";
 import { Schedule } from "~/models/Schedule";
@@ -12,6 +11,77 @@ import { getPreviousCrossing } from "./updateSchedules";
 import { API_TERMINALS } from "./updateTerminals";
 
 const API_SPACE = `${API_TERMINALS}/terminalsailingspace`;
+
+interface CapacityReportingStartInput {
+  capacityReportingStartedAt?: number | null;
+  observedAt: number;
+  reportedAvailable: number | null;
+  totalCapacity: number;
+}
+
+interface CapacitySpaceInput {
+  DisplayDriveUpSpace: boolean;
+  DisplayReservableSpace: boolean;
+  DriveUpSpaceCount?: number;
+  ReservableSpaceCount?: number;
+}
+
+// normalize one WSF capacity component
+const getReportedCapacityComponent = (
+  displayed: boolean,
+  count?: number
+): number | null => {
+  // ignore intentionally hidden components
+  if (!displayed) {
+    return 0;
+  }
+  return Number.isFinite(count) ? (count as number) : null;
+};
+
+// sum the displayed WSF capacity components
+export const getReportedAvailableCapacity = (
+  spaceData: CapacitySpaceInput
+): number | null => {
+  // require at least one displayed capacity component
+  if (!spaceData.DisplayDriveUpSpace && !spaceData.DisplayReservableSpace) {
+    return null;
+  }
+  const driveUpCapacity = getReportedCapacityComponent(
+    spaceData.DisplayDriveUpSpace,
+    spaceData.DriveUpSpaceCount
+  );
+  const reservableCapacity = getReportedCapacityComponent(
+    spaceData.DisplayReservableSpace,
+    spaceData.ReservableSpaceCount
+  );
+  // reject an unexpectedly missing displayed component
+  if (driveUpCapacity === null || reservableCapacity === null) {
+    return null;
+  }
+  return driveUpCapacity + reservableCapacity;
+};
+
+// preserve the first confirmed capacity movement
+export const getCapacityReportingStartedAt = ({
+  capacityReportingStartedAt,
+  observedAt,
+  reportedAvailable,
+  totalCapacity,
+}: CapacityReportingStartInput): number | null => {
+  // preserve established reporting state
+  if (Number.isFinite(capacityReportingStartedAt)) {
+    return capacityReportingStartedAt as number;
+  }
+  // require a valid below-max observation
+  if (
+    totalCapacity > 0 &&
+    reportedAvailable !== null &&
+    reportedAvailable < totalCapacity
+  ) {
+    return observedAt;
+  }
+  return null;
+};
 
 export const updateCapacity = async (): Promise<Schedule[]> => {
   logger.info("Started capacity update");
@@ -38,11 +108,18 @@ export const updateCapacity = async (): Promise<Schedule[]> => {
       const departureTime = wsfDateToTimestamp(departure.Departure);
       // arrival space groups
       for (const spaceData of departure.SpaceForArrivalTerminals) {
+        const reportedAvailable = getReportedAvailableCapacity(spaceData);
         // arrival terminals
         for (const arrivalId of spaceData.ArrivalTerminalIDs) {
           const arrivalTerminalId = String(arrivalId);
           const model: Partial<Crossing> = {
             arrivalId: arrivalTerminalId,
+            capacityReportingStartedAt: getCapacityReportingStartedAt({
+              capacityReportingStartedAt: null,
+              observedAt: capacityReportUpdatedAt,
+              reportedAvailable,
+              totalCapacity: spaceData.MaxSpaceCount,
+            }),
             departureId,
             departureDelta: vessel?.departureDelta ?? null,
             departureTime,
@@ -69,7 +146,15 @@ export const updateCapacity = async (): Promise<Schedule[]> => {
           if (wasCreated) {
             createdCrossings += 1;
           } else {
-            await crossing.update(model);
+            await crossing.update({
+              ...model,
+              capacityReportingStartedAt: getCapacityReportingStartedAt({
+                capacityReportingStartedAt: crossing.capacityReportingStartedAt,
+                observedAt: capacityReportUpdatedAt,
+                reportedAvailable,
+                totalCapacity: spaceData.MaxSpaceCount,
+              }),
+            });
             updatedCrossings += 1;
           }
           const schedule = Schedule.getByIndex(

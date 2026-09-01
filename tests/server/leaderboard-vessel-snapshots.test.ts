@@ -8,7 +8,7 @@ const database = vi.hoisted(() => ({ query: vi.fn() }));
 const vesselModel = vi.hoisted(() => ({ getByIndex: vi.fn() }));
 
 // silence fixed logger output
-vi.mock("heroku-logger", () => ({
+vi.mock("~/lib/logger", () => ({
   default: { info: vi.fn() },
 }));
 

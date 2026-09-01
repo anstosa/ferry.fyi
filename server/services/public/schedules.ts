@@ -1,14 +1,17 @@
-import logger from "heroku-logger";
 import { DateTime } from "luxon";
 import { Op } from "sequelize";
 import type {
-  Crossing as CrossingContract,
   Schedule as ScheduleContract,
   Slot,
 } from "shared/contracts/schedules";
 import type { Vessel } from "shared/contracts/vessels";
 
 import { getErrorMessage, getLogError } from "~/lib/errors";
+import logger from "~/lib/logger";
+import {
+  toPublicCrossing,
+  toPublicSchedule,
+} from "~/lib/publicScheduleProjection";
 import { getWsfStatus } from "~/lib/wsf/api";
 import { updateSchedules } from "~/lib/wsf/updateSchedules";
 import Crossing from "~/models/Crossing";
@@ -106,22 +109,6 @@ const getHistoricalVessel = (crossing: Crossing): Vessel => {
   return getUnknownHistoricalVessel(crossing.totalCapacity);
 };
 
-const serializePublicCrossing = (crossing: Crossing): CrossingContract => ({
-  arrivalId: crossing.arrivalId,
-  capacityReportUpdatedAt: crossing.capacityReportUpdatedAt,
-  departureDelta: crossing.departureDelta,
-  departureId: crossing.departureId,
-  departureTime: crossing.departureTime,
-  driveUpCapacity: crossing.driveUpCapacity,
-  hasDriveUp: crossing.hasDriveUp,
-  hasReservations: crossing.hasReservations,
-  isCancelled: crossing.isCancelled,
-  reservableCapacity: crossing.reservableCapacity,
-  totalCapacity: crossing.totalCapacity,
-  vesselId: crossing.vesselId,
-  vesselName: crossing.vesselName,
-});
-
 const isHistoricalDate = (date: string): boolean => {
   const now = DateTime.local().setZone("America/Los_Angeles");
   const requestedServiceDayEnd = DateTime.fromISO(date, {
@@ -155,21 +142,21 @@ const getHistoricalSchedule = async (
   const slots: Slot[] = crossings.map((crossing) => ({
     allowsPassengers: true,
     allowsVehicles: true,
-    crossing: serializePublicCrossing(crossing),
+    crossing: toPublicCrossing(crossing),
     hasPassed: true,
     mateId: arrivingId,
     time: crossing.departureTime,
     vessel: getHistoricalVessel(crossing),
     wuid: DateTime.fromSeconds(crossing.departureTime).toFormat("CCC-HH-mm"),
   }));
-  return {
+  return toPublicSchedule({
     date,
     key: Schedule.generateKey(departingId, arrivingId, date),
     mateId: arrivingId,
     slots,
     terminalId: departingId,
     validRange: null,
-  };
+  });
 };
 
 export const getCachedPublicSchedule = ({
@@ -186,7 +173,7 @@ export const getCachedPublicSchedule = ({
   );
   if (schedule) {
     return {
-      schedule: schedule.serialize(),
+      schedule: toPublicSchedule(schedule),
       status: "available",
       timestamp: timestamp(),
     };
@@ -276,7 +263,7 @@ export const getPublicSchedule = async ({
     );
     if (schedule) {
       return {
-        schedule: schedule.serialize(),
+        schedule: toPublicSchedule(schedule),
         status: "available",
         timestamp: timestamp(),
       };

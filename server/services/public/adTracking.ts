@@ -1,5 +1,4 @@
 import { createHash, randomBytes } from "crypto";
-import logger from "heroku-logger";
 import { DateTime } from "luxon";
 import { Op, QueryTypes, Transaction } from "sequelize";
 import {
@@ -10,6 +9,7 @@ import {
 } from "shared/contracts/ads";
 
 import { db } from "~/lib/db";
+import logger from "~/lib/logger";
 import { AdCampaign } from "~/models/AdCampaign";
 import { AdMeasurementExposure } from "~/models/AdMeasurementExposure";
 import { AdPlacement } from "~/models/AdPlacement";

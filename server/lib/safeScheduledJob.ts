@@ -1,4 +1,4 @@
-import logger from "heroku-logger";
+import logger from "~/lib/logger";
 
 import { getErrorMessage, getLogError } from "./errors";
 

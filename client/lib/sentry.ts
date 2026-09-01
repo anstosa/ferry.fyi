@@ -98,7 +98,7 @@ export const initializeSentry = async ({
     Sentry.init({
       ...commonOptions,
       integrations: [Sentry.browserTracingIntegration()],
-      release: `web@${process.env.HEROKU_RELEASE_VERSION || "DEVELOPMENT"}`,
+      release: `web@${process.env.RELEASE_VERSION || "DEVELOPMENT"}`,
     });
     return installSentrySinks(Sentry);
   }

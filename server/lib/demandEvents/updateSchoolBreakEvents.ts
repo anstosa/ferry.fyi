@@ -1,4 +1,3 @@
-import logger from "heroku-logger";
 import { convert } from "html-to-text";
 import { DateTime, Interval } from "luxon";
 import { Op } from "sequelize";
@@ -7,6 +6,7 @@ import {
   type DemandEventInput,
   persistDemandEvents,
 } from "~/lib/demandEvents/persistDemandEvents";
+import logger from "~/lib/logger";
 import { DemandEvent } from "~/models/DemandEvent";
 
 const DEFAULT_YEARS_AHEAD = 2;

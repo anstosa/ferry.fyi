@@ -1,7 +1,7 @@
-import logger from "heroku-logger";
 import { DateTime } from "luxon";
 import { Op } from "sequelize";
 
+import logger from "~/lib/logger";
 import { formatLogBlock, formatTerminalName } from "~/lib/logging";
 import Crossing from "~/models/Crossing";
 import { Terminal } from "~/models/Terminal";

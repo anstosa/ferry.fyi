@@ -1,5 +1,4 @@
-import logger from "heroku-logger";
-
+import logger from "~/lib/logger";
 import { formatLogBlock, formatTerminalList } from "~/lib/logging";
 import { Bulletin } from "~/models/Bulletin";
 import { Camera } from "~/models/Camera";

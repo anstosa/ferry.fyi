@@ -1,8 +1,8 @@
-import logger from "heroku-logger";
 import { DateTime } from "luxon";
 import VESSEL_DATA_OVERRIDES from "shared/data/vessels.json";
 import { values } from "shared/lib/objects";
 
+import logger from "~/lib/logger";
 import {
   formatLogBlock,
   formatTerminalList,
