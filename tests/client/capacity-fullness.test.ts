@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  getCapacityUsage,
   getCapacityDisplayPercent,
+  getVesselVehicleCapacity,
   isCapacityFull,
 } from "../../client/views/Schedule/capacityFullness";
 
@@ -38,5 +40,46 @@ describe("isCapacityFull", () => {
     expect(
       getCapacityDisplayPercent({ isFull: false, percentFull: 80 })
     ).toBe(80);
+  });
+
+  // shared capacity calculation
+  it("normalizes spaces and fullness across schedule surfaces", () => {
+    expect(
+      getCapacityUsage({
+        driveUpCapacity: 3,
+        reservableCapacity: 2,
+        totalCapacity: 100,
+      })
+    ).toEqual({ percentFull: 95, spacesLeft: 5 });
+    expect(
+      getCapacityUsage({
+        driveUpCapacity: 120,
+        reservableCapacity: 0,
+        totalCapacity: 100,
+      })
+    ).toEqual({ percentFull: 0, spacesLeft: 120 });
+    expect(
+      getCapacityUsage({
+        driveUpCapacity: 3,
+        reservableCapacity: 0,
+        totalCapacity: 0,
+      })
+    ).toEqual({ percentFull: null, spacesLeft: 3 });
+  });
+
+  // vessel capacity calculation
+  it("derives non-negative usable vehicle capacity", () => {
+    expect(
+      getVesselVehicleCapacity({
+        tallVehicleCapacity: 20,
+        vehicleCapacity: 140,
+      })
+    ).toBe(120);
+    expect(
+      getVesselVehicleCapacity({
+        tallVehicleCapacity: 20,
+        vehicleCapacity: 10,
+      })
+    ).toBe(0);
   });
 });

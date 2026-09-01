@@ -9,7 +9,12 @@ import DoNotEnterIcon from "~/static/images/icons/solid/do-not-enter.svg";
 import ExternalLinkIcon from "~/static/images/icons/solid/external-link.svg";
 
 import { shouldUseForecastCapacityStatus } from "./capacityDisplaySource";
-import { getCapacityDisplayPercent, isCapacityFull } from "./capacityFullness";
+import {
+  getCapacityDisplayPercent,
+  getCapacityUsage,
+  getVesselVehicleCapacity,
+  isCapacityFull,
+} from "./capacityFullness";
 import { getCapacityStatusSide } from "./capacityStatusPosition";
 import {
   getCapacityFillClassName,
@@ -88,12 +93,14 @@ export const Capacity = ({
   }, [estimateFull, percentFull]);
 
   const getEstimateLeft = (): number | null => {
-    if (!estimate || isNil(estimate.driveUpCapacity)) {
+    // missing estimate guard
+    if (!estimate) {
       return null;
     }
-    const { driveUpCapacity = 0, reservableCapacity = 0 } = estimate;
-    const estimateLeft = driveUpCapacity + (reservableCapacity ?? 0);
-    return estimateLeft;
+    return getCapacityUsage({
+      driveUpCapacity: estimate.driveUpCapacity,
+      reservableCapacity: estimate.reservableCapacity,
+    }).spacesLeft;
   };
 
   const getEstimateFull = (): number | null => {
@@ -101,32 +108,27 @@ export const Capacity = ({
     if (isNull(estimateLeft)) {
       return null;
     }
-    const totalCapacity = crossing?.totalCapacity ?? getVesselCapacity();
-    const estimateFull = Math.min(
-      ((totalCapacity - estimateLeft) / totalCapacity) * 100,
-      100
-    );
-    return estimateFull;
+    return getCapacityUsage({
+      driveUpCapacity: estimateLeft,
+      totalCapacity: crossing?.totalCapacity ?? getVesselCapacity(),
+    }).percentFull;
   };
 
-  const getVesselCapacity = (): number => vehicleCapacity - tallVehicleCapacity;
+  const getVesselCapacity = (): number =>
+    getVesselVehicleCapacity({ tallVehicleCapacity, vehicleCapacity });
 
   const updateCrossing = (): void => {
     let spaceLeft: number | undefined;
     let percentFull: number | undefined;
 
     if (crossing) {
-      const {
-        driveUpCapacity = 0,
-        reservableCapacity = 0,
-        totalCapacity,
-      } = crossing;
-
-      spaceLeft = driveUpCapacity + reservableCapacity;
-      percentFull = Math.min(
-        ((totalCapacity - spaceLeft) / totalCapacity) * 100,
-        100
-      );
+      const capacity = getCapacityUsage({
+        driveUpCapacity: crossing.driveUpCapacity,
+        reservableCapacity: crossing.reservableCapacity,
+        totalCapacity: crossing.totalCapacity,
+      });
+      spaceLeft = capacity.spacesLeft ?? undefined;
+      percentFull = capacity.percentFull ?? undefined;
     }
 
     setEstimateLeft(getEstimateLeft());

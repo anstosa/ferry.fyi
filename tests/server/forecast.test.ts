@@ -26,8 +26,13 @@ const weatherAdjustmentModel = vi.hoisted(() => ({
   getWeatherAdjustedCapacity: vi.fn(),
 }));
 
+const loggerModel = vi.hoisted(() => ({
+  info: vi.fn(),
+  warn: vi.fn(),
+}));
+
 vi.mock("~/lib/logger", () => ({
-  default: { info: vi.fn(), warn: vi.fn() },
+  default: loggerModel,
 }));
 
 vi.mock("~/models/Schedule", () => ({
@@ -130,6 +135,8 @@ describe("forecast estimates", () => {
     weatherAdjustmentModel.getWeatherAdjustedCapacity.mockImplementation(
       async ({ capacity }) => capacity
     );
+    loggerModel.info.mockReset();
+    loggerModel.warn.mockReset();
     process.env.FORECAST_CAPACITY_REPORTING_GATE = "on";
     process.env.FORECAST_DEMAND_SHOCK_MODE = "on";
   });
@@ -158,6 +165,27 @@ describe("forecast estimates", () => {
     expect(getCapacityReportingGate()).toBe("on");
     expect(getDemandShockMode()).toBe("shadow");
     process.env.NODE_ENV = "test";
+  });
+
+  // invalid-setting warning contract
+  it("warns once for each repeated invalid forecast setting", () => {
+    process.env.FORECAST_CAPACITY_REPORTING_GATE =
+      "invalid-capacity-telemetry-test";
+    process.env.FORECAST_DEMAND_SHOCK_MODE = "invalid-demand-telemetry-test";
+
+    getCapacityReportingGate();
+    getCapacityReportingGate();
+    getDemandShockMode();
+    getDemandShockMode();
+
+    expect(loggerModel.warn.mock.calls).toEqual([
+      [
+        "FORECAST_CAPACITY_REPORTING_GATE=invalid-capacity-telemetry-test is invalid; using on",
+      ],
+      [
+        "FORECAST_DEMAND_SHOCK_MODE=invalid-demand-telemetry-test is invalid; using on",
+      ],
+    ]);
   });
 
   // classifier selection
@@ -460,6 +488,28 @@ describe("forecast estimates", () => {
         }),
       })
     );
+  });
+
+  // aggregate telemetry contract
+  it("emits one aggregate forecast summary without raw crossing data", async () => {
+    const schedule = createSchedule({});
+    scheduleModel.getAll.mockReturnValue({ [schedule.key]: schedule });
+    crossingModel.findAll.mockResolvedValue([]);
+
+    await updateEstimates();
+
+    expect(loggerModel.info).toHaveBeenCalledOnce();
+    const [message] = loggerModel.info.mock.calls[0] ?? [];
+    expect(message).toEqual(expect.any(String));
+    expect(message).toContain("Forecast update complete");
+    expect(message).toContain("capacity reporting gate: on");
+    expect(message).toContain("demand shock mode: on");
+    expect(message).toContain("suppressed all-open rows: 0");
+    expect(message).toContain("probability bins before: 0/0/0/0");
+    expect(message).toContain("probability bins after: 0/0/0/0");
+    expect(message).not.toContain(schedule.slots[0].wuid);
+    expect(message).not.toContain("departureTime");
+    expect(message).not.toContain("driveUpCapacity");
   });
 
   // blend behavior

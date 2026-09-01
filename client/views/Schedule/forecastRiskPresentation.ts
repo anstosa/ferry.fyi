@@ -1,4 +1,9 @@
-import type { ForecastFullRisk } from "shared/contracts/schedules";
+import type {
+  CrossingEstimate,
+  ForecastFullRisk,
+} from "shared/contracts/schedules";
+
+import { getCapacityUsage, isCapacityFull } from "./capacityFullness";
 
 interface ForecastRiskPresentationInput {
   fullProbability?: number;
@@ -60,4 +65,38 @@ export const getForecastRiskPresentation = ({
     label: fullRisk,
     tone: fullRisk,
   };
+};
+
+// format one public forecast
+export const formatForecast = (
+  estimate: CrossingEstimate | undefined,
+  totalCapacity: number
+): string => {
+  // missing estimate guard
+  if (!estimate) {
+    return "";
+  }
+  const capacity = getCapacityUsage({
+    driveUpCapacity: estimate.driveUpCapacity,
+    reservableCapacity: estimate.reservableCapacity,
+    totalCapacity,
+  });
+  const riskPresentation = estimate.fullRisk
+    ? getForecastRiskPresentation({
+        fullProbability: estimate.fullProbability,
+        fullRisk: estimate.fullRisk,
+        isPracticalFull: isCapacityFull({
+          percentFull: capacity.percentFull,
+          spacesLeft: capacity.spacesLeft,
+        }),
+      })
+    : null;
+  const riskText =
+    riskPresentation?.compactText ??
+    (estimate.fullRisk ? `${estimate.fullRisk} full risk` : null);
+  const risk = riskText ? `, ${riskText}` : "";
+  const forecast = isForecastExpectedFull(estimate.fullRisk)
+    ? " — forecast full"
+    : ` — forecast ${capacity.spacesLeft ?? 0} vehicle spaces`;
+  return `${forecast}${risk}`;
 };

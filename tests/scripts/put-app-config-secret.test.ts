@@ -72,6 +72,31 @@ exit 64
   return { bin, calls, current, override, root, written, writtenUri };
 };
 
+// run the secret update against fake aws
+const runSecretUpdate = (fixture: ReturnType<typeof createFixture>) =>
+  spawnSync(
+    "bash",
+    [
+      path.resolve("infra/aws/scripts/put-app-config-secret.sh"),
+      "--secret-id",
+      "test-secret",
+      "--from-json",
+      fixture.override,
+    ],
+    {
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        CONFIRM_AWS_SECRET_UPDATE: "yes",
+        FAKE_AWS_CALLS: fixture.calls,
+        FAKE_AWS_CURRENT_SECRET: fixture.current,
+        FAKE_AWS_WRITTEN_SECRET: fixture.written,
+        FAKE_AWS_WRITTEN_URI: fixture.writtenUri,
+        PATH: `${fixture.bin}:${process.env.PATH ?? ""}`,
+      },
+    }
+  );
+
 // remove isolated fixtures
 afterEach(() => {
   // remove every fixture
@@ -97,28 +122,7 @@ describe("put-app-config-secret", () => {
       JSON.stringify({ FORECAST_DEMAND_SHOCK_MODE: "on" })
     );
 
-    const result = spawnSync(
-      "bash",
-      [
-        path.resolve("infra/aws/scripts/put-app-config-secret.sh"),
-        "--secret-id",
-        "test-secret",
-        "--from-json",
-        fixture.override,
-      ],
-      {
-        encoding: "utf8",
-        env: {
-          ...process.env,
-          CONFIRM_AWS_SECRET_UPDATE: "yes",
-          FAKE_AWS_CALLS: fixture.calls,
-          FAKE_AWS_CURRENT_SECRET: fixture.current,
-          FAKE_AWS_WRITTEN_SECRET: fixture.written,
-          FAKE_AWS_WRITTEN_URI: fixture.writtenUri,
-          PATH: `${fixture.bin}:${process.env.PATH ?? ""}`,
-        },
-      }
-    );
+    const result = runSecretUpdate(fixture);
 
     expect(result.status).toBe(0);
     expect(JSON.parse(readFileSync(fixture.written, "utf8"))).toEqual({
@@ -139,5 +143,30 @@ describe("put-app-config-secret", () => {
     expect(existsSync(temporarySecret)).toBe(false);
     expect(result.stdout).not.toContain("preserved-private-key");
     expect(result.stderr).not.toContain("preserved-private-key");
+  });
+
+  // validation failures
+  it.each([
+    ["malformed current secret", "{", '{"MODE":"on"}'],
+    ["malformed override", '{"PRESERVED":"private"}', "{"],
+    ["array override", '{"PRESERVED":"private"}', "[]"],
+    ["empty override", '{"PRESERVED":"private"}', "{}"],
+  ])("rejects %s without writing the secret", (_label, current, override) => {
+    const fixture = createFixture();
+    writeFileSync(fixture.current, current);
+    writeFileSync(fixture.override, override);
+
+    const result = runSecretUpdate(fixture);
+
+    expect(result.status).not.toBe(0);
+    expect(readFileSync(fixture.calls, "utf8")).toContain(
+      "secretsmanager get-secret-value"
+    );
+    expect(readFileSync(fixture.calls, "utf8")).not.toContain(
+      "put-secret-value"
+    );
+    expect(existsSync(fixture.written)).toBe(false);
+    expect(result.stdout).not.toContain("private");
+    expect(result.stderr).not.toContain("private");
   });
 });

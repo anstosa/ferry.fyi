@@ -69,7 +69,12 @@ import UsersIcon from "~/static/images/icons/solid/users.svg";
 import WindIcon from "~/static/images/icons/solid/wind.svg";
 
 import { Capacity } from "./Capacity";
-import { getCapacityDisplayPercent, isCapacityFull } from "./capacityFullness";
+import {
+  getCapacityDisplayPercent,
+  getCapacityUsage,
+  getVesselVehicleCapacity,
+  isCapacityFull,
+} from "./capacityFullness";
 import {
   getCapacityFillClassName,
   getForecastCapacityFillClassName,
@@ -321,34 +326,25 @@ export const SlotInfo = (props: Props): ReactElement => {
     location
   );
   const sailingContext = getScheduleSailingContext({ isDaylight });
-  const liveSpacesLeft = slot.crossing
-    ? slot.crossing.driveUpCapacity + slot.crossing.reservableCapacity
-    : null;
+  const liveCapacity = getCapacityUsage({
+    driveUpCapacity: slot.crossing?.driveUpCapacity,
+    reservableCapacity: slot.crossing?.reservableCapacity,
+    totalCapacity: slot.crossing?.totalCapacity,
+  });
+  const liveSpacesLeft = liveCapacity.spacesLeft;
   const liveCapacityTotal = slot.crossing?.totalCapacity ?? null;
-  const livePercentFull =
-    liveCapacityTotal && liveSpacesLeft !== null
-      ? Math.min(
-          ((liveCapacityTotal - liveSpacesLeft) / liveCapacityTotal) * 100,
-          100
-        )
-      : null;
-  const vesselVehicleCapacity = Math.max(
-    0,
-    (slot.vessel.vehicleCapacity ?? 0) - (slot.vessel.tallVehicleCapacity ?? 0)
-  );
-  const estimateSpacesLeft = slot.estimate
-    ? slot.estimate.driveUpCapacity + (slot.estimate.reservableCapacity ?? 0)
-    : null;
-  const estimateCapacityTotal = liveCapacityTotal ?? vesselVehicleCapacity;
-  const estimatePercentFull =
-    estimateSpacesLeft !== null && estimateCapacityTotal > 0
-      ? Math.min(
-          ((estimateCapacityTotal - estimateSpacesLeft) /
-            estimateCapacityTotal) *
-            100,
-          100
-        )
-      : null;
+  const livePercentFull = liveCapacity.percentFull;
+  const vesselVehicleCapacity = getVesselVehicleCapacity({
+    tallVehicleCapacity: slot.vessel.tallVehicleCapacity,
+    vehicleCapacity: slot.vessel.vehicleCapacity,
+  });
+  const estimateCapacity = getCapacityUsage({
+    driveUpCapacity: slot.estimate?.driveUpCapacity,
+    reservableCapacity: slot.estimate?.reservableCapacity,
+    totalCapacity: liveCapacityTotal ?? vesselVehicleCapacity,
+  });
+  const estimateSpacesLeft = estimateCapacity.spacesLeft;
+  const estimatePercentFull = estimateCapacity.percentFull;
   const isEstimatePracticalFull = isCapacityFull({
     percentFull: estimatePercentFull,
     spacesLeft: estimateSpacesLeft,
