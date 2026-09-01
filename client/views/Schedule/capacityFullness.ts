@@ -1,5 +1,4 @@
 import { isNil } from "shared/lib/identity";
-import { constrain } from "shared/lib/math";
 
 export const FULL_CAPACITY_THRESHOLD = 90;
 
@@ -72,7 +71,10 @@ export const getCapacityUsage = ({
     totalCapacity > 0;
   // normalize the display range
   const percentFull = hasValidTotalCapacity
-    ? constrain(((totalCapacity - spacesLeft) / totalCapacity) * 100, 0, 100)
+    ? Math.min(
+        100,
+        Math.max(0, ((totalCapacity - spacesLeft) / totalCapacity) * 100)
+      )
     : null;
   return { percentFull, spacesLeft };
 };
