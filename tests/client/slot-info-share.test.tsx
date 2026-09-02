@@ -42,9 +42,6 @@ vi.mock("~/lib/featureFlags", () => ({
   useFeatureFlags: () => ({ leaderboardsEnabled: false }),
 }));
 vi.mock("~/lib/generated/vesselAssets", () => ({ vesselAssets: {} }));
-vi.mock("~/lib/onboardTracking", () => ({
-  useTrackedVessel: () => [null, vi.fn()],
-}));
 vi.mock("~/lib/user", () => ({
   useUser: () => [{ alertRules: [], isUserLoading: false }, { updateUser }],
 }));
@@ -168,7 +165,9 @@ describe("sailing vessel actions", () => {
     );
 
     expect(mapLink?.textContent).toContain("Open in map");
-    expect(mapLink?.querySelector("svg")).not.toBeNull();
+    expect(mapLink?.querySelector("svg")?.getAttribute("viewBox")).toBe(
+      "0 0 512 512"
+    );
     expect(container.textContent).not.toContain("Track Boat");
   });
 });

@@ -1122,15 +1122,34 @@ describe("Admin", () => {
       )
     ).toBe(false);
     // copy the rendered link
+    const copyButton = [...container.querySelectorAll("button")].find(
+      (button) => button.textContent === "Copy link"
+    );
     await act(async () => {
-      [...container.querySelectorAll("button")]
-        .find((button) => button.textContent === "Copy link")
-        ?.click();
+      copyButton?.click();
       await Promise.resolve();
     });
     expect(writeText).toHaveBeenCalledWith(reportUrl);
     expect(execCommand).toHaveBeenCalledWith("copy");
     expect(document.querySelector('textarea[aria-hidden="true"]')).toBeNull();
     expect(container.textContent).toContain("Copied");
+
+    // prefer a later clipboard success
+    writeText.mockResolvedValueOnce(undefined);
+    await act(async () => {
+      copyButton?.click();
+      await Promise.resolve();
+    });
+    expect(execCommand).toHaveBeenCalledTimes(1);
+
+    // surface a complete copy failure
+    execCommand.mockReturnValueOnce(false);
+    await act(async () => {
+      copyButton?.click();
+      await Promise.resolve();
+    });
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain(
+      "Could not copy this link"
+    );
   });
 });

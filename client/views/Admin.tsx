@@ -785,6 +785,9 @@ export const Admin = (): ReactElement => {
   const [createdAdReportShare, setCreatedAdReportShare] =
     useState<AdReportShareCreated | null>(null);
   const [adReportShareCopied, setAdReportShareCopied] = useState(false);
+  const [adReportShareCopyError, setAdReportShareCopyError] = useState<
+    string | null
+  >(null);
   const [adReportName, setAdReportName] = useState("");
   const [adStartsAt, setAdStartsAt] = useState("");
   const [adEndsAt, setAdEndsAt] = useState("");
@@ -914,6 +917,7 @@ export const Admin = (): ReactElement => {
     setAdReportShares(shares);
     setCreatedAdReportShare(null);
     setAdReportShareCopied(false);
+    setAdReportShareCopyError(null);
   };
 
   // refresh aggregate or placement analytics
@@ -967,6 +971,9 @@ export const Admin = (): ReactElement => {
     }
     const copied = await copyTextToClipboard(createdAdReportShare.url);
     setAdReportShareCopied(copied);
+    setAdReportShareCopyError(
+      copied ? null : "Could not copy this link. Select and copy it directly."
+    );
     // reset successful copy feedback
     if (copied) {
       setTimeout(() => setAdReportShareCopied(false), 2500);
@@ -2374,6 +2381,7 @@ export const Admin = (): ReactElement => {
                         );
                         setCreatedAdReportShare(created);
                         setAdReportShareCopied(false);
+                        setAdReportShareCopyError(null);
                         setAdReportShares((current) => [created, ...current]);
                       }}
                     />
@@ -2403,6 +2411,12 @@ export const Admin = (): ReactElement => {
                             {adReportShareCopied ? "Copied" : "Copy link"}
                           </button>
                         </div>
+                        {/* copy failure feedback */}
+                        {adReportShareCopyError && (
+                          <p className="mt-2 text-red-dark" role="alert">
+                            {adReportShareCopyError}
+                          </p>
+                        )}
                       </div>
                     ) : null}
                     <ul className="mt-3 space-y-2 text-sm">

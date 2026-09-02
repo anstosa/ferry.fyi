@@ -462,6 +462,7 @@ describe("map hydration seed freshness", () => {
     act(() => root?.unmount());
     root = undefined;
     document.body.innerHTML = "";
+    vi.useRealTimers();
     vi.clearAllMocks();
     mocks.deferMapLoad = false;
     mocks.maps.length = 0;
@@ -573,6 +574,28 @@ describe("map hydration seed freshness", () => {
     );
   });
 
+  // stale vessel permalink fallback
+  it("fits the route when a vessel permalink cannot be resolved", async () => {
+    mocks.getVesselSnapshot.mockReturnValue(new Promise(() => undefined));
+    const container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root?.render(
+        view(
+          snapshot,
+          "/clinton/mukilteo/map?vessel=missing",
+          terminal,
+          mapSchedule
+        )
+      );
+    });
+
+    expect(mocks.maps[0]?.fitBounds).toHaveBeenCalledTimes(1);
+    expect(mocks.maps[0]?.easeTo).not.toHaveBeenCalled();
+  });
+
   // refreshed vessel position
   it("recenters an open vessel whenever its confirmed position updates", async () => {
     let resolveRefresh:
@@ -608,9 +631,40 @@ describe("map hydration seed freshness", () => {
     });
 
     expect(mocks.maps[0]?.easeTo).toHaveBeenCalledTimes(2);
-    expect(mocks.maps[0]?.easeTo).toHaveBeenLastCalledWith(
+    const refreshedFocus = mocks.maps[0]?.easeTo.mock.calls[1]?.[0];
+    expect(refreshedFocus).toEqual(
       expect.objectContaining({ center: [-122.31, 47.97] })
     );
+    expect(refreshedFocus).not.toHaveProperty("zoom");
+    expect(mocks.maps[0]?.fitBounds).not.toHaveBeenCalled();
+  });
+
+  // predicted movement keeps the marker centered
+  it("follows predicted vessel updates without resetting zoom", async () => {
+    vi.useFakeTimers();
+    mocks.getVesselSnapshot.mockReturnValue(new Promise(() => undefined));
+    const container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root?.render(
+        view(snapshot, "/clinton/mukilteo/map?vessel=1", terminal, mapSchedule)
+      );
+    });
+
+    // advance each rendered prediction
+    for (let tick = 0; tick < 3; tick += 1) {
+      await act(async () => {
+        vi.advanceTimersByTime(1_000);
+      });
+    }
+
+    expect(mocks.maps[0]?.easeTo).toHaveBeenCalledTimes(4);
+    // preserve zoom across follow updates
+    mocks.maps[0]?.easeTo.mock.calls.slice(1).forEach(([focus]) => {
+      expect(focus).not.toHaveProperty("zoom");
+    });
   });
 
   // unavailable vessel eta

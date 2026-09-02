@@ -36,9 +36,6 @@ vi.mock("~/lib/featureFlags", () => ({
   useFeatureFlags: () => ({ leaderboardsEnabled: false }),
 }));
 vi.mock("~/lib/generated/vesselAssets", () => ({ vesselAssets: {} }));
-vi.mock("~/lib/onboardTracking", () => ({
-  useTrackedVessel: () => [null, vi.fn()],
-}));
 vi.mock("~/lib/user", () => ({
   useUser: () => [{ alertRules: [], isUserLoading: false }, { updateUser }],
 }));

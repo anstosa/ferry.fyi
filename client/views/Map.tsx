@@ -306,7 +306,7 @@ const formatVesselTime = (timestamp?: number): string | null => {
 };
 
 // relative vessel eta label
-const formatVesselEta = (
+const formatEstimatedArrivalMinutes = (
   timestamp: number | undefined,
   time: DateTime
 ): string | null => {
@@ -339,7 +339,7 @@ const VesselDetailsCard = ({
   const speedMph = Math.round(knotsToMph(vessel.speed));
   const etaLabel = vessel.isAtDock
     ? null
-    : formatVesselEta(vessel.estimatedArrivalTime, time);
+    : formatEstimatedArrivalMinutes(vessel.estimatedArrivalTime, time);
   const nextSailingLabel = formatVesselTime(nextSailingTime ?? undefined);
   let sailingLabel = vessel.info?.crossing ?? "Route unavailable";
   // destination-only sailing
@@ -1195,8 +1195,11 @@ export const Map = ({
 
     markersRef.current = newMarkers;
 
-    // fit map to route markers
-    if (lastFittedVesselsRef.current !== displayedVessels) {
+    // fit the route without a located vessel focus
+    if (
+      !selectedVessel?.location &&
+      lastFittedVesselsRef.current !== displayedVessels
+    ) {
       map.fitBounds(
         new LngLatBounds({ lat: bottom, lon: left }, { lat: top, lon: right }),
         { padding: MARKER_LABEL_FIT_PADDING }
@@ -1235,25 +1238,35 @@ export const Map = ({
       return;
     }
     const previousFocus = lastFocusedVesselRef.current;
-    // duplicate focus guard
-    if (
+    // distinguish initial focus from following
+    const isContinuingFocus =
       previousFocus?.map === map &&
       previousFocus.routeKey === routeKey &&
-      previousFocus.vesselId === requestedVesselId &&
+      previousFocus.vesselId === requestedVesselId;
+    // duplicate focus guard
+    if (
+      isContinuingFocus &&
       previousFocus.latitude === focusedVessel.location.latitude &&
       previousFocus.longitude === focusedVessel.location.longitude
     ) {
       return;
     }
-    map.easeTo({
-      center: [
-        focusedVessel.location.longitude,
-        focusedVessel.location.latitude,
-      ],
+    const center: [number, number] = [
+      focusedVessel.location.longitude,
+      focusedVessel.location.latitude,
+    ];
+    // shared camera destination
+    const focus = {
+      center,
       duration: 800,
       offset: getVesselFocusOffset(map.getContainer(), vesselCardRef.current),
-      zoom: 12,
-    });
+    };
+    // preserve user zoom while following
+    if (isContinuingFocus) {
+      map.easeTo(focus);
+    } else {
+      map.easeTo({ ...focus, zoom: 12 });
+    }
     lastFocusedVesselRef.current = {
       latitude: focusedVessel.location.latitude,
       longitude: focusedVessel.location.longitude,
