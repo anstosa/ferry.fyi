@@ -162,7 +162,7 @@ interface HistoricalRouteContext {
   events?: DemandEvent[];
   onInputAudit?: (audit: HistoricalEstimateInputAudit) => void;
   recordSummary?: HistoricalRecordSummary;
-  sampleWeightCache?: Map<string, number>;
+  sampleWeightCache?: Map<number, number>;
 }
 
 interface HistoricalCrossingCandidate {
@@ -755,7 +755,7 @@ const getSampleWeight = (
   targetProfile: DemandProfile,
   route: HistoricalRouteContext
 ): number => {
-  const cacheKey = `${target.toSeconds()}:${crossing.departureTime}`;
+  const cacheKey = crossing.departureTime;
   const cachedWeight = route.sampleWeightCache?.get(cacheKey);
   // cached weight guard
   if (cachedWeight !== undefined) {
@@ -2473,7 +2473,6 @@ export const updateEstimates = async (
         ? null
         : createDemandShockHistoryIndex(crossings);
     const demandProfileCache = new Map<number, DemandProfile>();
-    const sampleWeightCache = new Map<string, number>();
 
     const slotTimes = schedule.slots.map((slot) =>
       DateTime.fromSeconds(slot.time)
@@ -2548,6 +2547,8 @@ export const updateEstimates = async (
         historicalCandidates,
         holidays
       );
+      // share weights only across this slot's candidates
+      const sampleWeightCache = new Map<number, number>();
       const routeContext: HistoricalRouteContext = {
         arrivalId: schedule.mateId,
         calibration: persistedCalibration,

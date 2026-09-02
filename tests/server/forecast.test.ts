@@ -873,6 +873,56 @@ describe("forecast estimates", () => {
     expect(schedule.slots[0].estimate.driveUpCapacity).toBeLessThan(50);
   });
 
+  // sports factor boundaries
+  it.each([
+    ["at the inbound start", "2026-07-10T15:00:00", "Seattle Mariners"],
+    ["after the inbound end", "2026-07-10T20:00:01", undefined],
+  ])("reports the sports factor %s", (_label, targetIso, expectedDetail) => {
+    const targetTime = DateTime.fromISO(targetIso, {
+      zone: "America/Los_Angeles",
+    });
+    const sportsStart = toSeconds("2026-07-10T19:00:00");
+    const estimate = getHistoricalEstimate(
+      targetTime,
+      [
+        createCrossing({
+          arrivalId: "7",
+          departureId: "3",
+          departureTime: targetTime.minus({ weeks: 1 }).toSeconds(),
+        }),
+      ] as never,
+      null,
+      DateTime.fromISO("2026-07-10T10:00:00", {
+        zone: "America/Los_Angeles",
+      }),
+      { 2026: new Set<string>() },
+      100,
+      {
+        arrivalId: "7",
+        departureId: "3",
+        events: [
+          {
+            endsAt: toSeconds("2026-07-10T23:00:00"),
+            eventType: "sports",
+            location: "Seattle",
+            pressure: 0.1,
+            source: "test",
+            sourceId: "mariners",
+            startsAt: sportsStart,
+            title: "Seattle Mariners home game",
+          },
+        ] as never,
+      },
+      true
+    );
+    const sportsFactor = estimate?.factors.find((factor) => {
+      // sports factor match
+      return factor.label === "Major Seattle home game";
+    });
+
+    expect(sportsFactor?.detail).toBe(expectedDetail);
+  });
+
   // holiday surge behavior
   it("uses holiday-window tail risk instead of averaging away full sailings", async () => {
     const schedule = createSchedule({
