@@ -1,11 +1,12 @@
-import type { Schedule, Slot } from "../../shared/contracts/schedules";
-import type { Vessel } from "../../shared/contracts/vessels";
 import { describe, expect, it } from "vitest";
+
 import {
   getMapSailingPath,
   getNextVesselSailing,
   getVesselMapPath,
 } from "../../client/lib/vesselMapLinks";
+import type { Schedule, Slot } from "../../shared/contracts/schedules";
+import type { Vessel } from "../../shared/contracts/vessels";
 
 const vessel = { id: "vessel-1" } as Vessel;
 

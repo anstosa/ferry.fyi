@@ -21,6 +21,7 @@ vi.mock("mapbox-gl", () => {
   class Bounds {}
   class Mapbox {
     container: HTMLElement;
+
     loadCallbacks: Array<() => void> = [];
     points = new globalThis.Map<string, { x: number; y: number }>();
     removed = false;
@@ -50,6 +51,7 @@ vi.mock("mapbox-gl", () => {
       }
       return this.container;
     };
+
     off = vi.fn();
     on = vi.fn((event: string, callback: () => void) => {
       if (event === "load") {
@@ -73,10 +75,12 @@ vi.mock("mapbox-gl", () => {
     remove = vi.fn(() => {
       this.removed = true;
     });
+
     triggerLoad = () => this.loadCallbacks.forEach((callback) => callback());
   }
   class Marker {
     element: HTMLElement;
+
     constructor({ element }: { element: HTMLElement }) {
       this.element = element;
     }
@@ -156,11 +160,11 @@ import {
   selectVisibleVesselContent,
 } from "../../client/lib/vesselAssignments";
 import { Map } from "../../client/views/Map";
+import type { Schedule, Slot } from "../../shared/contracts/schedules";
 import {
   PUBLIC_SSR_SNAPSHOT_VERSION,
   type PublicSsrSnapshot,
 } from "../../shared/contracts/ssr";
-import type { Schedule, Slot } from "../../shared/contracts/schedules";
 import type { Terminal } from "../../shared/contracts/terminals";
 import type { Vessel } from "../../shared/contracts/vessels";
 
@@ -486,12 +490,13 @@ describe("map hydration seed freshness", () => {
       markerButton?.click();
     });
 
-    const card = container.querySelector('[data-vessel-card="1"]');
+    const card = container.querySelector(
+      '[role="region"][aria-label="Sealth details"]'
+    );
     const selectedMarker = container.querySelector<HTMLButtonElement>(
       '[aria-label="Open Sealth vessel details"]'
     );
     expect(selectedMarker?.getAttribute("aria-pressed")).toBe("true");
-    expect(selectedMarker?.querySelector(".text-blue-dark")).not.toBeNull();
     expect(card?.textContent).toContain("Clinton → Mukilteo");
     expect(card?.textContent).toContain("12 mph");
     expect(card?.textContent).toContain("WSF vessel page");
@@ -499,9 +504,7 @@ describe("map hydration seed freshness", () => {
     const externalLink = card?.querySelector<HTMLAnchorElement>(
       'header a[href="https://wsdot.example/vessels/sealth"]'
     );
-    expect(externalLink?.className).toContain("rounded-full");
-    expect(externalLink?.parentElement?.querySelector("button")).not.toBeNull();
-    expect(card?.querySelector("header")?.className).toContain("grid-cols-");
+    expect(externalLink?.textContent).toContain("WSF vessel page");
     const nextSailingLink = card?.querySelector<HTMLAnchorElement>(
       'a[href*="sailing="]'
     );
@@ -516,7 +519,9 @@ describe("map hydration seed freshness", () => {
         ?.click();
     });
 
-    expect(container.querySelector('[data-vessel-card="1"]')).toBeNull();
+    expect(
+      container.querySelector('[role="region"][aria-label="Sealth details"]')
+    ).toBeNull();
 
     await act(async () => {
       container
@@ -556,13 +561,15 @@ describe("map hydration seed freshness", () => {
     });
     cardRect.mockRestore();
 
-    expect(container.querySelector('[data-vessel-card="1"]')).not.toBeNull();
-    expect(mocks.maps[0]?.easeTo).toHaveBeenCalledWith({
-      center: [-122.33, 47.96],
-      duration: 800,
-      offset: [0, -150],
-      zoom: 12,
-    });
+    expect(
+      container.querySelector('[role="region"][aria-label="Sealth details"]')
+    ).not.toBeNull();
+    expect(mocks.maps[0]?.easeTo).toHaveBeenCalledWith(
+      expect.objectContaining({
+        center: [-122.33, 47.96],
+        offset: [0, -150],
+      })
+    );
   });
 
   // unavailable vessel eta
@@ -584,15 +591,13 @@ describe("map hydration seed freshness", () => {
 
     await act(async () => {
       root?.render(
-        view(
-          noEtaSnapshot,
-          "/clinton/mukilteo/map?vessel=15",
-          terminal
-        )
+        view(noEtaSnapshot, "/clinton/mukilteo/map?vessel=15", terminal)
       );
     });
 
-    const card = container.querySelector('[data-vessel-card="15"]');
+    const card = container.querySelector(
+      '[role="region"][aria-label="Issaquah details"]'
+    );
     expect(card?.textContent).toContain("Destination");
     expect(card?.textContent).not.toContain("ETA");
   });

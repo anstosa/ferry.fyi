@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 
+import { DateTime } from "luxon";
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { DateTime } from "luxon";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;

@@ -336,7 +336,6 @@ const VesselDetailsCard = ({
         "border-gray-medium bg-white text-gray-darkest",
         "dark:border-gray-dark dark:bg-gray-darkest dark:text-white"
       )}
-      data-vessel-card={vessel.id}
       ref={cardRef}
       role="region"
     >
