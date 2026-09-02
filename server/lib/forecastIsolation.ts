@@ -23,6 +23,7 @@ export interface ForecastSlotSnapshot {
 
 export interface ForecastScheduleSnapshot {
   key: string;
+  sourceUpdatedAt: number | null;
   slots: ForecastSlotSnapshot[];
 }
 
@@ -150,6 +151,7 @@ export const createForecastSnapshots = (
 ): ForecastScheduleSnapshot[] => {
   return schedules.map((schedule) => ({
     key: schedule.key,
+    sourceUpdatedAt: schedule.sourceUpdatedAt,
     slots: schedule.slots.map((slot) => ({
       estimate: slot.estimate,
       tide: slot.tide,
@@ -171,7 +173,7 @@ export const applyForecastSnapshots = (
   schedules.forEach((schedule) => {
     const snapshot = snapshotsByKey.get(schedule.key);
     // stale schedule guard
-    if (!snapshot) {
+    if (!snapshot || snapshot.sourceUpdatedAt !== schedule.sourceUpdatedAt) {
       return;
     }
     const slotsByTime = new Map(

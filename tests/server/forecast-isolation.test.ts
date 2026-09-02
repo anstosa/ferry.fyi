@@ -144,6 +144,7 @@ describe("forecast isolation", () => {
     const staleSlot = { time: 456, weather: { existing: true } };
     const schedule = {
       key: "5-14-2026-08-26",
+      sourceUpdatedAt: 100,
       slots: [matchingSlot, staleSlot],
     } as never;
     const estimate = {
@@ -156,10 +157,12 @@ describe("forecast isolation", () => {
       [
         {
           key: "5-14-2026-08-26",
+          sourceUpdatedAt: 100,
           slots: [{ estimate, time: 123 }],
         },
         {
           key: "stale-schedule",
+          sourceUpdatedAt: 100,
           slots: [{ estimate, time: 456 }],
         },
       ]
@@ -169,6 +172,36 @@ describe("forecast isolation", () => {
       expect.objectContaining({ estimate, tide: undefined, weather: undefined })
     );
     expect(staleSlot).toEqual({ time: 456, weather: { existing: true } });
+  });
+
+  // stale source revision
+  it("ignores snapshots from an older schedule revision", () => {
+    const currentEstimate = {
+      driveUpCapacity: 30,
+      reservableCapacity: 0,
+    };
+    const staleEstimate = {
+      driveUpCapacity: 10,
+      reservableCapacity: 0,
+    };
+    const schedule = {
+      key: "5-14-2026-08-26",
+      slots: [{ estimate: currentEstimate, time: 123 }],
+      sourceUpdatedAt: 101,
+    } as never;
+
+    applyForecastSnapshots(
+      [schedule],
+      [
+        {
+          key: "5-14-2026-08-26",
+          slots: [{ estimate: staleEstimate, time: 123 }],
+          sourceUpdatedAt: 100,
+        },
+      ]
+    );
+
+    expect(schedule.slots[0].estimate).toEqual(currentEstimate);
   });
 
   // forecast revision marker

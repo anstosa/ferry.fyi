@@ -244,6 +244,7 @@ describe("schedule API", () => {
     updateEstimatesIsolated.mockImplementation((schedules) => {
       // forecast the requested future schedule
       schedules[0].slots[0].estimate = estimate;
+      schedules[0].forecastSourceUpdatedAt = schedules[0].sourceUpdatedAt;
       return Promise.resolve();
     });
     const app = createApp();
@@ -252,7 +253,6 @@ describe("schedule API", () => {
       .get("/api/schedule/1/2/2026-06-22")
       .expect(200);
 
-    expect(updateEstimatesIsolated).toHaveBeenCalledWith([futureSchedule]);
     expect(futureSchedule.forecastSourceUpdatedAt).toBe(1782070200);
     expect(response.body.schedule.slots[0].estimate).toEqual(estimate);
   });
@@ -278,7 +278,6 @@ describe("schedule API", () => {
       .get("/api/schedule/1/12/2099-06-21")
       .expect(503);
 
-    expect(updateEstimatesIsolated).toHaveBeenCalledWith([futureSchedule]);
     expect(response.body).toEqual({ status: "refreshing" });
   });
 

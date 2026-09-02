@@ -61,19 +61,13 @@ const isScheduleForecastReady = (schedule: Schedule): boolean => {
 
 // forecast one future schedule outside the request event loop
 const refreshForecastsInBackground = (schedule: Schedule): Promise<void> => {
-  const { key, sourceUpdatedAt } = schedule;
+  const { key } = schedule;
   const activeRefresh = backgroundForecastRefreshes.get(key);
   // in-flight forecast guard
   if (activeRefresh) {
     return activeRefresh;
   }
   const refreshPromise = updateEstimatesIsolated([schedule])
-    .then(() => {
-      // mark only the requested schedule revision ready
-      if (schedule.sourceUpdatedAt === sourceUpdatedAt) {
-        schedule.forecastSourceUpdatedAt = sourceUpdatedAt;
-      }
-    })
     .catch((error: unknown) => {
       // forecast failure log
       logger.error(
