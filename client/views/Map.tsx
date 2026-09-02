@@ -2,6 +2,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 
 import clsx from "clsx";
 import { AnimatePresence, motion } from "framer-motion";
+import { DateTime } from "luxon";
 import {
   LngLatBounds,
   Map as Mapbox,
@@ -18,13 +19,15 @@ import React, {
   useState,
 } from "react";
 import { createRoot } from "react-dom/client";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import type { Route } from "shared/contracts/routes";
+import type { Schedule as ScheduleClass } from "shared/contracts/schedules";
 import type { Terminal } from "shared/contracts/terminals";
 import type { Vessel } from "shared/contracts/vessels";
 import { isEmpty } from "shared/lib/arrays";
 import { isNull } from "shared/lib/identity";
 
+import { ExternalPillLink } from "~/components/ExternalPillLink";
 import { FreshnessPill } from "~/components/FreshnessPill";
 import { ReloadButton } from "~/components/ReloadButton";
 import { Toast } from "~/components/Toast";
@@ -34,6 +37,7 @@ import { getPublicSsrSourceOutcome, usePublicSsrSnapshot } from "~/lib/ssrSeed";
 import { getSlug, useTerminalList } from "~/lib/terminals";
 import { useResolvedTheme } from "~/lib/theme";
 import { selectVisibleVesselContent } from "~/lib/vesselAssignments";
+import { getMapSailingPath, getNextVesselSailing } from "~/lib/vesselMapLinks";
 import { getVesselSnapshot, refreshVessels } from "~/lib/vessels";
 import { useWindowSize } from "~/lib/window";
 import CaretDownIcon from "~/static/images/icons/solid/caret-down.svg";
@@ -99,19 +103,34 @@ function snapshotTimestamp(
 interface Props {
   mate: Terminal | null;
   requestIdentity: string;
+  schedule: ScheduleClass | null;
   setRoute: (target: string, mate?: string) => void;
   terminal: Terminal | null;
+  time: DateTime;
   vesselIdentity: string;
   vessels: Vessel[];
 }
 
 interface MarkerLabelProps {
+  ariaLabel?: string;
   icon: ReactElement;
   iconClassName: string;
   iconStyle?: CSSProperties;
+  isSelected?: boolean;
   label: string | null;
   labelClassName?: string;
   labelPlacement: string;
+  onClick?: () => void;
+}
+
+interface VesselDetailsCardProps {
+  arrivingTerminal: Terminal | null;
+  cardRef: React.RefObject<HTMLElement | null>;
+  departingTerminal: Terminal | null;
+  nextSailingPath: string | null;
+  nextSailingTime: number | null;
+  onClose: () => void;
+  vessel: Vessel;
 }
 
 interface RenderedMarker {
@@ -245,6 +264,157 @@ const getVesselLabelPlacement = (
     }
   }
   return null;
+};
+
+// visible map focus offset
+const getVesselFocusOffset = (
+  mapElement: HTMLElement,
+  cardElement: HTMLElement | null
+): [number, number] => {
+  // missing card guard
+  if (!cardElement) {
+    return [0, 0];
+  }
+  const mapRect = mapElement.getBoundingClientRect();
+  const cardRect = cardElement.getBoundingClientRect();
+  // non-overlapping card guard
+  if (cardRect.top >= mapRect.bottom || cardRect.bottom <= mapRect.top) {
+    return [0, 0];
+  }
+  const visibleBottom = Math.max(
+    mapRect.top,
+    Math.min(mapRect.bottom, cardRect.top)
+  );
+  const visibleCenter = (mapRect.top + visibleBottom) / 2;
+  const mapCenter = (mapRect.top + mapRect.bottom) / 2;
+  return [0, visibleCenter - mapCenter];
+};
+
+// optional vessel time label
+const formatVesselTime = (timestamp?: number): string | null => {
+  // missing timestamp guard
+  if (
+    typeof timestamp !== "number" ||
+    !Number.isFinite(timestamp) ||
+    timestamp <= 0
+  ) {
+    return null;
+  }
+  return DateTime.fromSeconds(timestamp).toFormat("h:mm a");
+};
+
+// selected vessel details
+const VesselDetailsCard = ({
+  arrivingTerminal,
+  cardRef,
+  departingTerminal,
+  nextSailingPath,
+  nextSailingTime,
+  onClose,
+  vessel,
+}: VesselDetailsCardProps): ReactElement => {
+  const speedMph = Math.round(knotsToMph(vessel.speed));
+  const etaLabel = vessel.isAtDock
+    ? null
+    : formatVesselTime(vessel.estimatedArrivalTime);
+  const nextSailingLabel = formatVesselTime(nextSailingTime ?? undefined);
+  let sailingLabel = vessel.info?.crossing ?? "Route unavailable";
+  // destination-only sailing
+  if (arrivingTerminal) {
+    sailingLabel = `To ${arrivingTerminal.name}`;
+  }
+  // complete sailing route
+  if (departingTerminal && arrivingTerminal) {
+    sailingLabel = `${departingTerminal.name} → ${arrivingTerminal.name}`;
+  }
+  return (
+    <aside
+      aria-label={`${vessel.name} details`}
+      className={clsx(
+        "fixed bottom-[calc(4rem+var(--safe-area-inset-bottom)+0.75rem)] left-3 right-3 z-30",
+        "mx-auto max-w-md overflow-hidden rounded-2xl border shadow-2xl",
+        "border-gray-medium bg-white text-gray-darkest",
+        "dark:border-gray-dark dark:bg-gray-darkest dark:text-white"
+      )}
+      data-vessel-card={vessel.id}
+      ref={cardRef}
+      role="region"
+    >
+      <header
+        className={clsx(
+          "grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 p-4",
+          "bg-gradient-to-br from-blue-lightest via-white to-green-lightest",
+          "dark:from-blue-darkest dark:via-gray-darkest dark:to-green-dark"
+        )}
+      >
+        <div className="min-w-0">
+          <p className="text-2xs font-black uppercase tracking-wide text-gray-dark dark:text-gray-light">
+            Live vessel
+          </p>
+          <h2 className="mt-1 text-xl font-black leading-tight">
+            {vessel.name}
+          </h2>
+          <p className="mt-1 text-sm font-semibold text-gray-dark dark:text-gray-light">
+            {sailingLabel}
+          </p>
+        </div>
+        <div className="flex flex-col items-end gap-2">
+          <button
+            aria-label={`Close ${vessel.name} details`}
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-black/10 text-xl font-bold transition hover:bg-black/20 dark:bg-white/10 dark:hover:bg-white/20"
+            onClick={onClose}
+            type="button"
+          >
+            ×
+          </button>
+          {/* wsf vessel page link */}
+          {vessel.vesselWatchUrl && (
+            <ExternalPillLink
+              className="shrink-0 whitespace-nowrap"
+              href={vessel.vesselWatchUrl}
+            >
+              WSF vessel page
+            </ExternalPillLink>
+          )}
+        </div>
+      </header>
+      <dl className="grid grid-cols-3 gap-2 p-4 text-center">
+        <div className="rounded-lg bg-darken-lowest p-2 dark:bg-white/10">
+          <dt className="text-2xs font-bold uppercase tracking-wide text-gray-dark dark:text-gray-light">
+            Status
+          </dt>
+          <dd className="mt-1 text-sm font-black">
+            {vessel.isAtDock ? "Docked" : "Underway"}
+          </dd>
+        </div>
+        <div className="rounded-lg bg-darken-lowest p-2 dark:bg-white/10">
+          <dt className="text-2xs font-bold uppercase tracking-wide text-gray-dark dark:text-gray-light">
+            Speed
+          </dt>
+          <dd className="mt-1 text-sm font-black">{speedMph} mph</dd>
+        </div>
+        <div className="rounded-lg bg-darken-lowest p-2 dark:bg-white/10">
+          <dt className="text-2xs font-bold uppercase tracking-wide text-gray-dark dark:text-gray-light">
+            {etaLabel ? "ETA" : "Destination"}
+          </dt>
+          <dd className="mt-1 truncate text-sm font-black">
+            {etaLabel ?? arrivingTerminal?.name ?? "Unknown"}
+          </dd>
+        </div>
+      </dl>
+      <div className="grid gap-2 px-4 pb-4">
+        {/* next sailing link */}
+        {nextSailingPath && (
+          <a
+            className="w-full rounded-lg bg-green-dark px-3 py-2.5 text-center text-sm font-bold text-white shadow-sm transition hover:bg-green-medium dark:bg-green-light dark:text-green-dark"
+            href={nextSailingPath}
+          >
+            Next sailing{nextSailingLabel ? ` · ${nextSailingLabel}` : ""}
+          </a>
+        )}
+      </div>
+    </aside>
+  );
 };
 
 // route option label
@@ -406,15 +576,18 @@ const RouteDropdown = ({
 
 // marker label render
 const renderMarkerLabel = ({
+  ariaLabel,
   icon,
   iconClassName,
   iconStyle,
+  isSelected = false,
   label,
   labelClassName,
   labelPlacement,
+  onClick,
 }: MarkerLabelProps): ReactElement => {
-  return (
-    <div className="relative flex items-center justify-center pointer-events-auto">
+  const content = (
+    <>
       <div className={iconClassName} style={iconStyle}>
         {icon}
       </div>
@@ -430,6 +603,25 @@ const renderMarkerLabel = ({
           {label}
         </div>
       )}
+    </>
+  );
+  // interactive marker guard
+  if (onClick) {
+    return (
+      <button
+        aria-label={ariaLabel}
+        aria-pressed={isSelected}
+        className="relative flex items-center justify-center border-0 bg-transparent p-0 text-inherit pointer-events-auto"
+        onClick={onClick}
+        type="button"
+      >
+        {content}
+      </button>
+    );
+  }
+  return (
+    <div className="relative flex items-center justify-center pointer-events-auto">
+      {content}
     </div>
   );
 };
@@ -469,29 +661,26 @@ const hasTerminalLocation = (
     Number.isFinite(terminal.location.longitude)
   );
 
-// vessel label text
-const getVesselLabel = (vessel: Vessel): string => {
-  // docked vessel guard
-  if (vessel.isAtDock) {
-    return `${vessel.name} · docked`;
-  }
-  const speedMph = Math.round(knotsToMph(vessel.speed));
-  // stationary vessel guard
-  if (speedMph <= 0) {
-    return vessel.name;
-  }
-  return `${vessel.name} · ${speedMph} mph`;
-};
+// persistent vessel name
+const getVesselLabel = (vessel: Vessel): string => vessel.name;
 
 export const Map = ({
   mate,
   requestIdentity,
+  schedule,
   setRoute,
   terminal,
+  time,
   vesselIdentity,
   vessels,
 }: Props): ReactElement => {
   const location = useLocation();
+  const navigate = useNavigate();
+  // focused vessel query
+  const requestedVesselId = useMemo(
+    () => new URLSearchParams(location.search).get("vessel"),
+    [location.search]
+  );
   const snapshot = usePublicSsrSnapshot();
   const terminalSlug = terminal ? getSlug(terminal.id) : undefined;
   const mateSlug = mate ? getSlug(mate.id) : undefined;
@@ -534,9 +723,15 @@ export const Map = ({
     : (seededVessels ?? []);
   const seededSourceUpdatedAt = snapshotTimestamp(seededVesselsOutcome);
   const mapRef = useRef<HTMLDivElement>(null);
+  const vesselCardRef = useRef<HTMLElement>(null);
   const activeMapRef = useRef<Mapbox | null>(null);
   const markersRef = useRef<RenderedMarker[]>([]);
   const lastFittedVesselsRef = useRef<Vessel[] | null>(null);
+  const lastFocusedVesselRef = useRef<{
+    map: Mapbox;
+    routeKey: string;
+    vesselId: string;
+  } | null>(null);
   const routeVesselIdsRef = useRef(new Set(initialVessels.map(({ id }) => id)));
   routeVesselIdsRef.current = new Set(
     (hasLiveVesselAssignments ? vessels : (seededVessels ?? [])).map(
@@ -576,6 +771,61 @@ export const Map = ({
   const routeLabel =
     activeRoute?.description ??
     (terminal && mate ? `${terminal.name} / ${mate.name}` : "Route");
+  // selected vessel lookup
+  const selectedVessel = useMemo(
+    () =>
+      displayedVessels.find(({ id }) => {
+        // selected id match
+        return id === requestedVesselId;
+      }) ?? null,
+    [displayedVessels, requestedVesselId]
+  );
+  const knownTerminals = [terminal, mate, ...terminals].filter(
+    (item): item is Terminal => {
+      // loaded terminal guard
+      return Boolean(item);
+    }
+  );
+  const departingTerminal = selectedVessel?.departingTerminalId
+    ? (knownTerminals.find(({ id }) => {
+        // departing terminal match
+        return id === String(selectedVessel.departingTerminalId);
+      }) ?? null)
+    : null;
+  const arrivingTerminal = selectedVessel?.arrivingTerminalId
+    ? (knownTerminals.find(({ id }) => {
+        // arriving terminal match
+        return id === String(selectedVessel.arrivingTerminalId);
+      }) ?? null)
+    : null;
+  const nextSailing = selectedVessel
+    ? getNextVesselSailing(schedule, selectedVessel.id, time.toSeconds())
+    : null;
+  const nextSailingPath =
+    schedule && nextSailing
+      ? getMapSailingPath({
+          mapPathname: location.pathname,
+          sailing: nextSailing,
+          schedule,
+          tab: "vessel",
+        })
+      : null;
+
+  // permalink vessel selection
+  const selectVessel = (vesselId: string | null): void => {
+    const query = new URLSearchParams(location.search);
+    // selected vessel query
+    if (vesselId) {
+      query.set("vessel", vesselId);
+    } else {
+      query.delete("vessel");
+    }
+    const search = query.toString();
+    navigate({
+      pathname: location.pathname,
+      search: search ? `?${search}` : "",
+    });
+  };
 
   useEffect(() => {
     const nextVessels = hasLiveVesselAssignments
@@ -837,6 +1087,7 @@ export const Map = ({
     newMarkers.push(
       ...displayedVessels.filter(hasVesselLocation).map((vessel) => {
         const marker = document.createElement("div");
+        const isSelected = vessel.id === requestedVesselId;
         const heading = (vessel.heading ?? 0) - 45;
         const lngLat = {
           lon: vessel.location.longitude,
@@ -844,24 +1095,40 @@ export const Map = ({
         };
         const label = getVesselLabel(vessel);
         const point = map.project([lngLat.lon, lngLat.lat]);
-        const placement = getVesselLabelPlacement(
-          point.x,
-          point.y,
-          label,
-          occupied,
-          mapSize.width,
-          mapSize.height
-        );
+        const placement =
+          getVesselLabelPlacement(
+            point.x,
+            point.y,
+            label,
+            occupied,
+            mapSize.width,
+            mapSize.height
+          ) ?? "above";
         maybeUpdateBounds(lngLat);
         const root = renderMarkerIcon(
           renderMarkerLabel({
+            ariaLabel: `Open ${vessel.name} vessel details`,
             icon: <VesselIcon />,
-            iconClassName: "text-3xl text-countdown drop-shadow",
+            iconClassName: clsx(
+              "text-3xl drop-shadow",
+              isSelected
+                ? "text-blue-dark dark:text-blue-light"
+                : "text-countdown"
+            ),
             iconStyle: { transform: `rotate(${heading}deg)` },
-            label: placement ? label : null,
-            labelClassName:
-              "rounded-full border-countdown bg-countdown text-white",
-            labelPlacement: placement ? LABEL_PLACEMENTS[placement] : "",
+            isSelected,
+            label,
+            labelClassName: clsx(
+              "rounded-full text-white",
+              isSelected
+                ? "border-blue-dark bg-blue-dark dark:border-blue-light dark:bg-blue-light dark:text-blue-darkest"
+                : "border-countdown bg-countdown"
+            ),
+            labelPlacement: LABEL_PLACEMENTS[placement],
+            onClick: () => {
+              // permalink vessel marker
+              selectVessel(vessel.id);
+            },
           }),
           marker
         );
@@ -917,8 +1184,53 @@ export const Map = ({
     displayedVessels,
     terminal,
     mate,
+    requestedVesselId,
     userLocation,
   ]);
+
+  // center deep-linked vessel once available
+  useEffect(() => {
+    // clear closed vessel focus
+    if (!requestedVesselId) {
+      lastFocusedVesselRef.current = null;
+      return;
+    }
+    // map readiness guard
+    if (!map) {
+      return;
+    }
+    const focusedVessel = displayedVessels.find(({ id }) => {
+      // focused id match
+      return id === requestedVesselId;
+    });
+    // vessel location guard
+    if (!focusedVessel?.location) {
+      return;
+    }
+    const previousFocus = lastFocusedVesselRef.current;
+    // duplicate focus guard
+    if (
+      previousFocus?.map === map &&
+      previousFocus.routeKey === routeKey &&
+      previousFocus.vesselId === requestedVesselId
+    ) {
+      return;
+    }
+    map.easeTo({
+      center: [
+        focusedVessel.location.longitude,
+        focusedVessel.location.latitude,
+      ],
+      duration: 800,
+      offset: getVesselFocusOffset(map.getContainer(), vesselCardRef.current),
+      zoom: 12,
+    });
+    lastFocusedVesselRef.current = {
+      map,
+      routeKey,
+      vesselId: requestedVesselId,
+    };
+  }, [displayedVessels, map, requestedVesselId, routeKey]);
 
   // Move the existing DOM markers during dead-reckoning. Recreating their
   // React roots every second causes visible flashes, while Mapbox can move a
@@ -1032,7 +1344,22 @@ export const Map = ({
         ref={mapRef}
         className="map-container flex-grow bg-day-normal-light dark:bg-night-normal-dark"
       />
-      {sourceUpdatedAt && (
+      {/* selected vessel card */}
+      {selectedVessel && (
+        <VesselDetailsCard
+          arrivingTerminal={arrivingTerminal}
+          cardRef={vesselCardRef}
+          departingTerminal={departingTerminal}
+          nextSailingPath={nextSailingPath}
+          nextSailingTime={nextSailing?.time ?? null}
+          onClose={() => {
+            // clear vessel permalink
+            selectVessel(null);
+          }}
+          vessel={selectedVessel}
+        />
+      )}
+      {sourceUpdatedAt && !selectedVessel && (
         <div
           className="pointer-events-none fixed bottom-[calc(4rem+var(--safe-area-inset-bottom)+0.5rem)] left-0 right-0 z-20 flex justify-center"
           data-live-freshness="vessels"

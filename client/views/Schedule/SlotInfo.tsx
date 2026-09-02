@@ -50,6 +50,7 @@ import {
 } from "~/lib/push";
 import type { DetailTab } from "~/lib/sailingDeepLink";
 import { useUser } from "~/lib/user";
+import { getVesselMapPath } from "~/lib/vesselMapLinks";
 import BellIcon from "~/static/images/icons/regular/bell.svg";
 import ArrowRightIcon from "~/static/images/icons/solid/arrow-right.svg";
 import BellSolidIcon from "~/static/images/icons/solid/bell.svg";
@@ -58,6 +59,7 @@ import CheckCircleIcon from "~/static/images/icons/solid/check-circle.svg";
 import CloudSunIcon from "~/static/images/icons/solid/cloud-sun.svg";
 import ExclamationCircleIcon from "~/static/images/icons/solid/exclamation-circle.svg";
 import InfoCircleIcon from "~/static/images/icons/solid/info-circle.svg";
+import MapMarkerIcon from "~/static/images/icons/solid/map-marker.svg";
 import RaindropsIcon from "~/static/images/icons/solid/raindrops.svg";
 import ShareIcon from "~/static/images/icons/solid/share-alt.svg";
 import ShipIcon from "~/static/images/icons/solid/ship.svg";
@@ -1586,11 +1588,13 @@ export const SlotInfo = (props: Props): ReactElement => {
       vessel.arrivingTerminalId && vessel.departingTerminalId
     );
     const hasTrackableLiveSignal = Boolean(vessel.gpsDelay || vessel.location);
+    const canShowOnMap = Boolean(vessel.location && hasTrackableRouteContext);
     const canTrackBoat = Boolean(
       (isNext || isVesselSailingNow) &&
       hasTrackableRouteContext &&
       hasTrackableLiveSignal
     );
+    const vesselMapPath = getVesselMapPath(locationRoute.pathname, vessel.id);
     // track boat action
     const trackBoat = (event: React.MouseEvent<HTMLButtonElement>): void => {
       event.preventDefault();
@@ -1685,6 +1689,20 @@ export const SlotInfo = (props: Props): ReactElement => {
                     >
                       Track Boat
                     </button>
+                  )}
+                  {/* focused map link */}
+                  {canShowOnMap && (
+                    <Link
+                      className="link inline-flex items-center gap-1 text-sm font-bold text-blue-dark dark:text-blue-light"
+                      onClick={(event) => {
+                        // contain row click
+                        event.stopPropagation();
+                      }}
+                      to={vesselMapPath}
+                    >
+                      <MapMarkerIcon className="h-3.5 w-3.5" />
+                      Show on map
+                    </Link>
                   )}
                 </div>
               </div>

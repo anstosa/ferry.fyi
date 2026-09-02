@@ -199,24 +199,31 @@ const getView = (pathname: string): "alerts" | "map" | "schedule" => {
 };
 
 interface NavigationController {
+  currentPath?: string;
   navigate: (path: string) => void;
 }
 
-const renderNavigableRoute = async (controller: NavigationController) => {
+// navigable route render
+const renderNavigableRoute = async (
+  controller: NavigationController,
+  initialEntry = "/terminal-a/terminal-b"
+) => {
   const container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container);
+  // route harness
   const Harness = () => {
     const navigate = useNavigate();
-    const { pathname } = useLocation();
+    const { pathname, search } = useLocation();
     controller.navigate = navigate;
+    controller.currentPath = `${pathname}${search}`;
     return React.createElement(Route, { view: getView(pathname) });
   };
   await act(async () => {
     root?.render(
       React.createElement(
         MemoryRouter,
-        { initialEntries: ["/terminal-a/terminal-b"] },
+        { initialEntries: [initialEntry] },
         React.createElement(
           Routes,
           undefined,
@@ -672,6 +679,120 @@ describe("Route route-load errors", () => {
       )
     ).toBe(false);
     consoleError.mockRestore();
+  });
+
+  // map sailing navigation
+  it("preserves sailing detail params when navigating from map to schedule", async () => {
+    const terminal = {
+      id: "terminal-a",
+      mates: [
+        { id: "terminal-b", name: "B" },
+        { id: "terminal-c", name: "C" },
+      ],
+      name: "A",
+      routes: {},
+    };
+    const mate = {
+      id: "terminal-b",
+      mates: [{ id: "terminal-a", name: "A" }],
+      name: "B",
+      routes: {},
+    };
+    getTerminal.mockImplementation((id: string) =>
+      Promise.resolve(id === terminal.id ? terminal : mate)
+    );
+    getSchedule.mockImplementation(
+      (_terminal, _mate, requestedDate: DateTime) =>
+        Promise.resolve({
+          schedule: {
+            date: requestedDate.toISODate(),
+            mateId: mate.id,
+            slots: [],
+            terminalId: terminal.id,
+          },
+          timestamp: 0,
+        })
+    );
+    const controller: NavigationController = {
+      navigate: () => undefined,
+    };
+    const container = await renderNavigableRoute(controller);
+
+    await act(async () => {
+      controller.navigate("/terminal-a/terminal-b/map?vessel=1");
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const date = DateTime.local().plus({ days: 1 }).toISODate();
+    await act(async () => {
+      controller.navigate(
+        `/terminal-a/terminal-b?date=${date}&sailing=1788300000&tab=vessel`
+      );
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(controller.currentPath).toBe(
+      `/terminal-a/terminal-b?date=${date}&sailing=1788300000&tab=vessel`
+    );
+    expect(container.textContent).toContain("Schedule terminal-a");
+  });
+
+  // query identity retry
+  it("retries route loading when a deep-link query changes in flight", async () => {
+    const terminal = {
+      id: "terminal-a",
+      mates: [
+        { id: "terminal-b", name: "B" },
+        { id: "terminal-c", name: "C" },
+      ],
+      name: "A",
+      routes: {},
+    };
+    const mate = {
+      id: "terminal-b",
+      mates: [{ id: "terminal-a", name: "A" }],
+      name: "B",
+      routes: {},
+    };
+    const staleTerminal = deferred<typeof terminal>();
+    getTerminal
+      .mockReturnValueOnce(staleTerminal.promise)
+      .mockResolvedValueOnce(terminal)
+      .mockResolvedValueOnce(mate);
+    getSchedule.mockResolvedValue({
+      schedule: {
+        date: getLocalScheduleDate(),
+        mateId: mate.id,
+        slots: [],
+        terminalId: terminal.id,
+      },
+      timestamp: 0,
+    });
+    const controller: NavigationController = {
+      navigate: () => undefined,
+    };
+    const sailingQuery = "sailing=1788327000&tab=vessel";
+    const container = await renderNavigableRoute(
+      controller,
+      `/terminal-a/terminal-b?date=${getLocalScheduleDate()}&${sailingQuery}`
+    );
+
+    await act(async () => {
+      controller.navigate(`/terminal-a/terminal-b?${sailingQuery}`);
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(getTerminal).toHaveBeenCalledTimes(3);
+    expect(container.textContent).toContain("Schedule terminal-a");
+    expect(controller.currentPath).toBe(
+      `/terminal-a/terminal-b?${sailingQuery}`
+    );
   });
 
   it("synchronously hides prior schedule on normalized date-query navigation", async () => {

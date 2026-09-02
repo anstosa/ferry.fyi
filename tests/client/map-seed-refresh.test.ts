@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { DateTime } from "luxon";
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { MemoryRouter, useNavigate } from "react-router-dom";
@@ -7,6 +8,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   deferMapLoad: false,
   maps: [] as Array<{
+    easeTo: ReturnType<typeof vi.fn>;
     removed: boolean;
     triggerLoad: () => void;
   }>,
@@ -40,6 +42,7 @@ vi.mock("mapbox-gl", () => {
     }
 
     addControl = vi.fn();
+    easeTo = vi.fn();
     fitBounds = vi.fn();
     getContainer = () => {
       if (this.removed) {
@@ -157,6 +160,7 @@ import {
   PUBLIC_SSR_SNAPSHOT_VERSION,
   type PublicSsrSnapshot,
 } from "../../shared/contracts/ssr";
+import type { Schedule, Slot } from "../../shared/contracts/schedules";
 import type { Terminal } from "../../shared/contracts/terminals";
 import type { Vessel } from "../../shared/contracts/vessels";
 
@@ -191,6 +195,9 @@ const mate = {
 } as Terminal;
 const seededVessel = {
   abbreviation: "SEA",
+  arrivingTerminalId: 14,
+  departingTerminalId: 5,
+  estimatedArrivalTime: 1_775_000_000,
   heading: 90,
   id: "1",
   inMaintenance: false,
@@ -199,6 +206,15 @@ const seededVessel = {
   location: { latitude: 47.96, longitude: -122.33 },
   name: "Sealth",
   speed: 10,
+  vesselWatchUrl: "https://wsdot.example/vessels/sealth",
+} as Vessel;
+const vesselWithoutEta = {
+  ...seededVessel,
+  arrivingTerminalId: undefined,
+  departingTerminalId: 14,
+  estimatedArrivalTime: 0,
+  id: "15",
+  name: "Issaquah",
 } as Vessel;
 const freshVessel = {
   ...seededVessel,
@@ -246,6 +262,20 @@ const nextMate = {
 const observedAt = "2026-07-29T12:00:00.000Z";
 const sourceUpdatedAt = "2026-07-29T11:00:00.000Z";
 const initialIdentity = "clinton-mukilteo-map";
+const mapTime = DateTime.fromISO("2026-07-29T12:00:00", {
+  zone: "America/Los_Angeles",
+});
+const nextSailingTime = mapTime.plus({ hours: 1 }).toSeconds();
+const mapSchedule = {
+  date: mapTime.toISODate(),
+  slots: [
+    {
+      crossing: { isCancelled: false },
+      time: nextSailingTime,
+      vessel: seededVessel,
+    } as Slot,
+  ],
+} as Schedule;
 const seededFreshnessTimestamp = String(Date.parse(sourceUpdatedAt) / 1000);
 const snapshot = {
   canonicalHost: "ferry.fyi",
@@ -285,7 +315,8 @@ function freshnessTimestamp(container: HTMLElement): string | null {
 const view = (
   routeSnapshot = snapshot,
   path = "/clinton/mukilteo/map",
-  routeTerminal = terminal
+  routeTerminal = terminal,
+  routeSchedule: Schedule | null = null
 ) =>
   React.createElement(
     PublicSsrSeedProvider,
@@ -296,8 +327,10 @@ const view = (
       React.createElement(Map, {
         mate,
         requestIdentity: initialIdentity,
+        schedule: routeSchedule,
         setRoute: () => undefined,
         terminal: routeTerminal,
+        time: mapTime,
         vesselIdentity: "",
         vessels: [],
       })
@@ -327,8 +360,10 @@ const assignmentView = (
     return React.createElement(Map, {
       mate,
       requestIdentity: initialIdentity,
+      schedule: null,
       setRoute: () => undefined,
       terminal,
+      time: mapTime,
       vesselIdentity: assignment.identity,
       vessels: assignment.vessels,
     });
@@ -368,7 +403,9 @@ const navigableView = (controller: NavigationController) => {
     };
     return React.createElement(Map, {
       ...route,
+      schedule: null,
       setRoute: () => undefined,
+      time: mapTime,
     });
   };
 
@@ -394,8 +431,10 @@ const queryNavigableView = (controller: NavigationController) => {
     return React.createElement(Map, {
       mate,
       requestIdentity: location.current,
+      schedule: null,
       setRoute: () => undefined,
       terminal,
+      time: mapTime,
       vesselIdentity: "",
       vessels: [seededVessel],
     });
@@ -425,6 +464,178 @@ describe("map hydration seed freshness", () => {
     mocks.theme = "light";
   });
 
+  // marker details interaction
+  it("keeps the vessel name visible and opens sailing details from its marker", async () => {
+    mocks.getVesselSnapshot.mockReturnValue(new Promise(() => undefined));
+    const container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root?.render(view(snapshot, undefined, terminal, mapSchedule));
+    });
+
+    const markerButton = container.querySelector<HTMLButtonElement>(
+      '[aria-label="Open Sealth vessel details"]'
+    );
+    expect(markerButton).not.toBeNull();
+    expect(markerButton?.getAttribute("aria-pressed")).toBe("false");
+    expect(container.textContent).toContain("Sealth");
+
+    await act(async () => {
+      markerButton?.click();
+    });
+
+    const card = container.querySelector('[data-vessel-card="1"]');
+    const selectedMarker = container.querySelector<HTMLButtonElement>(
+      '[aria-label="Open Sealth vessel details"]'
+    );
+    expect(selectedMarker?.getAttribute("aria-pressed")).toBe("true");
+    expect(selectedMarker?.querySelector(".text-blue-dark")).not.toBeNull();
+    expect(card?.textContent).toContain("Clinton → Mukilteo");
+    expect(card?.textContent).toContain("12 mph");
+    expect(card?.textContent).toContain("WSF vessel page");
+    expect(card?.textContent).toContain("Next sailing");
+    const externalLink = card?.querySelector<HTMLAnchorElement>(
+      'header a[href="https://wsdot.example/vessels/sealth"]'
+    );
+    expect(externalLink?.className).toContain("rounded-full");
+    expect(externalLink?.parentElement?.querySelector("button")).not.toBeNull();
+    expect(card?.querySelector("header")?.className).toContain("grid-cols-");
+    const nextSailingLink = card?.querySelector<HTMLAnchorElement>(
+      'a[href*="sailing="]'
+    );
+    expect(nextSailingLink?.pathname).toBe("/clinton/mukilteo");
+    expect(nextSailingLink?.search).toBe(
+      `?date=${mapSchedule.date}&sailing=${mapSchedule.slots[0].time}&tab=vessel`
+    );
+
+    await act(async () => {
+      container
+        .querySelector<HTMLButtonElement>('[aria-label="Close Sealth details"]')
+        ?.click();
+    });
+
+    expect(container.querySelector('[data-vessel-card="1"]')).toBeNull();
+
+    await act(async () => {
+      container
+        .querySelector<HTMLButtonElement>(
+          '[aria-label="Open Sealth vessel details"]'
+        )
+        ?.click();
+    });
+
+    expect(mocks.maps[0]?.easeTo).toHaveBeenCalledTimes(2);
+  });
+
+  // focused map deep link
+  it("opens and centers a vessel selected by the map query", async () => {
+    mocks.getVesselSnapshot.mockReturnValue(new Promise(() => undefined));
+    const cardRect = vi
+      .spyOn(HTMLElement.prototype, "getBoundingClientRect")
+      .mockReturnValue({
+        bottom: 760,
+        height: 260,
+        left: 0,
+        right: 400,
+        top: 500,
+        width: 400,
+        x: 0,
+        y: 500,
+        toJSON: () => undefined,
+      } as DOMRect);
+    const container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root?.render(
+        view(snapshot, "/clinton/mukilteo/map?vessel=1", terminal, mapSchedule)
+      );
+    });
+    cardRect.mockRestore();
+
+    expect(container.querySelector('[data-vessel-card="1"]')).not.toBeNull();
+    expect(mocks.maps[0]?.easeTo).toHaveBeenCalledWith({
+      center: [-122.33, 47.96],
+      duration: 800,
+      offset: [0, -150],
+      zoom: 12,
+    });
+  });
+
+  // unavailable vessel eta
+  it("does not format a missing WSF ETA as an epoch time", async () => {
+    mocks.getVesselSnapshot.mockReturnValue(new Promise(() => undefined));
+    const noEtaSnapshot = {
+      ...snapshot,
+      sources: {
+        ...snapshot.sources,
+        vessels: {
+          ...snapshot.sources.vessels,
+          value: [vesselWithoutEta],
+        },
+      },
+    } as PublicSsrSnapshot;
+    const container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root?.render(
+        view(
+          noEtaSnapshot,
+          "/clinton/mukilteo/map?vessel=15",
+          terminal
+        )
+      );
+    });
+
+    const card = container.querySelector('[data-vessel-card="15"]');
+    expect(card?.textContent).toContain("Destination");
+    expect(card?.textContent).not.toContain("ETA");
+  });
+
+  // overlapping vessel labels
+  it("keeps every vessel name visible when label placements are exhausted", async () => {
+    mocks.getVesselSnapshot.mockReturnValue(new Promise(() => undefined));
+    const controller = { assign: () => undefined } as AssignmentController;
+    const container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root?.render(assignmentView(controller, snapshot));
+    });
+
+    const overlappingVessels = [
+      "Alpha",
+      "Bravo",
+      "Charlie",
+      "Delta",
+      "Echo",
+    ].map((name, index) => {
+      // overlapping vessel fixture
+      return {
+        ...seededVessel,
+        id: `overlap-${index}`,
+        name,
+      };
+    });
+    await act(async () => {
+      controller.assign(overlappingVessels);
+    });
+
+    overlappingVessels.forEach(({ name }) => {
+      // visible vessel label
+      expect(
+        container.querySelector(`[aria-label="Open ${name} vessel details"]`)
+          ?.textContent
+      ).toContain(name);
+    });
+  });
+
   // skip incomplete terminal payloads
   it("skips a terminal mate without runtime location data", async () => {
     const incompleteTerminal = {
@@ -437,9 +648,7 @@ describe("map hydration seed freshness", () => {
     root = createRoot(container);
 
     await act(async () => {
-      root?.render(
-        view(snapshot, "/clinton/mukilteo/map", incompleteTerminal)
-      );
+      root?.render(view(snapshot, "/clinton/mukilteo/map", incompleteTerminal));
       await Promise.resolve();
     });
 

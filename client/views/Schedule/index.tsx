@@ -105,9 +105,15 @@ export const Schedule = ({
   const linkedSailingTime = getLinkedSailingTime(sailingInput);
   const linkedDetailTab = isDetailTab(tabInput) ? tabInput : undefined;
   const scheduleIdentity = schedule?.key ?? "";
+  const linkedSlot =
+    schedule?.slots?.find((slot) => {
+      // linked sailing match
+      return slot.time === linkedSailingTime;
+    }) ?? null;
   const currentSlot = schedule?.slots
     ? getCurrentSlot(schedule.slots, time)
     : null;
+  const scrollTargetSlot = linkedSlot ?? currentSlot;
   const showNowDividerForCurrentSlot = Boolean(
     currentSlot &&
     schedule?.slots &&
@@ -160,19 +166,12 @@ export const Schedule = ({
 
   // expand deep-linked sailing
   useEffect(() => {
-    // schedule readiness guard
-    if (!schedule?.slots || !linkedSailingTime) {
+    // linked sailing guard
+    if (!linkedSlot) {
       return;
     }
-    const linkedSlot = schedule.slots.find((slot) => {
-      // linked sailing match
-      return slot.time === linkedSailingTime;
-    });
-    // linked slot guard
-    if (linkedSlot) {
-      setExpanded(linkedSlot);
-    }
-  }, [linkedSailingTime, schedule]);
+    setExpanded(linkedSlot);
+  }, [linkedSlot]);
 
   const toggleExpand = (slot: Slot): void => {
     // collapse active row
@@ -299,8 +298,8 @@ export const Schedule = ({
               route={route}
               routeMaxVehicleCapacity={routeMaxVehicleCapacity}
               setElement={(element: HTMLDivElement) => {
-                // current slot anchor
-                if (slot === currentSlot) {
+                // preferred scroll anchor
+                if (slot === scrollTargetSlot) {
                   setCurrentElement({ element, scheduleIdentity });
                 }
               }}

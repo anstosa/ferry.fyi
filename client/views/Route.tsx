@@ -413,7 +413,7 @@ export const Route = ({
     if (terminalSlug && !routeMatchesPath) {
       setRoute(terminalSlug, mateSlug);
     }
-  }, [mate, mateSlug, seededRoute, terminal, terminalSlug]);
+  }, [mate, mateSlug, navigationIdentity, seededRoute, terminal, terminalSlug]);
 
   // update schedule on parameter change
   useEffect(() => {
@@ -514,8 +514,9 @@ export const Route = ({
       }
 
       const path = getPath({ terminal, mate: mate ?? undefined });
-      // route sync guard
-      if (`${pathname}${search}` !== path) {
+      const targetPathname = new URL(path, "https://ferry.fyi").pathname;
+      // route path sync guard
+      if (normalizePath(pathname) !== normalizePath(targetPathname)) {
         navigate(path);
         return;
       }
@@ -805,8 +806,10 @@ export const Route = ({
       <Map
         mate={mate}
         requestIdentity={scheduleIdentity}
+        schedule={displayedSchedule}
         setRoute={setRoute}
         terminal={terminal}
+        time={time}
         vesselIdentity={vesselAssignments.identity}
         vessels={vesselAssignments.vessels}
       />

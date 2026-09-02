@@ -9,6 +9,9 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 const freshnessPill = vi.hoisted(() => vi.fn(() => null));
 const scrollIntoView = vi.hoisted(() => vi.fn());
+const queryState = vi.hoisted(() => ({
+  query: {} as Record<string, string>,
+}));
 const adSlot = vi.hoisted(
   (): {
     onReadyChange?: (ready: boolean) => void;
@@ -25,7 +28,7 @@ const terminalState = vi.hoisted(() => ({
 }));
 const userState = vi.hoisted(() => ({ isUserLoading: false }));
 
-vi.mock("~/lib/browser", () => ({ useQuery: () => ({}) }));
+vi.mock("~/lib/browser", () => ({ useQuery: () => queryState.query }));
 vi.mock("~/lib/terminals", () => ({
   useTerminals: () => terminalState,
 }));
@@ -92,6 +95,7 @@ afterEach(() => {
   document.body.innerHTML = "";
   adSlot.onReadyChange = undefined;
   adSlot.ready = false;
+  queryState.query = {};
   userState.isUserLoading = false;
   vi.clearAllMocks();
 });
@@ -202,6 +206,23 @@ describe("Schedule load states", () => {
 });
 
 describe("Schedule initial scroll", () => {
+  // prefer the selected sailing
+  it("scrolls to a deep-linked sailing instead of the now row", () => {
+    const schedule = getActiveSchedule();
+    queryState.query = {
+      sailing: String(schedule.slots[0].time),
+      tab: "vessel",
+    };
+
+    render({
+      schedule,
+      time: DateTime.fromSeconds(1_777_777_800),
+    });
+
+    const target = scrollIntoView.mock.calls[0]?.[0] as HTMLElement;
+    expect(target.dataset.slotTime).toBe(String(schedule.slots[0].time));
+  });
+
   // wait for all layout-affecting requests
   it("waits for entitlement and ad settlement before scrolling", async () => {
     userState.isUserLoading = true;
