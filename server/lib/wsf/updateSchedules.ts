@@ -393,6 +393,7 @@ const updateSchedulePair = async (
   const key = Schedule.generateKey(terminalId, mateId, date);
   const data = {
     date,
+    forecastSourceUpdatedAt: null,
     key,
     mateId,
     slots: mergedSlots,

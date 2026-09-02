@@ -1,13 +1,22 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../server/lib/forecast", () => ({
-  updateEstimates: vi.fn(),
-}));
+const forecastModel = vi.hoisted(() => ({ updateEstimates: vi.fn() }));
 
-const { applyForecastSnapshots, serializeForecastSchedules } =
-  await import("../../server/lib/forecastIsolation");
+vi.mock("../../server/lib/forecast", () => forecastModel);
+
+const {
+  applyForecastSnapshots,
+  serializeForecastSchedules,
+  updateEstimatesIsolated,
+} = await import("../../server/lib/forecastIsolation");
 
 describe("forecast isolation", () => {
+  // reset forecast mocks
+  beforeEach(() => {
+    forecastModel.updateEstimates.mockReset();
+    forecastModel.updateEstimates.mockResolvedValue(undefined);
+  });
+
   // preserve the private worker payload
   it("serializes cached schedules without using the public serializer", () => {
     const serialize = vi.fn(() => {
@@ -160,5 +169,34 @@ describe("forecast isolation", () => {
       expect.objectContaining({ estimate, tide: undefined, weather: undefined })
     );
     expect(staleSlot).toEqual({ time: 456, weather: { existing: true } });
+  });
+
+  // forecast revision marker
+  it("marks the source revision after isolated forecasts finish", async () => {
+    const schedule = {
+      forecastSourceUpdatedAt: null,
+      sourceUpdatedAt: 100,
+    };
+
+    await updateEstimatesIsolated([schedule as never]);
+
+    expect(forecastModel.updateEstimates).toHaveBeenCalledWith([schedule]);
+    expect(schedule.forecastSourceUpdatedAt).toBe(100);
+  });
+
+  // stale forecast revision marker
+  it("does not mark a schedule revision that changed during forecasting", async () => {
+    const schedule = {
+      forecastSourceUpdatedAt: null,
+      sourceUpdatedAt: 100,
+    };
+    forecastModel.updateEstimates.mockImplementation(() => {
+      // simulate a concurrent schedule refresh
+      schedule.sourceUpdatedAt = 101;
+    });
+
+    await updateEstimatesIsolated([schedule as never]);
+
+    expect(schedule.forecastSourceUpdatedAt).toBeNull();
   });
 });

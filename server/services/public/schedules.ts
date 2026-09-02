@@ -7,6 +7,7 @@ import type {
 import type { Vessel } from "shared/contracts/vessels";
 
 import { getErrorMessage, getLogError } from "~/lib/errors";
+import { updateEstimatesIsolated } from "~/lib/forecastIsolation";
 import logger from "~/lib/logger";
 import {
   toPublicCrossing,
@@ -19,6 +20,7 @@ import { Schedule } from "~/models/Schedule";
 import { Vessel as VesselModel } from "~/models/Vessel";
 
 const SCHEDULE_REFRESH_WAIT_MS = 800;
+const backgroundForecastRefreshes = new Map<string, Promise<void>>();
 const backgroundScheduleRefreshes = new Map<string, Promise<void>>();
 
 export type PublicScheduleResult =
@@ -31,6 +33,98 @@ const wait = (milliseconds: number): Promise<void> =>
   });
 
 const timestamp = (): number => DateTime.local().toSeconds();
+
+// identify a future service date
+const isFutureDate = (date: string): boolean => {
+  const zone = "America/Los_Angeles";
+  return (
+    DateTime.fromISO(date, { zone }).startOf("day") >
+    DateTime.local().setZone(zone).startOf("day")
+  );
+};
+
+// detect forecasts for the current schedule revision
+const isScheduleForecastReady = (schedule: Schedule): boolean => {
+  // completed revision guard
+  if (
+    Number.isFinite(schedule.sourceUpdatedAt) &&
+    schedule.forecastSourceUpdatedAt === schedule.sourceUpdatedAt
+  ) {
+    return true;
+  }
+  const vehicleSlots = schedule.slots.filter((slot) => slot.allowsVehicles);
+  return (
+    vehicleSlots.length === 0 ||
+    vehicleSlots.every((slot) => Boolean(slot.estimate))
+  );
+};
+
+// forecast one future schedule outside the request event loop
+const refreshForecastsInBackground = (schedule: Schedule): Promise<void> => {
+  const { key, sourceUpdatedAt } = schedule;
+  const activeRefresh = backgroundForecastRefreshes.get(key);
+  // in-flight forecast guard
+  if (activeRefresh) {
+    return activeRefresh;
+  }
+  const refreshPromise = updateEstimatesIsolated([schedule])
+    .then(() => {
+      // mark only the requested schedule revision ready
+      if (schedule.sourceUpdatedAt === sourceUpdatedAt) {
+        schedule.forecastSourceUpdatedAt = sourceUpdatedAt;
+      }
+    })
+    .catch((error: unknown) => {
+      // forecast failure log
+      logger.error(
+        `Schedule forecast refresh failed for ${key}: ${getErrorMessage(
+          error
+        )}`,
+        getLogError(error)
+      );
+    })
+    .finally(() => {
+      // clear in-flight forecast
+      backgroundForecastRefreshes.delete(key);
+    });
+  backgroundForecastRefreshes.set(key, refreshPromise);
+  return refreshPromise;
+};
+
+// wait briefly for one background refresh
+const waitForRefresh = async (
+  refreshPromise: Promise<unknown>
+): Promise<boolean> =>
+  await Promise.race([
+    refreshPromise.then(() => true),
+    wait(SCHEDULE_REFRESH_WAIT_MS).then(() => false),
+  ]);
+
+// return one schedule after future forecasts settle
+const getForecastReadySchedule = async (
+  schedule: Schedule
+): Promise<PublicScheduleResult> => {
+  // existing forecast guard
+  if (!isFutureDate(schedule.date) || isScheduleForecastReady(schedule)) {
+    return {
+      schedule: toPublicSchedule(schedule),
+      status: "available",
+      timestamp: timestamp(),
+    };
+  }
+  const didRefreshFinish = await waitForRefresh(
+    refreshForecastsInBackground(schedule)
+  );
+  // unready forecast guard
+  if (!didRefreshFinish || !isScheduleForecastReady(schedule)) {
+    return { status: "refreshing" };
+  }
+  return {
+    schedule: toPublicSchedule(schedule),
+    status: "available",
+    timestamp: timestamp(),
+  };
+};
 
 // refresh one missing live schedule without forecast recomputation
 const refreshScheduleInBackground = ({
@@ -68,10 +162,7 @@ const waitForScheduleRefresh = async (
   refreshPromise: Promise<void>,
   scheduleKey: string
 ): Promise<{ didRefreshFinish: boolean; schedule: Schedule | null }> => {
-  const didRefreshFinish = await Promise.race([
-    refreshPromise.then(() => true),
-    wait(SCHEDULE_REFRESH_WAIT_MS).then(() => false),
-  ]);
+  const didRefreshFinish = await waitForRefresh(refreshPromise);
   return {
     didRefreshFinish,
     schedule: Schedule.getByIndex(scheduleKey) ?? null,
@@ -228,16 +319,12 @@ export const getPublicSchedule = async ({
   date: string;
   departingId: string;
 }): Promise<PublicScheduleResult> => {
-  const cachedResult = getCachedPublicSchedule({
-    arrivingId,
-    date,
-    departingId,
-  });
-  if (cachedResult.status === "available") {
-    return cachedResult;
-  }
-
   const scheduleKey = Schedule.generateKey(departingId, arrivingId, date);
+  const cachedSchedule = Schedule.getByIndex(scheduleKey);
+  // cached schedule guard
+  if (cachedSchedule) {
+    return await getForecastReadySchedule(cachedSchedule);
+  }
   if (isHistoricalDate(date)) {
     const historicalSchedule = await getHistoricalSchedule(
       departingId,
@@ -261,15 +348,12 @@ export const getPublicSchedule = async ({
       refreshPromise,
       scheduleKey
     );
-    if (schedule) {
-      return {
-        schedule: toPublicSchedule(schedule),
-        status: "available",
-        timestamp: timestamp(),
-      };
-    }
     if (!didRefreshFinish) {
       return { status: "refreshing" };
+    }
+    // refreshed schedule guard
+    if (schedule) {
+      return await getForecastReadySchedule(schedule);
     }
   }
   return getWsfStatus().coreReady

@@ -236,11 +236,25 @@ const runForecastWorker = async (
 export const updateEstimatesIsolated = async (
   schedules: Schedule[]
 ): Promise<void> => {
-  // local execution guard
-  if (process.env.NODE_ENV !== "production") {
+  const scheduleRevisions = schedules.map((schedule) => {
+    // capture the source revision
+    return {
+      schedule,
+      sourceUpdatedAt: schedule.sourceUpdatedAt,
+    };
+  });
+  // production worker guard
+  if (process.env.NODE_ENV === "production") {
+    const snapshots = await runForecastWorker(schedules);
+    applyForecastSnapshots(schedules, snapshots);
+  } else {
     await updateEstimates(schedules);
-    return;
   }
-  const snapshots = await runForecastWorker(schedules);
-  applyForecastSnapshots(schedules, snapshots);
+  // mark forecasts against their source schedule revision
+  scheduleRevisions.forEach(({ schedule, sourceUpdatedAt }) => {
+    // unchanged schedule guard
+    if (schedule.sourceUpdatedAt === sourceUpdatedAt) {
+      schedule.forecastSourceUpdatedAt = sourceUpdatedAt;
+    }
+  });
 };

@@ -19,6 +19,7 @@ export class Schedule extends CacheableModel implements ScheduleClass {
   static index = "key";
 
   date!: string;
+  forecastSourceUpdatedAt!: number | null;
   key!: string;
   mateId!: string;
   sourceUpdatedAt!: number | null;

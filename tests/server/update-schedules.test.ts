@@ -172,6 +172,7 @@ describe("schedule update helpers", () => {
     expect(scheduleModel.getOrCreate).toHaveBeenCalledWith(
       "1-2-2026-06-21",
       expect.objectContaining({
+        forecastSourceUpdatedAt: null,
         slots: [
           expect.objectContaining({
             arrivalTime: 1782072000 + 30 * 60,
