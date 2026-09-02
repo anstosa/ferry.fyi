@@ -80,18 +80,15 @@ const getSchoolBreakPressure = ({
   time,
 }: DemandCalendarInput): number => {
   let eventPressure = 0;
+  const timestamp = time.toSeconds();
   // event scan
   events.forEach((event) => {
     // school break guard
     if (event.eventType !== "school-break") {
       return;
     }
-    const eventWindow = Interval.fromDateTimes(
-      DateTime.fromSeconds(event.startsAt, { zone: time.zone }),
-      DateTime.fromSeconds(event.endsAt, { zone: time.zone })
-    );
     // active break guard
-    if (eventWindow.contains(time)) {
+    if (timestamp >= event.startsAt && timestamp < event.endsAt) {
       eventPressure = Math.max(eventPressure, event.pressure);
     }
   });
@@ -159,6 +156,7 @@ const getSportsEventPressure = ({
 }: DemandCalendarInput): number => {
   const inbound = isRecreationToGateway(departureId, arrivalId);
   const outbound = isGatewayToRecreation(departureId, arrivalId);
+  const timestamp = time.toSeconds();
   let pressure = 0;
   // event scan
   events.forEach((event) => {
@@ -166,8 +164,7 @@ const getSportsEventPressure = ({
     if (event.eventType !== "sports") {
       return;
     }
-    const startsAt = DateTime.fromSeconds(event.startsAt, { zone: time.zone });
-    const hoursFromStart = time.diff(startsAt, "hours").hours;
+    const hoursFromStart = (timestamp - event.startsAt) / (60 * 60);
     const beforeGame = inbound && hoursFromStart >= -4 && hoursFromStart <= 1;
     const afterGame = outbound && hoursFromStart >= 2 && hoursFromStart <= 7;
     // travel window guard

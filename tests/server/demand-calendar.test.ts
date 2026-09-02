@@ -98,4 +98,63 @@ describe("demand calendar", () => {
 
     expect(profile.sportsEventPressure).toBeGreaterThan(0);
   });
+
+  // school-break boundary semantics
+  it("includes school-break starts and excludes their ends", () => {
+    const schoolBreakStart = at("2026-03-10T09:00:00").toSeconds();
+    const schoolBreakEnd = at("2026-03-12T09:00:00").toSeconds();
+    const schoolBreakEvent = {
+      endsAt: schoolBreakEnd,
+      eventType: "school-break" as const,
+      pressure: 0.12,
+      startsAt: schoolBreakStart,
+      title: "Washington school break",
+    };
+
+    expect(
+      getDemandCalendarProfile({
+        arrivalId: "5",
+        departureId: "14",
+        events: [schoolBreakEvent],
+        time: DateTime.fromSeconds(schoolBreakStart),
+      }).schoolBreakPressure
+    ).toBe(0.12);
+    expect(
+      getDemandCalendarProfile({
+        arrivalId: "5",
+        departureId: "14",
+        events: [schoolBreakEvent],
+        time: DateTime.fromSeconds(schoolBreakEnd),
+      }).schoolBreakPressure
+    ).toBe(0);
+  });
+
+  // sports boundary semantics
+  it("includes and excludes the exact sports travel boundaries", () => {
+    const sportsStart = at("2026-07-10T19:00:00").toSeconds();
+    const sportsEvent = {
+      endsAt: at("2026-07-10T23:00:00").toSeconds(),
+      eventType: "sports" as const,
+      pressure: 0.1,
+      startsAt: sportsStart,
+      title: "Seattle home game",
+    };
+
+    expect(
+      getDemandCalendarProfile({
+        arrivalId: "7",
+        departureId: "3",
+        events: [sportsEvent],
+        time: DateTime.fromSeconds(sportsStart - 4 * 60 * 60),
+      }).sportsEventPressure
+    ).toBe(0.1);
+    expect(
+      getDemandCalendarProfile({
+        arrivalId: "7",
+        departureId: "3",
+        events: [sportsEvent],
+        time: DateTime.fromSeconds(sportsStart + 60 * 60 + 1),
+      }).sportsEventPressure
+    ).toBe(0);
+  });
 });

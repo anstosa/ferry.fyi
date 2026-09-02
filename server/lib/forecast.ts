@@ -152,6 +152,7 @@ interface DemandProfile {
 interface HistoricalRouteContext {
   arrivalId: string;
   calibration?: ForecastCalibration | null;
+  demandProfileCache?: Map<number, DemandProfile>;
   demandShock?: {
     asOf: number;
     baselineFullProbability: number;
@@ -161,6 +162,7 @@ interface HistoricalRouteContext {
   events?: DemandEvent[];
   onInputAudit?: (audit: HistoricalEstimateInputAudit) => void;
   recordSummary?: HistoricalRecordSummary;
+  sampleWeightCache?: Map<string, number>;
 }
 
 interface HistoricalCrossingCandidate {
@@ -483,18 +485,15 @@ const getActiveEventTitle = (
   route: HistoricalRouteContext,
   eventType: DemandEvent["eventType"]
 ): string | null => {
+  const timestamp = time.toSeconds();
   // event scan
   for (const event of route.events ?? []) {
     // event type guard
     if (event.eventType !== eventType) {
       continue;
     }
-    const eventStart = DateTime.fromSeconds(event.startsAt, {
-      zone: time.zone,
-    });
-    const eventEnd = DateTime.fromSeconds(event.endsAt, { zone: time.zone });
     // active event guard
-    if (time >= eventStart && time <= eventEnd) {
+    if (timestamp >= event.startsAt && timestamp <= event.endsAt) {
       return event.title;
     }
   }
@@ -531,8 +530,7 @@ const isSportsTravelWindow = (
   route: HistoricalRouteContext,
   event: DemandEvent
 ): boolean => {
-  const startsAt = DateTime.fromSeconds(event.startsAt, { zone: time.zone });
-  const hoursFromStart = time.diff(startsAt, "hours").hours;
+  const hoursFromStart = (time.toSeconds() - event.startsAt) / (60 * 60);
   const gatewayTerminalIds = new Set(["1", "7", "8", "9", "14", "16", "17"]);
   const recreationTerminalIds = new Set([
     "3",
@@ -612,6 +610,23 @@ const getDemandProfile = (
     schoolBreakName: getSchoolBreakName(slotTime, route),
     sportsTeamName: getSportsTeamName(slotTime, route),
   };
+};
+
+// reuse one route profile per departure time
+const getCachedDemandProfile = (
+  slotTime: DateTime,
+  holidays: HolidayDateMap,
+  route: HistoricalRouteContext
+): DemandProfile => {
+  const cacheKey = slotTime.toSeconds();
+  const cachedProfile = route.demandProfileCache?.get(cacheKey);
+  // cached profile guard
+  if (cachedProfile) {
+    return cachedProfile;
+  }
+  const profile = getDemandProfile(slotTime, holidays, route);
+  route.demandProfileCache?.set(cacheKey, profile);
+  return profile;
 };
 
 // holiday match multiplier
@@ -740,10 +755,16 @@ const getSampleWeight = (
   targetProfile: DemandProfile,
   route: HistoricalRouteContext
 ): number => {
+  const cacheKey = `${target.toSeconds()}:${crossing.departureTime}`;
+  const cachedWeight = route.sampleWeightCache?.get(cacheKey);
+  // cached weight guard
+  if (cachedWeight !== undefined) {
+    return cachedWeight;
+  }
   const crossingTime = DateTime.fromSeconds(crossing.departureTime);
   let weight = getRecencyWeight(target, crossing);
   weight *= getHolidayWeight(target, crossingTime, holidays);
-  const crossingProfile = getDemandProfile(crossingTime, holidays, route);
+  const crossingProfile = getCachedDemandProfile(crossingTime, holidays, route);
   weight *= getDemandCalendarWeight(targetProfile, crossingProfile);
   // hour match boost
   if (crossingTime.hour === target.hour) {
@@ -757,7 +778,9 @@ const getSampleWeight = (
   if (isDaylight(target, terminal) === isDaylight(crossingTime, terminal)) {
     weight *= 1.2;
   }
-  return Math.max(weight, MIN_WEIGHT);
+  const boundedWeight = Math.max(weight, MIN_WEIGHT);
+  route.sampleWeightCache?.set(cacheKey, boundedWeight);
+  return boundedWeight;
 };
 
 // calendar similarity weight
@@ -1407,7 +1430,11 @@ export const getHistoricalEstimate = (
     arrivalId: crossings[0]?.arrivalId ?? "",
     departureId: crossings[0]?.departureId ?? "",
   };
-  const targetProfile = getDemandProfile(slotTime, holidays, routeContext);
+  const targetProfile = getCachedDemandProfile(
+    slotTime,
+    holidays,
+    routeContext
+  );
   // comparable reuse
   const comparableCrossings = areCrossingsComparable
     ? crossings
@@ -2445,6 +2472,8 @@ export const updateEstimates = async (
       demandShockMode === "off"
         ? null
         : createDemandShockHistoryIndex(crossings);
+    const demandProfileCache = new Map<number, DemandProfile>();
+    const sampleWeightCache = new Map<string, number>();
 
     const slotTimes = schedule.slots.map((slot) =>
       DateTime.fromSeconds(slot.time)
@@ -2522,9 +2551,11 @@ export const updateEstimates = async (
       const routeContext: HistoricalRouteContext = {
         arrivalId: schedule.mateId,
         calibration: persistedCalibration,
+        demandProfileCache,
         departureId: schedule.terminalId,
         events: demandEvents,
         recordSummary: historicalRecordSummary,
+        sampleWeightCache,
       };
       const baselineHistorical = getHistoricalEstimate(
         slotTime,
