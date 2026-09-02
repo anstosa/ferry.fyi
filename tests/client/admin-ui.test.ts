@@ -103,6 +103,7 @@ afterEach(() => {
   window.history.replaceState({}, "", "/");
   // remove per-test clipboard overrides
   Reflect.deleteProperty(navigator, "clipboard");
+  Reflect.deleteProperty(document, "execCommand");
   auth.isAuthenticated = true;
   auth.isLoading = false;
   auth.user = { email: "anstosa@gmail.com" };
@@ -981,10 +982,15 @@ describe("Admin", () => {
 
   it("shows a linked advertiser report URL with clipboard copy", async () => {
     const reportUrl = "https://ferry.fyi/ad-reports/#adr_private";
-    const writeText = vi.fn(() => Promise.resolve());
+    const writeText = vi.fn(() => Promise.reject(new Error("denied")));
+    const execCommand = vi.fn(() => true);
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
       value: { writeText },
+    });
+    Object.defineProperty(document, "execCommand", {
+      configurable: true,
+      value: execCommand,
     });
     window.history.replaceState(
       {},
@@ -1049,6 +1055,7 @@ describe("Admin", () => {
             clickThroughRate: null,
             opportunityCount: "1",
             servedCount: "1",
+            viewableClickThroughRate: null,
             viewabilityRate: "100.00%",
             viewableCount: "1",
           },
@@ -1122,6 +1129,8 @@ describe("Admin", () => {
       await Promise.resolve();
     });
     expect(writeText).toHaveBeenCalledWith(reportUrl);
+    expect(execCommand).toHaveBeenCalledWith("copy");
+    expect(document.querySelector('textarea[aria-hidden="true"]')).toBeNull();
     expect(container.textContent).toContain("Copied");
   });
 });

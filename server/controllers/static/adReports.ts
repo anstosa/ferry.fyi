@@ -68,30 +68,42 @@ const reportHtml = `<!doctype html>
       <section class="report-card" aria-live="polite">
         <p class="status" id="status">Loading aggregate campaign report…</p>
         <div id="report" hidden>
-          <div class="report-heading">
-            <div>
-              <p class="eyebrow">Campaign</p>
-              <h2 id="name"></h2>
-              <p class="campaign-meta" id="campaign-meta"></p>
-            </div>
-            <button class="primary-button" id="download" type="button">Download CSV</button>
+          <div>
+            <p class="eyebrow">Campaign</p>
+            <h2 id="name"></h2>
+            <p class="campaign-meta" id="campaign-meta"></p>
+            <dl class="campaign-window">
+              <div>
+                <dt>Start</dt>
+                <dd id="campaign-start"></dd>
+              </div>
+              <div>
+                <dt>Stop</dt>
+                <dd id="campaign-stop"></dd>
+              </div>
+            </dl>
           </div>
           <dl class="totals" id="totals"></dl>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th scope="col">Date</th>
-                  <th scope="col">Opportunities</th>
-                  <th scope="col">Served</th>
-                  <th scope="col">Viewable</th>
-                  <th scope="col">Clicks</th>
-                </tr>
-              </thead>
-              <tbody id="daily"></tbody>
-            </table>
+          <details class="daily-details">
+            <summary>Daily performance by date</summary>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col">Date</th>
+                    <th scope="col">Opportunities</th>
+                    <th scope="col">Served</th>
+                    <th scope="col">Viewable</th>
+                    <th scope="col">Clicks</th>
+                  </tr>
+                </thead>
+                <tbody id="daily"></tbody>
+              </table>
+            </div>
+          </details>
+          <div class="report-actions">
+            <button class="download-button" id="download" type="button">Download CSV</button>
           </div>
-          <p class="methodology" id="methodology"></p>
         </div>
       </section>
     </main>
@@ -119,42 +131,59 @@ main { width: min(100% - 2rem, 62rem); margin: 0 auto; padding: 2.5rem 0 4rem; }
 h1, h2, p { margin-top: 0; }
 h1 { margin-bottom: .5rem; font-size: clamp(2rem, 7vw, 3.25rem); line-height: 1; }
 h2 { margin-bottom: .35rem; font-size: clamp(1.45rem, 4vw, 2rem); }
-.hero > p:last-child, .campaign-meta, .methodology { color: #3d3d3d; }
+.hero > p:last-child, .campaign-meta { color: #3d3d3d; }
 .report-card { border: 1px solid #d7e4df; border-radius: 1.25rem; background: #fff; box-shadow: 0 1rem 2.5rem rgb(0 47 59 / 10%); padding: clamp(1.1rem, 4vw, 2rem); }
 .status { margin: 0; color: #3d3d3d; }
 .status.error { border: 1px solid #efc1bd; border-radius: .8rem; background: #fde7e7; color: #8b1e16; padding: 1rem; }
-.report-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1.25rem; }
 .campaign-meta { margin-bottom: 0; font-size: .9rem; }
-.primary-button { flex: 0 0 auto; border: 0; border-radius: 999px; background: #016f52; color: #fff; cursor: pointer; font: inherit; font-weight: 800; padding: .75rem 1.1rem; }
-.primary-button:hover { background: #005c45; }
-.primary-button:focus-visible, a:focus-visible { outline: 3px solid #f2b705; outline-offset: 3px; }
+.campaign-window { display: flex; flex-wrap: wrap; gap: .65rem 1.25rem; margin: .85rem 0 0; font-size: .8rem; }
+.campaign-window div { display: flex; flex-wrap: wrap; gap: .35rem; }
+.campaign-window dt { color: #3d3d3d; font-weight: 800; }
+.campaign-window dd { margin: 0; font-variant-numeric: tabular-nums; }
+.download-button { border: 2px solid #016f52; border-radius: 999px; background: transparent; color: #016f52; cursor: pointer; font: inherit; font-weight: 800; padding: .65rem 1.1rem; }
+.download-button:hover { background: #e6f4f0; }
+.download-button:focus-visible, .metric-help summary:focus-visible, .daily-details > summary:focus-visible, a:focus-visible { outline: 3px solid #f2b705; outline-offset: 3px; }
 .totals { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; margin: 1.75rem 0; }
-.metric { min-width: 0; border: 1px solid #d7e4df; border-radius: .9rem; background: #f5faf8; padding: .9rem; }
-.metric dt { color: #3d3d3d; font-size: .75rem; font-weight: 750; line-height: 1.25; }
+.metric { position: relative; min-width: 0; border: 1px solid #d7e4df; border-radius: .9rem; background: #f5faf8; padding: .9rem; }
+.metric dt { display: flex; align-items: center; gap: .35rem; color: #3d3d3d; font-size: .75rem; font-weight: 750; line-height: 1.25; }
 .metric dd { margin: .3rem 0 0; color: #004d61; font-size: 1.5rem; font-weight: 850; overflow-wrap: anywhere; }
+.metric-help { position: static; }
+.metric-help summary { display: flex; width: 1rem; height: 1rem; align-items: center; justify-content: center; border-radius: 999px; color: #016f52; cursor: help; list-style: none; }
+.metric-help summary::-webkit-details-marker { display: none; }
+.metric-help summary::marker { content: ""; }
+.info-icon { width: 1rem; height: 1rem; }
+.metric-tooltip { position: absolute; top: 2.35rem; right: .6rem; left: .6rem; z-index: 5; border-radius: .65rem; background: #003746; box-shadow: 0 .5rem 1.25rem rgb(0 0 0 / 22%); color: #fff; font-size: .75rem; font-weight: 600; line-height: 1.45; padding: .7rem; }
+.metric-benchmark { margin: .35rem 0 0; color: #3d3d3d; font-size: .7rem; font-weight: 700; line-height: 1.3; }
+.daily-details { margin-top: .25rem; }
+.daily-details > summary { color: #004d61; cursor: pointer; font-size: .9rem; font-weight: 800; }
+.daily-details[open] > summary { margin-bottom: .75rem; }
+.report-actions { display: flex; justify-content: flex-end; margin-top: 1.5rem; }
 .table-wrap { overflow-x: auto; border: 1px solid #e5e5e5; border-radius: .9rem; }
 table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 th, td { padding: .8rem .9rem; text-align: right; white-space: nowrap; }
 th:first-child, td:first-child { text-align: left; }
 th { background: #e6f4f0; color: #004d61; font-size: .75rem; letter-spacing: .03em; text-transform: uppercase; }
 tbody tr + tr { border-top: 1px solid #e5e5e5; }
-.methodology { margin: 1.25rem 0 0; font-size: .8rem; line-height: 1.55; }
 footer { display: flex; justify-content: center; gap: .5rem; border-top: 1px solid #d7e4df; color: #3d3d3d; font-size: .8rem; padding: 1.5rem; }
 footer a { color: #016f52; font-weight: 700; }
 [hidden] { display: none !important; }
 @media (max-width: 44rem) {
-  .report-heading { align-items: stretch; flex-direction: column; }
-  .primary-button { width: 100%; }
+  .download-button { width: 100%; }
   .totals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (prefers-color-scheme: dark) {
   body { background: #002f3b; color: #f7faf9; }
   .eyebrow, footer a { color: #6fb8a6; }
-  .hero > p:last-child, .campaign-meta, .methodology, .status, footer { color: #d7e4df; }
+  .hero > p:last-child, .campaign-meta, .campaign-window dt, .metric-benchmark, .status, footer { color: #d7e4df; }
   .report-card { border-color: #336b79; background: #004052; box-shadow: 0 1rem 2.5rem rgb(0 0 0 / 25%); }
   .metric { border-color: #336b79; background: #003746; }
   .metric dt { color: #d7e4df; }
   .metric dd { color: #8fd2c1; }
+  .metric-help summary { color: #8fd2c1; }
+  .info-icon { filter: invert(1); }
+  .daily-details > summary { color: #8fd2c1; }
+  .download-button { border-color: #8fd2c1; color: #8fd2c1; }
+  .download-button:hover { background: #003746; }
   .table-wrap, tbody tr + tr, footer { border-color: #336b79; }
   th { background: #004d61; color: #dff7f0; }
   .status.error { border-color: #8b1e16; background: #4f1714; color: #ffd7d3; }
@@ -162,10 +191,34 @@ footer a { color: #016f52; font-weight: 700; }
 `;
 
 const reportScript = `(() => {
+  // provide benchmark context
+  const DISPLAY_CTR_BASELINE = "0.46%";
+  // define per-stat explanations
+  const METRIC_HELP = {
+    clicks: "Aggregate clicks on the campaign creative. This is not a unique-person count or an audited fraud-free total.",
+    clickThroughRate: "Clicks divided by served ads, matching the standard display CTR formula. The comparison is the broad 2025 U.S. display-ad average reported by Focus Digital.",
+    opportunities: "Times the full ad-slot marker was visible for one continuous second, including scheduled pauses when ad serving was switched off. This is not a billable unit.",
+    served: "Campaign ads delivered into an eligible slot. A served ad may not remain visible long enough to become a viewable impression.",
+    viewabilityRate: "Viewable impressions divided by served ads.",
+    viewable: "Campaign ads with at least 50% of the creative visible for one continuous second. This is not a unique-person count."
+  };
   const token = location.hash.slice(1);
   history.replaceState(null, "", location.pathname);
   const status = document.getElementById("status");
   const reportRoot = document.getElementById("report");
+  // format Pacific campaign dates
+  const campaignDate = new Intl.DateTimeFormat("en-US", {
+    day: "numeric",
+    month: "short",
+    timeZone: "America/Los_Angeles",
+    year: "numeric"
+  });
+  // format Pacific campaign times
+  const campaignClock = new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "America/Los_Angeles"
+  });
 
   // exchange one fragment token
   const post = (path) => fetch(path, {
@@ -175,28 +228,63 @@ const reportScript = `(() => {
   });
 
   // append one aggregate metric
-  const addTotal = (label, value) => {
+  const addTotal = (label, value, helpText, benchmark) => {
     const wrapper = document.createElement("div");
     wrapper.className = "metric";
     const term = document.createElement("dt");
-    term.textContent = label;
+    const labelText = document.createElement("span");
+    labelText.textContent = label;
+    const help = document.createElement("details");
+    help.className = "metric-help";
+    const helpToggle = document.createElement("summary");
+    helpToggle.setAttribute("aria-label", "About " + label);
+    const helpIcon = document.createElement("img");
+    helpIcon.alt = "";
+    helpIcon.className = "info-icon";
+    helpIcon.src = "/static/images/icons/solid/info-circle.svg";
+    const tooltip = document.createElement("span");
+    tooltip.className = "metric-tooltip";
+    tooltip.setAttribute("role", "tooltip");
+    tooltip.textContent = helpText;
+    helpToggle.append(helpIcon);
+    help.append(helpToggle, tooltip);
+    term.append(labelText, help);
     const detail = document.createElement("dd");
     detail.textContent = value ?? "—";
     wrapper.append(term, detail);
+    // optional comparison context
+    if (benchmark) {
+      const comparison = document.createElement("p");
+      comparison.className = "metric-benchmark";
+      comparison.textContent = benchmark;
+      wrapper.append(comparison);
+    }
     document.getElementById("totals").append(wrapper);
+  };
+
+  // combine one campaign timestamp
+  const formatCampaignTime = (value) => {
+    const timestamp = new Date(value);
+    return campaignDate.format(timestamp) + " · " + campaignClock.format(timestamp);
   };
 
   // render one aggregate report
   const renderReport = (report) => {
     document.getElementById("name").textContent = report.campaign.reportName;
     document.getElementById("campaign-meta").textContent = report.campaign.advertiserName;
-    document.getElementById("methodology").textContent = report.methodology;
-    addTotal("Opportunities", report.totals.opportunityCount);
-    addTotal("Served ads", report.totals.servedCount);
-    addTotal("Viewable impressions", report.totals.viewableCount);
-    addTotal("Viewability rate", report.totals.viewabilityRate);
-    addTotal("Clicks", report.totals.clickCount);
-    addTotal("Clicks per viewable impression", report.totals.clickThroughRate);
+    document.getElementById("campaign-start").textContent = formatCampaignTime(report.campaign.startsAt);
+    document.getElementById("campaign-stop").textContent = formatCampaignTime(report.campaign.endedEarlyAt ?? report.campaign.endsAt);
+    addTotal("Opportunities", report.totals.opportunityCount, METRIC_HELP.opportunities);
+    addTotal("Served ads", report.totals.servedCount, METRIC_HELP.served);
+    addTotal("Viewable impressions", report.totals.viewableCount, METRIC_HELP.viewable);
+    addTotal("Viewability rate", report.totals.viewabilityRate, METRIC_HELP.viewabilityRate);
+    addTotal("Clicks", report.totals.clickCount, METRIC_HELP.clicks);
+    addTotal(
+      "Click-through rate",
+      report.totals.clickThroughRate,
+      METRIC_HELP.clickThroughRate + " This campaign's viewable CTR is " + (report.totals.viewableClickThroughRate ?? "unavailable") + ".",
+      "Typical display ads: " + DISPLAY_CTR_BASELINE
+    );
     const body = document.getElementById("daily");
     // render daily rows
     for (const row of report.daily) {

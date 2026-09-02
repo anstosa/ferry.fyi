@@ -72,6 +72,7 @@ export interface AdCampaignReport {
   methodology: string;
   totals: Omit<AdDailyMetrics, "businessDate"> & {
     clickThroughRate: string | null;
+    viewableClickThroughRate: string | null;
     viewabilityRate: string | null;
   };
 }

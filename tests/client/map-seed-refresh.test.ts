@@ -201,7 +201,7 @@ const seededVessel = {
   abbreviation: "SEA",
   arrivingTerminalId: 14,
   departingTerminalId: 5,
-  estimatedArrivalTime: 1_775_000_000,
+  estimatedArrivalTime: 1_785_352_980,
   heading: 90,
   id: "1",
   inMaintenance: false,
@@ -499,6 +499,7 @@ describe("map hydration seed freshness", () => {
     expect(selectedMarker?.getAttribute("aria-pressed")).toBe("true");
     expect(card?.textContent).toContain("Clinton → Mukilteo");
     expect(card?.textContent).toContain("12 mph");
+    expect(card?.textContent).toContain("23 mins");
     expect(card?.textContent).toContain("WSF vessel page");
     expect(card?.textContent).toContain("Next sailing");
     const externalLink = card?.querySelector<HTMLAnchorElement>(
@@ -569,6 +570,46 @@ describe("map hydration seed freshness", () => {
         center: [-122.33, 47.96],
         offset: [0, -150],
       })
+    );
+  });
+
+  // refreshed vessel position
+  it("recenters an open vessel whenever its confirmed position updates", async () => {
+    let resolveRefresh:
+      | ((value: { sourceUpdatedAt: number; vessels: Vessel[] }) => void)
+      | undefined;
+    mocks.getVesselSnapshot.mockReturnValue(
+      new Promise((resolve) => {
+        resolveRefresh = resolve;
+      })
+    );
+    const container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root?.render(
+        view(snapshot, "/clinton/mukilteo/map?vessel=1", terminal, mapSchedule)
+      );
+    });
+
+    await act(async () => {
+      resolveRefresh?.({
+        sourceUpdatedAt: 2_000_000_000,
+        vessels: [
+          {
+            ...seededVessel,
+            location: { latitude: 47.97, longitude: -122.31 },
+          },
+        ],
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mocks.maps[0]?.easeTo).toHaveBeenCalledTimes(2);
+    expect(mocks.maps[0]?.easeTo).toHaveBeenLastCalledWith(
+      expect.objectContaining({ center: [-122.31, 47.97] })
     );
   });
 

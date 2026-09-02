@@ -42,14 +42,49 @@ describe("same-origin advertiser reports", () => {
     const script = await request(app).get("/ad-reports/report.js").expect(200);
 
     expect(css.text).toContain("linear-gradient(135deg, #016f52");
+    expect(css.text).toContain(".metric-tooltip");
+    expect(css.text).toContain(".daily-details");
+    expect(css.text).toContain(".download-button");
+    expect(css.text).toContain("background: transparent");
     expect(css.headers["content-type"]).toContain("text/css");
     expect(script.text).toContain("/ad-reports/report-data");
+    expect(script.text).toContain(
+      'helpIcon.src = "/static/images/icons/solid/info-circle.svg"'
+    );
+    expect(script.text).toContain("report.campaign.startsAt");
+    expect(script.text).toContain(
+      "report.campaign.endedEarlyAt ?? report.campaign.endsAt"
+    );
+    expect(script.text).toContain('" · "');
+    expect(script.text).not.toContain("timeZoneName");
+    expect(script.text).toContain('"Typical display ads: "');
+    expect(script.text).toContain('const DISPLAY_CTR_BASELINE = "0.46%"');
+    expect(script.text).toContain("report.totals.viewableClickThroughRate");
+    expect(script.text).not.toContain('getElementById("methodology")');
     expect(script.headers["content-type"]).toContain("javascript");
+  });
+
+  // verify collapsed daily details
+  it("collapses daily performance and moves methodology into stat help", async () => {
+    const response = await request(reportApp()).get("/ad-reports/").expect(200);
+
+    expect(response.text).toContain('<details class="daily-details">');
+    expect(response.text).not.toContain('<details class="daily-details" open');
+    expect(response.text).not.toContain('id="methodology"');
+    expect(response.text).toContain('id="campaign-start"');
+    expect(response.text).toContain('id="campaign-stop"');
+    expect(response.text).toContain('class="download-button"');
+    expect(response.text.indexOf('class="daily-details"')).toBeLessThan(
+      response.text.indexOf('id="download"')
+    );
   });
 
   it("exchanges a body secret for one campaign-scoped aggregate report", async () => {
     reports.getSharedAdCampaignReport.mockResolvedValue({
-      campaign: { advertiserName: "Island Coffee", reportName: "Coffee launch" },
+      campaign: {
+        advertiserName: "Island Coffee",
+        reportName: "Coffee launch",
+      },
       daily: [],
       methodology: "Aggregate only",
       totals: {},
@@ -85,7 +120,9 @@ describe("same-origin advertiser reports", () => {
 
     expect(shell.text).toContain("/legacy-ad-report-redirect.js");
     expect(shell.headers["cache-control"]).toBe("no-store");
-    expect(script.text).toContain('new URL("/ad-reports/", "https://ferry.fyi")');
+    expect(script.text).toContain(
+      'new URL("/ad-reports/", "https://ferry.fyi")'
+    );
     expect(script.text).toContain("target.hash = location.hash");
     await request(app).get("/").set("Host", "ferry.fyi").expect(404);
   });

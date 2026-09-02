@@ -24,7 +24,7 @@ import { AdReportShare } from "~/models/AdReportShare";
 
 const REPORT_PREFIX = "adr_";
 const METHODOLOGY =
-  "Aggregate informational reporting by the exposure's America/Los_Angeles issuance date. An opportunity is a fully visible slot marker for one continuous second, including scheduled pauses when serving is switched off. A viewable impression is at least 50% of the creative for one continuous second. Counts are not unique people, audited fraud-free traffic, or billable units.";
+  "Aggregate informational reporting by the exposure's America/Los_Angeles issuance date. An opportunity is a fully visible slot marker for one continuous second, including scheduled pauses when serving is switched off. A viewable impression is at least 50% of the creative for one continuous second. Click-through rate divides clicks by served ads; viewable click-through rate divides clicks by viewable impressions. Counts are not unique people, audited fraud-free traffic, or billable units.";
 
 const hashSecret = (secret: string): string =>
   createHash("sha256").update(secret).digest("hex");
@@ -181,12 +181,15 @@ const sum = (
 ): string =>
   rows.reduce((total, row) => total + BigInt(row[key]), BigInt(0)).toString();
 
+// format one rounded percentage
 const rate = (numerator: string, denominator: string): string | null => {
   const bottom = BigInt(denominator);
+  // omit undefined rates
   if (bottom === BigInt(0)) {
     return null;
   }
-  const hundredths = (BigInt(numerator) * BigInt(10_000)) / bottom;
+  const hundredths =
+    (BigInt(numerator) * BigInt(10_000) + bottom / BigInt(2)) / bottom;
   const hundred = BigInt(100);
   return `${hundredths / hundred}.${String(hundredths % hundred).padStart(2, "0")}%`;
 };
@@ -220,9 +223,10 @@ export const getAdCampaignReport = async (
     methodology: METHODOLOGY,
     totals: {
       clickCount,
-      clickThroughRate: rate(clickCount, viewableCount),
+      clickThroughRate: rate(clickCount, servedCount),
       opportunityCount,
       servedCount,
+      viewableClickThroughRate: rate(clickCount, viewableCount),
       viewabilityRate: rate(viewableCount, servedCount),
       viewableCount,
     },

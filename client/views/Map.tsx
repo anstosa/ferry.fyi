@@ -66,6 +66,7 @@ const LABEL_PLACEMENTS = {
 } as const;
 const MAP_LABEL_MARGIN = 4;
 const MAP_MARKER_SIZE = 30;
+const VESSEL_MARKER_HEIGHT = 36;
 const MAP_LABEL_HEIGHT = 26;
 
 function normalizePath(path: string): string {
@@ -130,6 +131,7 @@ interface VesselDetailsCardProps {
   nextSailingPath: string | null;
   nextSailingTime: number | null;
   onClose: () => void;
+  time: DateTime;
   vessel: Vessel;
 }
 
@@ -303,6 +305,26 @@ const formatVesselTime = (timestamp?: number): string | null => {
   return DateTime.fromSeconds(timestamp).toFormat("h:mm a");
 };
 
+// relative vessel eta label
+const formatVesselEta = (
+  timestamp: number | undefined,
+  time: DateTime
+): string | null => {
+  // missing timestamp guard
+  if (
+    typeof timestamp !== "number" ||
+    !Number.isFinite(timestamp) ||
+    timestamp <= 0
+  ) {
+    return null;
+  }
+  const minutes = Math.max(
+    0,
+    Math.round(DateTime.fromSeconds(timestamp).diff(time).as("minutes"))
+  );
+  return `${minutes} mins`;
+};
+
 // selected vessel details
 const VesselDetailsCard = ({
   arrivingTerminal,
@@ -311,12 +333,13 @@ const VesselDetailsCard = ({
   nextSailingPath,
   nextSailingTime,
   onClose,
+  time,
   vessel,
 }: VesselDetailsCardProps): ReactElement => {
   const speedMph = Math.round(knotsToMph(vessel.speed));
   const etaLabel = vessel.isAtDock
     ? null
-    : formatVesselTime(vessel.estimatedArrivalTime);
+    : formatVesselEta(vessel.estimatedArrivalTime, time);
   const nextSailingLabel = formatVesselTime(nextSailingTime ?? undefined);
   let sailingLabel = vessel.info?.crossing ?? "Route unavailable";
   // destination-only sailing
@@ -727,6 +750,8 @@ export const Map = ({
   const markersRef = useRef<RenderedMarker[]>([]);
   const lastFittedVesselsRef = useRef<Vessel[] | null>(null);
   const lastFocusedVesselRef = useRef<{
+    latitude: number;
+    longitude: number;
     map: Mapbox;
     routeKey: string;
     vesselId: string;
@@ -1086,6 +1111,9 @@ export const Map = ({
     newMarkers.push(
       ...displayedVessels.filter(hasVesselLocation).map((vessel) => {
         const marker = document.createElement("div");
+        // exclude the overflowing label from marker anchoring
+        marker.style.height = `${VESSEL_MARKER_HEIGHT}px`;
+        marker.style.width = `${MAP_MARKER_SIZE}px`;
         const isSelected = vessel.id === requestedVesselId;
         const heading = (vessel.heading ?? 0) - 45;
         const lngLat = {
@@ -1187,7 +1215,7 @@ export const Map = ({
     userLocation,
   ]);
 
-  // center deep-linked vessel once available
+  // follow the selected vessel position
   useEffect(() => {
     // clear closed vessel focus
     if (!requestedVesselId) {
@@ -1198,7 +1226,7 @@ export const Map = ({
     if (!map) {
       return;
     }
-    const focusedVessel = displayedVessels.find(({ id }) => {
+    const focusedVessel = animatedVessels.find(({ id }) => {
       // focused id match
       return id === requestedVesselId;
     });
@@ -1211,7 +1239,9 @@ export const Map = ({
     if (
       previousFocus?.map === map &&
       previousFocus.routeKey === routeKey &&
-      previousFocus.vesselId === requestedVesselId
+      previousFocus.vesselId === requestedVesselId &&
+      previousFocus.latitude === focusedVessel.location.latitude &&
+      previousFocus.longitude === focusedVessel.location.longitude
     ) {
       return;
     }
@@ -1225,11 +1255,13 @@ export const Map = ({
       zoom: 12,
     });
     lastFocusedVesselRef.current = {
+      latitude: focusedVessel.location.latitude,
+      longitude: focusedVessel.location.longitude,
       map,
       routeKey,
       vesselId: requestedVesselId,
     };
-  }, [displayedVessels, map, requestedVesselId, routeKey]);
+  }, [animatedVessels, map, requestedVesselId, routeKey]);
 
   // Move the existing DOM markers during dead-reckoning. Recreating their
   // React roots every second causes visible flashes, while Mapbox can move a
@@ -1355,6 +1387,7 @@ export const Map = ({
             // clear vessel permalink
             selectVessel(null);
           }}
+          time={time}
           vessel={selectedVessel}
         />
       )}

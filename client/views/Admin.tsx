@@ -60,6 +60,38 @@ const formatAdCampaignTime = (value: string): string =>
     .setZone(AD_TIME_ZONE)
     .toFormat("MMM d, yyyy, h:mm a ZZZZ");
 
+// copy text across browser permission modes
+const copyTextToClipboard = async (value: string): Promise<boolean> => {
+  // prefer the modern clipboard api
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(value);
+      return true;
+    } catch {
+      // continue with the selection fallback
+    }
+  }
+  const field = document.createElement("textarea");
+  field.setAttribute("aria-hidden", "true");
+  field.readOnly = true;
+  field.style.left = "-9999px";
+  field.style.opacity = "0";
+  field.style.position = "fixed";
+  field.style.top = "0";
+  field.value = value;
+  document.body.append(field);
+  field.focus();
+  field.select();
+  field.setSelectionRange(0, field.value.length);
+  try {
+    return document.execCommand("copy");
+  } catch {
+    return false;
+  } finally {
+    field.remove();
+  }
+};
+
 // surface one actionable admin failure
 const adminActionErrorMessage = (error: unknown): string => {
   // prefer one bounded server explanation
@@ -930,16 +962,14 @@ export const Admin = (): ReactElement => {
   // copy the one-time report link
   const copyCreatedAdReportShare = async (): Promise<void> => {
     // require one readable share
-    if (!createdAdReportShare || !navigator.clipboard) {
+    if (!createdAdReportShare) {
       return;
     }
-    try {
-      await navigator.clipboard.writeText(createdAdReportShare.url);
-      setAdReportShareCopied(true);
-      // reset copy feedback
+    const copied = await copyTextToClipboard(createdAdReportShare.url);
+    setAdReportShareCopied(copied);
+    // reset successful copy feedback
+    if (copied) {
       setTimeout(() => setAdReportShareCopied(false), 2500);
-    } catch {
-      setAdReportShareCopied(false);
     }
   };
   const loadContent = async (): Promise<void> => {
@@ -2291,8 +2321,11 @@ export const Admin = (): ReactElement => {
                       served: {adCampaignReport.totals.servedCount}; viewable:{" "}
                       {adCampaignReport.totals.viewableCount} (
                       {adCampaignReport.totals.viewabilityRate ?? "—"}); clicks:{" "}
-                      {adCampaignReport.totals.clickCount} (
-                      {adCampaignReport.totals.clickThroughRate ?? "—"}).
+                      {adCampaignReport.totals.clickCount} (CTR{" "}
+                      {adCampaignReport.totals.clickThroughRate ?? "—"};
+                      viewable CTR{" "}
+                      {adCampaignReport.totals.viewableClickThroughRate ?? "—"}
+                      ).
                     </p>
                     <p className="mt-2 text-xs text-gray-dark dark:text-gray-light">
                       {adCampaignReport.methodology}

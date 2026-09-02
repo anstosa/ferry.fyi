@@ -6,6 +6,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
+import type { DetailTab } from "../../client/lib/sailingDeepLink";
 import { createForecastSlot } from "../fixtures/forecastSlot";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -89,16 +90,19 @@ afterEach(() => {
 });
 
 // render one sailing detail
-const renderSlotInfo = (): HTMLElement => {
-  const slot = createForecastSlot({ fullRisk: "unlikely", spacesLeft: 15 });
+const renderSlotInfo = (
+  slot = createForecastSlot({ fullRisk: "unlikely", spacesLeft: 15 }),
+  initialDetailTab: DetailTab = "forecast",
+  initialEntry = "/"
+): HTMLElement => {
   const container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container);
   act(() =>
     root?.render(
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[initialEntry]}>
         <SlotInfo
-          initialDetailTab="forecast"
+          initialDetailTab={initialDetailTab}
           isExpanded
           location={{ address: {}, latitude: 47.98, longitude: -122.35 }}
           onClick={vi.fn()}
@@ -142,5 +146,29 @@ describe("sailing detail sharing", () => {
     expect(container.querySelector('[role="alert"]')?.textContent).toContain(
       "Unable to share this sailing link"
     );
+  });
+});
+
+describe("sailing vessel actions", () => {
+  // focused map navigation
+  it("replaces boat tracking with an open-in-map link", () => {
+    const slot = createForecastSlot({
+      fullRisk: "unlikely",
+      spacesLeft: 15,
+    });
+    slot.vessel = {
+      ...slot.vessel,
+      arrivingTerminalId: 14,
+      departingTerminalId: 5,
+      location: { latitude: 47.96, longitude: -122.33 },
+    };
+    const container = renderSlotInfo(slot, "vessel", "/clinton/mukilteo");
+    const mapLink = container.querySelector<HTMLAnchorElement>(
+      'a[href="/clinton/mukilteo/map?vessel=test-vessel"]'
+    );
+
+    expect(mapLink?.textContent).toContain("Open in map");
+    expect(mapLink?.querySelector("svg")).not.toBeNull();
+    expect(container.textContent).not.toContain("Track Boat");
   });
 });

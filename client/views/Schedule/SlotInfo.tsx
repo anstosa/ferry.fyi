@@ -43,7 +43,6 @@ import {
   isLocalhostSimulationEnabled,
   setSimulatedVessel,
 } from "~/lib/onboardSimulation";
-import { useTrackedVessel } from "~/lib/onboardTracking";
 import {
   requestNotificationPermission,
   requestPushInitialization,
@@ -59,7 +58,7 @@ import CheckCircleIcon from "~/static/images/icons/solid/check-circle.svg";
 import CloudSunIcon from "~/static/images/icons/solid/cloud-sun.svg";
 import ExclamationCircleIcon from "~/static/images/icons/solid/exclamation-circle.svg";
 import InfoCircleIcon from "~/static/images/icons/solid/info-circle.svg";
-import MapMarkerIcon from "~/static/images/icons/solid/map-marker.svg";
+import NavigationIcon from "~/static/images/icons/solid/location-arrow.svg";
 import RaindropsIcon from "~/static/images/icons/solid/raindrops.svg";
 import ShareIcon from "~/static/images/icons/solid/share-alt.svg";
 import ShipIcon from "~/static/images/icons/solid/ship.svg";
@@ -294,7 +293,6 @@ export const SlotInfo = (props: Props): ReactElement => {
   const [sailingShareError, setSailingShareError] = useState<string | null>(
     null
   );
-  const [, setTrackedVesselId] = useTrackedVessel();
   const currentSlot = getCurrentSlot(schedule, time);
   const isNext = slot === currentSlot;
   const timing = getProjectedTiming({ schedule, slot });
@@ -1583,24 +1581,11 @@ export const SlotInfo = (props: Props): ReactElement => {
         status: hasWiFi ? "open" : "closed",
       },
     ];
-    const isVesselSailingNow = !vessel.isAtDock;
     const hasTrackableRouteContext = Boolean(
       vessel.arrivingTerminalId && vessel.departingTerminalId
     );
-    const hasTrackableLiveSignal = Boolean(vessel.gpsDelay || vessel.location);
     const canShowOnMap = Boolean(vessel.location && hasTrackableRouteContext);
-    const canTrackBoat = Boolean(
-      (isNext || isVesselSailingNow) &&
-      hasTrackableRouteContext &&
-      hasTrackableLiveSignal
-    );
     const vesselMapPath = getVesselMapPath(locationRoute.pathname, vessel.id);
-    // track boat action
-    const trackBoat = (event: React.MouseEvent<HTMLButtonElement>): void => {
-      event.preventDefault();
-      event.stopPropagation();
-      setTrackedVesselId(vessel.id);
-    };
     const vesselCard = (
       <article
         className={clsx(
@@ -1680,16 +1665,6 @@ export const SlotInfo = (props: Props): ReactElement => {
                       time={time}
                     />
                   </ErrorBoundary>
-                  {/* track boat guard */}
-                  {canTrackBoat && (
-                    <button
-                      className="link text-sm font-bold text-blue-dark dark:text-blue-light"
-                      type="button"
-                      onClick={trackBoat}
-                    >
-                      Track Boat
-                    </button>
-                  )}
                   {/* focused map link */}
                   {canShowOnMap && (
                     <Link
@@ -1700,8 +1675,8 @@ export const SlotInfo = (props: Props): ReactElement => {
                       }}
                       to={vesselMapPath}
                     >
-                      <MapMarkerIcon className="h-3.5 w-3.5" />
-                      Show on map
+                      <NavigationIcon className="h-3.5 w-3.5" />
+                      Open in map
                     </Link>
                   )}
                 </div>

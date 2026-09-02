@@ -287,7 +287,12 @@ campaign-scoped, aggregate-only, non-cacheable, and non-indexable. Never put
 report or exposure secrets in logs, analytics, query strings, support messages,
 `llms.txt`, OpenAPI, or sitemap entries. Previously issued links on the legacy
 report host immediately move to the canonical path while preserving the
-fragment secret.
+fragment secret. The advertiser view shows the campaign start and effective
+stop time, keeps daily rows collapsed by default, and moves measurement
+definitions into contextual help on each aggregate statistic. Its broad display
+click-through-rate benchmark is directly comparable because Ferry FYI divides
+clicks by served ads. The report preserves clicks divided by viewable impressions
+as a separately identified viewable click-through rate.
 
 Complete `docs/app-store-advertising.md` before enabling the persisted global
 switch for the first production app-store advertising release. Revisit that

@@ -107,22 +107,23 @@ describe("admin ad campaigns", () => {
     campaignMetrics.findAll.mockResolvedValue([
       {
         businessDate: "2026-08-05",
-        clickCount: "2",
-        opportunityCount: "20",
-        servedCount: "10",
-        viewableCount: "5",
+        clickCount: "7",
+        opportunityCount: "123",
+        servedCount: "229",
+        viewableCount: "183",
       },
     ]);
 
     const report = await getAdCampaignReport("campaign");
 
     expect(report.totals).toEqual({
-      clickCount: "2",
-      clickThroughRate: "40.00%",
-      opportunityCount: "20",
-      servedCount: "10",
-      viewabilityRate: "50.00%",
-      viewableCount: "5",
+      clickCount: "7",
+      clickThroughRate: "3.06%",
+      opportunityCount: "123",
+      servedCount: "229",
+      viewableClickThroughRate: "3.83%",
+      viewabilityRate: "79.91%",
+      viewableCount: "183",
     });
   });
 
