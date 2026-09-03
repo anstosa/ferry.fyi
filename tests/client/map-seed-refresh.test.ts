@@ -489,9 +489,8 @@ describe("map hydration seed freshness", () => {
     expect(markerButton).not.toBeNull();
     expect(markerButton?.getAttribute("aria-pressed")).toBe("false");
     expect(container.textContent).toContain("Sealth");
-    const movingMarker = markerButton?.querySelector<HTMLElement>(
-      '[data-vessel-motion="moving"]'
-    );
+    const movingMarker =
+      markerButton?.querySelector<HTMLElement>(".vessel-marker-visual");
     expect(movingMarker).not.toBeNull();
     expect(markerButton?.firstElementChild?.classList).toContain(
       "text-countdown"
@@ -499,9 +498,7 @@ describe("map hydration seed freshness", () => {
     expect(
       movingMarker?.querySelectorAll(".vessel-marker-wind-streak")
     ).toHaveLength(3);
-    expect(
-      movingMarker?.querySelector('[data-vessel-anchor="true"]')
-    ).toBeNull();
+    expect(movingMarker?.querySelector(".vessel-marker-anchor")).toBeNull();
 
     await act(async () => {
       markerButton?.click();
@@ -578,16 +575,13 @@ describe("map hydration seed freshness", () => {
     const markerButton = container.querySelector<HTMLButtonElement>(
       '[aria-label="Open Sealth vessel details"]'
     );
-    const dockedMarker = markerButton?.querySelector<HTMLElement>(
-      '[data-vessel-motion="still"]'
-    );
+    const dockedMarker =
+      markerButton?.querySelector<HTMLElement>(".vessel-marker-visual");
     expect(dockedMarker).not.toBeNull();
     expect(markerButton?.firstElementChild?.classList).toContain(
       "text-gray-dark"
     );
-    expect(
-      dockedMarker?.querySelector('[data-vessel-anchor="true"]')
-    ).not.toBeNull();
+    expect(dockedMarker?.querySelector(".vessel-marker-anchor")).not.toBeNull();
     expect(dockedMarker?.querySelector(".vessel-marker-wind")).toBeNull();
   });
 

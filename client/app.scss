@@ -648,6 +648,11 @@ html {
     background-position: 0 0;
   }
 
+  // disable vessel motion
+  .vessel-marker-wind {
+    display: none;
+  }
+
   *,
   *::before,
   *::after {

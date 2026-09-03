@@ -683,8 +683,6 @@ const VesselMarkerIcon = ({
   return (
     <span
       className="vessel-marker-visual"
-      data-vessel-motion={isMoving ? "moving" : "still"}
-      data-vessel-selected={isSelected ? "true" : "false"}
       style={getVesselMarkerStyle(heading, speed)}
     >
       {/* moving wind */}
@@ -705,11 +703,7 @@ const VesselMarkerIcon = ({
       </span>
       {/* docked anchor */}
       {isAtDock && (
-        <span
-          aria-hidden="true"
-          className="vessel-marker-anchor"
-          data-vessel-anchor="true"
-        >
+        <span aria-hidden="true" className="vessel-marker-anchor">
           <span style={{ transform: `rotate(${-heading}deg)` }}>
             <AnchorIcon />
           </span>
