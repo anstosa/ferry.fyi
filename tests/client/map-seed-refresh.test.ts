@@ -131,6 +131,9 @@ vi.mock("~/components/FreshnessPill", () => ({
 vi.mock("~/components/ReloadButton", () => ({
   ReloadButton: () => null,
 }));
+vi.mock("~/static/images/icons/solid/anchor.svg", () => ({
+  default: () => null,
+}));
 vi.mock("~/static/images/icons/solid/caret-down.svg", () => ({
   default: () => null,
 }));
@@ -486,6 +489,19 @@ describe("map hydration seed freshness", () => {
     expect(markerButton).not.toBeNull();
     expect(markerButton?.getAttribute("aria-pressed")).toBe("false");
     expect(container.textContent).toContain("Sealth");
+    const movingMarker = markerButton?.querySelector<HTMLElement>(
+      '[data-vessel-motion="moving"]'
+    );
+    expect(movingMarker).not.toBeNull();
+    expect(markerButton?.firstElementChild?.classList).toContain(
+      "text-countdown"
+    );
+    expect(
+      movingMarker?.querySelectorAll(".vessel-marker-wind-streak")
+    ).toHaveLength(3);
+    expect(
+      movingMarker?.querySelector('[data-vessel-anchor="true"]')
+    ).toBeNull();
 
     await act(async () => {
       markerButton?.click();
@@ -498,6 +514,9 @@ describe("map hydration seed freshness", () => {
       '[aria-label="Open Sealth vessel details"]'
     );
     expect(selectedMarker?.getAttribute("aria-pressed")).toBe("true");
+    expect(
+      selectedMarker?.querySelector(".vessel-marker-icon--selected")
+    ).not.toBeNull();
     expect(card?.textContent).toContain("Clinton → Mukilteo");
     expect(card?.textContent).toContain("12 mph");
     expect(card?.textContent).toContain("23 mins");
@@ -534,6 +553,97 @@ describe("map hydration seed freshness", () => {
     });
 
     expect(mocks.maps[0]?.easeTo).toHaveBeenCalledTimes(2);
+  });
+
+  // docked marker presentation
+  it("shows docked vessels in gray with an anchor and no wind", async () => {
+    const dockedSnapshot = {
+      ...snapshot,
+      sources: {
+        vessels: {
+          ...snapshot.sources.vessels,
+          value: [{ ...seededVessel, isAtDock: true, speed: 0 }],
+        },
+      },
+    } as PublicSsrSnapshot;
+    mocks.getVesselSnapshot.mockReturnValue(new Promise(() => undefined));
+    const container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root?.render(view(dockedSnapshot));
+    });
+
+    const markerButton = container.querySelector<HTMLButtonElement>(
+      '[aria-label="Open Sealth vessel details"]'
+    );
+    const dockedMarker = markerButton?.querySelector<HTMLElement>(
+      '[data-vessel-motion="still"]'
+    );
+    expect(dockedMarker).not.toBeNull();
+    expect(markerButton?.firstElementChild?.classList).toContain(
+      "text-gray-dark"
+    );
+    expect(
+      dockedMarker?.querySelector('[data-vessel-anchor="true"]')
+    ).not.toBeNull();
+    expect(dockedMarker?.querySelector(".vessel-marker-wind")).toBeNull();
+  });
+
+  // speed-scaled wind presentation
+  it("grows and quickens vessel wind as travel speed increases", async () => {
+    const slowVessel = {
+      ...seededVessel,
+      id: "slow",
+      name: "Slow Vessel",
+      speed: 4,
+    } as Vessel;
+    const fastVessel = {
+      ...seededVessel,
+      id: "fast",
+      location: { latitude: 47.97, longitude: -122.32 },
+      name: "Fast Vessel",
+      speed: 16,
+    } as Vessel;
+    const speedSnapshot = {
+      ...snapshot,
+      sources: {
+        vessels: {
+          ...snapshot.sources.vessels,
+          value: [slowVessel, fastVessel],
+        },
+      },
+    } as PublicSsrSnapshot;
+    mocks.getVesselSnapshot.mockReturnValue(new Promise(() => undefined));
+    const container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root?.render(view(speedSnapshot));
+    });
+
+    const slowMarker = container.querySelector<HTMLElement>(
+      '[aria-label="Open Slow Vessel vessel details"] .vessel-marker-visual'
+    );
+    const fastMarker = container.querySelector<HTMLElement>(
+      '[aria-label="Open Fast Vessel vessel details"] .vessel-marker-visual'
+    );
+    const slowLength = Number.parseFloat(
+      slowMarker?.style.getPropertyValue("--vessel-wind-length") ?? "0"
+    );
+    const fastLength = Number.parseFloat(
+      fastMarker?.style.getPropertyValue("--vessel-wind-length") ?? "0"
+    );
+    const slowDuration = Number.parseFloat(
+      slowMarker?.style.getPropertyValue("--vessel-wind-duration") ?? "0"
+    );
+    const fastDuration = Number.parseFloat(
+      fastMarker?.style.getPropertyValue("--vessel-wind-duration") ?? "0"
+    );
+    expect(fastLength).toBeGreaterThan(slowLength);
+    expect(fastDuration).toBeLessThan(slowDuration);
   });
 
   // focused map deep link
