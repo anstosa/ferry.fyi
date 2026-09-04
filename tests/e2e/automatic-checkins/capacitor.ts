@@ -1,5 +1,4 @@
 import type { AutomaticLeaderboardCheckinsPluginV1 } from "../../../client/lib/leaderboardAutomatic";
-
 import { automaticFixtureListeners, automaticFixtureState } from "./state";
 
 // retain one device-only cleanup owner fixture
@@ -106,6 +105,9 @@ const plugin: AutomaticLeaderboardCheckinsPluginV1 = {
 export const Capacitor = {
   // report one native fixture platform
   isNativePlatform: (): boolean => true,
+  // expose only the reviewed automatic check-in bridge
+  isPluginAvailable: (name: string): boolean =>
+    name === "AutomaticLeaderboardCheckins",
 };
 
 // expose one deterministic http fixture
