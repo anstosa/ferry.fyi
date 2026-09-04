@@ -40,6 +40,7 @@ import { selectVisibleVesselContent } from "~/lib/vesselAssignments";
 import { getMapSailingPath, getNextVesselSailing } from "~/lib/vesselMapLinks";
 import { getVesselSnapshot, refreshVessels } from "~/lib/vessels";
 import { useWindowSize } from "~/lib/window";
+import AnchorIcon from "~/static/images/icons/solid/anchor.svg";
 import CaretDownIcon from "~/static/images/icons/solid/caret-down.svg";
 import CaretUpIcon from "~/static/images/icons/solid/caret-up.svg";
 import UserLocationIcon from "~/static/images/icons/solid/location.svg";
@@ -116,12 +117,24 @@ interface MarkerLabelProps {
   ariaLabel?: string;
   icon: ReactElement;
   iconClassName: string;
-  iconStyle?: CSSProperties;
   isSelected?: boolean;
   label: string | null;
   labelClassName?: string;
   labelPlacement: string;
   onClick?: () => void;
+}
+
+interface VesselMarkerIconProps {
+  heading: number;
+  isAtDock: boolean;
+  isSelected: boolean;
+  speed: number;
+}
+
+interface VesselMarkerStyle extends CSSProperties {
+  "--vessel-wind-duration": string;
+  "--vessel-wind-length": string;
+  "--vessel-wind-opacity": string;
 }
 
 interface VesselDetailsCardProps {
@@ -601,7 +614,6 @@ const renderMarkerLabel = ({
   ariaLabel,
   icon,
   iconClassName,
-  iconStyle,
   isSelected = false,
   label,
   labelClassName,
@@ -610,9 +622,7 @@ const renderMarkerLabel = ({
 }: MarkerLabelProps): ReactElement => {
   const content = (
     <>
-      <div className={iconClassName} style={iconStyle}>
-        {icon}
-      </div>
+      <div className={iconClassName}>{icon}</div>
       {label && (
         <div
           className={clsx(
@@ -645,6 +655,61 @@ const renderMarkerLabel = ({
     <div className="relative flex items-center justify-center pointer-events-auto">
       {content}
     </div>
+  );
+};
+
+// speed-scaled vessel motion style
+const getVesselMarkerStyle = (
+  heading: number,
+  speed: number
+): VesselMarkerStyle => {
+  const speedRatio = Math.min(Math.max(speed, 0) / 20, 1);
+  return {
+    "--vessel-wind-duration": `${(1.8 - speedRatio * 0.9).toFixed(2)}s`,
+    "--vessel-wind-length": `${Math.round(6 + speedRatio * 14)}px`,
+    "--vessel-wind-opacity": (0.18 + speedRatio * 0.32).toFixed(2),
+    transform: `rotate(${heading}deg)`,
+  };
+};
+
+// vessel status marker
+const VesselMarkerIcon = ({
+  heading,
+  isAtDock,
+  isSelected,
+  speed,
+}: VesselMarkerIconProps): ReactElement => {
+  const isMoving = !isAtDock && speed > 0;
+  return (
+    <span
+      className="vessel-marker-visual"
+      style={getVesselMarkerStyle(heading, speed)}
+    >
+      {/* moving wind */}
+      {isMoving && (
+        <span aria-hidden="true" className="vessel-marker-wind">
+          <span className="vessel-marker-wind-streak" />
+          <span className="vessel-marker-wind-streak" />
+          <span className="vessel-marker-wind-streak" />
+        </span>
+      )}
+      <span
+        className={clsx(
+          "vessel-marker-icon",
+          isSelected && "vessel-marker-icon--selected"
+        )}
+      >
+        <VesselIcon />
+      </span>
+      {/* docked anchor */}
+      {isAtDock && (
+        <span aria-hidden="true" className="vessel-marker-anchor">
+          <span style={{ transform: `rotate(${-heading}deg)` }}>
+            <AnchorIcon />
+          </span>
+        </span>
+      )}
+    </span>
   );
 };
 
@@ -1135,14 +1200,20 @@ export const Map = ({
         const root = renderMarkerIcon(
           renderMarkerLabel({
             ariaLabel: `Open ${vessel.name} vessel details`,
-            icon: <VesselIcon />,
+            icon: (
+              <VesselMarkerIcon
+                heading={heading}
+                isAtDock={vessel.isAtDock === true}
+                isSelected={isSelected}
+                speed={vessel.speed}
+              />
+            ),
             iconClassName: clsx(
               "text-3xl drop-shadow",
-              isSelected
-                ? "text-blue-dark dark:text-blue-light"
+              vessel.isAtDock
+                ? "text-gray-dark dark:text-gray-light"
                 : "text-countdown"
             ),
-            iconStyle: { transform: `rotate(${heading}deg)` },
             isSelected,
             label,
             labelClassName: clsx(
