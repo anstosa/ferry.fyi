@@ -252,6 +252,9 @@
     "**/babel-plugin-polyfill-corejs2/semver": "6.3.1",
     "**/@babel/helper-define-polyfill-provider/semver": "6.3.1",
     "**/workbox-build/ajv": "8.18.0",
-    "**/core-js-compat/semver": "7.8.5"
+    "**/core-js-compat/semver": "7.8.5",
+    "browserslist": "4.28.9",
+    "nanoid": "3.3.18",
+    "qs": "6.16.0"
   }
 }
