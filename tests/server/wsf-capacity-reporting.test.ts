@@ -241,6 +241,7 @@ describe("WSF capacity reporting start", () => {
 
   // record the matched crossing event and authoritative vessel
   it("records matched departure delay and replaces the scheduled vessel", async () => {
+    vi.setSystemTime((DEPARTURE_AT + 10 * 60) * 1_000);
     const scheduledVessel = { id: "scheduled-vessel" };
     const capacityVessel = {
       arrivingTerminalId: "14",
@@ -279,6 +280,40 @@ describe("WSF capacity reporting start", () => {
     );
     expect(slot.crossing).toBe(crossing);
     expect(slot.vessel).toBe(capacityVessel);
+  });
+
+  // share one departure across a through-sailing's destinations
+  it("records the same departure delay for downstream arrival terminals", async () => {
+    vi.setSystemTime((DEPARTURE_AT + 10 * 60) * 1_000);
+    const response = capacityResponse(80);
+    response[0].TerminalID = 1;
+    const [arrivalSpace] =
+      response[0].DepartingSpaces[0].SpaceForArrivalTerminals;
+    arrivalSpace.ArrivalTerminalIDs = [13, 10];
+    vesselModel.getByIndex.mockReturnValue({
+      arrivingTerminalId: 13,
+      departedTime: DEPARTURE_AT + 8 * 60,
+      departingTerminalId: 1,
+      name: "Issaquah",
+      scheduledDepartureTime: DEPARTURE_AT,
+    });
+    crossingModel.findOrCreate.mockResolvedValue([{}, true]);
+    wsfApi.wsfRequest.mockResolvedValue(response);
+
+    await updateCapacity();
+
+    // both destinations share the origin's departure event
+    for (const arrivalId of ["13", "10"]) {
+      expect(crossingModel.findOrCreate).toHaveBeenCalledWith({
+        defaults: expect.objectContaining({
+          arrivalId,
+          departureDelta: 8 * 60,
+          departureId: "1",
+          departureTime: DEPARTURE_AT,
+        }),
+        where: { arrivalId, departureId: "1", departureTime: DEPARTURE_AT },
+      });
+    }
   });
 
   // retain scheduled assignment without capacity vessel metadata
@@ -342,7 +377,15 @@ describe("WSF capacity reporting start", () => {
       label: "invalid actual departure",
       scheduledDepartureTime: DEPARTURE_AT,
     },
+    {
+      arrivingTerminalId: 14,
+      departedTime: DEPARTURE_AT + 4 * 60 * 60,
+      departingTerminalId: 5,
+      label: "not-yet-observed departure",
+      scheduledDepartureTime: DEPARTURE_AT,
+    },
   ])("does not copy delay from a $label", async (vesselStatus) => {
+    vi.setSystemTime((DEPARTURE_AT + 3 * 60 * 60) * 1_000);
     const schedule = {
       getSlot: vi.fn().mockReturnValue({}),
       key: "schedule-key",
@@ -366,8 +409,26 @@ describe("WSF capacity reporting start", () => {
     );
   });
 
+  // discard unobserved legacy projections without fabricating history
+  it("clears an inherited delay whose departure has not happened yet", async () => {
+    const crossing = {
+      capacityReportingStartedAt: OBSERVED_AT - 60,
+      departureDelta: 45 * 60,
+      update: vi.fn().mockResolvedValue(undefined),
+    };
+    crossingModel.findOrCreate.mockResolvedValue([crossing, false]);
+    wsfApi.wsfRequest.mockResolvedValue(capacityResponse(80));
+
+    await updateCapacity();
+
+    expect(crossing.update).toHaveBeenCalledWith(
+      expect.objectContaining({ departureDelta: null })
+    );
+  });
+
   // preserve confirmed history when live status no longer matches
   it("preserves an existing confirmed delay for an unmatched vessel event", async () => {
+    vi.setSystemTime((DEPARTURE_AT + 2 * 60 * 60) * 1_000);
     const schedule = {
       getSlot: vi.fn().mockReturnValue({}),
       key: "schedule-key",
@@ -396,8 +457,8 @@ describe("WSF capacity reporting start", () => {
 
     await updateCapacity();
 
-    expect(crossing.update.mock.calls[0]?.[0]).not.toHaveProperty(
-      "departureDelta"
+    expect(crossing.update).toHaveBeenCalledWith(
+      expect.objectContaining({ departureDelta: 7 * 60 })
     );
     expect(crossing.departureDelta).toBe(7 * 60);
   });

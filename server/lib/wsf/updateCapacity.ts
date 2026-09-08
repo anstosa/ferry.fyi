@@ -88,17 +88,17 @@ const getCrossingDepartureDelta = (
   vessel: Vessel | null | undefined,
   departureTime: number,
   departureId: string,
-  arrivalId: string
+  observedAt: number
 ): number | null => {
   // require a complete matching sailing status
   if (
     !vessel ||
     !Number.isFinite(vessel.departedTime) ||
     vessel.departedTime <= 0 ||
+    vessel.departedTime > observedAt ||
     !Number.isFinite(vessel.scheduledDepartureTime) ||
     vessel.scheduledDepartureTime !== departureTime ||
-    String(vessel.departingTerminalId) !== departureId ||
-    String(vessel.arrivingTerminalId) !== arrivalId
+    String(vessel.departingTerminalId) !== departureId
   ) {
     return null;
   }
@@ -139,7 +139,7 @@ export const updateCapacity = async (): Promise<Schedule[]> => {
             vessel,
             departureTime,
             departureId,
-            arrivalTerminalId
+            capacityReportUpdatedAt
           );
           const model: Omit<Partial<Crossing>, "departureDelta"> = {
             arrivalId: arrivalTerminalId,
@@ -174,10 +174,17 @@ export const updateCapacity = async (): Promise<Schedule[]> => {
           if (wasCreated) {
             createdCrossings += 1;
           } else {
+            // legacy projections cannot confirm a future departure
+            const previousDepartureDelta =
+              crossing.departureDelta !== null &&
+              Number.isFinite(crossing.departureDelta) &&
+              departureTime + crossing.departureDelta <= capacityReportUpdatedAt
+                ? crossing.departureDelta
+                : null;
             await crossing.update({
               ...model,
-              // preserve unmatched confirmed delays
-              ...(departureDelta === null ? {} : { departureDelta }),
+              // retain past observations when the vessel moves to another trip
+              departureDelta: departureDelta ?? previousDepartureDelta,
               capacityReportingStartedAt: getCapacityReportingStartedAt({
                 capacityReportingStartedAt: crossing.capacityReportingStartedAt,
                 observedAt: capacityReportUpdatedAt,
