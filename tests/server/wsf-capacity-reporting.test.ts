@@ -238,4 +238,167 @@ describe("WSF capacity reporting start", () => {
       reservableCapacity: 0,
     });
   });
+
+  // record the matched crossing event and authoritative vessel
+  it("records matched departure delay and replaces the scheduled vessel", async () => {
+    const scheduledVessel = { id: "scheduled-vessel" };
+    const capacityVessel = {
+      arrivingTerminalId: "14",
+      departedTime: DEPARTURE_AT + 8 * 60,
+      departureDelta: 45 * 60,
+      departingTerminalId: 5,
+      name: "Issaquah",
+      scheduledDepartureTime: DEPARTURE_AT,
+    };
+    const slot: { crossing?: unknown; vessel: unknown } = {
+      vessel: scheduledVessel,
+    };
+    const schedule = {
+      getSlot: vi.fn().mockReturnValue(slot),
+      key: "schedule-key",
+    };
+    const crossing = {
+      capacityReportingStartedAt: null,
+      departureDelta: null,
+      isEmpty: vi.fn().mockReturnValue(false),
+      update: vi.fn().mockResolvedValue(undefined),
+    };
+    scheduleModel.getByIndex.mockReturnValue(schedule);
+    vesselModel.getByIndex.mockReturnValue(capacityVessel);
+    crossingModel.findOrCreate.mockResolvedValue([crossing, false]);
+    wsfApi.wsfRequest.mockResolvedValue(capacityResponse(80));
+
+    await updateCapacity();
+
+    expect(crossing.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        departureDelta: 8 * 60,
+        vesselId: "15",
+        vesselName: "Issaquah",
+      })
+    );
+    expect(slot.crossing).toBe(crossing);
+    expect(slot.vessel).toBe(capacityVessel);
+  });
+
+  // retain scheduled assignment without capacity vessel metadata
+  it("keeps the scheduled vessel and null delay for an unknown capacity vessel", async () => {
+    const scheduledVessel = { id: "scheduled-vessel" };
+    const slot: { crossing?: unknown; vessel: unknown } = {
+      vessel: scheduledVessel,
+    };
+    const schedule = {
+      getSlot: vi.fn().mockReturnValue(slot),
+      key: "schedule-key",
+    };
+    const crossing = { isEmpty: vi.fn().mockReturnValue(false) };
+    scheduleModel.getByIndex.mockReturnValue(schedule);
+    vesselModel.getByIndex.mockReturnValue(undefined);
+    crossingModel.findOrCreate.mockResolvedValue([crossing, true]);
+    wsfApi.wsfRequest.mockResolvedValue(capacityResponse(80));
+
+    await updateCapacity();
+
+    expect(crossingModel.findOrCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        defaults: expect.objectContaining({
+          departureDelta: null,
+          vesselId: "15",
+          vesselName: null,
+        }),
+      })
+    );
+    expect(slot.crossing).toBe(crossing);
+    expect(slot.vessel).toBe(scheduledVessel);
+  });
+
+  // reject stale or unrelated vessel departure events
+  it.each([
+    {
+      arrivingTerminalId: 5,
+      departedTime: DEPARTURE_AT + 8 * 60,
+      departingTerminalId: 14,
+      label: "simultaneous reverse-direction sailing",
+      scheduledDepartureTime: DEPARTURE_AT,
+    },
+    {
+      arrivingTerminalId: 14,
+      departedTime: DEPARTURE_AT - 60 * 60 + 8 * 60,
+      departingTerminalId: 5,
+      label: "earlier sailing",
+      scheduledDepartureTime: DEPARTURE_AT - 60 * 60,
+    },
+    {
+      arrivingTerminalId: 14,
+      departedTime: DEPARTURE_AT + 60 * 60 + 8 * 60,
+      departingTerminalId: 5,
+      label: "future sailing",
+      scheduledDepartureTime: DEPARTURE_AT + 60 * 60,
+    },
+    {
+      arrivingTerminalId: 14,
+      departedTime: Number.NaN,
+      departingTerminalId: 5,
+      label: "invalid actual departure",
+      scheduledDepartureTime: DEPARTURE_AT,
+    },
+  ])("does not copy delay from a $label", async (vesselStatus) => {
+    const schedule = {
+      getSlot: vi.fn().mockReturnValue({}),
+      key: "schedule-key",
+    };
+    const crossing = { isEmpty: vi.fn().mockReturnValue(false) };
+    scheduleModel.getByIndex.mockReturnValue(schedule);
+    vesselModel.getByIndex.mockReturnValue({
+      ...vesselStatus,
+      departureDelta: 45 * 60,
+      name: "Issaquah",
+    });
+    crossingModel.findOrCreate.mockResolvedValue([crossing, true]);
+    wsfApi.wsfRequest.mockResolvedValue(capacityResponse(80));
+
+    await updateCapacity();
+
+    expect(crossingModel.findOrCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        defaults: expect.objectContaining({ departureDelta: null }),
+      })
+    );
+  });
+
+  // preserve confirmed history when live status no longer matches
+  it("preserves an existing confirmed delay for an unmatched vessel event", async () => {
+    const schedule = {
+      getSlot: vi.fn().mockReturnValue({}),
+      key: "schedule-key",
+    };
+    const crossing = {
+      capacityReportingStartedAt: OBSERVED_AT - 60,
+      departureDelta: 7 * 60,
+      isEmpty: vi.fn().mockReturnValue(false),
+      // mirror model updates
+      update: vi.fn().mockImplementation((values) => {
+        Object.assign(crossing, values);
+        return Promise.resolve();
+      }),
+    };
+    scheduleModel.getByIndex.mockReturnValue(schedule);
+    vesselModel.getByIndex.mockReturnValue({
+      arrivingTerminalId: 14,
+      departedTime: DEPARTURE_AT + 60 * 60 + 45 * 60,
+      departureDelta: 45 * 60,
+      departingTerminalId: 5,
+      name: "Issaquah",
+      scheduledDepartureTime: DEPARTURE_AT + 60 * 60,
+    });
+    crossingModel.findOrCreate.mockResolvedValue([crossing, false]);
+    wsfApi.wsfRequest.mockResolvedValue(capacityResponse(80));
+
+    await updateCapacity();
+
+    expect(crossing.update.mock.calls[0]?.[0]).not.toHaveProperty(
+      "departureDelta"
+    );
+    expect(crossing.departureDelta).toBe(7 * 60);
+  });
 });

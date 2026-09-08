@@ -83,6 +83,29 @@ export const getCapacityReportingStartedAt = ({
   return null;
 };
 
+// derive delay from one exact vessel departure event
+const getCrossingDepartureDelta = (
+  vessel: Vessel | null | undefined,
+  departureTime: number,
+  departureId: string,
+  arrivalId: string
+): number | null => {
+  // require a complete matching sailing status
+  if (
+    !vessel ||
+    !Number.isFinite(vessel.departedTime) ||
+    vessel.departedTime <= 0 ||
+    !Number.isFinite(vessel.scheduledDepartureTime) ||
+    vessel.scheduledDepartureTime !== departureTime ||
+    String(vessel.departingTerminalId) !== departureId ||
+    String(vessel.arrivingTerminalId) !== arrivalId
+  ) {
+    return null;
+  }
+  return vessel.departedTime - vessel.scheduledDepartureTime;
+};
+
+// refresh crossing capacity and vessel assignments
 export const updateCapacity = async (): Promise<Schedule[]> => {
   logger.info("Started capacity update");
   const terminals = await wsfRequest<WSF.SpaceResponse[]>(API_SPACE);
@@ -112,7 +135,13 @@ export const updateCapacity = async (): Promise<Schedule[]> => {
         // arrival terminals
         for (const arrivalId of spaceData.ArrivalTerminalIDs) {
           const arrivalTerminalId = String(arrivalId);
-          const model: Partial<Crossing> = {
+          const departureDelta = getCrossingDepartureDelta(
+            vessel,
+            departureTime,
+            departureId,
+            arrivalTerminalId
+          );
+          const model: Omit<Partial<Crossing>, "departureDelta"> = {
             arrivalId: arrivalTerminalId,
             capacityReportingStartedAt: getCapacityReportingStartedAt({
               capacityReportingStartedAt: null,
@@ -121,7 +150,6 @@ export const updateCapacity = async (): Promise<Schedule[]> => {
               totalCapacity: spaceData.MaxSpaceCount,
             }),
             departureId,
-            departureDelta: vessel?.departureDelta ?? null,
             departureTime,
             capacityReportUpdatedAt,
             driveUpCapacity: spaceData.DriveUpSpaceCount,
@@ -140,7 +168,7 @@ export const updateCapacity = async (): Promise<Schedule[]> => {
           };
           const [crossing, wasCreated] = await Crossing.findOrCreate({
             where,
-            defaults: model,
+            defaults: { ...model, departureDelta },
           });
           // created crossing guard
           if (wasCreated) {
@@ -148,6 +176,8 @@ export const updateCapacity = async (): Promise<Schedule[]> => {
           } else {
             await crossing.update({
               ...model,
+              // preserve unmatched confirmed delays
+              ...(departureDelta === null ? {} : { departureDelta }),
               capacityReportingStartedAt: getCapacityReportingStartedAt({
                 capacityReportingStartedAt: crossing.capacityReportingStartedAt,
                 observedAt: capacityReportUpdatedAt,
@@ -175,6 +205,10 @@ export const updateCapacity = async (): Promise<Schedule[]> => {
           // schedule slot guard
           if (slot) {
             slot.crossing = crossing;
+            // apply the capacity vessel assignment
+            if (vessel) {
+              slot.vessel = vessel;
+            }
             linkedSlots += 1;
           }
 

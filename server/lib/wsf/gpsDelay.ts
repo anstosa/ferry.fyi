@@ -112,8 +112,12 @@ export const findGpsDelayLeg = ({
       return schedule.slots;
     })
     .filter((slot) => {
-      // vessel match guard
-      return slot.vessel?.id === vesselId && Boolean(slot.arrivalTime);
+      // exact live departures take precedence over stale vessel assignments
+      return (
+        (slot.time === scheduledDepartureTime ||
+          slot.vessel?.id === vesselId) &&
+        Boolean(slot.arrivalTime)
+      );
     })
     .sort((left, right) => {
       // closest schedule first

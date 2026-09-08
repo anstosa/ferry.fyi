@@ -82,6 +82,57 @@ describe("GPS delay calculation", () => {
     ).toMatchObject({ delaySeconds: 6 * 60, source: "gps" });
   });
 
+  // stale assignments during a vessel swap
+  it("prefers the live departure time and direction over a nearby stale vessel assignment", () => {
+    const departureTime = 1788895800;
+    const leg = findGpsDelayLeg({
+      arrivalTerminalId: 5,
+      departureTerminalId: 14,
+      scheduledDepartureTime: departureTime,
+      schedules: [
+        {
+          mateId: "14",
+          slots: [
+            {
+              arrivalTime: departureTime + 60 * 60,
+              time: departureTime,
+              vessel: { id: "15" },
+            },
+          ],
+          terminalId: "5",
+        },
+        {
+          mateId: "5",
+          slots: [
+            {
+              arrivalTime: departureTime - 10 * 60,
+              time: departureTime - 30 * 60,
+              vessel: { id: "15" },
+            },
+            {
+              arrivalTime: departureTime + 20 * 60,
+              time: departureTime,
+              vessel: { id: "75" },
+            },
+          ],
+          terminalId: "14",
+        },
+      ],
+      terminals: [
+        { id: "14", location: departureLocation },
+        { id: "5", location: arrivalLocation },
+      ],
+      vesselId: "15",
+    });
+
+    expect(leg).toEqual({
+      arrivalLocation,
+      departureLocation,
+      scheduledArrivalTime: departureTime + 20 * 60,
+      scheduledDepartureTime: departureTime,
+    });
+  });
+
   // duplicate schedule matching
   it("matches the nearest vessel slot across duplicate route schedules", () => {
     const leg = findGpsDelayLeg({

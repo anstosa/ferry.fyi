@@ -184,6 +184,104 @@ describe("schedule update helpers", () => {
     expect(vessel.departureDelta).toBe(12 * 60);
   });
 
+  // crossing assignment precedence
+  it.each([true, false])(
+    "uses crossing vessel assignments through full and cached refreshes (metadata: %s)",
+    // reproduce swapped scheduled vessels
+    async (hasVesselMetadata) => {
+      const noon = toSeconds("2026-09-08T12:00:00");
+      const halfPastNoon = toSeconds("2026-09-08T12:30:00");
+      const issaquah = { id: "15", name: "Issaquah" };
+      const suquamish = { id: "75", name: "Suquamish" };
+      const vessels = { "15": issaquah, "75": suquamish };
+      const crossings = new Map([
+        [noon, { vesselId: "75", vesselName: "Suquamish" }],
+        [halfPastNoon, { vesselId: "15", vesselName: "Issaquah" }],
+      ]);
+      const schedule = {
+        key: "14-5-2026-09-08",
+        mateId: "5",
+        save: vi.fn(),
+        slots: [],
+        terminalId: "14",
+      };
+      scheduleModel.generateKey.mockReturnValue(schedule.key);
+      scheduleModel.getByIndex.mockReturnValue(null);
+      scheduleModel.getAll.mockReturnValue({ [schedule.key]: schedule });
+      // hydrate the in-memory cache
+      scheduleModel.getOrCreate.mockImplementation((_key, data) => {
+        Object.assign(schedule, data);
+        return [schedule, true];
+      });
+      // supply metadata only when available
+      vesselModel.getByIndex.mockImplementation((id: keyof typeof vessels) =>
+        hasVesselMetadata ? vessels[id] : null
+      );
+      // supply route-specific recorded assignments
+      crossingModel.findOne.mockImplementation(({ where }) => ({
+        ...where,
+        ...crossings.get(where.departureTime),
+        // fixed past-sailing state
+        hasPassed: () => true,
+      }));
+      wsfApi.wsfRequest
+        .mockResolvedValueOnce(`/Date(${noon * 1000}-0700)/`)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({
+          TerminalCombos: [
+            {
+              // stale schedule assigns the opposite boats
+              Times: [
+                {
+                  DepartingTime: `/Date(${noon * 1000}-0700)/`,
+                  LoadingRule: 3,
+                  VesselID: 15,
+                  VesselName: "Issaquah",
+                },
+                {
+                  DepartingTime: `/Date(${halfPastNoon * 1000}-0700)/`,
+                  LoadingRule: 3,
+                  VesselID: 75,
+                  VesselName: "Suquamish",
+                },
+              ],
+            },
+          ],
+        });
+
+      await updateSchedules("2026-09-08", "14", "5");
+
+      const expectedSlots = [
+        expect.objectContaining({
+          crossing: expect.objectContaining({ vesselId: "75" }),
+          time: noon,
+          vessel: expect.objectContaining(suquamish),
+        }),
+        expect.objectContaining({
+          crossing: expect.objectContaining({ vesselId: "15" }),
+          time: halfPastNoon,
+          vessel: expect.objectContaining(issaquah),
+        }),
+      ];
+      expect(schedule.slots).toEqual(expectedSlots);
+      expect(crossingModel.findOne).toHaveBeenCalledWith({
+        where: {
+          arrivalId: "5",
+          departureId: "14",
+          departureTime: halfPastNoon,
+        },
+      });
+
+      scheduleModel.getByIndex.mockReturnValue(schedule);
+      wsfApi.wsfRequest.mockResolvedValueOnce(`/Date(${noon * 1000}-0700)/`);
+
+      await updateSchedules("2026-09-08", "14", "5");
+
+      expect(schedule.slots).toEqual(expectedSlots);
+      expect(wsfApi.wsfRequest).toHaveBeenCalledTimes(4);
+    }
+  );
+
   // missing vessel fallback
   it("keeps scheduled sailings when vessel metadata is still warming", async () => {
     const schedule = {

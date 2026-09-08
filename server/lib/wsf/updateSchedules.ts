@@ -42,7 +42,7 @@ const inProgressSchedules = new Map<string, Promise<void>>();
 
 // schedule vessel fallback
 const getScheduleVessel = (
-  vesselId: number,
+  vesselId: number | string,
   vesselName: string | undefined
 ): Vessel => {
   const vessel = Vessel.getByIndex(String(vesselId));
@@ -78,9 +78,12 @@ const getEstimatedScheduledArrivalTime = (
   return departureTime + route.crossingTime * 60;
 };
 
+// refresh timing and crossing-specific vessel assignments
 const updateTiming = (): void => {
   const now = DateTime.local();
+  // refresh cached schedules
   values(Schedule.getAll()).forEach((schedule) => {
+    // refresh each sailing
     schedule.slots.forEach((slot) => {
       // arrival time backfill
       if (!slot.arrivalTime) {
@@ -90,12 +93,17 @@ const updateTiming = (): void => {
           schedule.mateId
         );
       }
-      const vessel = Vessel.getByIndex(slot.vessel?.id);
+      const { crossing, time } = slot;
+      // terminal reports override stale scheduled assignments
+      const vessel = crossing?.vesselId
+        ? getScheduleVessel(crossing.vesselId, crossing.vesselName ?? undefined)
+        : Vessel.getByIndex(slot.vessel?.id);
+      // missing vessel guard
       if (!vessel) {
         return;
       }
       slot.vessel = vessel;
-      const { crossing, time } = slot;
+      // recorded crossing timing
       if (crossing) {
         slot.hasPassed = crossing.hasPassed();
       } else {
@@ -332,6 +340,7 @@ const updateSchedulePair = async (
     TerminalCombos: [{ Times }],
   } = response;
   const slots = await Promise.all(
+    // reconcile each scheduled sailing with its crossing
     Times.map(
       async ({
         ArrivingTime,
@@ -347,7 +356,6 @@ const updateSchedulePair = async (
           return null;
         }
         const departureTime = DateTime.fromSeconds(time);
-        const vessel = getScheduleVessel(VesselID, VesselName);
         const crossing = await Crossing.findOne({
           where: {
             departureId: terminalId,
@@ -355,6 +363,13 @@ const updateSchedulePair = async (
             departureTime: time,
           },
         });
+        // terminal reports override stale scheduled assignments
+        const vessel = crossing?.vesselId
+          ? getScheduleVessel(
+              crossing.vesselId,
+              crossing.vesselName ?? undefined
+            )
+          : getScheduleVessel(VesselID, VesselName);
         return {
           allowsPassengers: [
             WSF.LoadingRules.PASSENGER,
