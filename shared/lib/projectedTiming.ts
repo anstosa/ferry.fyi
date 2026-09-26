@@ -4,6 +4,7 @@ import { isNil, isNull } from "shared/lib/identity";
 import { constrain, round } from "shared/lib/math";
 
 const DELAY_RECOVERY_RATIO = 0.42;
+export const EARLY_DEPARTURE_TOLERANCE_SECONDS = 5 * 60;
 const FULLNESS_RECOVERY_THRESHOLD = 70;
 const FULLNESS_RECOVERY_PENALTY = 0.08;
 const MAX_SPEED_RECOVERY_ADJUSTMENT = 2;
@@ -82,6 +83,22 @@ const getVesselDelayMins = (slot: Slot): number | null => {
     return null;
   }
   return round(departureDelta / 60);
+};
+
+// observed departure for the exact live sailing
+const getObservedVesselDelayMins = (slot: Slot): number | null => {
+  const { departedTime, scheduledDepartureTime } = slot.vessel ?? {};
+  // require an observed departure on this slot
+  if (
+    scheduledDepartureTime !== slot.time ||
+    !Number.isFinite(departedTime) ||
+    (departedTime as number) <= 0 ||
+    (departedTime as number) < slot.time - EARLY_DEPARTURE_TOLERANCE_SECONDS ||
+    (departedTime as number) > DateTime.local().toSeconds()
+  ) {
+    return null;
+  }
+  return round(((departedTime as number) - slot.time) / 60);
 };
 
 // active delay minutes
@@ -250,10 +267,16 @@ export const getProjectedDelayMins = ({
     }
     // current sailing guard
     if (scheduleSlot === currentDelaySlot) {
-      projectedDelayMins = getRecoveredDelayMins(
-        projectedDelayMins,
-        scheduleSlot
-      );
+      // do not recover a delay before the active outbound leg finishes
+      if (
+        scheduleSlot.vessel?.isAtDock !== false ||
+        isNull(getObservedVesselDelayMins(scheduleSlot))
+      ) {
+        projectedDelayMins = getRecoveredDelayMins(
+          projectedDelayMins,
+          scheduleSlot
+        );
+      }
     } else if (currentDelaySlot && scheduleSlot.time > currentDelaySlot.time) {
       // later sailing recovery
       projectedDelayMins = getRecoveredDelayMins(
@@ -273,8 +296,9 @@ export const getProjectedTiming = ({
   const scheduledTime = DateTime.fromSeconds(slot.time);
   const recordedDelayMins = getRecordedDelayMins(slot);
   const gpsDelayMins = getGpsDelayMins(slot);
+  const observedVesselDelayMins = getObservedVesselDelayMins(slot);
   const delayMins = slot.hasPassed
-    ? (gpsDelayMins ?? recordedDelayMins ?? 0)
+    ? (observedVesselDelayMins ?? gpsDelayMins ?? recordedDelayMins ?? 0)
     : getProjectedDelayMins({ schedule, slot });
   return {
     delayMins,

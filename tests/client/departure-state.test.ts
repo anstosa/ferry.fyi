@@ -1,6 +1,6 @@
 import { DateTime } from "luxon";
-import { describe, expect, it } from "vitest";
 import type { Slot } from "shared/contracts/schedules";
+import { describe, expect, it } from "vitest";
 
 import { hasSailingDeparted } from "../../client/views/Schedule/departureState";
 import type { ProjectedTiming } from "../../client/views/Schedule/projectedTiming";
@@ -11,9 +11,11 @@ const scheduledTime = DateTime.fromISO("2026-08-26T12:00:00", {
 
 // build a live sailing fixture
 const makeSlot = ({
+  departedTime,
   isAtDock,
   liveDepartureTime = scheduledTime,
 }: {
+  departedTime?: DateTime;
   isAtDock: boolean;
   liveDepartureTime?: DateTime;
 }): Slot =>
@@ -21,6 +23,7 @@ const makeSlot = ({
     hasPassed: true,
     time: scheduledTime.toSeconds(),
     vessel: {
+      ...(departedTime ? { departedTime: departedTime.toSeconds() } : {}),
       isAtDock,
       scheduledDepartureTime: liveDepartureTime.toSeconds(),
     },
@@ -53,6 +56,57 @@ describe("schedule departure state", () => {
         timing: makeTiming(),
       })
     ).toBe(true);
+  });
+
+  // accept a plausible observed dock event
+  it("marks the corrected sailing departed after its observed dock event", () => {
+    const slot = makeSlot({
+      departedTime: scheduledTime.plus({ minutes: 54 }),
+      isAtDock: false,
+    });
+
+    expect(
+      hasSailingDeparted({
+        slot,
+        time: scheduledTime.plus({ minutes: 62 }),
+        timing: {
+          ...makeTiming(),
+          departureTime: scheduledTime.plus({ minutes: 70 }),
+        },
+      })
+    ).toBe(true);
+  });
+
+  // reject a rolled-forward live timestamp
+  it("does not mark a future sailing departed from an earlier dock event", () => {
+    const slot = makeSlot({
+      departedTime: scheduledTime.minus({ minutes: 11 }),
+      isAtDock: false,
+    });
+
+    expect(
+      hasSailingDeparted({
+        slot,
+        time: scheduledTime.minus({ minutes: 3 }),
+        timing: makeTiming(),
+      })
+    ).toBe(false);
+  });
+
+  // reject an unobserved future dock event
+  it("does not mark a sailing departed before its reported dock event", () => {
+    const slot = makeSlot({
+      departedTime: scheduledTime.plus({ minutes: 10 }),
+      isAtDock: false,
+    });
+
+    expect(
+      hasSailingDeparted({
+        slot,
+        time: scheduledTime.minus({ minutes: 1 }),
+        timing: makeTiming(),
+      })
+    ).toBe(false);
   });
 
   it("uses projected time when live vessel data belongs to another sailing", () => {

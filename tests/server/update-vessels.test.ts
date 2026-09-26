@@ -1,5 +1,5 @@
 import { DateTime } from "luxon";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // isolate schedule cache access
 const scheduleModel = vi.hoisted(() => ({
@@ -80,6 +80,136 @@ const routePoint = (
 
 // cover hydrated refresh behavior
 describe("vessel status GPS delay", () => {
+  // rolled WSF departure identity
+  it("keeps a late through-sailing on its original slot across status polls", async () => {
+    const original = DateTime.fromISO("2026-09-25T15:35:00-07:00").toSeconds();
+    const rolled = DateTime.fromISO("2026-09-25T16:40:00-07:00").toSeconds();
+    const departed = DateTime.fromISO("2026-09-25T16:29:00-07:00").toSeconds();
+    const vessel = { departureDelta: 0, save: vi.fn(), update: vi.fn() };
+    const crossing = {
+      departureDelta: null as number | null,
+      // mirror the persisted crossing update
+      update: vi
+        .fn()
+        .mockImplementation((values: { departureDelta: number }) => {
+          crossing.departureDelta = values.departureDelta;
+          return Promise.resolve();
+        }),
+    };
+    const throughCrossing = {
+      departureDelta: null as number | null,
+      // mirror the second persisted crossing update
+      update: vi
+        .fn()
+        .mockImplementation((values: { departureDelta: number }) => {
+          throughCrossing.departureDelta = values.departureDelta;
+          return Promise.resolve();
+        }),
+    };
+    const slots = [
+      {
+        arrivalTime: original + 20 * 60,
+        crossing,
+        time: original,
+        vessel: { id: "123" },
+      },
+      { arrivalTime: rolled + 20 * 60, time: rolled, vessel: { id: "123" } },
+    ];
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date((departed + 8 * 60) * 1000));
+    scheduleModel.getAll.mockReturnValue({
+      route: {
+        mateId: "2",
+        // resolve the immediate destination slot
+        getSlot: (time: number) => slots.find((slot) => slot.time === time),
+        slots,
+        terminalId: "1",
+      },
+      throughRoute: {
+        mateId: "3",
+        // resolve the downstream destination slot
+        getSlot: (time: number) =>
+          time === original
+            ? { crossing: throughCrossing, vessel: { id: "123" } }
+            : null,
+        slots: [
+          {
+            arrivalTime: original + 40 * 60,
+            crossing: throughCrossing,
+            time: original,
+            vessel: { id: "123" },
+          },
+        ],
+        terminalId: "1",
+      },
+    });
+    terminalModel.getAll.mockReturnValue({
+      "1": { id: "1", location: departureLocation },
+      "2": { id: "2", location: arrivalLocation },
+    });
+    vesselModel.getByIndex.mockReturnValue(vessel);
+    wsfApi.wsfRequest.mockResolvedValue([
+      {
+        ArrivingTerminalID: 2,
+        AtDock: false,
+        DepartingTerminalID: 1,
+        Eta: wsfDate(departed + 20 * 60),
+        Heading: 0,
+        Latitude: routePoint(0.4).latitude,
+        LeftDock: wsfDate(departed),
+        Longitude: routePoint(0.4).longitude,
+        Mmsi: 1,
+        ScheduledDeparture: wsfDate(rolled),
+        Speed: 10,
+        VesselID: 123,
+        VesselName: "Tokitae",
+      },
+    ]);
+
+    await updateVesselStatus();
+
+    expect(vessel.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        departureDelta: 54 * 60,
+        scheduledDepartureTime: original,
+        gpsDelay: expect.objectContaining({
+          signals: expect.objectContaining({
+            dockDelaySeconds: 54 * 60,
+            scheduledDepartureTime: original,
+          }),
+        }),
+      })
+    );
+    expect(crossing.update).toHaveBeenCalledWith({ departureDelta: 54 * 60 });
+    expect(throughCrossing.update).toHaveBeenCalledWith({
+      departureDelta: 54 * 60,
+    });
+
+    // keep the observation after the vessel advances to another leg
+    wsfApi.wsfRequest.mockResolvedValue([
+      {
+        ArrivingTerminalID: 1,
+        AtDock: false,
+        DepartingTerminalID: 2,
+        Heading: 0,
+        Latitude: routePoint(0.6).latitude,
+        LeftDock: wsfDate(rolled + 60 * 60),
+        Longitude: routePoint(0.6).longitude,
+        Mmsi: 1,
+        ScheduledDeparture: wsfDate(rolled + 60 * 60),
+        Speed: 10,
+        VesselID: 123,
+        VesselName: "Tokitae",
+      },
+    ]);
+    vi.setSystemTime(new Date((rolled + 70 * 60) * 1000));
+    await updateVesselStatus();
+    expect(crossing.departureDelta).toBe(54 * 60);
+    expect(crossing.update).toHaveBeenCalledTimes(1);
+    expect(throughCrossing.departureDelta).toBe(54 * 60);
+    expect(throughCrossing.update).toHaveBeenCalledTimes(1);
+  });
+
   // reset mocks
   beforeEach(() => {
     scheduleModel.getAll.mockReset();
@@ -99,6 +229,11 @@ describe("vessel status GPS delay", () => {
     ingestLeaderboardVesselStatusRefresh.mockResolvedValue(undefined);
     pruneLeaderboardVesselVerificationSnapshots.mockResolvedValue(0);
     vesselModel.getAll.mockReturnValue({});
+  });
+
+  // restore clock after every status scenario
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   // verify hydrated status units
@@ -148,7 +283,6 @@ describe("vessel status GPS delay", () => {
     ]);
 
     await updateVesselStatus();
-    vi.useRealTimers();
 
     expect(vessel.update).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -224,7 +358,6 @@ describe("vessel status GPS delay", () => {
     wsfApi.wsfRequest.mockResolvedValue(undefined);
 
     await updateVesselStatus();
-    vi.useRealTimers();
 
     expect(
       vesselSnapshotIngestion.recordSkippedLeaderboardVesselStatusRefresh

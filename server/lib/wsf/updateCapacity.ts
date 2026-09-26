@@ -1,3 +1,5 @@
+import { EARLY_DEPARTURE_TOLERANCE_SECONDS } from "shared/lib/projectedTiming";
+
 import logger from "~/lib/logger";
 import { formatLogBlock } from "~/lib/logging";
 import Crossing from "~/models/Crossing";
@@ -96,6 +98,7 @@ const getCrossingDepartureDelta = (
     !Number.isFinite(vessel.departedTime) ||
     vessel.departedTime <= 0 ||
     vessel.departedTime > observedAt ||
+    vessel.departedTime < departureTime - EARLY_DEPARTURE_TOLERANCE_SECONDS ||
     !Number.isFinite(vessel.scheduledDepartureTime) ||
     vessel.scheduledDepartureTime !== departureTime ||
     String(vessel.departingTerminalId) !== departureId
@@ -178,6 +181,7 @@ export const updateCapacity = async (): Promise<Schedule[]> => {
             const previousDepartureDelta =
               crossing.departureDelta !== null &&
               Number.isFinite(crossing.departureDelta) &&
+              crossing.departureDelta >= -EARLY_DEPARTURE_TOLERANCE_SECONDS &&
               departureTime + crossing.departureDelta <= capacityReportUpdatedAt
                 ? crossing.departureDelta
                 : null;

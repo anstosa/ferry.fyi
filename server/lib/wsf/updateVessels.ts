@@ -8,7 +8,11 @@ import {
   formatTerminalList,
   formatVesselList,
 } from "~/lib/logging";
-import { calculateGpsDelayForLeg, findGpsDelayLeg } from "~/lib/wsf/gpsDelay";
+import {
+  calculateGpsDelayForLeg,
+  findGpsDelayLeg,
+  resolveVesselDepartureTime,
+} from "~/lib/wsf/gpsDelay";
 import { Schedule } from "~/models/Schedule";
 import { Terminal } from "~/models/Terminal";
 import { Vessel } from "~/models/Vessel";
@@ -33,6 +37,14 @@ interface VesselDataOverride {
   hasWiFi?: boolean;
 }
 
+interface CorrectedDepartureInput {
+  departedTime: number;
+  departureTerminalId: number | string;
+  departureTime: number;
+  schedules: Schedule[];
+  vesselId: string;
+}
+
 // vessel metadata overrides
 const VESSEL_OVERRIDES: Record<string, VesselDataOverride> =
   VESSEL_DATA_OVERRIDES;
@@ -47,6 +59,46 @@ const pruneLeaderboardVesselHistory = async (nowMs: number): Promise<void> => {
   } catch {
     logger.info("Leaderboard vessel snapshot prune failed");
   }
+};
+
+// persist the departure on every destination of a through-sailing
+const persistCorrectedDeparture = async ({
+  departedTime,
+  departureTerminalId,
+  departureTime,
+  schedules,
+  vesselId,
+}: CorrectedDepartureInput): Promise<void> => {
+  const seenCrossings = new Set<object>();
+  const crossingUpdates: Array<Promise<unknown>> = [];
+  // collect every crossing for this departure event
+  for (const schedule of schedules) {
+    // match the original departure terminal
+    if (schedule.terminalId !== String(departureTerminalId)) {
+      continue;
+    }
+    const correctedSlot = schedule.getSlot(departureTime);
+    const correctedCrossing = correctedSlot?.crossing;
+    // require an assigned and not-yet-visited crossing
+    if (
+      correctedSlot?.vessel?.id !== vesselId ||
+      !correctedCrossing ||
+      seenCrossings.has(correctedCrossing)
+    ) {
+      continue;
+    }
+    seenCrossings.add(correctedCrossing);
+    // skip unchanged history
+    if (correctedCrossing.departureDelta === departedTime - departureTime) {
+      continue;
+    }
+    crossingUpdates.push(
+      correctedCrossing.update({
+        departureDelta: departedTime - departureTime,
+      })
+    );
+  }
+  await Promise.all(crossingUpdates);
 };
 
 // update vessel metadata
@@ -156,6 +208,7 @@ export const updateVesselStatus = async (): Promise<any> => {
   let skippedVessels = 0;
   let updatedVessels = 0;
   let vesselsAtDock = 0;
+  const correctedCrossingUpdates: Array<Promise<void>> = [];
   // hydrate each public vessel status
   vessels.forEach((VesselData) => {
     const vessel = Vessel.getByIndex(String(VesselData.VesselID));
@@ -166,7 +219,18 @@ export const updateVesselStatus = async (): Promise<any> => {
     }
     const { departureDelta: previousDepartureDelta } = vessel;
     const departedTime = wsfDateToTimestamp(VesselData.LeftDock);
-    const departureTime = wsfDateToTimestamp(VesselData.ScheduledDeparture);
+    const reportedDepartureTime = wsfDateToTimestamp(
+      VesselData.ScheduledDeparture
+    );
+    const departureTime = resolveVesselDepartureTime({
+      arrivalTerminalId: VesselData.ArrivingTerminalID,
+      departedTime,
+      departureTerminalId: VesselData.DepartingTerminalID,
+      isAtDock: VesselData.AtDock,
+      scheduledDepartureTime: reportedDepartureTime,
+      schedules,
+      vesselId: String(VesselData.VesselID),
+    });
     const estimatedArrivalTime = wsfDateToTimestamp(VesselData.Eta);
     let departureDelta: number | undefined;
     // dock event delay
@@ -174,6 +238,23 @@ export const updateVesselStatus = async (): Promise<any> => {
       departureDelta = departedTime - departureTime;
     } else {
       departureDelta = previousDepartureDelta;
+    }
+    // persist a corrected dock event beyond the vessel's next status poll
+    if (
+      departureTime &&
+      departedTime &&
+      reportedDepartureTime &&
+      departureTime !== reportedDepartureTime
+    ) {
+      correctedCrossingUpdates.push(
+        persistCorrectedDeparture({
+          departedTime,
+          departureTerminalId: VesselData.DepartingTerminalID,
+          departureTime,
+          schedules,
+          vesselId: String(VesselData.VesselID),
+        })
+      );
     }
     const gpsDelayLeg = findGpsDelayLeg({
       arrivalTerminalId: VesselData.ArrivingTerminalID,
@@ -241,6 +322,7 @@ export const updateVesselStatus = async (): Promise<any> => {
     }
     vessel.save();
   });
+  await Promise.all(correctedCrossingUpdates);
   // persist aggregate-verifiable public observations
   await ingestLeaderboardVesselStatusRefresh(vessels, { receivedAtMs });
   // enforce retained-history lifecycle

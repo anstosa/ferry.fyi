@@ -4,6 +4,7 @@ import type {
   GpsDelayDetails,
 } from "shared/contracts/vessels";
 import { constrain, round } from "shared/lib/math";
+import { EARLY_DEPARTURE_TOLERANCE_SECONDS } from "shared/lib/projectedTiming";
 
 interface GpsDelayInput {
   arrivalLocation?: MapPoint | null;
@@ -47,6 +48,14 @@ interface FindGpsDelayLegInput {
   vesselId: string;
 }
 
+interface ResolveVesselDepartureInput extends Omit<
+  FindGpsDelayLegInput,
+  "terminals"
+> {
+  departedTime?: number | null;
+  isAtDock?: boolean;
+}
+
 interface ProjectedProgress {
   distanceFromRoute: number;
   progress: number;
@@ -56,6 +65,64 @@ const EARTH_LATITUDE_MILES = 69;
 const MIN_ROUTE_MILES = 0.1;
 const LOW_CONFIDENCE_DISTANCE_MILES = 1;
 const MAX_SCHEDULE_MATCH_SECONDS = 2 * 60 * 60;
+
+// resolve a WSF timestamp rolled to the next sailing
+export const resolveVesselDepartureTime = ({
+  arrivalTerminalId,
+  departedTime,
+  departureTerminalId,
+  isAtDock,
+  scheduledDepartureTime,
+  schedules,
+  vesselId,
+}: ResolveVesselDepartureInput): number | null => {
+  const actualDepartureTime = departedTime ?? Number.NaN;
+  const reportedDepartureTime = scheduledDepartureTime ?? Number.NaN;
+  // require an underway vessel and a materially future WSF slot
+  if (
+    isAtDock !== false ||
+    !Number.isFinite(actualDepartureTime) ||
+    !Number.isFinite(reportedDepartureTime) ||
+    actualDepartureTime >=
+      reportedDepartureTime - EARLY_DEPARTURE_TOLERANCE_SECONDS ||
+    !arrivalTerminalId ||
+    !departureTerminalId
+  ) {
+    return scheduledDepartureTime ?? null;
+  }
+  const departureId = String(departureTerminalId);
+  const arrivalId = String(arrivalTerminalId);
+  const matchingSlots = schedules
+    .filter((schedule) => {
+      // preserve the reported route
+      return (
+        schedule.terminalId === departureId && schedule.mateId === arrivalId
+      );
+    })
+    .flatMap((schedule) => {
+      // collect route slots
+      return schedule.slots;
+    });
+  // require WSF's reported next slot to exist locally
+  if (!matchingSlots.some((slot) => slot.time === reportedDepartureTime)) {
+    return scheduledDepartureTime ?? null;
+  }
+  const priorSlots = matchingSlots
+    .filter((slot) => {
+      // require a matching vessel and a plausible earlier departure
+      return (
+        slot.vessel?.id === vesselId &&
+        slot.time <= actualDepartureTime &&
+        slot.time < reportedDepartureTime &&
+        reportedDepartureTime - slot.time <= MAX_SCHEDULE_MATCH_SECONDS
+      );
+    })
+    .sort((left, right) => {
+      // prefer the latest earlier slot
+      return right.time - left.time;
+    });
+  return priorSlots[0]?.time ?? scheduledDepartureTime ?? null;
+};
 
 // terminal lookup
 const findTerminalLocation = (

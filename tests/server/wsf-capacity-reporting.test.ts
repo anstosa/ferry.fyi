@@ -175,8 +175,9 @@ describe("WSF capacity reporting start", () => {
     const crossing = {
       capacityReportingStartedAt: null as number | null,
       isEmpty: vi.fn().mockReturnValue(false),
-      update: vi.fn().mockImplementation(async (values) => {
+      update: vi.fn().mockImplementation((values) => {
         Object.assign(crossing, values);
+        return Promise.resolve();
       }),
     };
     scheduleModel.getByIndex.mockReturnValue(schedule);
@@ -384,6 +385,13 @@ describe("WSF capacity reporting start", () => {
       label: "not-yet-observed departure",
       scheduledDepartureTime: DEPARTURE_AT,
     },
+    {
+      arrivingTerminalId: 14,
+      departedTime: DEPARTURE_AT - 11 * 60,
+      departingTerminalId: 5,
+      label: "rolled-forward early departure",
+      scheduledDepartureTime: DEPARTURE_AT,
+    },
   ])("does not copy delay from a $label", async (vesselStatus) => {
     vi.setSystemTime((DEPARTURE_AT + 3 * 60 * 60) * 1_000);
     const schedule = {
@@ -414,6 +422,24 @@ describe("WSF capacity reporting start", () => {
     const crossing = {
       capacityReportingStartedAt: OBSERVED_AT - 60,
       departureDelta: 45 * 60,
+      update: vi.fn().mockResolvedValue(undefined),
+    };
+    crossingModel.findOrCreate.mockResolvedValue([crossing, false]);
+    wsfApi.wsfRequest.mockResolvedValue(capacityResponse(80));
+
+    await updateCapacity();
+
+    expect(crossing.update).toHaveBeenCalledWith(
+      expect.objectContaining({ departureDelta: null })
+    );
+  });
+
+  // discard old WSF rollover artifacts
+  it("clears a stored departure more than five minutes before its slot", async () => {
+    vi.setSystemTime((DEPARTURE_AT + 10 * 60) * 1_000);
+    const crossing = {
+      capacityReportingStartedAt: OBSERVED_AT - 60,
+      departureDelta: -11 * 60,
       update: vi.fn().mockResolvedValue(undefined),
     };
     crossingModel.findOrCreate.mockResolvedValue([crossing, false]);

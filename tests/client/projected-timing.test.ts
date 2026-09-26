@@ -29,6 +29,8 @@ const makeSlot = ({
   arrivalTime,
   time,
   gpsDelayMins,
+  departedTime,
+  isAtDock,
   horsepower,
   totalCapacity,
   vesselDelayMins,
@@ -39,6 +41,8 @@ const makeSlot = ({
   arrivalTime?: string;
   delayMins?: number;
   gpsDelayMins?: number;
+  departedTime?: string;
+  isAtDock?: boolean;
   driveUpCapacity?: number;
   estimateDriveUpCapacity?: number;
   hasPassed?: boolean;
@@ -99,11 +103,129 @@ const makeSlot = ({
               source: "gps",
             },
           }),
+      ...(departedTime === undefined
+        ? {}
+        : {
+            departedTime: toSeconds(departedTime),
+            scheduledDepartureTime: toSeconds(time),
+          }),
+      ...(isAtDock === undefined ? {} : { isAtDock }),
       ...(vesselId === null ? {} : { id: vesselId }),
     },
   }) as Slot;
 
 describe("projected schedule timing", () => {
+  // observed delay on a past row
+  it("shows the observed late departure on its original passed slot", () => {
+    const slot = makeSlot({
+      delayMins: 0,
+      departedTime: "2026-06-21T10:54:00",
+      gpsDelayMins: 40,
+      hasPassed: true,
+      time: "2026-06-21T10:00:00",
+    });
+    vi.setSystemTime(toSeconds("2026-06-21T11:00:00") * 1000);
+
+    expect(getProjectedTiming({ schedule: [slot], slot }).delayMins).toBe(54);
+  });
+
+  // reject a rolled-forward future slot
+  it("does not show an implausibly early observed departure on the next slot", () => {
+    const slot = makeSlot({
+      departedTime: "2026-06-21T10:49:00",
+      hasPassed: true,
+      time: "2026-06-21T11:00:00",
+    });
+    vi.setSystemTime(toSeconds("2026-06-21T11:05:00") * 1000);
+
+    expect(getProjectedTiming({ schedule: [slot], slot }).delayMins).toBe(0);
+  });
+
+  // suppress recovery during the active crossing
+  it("does not recover delay while the same vessel is still on its late outbound leg", () => {
+    const active = makeSlot({
+      departedTime: "2026-06-21T10:54:00",
+      gpsDelayMins: 54,
+      hasPassed: true,
+      isAtDock: false,
+      time: "2026-06-21T10:00:00",
+    });
+    const next = makeSlot({ time: "2026-06-21T11:05:00" });
+    vi.setSystemTime(toSeconds("2026-06-21T11:00:00") * 1000);
+
+    expect(
+      getProjectedDelayMins({ schedule: [active, next], slot: next })
+    ).toBe(54);
+  });
+
+  // missing observed departure fallback
+  it("recovers delay when an underway vessel has no observed departure", () => {
+    const active = makeSlot({
+      gpsDelayMins: 54,
+      hasPassed: true,
+      isAtDock: false,
+      time: "2026-06-21T10:00:00",
+    });
+    const next = makeSlot({ time: "2026-06-21T11:05:00" });
+    vi.setSystemTime(toSeconds("2026-06-21T11:00:00") * 1000);
+
+    expect(
+      getProjectedDelayMins({ schedule: [active, next], slot: next })
+    ).toBe(31);
+  });
+
+  // future observed departure fallback
+  it("recovers delay when an underway vessel departure is in the future", () => {
+    const active = makeSlot({
+      departedTime: "2026-06-21T11:01:00",
+      gpsDelayMins: 54,
+      hasPassed: true,
+      isAtDock: false,
+      time: "2026-06-21T10:00:00",
+    });
+    const next = makeSlot({ time: "2026-06-21T11:05:00" });
+    vi.setSystemTime(toSeconds("2026-06-21T11:00:00") * 1000);
+
+    expect(
+      getProjectedDelayMins({ schedule: [active, next], slot: next })
+    ).toBe(31);
+  });
+
+  // implausibly early departure fallback
+  it("recovers delay when an underway vessel departure is implausibly early", () => {
+    const active = makeSlot({
+      departedTime: "2026-06-21T09:54:00",
+      gpsDelayMins: 54,
+      hasPassed: true,
+      isAtDock: false,
+      time: "2026-06-21T10:00:00",
+    });
+    const next = makeSlot({ time: "2026-06-21T11:05:00" });
+    vi.setSystemTime(toSeconds("2026-06-21T11:00:00") * 1000);
+
+    expect(
+      getProjectedDelayMins({ schedule: [active, next], slot: next })
+    ).toBe(31);
+  });
+
+  // mismatched scheduled departure fallback
+  it("recovers delay when the observed departure belongs to another slot", () => {
+    const active = makeSlot({
+      departedTime: "2026-06-21T10:54:00",
+      gpsDelayMins: 54,
+      hasPassed: true,
+      isAtDock: false,
+      time: "2026-06-21T10:00:00",
+    });
+    const next = makeSlot({ time: "2026-06-21T11:05:00" });
+    active.vessel.scheduledDepartureTime = toSeconds("2026-06-21T11:05:00");
+    vi.setSystemTime(toSeconds("2026-06-21T11:00:00") * 1000);
+
+    expect(
+      getProjectedDelayMins({ schedule: [active, next], slot: next })
+    ).toBe(31);
+  });
+
   beforeEach(() => {
     vi.useFakeTimers();
     vi.setSystemTime(
@@ -357,7 +479,10 @@ describe("projected schedule timing", () => {
     });
     const next = makeSlot({ time: "2026-06-21T11:00:00" });
 
-    const timing = getProjectedTiming({ schedule: [current, next], slot: next });
+    const timing = getProjectedTiming({
+      schedule: [current, next],
+      slot: next,
+    });
 
     expect(timing.delayMins).toBe(12);
     expect(timing.departureTime.isValid).toBe(true);

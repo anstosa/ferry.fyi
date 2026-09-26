@@ -4,6 +4,7 @@ import {
   calculateGpsDelay,
   calculateGpsDelayForLeg,
   findGpsDelayLeg,
+  resolveVesselDepartureTime,
 } from "../../server/lib/wsf/gpsDelay";
 
 const departureLocation = { latitude: 47, longitude: -122 };
@@ -20,6 +21,230 @@ const routePoint = (
 });
 
 describe("GPS delay calculation", () => {
+  // rolled WSF departure identity
+  it("keeps a very late departure on its original vessel slot after WSF rolls forward", () => {
+    const original = 15 * 60 * 60 + 35 * 60;
+    const rolled = 16 * 60 * 60 + 40 * 60;
+    const schedules = [
+      {
+        mateId: "2",
+        slots: [
+          {
+            arrivalTime: original + 20 * 60,
+            time: original,
+            vessel: { id: "123" },
+          },
+          {
+            arrivalTime: rolled + 20 * 60,
+            time: rolled,
+            vessel: { id: "123" },
+          },
+        ],
+        terminalId: "1",
+      },
+    ];
+
+    expect(
+      resolveVesselDepartureTime({
+        arrivalTerminalId: "2",
+        departedTime: 16 * 60 * 60 + 29 * 60,
+        departureTerminalId: "1",
+        isAtDock: false,
+        scheduledDepartureTime: rolled,
+        schedules,
+        vesselId: "123",
+      })
+    ).toBe(original);
+    expect(
+      resolveVesselDepartureTime({
+        arrivalTerminalId: "2",
+        departedTime: rolled - 3 * 60,
+        departureTerminalId: "1",
+        isAtDock: false,
+        scheduledDepartureTime: rolled,
+        schedules,
+        vesselId: "123",
+      })
+    ).toBe(rolled);
+  });
+
+  // non-underway and invalid observations
+  it("keeps the reported slot for docked, missing, or invalid departure observations", () => {
+    const original = 15 * 60 * 60 + 35 * 60;
+    const rolled = 16 * 60 * 60 + 40 * 60;
+    const schedules = [
+      {
+        mateId: "2",
+        slots: [
+          { time: original, vessel: { id: "123" } },
+          { time: rolled, vessel: { id: "123" } },
+        ],
+        terminalId: "1",
+      },
+    ];
+
+    expect(
+      resolveVesselDepartureTime({
+        arrivalTerminalId: "2",
+        departedTime: rolled - 10 * 60,
+        departureTerminalId: "1",
+        isAtDock: true,
+        scheduledDepartureTime: rolled,
+        schedules,
+        vesselId: "123",
+      })
+    ).toBe(rolled);
+    expect(
+      resolveVesselDepartureTime({
+        arrivalTerminalId: "2",
+        departureTerminalId: "1",
+        isAtDock: false,
+        scheduledDepartureTime: rolled,
+        schedules,
+        vesselId: "123",
+      })
+    ).toBe(rolled);
+    expect(
+      resolveVesselDepartureTime({
+        arrivalTerminalId: "2",
+        departedTime: Number.NaN,
+        departureTerminalId: "1",
+        isAtDock: false,
+        scheduledDepartureTime: rolled,
+        schedules,
+        vesselId: "123",
+      })
+    ).toBe(rolled);
+  });
+
+  // route and vessel identity fallbacks
+  it("ignores prior slots from the wrong route or vessel", () => {
+    const original = 15 * 60 * 60 + 35 * 60;
+    const rolled = 16 * 60 * 60 + 40 * 60;
+    const actual = rolled - 10 * 60;
+
+    expect(
+      resolveVesselDepartureTime({
+        arrivalTerminalId: "2",
+        departedTime: actual,
+        departureTerminalId: "1",
+        isAtDock: false,
+        scheduledDepartureTime: rolled,
+        schedules: [
+          {
+            mateId: "3",
+            slots: [
+              { time: original, vessel: { id: "123" } },
+              { time: rolled, vessel: { id: "123" } },
+            ],
+            terminalId: "1",
+          },
+        ],
+        vesselId: "123",
+      })
+    ).toBe(rolled);
+    expect(
+      resolveVesselDepartureTime({
+        arrivalTerminalId: "2",
+        departedTime: actual,
+        departureTerminalId: "1",
+        isAtDock: false,
+        scheduledDepartureTime: rolled,
+        schedules: [
+          {
+            mateId: "2",
+            slots: [
+              { time: original, vessel: { id: "other" } },
+              { time: rolled, vessel: { id: "123" } },
+            ],
+            terminalId: "1",
+          },
+        ],
+        vesselId: "123",
+      })
+    ).toBe(rolled);
+  });
+
+  // missing reported slot fallback
+  it("keeps the reported slot when that slot is absent from the route schedule", () => {
+    const original = 15 * 60 * 60 + 35 * 60;
+    const rolled = 16 * 60 * 60 + 40 * 60;
+
+    expect(
+      resolveVesselDepartureTime({
+        arrivalTerminalId: "2",
+        departedTime: rolled - 10 * 60,
+        departureTerminalId: "1",
+        isAtDock: false,
+        scheduledDepartureTime: rolled,
+        schedules: [
+          {
+            mateId: "2",
+            slots: [{ time: original, vessel: { id: "123" } }],
+            terminalId: "1",
+          },
+        ],
+        vesselId: "123",
+      })
+    ).toBe(rolled);
+  });
+
+  // stale prior slot fallback
+  it("keeps the reported slot when the prior vessel slot is over two hours old", () => {
+    const rolled = 16 * 60 * 60 + 40 * 60;
+    const stale = rolled - 2 * 60 * 60 - 1;
+
+    expect(
+      resolveVesselDepartureTime({
+        arrivalTerminalId: "2",
+        departedTime: rolled - 10 * 60,
+        departureTerminalId: "1",
+        isAtDock: false,
+        scheduledDepartureTime: rolled,
+        schedules: [
+          {
+            mateId: "2",
+            slots: [
+              { time: stale, vessel: { id: "123" } },
+              { time: rolled, vessel: { id: "123" } },
+            ],
+            terminalId: "1",
+          },
+        ],
+        vesselId: "123",
+      })
+    ).toBe(rolled);
+  });
+
+  // nearest eligible prior slot
+  it("uses the latest eligible prior vessel slot", () => {
+    const older = 15 * 60 * 60;
+    const latest = 15 * 60 * 60 + 35 * 60;
+    const rolled = 16 * 60 * 60 + 40 * 60;
+
+    expect(
+      resolveVesselDepartureTime({
+        arrivalTerminalId: "2",
+        departedTime: rolled - 10 * 60,
+        departureTerminalId: "1",
+        isAtDock: false,
+        scheduledDepartureTime: rolled,
+        schedules: [
+          {
+            mateId: "2",
+            slots: [
+              { time: older, vessel: { id: "123" } },
+              { time: latest, vessel: { id: "123" } },
+              { time: rolled, vessel: { id: "123" } },
+            ],
+            terminalId: "1",
+          },
+        ],
+        vesselId: "123",
+      })
+    ).toBe(latest);
+  });
+
   // disagreement case
   it("uses GPS progress as the primary delay when ETA and dock signals disagree", () => {
     const result = calculateGpsDelay({
