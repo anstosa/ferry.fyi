@@ -28,6 +28,7 @@ interface GpsDelaySchedule {
   mateId: string;
   slots: Array<{
     arrivalTime?: number;
+    crossing?: { departureDelta?: number | null };
     time: number;
     vessel?: { id: string };
   }>;
@@ -54,6 +55,9 @@ interface ResolveVesselDepartureInput extends Omit<
 > {
   departedTime?: number | null;
   isAtDock?: boolean;
+  now?: number;
+  terminals?: GpsDelayTerminal[];
+  vesselLocation?: MapPoint | null;
 }
 
 interface ProjectedProgress {
@@ -65,6 +69,19 @@ const EARTH_LATITUDE_MILES = 69;
 const MIN_ROUTE_MILES = 0.1;
 const LOW_CONFIDENCE_DISTANCE_MILES = 1;
 const MAX_SCHEDULE_MATCH_SECONDS = 2 * 60 * 60;
+const MAX_DOCK_DISTANCE_MILES = 0.5;
+
+// distance from the vessel to one terminal
+const getDockDistanceMiles = (left: MapPoint, right: MapPoint): number => {
+  const averageLatitude =
+    ((left.latitude + right.latitude) / 2) * (Math.PI / 180);
+  const latitudeMiles = (left.latitude - right.latitude) * EARTH_LATITUDE_MILES;
+  const longitudeMiles =
+    (left.longitude - right.longitude) *
+    EARTH_LATITUDE_MILES *
+    Math.cos(averageLatitude);
+  return Math.hypot(latitudeMiles, longitudeMiles);
+};
 
 // resolve a WSF timestamp rolled to the next sailing
 export const resolveVesselDepartureTime = ({
@@ -72,22 +89,53 @@ export const resolveVesselDepartureTime = ({
   departedTime,
   departureTerminalId,
   isAtDock,
+  now,
   scheduledDepartureTime,
   schedules,
+  terminals,
   vesselId,
+  vesselLocation,
 }: ResolveVesselDepartureInput): number | null => {
   const actualDepartureTime = departedTime ?? Number.NaN;
   const reportedDepartureTime = scheduledDepartureTime ?? Number.NaN;
-  // require an underway vessel and a materially future WSF slot
+  const observationTime = now ?? Number.NaN;
+  // require a route and a valid reported sailing
   if (
-    isAtDock !== false ||
-    !Number.isFinite(actualDepartureTime) ||
     !Number.isFinite(reportedDepartureTime) ||
-    actualDepartureTime >=
-      reportedDepartureTime - EARLY_DEPARTURE_TOLERANCE_SECONDS ||
     !arrivalTerminalId ||
     !departureTerminalId
   ) {
+    return scheduledDepartureTime ?? null;
+  }
+  // require a materially early dock event when underway
+  if (
+    isAtDock === false &&
+    (!Number.isFinite(actualDepartureTime) ||
+      actualDepartureTime >=
+        reportedDepartureTime - EARLY_DEPARTURE_TOLERANCE_SECONDS)
+  ) {
+    return scheduledDepartureTime ?? null;
+  }
+  // require a vessel still waiting at its departure terminal
+  if (isAtDock === true) {
+    const departureLocation = findTerminalLocation(
+      terminals ?? [],
+      departureTerminalId
+    );
+    const dockDistance =
+      departureLocation && vesselLocation
+        ? getDockDistanceMiles(departureLocation, vesselLocation)
+        : Number.NaN;
+    // reject stale or off-terminal dock status
+    if (
+      !Number.isFinite(observationTime) ||
+      !Number.isFinite(dockDistance) ||
+      dockDistance > MAX_DOCK_DISTANCE_MILES
+    ) {
+      return scheduledDepartureTime ?? null;
+    }
+  } else if (isAtDock !== false) {
+    // unknown dock state cannot establish the current sailing
     return scheduledDepartureTime ?? null;
   }
   const departureId = String(departureTerminalId);
@@ -112,7 +160,13 @@ export const resolveVesselDepartureTime = ({
       // require a matching vessel and a plausible earlier departure
       return (
         slot.vessel?.id === vesselId &&
-        slot.time <= actualDepartureTime &&
+        (isAtDock === true
+          ? slot.time <= observationTime &&
+            !Number.isFinite(slot.crossing?.departureDelta) &&
+            (!Number.isFinite(actualDepartureTime) ||
+              actualDepartureTime <
+                slot.time - EARLY_DEPARTURE_TOLERANCE_SECONDS)
+          : slot.time <= actualDepartureTime) &&
         slot.time < reportedDepartureTime &&
         reportedDepartureTime - slot.time <= MAX_SCHEDULE_MATCH_SECONDS
       );

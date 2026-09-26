@@ -1,4 +1,7 @@
-import { EARLY_DEPARTURE_TOLERANCE_SECONDS } from "shared/lib/projectedTiming";
+import {
+  EARLY_DEPARTURE_TOLERANCE_SECONDS,
+  isValidDepartureObservation,
+} from "shared/lib/projectedTiming";
 
 import logger from "~/lib/logger";
 import { formatLogBlock } from "~/lib/logging";
@@ -95,10 +98,11 @@ const getCrossingDepartureDelta = (
   // require a complete matching sailing status
   if (
     !vessel ||
-    !Number.isFinite(vessel.departedTime) ||
-    vessel.departedTime <= 0 ||
-    vessel.departedTime > observedAt ||
-    vessel.departedTime < departureTime - EARLY_DEPARTURE_TOLERANCE_SECONDS ||
+    !isValidDepartureObservation(
+      vessel.departedTime,
+      departureTime,
+      observedAt
+    ) ||
     !Number.isFinite(vessel.scheduledDepartureTime) ||
     vessel.scheduledDepartureTime !== departureTime ||
     String(vessel.departingTerminalId) !== departureId

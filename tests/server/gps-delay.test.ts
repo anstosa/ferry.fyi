@@ -21,6 +21,78 @@ const routePoint = (
 });
 
 describe("GPS delay calculation", () => {
+  // docked rollover before an observed departure
+  it("keeps a rolled vessel on its overdue sailing while loading at the origin", () => {
+    const original = 15 * 60 * 60 + 35 * 60;
+    const rolled = 16 * 60 * 60 + 40 * 60;
+    const schedules = [
+      {
+        mateId: "2",
+        slots: [
+          {
+            crossing: { departureDelta: null },
+            time: original,
+            vessel: { id: "123" },
+          },
+          { time: rolled, vessel: { id: "123" } },
+        ],
+        terminalId: "1",
+      },
+    ];
+    const input = {
+      arrivalTerminalId: "2",
+      departedTime: original - 60 * 60,
+      departureTerminalId: "1",
+      isAtDock: true,
+      now: 16 * 60 * 60 + 20 * 60,
+      scheduledDepartureTime: rolled,
+      schedules,
+      terminals: [
+        { id: "1", location: departureLocation },
+        { id: "2", location: arrivalLocation },
+      ],
+      vesselId: "123",
+    };
+
+    expect(
+      resolveVesselDepartureTime({
+        ...input,
+        vesselLocation: departureLocation,
+      })
+    ).toBe(original);
+    expect(
+      resolveVesselDepartureTime({
+        ...input,
+        vesselLocation: arrivalLocation,
+      })
+    ).toBe(rolled);
+    expect(
+      resolveVesselDepartureTime({
+        ...input,
+        departedTime: original + 54 * 60,
+        vesselLocation: departureLocation,
+      })
+    ).toBe(rolled);
+    expect(
+      resolveVesselDepartureTime({
+        ...input,
+        schedules: [
+          {
+            ...schedules[0],
+            slots: [
+              {
+                ...schedules[0].slots[0],
+                crossing: { departureDelta: 54 * 60 },
+              },
+              schedules[0].slots[1],
+            ],
+          },
+        ],
+        vesselLocation: departureLocation,
+      })
+    ).toBe(rolled);
+  });
+
   // rolled WSF departure identity
   it("keeps a very late departure on its original vessel slot after WSF rolls forward", () => {
     const original = 15 * 60 * 60 + 35 * 60;

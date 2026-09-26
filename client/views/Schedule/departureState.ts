@@ -1,6 +1,6 @@
 import { DateTime } from "luxon";
 import type { Slot } from "shared/contracts/schedules";
-import { EARLY_DEPARTURE_TOLERANCE_SECONDS } from "shared/lib/projectedTiming";
+import { isValidDepartureObservation } from "shared/lib/projectedTiming";
 
 import type { ProjectedTiming } from "./projectedTiming";
 
@@ -24,9 +24,7 @@ export const hasSailingDeparted = ({
     !timing.isCancelled &&
     liveDepartureTime === slot.time &&
     (!Number.isFinite(departedTime) ||
-      ((departedTime as number) >=
-        slot.time - EARLY_DEPARTURE_TOLERANCE_SECONDS &&
-        (departedTime as number) <= time.toSeconds())) &&
+      isValidDepartureObservation(departedTime, slot.time, time.toSeconds())) &&
     typeof isAtDock === "boolean";
   // active sailing guard
   if (hasMatchingLiveLeg) {

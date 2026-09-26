@@ -15,6 +15,18 @@ const SPEED_RECOVERY_WEIGHT = 1.5;
 const WSF_SERVICE_DAY_START_HOUR = 3;
 const WSF_SERVICE_ZONE = "America/Los_Angeles";
 
+// validate a dock event for one scheduled sailing
+export const isValidDepartureObservation = (
+  departedTime: number | null | undefined,
+  scheduledTime: number,
+  observedAt: number
+): departedTime is number =>
+  typeof departedTime === "number" &&
+  Number.isFinite(departedTime) &&
+  departedTime > 0 &&
+  departedTime >= scheduledTime - EARLY_DEPARTURE_TOLERANCE_SECONDS &&
+  departedTime <= observedAt;
+
 export interface ProjectedTiming {
   delayMins: number;
   departureTime: DateTime;
@@ -91,14 +103,15 @@ const getObservedVesselDelayMins = (slot: Slot): number | null => {
   // require an observed departure on this slot
   if (
     scheduledDepartureTime !== slot.time ||
-    !Number.isFinite(departedTime) ||
-    (departedTime as number) <= 0 ||
-    (departedTime as number) < slot.time - EARLY_DEPARTURE_TOLERANCE_SECONDS ||
-    (departedTime as number) > DateTime.local().toSeconds()
+    !isValidDepartureObservation(
+      departedTime,
+      slot.time,
+      DateTime.local().toSeconds()
+    )
   ) {
     return null;
   }
-  return round(((departedTime as number) - slot.time) / 60);
+  return round((departedTime - slot.time) / 60);
 };
 
 // active delay minutes

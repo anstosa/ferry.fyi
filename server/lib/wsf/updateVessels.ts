@@ -227,28 +227,40 @@ export const updateVesselStatus = async (): Promise<any> => {
       departedTime,
       departureTerminalId: VesselData.DepartingTerminalID,
       isAtDock: VesselData.AtDock,
+      now: now.toSeconds(),
       scheduledDepartureTime: reportedDepartureTime,
       schedules,
+      terminals,
       vesselId: String(VesselData.VesselID),
+      vesselLocation: {
+        latitude: VesselData.Latitude,
+        longitude: VesselData.Longitude,
+      },
     });
+    // keep the prior dock event out of an unobserved sailing
+    const isUnobservedDockedRollover =
+      VesselData.AtDock && departureTime !== reportedDepartureTime;
+    const observedDepartedTime = isUnobservedDockedRollover
+      ? null
+      : departedTime;
     const estimatedArrivalTime = wsfDateToTimestamp(VesselData.Eta);
     let departureDelta: number | undefined;
     // dock event delay
-    if (departureTime && departedTime) {
-      departureDelta = departedTime - departureTime;
+    if (departureTime && observedDepartedTime) {
+      departureDelta = observedDepartedTime - departureTime;
     } else {
       departureDelta = previousDepartureDelta;
     }
     // persist a corrected dock event beyond the vessel's next status poll
     if (
       departureTime &&
-      departedTime &&
+      observedDepartedTime &&
       reportedDepartureTime &&
       departureTime !== reportedDepartureTime
     ) {
       correctedCrossingUpdates.push(
         persistCorrectedDeparture({
-          departedTime,
+          departedTime: observedDepartedTime,
           departureTerminalId: VesselData.DepartingTerminalID,
           departureTime,
           schedules,
@@ -266,7 +278,9 @@ export const updateVesselStatus = async (): Promise<any> => {
     });
     // calculate dock delay
     const dockDelaySeconds =
-      departureTime && departedTime ? departedTime - departureTime : null;
+      departureTime && observedDepartedTime
+        ? observedDepartedTime - departureTime
+        : null;
     // calculate eta delay
     const etaDelaySeconds =
       gpsDelayLeg && estimatedArrivalTime
@@ -293,7 +307,8 @@ export const updateVesselStatus = async (): Promise<any> => {
     const data = {
       arrivingTerminalId: VesselData.ArrivingTerminalID,
       departingTerminalId: VesselData.DepartingTerminalID,
-      departedTime,
+      // do not expose a prior sailing's dock event as the overdue departure
+      departedTime: observedDepartedTime ?? undefined,
       departureDelta,
       scheduledDepartureTime: departureTime,
       gpsDelay: gpsDelay ?? undefined,
