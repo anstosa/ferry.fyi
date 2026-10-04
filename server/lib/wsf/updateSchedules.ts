@@ -61,6 +61,36 @@ const getScheduleVessel = (
   } as Vessel;
 };
 
+// collect trustworthy schedule names
+const getKnownVesselNames = (
+  vessels: Array<{
+    id: number | string;
+    name?: string | null;
+  }>
+): Map<string, string> => {
+  const names = new Map<string, string>();
+  // index non-synthetic names by vessel id
+  vessels.forEach(({ id, name }) => {
+    // missing or synthetic name guard
+    if (!name || name === `Vessel ${id}`) {
+      return;
+    }
+    names.set(String(id), name);
+  });
+  return names;
+};
+
+// prefer reported then schedule-local names
+const getCrossingVessel = (
+  vesselId: number | string,
+  vesselName: string | null | undefined,
+  knownVesselNames: Map<string, string>
+): Vessel =>
+  getScheduleVessel(
+    vesselId,
+    vesselName ?? knownVesselNames.get(String(vesselId))
+  );
+
 // scheduled arrival fallback
 const getEstimatedScheduledArrivalTime = (
   departureTime: number,
@@ -83,6 +113,10 @@ const updateTiming = (): void => {
   const now = DateTime.local();
   // refresh cached schedules
   values(Schedule.getAll()).forEach((schedule) => {
+    const knownVesselNames = getKnownVesselNames(
+      // preserve known names before crossing assignments replace cached vessels
+      schedule.slots.map(({ vessel }) => vessel).filter(Boolean)
+    );
     // refresh each sailing
     schedule.slots.forEach((slot) => {
       // arrival time backfill
@@ -96,7 +130,11 @@ const updateTiming = (): void => {
       const { crossing, time } = slot;
       // terminal reports override stale scheduled assignments
       const vessel = crossing?.vesselId
-        ? getScheduleVessel(crossing.vesselId, crossing.vesselName ?? undefined)
+        ? getCrossingVessel(
+            crossing.vesselId,
+            crossing.vesselName,
+            knownVesselNames
+          )
         : Vessel.getByIndex(slot.vessel?.id);
       // missing vessel guard
       if (!vessel) {
@@ -339,6 +377,13 @@ const updateSchedulePair = async (
   const {
     TerminalCombos: [{ Times }],
   } = response;
+  const knownVesselNames = getKnownVesselNames(
+    // index official names for every scheduled vessel including swapped assignments
+    Times.map(({ VesselID, VesselName }) => ({
+      id: VesselID,
+      name: VesselName,
+    }))
+  );
   const slots = await Promise.all(
     // reconcile each scheduled sailing with its crossing
     Times.map(
@@ -365,9 +410,10 @@ const updateSchedulePair = async (
         });
         // terminal reports override stale scheduled assignments
         const vessel = crossing?.vesselId
-          ? getScheduleVessel(
+          ? getCrossingVessel(
               crossing.vesselId,
-              crossing.vesselName ?? undefined
+              crossing.vesselName,
+              knownVesselNames
             )
           : getScheduleVessel(VesselID, VesselName);
         return {

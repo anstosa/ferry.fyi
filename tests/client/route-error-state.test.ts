@@ -439,6 +439,85 @@ describe("Route route-load errors", () => {
     expect(scheduleView?.getAttribute("data-source-updated-at")).toBe("1");
   });
 
+  // keep an older same-route GET from replacing a newer cache refresh
+  it("retains a newer refreshed schedule after an older GET resolves", async () => {
+    const olderGet = deferred<{
+      schedule: {
+        date: string;
+        mateId: string;
+        slots: [];
+        sourceUpdatedAt: number;
+        terminalId: string;
+      };
+      timestamp: number;
+    }>();
+    const newerRefresh = deferred<{
+      schedule: {
+        date: string;
+        mateId: string;
+        slots: [];
+        sourceUpdatedAt: number;
+        terminalId: string;
+      };
+      timestamp: number;
+    }>();
+    getSchedule.mockReturnValue(olderGet.promise);
+    refreshSchedule.mockReturnValue(newerRefresh.promise);
+    const { container, date } = await renderSeededRoute({
+      scheduleTimestamp: 2_000_000_000,
+      view: "schedule",
+    });
+    const scheduleView = container.querySelector("[data-checked-at]");
+    const checkButton = [...container.querySelectorAll("button")].find(
+      (button) => button.textContent === "Check schedule"
+    );
+
+    expect(scheduleView?.getAttribute("data-checked-at")).toBe("2000000000");
+    expect(scheduleView?.getAttribute("data-source-updated-at")).toBe("1");
+    await act(async () => {
+      checkButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await Promise.resolve();
+    });
+    expect(refreshSchedule).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      newerRefresh.resolve({
+        schedule: {
+          date,
+          mateId: "terminal-b",
+          slots: [],
+          sourceUpdatedAt: 3,
+          terminalId: "terminal-a",
+        },
+        timestamp: 2_000_000_003,
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(scheduleView?.getAttribute("data-checked-at")).toBe("2000000003");
+    expect(scheduleView?.getAttribute("data-source-updated-at")).toBe("3");
+
+    await act(async () => {
+      olderGet.resolve({
+        schedule: {
+          date,
+          mateId: "terminal-b",
+          slots: [],
+          sourceUpdatedAt: 2,
+          terminalId: "terminal-a",
+        },
+        timestamp: 2_000_000_002,
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(scheduleView?.getAttribute("data-checked-at")).toBe("2000000003");
+    expect(scheduleView?.getAttribute("data-source-updated-at")).toBe("3");
+    expect(container.textContent).not.toContain(
+      "Could not refresh the schedule. Showing saved data."
+    );
+  });
+
   it("retains seeded assignment A when the exact-route live schedule fails", async () => {
     const liveSchedule = deferred<never>();
     getSchedule.mockReturnValue(liveSchedule.promise);

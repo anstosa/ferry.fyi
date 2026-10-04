@@ -5,10 +5,12 @@ import {
   apiNotFound,
   createApiCorsMiddleware,
   createApiRateLimitMiddleware,
+  denyUntrustedPaidProviderOrigin,
   denyUntrustedSensitivePreflight,
   wrapApiResponse,
 } from "~/lib/httpApiPolicy";
 
+import { addressSuggestionRouter } from "./addressSuggestions";
 import { adminRouter, preventAdminCaching } from "./admin";
 import { adsRouter } from "./ads";
 import { assignOptionalAuthUser, requireAuth } from "./auth";
@@ -20,6 +22,7 @@ import { iosMigrationRouter } from "./iosMigration";
 import { automaticLeaderboardNativeRouter } from "./leaderboardAutomaticNative";
 import { leaderboardRouter } from "./leaderboards";
 import { otaRouter } from "./ota";
+import { sailingRecommendationRouter } from "./sailingRecommendations";
 import { scheduleRouter } from "./schedule";
 import { supporterRouter } from "./supporter";
 import { terminalRouter } from "./terminals";
@@ -36,6 +39,7 @@ apiRouter.use("/ota", otaRouter);
 // wrap all routes with wsf status middleware
 apiRouter.use(wrapApiResponse);
 apiRouter.use(denyUntrustedSensitivePreflight);
+apiRouter.use(denyUntrustedPaidProviderOrigin);
 apiRouter.use(createApiRateLimitMiddleware());
 
 apiRouter.use("/cameras", cameraRouter);
@@ -43,6 +47,11 @@ apiRouter.use("/ads", assignOptionalAuthUser, adsRouter);
 apiRouter.use("/vessels", vesselRouter);
 apiRouter.use("/terminals", terminalRouter);
 apiRouter.use("/schedule", scheduleRouter);
+apiRouter.use(
+  "/sailing-recommendations/address-suggestions",
+  addressSuggestionRouter
+);
+apiRouter.use("/sailing-recommendations", sailingRecommendationRouter);
 apiRouter.use("/fares", fareRouter);
 apiRouter.use("/features", featureRouter);
 apiRouter.use("/tickets", assignOptionalAuthUser, ticketRouter);

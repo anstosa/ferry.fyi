@@ -14,7 +14,8 @@ export type SeoView =
   | "map"
   | "alerts"
   | "subscribe"
-  | "fare";
+  | "fare"
+  | "navigation";
 
 export interface SeoMetadata {
   canonicalPath: string;
@@ -59,6 +60,7 @@ export const SEO_ROUTE_VIEWS: readonly SeoView[] = [
   "alerts",
   "subscribe",
   "fare",
+  "navigation",
 ];
 export const SEO_INDEXABLE_ROUTE_VIEWS = [
   "cameras",
@@ -304,6 +306,7 @@ export const getSeoProfile = (host: string, pathname: string): SeoProfile => {
   return { metadata: getSeoMetadata(pathname) };
 };
 
+/** builds metadata for one directional route view */
 export const getRouteSeoMetadata = (
   terminal: SeoRouteTerminal,
   mate: SeoTerminal,
@@ -319,7 +322,9 @@ export const getRouteSeoMetadata = (
   return {
     canonicalPath,
     description: routePage.description,
-    robots: isDated ? "noindex,follow" : "index,follow",
+    // keep leave-now navigation pages out of search indexes
+    robots:
+      isDated || view === "navigation" ? "noindex,follow" : "index,follow",
     schema: getWebPageSchema(
       routePage.title,
       routePage.description,
@@ -329,6 +334,7 @@ export const getRouteSeoMetadata = (
   };
 };
 
+// select purpose-specific route copy
 const getRoutePageCopy = (
   routeName: string,
   view: Exclude<SeoView, "terminal">
@@ -358,6 +364,12 @@ const getRoutePageCopy = (
       return {
         title: `${routeName} Ferry Fares - ${SEO_APP_NAME}`,
         description: `Browse official Washington State Ferries fare options and build a trip estimate for the ${routeName} route, travel date, and rider mix.`,
+      };
+    // describe the browser-only navigation tool without exposing trip inputs
+    case "navigation":
+      return {
+        title: `${routeName} What Boat Will I Make? - ${SEO_APP_NAME}`,
+        description: `Use Ferry FYI Navigation to estimate what boat you will make on the ${routeName} route from your current travel time and expected vehicle capacity.`,
       };
     case "schedule":
       return {

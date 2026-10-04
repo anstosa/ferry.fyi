@@ -417,7 +417,37 @@ export function startScheduler(): void {
   );
 }
 
-// start server
+// schedule lease-guarded boat evidence and usage maintenance
+export function scheduleBoatMaintenance(): void {
+  scheduleJob(
+    { hour: 4, minute: 35, second: 0, tz: "America/Los_Angeles" },
+    safeScheduledTask("capacity observation retention", () =>
+      runOperationInBackground("capacity-observation-retention")
+    )
+  );
+  // leave Google monitoring untouched until external federation is configured
+  if (
+    !process.env.GOOGLE_MONITORING_PROJECT_ID ||
+    !process.env.GOOGLE_WORKLOAD_IDENTITY_PROVIDER ||
+    !process.env.AWS_REGION
+  ) {
+    return;
+  }
+  scheduleJob(
+    { minute: [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55], second: 15 },
+    safeScheduledTask("Google Routes usage export", () =>
+      runOperationInBackground("google-routes-usage-export")
+    )
+  );
+  scheduleJob(
+    { hour: 0, minute: 0, second: 0, tz: "America/Los_Angeles" },
+    safeScheduledTask("Google Routes billing month reset", () =>
+      runOperationInBackground("google-routes-usage-export")
+    )
+  );
+}
+
+// initialize the web runtime after database readiness
 export async function startServer(): Promise<void> {
   reportRuntimeLifecycleTelemetry("startup");
   const artifacts = await loadProductionSsrArtifacts(__dirname);
@@ -433,6 +463,7 @@ export async function startServer(): Promise<void> {
   });
   await dbInit;
   initializeWsfSeed();
+  scheduleBoatMaintenance();
   scheduleAdExposureCleanup();
   scheduleAutomaticLeaderboardCleanup();
   scheduleSupporterMaintenance();

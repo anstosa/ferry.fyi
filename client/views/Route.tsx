@@ -14,6 +14,7 @@ import type { Terminal } from "shared/contracts/terminals";
 import type { Vessel } from "shared/contracts/vessels";
 import { findWhere } from "shared/lib/arrays";
 import { values } from "shared/lib/objects";
+import { getRecommendationServiceDate } from "shared/lib/sailingRecommendationRevision";
 import {
   getDatedSeoTitle,
   getRouteSeoMetadata,
@@ -66,6 +67,10 @@ const loadMap = () =>
     default: Map,
   }));
 const Map = React.lazy(loadMap);
+// load the leave-now form only when its route tab opens
+const loadNavigation = () =>
+  import("./Navigation").then(({ Navigation }) => ({ default: Navigation }));
+const Navigation = React.lazy(loadNavigation);
 const loadSchedule = () =>
   import("./Schedule").then(({ Schedule }) => ({ default: Schedule }));
 const Schedule = React.lazy(loadSchedule);
@@ -81,6 +86,7 @@ type View = RouteView;
 
 const normalizePath = (path: string): string => path.replace(/\/+$/, "") || "/";
 
+// select the lazy tab for a terminal route
 const routeViewForPath = (pathname: string): View => {
   const parts = pathname.split("/").filter(Boolean);
   const view = parts[parts.length - 1];
@@ -88,6 +94,7 @@ const routeViewForPath = (pathname: string): View => {
     view === "terminal" ||
     view === "fare" ||
     view === "map" ||
+    view === "navigation" ||
     view === "alerts" ||
     view === "subscribe"
     ? view
@@ -97,6 +104,10 @@ const routeViewForPath = (pathname: string): View => {
 /** Load the route shell and the selected tab before replacing a seeded page. */
 export const preloadRouteView = async (pathname: string): Promise<void> => {
   switch (routeViewForPath(pathname)) {
+    // preload the leave-now form for direct navigation links
+    case "navigation":
+      await loadNavigation();
+      return;
     case "cameras":
       await loadCameras();
       return;
@@ -122,11 +133,12 @@ export const preloadRouteView = async (pathname: string): Promise<void> => {
 
 type TodayOnlyView = Exclude<
   View,
-  "schedule" | "terminal" | "subscribe" | "fare"
+  "schedule" | "terminal" | "subscribe" | "fare" | "navigation"
 >;
 
 const TAB_ORDER: View[] = [
   "schedule",
+  "navigation",
   "fare",
   "cameras",
   "terminal",
@@ -236,6 +248,7 @@ interface Props {
   view: View;
 }
 
+// coordinate the selected terminal pair and its route tab
 export const Route = ({
   onTerminalChange,
   onMateChange,
@@ -294,6 +307,7 @@ export const Route = ({
   const scheduleIdentity = `${navigationIdentity}:${date.toISODate() ?? ""}`;
   const activeScheduleIdentityRef = useRef(scheduleIdentity);
   activeScheduleIdentityRef.current = scheduleIdentity;
+  const scheduleRequestGeneration = useRef(0);
   const [scheduleState, setScheduleState] = useState<{
     checkedAt: number | null;
     identity: string;
@@ -390,6 +404,10 @@ export const Route = ({
   }, []);
 
   const isToday = date.toISODate() === today.toISODate();
+  const recommendationServiceDate = getRecommendationServiceDate(
+    time.toSeconds()
+  );
+  const isRecommendationDay = date.toISODate() === recommendationServiceDate;
 
   const formattedDate = [date.toFormat("ccc")];
 
@@ -554,12 +572,14 @@ export const Route = ({
     setDateState({ date: DateTime.local(), identity: navigationIdentity });
   };
 
+  // keep only the latest schedule read for this route and ferry day
   const updateSchedule = async (): Promise<void> => {
     // terminal readiness guard
     if (!terminal || !mate) {
       return;
     }
     const requestIdentity = scheduleIdentity;
+    const generation = ++scheduleRequestGeneration.current;
     const isScheduleForRequest =
       schedule?.terminalId === terminal.id &&
       schedule?.mateId === mate.id &&
@@ -580,8 +600,11 @@ export const Route = ({
         await getSchedule(terminal, mate, date)
       );
       const { schedule, timestamp } = response;
-      // stale response guard
-      if (requestIdentity !== activeScheduleIdentityRef.current) {
+      // reject old completions including overlapping reads for this route
+      if (
+        requestIdentity !== activeScheduleIdentityRef.current ||
+        generation !== scheduleRequestGeneration.current
+      ) {
         return;
       }
       setScheduleState({
@@ -596,8 +619,11 @@ export const Route = ({
         setTime(DateTime.fromSeconds(timestamp));
       }
     } catch (error) {
-      // stale error guard
-      if (requestIdentity !== activeScheduleIdentityRef.current) {
+      // reject errors from superseded reads
+      if (
+        requestIdentity !== activeScheduleIdentityRef.current ||
+        generation !== scheduleRequestGeneration.current
+      ) {
         return;
       }
       const nextError =
@@ -605,18 +631,24 @@ export const Route = ({
       console.error(nextError);
       setScheduleErrorState({ error: nextError, identity: requestIdentity });
     } finally {
-      // latest request guard
-      if (requestIdentity === activeScheduleIdentityRef.current) {
+      // settle only the newest matching read
+      if (
+        requestIdentity === activeScheduleIdentityRef.current &&
+        generation === scheduleRequestGeneration.current
+      ) {
         setUpdatingIdentity(null);
       }
     }
   };
 
-  const refreshScheduleFromCache = async (): Promise<void> => {
+  // return the fresh cached snapshot for each explicit navigation estimate
+  const refreshScheduleFromCache = async (): Promise<ScheduleClass | null> => {
+    // skip incomplete directions
     if (!terminal || !mate) {
-      return;
+      return null;
     }
     const requestIdentity = scheduleIdentity;
+    const generation = ++scheduleRequestGeneration.current;
     setUpdatingIdentity(requestIdentity);
     setScheduleErrorState({ error: null, identity: requestIdentity });
     try {
@@ -624,8 +656,12 @@ export const Route = ({
         await refreshSchedule(terminal, mate, date)
       );
       const { schedule: refreshedSchedule } = response;
-      if (requestIdentity !== activeScheduleIdentityRef.current) {
-        return;
+      // discard a superseded response or a departed route
+      if (
+        requestIdentity !== activeScheduleIdentityRef.current ||
+        generation !== scheduleRequestGeneration.current
+      ) {
+        return null;
       }
       setScheduleState({
         checkedAt: getScheduleCheckedAt(response),
@@ -633,16 +669,26 @@ export const Route = ({
         isLive: true,
         schedule: refreshedSchedule,
       });
+      return refreshedSchedule;
     } catch (error) {
-      if (requestIdentity !== activeScheduleIdentityRef.current) {
-        return;
+      // discard a superseded response or a departed route
+      if (
+        requestIdentity !== activeScheduleIdentityRef.current ||
+        generation !== scheduleRequestGeneration.current
+      ) {
+        return null;
       }
       const nextError =
         error instanceof Error ? error : new Error(String(error));
       console.error(nextError);
       setScheduleErrorState({ error: nextError, identity: requestIdentity });
+      return null;
     } finally {
-      if (requestIdentity === activeScheduleIdentityRef.current) {
+      // settle only the newest matching cache read
+      if (
+        requestIdentity === activeScheduleIdentityRef.current &&
+        generation === scheduleRequestGeneration.current
+      ) {
         setUpdatingIdentity(null);
       }
     }
@@ -668,6 +714,7 @@ export const Route = ({
     view === "terminal" ||
     view === "subscribe" ||
     view === "fare" ||
+    view === "navigation" ||
     isToday
       ? null
       : view;
@@ -760,13 +807,45 @@ export const Route = ({
           departureTerminalId={terminal?.id}
           isRefreshing={isUpdating}
           loadError={scheduleError}
+          navigationPath={
+            // keep leave-now entry on the current ferry day
+            terminal && mate && isRecommendationDay
+              ? getPath({ view: "navigation" })
+              : undefined
+          }
           onReload={updateSchedule}
-          onRefresh={refreshScheduleFromCache}
+          onRefresh={async () => {
+            // preserve the schedule tab's void callback contract
+            await refreshScheduleFromCache();
+          }}
           route={selectedRoute}
           time={time}
           schedule={displayedSchedule}
         />
       </>
+    );
+  } else if (view === "navigation" && terminal && mate) {
+    // render form and results outside the schedule tab
+    content = (
+      <Navigation
+        checkedAt={scheduleCheckedAt}
+        isCurrentServiceDay={isRecommendationDay}
+        isRefreshing={isUpdating}
+        loadError={scheduleError}
+        mate={mate}
+        onGoToCurrentDay={() => {
+          // choose the current ferry day without collecting an origin
+          setDateState({
+            date: DateTime.fromISO(recommendationServiceDate),
+            identity: navigationIdentity,
+          });
+        }}
+        onRefresh={refreshScheduleFromCache}
+        onReload={updateSchedule}
+        schedule={displayedSchedule}
+        setRoute={setRoute}
+        terminal={terminal}
+      />
     );
   } else if (view === "cameras") {
     content = <Cameras mate={mate} setRoute={setRoute} terminal={terminal} />;

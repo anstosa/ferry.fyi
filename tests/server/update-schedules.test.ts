@@ -195,8 +195,8 @@ describe("schedule update helpers", () => {
       const suquamish = { id: "75", name: "Suquamish" };
       const vessels = { "15": issaquah, "75": suquamish };
       const crossings = new Map([
-        [noon, { vesselId: "75", vesselName: "Suquamish" }],
-        [halfPastNoon, { vesselId: "15", vesselName: "Issaquah" }],
+        [noon, { vesselId: "75", vesselName: null }],
+        [halfPastNoon, { vesselId: "15", vesselName: null }],
       ]);
       const schedule = {
         key: "14-5-2026-09-08",
@@ -281,6 +281,123 @@ describe("schedule update helpers", () => {
       expect(wsfApi.wsfRequest).toHaveBeenCalledTimes(4);
     }
   );
+
+  // same-vessel name preservation
+  it("keeps a scheduled vessel name when its crossing omits the same vessel's name", async () => {
+    const sailingTime = toSeconds("2026-10-17T12:00:00");
+    const flushDate = "/Date(1792256400000-0700)/";
+    const crossing = {
+      hasPassed: () => false,
+      vesselId: "25",
+      vesselName: null,
+    };
+    const schedule = {
+      key: "14-5-2026-10-17",
+      mateId: "5",
+      save: vi.fn(),
+      slots: [],
+      terminalId: "14",
+      update: vi.fn(),
+    };
+    scheduleModel.generateKey.mockReturnValue(schedule.key);
+    scheduleModel.getByIndex.mockReturnValue(null);
+    scheduleModel.getAll.mockReturnValue({ [schedule.key]: schedule });
+    // hydrate the in-memory cache
+    scheduleModel.getOrCreate.mockImplementation((_key, data) => {
+      Object.assign(schedule, data);
+      return [schedule, true];
+    });
+    vesselModel.getByIndex.mockReturnValue(null);
+    crossingModel.findOne.mockResolvedValue(crossing);
+    wsfApi.wsfRequest
+      .mockResolvedValueOnce(flushDate)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        TerminalCombos: [
+          {
+            Times: [
+              {
+                DepartingTime: `/Date(${sailingTime * 1000}-0700)/`,
+                LoadingRule: 3,
+                VesselID: 25,
+                VesselName: "Puyallup",
+              },
+            ],
+          },
+        ],
+      });
+
+    await updateSchedules("2026-10-17", "14", "5");
+
+    expect(schedule.slots).toEqual([
+      expect.objectContaining({
+        vessel: expect.objectContaining({ id: "25", name: "Puyallup" }),
+      }),
+    ]);
+
+    scheduleModel.getByIndex.mockReturnValue(schedule);
+    wsfApi.wsfRequest.mockResolvedValueOnce(flushDate);
+
+    await updateSchedules("2026-10-17", "14", "5");
+
+    expect(schedule.slots).toEqual([
+      expect.objectContaining({
+        vessel: expect.objectContaining({ id: "25", name: "Puyallup" }),
+      }),
+    ]);
+    expect(wsfApi.wsfRequest).toHaveBeenCalledTimes(4);
+  });
+
+  // different-vessel name isolation
+  it("does not borrow the scheduled name for a different unnamed crossing vessel", async () => {
+    const sailingTime = toSeconds("2026-10-18T12:00:00");
+    const schedule = {
+      key: "14-5-2026-10-18",
+      mateId: "5",
+      save: vi.fn(),
+      slots: [],
+      terminalId: "14",
+    };
+    scheduleModel.generateKey.mockReturnValue(schedule.key);
+    scheduleModel.getByIndex.mockReturnValue(null);
+    scheduleModel.getAll.mockReturnValue({ [schedule.key]: schedule });
+    // hydrate the in-memory cache
+    scheduleModel.getOrCreate.mockImplementation((_key, data) => {
+      Object.assign(schedule, data);
+      return [schedule, true];
+    });
+    vesselModel.getByIndex.mockReturnValue(null);
+    crossingModel.findOne.mockResolvedValue({
+      hasPassed: () => false,
+      vesselId: "75",
+      vesselName: null,
+    });
+    wsfApi.wsfRequest
+      .mockResolvedValueOnce("/Date(1792342800000-0700)/")
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        TerminalCombos: [
+          {
+            Times: [
+              {
+                DepartingTime: `/Date(${sailingTime * 1000}-0700)/`,
+                LoadingRule: 3,
+                VesselID: 25,
+                VesselName: "Puyallup",
+              },
+            ],
+          },
+        ],
+      });
+
+    await updateSchedules("2026-10-18", "14", "5");
+
+    expect(schedule.slots).toEqual([
+      expect.objectContaining({
+        vessel: expect.objectContaining({ id: "75", name: "Vessel 75" }),
+      }),
+    ]);
+  });
 
   // missing vessel fallback
   it("keeps scheduled sailings when vessel metadata is still warming", async () => {

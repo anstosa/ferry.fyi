@@ -37,6 +37,7 @@ export type PublicSsrRouteId =
   | "terminal-map"
   | "terminal-alerts"
   | "terminal-subscribe"
+  | "terminal-navigation"
   | "mate-schedule"
   | "mate-cameras"
   | "mate-details"
@@ -44,6 +45,7 @@ export type PublicSsrRouteId =
   | "mate-map"
   | "mate-alerts"
   | "mate-subscribe"
+  | "mate-navigation"
   | "unknown-public-path";
 
 export type PublicSsrQueryName =
@@ -99,7 +101,8 @@ export type PublicSsrView =
   | "fare"
   | "map"
   | "alerts"
-  | "subscribe";
+  | "subscribe"
+  | "navigation";
 export type PublicSsrRouteParams = Partial<
   Record<"terminalSlug" | "mateSlug" | "terminalId" | "vesselId", string>
 >;

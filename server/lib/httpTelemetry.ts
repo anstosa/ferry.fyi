@@ -13,6 +13,7 @@ export type HttpRouteClass =
   | "api.automatic-native"
   | "api.authenticated"
   | "api.ota"
+  | "api.paid-provider"
   | "api.sensitive-lookup"
   | "api.upstream-refresh"
   | "asset"
@@ -59,6 +60,7 @@ const ROUTE_CLASSES = new Set<HttpRouteClass>([
   "api.automatic-native",
   "api.authenticated",
   "api.ota",
+  "api.paid-provider",
   "api.sensitive-lookup",
   "api.upstream-refresh",
   "asset",

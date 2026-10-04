@@ -48,6 +48,7 @@ interface Props {
   departureTerminalId?: string;
   isRefreshing?: boolean;
   loadError?: Error | null;
+  navigationPath?: string;
   onReload?: () => void;
   onRefresh?: () => Promise<void>;
   route?: Route;
@@ -75,12 +76,14 @@ const getLinkedSailingTime = (input?: string): number | null => {
   return sailingTime;
 };
 
+// render sailings with their current-time navigation boundary
 export const Schedule = ({
   arrivalTerminalId,
   checkedAt = null,
   departureTerminalId,
   isRefreshing = false,
   loadError,
+  navigationPath,
   onReload,
   onRefresh,
   route,
@@ -273,7 +276,7 @@ export const Schedule = ({
                   />
                 </li>
               ) : null}
-              <NowDivider />
+              <NowDivider navigationPath={navigationPath} time={time} />
             </>
           )}
           <ErrorBoundary

@@ -1,4 +1,4 @@
-import { atom, useAtom } from "jotai";
+import { atom, getDefaultStore, useAtom } from "jotai";
 import { useEffect, useMemo, useState } from "react";
 import type { PublicSsrTerminalSummary } from "shared/contracts/ssr";
 import type { Terminal } from "shared/contracts/terminals";
@@ -101,6 +101,34 @@ interface TerminalDirectoryState {
 }
 
 const terminalsAtom = atom<Terminal[] | null>(null);
+
+// refresh saved dock coordinates without leaving nested map mates stale
+export const refreshTerminalLocations = async (
+  terminalId: string
+): Promise<void> => {
+  const fresh = await get<Record<string, Terminal>>(API_TERMINALS);
+  // refuse an incomplete directory refresh
+  if (!fresh[terminalId]) {
+    throw new Error("Terminal locations could not be refreshed");
+  }
+  // update mounted references before replacing the directory snapshot
+  for (const cached of values(terminalCache)) {
+    // refresh the selected terminal and every cached mate independently
+    for (const terminal of [cached, ...(cached.mates ?? [])]) {
+      const updated = fresh[terminal.id];
+      // preserve unrelated cached terminals during a partial source update
+      if (updated) {
+        terminal.location = { ...updated.location };
+      }
+    }
+  }
+  Object.assign(terminalCache, fresh);
+  hasAll = true;
+  getDefaultStore().set(
+    terminalsAtom,
+    values(terminalCache).sort(compareTerminalsByName)
+  );
+};
 
 const useTerminalSeed = (
   enabled: boolean

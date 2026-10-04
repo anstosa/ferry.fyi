@@ -44,9 +44,9 @@ import AnchorIcon from "~/static/images/icons/solid/anchor.svg";
 import CaretDownIcon from "~/static/images/icons/solid/caret-down.svg";
 import CaretUpIcon from "~/static/images/icons/solid/caret-up.svg";
 import UserLocationIcon from "~/static/images/icons/solid/location.svg";
-import VesselIcon from "~/static/images/icons/solid/location-arrow.svg";
 import MapPinIcon from "~/static/images/icons/solid/map-marker.svg";
 import WSDOTIcon from "~/static/images/icons/wsdot.svg";
+import VesselIcon from "~/static/images/icons/wsf-ferry.svg";
 
 import { Header } from "./Header";
 
@@ -65,9 +65,25 @@ const LABEL_PLACEMENTS = {
   left: "right-full top-1/2 mr-1 -translate-y-1/2",
   right: "left-full top-1/2 ml-1 -translate-y-1/2",
 } as const;
+// search farther from crowded markers before retaining a blocked label
+const LABEL_GAPS = [4, 16, 28, 40, 52, 64];
+// apply spacing along the label's placement axis
+const LABEL_MARGIN_PROPERTIES = {
+  above: "marginBottom",
+  below: "marginTop",
+  left: "marginRight",
+  right: "marginLeft",
+} as const;
+// replace only label positioning classes
+const LABEL_PLACEMENT_CLASSES = [
+  ...new Set(
+    Object.values(LABEL_PLACEMENTS).flatMap((value) => value.split(" "))
+  ),
+];
 const MAP_LABEL_MARGIN = 4;
 const MAP_MARKER_SIZE = 30;
-const VESSEL_MARKER_HEIGHT = 36;
+// reserve the enlarged ferry footprint
+const VESSEL_MARKER_SIZE = 42 * 1.3;
 const MAP_LABEL_HEIGHT = 26;
 
 function normalizePath(path: string): string {
@@ -217,17 +233,101 @@ const isInsideMap = (rect: LabelRect, width: number, height: number): boolean =>
   rect.top >= MAP_LABEL_MARGIN &&
   rect.bottom <= height - MAP_LABEL_MARGIN;
 
+// reflow measured labels without recreating marker roots
+const layoutMapMarkerLabels = (map: Mapbox): void => {
+  const container = map.getContainer();
+  const mapRect = container.getBoundingClientRect();
+  const markers = [
+    ...container.querySelectorAll<HTMLElement>("[data-map-marker]"),
+  ];
+  const occupied: LabelRect[] = [];
+  // convert painted bounds to map coordinates
+  const localRect = (rect: DOMRect, padding = 0): LabelRect => ({
+    bottom: rect.bottom - mapRect.top + padding,
+    left: rect.left - mapRect.left - padding,
+    right: rect.right - mapRect.left + padding,
+    top: rect.top - mapRect.top - padding,
+  });
+  // reserve painted icons, docked badges, and movement trails
+  markers.forEach((marker) => {
+    marker
+      .querySelectorAll<
+        SVGPathElement | HTMLElement
+      >("[data-map-marker-icon] svg path, .vessel-marker-anchor, .vessel-marker-wind-streak")
+      .forEach((icon) => {
+        const rect = icon.getBoundingClientRect();
+        // skip hidden or unmeasured geometry
+        if (rect.width > 0 && rect.height > 0) {
+          // cover the full streak scaling and eight-pixel drift plus its glow
+          const padding = icon.classList.contains("vessel-marker-wind-streak")
+            ? (Number.parseFloat(window.getComputedStyle(icon).width) || 0) /
+                2 +
+              10
+            : 2;
+          occupied.push(localRect(rect, padding));
+        }
+      });
+  });
+  // place terminal, vessel, and user labels in render order
+  markers.forEach((marker) => {
+    const label = marker.querySelector<HTMLElement>("[data-map-marker-label]");
+    // missing or unpainted label guard
+    if (!label || label.getBoundingClientRect().width === 0) {
+      return;
+    }
+    const placements = Object.keys(LABEL_PLACEMENTS) as LabelPlacement[];
+    // retain a valid current placement first
+    const preferred = placements.find((placement) =>
+      LABEL_PLACEMENTS[placement]
+        .split(" ")
+        .every((className) => label.classList.contains(className))
+    );
+    const candidates = [
+      ...(preferred ? [preferred] : []),
+      ...placements.filter((placement) => placement !== preferred),
+    ];
+    const originalMargin = label.style.margin;
+    // expand spacing only when the nearest positions are crowded
+    for (const gap of LABEL_GAPS) {
+      // try measured, unobstructed label positions
+      for (const placement of candidates) {
+        label.classList.remove(...LABEL_PLACEMENT_CLASSES);
+        label.classList.add(...LABEL_PLACEMENTS[placement].split(" "));
+        label.style.margin = "0";
+        label.style[LABEL_MARGIN_PROPERTIES[placement]] = `${gap}px`;
+        const rect = localRect(label.getBoundingClientRect());
+        // keep labels clear of icons, trails, and prior labels
+        if (
+          isInsideMap(rect, mapRect.width, mapRect.height) &&
+          !occupied.some((item) => rectsOverlap(rect, item))
+        ) {
+          occupied.push(rect);
+          return;
+        }
+      }
+    }
+    // retain the original placement when all visible candidates are crowded
+    label.classList.remove(...LABEL_PLACEMENT_CLASSES);
+    label.classList.add(...LABEL_PLACEMENTS[preferred ?? "above"].split(" "));
+    label.style.margin = originalMargin;
+    occupied.push(localRect(label.getBoundingClientRect()));
+  });
+};
+
+// marker-aware label bounds
 const getLabelRect = (
   x: number,
   y: number,
   label: string,
   placement: LabelPlacement,
-  markerAnchor: "bottom" | "center"
+  markerAnchor: "bottom" | "center",
+  markerSize = MAP_MARKER_SIZE
 ): LabelRect => {
   const width = labelWidth(label);
   const markerTop =
-    markerAnchor === "bottom" ? y - MAP_MARKER_SIZE : y - MAP_MARKER_SIZE / 2;
-  const markerBottom = markerAnchor === "bottom" ? y : y + MAP_MARKER_SIZE / 2;
+    markerAnchor === "bottom" ? y - markerSize : y - markerSize / 2;
+  const markerBottom = markerAnchor === "bottom" ? y : y + markerSize / 2;
+  // above marker label
   if (placement === "above") {
     return {
       bottom: markerTop - 4,
@@ -236,6 +336,7 @@ const getLabelRect = (
       top: markerTop - 4 - MAP_LABEL_HEIGHT,
     };
   }
+  // below marker label
   if (placement === "below") {
     return {
       bottom: markerBottom + 4 + MAP_LABEL_HEIGHT,
@@ -244,22 +345,24 @@ const getLabelRect = (
       top: markerBottom + 4,
     };
   }
+  // left marker label
   if (placement === "left") {
     return {
       bottom: y + MAP_LABEL_HEIGHT / 2,
-      left: x - MAP_MARKER_SIZE / 2 - 4 - width,
-      right: x - MAP_MARKER_SIZE / 2 - 4,
+      left: x - markerSize / 2 - 4 - width,
+      right: x - markerSize / 2 - 4,
       top: y - MAP_LABEL_HEIGHT / 2,
     };
   }
   return {
     bottom: y + MAP_LABEL_HEIGHT / 2,
-    left: x + MAP_MARKER_SIZE / 2 + 4,
-    right: x + MAP_MARKER_SIZE / 2 + 4 + width,
+    left: x + markerSize / 2 + 4,
+    right: x + markerSize / 2 + 4 + width,
     top: y - MAP_LABEL_HEIGHT / 2,
   };
 };
 
+// clear ferry silhouettes and labels
 const getVesselLabelPlacement = (
   x: number,
   y: number,
@@ -268,8 +371,17 @@ const getVesselLabelPlacement = (
   mapWidth: number,
   mapHeight: number
 ): LabelPlacement | null => {
+  // try visible label positions
   for (const placement of ["above", "below", "right", "left"] as const) {
-    const rect = getLabelRect(x, y, label, placement, "center");
+    const rect = getLabelRect(
+      x,
+      y,
+      label,
+      placement,
+      "center",
+      VESSEL_MARKER_SIZE
+    );
+    // unobstructed label guard
     if (
       isInsideMap(rect, mapWidth, mapHeight) &&
       !occupied.some((item) => rectsOverlap(rect, item))
@@ -622,7 +734,9 @@ const renderMarkerLabel = ({
 }: MarkerLabelProps): ReactElement => {
   const content = (
     <>
-      <div className={iconClassName}>{icon}</div>
+      <div className={iconClassName} data-map-marker-icon="">
+        {icon}
+      </div>
       {label && (
         <div
           className={clsx(
@@ -631,6 +745,7 @@ const renderMarkerLabel = ({
               "rounded-full border-[rgba(1,111,82,0.18)] bg-day-normal-light text-gray-dark dark:border-[rgba(255,255,255,0.08)] dark:bg-night-normal-dark dark:text-[#e0f0f4]",
             labelPlacement
           )}
+          data-map-marker-label=""
         >
           {label}
         </div>
@@ -644,6 +759,7 @@ const renderMarkerLabel = ({
         aria-label={ariaLabel}
         aria-pressed={isSelected}
         className="relative flex items-center justify-center border-0 bg-transparent p-0 text-inherit pointer-events-auto"
+        data-map-marker=""
         onClick={onClick}
         type="button"
       >
@@ -652,7 +768,10 @@ const renderMarkerLabel = ({
     );
   }
   return (
-    <div className="relative flex items-center justify-center pointer-events-auto">
+    <div
+      className="relative flex items-center justify-center pointer-events-auto"
+      data-map-marker=""
+    >
       {content}
     </div>
   );
@@ -668,7 +787,7 @@ const getVesselMarkerStyle = (
     "--vessel-wind-duration": `${(1.8 - speedRatio * 0.9).toFixed(2)}s`,
     "--vessel-wind-length": `${Math.round(6 + speedRatio * 14)}px`,
     "--vessel-wind-opacity": (0.18 + speedRatio * 0.32).toFixed(2),
-    transform: `rotate(${heading}deg)`,
+    transform: `rotate(${heading - 45}deg)`,
   };
 };
 
@@ -680,31 +799,45 @@ const VesselMarkerIcon = ({
   speed,
 }: VesselMarkerIconProps): ReactElement => {
   const isMoving = !isAtDock && speed > 0;
+  // normalize compass headings
+  const normalizedHeading = ((heading % 360) + 360) % 360;
+  // lead with the east or west end without inverting the ferry
+  const ferryRotation =
+    normalizedHeading > 180 ? normalizedHeading - 270 : normalizedHeading - 90;
+  const windRotation = normalizedHeading - 45;
   return (
     <span
       className="vessel-marker-visual"
-      style={getVesselMarkerStyle(heading, speed)}
+      style={getVesselMarkerStyle(normalizedHeading, speed)}
     >
-      {/* moving wind */}
+      {/* mirror only eastbound movement streaks */}
       {isMoving && (
-        <span aria-hidden="true" className="vessel-marker-wind">
+        <span
+          aria-hidden="true"
+          className={clsx(
+            "vessel-marker-wind",
+            normalizedHeading <= 180 && "vessel-marker-wind--east"
+          )}
+        >
           <span className="vessel-marker-wind-streak" />
           <span className="vessel-marker-wind-streak" />
           <span className="vessel-marker-wind-streak" />
         </span>
       )}
+      {/* heading-aligned ferry with the deck above the hull */}
       <span
         className={clsx(
           "vessel-marker-icon",
           isSelected && "vessel-marker-icon--selected"
         )}
+        style={{ transform: `rotate(${ferryRotation - windRotation}deg)` }}
       >
-        <VesselIcon />
+        <VesselIcon aria-hidden="true" focusable="false" />
       </span>
       {/* docked anchor */}
       {isAtDock && (
         <span aria-hidden="true" className="vessel-marker-anchor">
-          <span style={{ transform: `rotate(${-heading}deg)` }}>
+          <span style={{ transform: `rotate(${-windRotation}deg)` }}>
             <AnchorIcon />
           </span>
         </span>
@@ -1104,22 +1237,27 @@ export const Map = ({
 
     const mapSize = map.getContainer().getBoundingClientRect();
     const occupied: LabelRect[] = [];
-    const addMarkerRect = (x: number, y: number): void => {
+    // reserve each marker's visual footprint
+    const addMarkerRect = (
+      x: number,
+      y: number,
+      markerSize = MAP_MARKER_SIZE
+    ): void => {
       occupied.push({
-        bottom: y + MAP_MARKER_SIZE / 2,
-        left: x - MAP_MARKER_SIZE / 2,
-        right: x + MAP_MARKER_SIZE / 2,
-        top: y - MAP_MARKER_SIZE / 2,
+        bottom: y + markerSize / 2,
+        left: x - markerSize / 2,
+        right: x + markerSize / 2,
+        top: y - markerSize / 2,
       });
     };
 
-    // Keep vessel labels clear of every map marker, including the user's dot.
+    // keep vessel labels clear of every marker
     displayedVessels.filter(hasVesselLocation).forEach((vessel) => {
       const point = map.project([
         vessel.location.longitude,
         vessel.location.latitude,
       ]);
-      addMarkerRect(point.x, point.y);
+      addMarkerRect(point.x, point.y, VESSEL_MARKER_SIZE);
     });
     if (userLocation) {
       const point = map.project([
@@ -1177,10 +1315,10 @@ export const Map = ({
       ...displayedVessels.filter(hasVesselLocation).map((vessel) => {
         const marker = document.createElement("div");
         // exclude the overflowing label from marker anchoring
-        marker.style.height = `${VESSEL_MARKER_HEIGHT}px`;
-        marker.style.width = `${MAP_MARKER_SIZE}px`;
+        marker.style.height = `${VESSEL_MARKER_SIZE}px`;
+        marker.style.width = `${VESSEL_MARKER_SIZE}px`;
         const isSelected = vessel.id === requestedVesselId;
-        const heading = (vessel.heading ?? 0) - 45;
+        const heading = vessel.heading ?? 0;
         const lngLat = {
           lon: vessel.location.longitude,
           lat: vessel.location.latitude,
@@ -1208,8 +1346,10 @@ export const Map = ({
                 speed={vessel.speed}
               />
             ),
+            // retain the ordinary shadow only on unselected boats
             iconClassName: clsx(
-              "text-3xl drop-shadow",
+              "text-3xl",
+              !isSelected && "drop-shadow",
               vessel.isAtDock
                 ? "text-gray-dark dark:text-gray-light"
                 : "text-countdown"
@@ -1289,6 +1429,41 @@ export const Map = ({
     userLocation,
   ]);
 
+  // reflow labels after camera motion and newly rendered markers
+  useEffect(() => {
+    // map readiness guard
+    if (!map) {
+      return;
+    }
+    let frame: number | null = null;
+    // coalesce camera layout requests
+    const scheduleLayout = (): void => {
+      // pending layout guard
+      if (frame !== null) {
+        return;
+      }
+      frame = window.requestAnimationFrame(() => {
+        frame = null;
+        // obsolete map guard
+        if (activeMapRef.current === map) {
+          layoutMapMarkerLabels(map);
+        }
+      });
+    };
+    map.on("moveend", scheduleLayout);
+    map.on("resize", scheduleLayout);
+    scheduleLayout();
+    // remove only this map's layout listeners
+    return () => {
+      map.off("moveend", scheduleLayout);
+      map.off("resize", scheduleLayout);
+      // cancel unfinished layout
+      if (frame !== null) {
+        window.cancelAnimationFrame(frame);
+      }
+    };
+  }, [map, displayedVessels, terminal, mate, requestedVesselId, userLocation]);
+
   // follow the selected vessel position
   useEffect(() => {
     // clear closed vessel focus
@@ -1347,10 +1522,12 @@ export const Map = ({
     };
   }, [animatedVessels, map, requestedVesselId, routeKey]);
 
-  // Move the existing DOM markers during dead-reckoning. Recreating their
-  // React roots every second causes visible flashes, while Mapbox can move a
-  // marker without replacing its icon or label.
+  // move existing markers and labels without replacing their roots
   useEffect(() => {
+    // map readiness guard
+    if (!map) {
+      return;
+    }
     const vesselMarkers = new globalThis.Map(
       markersRef.current
         .filter(({ vesselId }) => Boolean(vesselId))
@@ -1362,7 +1539,16 @@ export const Map = ({
         lat: vessel.location.latitude,
       });
     });
-  }, [animatedVessels]);
+    // measure after mapbox applies marker motion
+    const frame = window.requestAnimationFrame(() => {
+      // obsolete map guard
+      if (activeMapRef.current === map) {
+        layoutMapMarkerLabels(map);
+      }
+    });
+    // cancel unfinished marker layout
+    return () => window.cancelAnimationFrame(frame);
+  }, [animatedVessels, map]);
 
   // initialize map when mapRef is available
   useEffect(() => {

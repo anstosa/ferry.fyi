@@ -7,6 +7,26 @@ import { describe, expect, it } from "vitest";
 import { PrivacyPolicy } from "../../client/views/PrivacyPolicy";
 
 describe("privacy and advertising policy", () => {
+  // disclose transient travel inputs independently of advertising rules
+  it("explains address suggestions and travel-origin privacy", () => {
+    const html = renderToStaticMarkup(
+      <HelmetProvider>
+        <MemoryRouter>
+          <PrivacyPolicy />
+        </MemoryRouter>
+      </HelmetProvider>
+    );
+    expect(html).toContain("Address suggestions and travel estimates");
+    expect(html).toContain("sends the text to Google for address suggestions");
+    expect(html).toContain("selected Google place identifier");
+    expect(html).toContain(
+      "foreground location is sent to Ferry FYI and Google"
+    );
+    expect(html).toContain("does not retain these origins or suggestions");
+    expect(html).toContain("for analytics, advertising, or model training");
+    expect(html).toContain('href="https://policies.google.com/privacy"');
+  });
+
   it("keeps contextual advertising outside personal and safety-sensitive data", () => {
     const html = renderToStaticMarkup(
       <HelmetProvider>
@@ -17,7 +37,7 @@ describe("privacy and advertising policy", () => {
     );
 
     expect(html).toContain(
-      '<time dateTime="2026-08-24">August 24, 2026</time>'
+      '<time dateTime="2026-10-03">October 3, 2026</time>'
     );
     expect(html).toContain("cached with the account");
     expect(html).toContain("a ticket looked up");

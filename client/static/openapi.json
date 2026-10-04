@@ -49,6 +49,317 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/sailing-recommendations/address-suggestions": {
+      "post": {
+        "description": "Ephemeral Google Places address suggestions while editing the Navigation form. Queries and predictions are not retained. Default-off until Places provider and owner cost-alert readiness gates pass. Do not automate precise origins. Cache class: live-no-store. Rate class: paid-provider. Ferry FYI provides best-effort operational data, not an SLA.",
+        "operationId": "suggestStartingAddress",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "input": "Seattle"
+              },
+              "schema": {
+                "additionalProperties": true,
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "body": {},
+                  "wsfStatus": {
+                    "offline": false
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            },
+            "description": "collection response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "body": {
+                    "error": "api_not_found"
+                  },
+                  "wsfStatus": {
+                    "offline": false
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            },
+            "description": "Deterministic API error envelope. Error responses are no-store and noindex."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "body": {
+                    "error": "api_not_found"
+                  },
+                  "wsfStatus": {
+                    "offline": false
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            },
+            "description": "Deterministic API error envelope. Error responses are no-store and noindex."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "body": {
+                    "error": "api_not_found"
+                  },
+                  "wsfStatus": {
+                    "offline": false
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            },
+            "description": "Deterministic API error envelope. Error responses are no-store and noindex."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "body": {
+                    "error": "api_not_found"
+                  },
+                  "wsfStatus": {
+                    "offline": false
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            },
+            "description": "Deterministic API error envelope. Error responses are no-store and noindex."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "body": {
+                    "error": "api_not_found"
+                  },
+                  "wsfStatus": {
+                    "offline": false
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            },
+            "description": "Deterministic API error envelope. Error responses are no-store and noindex."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "body": {
+                    "error": "api_not_found"
+                  },
+                  "wsfStatus": {
+                    "offline": false
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            },
+            "description": "Deterministic API error envelope. Error responses are no-store and noindex."
+          }
+        },
+        "security": [],
+        "summary": "Suggest starting addresses with Google Places",
+        "tags": [
+          "ferries"
+        ]
+      }
+    },
+    "/api/sailing-recommendations": {
+      "post": {
+        "description": "Explicit leave-now request using a transient origin. Returns terminal arrival, traffic-delay severity, adjacent sailing chances and buffer-indexed details. Chances combine assumed travel and depletion distributions, not measured boarding success; missing inventory remains unknown and non-driving estimates use timing only. Results expire within two minutes and do not model booth lines, reservations or boarding guarantees. Production is default-off until provider and cost-alert readiness gates pass. Cache class: live-no-store. Rate class: paid-provider. Ferry FYI provides best-effort operational data, not an SLA.",
+        "operationId": "recommendSailing",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "arrivingTerminalId": "5",
+                "bufferMinutes": 5,
+                "departingTerminalId": "14",
+                "mode": "walk",
+                "origin": {
+                  "address": "Mukilteo, WA",
+                  "kind": "address"
+                }
+              },
+              "schema": {
+                "additionalProperties": true,
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "body": {},
+                  "wsfStatus": {
+                    "offline": false
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            },
+            "description": "resource response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "body": {
+                    "error": "api_not_found"
+                  },
+                  "wsfStatus": {
+                    "offline": false
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            },
+            "description": "Deterministic API error envelope. Error responses are no-store and noindex."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "body": {
+                    "error": "api_not_found"
+                  },
+                  "wsfStatus": {
+                    "offline": false
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            },
+            "description": "Deterministic API error envelope. Error responses are no-store and noindex."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "body": {
+                    "error": "api_not_found"
+                  },
+                  "wsfStatus": {
+                    "offline": false
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            },
+            "description": "Deterministic API error envelope. Error responses are no-store and noindex."
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "body": {
+                    "error": "api_not_found"
+                  },
+                  "wsfStatus": {
+                    "offline": false
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            },
+            "description": "Deterministic API error envelope. Error responses are no-store and noindex."
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "body": {
+                    "error": "api_not_found"
+                  },
+                  "wsfStatus": {
+                    "offline": false
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            },
+            "description": "Deterministic API error envelope. Error responses are no-store and noindex."
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "body": {
+                    "error": "api_not_found"
+                  },
+                  "wsfStatus": {
+                    "offline": false
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ApiEnvelope"
+                }
+              }
+            },
+            "description": "Deterministic API error envelope. Error responses are no-store and noindex."
+          }
+        },
+        "security": [],
+        "summary": "Estimate terminal arrival and an eligible current-day sailing",
+        "tags": [
+          "ferries"
+        ]
+      }
+    },
     "/api/terminals": {
       "get": {
         "description": "Terminal and bulletin fields include upstream observation context when available. Cache class: live-no-store. Rate class: anonymous-read. Ferry FYI provides best-effort operational data, not an SLA.",

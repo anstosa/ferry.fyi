@@ -19,11 +19,17 @@ const routeModel = vi.hoisted(() => ({
 }));
 const wsfApi = vi.hoisted(() => ({ getWsfStatus: vi.fn() }));
 const wsfSchedules = vi.hoisted(() => ({ updateSchedules: vi.fn() }));
+const terminalLocationModel = vi.hoisted(() => ({
+  findAll: vi.fn().mockResolvedValue([]),
+}));
 
 vi.mock("~/models/Schedule", () => ({ Schedule: scheduleModel }));
 vi.mock("~/models/Crossing", () => ({ default: crossingModel }));
 vi.mock("~/models/Vessel", () => ({ Vessel: vesselModel }));
 vi.mock("~/models/Terminal", () => ({ Terminal: terminalModel }));
+vi.mock("~/models/TerminalLocationSetting", () => ({
+  TerminalLocationSetting: terminalLocationModel,
+}));
 vi.mock("~/models/Route", () => ({ Route: routeModel }));
 vi.mock("~/lib/wsf/api", () => wsfApi);
 vi.mock("~/lib/wsf/updateSchedules", () => wsfSchedules);
@@ -198,6 +204,73 @@ describe("public query services", () => {
       status: "available",
       vessel,
     });
+  });
+
+  // public map coordinates reflect saved docks for primary and mate terminals
+  it("reads current dock overrides without publishing booths", async () => {
+    const terminal = {
+      id: "7",
+      location: { latitude: 47.6, longitude: -122.33 },
+      mates: [{ id: "3", location: { latitude: 47.6, longitude: -122.5 } }],
+    };
+    terminalModel.getAll.mockResolvedValue({
+      "7": { serialize: () => terminal },
+    });
+    terminalModel.getByIndex.mockResolvedValue({ serialize: () => terminal });
+    terminalLocationModel.findAll.mockResolvedValue([
+      {
+        terminalId: "7",
+        boothLatitude: 47.61,
+        boothLongitude: -122.31,
+        dockLatitude: 47.62,
+        dockLongitude: -122.32,
+      },
+      {
+        terminalId: "3",
+        boothLatitude: null,
+        boothLongitude: null,
+        dockLatitude: 47.63,
+        dockLongitude: -122.52,
+      },
+    ]);
+    const result = await getPublicTerminal("7");
+    expect(result).toMatchObject({
+      terminal: {
+        location: { latitude: 47.62, longitude: -122.32 },
+        mates: [{ location: { latitude: 47.63, longitude: -122.52 } }],
+      },
+    });
+    expect(JSON.stringify(result)).not.toContain("booth");
+    expect((await getPublicTerminals())["7"]).toEqual(
+      result.status === "available" ? result.terminal : null
+    );
+    expect(terminal.location.latitude).toBe(47.6);
+    terminalLocationModel.findAll.mockResolvedValue([]);
+    expect(await getPublicTerminal("7")).toEqual({
+      status: "available",
+      terminal,
+    });
+  });
+
+  // optional override outages must not take down the cached terminal directory
+  it("uses wsf map coordinates when dock storage fails", async () => {
+    const terminal = {
+      id: "7",
+      location: { latitude: 47.6, longitude: -122.33 },
+    };
+    terminalModel.getAll.mockResolvedValue({
+      "7": { serialize: () => terminal },
+    });
+    terminalModel.getByIndex.mockResolvedValue({ serialize: () => terminal });
+    terminalLocationModel.findAll.mockRejectedValue(
+      new Error("sensitive storage diagnostics")
+    );
+    expect(await getPublicTerminal("7")).toEqual({
+      status: "available",
+      terminal,
+    });
+    expect(await getPublicTerminals()).toEqual({ "7": terminal });
+    terminalLocationModel.findAll.mockResolvedValue([]);
   });
 
   it("distinguishes warming from a ready source that has no terminal or vessel", async () => {

@@ -15,7 +15,8 @@ import ScheduleIcon from "~/static/images/icons/solid/calendar-week.svg";
 import VideoIcon from "~/static/images/icons/solid/cctv.svg";
 import FareIcon from "~/static/images/icons/solid/dollar-sign.svg";
 import TerminalIcon from "~/static/images/icons/solid/garage-car.svg";
-import MapIcon from "~/static/images/icons/solid/route.svg";
+import NavigationIcon from "~/static/images/icons/solid/location-arrow.svg";
+import MapIcon from "~/static/images/icons/solid/map.svg";
 import { GetPath } from "~/views/Route";
 
 import { getLastBulletinTime, getWaitTime } from "../lib/bulletins";
@@ -60,7 +61,7 @@ const FooterLink: FunctionComponent<
     end
     className={({ isActive }) =>
       clsx(
-        "relative flex h-16 items-center justify-center border-y-4 border-transparent p-4",
+        "relative flex h-16 min-w-0 flex-1 items-center justify-center border-y-4 border-transparent px-2 sm:px-4",
         isActive ? "text-white" : "text-lighten-high"
       )
     }
@@ -79,10 +80,13 @@ interface Props {
   getPath: GetPath;
 }
 
+// fit every route tab within compact mobile screens
 export const Footer = ({ terminal, getPath }: Props): ReactElement => {
+  // show the terminal's available bulletin tab
   const renderBulletins = (): ReactElement | null => {
     const { bulletins } = terminal;
 
+    // omit the empty bulletin tab
     if (!bulletins.length) {
       return null;
     }
@@ -94,6 +98,7 @@ export const Footer = ({ terminal, getPath }: Props): ReactElement => {
     const hours = Math.abs(
       DateTime.fromSeconds(latest.date).diffNow().as("hours")
     );
+    // highlight recent bulletin context
     if (hours < 6) {
       summary = getWaitTime(latest) || getLastBulletinTime(terminal);
       backgroundColor = "bg-stale-light dark:bg-stale-dark";
@@ -107,7 +112,7 @@ export const Footer = ({ terminal, getPath }: Props): ReactElement => {
         aria-label="Alerts and bulletins"
         className={({ isActive }) =>
           clsx(
-            "relative flex h-16 min-w-0 flex-no-wrap cursor-pointer items-center justify-end border-y-4 border-transparent p-4",
+            "relative flex h-16 min-w-0 flex-1 flex-no-wrap cursor-pointer items-center justify-center border-y-4 border-transparent px-2 sm:px-4",
             isActive ? "text-white" : "text-lighten-high",
             backgroundColor
           )
@@ -116,7 +121,10 @@ export const Footer = ({ terminal, getPath }: Props): ReactElement => {
       >
         {({ isActive }) => (
           <>
-            {summary && <span className="mr-2 truncate">{summary}</span>}
+            {/* keep all navigation icons reachable on narrow screens */}
+            {summary && (
+              <span className="mr-2 hidden truncate sm:inline">{summary}</span>
+            )}
             <BellAlertIcon className="text-2xl" />
             {isActive && <FooterSelection />}
           </>
@@ -138,6 +146,9 @@ export const Footer = ({ terminal, getPath }: Props): ReactElement => {
           <FooterLink label="Schedule" path={getPath({ view: "schedule" })}>
             <ScheduleIcon className="text-2xl" />
           </FooterLink>
+          <FooterLink label="Navigation" path={getPath({ view: "navigation" })}>
+            <NavigationIcon aria-hidden className="text-2xl" />
+          </FooterLink>
           <FooterLink label="Cameras" path={getPath({ view: "cameras" })}>
             <VideoIcon className="text-2xl" />
           </FooterLink>
@@ -153,8 +164,6 @@ export const Footer = ({ terminal, getPath }: Props): ReactElement => {
           <FooterLink label="Fares" path={getPath({ view: "fare" })}>
             <FareIcon className="text-2xl" />
           </FooterLink>
-          {/* flexible spacer */}
-          <div className="flex-1" />
           {renderBulletins()}
         </LayoutGroup>
       </WrapFooter>

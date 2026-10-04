@@ -6,4 +6,5 @@ export type RouteView =
   | "fare"
   | "map"
   | "alerts"
-  | "subscribe";
+  | "subscribe"
+  | "navigation";

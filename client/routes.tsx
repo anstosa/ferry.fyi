@@ -172,7 +172,7 @@ export const preloadBrowserRoute = async (
     return;
   }
   if (
-    /^\/[^/]+(?:\/[^/]+)?(?:\/(?:cameras|terminal|fare|map|alerts|subscribe))?\/?$/.test(
+    /^\/[^/]+(?:\/[^/]+)?(?:\/(?:cameras|terminal|fare|map|alerts|subscribe|navigation))?\/?$/.test(
       pathname
     )
   ) {

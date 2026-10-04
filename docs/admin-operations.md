@@ -24,6 +24,40 @@ Use the admin UI to review the exact target before confirming. A confirmation
 intended for one user, operation, or content item cannot be reused for another
 target.
 
+## Terminal locations and mobile navigation
+
+Open `/admin?tab=terminals` to view and edit two points per terminal. Choose the
+terminal, then choose **Toll booth / navigation** or **Dock / public map**. The
+selected point appears as a fixed crosshair in the middle of the map. Move the
+satellite imagery under it to reposition that point; clicking the map or crosshair
+does not place a point. Switching targets or recentering after manual coordinate
+edits causes no additional draft changes and preserves the zoom. The editor always
+uses satellite imagery with road and place labels, independent of the app's light
+or dark theme. A gray dock crosshair and fallback text identify an unsaved WSF
+location. Loading or zooming without moving the center never creates a draft
+point. Manual latitude and longitude fields remain usable if the map cannot load.
+Both values must be present for each configured point and within the supported
+ferry region (latitude 45–50, longitude -125–-119).
+
+Saving confirms the `save-terminal-locations` action for `terminal:<id>` and
+atomically replaces both points. Clear a point and save to unset it. Locations
+are stored in `TerminalLocationSettings`, separately from the periodically
+refreshed WSF terminal cache. Booth coordinates are the server-side navigation
+destination for all travel methods; an unset booth disables estimates for that
+terminal. Saved docks position public terminal markers, including nested route
+mates and SSR directory data. Unset docks, or unavailable optional dock storage,
+use the upstream WSF location. Booths and owner edit timestamps are not included
+in public terminal responses. Saving locations does not enable paid providers.
+
+The internal owner endpoints are `GET /api/admin/terminal-locations` and
+`PUT /api/admin/terminal-locations/:terminalId`; both retain the existing owner
+authorization and no-store policy. The PUT accepts exactly `booth` and `dock`
+point/null fields after confirmation metadata is verified and removed.
+
+On screens narrower than 640px, admin tabs become a custom scrollable dropdown,
+not a native select. It preserves `?tab=` deep links, keyboard navigation,
+Escape dismissal and focus return. Wider screens retain the tab strip.
+
 ## Feature delivery and manual check-ins
 
 The `leaderboards` flag is persisted in the database. Its evaluation order is:
@@ -107,8 +141,8 @@ data-health API.
 | `fare-catalog-refresh`                               | Warms current ferry-day and due fare catalogs.                            | Hourly at `:15`, daily at 00:05 America/Los_Angeles, and deferred after startup. |
 | `leaderboard-rebuild`                                | Rebuilds leaderboard aggregates from retained check-ins.                  | Manual only.                                                                     |
 | `schedule-refresh`                                   | Refreshes WSF sailing schedules and schedule cache data.                  | Daily at 04:05 server time.                                                      |
-| `supporter-entitlement-reconcile`                    | Retries pending RevenueCat webhooks and Supporter entitlement work.        | Every minute at `:20`; also available manually.                                  |
-| `supporter-provider-action-window-cleanup`            | Deletes expired privacy-minimal Supporter portal rate-limit windows.       | Hourly at `:35:30`; also available manually.                                      |
+| `supporter-entitlement-reconcile`                    | Retries pending RevenueCat webhooks and Supporter entitlement work.       | Every minute at `:20`; also available manually.                                  |
+| `supporter-provider-action-window-cleanup`           | Deletes expired privacy-minimal Supporter portal rate-limit windows.      | Hourly at `:35:30`; also available manually.                                     |
 | `tide-forecast-refresh` / `weather-forecast-refresh` | Forces forecast inputs used by route forecasting.                         | Best-effort after short WSF refreshes, rate-limited by the environment.          |
 | `wsf-daily-refresh`                                  | Runs daily WSF route-to-vessel inference.                                 | Daily at 04:10 server time.                                                      |
 | `wsf-long-refresh`                                   | Refreshes WSF cameras, vessels, routes, and terminals.                    | Every 5 minutes.                                                                 |
@@ -330,3 +364,23 @@ When adding or changing an admin capability:
 8. Update this guide, `docs/leaderboards.md` when leaderboard behavior changes,
    `client/static/llms.txt` when a public page or AI-useful API changes, and
    focused tests and migrations as applicable.
+
+## Leave-now sailing operations
+
+`capacity-observation-retention` is an owner-confirmed destructive operation with a
+strict age boundary: only immutable capacity observations older than 400 days
+are purged, in batches of 2,000 capped at 500 batches (one million rows per run).
+This exceeds observed daily ingestion with headroom; inspect exhausted-budget
+results and job duration if collector volume grows. It runs daily at 04:35 Pacific through the same
+shared lease. Capture continues when the routing UI is disabled.
+
+`google-routes-usage-export` exports only three SKU/month aggregate gauges, including
+zero heartbeats, every five minutes and at midnight Pacific when WIF is configured.
+It does not send through Auth0 SES, Firebase, or rider notification controls.
+Google Monitoring owns the separately confirmed operator email channels and
+threshold policies; Google Billing owns the delayed net USD 1 Actual budget.
+See `docs/google-routes-operations.md` for external readiness evidence.
+
+The server-only `GOOGLE_ROUTES_ENABLED=false` switch disables paid routing without
+hiding the schedule card or stopping observation capture. Public schedules never
+include raw observations, exporter credentials or rider origins.

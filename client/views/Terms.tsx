@@ -9,7 +9,7 @@ export const Terms = (): ReactElement => (
   <Page title="Terms of Service">
     <SeoHelmet seo={getSeoMetadata("/terms")} />
     <p className="mt-4 text-sm">
-      Last updated: <time dateTime="2026-08-24">August 24, 2026</time>
+      Last updated: <time dateTime="2026-10-03">October 3, 2026</time>
     </p>
     <p className="mt-4">
       Ferry FYI is an independent trip-planning service and is not operated by
@@ -17,6 +17,19 @@ export const Terms = (): ReactElement => (
       traffic, weather, tide, and location-based results can be delayed,
       incomplete, or inaccurate. Confirm safety-critical and time-sensitive
       information with official sources.
+    </p>
+    <h2 className="mt-8 text-lg font-bold">Google Maps services</h2>
+    <p className="mt-2">
+      Address suggestions and travel estimates use Google Maps services and are
+      subject to the{" "}
+      <a className="link" href="https://cloud.google.com/maps-platform/terms">
+        Google Maps terms
+      </a>{" "}
+      and the{" "}
+      <a className="link" href="https://policies.google.com/privacy">
+        Google Privacy Policy
+      </a>
+      .
     </p>
     <h2 className="mt-8 text-lg font-bold">Supporter subscriptions</h2>
     <p className="mt-2">

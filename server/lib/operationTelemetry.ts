@@ -17,6 +17,8 @@ const HOUR_MS = 60 * MINUTE_MS;
 const DAY_MS = 24 * HOUR_MS;
 
 export const OPERATION_CADENCE_MS: Record<AdminOperationName, number> = {
+  "capacity-observation-retention": DAY_MS,
+  "google-routes-usage-export": 5 * MINUTE_MS,
   "camera-line-detection-refresh": MINUTE_MS,
   "clear-wsf-memory-cache": DAY_MS,
   "demand-events-refresh": DAY_MS,

@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import {
   assertClientBudgets,
+  DEFAULT_CLIENT_BUDGETS,
   summarizeClientAssets,
 } from "../../scripts/assert-client-budgets.mjs";
 
@@ -26,17 +27,29 @@ afterEach(() => {
 });
 
 describe("client asset budgets", () => {
+  // bound new navigation growth without relaxing map or billing caps
+  it("locks the measured navigation and terminal editor allocation", () => {
+    expect(DEFAULT_CLIENT_BUDGETS).toEqual({
+      cssBytes: 152_000,
+      javascriptBytes: 5_250_000,
+      javascriptFiles: 155,
+      largestJavascriptBytes: 1_900_000,
+      optionalBillingJavascriptBytes: 900_000,
+    });
+  });
+
+  // protect the finite route-chunk allocation
   it("allows bounded production route chunk growth", () => {
     const files: Record<string, number> = {};
     // create the allowed route chunks
-    for (let index = 0; index < 145; index += 1) {
+    for (let index = 0; index < 155; index += 1) {
       files[`route-${index}.js`] = 1;
     }
     const summary = summarizeClientAssets(fixture(files));
 
     expect(() => assertClientBudgets(summary)).not.toThrow();
     expect(() =>
-      assertClientBudgets({ ...summary, javascriptFiles: 146 })
+      assertClientBudgets({ ...summary, javascriptFiles: 156 })
     ).toThrow(/javascriptFiles/);
   });
 

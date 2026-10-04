@@ -7,6 +7,7 @@ import type {
   Response,
 } from "express";
 import { rateLimit } from "express-rate-limit";
+import { unavailableRecommendation } from "shared/lib/sailingRecommendationResponse";
 
 import { getWsfStatus } from "./wsf/api";
 
@@ -16,10 +17,16 @@ export type ApiRouteClass =
   | "automatic-native"
   | "authenticated"
   | "ota"
+  | "paid-provider"
   | "sensitive-lookup"
   | "upstream-refresh";
 
 export const API_RATE_LIMITS = Object.freeze({
+  "paid-provider": {
+    limitEnv: "API_PAID_PROVIDER_LIMIT",
+    limit: 15,
+    windowMs: 60_000,
+  },
   "ad-measurement": {
     limitEnv: "API_AD_MEASUREMENT_LIMIT",
     limit: 240,
@@ -97,6 +104,13 @@ export const classifyApiRequest = ({
 }): ApiRouteClass => {
   const normalizedMethod = method.toUpperCase();
   const path = pathname.replace(/^\/api(?=\/|$)/, "") || "/";
+  // isolate origin-sensitive paid routing traffic
+  if (
+    path === "/sailing-recommendations" ||
+    path.startsWith("/sailing-recommendations/")
+  ) {
+    return "paid-provider";
+  }
   // isolate the native boundary
   if (
     path === "/leaderboards/native" ||
@@ -246,6 +260,7 @@ export const createApiCorsMiddleware = (): RequestHandler => {
   return (request, response, next) => middleware(request, response, next);
 };
 
+// construct the existing route-class burst guard
 const createLimiter = (
   routeClass: keyof typeof API_RATE_LIMITS
 ): RequestHandler => {
@@ -256,30 +271,83 @@ const createLimiter = (
     limit: asPositiveInteger(process.env[policy.limitEnv], policy.limit),
     standardHeaders: "draft-8",
     windowMs: policy.windowMs,
+    // normalize paid-provider quota exhaustion without retaining the request
     handler: (request, response) => {
+      // preserve the selected mode only when it belongs to the fixed domain
+      if (routeClass === "paid-provider") {
+        const mode = request.body?.mode;
+        applyApiErrorHeaders(response);
+        const path = request.path
+          .replace(/^\/api(?=\/|$)/, "")
+          .replace(/\/$/, "");
+        // preserve autocomplete's distinct public response at the outer limiter
+        if (path === "/sailing-recommendations/address-suggestions") {
+          response.status(429).send({ available: false, suggestions: [] });
+          return;
+        }
+        response
+          .status(429)
+          .send(
+            unavailableRecommendation(
+              ["drive", "walk", "bicycle", "transit"].includes(mode)
+                ? mode
+                : "drive",
+              "provider-quota-unavailable",
+              Date.now() / 1000
+            )
+          );
+        return;
+      }
       sendApiError(request, response, 429, "rate_limited");
     },
   });
 };
 
+// dispatch the bounded limiter by api route class
 export const createApiRateLimitMiddleware = (): RequestHandler => {
   const limiters = {
+    "paid-provider": createLimiter("paid-provider"),
     "ad-measurement": createLimiter("ad-measurement"),
     "anonymous-read": createLimiter("anonymous-read"),
     "sensitive-lookup": createLimiter("sensitive-lookup"),
     "upstream-refresh": createLimiter("upstream-refresh"),
   };
+  // select one applicable burst guard
   return (request, response, next) => {
     const routeClass = classifyApiRequest({
       method: request.method,
       pathname: pathnameFor(request),
     });
+    // leave unlimited classes under their existing specialized policy
     if (routeClass in limiters) {
       limiters[routeClass as keyof typeof limiters](request, response, next);
       return;
     }
     next();
   };
+};
+
+// reject cross-site paid writes even when a browser bypasses preflight
+export const denyUntrustedPaidProviderOrigin: RequestHandler = (
+  request,
+  response,
+  next
+) => {
+  const origin = request.get("origin");
+  // keep other api classes and originless native clients unchanged
+  if (
+    classifyApiRequest({
+      method: request.method,
+      pathname: pathnameFor(request),
+    }) === "paid-provider" &&
+    origin &&
+    origin !== requestOrigin(request) &&
+    !trustedOrigins().has(origin)
+  ) {
+    sendApiError(request, response, 403, "origin_not_allowed");
+    return;
+  }
+  next();
 };
 
 export const applyApiErrorHeaders = (response: Response): void => {

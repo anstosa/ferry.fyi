@@ -6,20 +6,20 @@ Repository validation never substitutes for production observation.
 
 ## Control matrix
 
-| Track | Disposition | Repository evidence | Production/operator evidence |
-| --- | --- | --- | --- |
-| Build and CI determinism | Implemented | `.github/workflows/check.yml`, `scripts/assert-client-budgets.mjs`, `yarn lint`, `yarn type-check`, `yarn test`, `yarn build` | Review the first five successful hosted runs; blocking-workflow p95 target is 15 minutes. |
-| Public deployment smoke | Implemented | `scripts/smoke-public-contracts.mjs` and deployment ordering in `.github/workflows/deploy-aws.yml` | Retain the versioned smoke receipt for each deployment. |
-| API compatibility and errors | Implemented | `server/lib/httpApiPolicy.ts`, `tests/server/api.test.ts`, `tests/server/server-security.test.ts` | Inspect deployed unknown/auth/error responses without sending credentials. |
-| CORS and abuse controls | Implemented | Endpoint-class policy and rate inventory in `server/lib/httpApiPolicy.ts`; focused server tests | Confirm configured trusted origins and shared-NAT behavior before lowering limits. |
-| Browser/PWA cache privacy | Implemented | `client/service-worker.ts`, `tests/client/service-worker-api-cache.test.ts` | Verify Cache Storage contains no authenticated, ticket, account, admin, or live snapshot responses. |
-| Lifecycle and readiness | Implemented | `server/lib/serverLifecycle.ts`, `server/lib/serverRuntime.ts`, lifecycle/runtime tests | Synthetic `/readyz` is observational for the default Cloudflare-tunnel topology; it does not remove traffic. |
-| Infrastructure safety and recovery | Implemented in repository | Terraform assertions and deployment recovery capture; encrypted RDS, backup retention, final snapshots, immutable image tags, and OTA pointer rollback were already satisfied | Apply reviewed Terraform, verify deletion protection/backups, and run an isolated restore drill. |
-| Security response policy | Implemented, staged | `server/lib/httpSecurity.ts`, security tests; CSP remains Report-Only | Configure a privacy-reviewed CSP collector before activation; inspect reports before considering enforcement. |
-| Search discovery and SEO truth | Implemented / already satisfied | robots, sitemap, canonical and shared significant-content revision tests; `docs/seo-operations.md` | Inspect canonical/sitemap state in Google Search Console and Bing Webmaster Tools. |
-| AI-agent and API discovery | Implemented | `shared/contracts/publicApiOperations.ts`, generated `client/static/openapi.json`, `client/static/llms.txt`, contract checks | Sample the served documents after deployment and retain response hashes. |
-| Accessibility and deterministic performance | Implemented with explicit manual gap | focused Playwright checks, bundle budgets, canonical browser-performance receipt validator | Automated checks are not a WCAG claim. Complete the manual checklist and review field CWV only with sufficient traffic. |
-| Observability, objectives, and incident evidence | Implemented measurement path; objectives proposed | typed privacy boundary, pure formulas, redacted fixtures, summary script | Activate exports/monitors and collect complete windows before claiming attainment. |
+| Track                                            | Disposition                                       | Repository evidence                                                                                                                                                           | Production/operator evidence                                                                                            |
+| ------------------------------------------------ | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Build and CI determinism                         | Implemented                                       | `.github/workflows/check.yml`, `scripts/assert-client-budgets.mjs`, `yarn lint`, `yarn type-check`, `yarn test`, `yarn build`                                                 | Review the first five successful hosted runs; blocking-workflow p95 target is 15 minutes.                               |
+| Public deployment smoke                          | Implemented                                       | `scripts/smoke-public-contracts.mjs` and deployment ordering in `.github/workflows/deploy-aws.yml`                                                                            | Retain the versioned smoke receipt for each deployment.                                                                 |
+| API compatibility and errors                     | Implemented                                       | `server/lib/httpApiPolicy.ts`, `tests/server/api.test.ts`, `tests/server/server-security.test.ts`                                                                             | Inspect deployed unknown/auth/error responses without sending credentials.                                              |
+| CORS and abuse controls                          | Implemented                                       | Endpoint-class policy and rate inventory in `server/lib/httpApiPolicy.ts`; focused server tests                                                                               | Confirm configured trusted origins and shared-NAT behavior before lowering limits.                                      |
+| Browser/PWA cache privacy                        | Implemented                                       | `client/service-worker.ts`, `tests/client/service-worker-api-cache.test.ts`                                                                                                   | Verify Cache Storage contains no authenticated, ticket, account, admin, or live snapshot responses.                     |
+| Lifecycle and readiness                          | Implemented                                       | `server/lib/serverLifecycle.ts`, `server/lib/serverRuntime.ts`, lifecycle/runtime tests                                                                                       | Synthetic `/readyz` is observational for the default Cloudflare-tunnel topology; it does not remove traffic.            |
+| Infrastructure safety and recovery               | Implemented in repository                         | Terraform assertions and deployment recovery capture; encrypted RDS, backup retention, final snapshots, immutable image tags, and OTA pointer rollback were already satisfied | Apply reviewed Terraform, verify deletion protection/backups, and run an isolated restore drill.                        |
+| Security response policy                         | Implemented, staged                               | `server/lib/httpSecurity.ts`, security tests; CSP remains Report-Only                                                                                                         | Configure a privacy-reviewed CSP collector before activation; inspect reports before considering enforcement.           |
+| Search discovery and SEO truth                   | Implemented / already satisfied                   | robots, sitemap, canonical and shared significant-content revision tests; `docs/seo-operations.md`                                                                            | Inspect canonical/sitemap state in Google Search Console and Bing Webmaster Tools.                                      |
+| AI-agent and API discovery                       | Implemented                                       | `shared/contracts/publicApiOperations.ts`, generated `client/static/openapi.json`, `client/static/llms.txt`, contract checks                                                  | Sample the served documents after deployment and retain response hashes.                                                |
+| Accessibility and deterministic performance      | Implemented with explicit manual gap              | focused Playwright checks, bundle budgets, canonical browser-performance receipt validator                                                                                    | Automated checks are not a WCAG claim. Complete the manual checklist and review field CWV only with sufficient traffic. |
+| Observability, objectives, and incident evidence | Implemented measurement path; objectives proposed | typed privacy boundary, pure formulas, redacted fixtures, summary script                                                                                                      | Activate exports/monitors and collect complete windows before claiming attainment.                                      |
 
 ## Baseline
 
@@ -46,13 +46,13 @@ build in this work set the token to an empty value.
 
 ## Cache and sensitivity classification
 
-| Class | Policy |
-| --- | --- |
-| Fingerprinted assets | `public, max-age=31536000, immutable` |
-| Public discovery documents | short shared freshness, validators, and bounded revalidation |
-| Live public API and live SSR | `no-store` unless a route-specific test proves bounded stale behavior is truthful |
-| Private, authenticated, account, ticket, admin, check-in, and mutations | `no-store`; never service-worker cached |
-| OTA immutable and pointer documents | Preserve `docs/ota-operations.md`; do not apply generic API policy |
+| Class                                                                   | Policy                                                                            |
+| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Fingerprinted assets                                                    | `public, max-age=31536000, immutable`                                             |
+| Public discovery documents                                              | short shared freshness, validators, and bounded revalidation                      |
+| Live public API and live SSR                                            | `no-store` unless a route-specific test proves bounded stale behavior is truthful |
+| Private, authenticated, account, ticket, admin, check-in, and mutations | `no-store`; never service-worker cached                                           |
+| OTA immutable and pointer documents                                     | Preserve `docs/ota-operations.md`; do not apply generic API policy                |
 
 Unknown `/api` routes historically fell through to the browser document. That
 behavior is recorded only as a regression fixture and is intentionally replaced
@@ -173,6 +173,7 @@ deployment and the repository has no enforceable expand/contract attestation.
 
   Require deletion protection `true`, positive retention, backup status
   `active`, and a current nonempty restore window.
+
 - Restore using an unmistakably temporary identifier and private isolation:
 
   ```sh
@@ -307,3 +308,33 @@ and the collector satisfies the privacy controls above.
   Search Console, or existing Sentry field evidence.
 - Evidence: dated screenshots/exports and traffic sufficiency.
 - Stop: do not report lab results or insufficient samples as field attainment.
+
+## Leave-now sailing readiness
+
+Paid routing remains closed until Routes key/API/billing, the project-wide 60-QPM
+quota, reviewed persisted terminal booths for every mode, account-wide SKU free-pool inventory,
+WIF metric export and acknowledged operator email/budget tests are evidenced.
+Existing networking is retained: API-only key restriction, quota and rotation are
+accepted weaker protection than static-egress IP restrictions; no NAT/EIP is added.
+Observation capture and bounded 400-day retention remain independent of the
+routing switch. Rollback sets `GOOGLE_ROUTES_ENABLED=false` and redeploys.
+
+Monitor aggregate result/mode/provider latency and model states only. Never retain
+an origin, address, user-location acquisition time, Google route body or credential
+in logs, traces, analytics, Sentry or model/evaluation data. Fill evaluation uses
+causal WSF observations and synthetic fixed horizons, never retained rider trips.
+
+Apply all four new Sequelize migrations in timestamp order before deploying:
+capacity observations, Google usage aggregates, autocomplete SKU support and
+terminal booth/dock settings.
+Migration rehearsal uses a disposable loopback PostgreSQL database, never a
+production `DATABASE_URL`. The integration test accepts only the dedicated
+`boat_test` URL on `127.0.0.1:16632`; standard test runs skip it. Reproduce with
+`NODE_ENV=test DATABASE_URL=postgres://boat_test:boat_test@127.0.0.1:16632/boat_test BOAT_TEST_DATABASE_URL=postgres://boat_test:boat_test@127.0.0.1:16632/boat_test yarn vitest run tests/server/boat-database-integration.test.ts`
+after starting an empty PostgreSQL instance with those non-sensitive test values.
+
+Recommendation diagnostics record only fixed mode/SKU/result/failure-stage,
+provider latency, and selected model state/version/prior/confidence. They never
+forward raw exceptions or include origin, request/provider bodies, terminal,
+account, address, coordinate, or credential fields. Internal snapshot/observation
+failures are schedule-unavailable rather than mislabeled Google outages.

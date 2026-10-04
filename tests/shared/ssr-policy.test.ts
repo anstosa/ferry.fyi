@@ -12,7 +12,12 @@ import {
   type PublicSsrTerminal,
 } from "../../shared/contracts/ssr";
 import type { PublicSsrRouteDefinition } from "../../shared/contracts/ssrRouting";
-import { getNotFoundSeoMetadata, getSeoProfile } from "../../shared/lib/seo";
+import {
+  getNotFoundSeoMetadata,
+  getRouteSeoMetadata,
+  getSeoProfile,
+  SEO_INDEXABLE_ROUTE_VIEWS,
+} from "../../shared/lib/seo";
 import {
   getNextSailingDayBoundary,
   getSailingDayId,
@@ -629,6 +634,55 @@ describe("SSR matcher and query policy", () => {
         new URLSearchParams("fareAdults=2&fareAdults=3")
       )
     ).toEqual({ rejected: [], values: {} });
+  });
+
+  it.each([
+    [
+      "https://ferry.fyi/seattle/navigation?origin=private-location",
+      "terminal-navigation",
+      "/seattle/navigation",
+    ],
+    [
+      "https://ferry.fyi/seattle/bainbridge-island/navigation?arrival=private-time",
+      "mate-navigation",
+      "/seattle/bainbridge-island/navigation",
+    ],
+  ])(
+    "matches the client-only Navigation route without retaining query inputs",
+    (url, routeId, canonicalPath) => {
+      const match = matchPublicSsrRoute(new URL(url), resolver);
+
+      expect(match).toMatchObject({
+        canonicalPath,
+        query: { rejected: [], values: {} },
+        route: {
+          id: routeId,
+          indexabilityPolicy: "noindex",
+          kind: "private",
+          loader: "none",
+          placeholder: "client-only",
+          requiredSources: [],
+          view: "navigation",
+        },
+      });
+      expect(JSON.stringify(match)).not.toContain("private-");
+    }
+  );
+
+  it("creates noindex Navigation metadata outside the sitemap policy", () => {
+    const metadata = getRouteSeoMetadata(
+      { mates: [{}], name: "Seattle", slug: "seattle" },
+      { name: "Bainbridge Island", slug: "bainbridge-island" },
+      "navigation"
+    );
+
+    expect(metadata).toMatchObject({
+      canonicalPath: "/seattle/navigation",
+      robots: "noindex,follow",
+      title: "Seattle to Bainbridge Island What Boat Will I Make? - Ferry FYI",
+    });
+    expect(metadata.description).toContain("Ferry FYI Navigation");
+    expect(SEO_INDEXABLE_ROUTE_VIEWS).not.toContain("navigation");
   });
 });
 

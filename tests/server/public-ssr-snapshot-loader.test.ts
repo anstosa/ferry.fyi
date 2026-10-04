@@ -342,6 +342,8 @@ describe("public SSR snapshot loader", () => {
     ["/admin", "admin"],
     ["/leaderboards/settings", "leaderboards-settings"],
     ["/leaderboards/nope", "leaderboards-unmatched"],
+    ["/clinton/navigation", "terminal-navigation"],
+    ["/seattle/bainbridge/navigation", "mate-navigation"],
   ])(
     "classifies private %s without calling services",
     async (path, routeId) => {

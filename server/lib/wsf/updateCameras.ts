@@ -8,7 +8,8 @@ import { WSF } from "~/typings/wsf";
 
 import { wsfRequest } from "./api";
 
-const API_CAMERAS = "https://www.wsdot.com/ferries/vesselwatch/Cameras.ashx";
+// keep camera refresh inside the fixed WSF origin
+const API_CAMERAS = "https://www.wsdot.wa.gov/ferries/vesselwatch/Cameras.ashx";
 
 export const updateCameras = async (): Promise<void> => {
   logger.info("Started camera update");

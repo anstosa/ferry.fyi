@@ -3,6 +3,7 @@ export type PublicApiCacheClass = "live-no-store" | "private-no-store";
 export type PublicApiRateClass =
   | "anonymous-read"
   | "authenticated"
+  | "paid-provider"
   | "sensitive-lookup"
   | "upstream-refresh";
 
@@ -24,6 +25,44 @@ export interface PublicApiOperation {
 }
 
 export const publicApiOperations = [
+  {
+    advertiseInLlms: false,
+    auth: "public",
+    cache: "live-no-store",
+    documentInDataSources: false,
+    freshness:
+      "Ephemeral Google Places address suggestions while editing the Navigation form. Queries and predictions are not retained. Default-off until Places provider and owner cost-alert readiness gates pass. Do not automate precise origins.",
+    includeInOpenApi: true,
+    method: "POST",
+    operationId: "suggestStartingAddress",
+    path: "/api/sailing-recommendations/address-suggestions",
+    rate: "paid-provider",
+    requestExample: { input: "Seattle" },
+    responseClass: "collection",
+    summary: "Suggest starting addresses with Google Places",
+  },
+  {
+    advertiseInLlms: false,
+    auth: "public",
+    cache: "live-no-store",
+    documentInDataSources: false,
+    freshness:
+      "Explicit leave-now request using a transient origin. Returns terminal arrival, traffic-delay severity, adjacent sailing chances and buffer-indexed details. Chances combine assumed travel and depletion distributions, not measured boarding success; missing inventory remains unknown and non-driving estimates use timing only. Results expire within two minutes and do not model booth lines, reservations or boarding guarantees. Production is default-off until provider and cost-alert readiness gates pass.",
+    includeInOpenApi: true,
+    method: "POST",
+    operationId: "recommendSailing",
+    path: "/api/sailing-recommendations",
+    rate: "paid-provider",
+    requestExample: {
+      arrivingTerminalId: "5",
+      bufferMinutes: 5,
+      departingTerminalId: "14",
+      mode: "walk",
+      origin: { address: "Mukilteo, WA", kind: "address" },
+    },
+    responseClass: "resource",
+    summary: "Estimate terminal arrival and an eligible current-day sailing",
+  },
   {
     advertiseInLlms: true,
     auth: "public",

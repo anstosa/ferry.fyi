@@ -100,6 +100,11 @@ export const About = (): ReactElement => {
 
       <h2 className="font-bold text-lg mt-8">Privacy</h2>
       <p className="mt-2">
+        Leave-now travel timing is provided by Google Maps. Ferry FYI combines
+        it with WSF observations and its own drive-up fill estimates. Booth
+        lines are not included and estimates do not guarantee boarding.
+      </p>
+      <p className="mt-2">
         Read the{" "}
         <Link className="link" to="/privacy">
           Privacy Policy

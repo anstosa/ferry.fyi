@@ -134,6 +134,7 @@ resource "aws_iam_role_policy" "github_deploy" {
         ]
         Resource = [
           aws_iam_role.ecs_task.arn,
+          aws_iam_role.web_task.arn,
           aws_iam_role.ecs_task_execution.arn
         ]
         Condition = {

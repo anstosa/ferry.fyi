@@ -7,6 +7,7 @@ import type {
 import type { SeoMetadata } from "./seo";
 
 const define = (route: PublicSsrRouteDefinition) => route;
+// select anonymous sources for each route view
 const sourceForView = (view: PublicSsrView): readonly PublicSsrSourceKey[] => {
   switch (view) {
     case "schedule":
@@ -31,8 +32,12 @@ const sourceForView = (view: PublicSsrView): readonly PublicSsrSourceKey[] => {
       return ["route", "bulletins", "notices"];
     case "subscribe":
       return ["route", "alertGuidance", "notices"];
+    // keep leave-now inputs out of public snapshots
+    case "navigation":
+      return [];
   }
 };
+// label each route boundary
 const label = (view: PublicSsrView) =>
   ({
     schedule: "Schedule",
@@ -42,6 +47,7 @@ const label = (view: PublicSsrView) =>
     map: "Map",
     alerts: "Alerts",
     subscribe: "Alerts",
+    navigation: "Navigation",
   })[view];
 const part = (view: PublicSsrView) => {
   if (view === "terminal") {
@@ -66,21 +72,51 @@ const PUBLIC_SSR_VIEWS = [
   "map",
   "alerts",
   "subscribe",
+  "navigation",
 ] as const satisfies readonly PublicSsrView[];
 
+// select the browser or server loader
+const loaderForView = (view: PublicSsrView) => {
+  // keep navigation in the browser
+  if (view === "navigation") {
+    return "none" as const;
+  }
+  // load terminal-only details
+  if (view === "terminal") {
+    return "terminal" as const;
+  }
+  return "route" as const;
+};
+
+// select the refresh boundary
+const refreshForView = (view: PublicSsrView) => {
+  // disable navigation refreshes
+  if (view === "navigation") {
+    return "none" as const;
+  }
+  // refresh schedules on their own cadence
+  if (view === "schedule") {
+    return "schedule" as const;
+  }
+  return "route" as const;
+};
+
+// build paired terminal and mate routes
 const dynamicTerminalRoutes = PUBLIC_SSR_VIEWS.flatMap((view) => {
   const suffix = view === "schedule" ? "" : `/${view}`;
+  // render transient navigation state only in the browser
+  const isClientOnly = view === "navigation";
   return [
     define({
       allowedQuery: allowedQuery(view),
       boundaryLabel: label(view),
       id: `terminal-${part(view)}` as PublicSsrRouteId,
-      indexabilityPolicy: "seo",
-      kind: "dynamic",
-      loader: view === "terminal" ? "terminal" : "route",
+      indexabilityPolicy: isClientOnly ? "noindex" : "seo",
+      kind: isClientOnly ? "private" : "dynamic",
+      loader: loaderForView(view),
       path: `/:terminalSlug${suffix}`,
-      placeholder: "anonymous",
-      refresh: view === "schedule" ? "schedule" : "route",
+      placeholder: isClientOnly ? "client-only" : "anonymous",
+      refresh: refreshForView(view),
       requiredSources: sourceForView(view),
       view,
     }),
@@ -88,12 +124,12 @@ const dynamicTerminalRoutes = PUBLIC_SSR_VIEWS.flatMap((view) => {
       allowedQuery: allowedQuery(view),
       boundaryLabel: label(view),
       id: `mate-${part(view)}` as PublicSsrRouteId,
-      indexabilityPolicy: "seo",
-      kind: "dynamic",
-      loader: view === "terminal" ? "terminal" : "route",
+      indexabilityPolicy: isClientOnly ? "noindex" : "seo",
+      kind: isClientOnly ? "private" : "dynamic",
+      loader: loaderForView(view),
       path: `/:terminalSlug/:mateSlug${suffix}`,
-      placeholder: "anonymous",
-      refresh: view === "schedule" ? "schedule" : "route",
+      placeholder: isClientOnly ? "client-only" : "anonymous",
+      refresh: refreshForView(view),
       requiredSources: sourceForView(view),
       view,
     }),

@@ -26,6 +26,8 @@ export const ADMIN_OPERATION_LEASE_MS = 15 * 60 * 1000;
 export const ADMIN_OPERATION_LEASE_RENEWAL_MS = ADMIN_OPERATION_LEASE_MS / 2;
 
 export type AdminOperationName =
+  | "capacity-observation-retention"
+  | "google-routes-usage-export"
   | "camera-line-detection-refresh"
   | "clear-wsf-memory-cache"
   | "demand-events-refresh"
@@ -71,6 +73,36 @@ type OperationDefinition = {
 
 /** Only these named functions can be started by an administrator. */
 const operationRegistry: Record<AdminOperationName, OperationDefinition> = {
+  "capacity-observation-retention": {
+    adminAllowed: true,
+    description:
+      "Purges immutable capacity observations older than 400 days in bounded batches.",
+    destructive: true,
+    // retain only the declared aged-out evidence boundary
+    run: async () => {
+      const { purgeCapacityObservations } =
+        await import("~/lib/capacityObservations");
+      const { default: logger } = await import("~/lib/logger");
+      const result = await purgeCapacityObservations();
+      logger.info("Capacity observation retention", result);
+    },
+    trigger:
+      "Daily at 04:35 America/Los_Angeles, through the shared owner-operation lease.",
+  },
+  "google-routes-usage-export": {
+    adminAllowed: true,
+    description:
+      "Exports origin-free monthly Routes SKU estimates to Google Monitoring; email policies are separately verified.",
+    destructive: false,
+    // export aggregate gauges without app notification sends
+    run: async () => {
+      const { exportGoogleRoutesUsage } =
+        await import("~/lib/googleCloud/googleRoutesMonitoring");
+      await exportGoogleRoutesUsage();
+    },
+    trigger:
+      "Every five minutes and midnight Pacific when federation configuration is present.",
+  },
   "camera-line-detection-refresh": {
     adminAllowed: true,
     description:

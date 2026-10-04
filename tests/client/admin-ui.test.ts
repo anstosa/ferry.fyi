@@ -32,6 +32,7 @@ const terminals = vi.hoisted(() => ({
       },
     ])
   ),
+  refreshTerminalLocations: vi.fn(() => Promise.resolve()),
 }));
 
 const emptyInventoryReport = {
@@ -85,6 +86,10 @@ vi.mock("~/components/Page", () => ({
 }));
 vi.mock("~/lib/api", () => api);
 vi.mock("~/lib/terminals", () => terminals);
+vi.mock("~/components/admin/TerminalLocationMap", () => ({
+  TerminalLocationMap: () =>
+    React.createElement("div", { "aria-label": "Terminal location map" }),
+}));
 
 import { Admin } from "../../client/views/Admin";
 
@@ -111,6 +116,23 @@ afterEach(() => {
 });
 
 describe("Admin", () => {
+  // keep the owner-only boundary around every admin tab
+  it("redirects non-owners without loading terminal locations", async () => {
+    window.history.replaceState({}, "", "/admin?tab=terminals");
+    auth.user = { email: "not-owner@example.com" };
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root?.render(renderAdmin());
+      await Promise.resolve();
+    });
+
+    expect(window.location.pathname).toBe("/");
+    expect(api.get).not.toHaveBeenCalled();
+  });
+
   // preserve deep links during auth restoration
   it("keeps the admin URL while Auth0 restores the owner session", async () => {
     window.history.replaceState({}, "", "/admin?tab=ads");
@@ -662,6 +684,54 @@ describe("Admin", () => {
     expect(container.querySelector('[role="tablist"]')?.className).toContain(
       "overflow-y-hidden"
     );
+    expect(container.querySelector("select")).toBeNull();
+    expect(
+      container.querySelector('button[aria-label="Choose admin tool"]')
+    ).not.toBeNull();
+  });
+
+  // load terminal points only when their deep-linked tab is active
+  it("loads the terminal location tab without loading other admin panels", async () => {
+    window.history.replaceState({}, "", "/admin?tab=terminals");
+    api.get.mockImplementation((path: string) => {
+      // return only the requested terminal location data
+      if (path === "/admin/terminal-locations") {
+        return Promise.resolve({
+          terminals: [
+            {
+              abbreviation: "CLI",
+              booth: null,
+              defaultDock: { latitude: 47.98, longitude: -122.35 },
+              dock: null,
+              name: "Clinton",
+              terminalId: "5",
+              updatedAt: null,
+            },
+          ],
+        });
+      }
+      return Promise.reject(new Error(`Unexpected request: ${path}`));
+    });
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root?.render(renderAdmin());
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(api.get).toHaveBeenCalledTimes(1);
+    expect(api.get).toHaveBeenCalledWith(
+      "/admin/terminal-locations",
+      "access-token"
+    );
+    expect(
+      container.querySelector('#admin-tab-terminals[aria-selected="true"]')
+    ).not.toBeNull();
+    expect(container.textContent).toContain("Toll booth point is unset");
+    expect(container.textContent).toContain("WSF fallback");
   });
 
   it("lists users before loading support data for the selected row", async () => {

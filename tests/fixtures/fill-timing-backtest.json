@@ -1,0 +1,68 @@
+[
+  {
+    "arrivalAt": 1999998800,
+    "asOf": 1999997600,
+    "daypart": "am",
+    "departureEstimate": 0,
+    "observations": [
+      {
+        "allocationGroupId": "00000000-0000-4000-8000-000000000001",
+        "departureTime": 2000000000,
+        "driveUpDisplayed": true,
+        "driveUpSpaces": 30,
+        "isCancelled": false,
+        "maxSpaceCount": 120,
+        "pollId": "00000000-0000-4000-8000-000000000002",
+        "receivedAt": 1999997600,
+        "reportingStateAtReceipt": "active",
+        "sourceKind": "wsf-direct",
+        "usableForFillLabel": true,
+        "vesselId": "15"
+      },
+      {
+        "allocationGroupId": "00000000-0000-4000-8000-000000000005",
+        "departureTime": 2000000000,
+        "driveUpDisplayed": true,
+        "driveUpSpaces": 20,
+        "isCancelled": false,
+        "maxSpaceCount": 120,
+        "pollId": "00000000-0000-4000-8000-000000000006",
+        "receivedAt": 1999997900,
+        "reportingStateAtReceipt": "active",
+        "sourceKind": "wsf-direct",
+        "usableForFillLabel": true,
+        "vesselId": "15"
+      },
+      {
+        "allocationGroupId": "00000000-0000-4000-8000-000000000007",
+        "departureTime": 2000000000,
+        "driveUpDisplayed": true,
+        "driveUpSpaces": 10,
+        "isCancelled": false,
+        "maxSpaceCount": 120,
+        "pollId": "00000000-0000-4000-8000-000000000008",
+        "receivedAt": 1999998200,
+        "reportingStateAtReceipt": "active",
+        "sourceKind": "wsf-direct",
+        "usableForFillLabel": true,
+        "vesselId": "15"
+      },
+      {
+        "allocationGroupId": "00000000-0000-4000-8000-000000000003",
+        "departureTime": 2000000000,
+        "driveUpDisplayed": true,
+        "driveUpSpaces": 0,
+        "isCancelled": false,
+        "maxSpaceCount": 120,
+        "pollId": "00000000-0000-4000-8000-000000000004",
+        "receivedAt": 1999998500,
+        "reportingStateAtReceipt": "active",
+        "sourceKind": "wsf-direct",
+        "usableForFillLabel": true,
+        "vesselId": "15"
+      }
+    ],
+    "projectedDepartureAt": 2000000000,
+    "route": "5-14"
+  }
+]

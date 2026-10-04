@@ -124,3 +124,84 @@ responses use a recursive allow-list projection and never expose the field.
 Forecast worker messages use a separate private DTO that includes and normalizes
 the field. Demand diagnostics stay private; public estimates expose only the
 existing capacity, risk, confidence, source, and readable factor contracts.
+
+## Temporal drive-up fill estimates
+
+`fill-linear-v1` estimates when provider-reported **drive-up** space reaches literal
+zero, separate from reservation inventory and the existing combined eventual-full
+classifier. One fresh direct displayed count plus the separate drive-up departure
+forecast supports an immediate deterministic estimate; there is no training wait
+or provisional badge. The explicit zero-at-departure prior places exhaustion ten
+minutes before projected departure, with a three-minute minimum horizon, then
+blends eligible live Theil–Sen slopes and bounded rate ranges. Projection starts at
+the observation's receive time, including its age, not the current request time.
+If a lagging positive departure forecast exceeds the fresh observed spaces, it
+cannot define a zero-depletion prior. That prior is discarded; qualifying live
+observations supply a live-only slope, otherwise capacity remains unknown.
+
+Direct zero is `already-full`; extrapolated zero from a positive anchor is
+`predicted-full-by-now`. Inactive all-open placeholders cannot supply a live slope
+or fill label. Hidden, derived-repair, stale, cancelled, post-departure and
+cross-segment evidence is excluded. WSF provides no upstream update clock or
+physical-decrement guarantee, so observed zero is a received reporting proxy, not
+proof of the exact tollbooth or loading event.
+
+The leave-now tool evaluates drive-up inventory at terminal ETA. Its adjustable
+five-minute buffer affects departure timing only. Vehicle fullness does not reject
+walking, cycling or transit. Booth queues, parking and reservation-aware boarding
+are excluded. Estimates do not guarantee boarding.
+
+Append-only capacity observations retain poll and physical allocation identity,
+reporting state and causal forecast context for 400 days. Repairs retain separate
+trigger provenance and never become ground truth. The `fill-timing:backtest` command
+reports censor-aware interval error, range coverage, event classification and
+false availability at fixed synthetic horizons; sample gates apply only to future
+empirical-validation claims, not immediate V1 release.
+Positive-only reports ending more than five minutes before projected departure
+are early right-censored outcomes, excluded from event classification rather than
+counted as confirmed non-events. Near-departure coverage uses the same five-minute
+tolerance as observation segmentation.
+
+### Leave-now sailing chances
+
+`joint-triangular-v1` estimates the chance a rider can make each nearby sailing,
+not which boat they will actually board. Each sailing is evaluated independently.
+It does not reuse the historical probability that a sailing fills at departure.
+
+Travel uses an assumed triangular duration distribution centered on Google's
+point duration `d`. Its half-width is `max(120s, 0.15*d, abs(d-staticDuration))`;
+traffic-unaware driving widens this to at least `max(300s, 0.25*d)`. Google's
+`staticDuration` is a non-current-traffic baseline, not an uncertainty interval.
+The depletion rate uses an assumed triangular distribution with the existing
+fill model's low, point and high rates. These assumptions are planning priors,
+not measured boarding-success rates or statistical confidence intervals.
+
+The model integrates 101 fixed midpoint travel quantiles with the analytic
+triangular rate CDF. Driver success requires both arrival before the projected
+departure minus cutoff and buffer, and positive drive-up inventory at that same
+arrival. Travel and depletion rate are assumed independent; their marginal
+success probabilities are **not multiplied**. Capacity support spans the earliest
+arrival with the slowest depletion to the latest arrival with the fastest
+depletion. Increasing the buffer changes the deadline only, never inventory at
+arrival. Non-driving modes use travel timing only.
+
+Cancelled, departed, mode-ineligible and directly observed-full driver sailings
+have zero joint chance; independently knowable timing remains available. Missing
+usable inventory is unknown, not zero. Point-full or point-late neighbors can
+retain nonzero chance from earlier travel or slower depletion tails. The center
+remains the existing deterministic recommendation, not a new probability
+threshold. Snapshot sailing identities distinguish same-time vessels.
+
+The Navigation card shows arrival in app-defined light/moderate/heavy traffic
+colors using the delay against Google's baseline. These are not Google's road
+segment categories and require no Enterprise traffic-polyline request. Unknown
+traffic remains neutral. Chance headings round to five-percentage-point steps;
+modeled extremes use `<5%` / `>95%`, while hard exclusions may show `0%`.
+Expanded details expose arrival support, deadlines, buffer, space support, fill
+range, causal anchor freshness, marginal chances and assumptions. All 0–60 minute
+buffer outcomes and nearby assessments reuse one provider request. Every displayed
+capacity anchor contributes to expiry, and material schedule or vessel changes
+invalidate the response. Google attribution remains below the card within its
+shared visual container.
+
+Lines outside the toll booth are not included. Estimates do not guarantee boarding.

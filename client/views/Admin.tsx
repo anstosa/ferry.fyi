@@ -25,10 +25,16 @@ import {
   type AdSlotId,
   getAdPlacementKey,
 } from "shared/contracts/ads";
+import type {
+  AdminTerminalLocation,
+  AdminTerminalLocationsResponse,
+} from "shared/contracts/terminalLocations";
 import type { Terminal } from "shared/contracts/terminals";
 import type { TicketLookupAdminSettings } from "shared/contracts/tickets";
 
 import { AdInventoryCharts } from "~/components/AdInventoryCharts";
+import { AdminTabNavigation } from "~/components/admin/AdminTabNavigation";
+import { TerminalLocations } from "~/components/admin/TerminalLocations";
 import { Page } from "~/components/Page";
 import { Skeleton, SkeletonGroup } from "~/components/Skeleton";
 import { ToggleSwitch } from "~/components/ToggleSwitch";
@@ -227,6 +233,7 @@ type AdminTab =
   | "access"
   | "users"
   | "operations"
+  | "terminals"
   | "notifications"
   | "tickets"
   | "ads"
@@ -236,6 +243,7 @@ const adminTabs: { id: AdminTab; label: string }[] = [
   { id: "access", label: "Access" },
   { id: "users", label: "Users" },
   { id: "operations", label: "Data operations" },
+  { id: "terminals", label: "Terminal locations" },
   { id: "notifications", label: "Notifications" },
   { id: "tickets", label: "Ticket lookup" },
   { id: "ads", label: "Advertising" },
@@ -760,6 +768,9 @@ export const Admin = (): ReactElement => {
   const [operations, setOperations] = useState<Operation[] | null>(null);
   const [notifications, setNotifications] =
     useState<NotificationDashboard | null>(null);
+  const [terminalLocations, setTerminalLocations] = useState<
+    AdminTerminalLocation[] | null
+  >(null);
   const [ads, setAds] = useState<AdConfiguration | null>(null);
   const [adTerminals, setAdTerminals] = useState<Terminal[]>([]);
   const [selectedAdSlot, setSelectedAdSlot] = useState<AdSlotId>(
@@ -874,6 +885,14 @@ export const Admin = (): ReactElement => {
       await token()
     );
     setOperations(value.operations);
+  };
+  // load terminal points only within their owner tab
+  const loadTerminalLocations = async (): Promise<void> => {
+    const value = await get<AdminTerminalLocationsResponse>(
+      "/admin/terminal-locations",
+      await token()
+    );
+    setTerminalLocations(value.terminals);
   };
   const loadNotifications = async (): Promise<void> =>
     setNotifications(await get("/admin/notifications", await token()));
@@ -1122,30 +1141,14 @@ export const Admin = (): ReactElement => {
         click; this console does not load user data until a supported lookup
         exists.
       </p>
-      <div
-        aria-label="Admin tools"
-        className="mb-4 flex gap-5 overflow-x-auto overflow-y-hidden border-b border-gray-light dark:border-gray-dark"
-        role="tablist"
-      >
-        {adminTabs.map((tab) => (
-          <button
-            aria-controls={`admin-panel-${tab.id}`}
-            aria-selected={activeTab === tab.id}
-            className={`-mb-px whitespace-nowrap border-b-2 px-1 pb-2 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-dark dark:focus-visible:outline-green-light ${
-              activeTab === tab.id
-                ? "border-green-dark text-green-dark dark:border-green-light dark:text-green-light"
-                : "border-transparent text-gray-dark hover:border-gray-medium hover:text-gray-darkest dark:text-gray-light dark:hover:border-gray-medium dark:hover:text-white"
-            }`}
-            id={`admin-tab-${tab.id}`}
-            key={tab.id}
-            onClick={() => navigateToAdminTab(tab.id)}
-            role="tab"
-            type="button"
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <AdminTabNavigation
+        activeTab={activeTab}
+        onSelect={(tab) => {
+          // preserve the typed admin route boundary
+          navigateToAdminTab(tab as AdminTab);
+        }}
+        tabs={adminTabs}
+      />
       <div
         aria-labelledby={`admin-tab-${activeTab}`}
         className="space-y-4"
@@ -1291,6 +1294,44 @@ export const Admin = (): ReactElement => {
                 <p className="text-sm text-red-dark">{featureError}</p>
               )}
             </div>
+          ) : null}
+        </AdminSection>
+
+        <AdminSection
+          active={activeTab === "terminals"}
+          description="Set the toll-booth point used by leave-now navigation and the dock point shown on the public map. Both points save together per terminal."
+          id="terminals"
+          load={loadTerminalLocations}
+          loadingFallback={
+            <AdminLoadingSkeleton label="Loading terminal locations" />
+          }
+          title="Terminal locations"
+        >
+          {terminalLocations ? (
+            <TerminalLocations
+              onSaved={(saved) => {
+                // replace only the saved terminal response
+                setTerminalLocations(
+                  (current) =>
+                    current?.map((terminal) =>
+                      terminal.terminalId === saved.terminalId
+                        ? saved
+                        : terminal
+                    ) ?? null
+                );
+              }}
+              renderSave={({ disabled, label, onConfirm, target }) => (
+                <ConfirmButton
+                  action="save-terminal-locations"
+                  disabled={disabled}
+                  label={label}
+                  onConfirm={onConfirm}
+                  target={target}
+                />
+              )}
+              terminals={terminalLocations}
+              token={token}
+            />
           ) : null}
         </AdminSection>
 

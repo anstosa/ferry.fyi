@@ -24,7 +24,8 @@ locals {
 
   detector_endpoint = "http://${aws_service_discovery_service.detector.name}.${local.service_discovery_namespace}:${var.detector_container_port}/detect"
 
-  web_environment = [
+  web_environment = concat([
+    { name = "AWS_REGION", value = var.aws_region },
     { name = "BASE_URL", value = var.base_url },
     { name = "CAR_DETECTION_ENDPOINT", value = local.detector_endpoint },
     { name = "NODE_ENV", value = "production" },
@@ -37,7 +38,11 @@ locals {
     { name = "PORT", value = tostring(var.container_port) },
     { name = "PROCESS_ROLE", value = "web" },
     { name = "RUN_SCHEDULER", value = "true" }
-  ]
+    ], var.google_routes_operations_enabled ? [
+    { name = "GOOGLE_MONITORING_PROJECT_ID", value = var.google_monitoring_project_id },
+    { name = "GOOGLE_WORKLOAD_IDENTITY_PROVIDER", value = var.google_workload_identity_provider }
+    ] : []
+  )
 
   app_secret_references = [
     for key in var.app_secret_keys : {
@@ -710,10 +715,28 @@ resource "aws_iam_role" "ecs_task" {
   })
 }
 
+# isolate the web runtime before binding its arn in Google WIF
+resource "aws_iam_role" "web_task" {
+  name = "${local.name_prefix}-web-task"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+}
+
 # allow app tasks to read only the private OTA release pointer
 resource "aws_iam_role_policy" "ecs_task_ota_release_index" {
-  name = "${local.name_prefix}-ecs-task-ota-release-index"
-  role = aws_iam_role.ecs_task.id
+  name = "${local.name_prefix}-web-task-ota-release-index"
+  role = aws_iam_role.web_task.id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -734,7 +757,7 @@ resource "aws_ecs_task_definition" "web" {
   cpu                      = var.web_cpu
   memory                   = var.web_memory
   execution_role_arn       = aws_iam_role.ecs_task_execution.arn
-  task_role_arn            = aws_iam_role.ecs_task.arn
+  task_role_arn            = aws_iam_role.web_task.arn
 
   runtime_platform {
     cpu_architecture        = "ARM64"

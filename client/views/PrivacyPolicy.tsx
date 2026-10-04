@@ -10,7 +10,7 @@ export const PrivacyPolicy = (): ReactElement => (
     <SeoHelmet seo={getSeoMetadata("/privacy")} />
 
     <p className="mt-4 text-sm">
-      Last updated: <time dateTime="2026-08-24">August 24, 2026</time>
+      Last updated: <time dateTime="2026-10-03">October 3, 2026</time>
     </p>
     <p className="mt-4">
       Ferry FYI provides Washington State Ferries schedules, service
@@ -51,6 +51,20 @@ export const PrivacyPolicy = (): ReactElement => (
       only for verification, discarded after the decision, and are not saved in
       your account settings. You can deny or revoke location access in your
       browser or device settings.
+    </p>
+    <h3 className="font-bold mt-4">Address suggestions and travel estimates</h3>
+    <p className="mt-2">
+      As you type a starting address in Navigation, Ferry FYI sends the text to
+      Google for address suggestions. When you request a travel estimate, your
+      entered address, selected Google place identifier, or explicitly requested
+      foreground location is sent to Ferry FYI and Google to calculate the
+      route. Ferry FYI does not retain these origins or suggestions or use them
+      for analytics, advertising, or model training. Google processes them under
+      its{" "}
+      <a className="link" href="https://policies.google.com/privacy">
+        Privacy Policy
+      </a>
+      .
     </p>
     <h3 className="font-bold mt-4">Optional automatic check-ins</h3>
     <p className="mt-2">

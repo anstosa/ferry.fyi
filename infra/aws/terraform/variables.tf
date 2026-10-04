@@ -152,6 +152,42 @@ variable "detector_image_tag" {
   default     = "latest"
 }
 
+variable "google_routes_operations_enabled" {
+  description = "Inject Google Monitoring WIF identifiers after all external launch gates pass."
+  type        = bool
+  default     = false
+
+  validation {
+    # reject incomplete federation whenever export is explicitly enabled
+    condition = !var.google_routes_operations_enabled || (
+      var.google_monitoring_project_id != "" && var.google_workload_identity_provider != ""
+    )
+    error_message = "Enabled Google Routes operations require Monitoring project and WIF provider identifiers."
+  }
+}
+
+variable "google_monitoring_project_id" {
+  description = "Google Cloud project receiving the three app-estimated Routes and Places usage gauges."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.google_monitoring_project_id == "" || can(regex("^[a-z][a-z0-9-]{4,28}[a-z0-9]$", var.google_monitoring_project_id))
+    error_message = "google_monitoring_project_id must be empty or a valid Google Cloud project ID."
+  }
+}
+
+variable "google_workload_identity_provider" {
+  description = "Full Google AWS workload identity provider resource bound to the dedicated web task role."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = var.google_workload_identity_provider == "" || can(regex("^//iam\\.googleapis\\.com/projects/[0-9]+/locations/global/workloadIdentityPools/[a-z0-9-]+/providers/[a-z0-9-]+$", var.google_workload_identity_provider))
+    error_message = "google_workload_identity_provider must be empty or a full AWS WIF provider resource."
+  }
+}
+
 variable "vpc_cidr" {
   description = "CIDR block for the production VPC."
   type        = string
@@ -257,6 +293,10 @@ variable "app_secret_keys" {
     "FIREBASE_VAPID_KEY",
     "FORECAST_DEMAND_SHOCK_MODE",
     "GOOGLE_ANALYTICS",
+    "GOOGLE_PLACES_API_KEY",
+    "GOOGLE_PLACES_ENABLED",
+    "GOOGLE_ROUTES_API_KEY",
+    "GOOGLE_ROUTES_ENABLED",
     "GTM_CONTAINER_ID",
     "MAPBOX_ACCESS_TOKEN",
     "REVENUECAT_PROJECT_ID",

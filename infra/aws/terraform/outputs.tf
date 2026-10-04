@@ -87,6 +87,11 @@ output "web_task_definition_family" {
   value       = aws_ecs_task_definition.web.family
 }
 
+output "web_task_role_arn" {
+  description = "Dedicated web task role ARN to bind exactly in the Google AWS WIF provider condition."
+  value       = aws_iam_role.web_task.arn
+}
+
 output "detector_task_definition_family" {
   description = "ECS detector task definition family for GitHub Actions render/deploy."
   value       = aws_ecs_task_definition.detector.family

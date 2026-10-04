@@ -26,6 +26,7 @@ export const adminConfirmationActions = [
   "set-feature-kill-switch",
   "save-site-settings",
   "save-ticket-lookup-settings",
+  "save-terminal-locations",
   "schedule-ad-campaign",
   "test-safe-mutation",
   "update-crawler-policy",

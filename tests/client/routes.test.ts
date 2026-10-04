@@ -30,4 +30,15 @@ describe("manifest-driven browser routes", () => {
       expect(match?.[0].params["*"]).toBe(remainder);
     }
   });
+
+  it.each([
+    ["/clinton/navigation", "/:terminalSlug/navigation"],
+    ["/seattle/bremerton/navigation", "/:terminalSlug/:mateSlug/navigation"],
+  ])("mounts the Navigation route for %s", (pathname, expectedPath) => {
+    const routes = createAppRoutes((_label, element) => element);
+    const match = matchRoutes(routes, pathname);
+
+    expect(match).toHaveLength(1);
+    expect(match?.[0].route.path).toBe(expectedPath);
+  });
 });

@@ -9,6 +9,7 @@ import type { RouteView } from "../../client/lib/routeViews";
 
 const views: RouteView[] = [
   "schedule",
+  "navigation",
   "cameras",
   "terminal",
   "fare",

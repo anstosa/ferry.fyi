@@ -32,6 +32,14 @@ export WSDOT_API_KEY="<get from wsdot>"
 # Mapbox
 export MAPBOX_ACCESS_TOKEN="<get from mapbox>"
 
+# keep paid routing closed until operations and admin booth locations are reviewed
+export GOOGLE_ROUTES_ENABLED="false"
+export GOOGLE_ROUTES_API_KEY="<server-only routes-api-restricted key>"
+
+# keep address suggestions closed until places cost notifications are verified
+export GOOGLE_PLACES_ENABLED="false"
+export GOOGLE_PLACES_API_KEY="<server-only places-api-new-restricted key>"
+
 # Android
 export ANDROID_SDK_ROOT="/home/ansto/Android/Sdk"
 

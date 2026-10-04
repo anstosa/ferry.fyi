@@ -154,11 +154,11 @@ html {
   }
 }
 
-// vessel wind motion
+// stream away from the trailing end in the heading-aligned wind frame
 @keyframes vessel-wind-stream {
   0% {
     opacity: 0;
-    transform: rotate(-45deg) translateX(3px) scaleX(0.5);
+    transform: translateX(3px) scaleX(0.5);
   }
 
   40% {
@@ -167,7 +167,7 @@ html {
 
   100% {
     opacity: 0;
-    transform: rotate(-45deg) translateX(-5px) scaleX(1);
+    transform: translateX(-5px) scaleX(1);
   }
 }
 
@@ -475,22 +475,24 @@ html {
     stroke-width: 3;
   }
 
-  // vessel marker states
+  // enlarge ferry silhouettes and status badges by thirty percent
   .vessel-marker-visual {
     align-items: center;
     display: inline-flex;
-    height: 1em;
+    font-size: 130%;
+    height: 1.4em;
     justify-content: center;
     position: relative;
     transform-origin: center;
-    width: 1em;
+    width: 1.4em;
   }
 
+  // preserve the supplied ferry proportions
   .vessel-marker-icon {
     display: inline-flex;
-    height: 1em;
+    height: 100%;
     position: relative;
-    width: 1em;
+    width: 100%;
     z-index: 2;
 
     svg {
@@ -500,24 +502,32 @@ html {
     }
   }
 
+  // outline the selection without shadows or closed windows
   .vessel-marker-icon--selected svg {
-    filter:
-      drop-shadow(0 0 1px rgb(0 0 0 / 100%))
-      drop-shadow(0 0 2px rgb(0 0 0 / 90%));
     paint-order: stroke fill;
     stroke: #fff;
     stroke-linejoin: round;
-    stroke-width: 72px;
+    stroke-width: 24px;
   }
 
+  // align the trail and mask any streak entering the ferry
   .vessel-marker-wind {
+    clip-path: inset(-100% 100% -100% -200%);
     color: currentcolor;
     inset: 0;
     pointer-events: none;
     position: absolute;
+    transform: rotate(-45deg);
+    transform-origin: center;
     z-index: 1;
   }
 
+  // mirror eastbound streaks across the ferry's travel axis
+  .vessel-marker-wind--east {
+    transform: rotate(-45deg) scaleY(-1);
+  }
+
+  // bring the trail five pixels closer to the ferry
   .vessel-marker-wind-streak {
     animation: vessel-wind-stream var(--vessel-wind-duration) ease-out infinite;
     background: currentcolor;
@@ -525,21 +535,23 @@ html {
     box-shadow: 0 0 1px rgb(255 255 255 / 75%);
     height: 1.5px;
     position: absolute;
-    right: 58%;
-    top: 63%;
+    right: calc(100% + 0.25em - 5px);
+    top: calc(50% - 0.75px);
     transform-origin: right center;
     width: var(--vessel-wind-length);
 
+    // stagger the near trailing streak
     &:nth-child(2) {
       animation-delay: calc(var(--vessel-wind-duration) / -3);
-      right: 48%;
-      top: 76%;
+      right: calc(100% + 0.15em - 5px);
+      top: calc(50% + 0.12em);
     }
 
+    // stagger the far trailing streak
     &:nth-child(3) {
       animation-delay: calc(var(--vessel-wind-duration) / -1.5);
-      right: 70%;
-      top: 50%;
+      right: calc(100% + 0.35em - 5px);
+      top: calc(50% - 0.12em);
     }
   }
 

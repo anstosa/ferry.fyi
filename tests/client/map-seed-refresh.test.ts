@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   maps: [] as Array<{
     easeTo: ReturnType<typeof vi.fn>;
     removed: boolean;
+    triggerEvent: (event: string) => void;
     triggerLoad: () => void;
   }>,
   getVesselSnapshot: vi.fn(),
@@ -23,6 +24,7 @@ vi.mock("mapbox-gl", () => {
     container: HTMLElement;
 
     loadCallbacks: Array<() => void> = [];
+    eventCallbacks = new globalThis.Map<string, Array<() => void>>();
     points = new globalThis.Map<string, { x: number; y: number }>();
     removed = false;
     constructor({ container }: { container: HTMLElement }) {
@@ -54,6 +56,9 @@ vi.mock("mapbox-gl", () => {
 
     off = vi.fn();
     on = vi.fn((event: string, callback: () => void) => {
+      // record camera callbacks for layout tests
+      const callbacks = this.eventCallbacks.get(event) ?? [];
+      this.eventCallbacks.set(event, [...callbacks, callback]);
       if (event === "load") {
         this.loadCallbacks.push(callback);
         if (!mocks.deferMapLoad) {
@@ -77,6 +82,9 @@ vi.mock("mapbox-gl", () => {
     });
 
     triggerLoad = () => this.loadCallbacks.forEach((callback) => callback());
+    // dispatch a camera layout event
+    triggerEvent = (event: string) =>
+      this.eventCallbacks.get(event)?.forEach((callback) => callback());
   }
   class Marker {
     element: HTMLElement;
@@ -141,9 +149,6 @@ vi.mock("~/static/images/icons/solid/caret-up.svg", () => ({
   default: () => null,
 }));
 vi.mock("~/static/images/icons/solid/location.svg", () => ({
-  default: () => null,
-}));
-vi.mock("~/static/images/icons/solid/location-arrow.svg", () => ({
   default: () => null,
 }));
 vi.mock("~/static/images/icons/solid/map-marker.svg", () => ({
@@ -488,10 +493,21 @@ describe("map hydration seed freshness", () => {
     );
     expect(markerButton).not.toBeNull();
     expect(markerButton?.getAttribute("aria-pressed")).toBe("false");
+    expect(markerButton?.firstElementChild?.classList).toContain("drop-shadow");
     expect(container.textContent).toContain("Sealth");
-    const movingMarker =
-      markerButton?.querySelector<HTMLElement>(".vessel-marker-visual");
+    const movingMarker = markerButton?.querySelector<HTMLElement>(
+      ".vessel-marker-visual"
+    );
     expect(movingMarker).not.toBeNull();
+    const ferryIcon = movingMarker?.querySelector(".vessel-marker-icon svg");
+    expect(ferryIcon?.getAttribute("viewBox")).toBe("0 0 1199 437");
+    expect(ferryIcon?.getAttribute("aria-hidden")).toBe("true");
+    expect(ferryIcon?.getAttribute("focusable")).toBe("false");
+    expect(ferryIcon?.querySelector("path")?.getAttribute("fill-rule")).toBe(
+      "evenodd"
+    );
+    expect(markerButton?.parentElement?.style.width).toBe("54.6px");
+    expect(markerButton?.parentElement?.style.height).toBe("54.6px");
     expect(markerButton?.firstElementChild?.classList).toContain(
       "text-countdown"
     );
@@ -511,6 +527,9 @@ describe("map hydration seed freshness", () => {
       '[aria-label="Open Sealth vessel details"]'
     );
     expect(selectedMarker?.getAttribute("aria-pressed")).toBe("true");
+    expect(selectedMarker?.firstElementChild?.classList).not.toContain(
+      "drop-shadow"
+    );
     expect(
       selectedMarker?.querySelector(".vessel-marker-icon--selected")
     ).not.toBeNull();
@@ -552,6 +571,172 @@ describe("map hydration seed freshness", () => {
     expect(mocks.maps[0]?.easeTo).toHaveBeenCalledTimes(2);
   });
 
+  // heading-aligned ferry without upside-down decks
+  it.each([
+    { east: false, heading: -45, rotation: 45 },
+    { east: true, heading: 0, rotation: -90 },
+    { east: true, heading: 45, rotation: -45 },
+    { east: true, heading: 89, rotation: -1 },
+    { east: true, heading: 90, rotation: 0 },
+    { east: true, heading: 135, rotation: 45 },
+    { east: true, heading: 179, rotation: 89 },
+    { east: true, heading: 180, rotation: 90 },
+    { east: false, heading: 181, rotation: -89 },
+    { east: false, heading: 225, rotation: -45 },
+    { east: false, heading: 270, rotation: 0 },
+    { east: false, heading: 315, rotation: 45 },
+    { east: false, heading: 359, rotation: 89 },
+    { east: true, heading: 360, rotation: -90 },
+    { east: true, heading: 405, rotation: -45 },
+  ])(
+    "points the leading end along heading $heading without inverting the ferry",
+    // render cardinal, diagonal, and boundary headings
+    async ({ east, heading, rotation }) => {
+      const headingSnapshot = {
+        ...snapshot,
+        sources: {
+          vessels: {
+            ...snapshot.sources.vessels,
+            value: [{ ...seededVessel, heading }],
+          },
+        },
+      } as PublicSsrSnapshot;
+      mocks.getVesselSnapshot.mockReturnValue(new Promise(() => undefined));
+      const container = document.createElement("div");
+      document.body.append(container);
+      root = createRoot(container);
+
+      // mount the map fixture
+      await act(() => {
+        root?.render(view(headingSnapshot));
+      });
+
+      const marker = container.querySelector<HTMLElement>(
+        '[aria-label="Open Sealth vessel details"] .vessel-marker-visual'
+      );
+      const ferry = marker?.querySelector<HTMLElement>(".vessel-marker-icon");
+      // compose parent and ferry rotations
+      const windRotation = Number.parseFloat(
+        marker?.style.transform.replace("rotate(", "") ?? ""
+      );
+      const iconRotation = Number.parseFloat(
+        ferry?.style.transform.replace("rotate(", "") ?? ""
+      );
+      expect(windRotation + iconRotation).toBe(rotation);
+      expect(rotation).toBeGreaterThanOrEqual(-90);
+      expect(rotation).toBeLessThanOrEqual(90);
+      const trail = marker?.querySelector(".vessel-marker-wind");
+      expect(trail).not.toBeNull();
+      expect(trail?.classList.contains("vessel-marker-wind--east")).toBe(east);
+    }
+  );
+
+  // camera reflow preserves marker roots
+  it("repositions overlapping labels and keeps trails clear without replacing markers", async () => {
+    vi.useFakeTimers();
+    const crowdedSnapshot = {
+      ...snapshot,
+      sources: {
+        vessels: {
+          ...snapshot.sources.vessels,
+          value: [seededVessel, freshVessel],
+        },
+      },
+    } as PublicSsrSnapshot;
+    mocks.getVesselSnapshot.mockReturnValue(new Promise(() => undefined));
+    const container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+    // mount and finish initial layout
+    await act(() => root?.render(view(crowdedSnapshot)));
+    await act(() => vi.advanceTimersByTime(20));
+
+    const markers = [
+      ...container.querySelectorAll<HTMLButtonElement>(
+        "button[data-map-marker]"
+      ),
+    ];
+    expect(markers).toHaveLength(2);
+    // simulate nearby positions after fitting the map
+    markers.forEach((marker, index) => {
+      const center = 200 + index * 10;
+      const path = marker.querySelector<SVGPathElement>(
+        "[data-map-marker-icon] svg path"
+      );
+      const label = marker.querySelector<HTMLElement>(
+        "[data-map-marker-label]"
+      );
+      expect(path).not.toBeNull();
+      expect(label).not.toBeNull();
+      // install painted bounds for this icon
+      path!.getBoundingClientRect = () => new DOMRect(center - 20, 145, 40, 10);
+      label!.className = "absolute bottom-full left-1/2 mb-1 -translate-x-1/2";
+      // measure each candidate placement
+      label!.getBoundingClientRect = () => {
+        // above marker
+        if (label!.classList.contains("bottom-full")) {
+          const gap = Number.parseFloat(label!.style.marginBottom) || 4;
+          return new DOMRect(center - 40, 96.7 - gap, 80, 26);
+        }
+        // below marker
+        if (label!.classList.contains("top-full")) {
+          const gap = Number.parseFloat(label!.style.marginTop) || 4;
+          return new DOMRect(center - 40, 177.3 + gap, 80, 26);
+        }
+        // left of marker
+        if (label!.classList.contains("right-full")) {
+          const gap = Number.parseFloat(label!.style.marginRight) || 4;
+          return new DOMRect(center - 107.3 - gap, 137, 80, 26);
+        }
+        const gap = Number.parseFloat(label!.style.marginLeft) || 4;
+        return new DOMRect(center + 27.3 + gap, 137, 80, 26);
+      };
+    });
+    // trigger camera completion and its measured layout
+    await act(() => mocks.maps[0]?.triggerEvent("moveend"));
+    await act(() => vi.advanceTimersByTime(20));
+
+    expect(
+      markers[0].querySelector("[data-map-marker-label]")?.classList
+    ).toContain("bottom-full");
+    expect(
+      markers[1].querySelector("[data-map-marker-label]")?.classList
+    ).toContain("top-full");
+    expect(container.querySelector("button[data-map-marker]")).toBe(markers[0]);
+
+    expect(container.querySelectorAll("button[data-map-marker]")[1]).toBe(
+      markers[1]
+    );
+
+    const trail = markers[0].querySelector<HTMLElement>(
+      ".vessel-marker-wind-streak"
+    );
+    expect(trail).not.toBeNull();
+    trail!.style.width = "20px";
+    // reserve the full animation envelope near the first label
+    trail!.getBoundingClientRect = () => new DOMRect(180, 90, 20, 2);
+    // reflow labels clear of motion after another camera update
+    await act(() => mocks.maps[0]?.triggerEvent("resize"));
+    await act(() => vi.advanceTimersByTime(20));
+    expect(
+      markers[0].querySelector("[data-map-marker-label]")?.classList
+    ).toContain("top-full");
+    expect(
+      markers[1].querySelector("[data-map-marker-label]")?.classList
+    ).toContain("left-full");
+    expect(container.querySelector("button[data-map-marker]")).toBe(markers[0]);
+
+    // simulate a cluster occupying all four nearest label positions
+    trail!.getBoundingClientRect = () => new DOMRect(160, 92, 80, 114);
+    await act(() => mocks.maps[0]?.triggerEvent("resize"));
+    await act(() => vi.advanceTimersByTime(20));
+    expect(
+      markers[0].querySelector<HTMLElement>("[data-map-marker-label]")?.style
+        .marginRight
+    ).toBe("40px");
+    expect(container.querySelector("button[data-map-marker]")).toBe(markers[0]);
+  });
+
   // docked marker presentation
   it("shows docked vessels in gray with an anchor and no wind", async () => {
     const dockedSnapshot = {
@@ -575,8 +760,9 @@ describe("map hydration seed freshness", () => {
     const markerButton = container.querySelector<HTMLButtonElement>(
       '[aria-label="Open Sealth vessel details"]'
     );
-    const dockedMarker =
-      markerButton?.querySelector<HTMLElement>(".vessel-marker-visual");
+    const dockedMarker = markerButton?.querySelector<HTMLElement>(
+      ".vessel-marker-visual"
+    );
     expect(dockedMarker).not.toBeNull();
     expect(markerButton?.firstElementChild?.classList).toContain(
       "text-gray-dark"

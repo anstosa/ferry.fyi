@@ -9,6 +9,7 @@ import { adminFeaturesRouter } from "./admin/features";
 import { adminLeaderboardsRouter } from "./admin/leaderboards";
 import { adminNotificationsRouter } from "./admin/notifications";
 import { adminOperationsRouter } from "./admin/operations";
+import { adminTerminalLocationsRouter } from "./admin/terminalLocations";
 import { adminTicketsRouter } from "./admin/tickets";
 import { adminUsersRouter } from "./admin/users";
 import { createCameraDetectionDebuggerRouter } from "./cameraDetectionDebugger";
@@ -39,6 +40,7 @@ adminRouter.use("/operations", adminOperationsRouter);
 adminRouter.use("/notifications", adminNotificationsRouter);
 adminRouter.use("/content", adminContentRouter);
 adminRouter.use("/tickets", adminTicketsRouter);
+adminRouter.use("/terminal-locations", adminTerminalLocationsRouter);
 adminRouter.use("/features", adminFeaturesRouter);
 if (process.env.NODE_ENV === "development") {
   adminRouter.use("/camera-detection", createCameraDetectionDebuggerRouter());

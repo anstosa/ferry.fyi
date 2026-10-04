@@ -320,6 +320,8 @@ export type PublicSsrRouteSourceMap = {
   "mate-alerts": "route" | "bulletins" | "notices";
   "terminal-subscribe": "route" | "alertGuidance" | "notices";
   "mate-subscribe": "route" | "alertGuidance" | "notices";
+  "terminal-navigation": never;
+  "mate-navigation": never;
 };
 export interface PublicSsrMetadata {
   canonicalPath: string;

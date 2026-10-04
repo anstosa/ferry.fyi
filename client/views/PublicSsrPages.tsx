@@ -661,12 +661,12 @@ const EDITORIAL_PAGES: Record<
     title: "Support",
   },
   forecasting: {
-    body: "Vehicle-space, delay, weather, and tide forecasts are estimates, not confirmations of boarding availability, cancellations, or delays.",
+    body: "Vehicle-space, delay, weather, and tide forecasts are estimates, not confirmations of boarding availability, cancellations, or delays. The leave-now sailing tool uses Google travel timing and a Ferry FYI estimate of when reported drive-up space reaches zero. The adjustable buffer affects departure timing, not inventory at arrival. Booth lines, parking and reservation-aware boarding are not modeled.",
     path: "/forecasting",
     title: "Forecast methodology",
   },
   privacy: {
-    body: "Ferry FYI keeps account and notification controls private and lets signed-in users permanently delete their account from the Account page. Contextual advertisements may use the route, terminal, or page being viewed, but not account information, precise location, saved tickets, notification settings, or activity across other websites.",
+    body: "Ferry FYI keeps account and notification controls private and lets signed-in users permanently delete their account from the Account page. Starting-address text is sent transiently to Google for suggestions as you type in Navigation. When you explicitly request a leave-now sailing estimate, your foreground location, manual origin or selected Google place identifier is sent transiently to Ferry FYI and Google to calculate the route. Ferry FYI does not retain origins or suggestions or use them for analytics, advertisements or model training. Contextual advertisements may use the route, terminal, or page being viewed, but not account information, precise location, saved tickets, notification settings, or activity across other websites.",
     path: "/privacy",
     title: "Privacy Policy",
   },
@@ -694,6 +694,21 @@ export const PublicEditorialPage = ({
       <SnapshotSeoHelmet fallback={getSeoMetadata(content.path)} />
       <h1>{content.title}</h1>
       <p>{content.body}</p>
+      {/* expose provider terms on both public policy pages */}
+      {(page === "terms" || page === "privacy") && (
+        <p>
+          Address suggestions and travel estimates use Google Maps services
+          under the{" "}
+          <a href="https://cloud.google.com/maps-platform/terms">
+            Google Maps terms
+          </a>{" "}
+          and{" "}
+          <a href="https://policies.google.com/privacy">
+            Google Privacy Policy
+          </a>
+          .
+        </p>
+      )}
     </SsrPage>
   );
 };

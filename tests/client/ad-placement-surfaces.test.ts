@@ -19,11 +19,12 @@ describe("advertising surfaces", () => {
     }
   );
 
+  // preserve ad order before the expanded current-time banner
   it("places the schedule ad immediately before the current-time divider", () => {
     const source = placementSources.schedule;
     const boundaryIndex = source.indexOf("{showNowDivider && (");
     const adIndex = source.indexOf("<AdSlot", boundaryIndex);
-    const nowIndex = source.indexOf("<NowDivider />", boundaryIndex);
+    const nowIndex = source.indexOf("<NowDivider", boundaryIndex);
 
     expect(boundaryIndex).toBeGreaterThan(-1);
     expect(adIndex).toBeGreaterThan(boundaryIndex);
