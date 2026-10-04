@@ -35,8 +35,8 @@ export const SEO_DEFAULT_DESCRIPTION =
   "Plan Washington State Ferries trips with route schedules, sailing times, service alerts, traffic cameras, fares, and vehicle-capacity forecasts.";
 export const SEO_DEFAULT_TITLE =
   "Ferry FYI - Washington State Ferries Schedules & Tracker";
-// Update when the server-rendered indexable content changes substantially.
-export const SEO_CONTENT_LAST_MODIFIED = "2026-07-29";
+// advance only for substantial indexable content changes
+export const SEO_CONTENT_LAST_MODIFIED = "2026-10-03";
 export const SEO_DESCRIPTION_FAILURE_LENGTH = 100;
 export const SEO_DESCRIPTION_TARGET_MIN_LENGTH = 120;
 export const SEO_DESCRIPTION_TARGET_MAX_LENGTH = 160;

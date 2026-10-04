@@ -1,7 +1,7 @@
 import "mapbox-gl/dist/mapbox-gl.css";
 
 import { Map as Mapbox, type MapEventOf, NavigationControl } from "mapbox-gl";
-import React, { ReactElement, useEffect, useRef, useState } from "react";
+import React, { type ReactElement, useEffect, useRef, useState } from "react";
 import type { TerminalPoint } from "shared/contracts/terminalLocations";
 
 export type TerminalPointKind = "booth" | "dock";

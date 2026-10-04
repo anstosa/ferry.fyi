@@ -78,6 +78,9 @@ let root: Root;
 let container: HTMLDivElement;
 let schedule: Schedule;
 
+// return the current deterministic schedule fixture
+const refreshSchedule = (): Promise<Schedule> => Promise.resolve(schedule);
+
 // assemble a deterministic public schedule without private history
 const makeSchedule = (): Schedule => ({
   date: getRecommendationServiceDate(NOW),
@@ -112,7 +115,7 @@ const makeResponse = (
 ): SailingRecommendationResponse => {
   const candidateInput = {
     arrivalAt: asOf + 1200,
-    asOf: asOf,
+    asOf,
     mode,
     schedule,
     observations: schedule.slots.map((slot) => {
@@ -220,7 +223,12 @@ beforeEach(async () => {
   document.body.appendChild(container);
   root = createRoot(container);
   await act(async () => {
-    root.render(<SailingRecommendationCard schedule={schedule} />);
+    root.render(
+      <SailingRecommendationCard
+        onRefreshSchedule={refreshSchedule}
+        schedule={schedule}
+      />
+    );
   });
 });
 // discard origins, timers and rendered fixtures between cases
@@ -717,7 +725,12 @@ describe("leave-now sailing card", () => {
       })),
     };
     await act(async () => {
-      root.render(<SailingRecommendationCard schedule={changed} />);
+      root.render(
+        <SailingRecommendationCard
+          onRefreshSchedule={refreshSchedule}
+          schedule={changed}
+        />
+      );
     });
     expect(container.textContent).toContain("schedule changed");
     expect(adapters.post).toHaveBeenCalledOnce();
@@ -1009,7 +1022,12 @@ describe("leave-now sailing card", () => {
   it("does not display tight timing and keeps pedestrian details timing-only", async () => {
     schedule.slots[1].time = NOW + 1800;
     await act(async () => {
-      root.render(<SailingRecommendationCard schedule={schedule} />);
+      root.render(
+        <SailingRecommendationCard
+          onRefreshSchedule={refreshSchedule}
+          schedule={schedule}
+        />
+      );
     });
     await click("Use my location");
     expect(
@@ -1040,7 +1058,12 @@ describe("leave-now sailing card", () => {
       }),
     };
     await act(async () => {
-      root.render(<SailingRecommendationCard schedule={changed} />);
+      root.render(
+        <SailingRecommendationCard
+          onRefreshSchedule={refreshSchedule}
+          schedule={changed}
+        />
+      );
     });
     expect(container.textContent).toContain("schedule changed");
     expect(
@@ -1062,7 +1085,12 @@ describe("leave-now sailing card", () => {
     schedule.slots[1].cancellationReason = "tidal";
     schedule.slots.splice(2, 0, chosen);
     await act(async () => {
-      root.render(<SailingRecommendationCard schedule={schedule} />);
+      root.render(
+        <SailingRecommendationCard
+          onRefreshSchedule={refreshSchedule}
+          schedule={schedule}
+        />
+      );
     });
     await click("Use my location");
     const center = container.querySelector('[aria-label="Sailing estimates"]')

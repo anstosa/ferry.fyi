@@ -6,6 +6,9 @@ import { createRoot } from "react-dom/client";
 import { SailingRecommendationCard } from "../../../client/views/Schedule/SailingRecommendationCard";
 import { fixtureAudit, fixtureSchedule } from "./state";
 
+// return the deterministic browser schedule fixture
+const refreshFixtureSchedule = () => Promise.resolve(fixtureSchedule);
+
 // enable the class-based production dark palette on request
 if (new URL(window.location.href).searchParams.get("theme") === "dark") {
   document.documentElement.classList.add("dark");
@@ -33,7 +36,10 @@ const FixtureApp = (): React.ReactElement => {
           </p>
           <h1 className="text-2xl font-bold">Today&apos;s sailings</h1>
         </header>
-        <SailingRecommendationCard schedule={fixtureSchedule} />
+        <SailingRecommendationCard
+          onRefreshSchedule={refreshFixtureSchedule}
+          schedule={fixtureSchedule}
+        />
         <aside
           aria-label="Fixture audit"
           className="m-3 rounded border border-dashed border-gray-400 p-3 text-xs"

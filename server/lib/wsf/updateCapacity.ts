@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
 
-import type { Transaction } from "sequelize";
 import type { Slot } from "shared/contracts/schedules";
 import {
   EARLY_DEPARTURE_TOLERANCE_SECONDS,
@@ -98,7 +97,7 @@ const getProjectedDepartureAtReceipt = (
   departureTime: number
 ): number => {
   // use the full cached schedule when available
-  if (schedule && slot && Array.isArray(schedule.slots)) {
+  if (schedule && slot) {
     return Math.floor(
       getProjectedTiming({
         schedule: schedule.slots,
@@ -195,15 +194,6 @@ const buildDirectObservation = ({
     schedule,
     slot,
   };
-};
-
-// update a crossing inside the active group transaction
-const updateCrossing = async (
-  crossing: Crossing,
-  values: Partial<Crossing>,
-  transaction: Transaction
-): Promise<void> => {
-  await crossing.update(values, { transaction });
 };
 
 // preserve the synthetic predecessor repair without calling it direct evidence
@@ -445,8 +435,7 @@ export const updateCapacity = async (): Promise<Schedule[]> => {
                   capacityReportUpdatedAt
                   ? crossing.departureDelta
                   : null;
-              await updateCrossing(
-                crossing,
+              await crossing.update(
                 {
                   ...model,
                   // retain past observations when the vessel moves to another trip
@@ -459,7 +448,7 @@ export const updateCapacity = async (): Promise<Schedule[]> => {
                     totalCapacity: spaceData.MaxSpaceCount,
                   }),
                 },
-                transaction
+                { transaction }
               );
               stats.updatedCrossings += 1;
             }

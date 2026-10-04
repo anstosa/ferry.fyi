@@ -1143,10 +1143,7 @@ export const Admin = (): ReactElement => {
       </p>
       <AdminTabNavigation
         activeTab={activeTab}
-        onSelect={(tab) => {
-          // preserve the typed admin route boundary
-          navigateToAdminTab(tab as AdminTab);
-        }}
+        onSelect={navigateToAdminTab}
         tabs={adminTabs}
       />
       <div

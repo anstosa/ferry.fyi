@@ -56,7 +56,7 @@ export const SailingRecommendationCard = ({
   onRefreshSchedule,
   schedule,
 }: {
-  onRefreshSchedule?: () => Promise<Schedule | null>;
+  onRefreshSchedule: () => Promise<Schedule | null>;
   schedule: Schedule;
 }): React.ReactElement => {
   const [mode, setMode] = useState<TravelMode>("drive");
@@ -180,9 +180,7 @@ export const SailingRecommendationCard = ({
       }
       setAddress("");
       stage = "schedule";
-      let freshSchedule = onRefreshSchedule
-        ? await onRefreshSchedule()
-        : schedule;
+      let freshSchedule = await onRefreshSchedule();
       // ignore a cache completion belonging to another route or method
       if (requestIdentity.current !== identity) {
         return;
@@ -212,7 +210,6 @@ export const SailingRecommendationCard = ({
       }
       // inventory can advance while google calculates directions
       if (
-        onRefreshSchedule &&
         result.bufferOutcomeBands.length > 0 &&
         result.revision !== freshRevision
       ) {

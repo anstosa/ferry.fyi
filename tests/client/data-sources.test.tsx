@@ -1,13 +1,39 @@
 import React from "react";
-import { HelmetProvider } from "react-helmet-async";
 import { renderToStaticMarkup } from "react-dom/server";
+import { HelmetProvider } from "react-helmet-async";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 
 import { DataSources } from "../../client/views/DataSources";
-import { SEO_CONTENT_LAST_MODIFIED } from "../../shared/lib/seo";
+import {
+  getSeoMetadata,
+  getSeoSchema,
+  SEO_CONTENT_LAST_MODIFIED,
+} from "../../shared/lib/seo";
 
 describe("data sources editorial revision", () => {
+  // keep page and dataset metadata aligned with the public policy revision
+  it("publishes the substantive October content revision", () => {
+    expect(SEO_CONTENT_LAST_MODIFIED).toBe("2026-10-03");
+    const schema = getSeoSchema(
+      getSeoMetadata("/data-sources"),
+      "https://ferry.fyi"
+    );
+    expect(schema["@graph"]).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          "@type": "WebPage",
+          dateModified: "2026-10-03",
+        }),
+        expect.objectContaining({
+          "@type": "Dataset",
+          dateModified: "2026-10-03",
+        }),
+      ])
+    );
+  });
+
+  // keep the human label and machine date in one revision
   it("renders the shared SEO content revision as visible copy", () => {
     const html = renderToStaticMarkup(
       <HelmetProvider>
@@ -18,7 +44,7 @@ describe("data sources editorial revision", () => {
     );
 
     expect(html).toContain(
-      `<time dateTime="${SEO_CONTENT_LAST_MODIFIED}">July 29, 2026</time>`
+      `<time dateTime="${SEO_CONTENT_LAST_MODIFIED}">October 3, 2026</time>`
     );
   });
 });

@@ -6,7 +6,15 @@ import { Page } from "../components/Page";
 import { SeoHelmet } from "../components/SeoHelmet";
 
 const seo = getSeoMetadata("/data-sources");
+// format the shared revision without local time-zone drift
+const contentReviewDate = new Intl.DateTimeFormat("en-US", {
+  day: "numeric",
+  month: "long",
+  timeZone: "UTC",
+  year: "numeric",
+}).format(new Date(SEO_CONTENT_LAST_MODIFIED));
 
+// render public methodology with its shared revision
 export const DataSources = (): ReactElement => (
   <Page title="Data sources and API guide">
     <SeoHelmet seo={seo} />
@@ -17,7 +25,7 @@ export const DataSources = (): ReactElement => (
     </p>
     <p className="mt-2 text-sm text-gray-700 dark:text-gray-400">
       Methodology last reviewed{" "}
-      <time dateTime={SEO_CONTENT_LAST_MODIFIED}>July 29, 2026</time>.
+      <time dateTime={SEO_CONTENT_LAST_MODIFIED}>{contentReviewDate}</time>.
     </p>
 
     <h2 className="font-bold text-lg mt-8">Data sources and freshness</h2>

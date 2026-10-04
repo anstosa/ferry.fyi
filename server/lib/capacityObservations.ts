@@ -106,10 +106,10 @@ const normalizeObservation = (
   };
 };
 
-// append observations without mutating prior evidence
+// append immutable observations in the allocation transaction
 export const insertCapacityObservations = async (
   rows: CapacityObservationInsert[],
-  transaction?: Transaction
+  transaction: Transaction
 ): Promise<void> => {
   // skip empty provider groups
   if (!rows.length) {
@@ -120,7 +120,7 @@ export const insertCapacityObservations = async (
   >[0];
   await CapacityObservation.bulkCreate(insertRows, {
     ignoreDuplicates: true,
-    ...(transaction ? { transaction } : {}),
+    transaction,
   });
 };
 

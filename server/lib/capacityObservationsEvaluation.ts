@@ -1,3 +1,5 @@
+import { percentile, rate } from "shared/lib/observability";
+
 import {
   type FillTimingObservation,
   predictFillTiming,
@@ -272,21 +274,6 @@ export const getFillIntervalErrorSeconds = (
   return 0;
 };
 
-// compute one percentile with nearest-rank interpolation
-const percentile = (values: number[], probability: number): number | null => {
-  // reject empty samples
-  if (!values.length) {
-    return null;
-  }
-  const sorted = [...values].sort((left, right) => left - right);
-  const index = Math.ceil(probability * sorted.length) - 1;
-  return sorted[Math.max(0, index)];
-};
-
-// divide without inventing empty-sample performance
-const ratio = (numerator: number, denominator: number): number | null =>
-  denominator > 0 ? numerator / denominator : null;
-
 // evaluate deterministic causal cases
 export const evaluateFillTimingCases = (
   cases: FillTimingEvaluationCase[]
@@ -402,11 +389,11 @@ export const evaluateFillTimingCases = (
     cohorts,
     eligible,
     eventBeforeDeparture: {
-      accuracy: ratio(truePositive + trueNegative, classified),
+      accuracy: rate(truePositive + trueNegative, classified),
       falseNegative,
       falsePositive,
-      precision: ratio(truePositive, truePositive + falsePositive),
-      recall: ratio(truePositive, truePositive + falseNegative),
+      precision: rate(truePositive, truePositive + falsePositive),
+      recall: rate(truePositive, truePositive + falseNegative),
       trueNegative,
       truePositive,
     },
@@ -418,8 +405,8 @@ export const evaluateFillTimingCases = (
     },
     modelVersion: "fill-linear-v1",
     observationExclusions,
-    predictedRangeCoverage: ratio(coveredRanges, rangedPredictions),
-    predictedRangeIntersection: ratio(intersectingRanges, rangedPredictions),
+    predictedRangeCoverage: rate(coveredRanges, rangedPredictions),
+    predictedRangeIntersection: rate(intersectingRanges, rangedPredictions),
     total: cases.length,
     validationClaim: "deterministic-baseline-only",
   };

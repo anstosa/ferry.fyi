@@ -1,6 +1,6 @@
 import clsx from "clsx";
 import React, {
-  ReactElement,
+  type ReactElement,
   useEffect,
   useMemo,
   useRef,

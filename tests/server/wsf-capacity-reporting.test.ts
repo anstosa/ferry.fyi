@@ -51,6 +51,24 @@ const DEPARTURE_AT = OBSERVED_AT + 3_600;
 // represent the production transaction callback contract
 const DEFAULT_TRANSACTION = { id: "default-transaction" };
 
+// build a coherent cached schedule double
+const scheduleWithSlot = (slot: Record<string, unknown>) => {
+  Object.assign(slot, {
+    allowsPassengers: true,
+    allowsVehicles: true,
+    hasPassed: false,
+    mateId: "14",
+    time: DEPARTURE_AT,
+    vessel: slot.vessel ?? {},
+    wuid: "capacity-test-slot",
+  });
+  return {
+    getSlot: vi.fn().mockReturnValue(slot),
+    key: "schedule-key",
+    slots: [slot],
+  };
+};
+
 // build one raw WSF response
 const capacityResponse = (
   driveUpCapacity: number,
@@ -203,10 +221,7 @@ describe("WSF capacity reporting start", () => {
   // create and link a below-max crossing
   it("persists start state from a partial-display create payload", async () => {
     const slot: { crossing?: unknown } = {};
-    const schedule = {
-      getSlot: vi.fn().mockReturnValue(slot),
-      key: "schedule-key",
-    };
+    const schedule = scheduleWithSlot(slot);
     const crossing = { isEmpty: vi.fn().mockReturnValue(false) };
     scheduleModel.getByIndex.mockReturnValue(schedule);
     crossingModel.findOrCreate.mockResolvedValue([crossing, true]);
@@ -300,10 +315,7 @@ describe("WSF capacity reporting start", () => {
   // defer in-memory schedule linkage until commit
   it("does not link a slot after a failed crossing update", async () => {
     const slot: { crossing?: unknown } = {};
-    const schedule = {
-      getSlot: vi.fn().mockReturnValue(slot),
-      key: "schedule-key",
-    };
+    const schedule = scheduleWithSlot(slot);
     const crossing = {
       capacityReportingStartedAt: null,
       departureDelta: null,
@@ -322,10 +334,7 @@ describe("WSF capacity reporting start", () => {
   // update start once and preserve it
   it("transitions an existing crossing once and keeps the first timestamp", async () => {
     const slot: { crossing?: unknown } = {};
-    const schedule = {
-      getSlot: vi.fn().mockReturnValue(slot),
-      key: "schedule-key",
-    };
+    const schedule = scheduleWithSlot(slot);
     const crossing = {
       capacityReportingStartedAt: null as number | null,
       isEmpty: vi.fn().mockReturnValue(false),
@@ -366,10 +375,7 @@ describe("WSF capacity reporting start", () => {
 
   // preserve delayed previous-sailing repair
   it("marks a qualifying delayed previous crossing full", async () => {
-    const schedule = {
-      getSlot: vi.fn().mockReturnValue({}),
-      key: "schedule-key",
-    };
+    const schedule = scheduleWithSlot({});
     const crossing = { isEmpty: vi.fn().mockReturnValue(false) };
     const previousCrossing = {
       arrivalId: "14",
@@ -437,10 +443,7 @@ describe("WSF capacity reporting start", () => {
     const [arrivalSpace] =
       response[0].DepartingSpaces[0].SpaceForArrivalTerminals;
     arrivalSpace.ArrivalTerminalIDs = [14, 15];
-    const schedule = {
-      getSlot: vi.fn().mockReturnValue({}),
-      key: "schedule-key",
-    };
+    const schedule = scheduleWithSlot({});
     const crossing = {
       capacityReportingStartedAt: null,
       departureDelta: null,
@@ -518,10 +521,7 @@ describe("WSF capacity reporting start", () => {
     const slot: { crossing?: unknown; vessel: unknown } = {
       vessel: scheduledVessel,
     };
-    const schedule = {
-      getSlot: vi.fn().mockReturnValue(slot),
-      key: "schedule-key",
-    };
+    const schedule = scheduleWithSlot(slot);
     const crossing = {
       capacityReportingStartedAt: null,
       departureDelta: null,
@@ -588,10 +588,7 @@ describe("WSF capacity reporting start", () => {
     const slot: { crossing?: unknown; vessel: unknown } = {
       vessel: scheduledVessel,
     };
-    const schedule = {
-      getSlot: vi.fn().mockReturnValue(slot),
-      key: "schedule-key",
-    };
+    const schedule = scheduleWithSlot(slot);
     const crossing = { isEmpty: vi.fn().mockReturnValue(false) };
     scheduleModel.getByIndex.mockReturnValue(schedule);
     vesselModel.getByIndex.mockReturnValue(undefined);
@@ -659,10 +656,7 @@ describe("WSF capacity reporting start", () => {
     },
   ])("does not copy delay from a $label", async (vesselStatus) => {
     vi.setSystemTime((DEPARTURE_AT + 3 * 60 * 60) * 1_000);
-    const schedule = {
-      getSlot: vi.fn().mockReturnValue({}),
-      key: "schedule-key",
-    };
+    const schedule = scheduleWithSlot({});
     const crossing = { isEmpty: vi.fn().mockReturnValue(false) };
     scheduleModel.getByIndex.mockReturnValue(schedule);
     vesselModel.getByIndex.mockReturnValue({
@@ -722,10 +716,7 @@ describe("WSF capacity reporting start", () => {
   // preserve confirmed history when live status no longer matches
   it("preserves an existing confirmed delay for an unmatched vessel event", async () => {
     vi.setSystemTime((DEPARTURE_AT + 2 * 60 * 60) * 1_000);
-    const schedule = {
-      getSlot: vi.fn().mockReturnValue({}),
-      key: "schedule-key",
-    };
+    const schedule = scheduleWithSlot({});
     const crossing = {
       capacityReportingStartedAt: OBSERVED_AT - 60,
       departureDelta: 7 * 60,

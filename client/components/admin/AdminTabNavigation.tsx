@@ -1,23 +1,23 @@
 import clsx from "clsx";
-import React, { ReactElement, useEffect, useRef, useState } from "react";
+import React, { type ReactElement, useEffect, useRef, useState } from "react";
 
-export interface AdminTabItem {
-  id: string;
+interface AdminTabItem<T extends string> {
+  id: T;
   label: string;
 }
 
-interface Props {
-  activeTab: string;
-  onSelect: (tab: string) => void;
-  tabs: readonly AdminTabItem[];
+interface Props<T extends string> {
+  activeTab: T;
+  onSelect: (tab: T) => void;
+  tabs: readonly AdminTabItem<T>[];
 }
 
 // provide desktop tabs and a bounded mobile menu
-export const AdminTabNavigation = ({
+export const AdminTabNavigation = <T extends string>({
   activeTab,
   onSelect,
   tabs,
-}: Props): ReactElement => {
+}: Props<T>): ReactElement => {
   const [open, setOpen] = useState(false);
   const [focusedIndex, setFocusedIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
