@@ -54,6 +54,24 @@ describe("PageLoadError", () => {
     expect(contactLink?.getAttribute("href")).toContain("mailto:dev@ferry.fyi");
   });
 
+  // developer reports must never attach the shared starting address
+  it("redacts starting address from the developer contact URL", () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/clinton/mukilteo/navigation?tripMode=walk#anchor&tripAddress=Private+House"
+    );
+    const { container } = renderElement(
+      React.createElement(PageLoadError, { onReload: vi.fn() })
+    );
+    const href = decodeURIComponent(
+      container.querySelector("a")!.getAttribute("href")!
+    );
+    expect(href).toContain("tripMode=walk#anchor");
+    expect(href).not.toContain("Private");
+    expect(href).not.toContain("tripAddress");
+  });
+
   // unauthorized recovery action
   it("offers logout after an unauthorized page load", () => {
     const { container } = renderElement(

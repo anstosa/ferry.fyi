@@ -5,8 +5,28 @@ import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 
 import { PrivacyPolicy } from "../../client/views/PrivacyPolicy";
+import { PublicEditorialPage } from "../../client/views/PublicSsrPages";
 
 describe("privacy and advertising policy", () => {
+  // retain the same shared-origin disclosure before browser-only content loads
+  it("discloses address fragments, history and explicit estimates in SSR", () => {
+    const html = renderToStaticMarkup(
+      <HelmetProvider>
+        <MemoryRouter>
+          <PublicEditorialPage page="privacy" />
+        </MemoryRouter>
+      </HelmetProvider>
+    );
+    expect(html).toContain("starting address is kept in the page URL fragment");
+    expect(html).toContain("may remain in browser history");
+    expect(html).toContain("included when you share the trip link");
+    expect(html).toContain("Shared links only prefill the form");
+    expect(html).toContain(
+      "without requesting location or automatically calculating an estimate"
+    );
+    expect(html).toContain("does not retain submitted origins or suggestions");
+  });
+
   // disclose transient travel inputs independently of advertising rules
   it("explains address suggestions and travel-origin privacy", () => {
     const html = renderToStaticMarkup(
@@ -24,6 +44,10 @@ describe("privacy and advertising policy", () => {
     );
     expect(html).toContain("does not retain these origins or suggestions");
     expect(html).toContain("for analytics, advertising, or model training");
+    expect(html).toContain("kept in the page URL fragment");
+    expect(html).toContain("may remain in your browser history");
+    expect(html).toContain("Sharing the trip link includes that address");
+    expect(html).toContain("shared link only prefills the form");
     expect(html).toContain('href="https://policies.google.com/privacy"');
   });
 
@@ -37,7 +61,7 @@ describe("privacy and advertising policy", () => {
     );
 
     expect(html).toContain(
-      '<time dateTime="2026-10-03">October 3, 2026</time>'
+      '<time dateTime="2026-10-05">October 5, 2026</time>'
     );
     expect(html).toContain("cached with the account");
     expect(html).toContain("a ticket looked up");

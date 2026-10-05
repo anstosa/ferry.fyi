@@ -39,9 +39,16 @@ interface Candidate {
 
 // reject only a confirmed departure or elapsed projected sailing
 const hasDeparted = (slot: Slot, projected: number, asOf: number): boolean => {
+  const matchingLiveLeg =
+    (slot.vessel.scheduledDepartureTime ??
+      slot.vessel.gpsDelay?.signals.scheduledDepartureTime) === slot.time;
   const observedDeparture =
-    slot.vessel.scheduledDepartureTime === slot.time &&
+    matchingLiveLeg &&
     isValidDepartureObservation(slot.vessel.departedTime, slot.time, asOf);
+  const leftDock =
+    matchingLiveLeg &&
+    slot.vessel.isAtDock === false &&
+    (!Number.isFinite(slot.vessel.departedTime) || observedDeparture);
   const recordedDeparture = isValidDepartureObservation(
     slot.crossing?.departureDelta === null ||
       slot.crossing?.departureDelta === undefined
@@ -50,7 +57,9 @@ const hasDeparted = (slot: Slot, projected: number, asOf: number): boolean => {
     slot.time,
     asOf
   );
-  return Boolean(observedDeparture || recordedDeparture || projected <= asOf);
+  return Boolean(
+    observedDeparture || leftDock || recordedDeparture || projected <= asOf
+  );
 };
 
 // share the same causal candidates between selection and probability details
@@ -125,6 +134,12 @@ export const buildRecommendationBands = ({
     // choose the earliest eligible projected departure
     for (const candidate of candidates) {
       const { capacity, departed, projectedDepartureAt, slot } = candidate;
+      const forecastFullProbability = slot.estimate?.fullProbability;
+      const hasForecast =
+        typeof forecastFullProbability === "number" &&
+        Number.isFinite(forecastFullProbability) &&
+        forecastFullProbability >= 0 &&
+        forecastFullProbability <= 1;
       let reason: SailingSkipReason | null = null;
       // cancellations are never eligible
       if (slot.crossing?.isCancelled || slot.cancellationReason) {
@@ -173,7 +188,11 @@ export const buildRecommendationBands = ({
         skipped: [...skipped],
       };
       // retain uncertain driver capacity only when no stronger selection exists
-      if (mode === "drive" && capacity?.state === "unavailable") {
+      if (
+        mode === "drive" &&
+        capacity?.state === "unavailable" &&
+        !hasForecast
+      ) {
         capacityFallback ??= outcome;
         skipped.push({
           departureAt: slot.time,
@@ -297,6 +316,7 @@ export const buildSailingAssessments = ({
           arrivalAt,
           capacity,
           eligibilityReason,
+          forecastFullProbability: slot.estimate?.fullProbability,
           latestArrivalAt: projectedDepartureAt - rule.cutoffSeconds,
           mode,
           rateDistribution,

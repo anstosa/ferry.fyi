@@ -2,6 +2,7 @@ import { Capacitor } from "@capacitor/core";
 
 import { installClientRenderDiagnosticSink } from "~/lib/clientRenderTelemetry";
 import { installExceptionReporter } from "~/lib/errorReporting";
+import { redactSailingTripTelemetry } from "~/lib/sailingTrip";
 
 type DiagnosticClient = {
   captureException: (typeof import("@sentry/react"))["captureException"];
@@ -92,6 +93,11 @@ export const initializeSentry = async ({
     dsn,
     environment: process.env.NODE_ENV,
     tracesSampleRate: 0.25,
+    // remove shared addresses at every web and native telemetry export boundary
+    beforeBreadcrumb: redactSailingTripTelemetry,
+    beforeSend: redactSailingTripTelemetry,
+    beforeSendSpan: redactSailingTripTelemetry,
+    beforeSendTransaction: redactSailingTripTelemetry,
   };
   if (!native) {
     const Sentry = await loadWeb();

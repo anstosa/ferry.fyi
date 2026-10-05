@@ -2,6 +2,8 @@ import { useEffect } from "react";
 import type ReactGA from "react-ga4";
 import { useLocation } from "react-router-dom";
 
+import { stripSailingTripAddress } from "~/lib/sailingTrip";
+
 type AnalyticsEvent =
   | { action: "event"; category: string; label: string }
   | { action: "pageview"; pathname: string };
@@ -23,12 +25,22 @@ let analyticsActivated = false;
 let analyticsDeferred = false;
 let analyticsPromise: Promise<GoogleAnalytics | null> | null = null;
 
+// omit private link fragments before configuring any analytics URL fields
+const googleUrlDefaults = (): {
+  page_location: string;
+  page_referrer: string;
+} => ({
+  page_location: stripSailingTripAddress(window.location.href),
+  page_referrer: stripSailingTripAddress(document.referrer),
+});
+
 const pushDataLayerEvent = (event: AnalyticsEvent): void => {
   window.dataLayer = window.dataLayer ?? [];
   if (event.action === "pageview") {
     window.dataLayer.push({
       event: "page_view",
       page_path: event.pathname,
+      ...googleUrlDefaults(),
     });
     return;
   }
@@ -43,6 +55,8 @@ const reportToGoogleAnalytics = (
   ReactGA: GoogleAnalytics,
   event: AnalyticsEvent
 ): void => {
+  // refresh URL defaults for events emitted after form or route changes
+  ReactGA.set(googleUrlDefaults());
   if (event.action === "pageview") {
     ReactGA.set({ page: event.pathname });
     ReactGA.send({ hitType: "pageview", page: event.pathname });
@@ -60,6 +74,7 @@ const loadGoogleAnalytics = async (): Promise<GoogleAnalytics | null> => {
   const { default: ReactGA } = await import("react-ga4");
 
   ReactGA.initialize(measurementId, {
+    gtagOptions: googleUrlDefaults(),
     gaOptions: {
       allowAdFeatures: false,
       allowAdPersonalizationSignals: false,
@@ -78,7 +93,7 @@ const setDefaultGoogleConsent = (): void => {
     window.dataLayer?.push(arguments);
   };
   gtag("consent", "default", googleConsentDefaults);
-  gtag("set", googleAdvertisingFeatureDefaults);
+  gtag("set", { ...googleAdvertisingFeatureDefaults, ...googleUrlDefaults() });
 };
 
 // prepare consent before the deferred tag manager load

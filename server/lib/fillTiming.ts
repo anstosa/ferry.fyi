@@ -60,6 +60,32 @@ interface RateEstimate {
   rate: number;
 }
 
+// expose a percent-full denominator only when it contains the live anchor
+const capacityProjection = (
+  anchor: FillTimingObservation,
+  spacesAtAnchor: number,
+  rate: Pick<RateEstimate, "high" | "low" | "rate">
+): FillTimingCapacity["projection"] => {
+  const totalSpaces = anchor.maxSpaceCount;
+  // reject missing or contradictory provider totals
+  if (
+    typeof totalSpaces !== "number" ||
+    !Number.isFinite(totalSpaces) ||
+    totalSpaces <= 0 ||
+    totalSpaces < spacesAtAnchor
+  ) {
+    return undefined;
+  }
+  return {
+    rate: {
+      maximum: rate.high,
+      minimum: rate.low,
+      mostLikely: rate.rate,
+    },
+    totalSpaces,
+  };
+};
+
 // build the stable unavailable result
 const unavailableResult = (): FillTimingCapacity => ({
   anchorAgeSeconds: null,
@@ -121,7 +147,13 @@ const selectValidSegment = (
         observation.receivedAt <= asOf &&
         observation.receivedAt < projectedDepartureAt
     )
-    .sort((left, right) => left.receivedAt - right.receivedAt)
+    // deduplicate tied allocations in favor of authoritative direct reports
+    .sort(
+      (left, right) =>
+        left.receivedAt - right.receivedAt ||
+        Number(right.sourceKind === "wsf-direct") -
+          Number(left.sourceKind === "wsf-direct")
+    )
     .filter((observation) => {
       const identity = observationIdentity(observation);
       // deduplicate physical allocations
@@ -130,7 +162,14 @@ const selectValidSegment = (
       }
       seen.add(identity);
       return true;
-    });
+    })
+    // process tied repair boundaries before their authoritative direct replacement
+    .sort(
+      (left, right) =>
+        left.receivedAt - right.receivedAt ||
+        Number(left.sourceKind === "wsf-direct") -
+          Number(right.sourceKind === "wsf-direct")
+    );
   let segment: FillTimingObservation[] = [];
   // reset across every causal boundary
   for (const observation of ordered) {
@@ -419,6 +458,11 @@ export const predictFillTiming = ({
     anchor.reportingStateAtReceipt === "active" &&
     anchor.usableForFillLabel
   ) {
+    const projection = capacityProjection(anchor, anchorSpaces, {
+      high: 0,
+      low: 0,
+      rate: 0,
+    });
     let lastPositiveAt: number | null = null;
     // retain the closest positive lower bound
     for (let index = segment.length - 2; index >= 0; index -= 1) {
@@ -438,6 +482,7 @@ export const predictFillTiming = ({
       },
       predictedSpacesAtArrival: 0,
       priorKind: null,
+      ...(projection ? { projection } : {}),
       state: "already-full",
     };
   }
@@ -457,6 +502,7 @@ export const predictFillTiming = ({
     return unavailableResult();
   }
   const { confidence, high, low, priorKind, rate } = rateEstimate;
+  const projection = capacityProjection(anchor, anchorSpaces, rateEstimate);
   const fillAt = fillAtForRate(
     anchor.receivedAt,
     anchorSpaces,
@@ -493,6 +539,7 @@ export const predictFillTiming = ({
       fillRange,
       predictedSpacesAtArrival: 0,
       priorKind,
+      ...(projection ? { projection } : {}),
       state: "predicted-full-by-now",
     };
   }
@@ -505,6 +552,7 @@ export const predictFillTiming = ({
       fillRange: null,
       predictedSpacesAtArrival,
       priorKind,
+      ...(projection ? { projection } : {}),
       state: "not-expected-before-departure",
     };
   }
@@ -515,6 +563,7 @@ export const predictFillTiming = ({
     fillRange,
     predictedSpacesAtArrival,
     priorKind,
+    ...(projection ? { projection } : {}),
     state: "available",
   };
 };

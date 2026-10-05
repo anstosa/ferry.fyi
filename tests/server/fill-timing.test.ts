@@ -38,6 +38,56 @@ const observation = (
 });
 
 describe("fill-linear-v1", () => {
+  // same-time repair records must not erase the authoritative direct WSF observation
+  it.each([false, true])(
+    "prefers a direct zero over a tied repair with shared allocation %s",
+    (sharedAllocation) => {
+      const direct = observation(ANCHOR_AT, 0);
+      const repair = observation(ANCHOR_AT, 120, {
+        sourceKind: "repair-derived",
+        reportingStateAtReceipt: "unknown",
+        usableForFillLabel: false,
+        allocationGroupId: sharedAllocation
+          ? direct.allocationGroupId
+          : "repair-allocation",
+      });
+      // source authority must not depend on row insertion order
+      for (const observations of [
+        [direct, repair],
+        [repair, direct],
+      ]) {
+        const input = {
+          arrivalAt: ANCHOR_AT + 300,
+          asOf: ANCHOR_AT,
+          departureEstimate: 0,
+          observations,
+          projectedDepartureAt: DEPARTURE_AT,
+        };
+        expect(predictFillTiming(input)).toMatchObject({
+          state: "already-full",
+          anchorAt: ANCHOR_AT,
+          observedSpacesAtAnchor: 0,
+          projection: { totalSpaces: 120 },
+        });
+      }
+    }
+  );
+
+  // an unmatched newer repair still marks an actual segment boundary
+  it("does not carry a direct report past a later repair boundary", () => {
+    const result = predictFillTiming({
+      arrivalAt: ANCHOR_AT + 300,
+      asOf: ANCHOR_AT + 1,
+      departureEstimate: 0,
+      observations: [
+        observation(ANCHOR_AT, 30),
+        observation(ANCHOR_AT + 1, 120, { sourceKind: "repair-derived" }),
+      ],
+      projectedDepartureAt: DEPARTURE_AT,
+    });
+    expect(result.state).toBe("unavailable");
+  });
+
   // never turn a contradicted departure forecast into certain zero depletion
   it.each([1, 2])(
     "rejects a stale positive prior with only %s receipts",
@@ -109,8 +159,29 @@ describe("fill-linear-v1", () => {
         priorKind: "zero-prior",
         state: "available",
       });
+      expect(result.projection).toEqual({
+        rate: { maximum: 1.5, minimum: 0.5, mostLikely: 1 },
+        totalSpaces: 120,
+      });
     }
   );
+
+  // retain a truthful flat curve when the same model estimates no depletion
+  it("publishes a zero-rate capacity projection", () => {
+    const anchorAt = DEPARTURE_AT - 20 * 60;
+    const result = predictFillTiming({
+      arrivalAt: DEPARTURE_AT - 5 * 60,
+      asOf: anchorAt,
+      departureEstimate: 30,
+      observations: [observation(anchorAt, 30)],
+      projectedDepartureAt: DEPARTURE_AT,
+    });
+
+    expect(result.projection).toEqual({
+      rate: { maximum: 0, minimum: 0, mostLikely: 0 },
+      totalSpaces: 120,
+    });
+  });
 
   // blend a robust live slope with the cold-start prior
   it("uses the reviewed 15-minute two-space live slope example", () => {
@@ -168,7 +239,28 @@ describe("fill-linear-v1", () => {
       priorKind: null,
       state: "already-full",
     });
+    expect(result.projection).toEqual({
+      rate: { maximum: 0, minimum: 0, mostLikely: 0 },
+      totalSpaces: 120,
+    });
   });
+
+  // omit a percent-full curve when the provider denominator is unusable
+  it.each([null, 0, 29, Number.NaN])(
+    "omits the capacity projection for max space count %s",
+    (maxSpaceCount) => {
+      const result = predictFillTiming({
+        arrivalAt: DEPARTURE_AT - 20 * 60,
+        asOf: ANCHOR_AT,
+        departureEstimate: 0,
+        observations: [observation(ANCHOR_AT, 30, { maxSpaceCount })],
+        projectedDepartureAt: DEPARTURE_AT,
+      });
+
+      expect(result.state).toBe("available");
+      expect(result.projection).toBeUndefined();
+    }
+  );
 
   // preserve the reported positive-to-zero censoring interval
   it("bounds a reported zero by the last positive receipt", () => {

@@ -35,6 +35,14 @@ export interface FillTimingCapacity {
   observedSpacesAtAnchor: number | null;
   predictedSpacesAtArrival: number | null;
   priorKind: "departure-point" | "zero-prior" | "live-only" | null;
+  projection?: {
+    rate: {
+      maximum: number;
+      minimum: number;
+      mostLikely: number;
+    };
+    totalSpaces: number;
+  };
   state:
     | "available"
     | "already-full"
@@ -73,8 +81,10 @@ export interface SailingAssessment extends RecommendedSailing {
       mostLikely: number;
       maximum: number;
     } | null;
+    // present only when forecast fullness substitutes for unavailable live inventory
+    forecastFullProbability?: number;
     modelVersion: "joint-triangular-v1";
-    // index each probability by the integer buffer from zero through sixty
+    // index readiness targets by buffer minutes; entry zero is actual-cutoff boarding chance
     probabilities: (number | null)[];
     timingProbabilities: number[];
   };

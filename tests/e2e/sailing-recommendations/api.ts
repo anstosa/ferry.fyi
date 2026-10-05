@@ -1,6 +1,10 @@
 import type { SailingRecommendationRequest } from "shared/contracts/sailingRecommendations";
 
-import { makeFixtureResponse, recordRecommendationCall } from "./state";
+import {
+  fixtureAudit,
+  makeFixtureResponse,
+  recordRecommendationCall,
+} from "./state";
 
 // preserve the production transport error shape for parser coverage
 export class ApiError extends Error {
@@ -20,12 +24,22 @@ export const post = async <T>(
   path: string,
   body: Record<string, unknown>
 ): Promise<T> => {
+  // keep debounced address edits inside the isolated fixture
+  if (path === "/sailing-recommendations/address-suggestions") {
+    return { available: false, suggestions: [] } as T;
+  }
   // require the production feature endpoint
   if (path !== "/sailing-recommendations") {
     throw new Error("unexpected fixture endpoint");
   }
   const input = body as unknown as SailingRecommendationRequest;
   recordRecommendationCall(input);
-  await Promise.resolve();
+  // retain the result-shaped skeleton for one deterministic interval
+  if (
+    fixtureAudit.scenario === "pending-success" ||
+    fixtureAudit.scenario === "pending-error"
+  ) {
+    await new Promise((resolve) => setTimeout(resolve, 1_000));
+  }
   return makeFixtureResponse(input) as T;
 };

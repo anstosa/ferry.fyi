@@ -11,7 +11,7 @@ interface Props {
   value: string;
 }
 
-// keep typed origins and google suggestions only in this mounted form
+// keep google suggestions transient while the parent manages the shared address
 export const AddressAutocomplete = ({
   className,
   disabled = false,

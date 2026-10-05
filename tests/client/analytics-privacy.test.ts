@@ -1,6 +1,11 @@
 // @vitest-environment jsdom
 
+import { act, createElement } from "react";
+import { createRoot } from "react-dom/client";
+import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 const reactGa = vi.hoisted(() => ({
   event: vi.fn(),
@@ -25,6 +30,11 @@ describe("analytics advertising privacy", () => {
     vi.stubEnv("GOOGLE_ANALYTICS", "G-PRIVACY-TEST");
     vi.stubEnv("GTM_CONTAINER_ID", "");
     delete window.dataLayer;
+    window.history.replaceState(
+      null,
+      "",
+      "/clinton/mukilteo/navigation?tripMode=walk#tripAddress=Private+Starting+Address"
+    );
   });
 
   // restore browser and environment state
@@ -56,6 +66,9 @@ describe("analytics advertising privacy", () => {
         {
           allow_ad_personalization_signals: false,
           allow_google_signals: false,
+          page_location:
+            "http://localhost:3000/clinton/mukilteo/navigation?tripMode=walk",
+          page_referrer: "",
         },
       ],
     ]);
@@ -64,11 +77,86 @@ describe("analytics advertising privacy", () => {
     await vi.waitFor(() => expect(reactGa.initialize).toHaveBeenCalledOnce());
 
     expect(reactGa.initialize).toHaveBeenCalledWith("G-PRIVACY-TEST", {
+      gtagOptions: {
+        page_location:
+          "http://localhost:3000/clinton/mukilteo/navigation?tripMode=walk",
+        page_referrer: "",
+      },
       gaOptions: {
         allowAdFeatures: false,
         allowAdPersonalizationSignals: false,
       },
     });
+    const { trackEvent } = await import("../../client/lib/analytics");
+    trackEvent("Navigation", "Share trip");
+    await vi.waitFor(() => expect(reactGa.event).toHaveBeenCalled());
+    expect(
+      JSON.stringify([
+        window.dataLayer,
+        reactGa.initialize.mock.calls,
+        reactGa.set.mock.calls,
+        reactGa.event.mock.calls,
+      ])
+    ).not.toContain("Private");
     cleanup();
+  });
+
+  // protect pageview payloads on both the tag-manager and direct analytics paths
+  it("removes private addresses from deferred route pageviews", async () => {
+    const { deferAnalytics, useRecordPageViews } =
+      await import("../../client/lib/analytics");
+    // exercise the real pageview effect without unrelated app dependencies
+    const Pageview = () => {
+      useRecordPageViews();
+      return null;
+    };
+    const cleanup = deferAnalytics();
+    const container = document.createElement("div");
+    const root = createRoot(container);
+    try {
+      await act(() => {
+        root.render(
+          createElement(
+            MemoryRouter,
+            {
+              initialEntries: [
+                `${window.location.pathname}${window.location.search}${window.location.hash}`,
+              ],
+            },
+            createElement(Pageview)
+          )
+        );
+      });
+      expect(window.dataLayer).toContainEqual({
+        event: "page_view",
+        page_path: "/clinton/mukilteo/navigation",
+        page_location:
+          "http://localhost:3000/clinton/mukilteo/navigation?tripMode=walk",
+        page_referrer: "",
+      });
+      window.dispatchEvent(new Event("pointerdown"));
+      await vi.waitFor(() =>
+        expect(reactGa.send).toHaveBeenCalledWith({
+          hitType: "pageview",
+          page: "/clinton/mukilteo/navigation",
+        })
+      );
+      expect(reactGa.set).toHaveBeenCalledWith({
+        page_location:
+          "http://localhost:3000/clinton/mukilteo/navigation?tripMode=walk",
+        page_referrer: "",
+      });
+      const payloads = JSON.stringify([
+        window.dataLayer,
+        reactGa.initialize.mock.calls,
+        reactGa.set.mock.calls,
+        reactGa.send.mock.calls,
+      ]);
+      expect(payloads).not.toContain("tripAddress");
+      expect(payloads).not.toContain("Private");
+    } finally {
+      await act(() => root.unmount());
+      cleanup();
+    }
   });
 });

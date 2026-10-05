@@ -110,50 +110,68 @@ describe("Detector menu shortcut", () => {
   });
 
   // retain deep links through interactive login
-  it("returns to the complete admin URL after login", async () => {
-    auth.isAuthenticated = false;
-    auth.user = undefined;
-    const container = document.createElement("div");
-    document.body.appendChild(container);
-    root = createRoot(container);
+  it.each([
+    [
+      "/admin?placement=schedule--5--14&tab=ads#admin-ad-placement",
+      "/admin?placement=schedule--5--14&tab=ads#admin-ad-placement",
+    ],
+    [
+      "/clinton/mukilteo/navigation?tripMode=walk#anchor&tripAddress=Private+House",
+      "/clinton/mukilteo/navigation?tripMode=walk#anchor",
+    ],
+    [
+      "/clinton/mukilteo/navigation?tripMode=drive&tripBuffer=5#anchor",
+      "/clinton/mukilteo/navigation?tripMode=walk&tripBuffer=12#anchor",
+      "/clinton/mukilteo/navigation?tripMode=walk&tripBuffer=12#anchor&tripAddress=Private+House",
+    ],
+  ])(
+    "preserves non-private login return fields in %s",
+    async (inputPath, expectedPath, updatedPath?: string) => {
+      auth.isAuthenticated = false;
+      auth.user = undefined;
+      const container = document.createElement("div");
+      document.body.appendChild(container);
+      root = createRoot(container);
+      window.history.replaceState(null, "", inputPath);
 
-    await act(async () => {
-      root?.render(
-        <MemoryRouter
-          initialEntries={[
-            "/admin?placement=schedule--5--14&tab=ads#admin-ad-placement",
-          ]}
-        >
-          <Menu
-            hasTopBanner={false}
-            isOpen
-            onClose={vi.fn()}
-            onOpen={vi.fn()}
-          />
-        </MemoryRouter>
+      await act(async () => {
+        root?.render(
+          <MemoryRouter initialEntries={[inputPath]}>
+            <Menu
+              hasTopBanner={false}
+              isOpen
+              onClose={vi.fn()}
+              onOpen={vi.fn()}
+            />
+          </MemoryRouter>
+        );
+        await Promise.resolve();
+      });
+
+      // emulate control edits without rerendering the sibling menu or its router
+      if (updatedPath) {
+        window.history.replaceState(window.history.state, "", updatedPath);
+      }
+
+      const login = [...container.querySelectorAll("span")]
+        .find((label) => label.textContent === "Log In")
+        ?.closest("div");
+      await act(async () => {
+        login?.click();
+        await Promise.resolve();
+      });
+
+      expect(appAuth.loginWithAppFlow).toHaveBeenCalledWith(
+        expect.objectContaining({
+          options: expect.objectContaining({
+            appState: {
+              redirectPath: expectedPath,
+            },
+          }),
+        })
       );
-      await Promise.resolve();
-    });
-
-    const login = [...container.querySelectorAll("span")]
-      .find((label) => label.textContent === "Log In")
-      ?.closest("div");
-    await act(async () => {
-      login?.click();
-      await Promise.resolve();
-    });
-
-    expect(appAuth.loginWithAppFlow).toHaveBeenCalledWith(
-      expect.objectContaining({
-        options: expect.objectContaining({
-          appState: {
-            redirectPath:
-              "/admin?placement=schedule--5--14&tab=ads#admin-ad-placement",
-          },
-        }),
-      })
-    );
-  });
+    }
+  );
 
   // authorization bridge
   it("stores owner authorization before opening benchmark labels", async () => {

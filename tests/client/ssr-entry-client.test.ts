@@ -239,12 +239,7 @@ describe("client SSR document bootstrap", () => {
 
   // accept the packaged native shell
   it("accepts the marker-free native document shell", () => {
-    const { diagnostic, hydrated, result } = prepare(
-      undefined,
-      "",
-      "",
-      true
-    );
+    const { diagnostic, hydrated, result } = prepare(undefined, "", "", true);
 
     expect(result).toBe("create");
     expect(hydrated).not.toHaveBeenCalled();
@@ -387,6 +382,27 @@ describe("client SSR document bootstrap", () => {
       "private-canary"
     );
     expect(captureException).toHaveBeenCalledWith(bufferedError);
+    const options = webInit.mock.calls[0][0] as unknown as Record<
+      string,
+      (value: unknown) => unknown
+    >;
+    // all SDK export hooks redact private links before web telemetry leaves the client
+    for (const hook of [
+      "beforeSend",
+      "beforeSendTransaction",
+      "beforeBreadcrumb",
+      "beforeSendSpan",
+    ]) {
+      const url =
+        "https://ferry.fyi/clinton/mukilteo/navigation#tripAddress=Private+Web+House";
+      const payload = {
+        request: { url },
+        data: { from: url, to: url, "url.full": url },
+        breadcrumbs: [{ data: { url } }],
+      };
+      expect(JSON.stringify(options[hook](payload))).not.toContain("Private");
+      expect(payload.request.url).toBe(url);
+    }
     cleanup();
   });
 
@@ -420,6 +436,27 @@ describe("client SSR document bootstrap", () => {
       reactInit
     );
     expect(capacitorInit.mock.calls[0][0]).not.toHaveProperty("release");
+    const options = capacitorInit.mock.calls[0][0] as unknown as Record<
+      string,
+      (value: unknown) => unknown
+    >;
+    // native JavaScript diagnostics use the same private-link export boundary
+    for (const hook of [
+      "beforeSend",
+      "beforeSendTransaction",
+      "beforeBreadcrumb",
+      "beforeSendSpan",
+    ]) {
+      expect(
+        JSON.stringify(
+          options[hook]({
+            request: {
+              url: "https://ferry.fyi/navigation#tripAddress=Private+Native+House",
+            },
+          })
+        )
+      ).not.toContain("Private");
+    }
   });
 
   it("consumes a compatible snapshot after a clean first commit", () => {

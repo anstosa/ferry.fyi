@@ -17,7 +17,13 @@ import WalkingIcon from "~/static/images/icons/solid/walking.svg";
 import { AddressAutocomplete } from "../../components/AddressAutocomplete";
 import { requestForegroundLocation } from "../../lib/geo";
 import { getSailingRecommendation } from "../../lib/sailingRecommendations";
+import {
+  parseSailingTrip,
+  type SailingTrip,
+  withSailingTrip,
+} from "../../lib/sailingTrip";
 import { SailingEstimateResults } from "./SailingEstimateResults";
+import { SailingEstimateSkeleton } from "./SailingEstimateSkeleton";
 
 const MODES: {
   Icon: React.FunctionComponent<React.SVGAttributes<SVGElement>>;
@@ -51,6 +57,30 @@ const FAILURE_COPY: Record<string, string> = {
   "stale-result": "The schedule changed while estimating. Try again.",
 };
 
+// restore bounded URL controls with the saved non-sensitive buffer as fallback
+const readTrip = (): SailingTrip => {
+  // server rendering has no browser URL or preferences
+  if (typeof window === "undefined") {
+    return { mode: "drive", buffer: 5, address: "" };
+  }
+  let defaultBuffer = 5;
+  try {
+    const saved = window.localStorage.getItem(BUFFER_KEY);
+    const value = saved === null ? 5 : Number(saved);
+    // ignore corrupt saved preferences
+    if (Number.isInteger(value) && value >= 0 && value <= 60) {
+      defaultBuffer = value;
+    }
+  } catch {
+    // storage is optional and never contains an address
+  }
+  return parseSailingTrip(
+    window.location.search,
+    window.location.hash,
+    defaultBuffer
+  );
+};
+
 // render one user-initiated leave-now estimate without background tracking
 export const SailingRecommendationCard = ({
   onRefreshSchedule,
@@ -59,9 +89,8 @@ export const SailingRecommendationCard = ({
   onRefreshSchedule: () => Promise<Schedule | null>;
   schedule: Schedule;
 }): React.ReactElement => {
-  const [mode, setMode] = useState<TravelMode>("drive");
-  const [buffer, setBuffer] = useState(5);
-  const [address, setAddress] = useState("");
+  const [trip, setTrip] = useState(readTrip);
+  const { address, buffer, mode } = trip;
   const [estimateResult, setEstimateResult] = useState<{
     browserRevisionBeforeRequest: string;
     data: SailingRecommendationResponse;
@@ -75,24 +104,39 @@ export const SailingRecommendationCard = ({
   const revision = getSailingRecommendationRevision(schedule);
   const response = estimateResult?.data ?? null;
 
-  // restore only the non-sensitive safety margin
+  // replace rather than append history while preserving router state and route parameters
   useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem(BUFFER_KEY);
-      const value = saved === null ? 5 : Number(saved);
-      // ignore corrupt or out-of-range preferences
-      if (Number.isInteger(value) && value >= 0 && value <= 60) {
-        setBuffer(value);
-      }
-    } catch {
-      // storage access is optional
-    }
+    const url = withSailingTrip(window.location.href, trip);
+    window.history.replaceState(window.history.state, "", url);
+  }, [trip]);
+
+  // restore shared controls on browser history changes without requesting an estimate
+  useEffect(() => {
+    const restore = (): void => {
+      requestIdentity.current += 1;
+      setTrip(readTrip());
+      setEstimateResult(null);
+      setMessage("");
+      setLoading(false);
+      setExpiredRequestId(null);
+    };
+    window.addEventListener("popstate", restore);
+    window.addEventListener("hashchange", restore);
+    // release URL listeners when leaving navigation
+    return () => {
+      window.removeEventListener("popstate", restore);
+      window.removeEventListener("hashchange", restore);
+    };
   }, []);
 
-  // discard origins and invalidate requests on navigation or mode changes
+  // update controls atomically without overwriting edits during asynchronous location lookup
+  const updateTrip = (patch: Partial<SailingTrip>): void => {
+    setTrip((current) => ({ ...current, ...patch }));
+  };
+
+  // invalidate results on navigation or method changes while retaining the shared address
   useEffect(() => {
     requestIdentity.current += 1;
-    setAddress("");
     setEstimateResult(null);
     setMessage("");
     setLoading(false);
@@ -132,7 +176,7 @@ export const SailingRecommendationCard = ({
     if (!Number.isInteger(value) || value < 0 || value > 60) {
       return;
     }
-    setBuffer(value);
+    updateTrip({ buffer: value });
     try {
       window.localStorage.setItem(BUFFER_KEY, String(value));
     } catch {
@@ -178,7 +222,10 @@ export const SailingRecommendationCard = ({
       if (requestIdentity.current !== identity) {
         return;
       }
-      setAddress("");
+      // a successful location fix must not leave a different address in the shared link
+      if (useLocation) {
+        updateTrip({ address: "" });
+      }
       stage = "schedule";
       let freshSchedule = await onRefreshSchedule();
       // ignore a cache completion belonging to another route or method
@@ -276,10 +323,8 @@ export const SailingRecommendationCard = ({
 
   return (
     <div className="m-3">
-      <section
-        aria-labelledby="sailing-recommendation-title"
-        className="rounded-2xl border border-black/10 bg-white p-4 shadow-sm ring-1 ring-black/5 sm:p-6 dark:border-white/10 dark:bg-blue-dark dark:ring-white/10"
-      >
+      {/* keep the navigation page open rather than nesting it in a padded card */}
+      <section aria-labelledby="sailing-recommendation-title">
         <h2
           id="sailing-recommendation-title"
           className="text-xl font-black tracking-tight"
@@ -309,7 +354,7 @@ export const SailingRecommendationCard = ({
                     key={value}
                     onClick={() => {
                       // select a method without acquiring a new origin
-                      setMode(value);
+                      updateTrip({ mode: value });
                     }}
                     type="button"
                   >
@@ -383,7 +428,7 @@ export const SailingRecommendationCard = ({
             disabled={loading}
             onChange={(value, placeId) => {
               // selecting a google suggestion is an explicit fresh estimate
-              setAddress(value);
+              updateTrip({ address: value });
               // use the selected place id without a second submit
               if (placeId) {
                 estimate(false, { kind: "place", placeId });
@@ -410,7 +455,7 @@ export const SailingRecommendationCard = ({
           </button>
         </form>
         <div aria-live="polite" aria-busy={loading} className="mt-4 text-sm">
-          {loading && <p>Estimating your trip…</p>}
+          {loading && <SailingEstimateSkeleton />}
           {message && <p role="status">{message}</p>}
           {stale && (
             <p role="status">

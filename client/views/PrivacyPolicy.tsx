@@ -10,7 +10,7 @@ export const PrivacyPolicy = (): ReactElement => (
     <SeoHelmet seo={getSeoMetadata("/privacy")} />
 
     <p className="mt-4 text-sm">
-      Last updated: <time dateTime="2026-10-03">October 3, 2026</time>
+      Last updated: <time dateTime="2026-10-05">October 5, 2026</time>
     </p>
     <p className="mt-4">
       Ferry FYI provides Washington State Ferries schedules, service
@@ -59,7 +59,11 @@ export const PrivacyPolicy = (): ReactElement => (
       entered address, selected Google place identifier, or explicitly requested
       foreground location is sent to Ferry FYI and Google to calculate the
       route. Ferry FYI does not retain these origins or suggestions or use them
-      for analytics, advertising, or model training. Google processes them under
+      for analytics, advertising, or model training. Your starting address is
+      kept in the page URL fragment and may remain in your browser history.
+      Sharing the trip link includes that address for the recipient. Opening a
+      shared link only prefills the form; it does not request your location or
+      automatically calculate a travel estimate. Google processes origins under
       its{" "}
       <a className="link" href="https://policies.google.com/privacy">
         Privacy Policy

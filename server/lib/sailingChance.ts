@@ -24,6 +24,7 @@ export interface EstimateSailingChanceInput {
   arrivalAt: number;
   capacity: FillTimingCapacity | null;
   eligibilityReason: SailingAssessment["eligibilityReason"];
+  forecastFullProbability?: number;
   latestArrivalAt: number;
   mode: TravelMode;
   rateDistribution: FillTimingRateDistribution | null;
@@ -170,6 +171,7 @@ export const estimateSailingChance = ({
   arrivalAt,
   capacity,
   eligibilityReason,
+  forecastFullProbability,
   latestArrivalAt,
   mode,
   rateDistribution,
@@ -232,6 +234,30 @@ export const estimateSailingChance = ({
   }
   // distinguish unknown capacity from deterministic zero capacity
   if (!capacity || capacity.state === "unavailable" || !rateDistribution) {
+    // use calibrated forecast risk without fabricating a live anchor or fill rate
+    if (
+      typeof forecastFullProbability === "number" &&
+      Number.isFinite(forecastFullProbability) &&
+      forecastFullProbability >= 0 &&
+      forecastFullProbability <= 1
+    ) {
+      const capacityProbability = 1 - forecastFullProbability;
+      return {
+        chance: {
+          basis,
+          capacityProbability,
+          depletionRateRange: null,
+          forecastFullProbability,
+          modelVersion: SAILING_CHANCE_MODEL_VERSION,
+          probabilities: timingProbabilities.map(
+            // no live depletion evidence supports correlating forecast fullness with arrival
+            (timing) => timing * capacityProbability
+          ),
+          timingProbabilities,
+        },
+        spacesAtArrivalRange: null,
+      };
+    }
     return {
       chance: {
         basis,

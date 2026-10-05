@@ -39,6 +39,19 @@ const makeSchedule = (): Schedule => ({
 });
 
 describe("sailing recommendation domain rules", () => {
+  // a forecast-only probability change must invalidate retained chances
+  it("fingerprints calibrated full probability independently of point spaces", () => {
+    const schedule = makeSchedule();
+    schedule.slots[0].estimate = {
+      driveUpCapacity: 10,
+      reservableCapacity: null,
+      fullProbability: 0.2,
+    };
+    const revision = getSailingRecommendationRevision(schedule);
+    schedule.slots[0].estimate.fullProbability = 0.8;
+    expect(getSailingRecommendationRevision(schedule)).not.toBe(revision);
+  });
+
   // distinguish fetch freshness from actual sailing changes
   it("keeps a material revision through unchanged schedule refreshes", () => {
     const schedule = makeSchedule();
@@ -49,7 +62,7 @@ describe("sailing recommendation domain rules", () => {
   });
 
   // keep all domestic route families explicit and exclude unsupported international trips
-  it("covers domestic directional pairs and all four modes with advice rather than invented gates", () => {
+  it("uses the global cutoff for domestic pairs and all modes without changing arrival advice", () => {
     for (const { terminalIds } of Object.values(ROUTES)) {
       // check both directions within every supported route family
       for (const departureId of terminalIds) {
@@ -64,7 +77,7 @@ describe("sailing recommendation domain rules", () => {
             "transit",
           ] as TravelMode[]) {
             const rule = getBoardingRule(departureId, arrivalId, mode);
-            expect(rule?.cutoffSeconds).toBe(0);
+            expect(rule?.cutoffSeconds).toBe(180);
             expect(rule?.advisorySeconds).toBe(
               mode === "drive" || mode === "bicycle" ? 1200 : 300
             );

@@ -401,3 +401,117 @@ describe("joint-triangular-v1", () => {
     expect(Number.isFinite(first.spacesAtArrivalRange?.maximum)).toBe(true);
   });
 });
+
+describe("forecast capacity fallback", () => {
+  // estimate every buffer from forecast fullness when inventory is unavailable
+  it.each([0, 0.2, 0.8, 1])(
+    "uses full probability %s without a live anchor",
+    (forecastFullProbability) => {
+      const result = estimateSailingChance({
+        arrivalAt: 50,
+        capacity: null,
+        eligibilityReason: null,
+        forecastFullProbability,
+        latestArrivalAt: 75,
+        mode: "drive",
+        rateDistribution: null,
+        travelUncertainty: travel(),
+      });
+      expect(result.chance.forecastFullProbability).toBe(
+        forecastFullProbability
+      );
+      expect(result.chance.capacityProbability).toBe(
+        1 - forecastFullProbability
+      );
+      expect(result.chance.probabilities).toEqual(
+        result.chance.timingProbabilities.map(
+          (timing) => timing * (1 - forecastFullProbability)
+        )
+      );
+      expect(result.chance.depletionRateRange).toBeNull();
+      expect(result.spacesAtArrivalRange).toBeNull();
+    }
+  );
+
+  // never let favorable forecasts override a departed sailing or observed zero
+  it.each(["drive", "walk", "bicycle", "transit"] as const)(
+    "keeps departed %s chances zero for all buffers",
+    (mode) => {
+      const result = estimateSailingChance({
+        arrivalAt: 50,
+        capacity: capacity(),
+        eligibilityReason: "departed",
+        forecastFullProbability: 0,
+        latestArrivalAt: 10_000,
+        mode,
+        rateDistribution: POINT_RATE,
+        travelUncertainty: travel(),
+      });
+      expect(result.chance.probabilities).toEqual(Array(61).fill(0));
+      expect(result.chance.forecastFullProbability).toBeUndefined();
+    }
+  );
+
+  // authoritative inventory remains primary even against opposite forecasts
+  it("preserves live joint chances and directly observed fullness", () => {
+    const input = {
+      arrivalAt: 50,
+      capacity: capacity(),
+      eligibilityReason: null,
+      latestArrivalAt: 75,
+      mode: "drive" as const,
+      rateDistribution: POINT_RATE,
+      travelUncertainty: travel(),
+    };
+    expect(
+      estimateSailingChance({ ...input, forecastFullProbability: 1 })
+    ).toEqual(estimateSailingChance(input));
+    const full = estimateSailingChance({
+      ...input,
+      capacity: capacity("already-full"),
+      forecastFullProbability: 0,
+    });
+    expect(full.chance.probabilities).toEqual(Array(61).fill(0));
+    expect(full.chance.forecastFullProbability).toBeUndefined();
+  });
+
+  // missing or invalid forecasts are not fabricated into success
+  it.each([undefined, NaN, Infinity, -0.1, 1.1])(
+    "keeps invalid full probability %s unknown",
+    (forecastFullProbability) => {
+      expect(
+        estimateSailingChance({
+          arrivalAt: 50,
+          capacity: null,
+          eligibilityReason: null,
+          forecastFullProbability,
+          latestArrivalAt: 75,
+          mode: "drive",
+          rateDistribution: null,
+          travelUncertainty: travel(),
+        }).chance.probabilities
+      ).toEqual(Array(61).fill(null));
+    }
+  );
+});
+
+// vehicle forecasts do not limit passenger-only travel
+it.each(["walk", "bicycle", "transit"] as const)(
+  "ignores forecast fullness for %s",
+  (mode) => {
+    const result = estimateSailingChance({
+      arrivalAt: 50,
+      capacity: null,
+      eligibilityReason: null,
+      forecastFullProbability: 1,
+      latestArrivalAt: 75,
+      mode,
+      rateDistribution: null,
+      travelUncertainty: travel(),
+    });
+    expect(result.chance.probabilities).toEqual(
+      result.chance.timingProbabilities
+    );
+    expect(result.chance.forecastFullProbability).toBeUndefined();
+  }
+);

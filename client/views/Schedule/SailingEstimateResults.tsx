@@ -1,6 +1,7 @@
+import { Capacitor } from "@capacitor/core";
 import clsx from "clsx";
 import { DateTime } from "luxon";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import type {
   RecommendationOutcome,
   RecommendedSailing,
@@ -8,8 +9,11 @@ import type {
   SailingRecommendationResponse,
 } from "shared/contracts/sailingRecommendations";
 
-import ChevronDownIcon from "~/static/images/icons/solid/chevron-down.svg";
-import ChevronUpIcon from "~/static/images/icons/solid/chevron-up.svg";
+import type { TimelineSailing } from "~/lib/sailingCapacityTimeline";
+import { getSailingTripShareUrl } from "~/lib/sailingTrip";
+import ShareIcon from "~/static/images/icons/solid/share-alt.svg";
+
+import { SailingTimingTimeline } from "./SailingTimingTimeline";
 
 // format terminal-local times consistently
 const timeLabel = (seconds: number): string =>
@@ -46,13 +50,13 @@ const probabilityLabel = (
   probability: number | null | undefined,
   hardZero = false
 ): string => {
+  // departures stay impossible even when inventory was unknown
+  if (hardZero) {
+    return "0%";
+  }
   // distinguish missing inventory from impossible boarding
   if (probability === null || probability === undefined) {
     return "Unknown";
-  }
-  // preserve only observed or structural hard zeroes
-  if (hardZero) {
-    return "0%";
   }
   // retain small and large modeled tails
   if (probability < 0.025) {
@@ -65,15 +69,29 @@ const probabilityLabel = (
   return `${probabilityPercent(probability)}%`;
 };
 
-// preserve observed and structural impossibility separately from modeled tails
-const chanceLabel = (
+// expire a sailing independently of its foreground travel estimate
+const hasDeparted = (sailing: SailingAssessment | null, now: number): boolean =>
+  Boolean(
+    sailing &&
+    (sailing.eligibilityReason === "departed" ||
+      sailing.projectedDepartureAt <= now)
+  );
+
+// display actual-cutoff boarding chance rather than the preferred safety-margin target
+const sailingProbability = (
   sailing: SailingAssessment | null,
-  buffer: number
-): string =>
+  now: number
+): number | null | undefined =>
+  hasDeparted(sailing, now) ? 0 : sailing?.chance.probabilities[0];
+
+// preserve observed and structural impossibility separately from modeled tails
+const chanceLabel = (sailing: SailingAssessment | null, now: number): string =>
   probabilityLabel(
-    sailing?.chance.probabilities[buffer],
+    sailingProbability(sailing, now),
     Boolean(
-      sailing?.eligibilityReason || sailing?.capacity?.state === "already-full"
+      hasDeparted(sailing, now) ||
+      sailing?.eligibilityReason ||
+      sailing?.capacity?.state === "already-full"
     )
   );
 
@@ -132,124 +150,258 @@ export const SailingEstimateResults = ({
   outcome: RecommendationOutcome | undefined;
   response: SailingRecommendationResponse;
 }): React.ReactElement => {
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  // a fresh estimate defaults to Estimated rather than retaining an older selection
+  const [selection, setSelection] = useState<{
+    response: SailingRecommendationResponse;
+    key: string;
+  } | null>(null);
+  const [shareMessage, setShareMessage] = useState("");
+  const [sharing, setSharing] = useState(false);
+  // clear temporary share feedback without retaining the link in component state
+  useEffect(() => {
+    // idle sharing needs no timer
+    if (!shareMessage) {
+      return;
+    }
+    const timeout = window.setTimeout(() => setShareMessage(""), 2500);
+    // cancel feedback when results leave the page
+    return () => window.clearTimeout(timeout);
+  }, [shareMessage]);
+
+  // share editable controls rather than expiring predictions or precise coordinates
+  const share = async (): Promise<void> => {
+    setSharing(true);
+    setShareMessage("");
+    try {
+      const url = getSailingTripShareUrl(
+        window.location.href,
+        Capacitor.isNativePlatform(),
+        process.env.BASE_URL || "https://ferry.fyi"
+      );
+      const { Share } = await import("@capacitor/share");
+      const { value: canShare } = await Share.canShare();
+      const title = "What boat will I make?";
+      // prefer the platform share sheet when supported
+      if (canShare) {
+        await Share.share({
+          title,
+          text: title,
+          dialogTitle: title,
+          url,
+        });
+      } else if (navigator.clipboard) {
+        // copy only after the explicit share action
+        await navigator.clipboard.writeText(url);
+        setShareMessage("Link copied.");
+      } else {
+        // never claim a copy when no clipboard is available
+        setShareMessage("Sharing is unavailable on this device.");
+      }
+    } catch {
+      // never log a share payload containing a starting address
+      setShareMessage("Could not share this trip.");
+    } finally {
+      setSharing(false);
+    }
+  };
+  const [clock, setClock] = useState(() => Date.now() / 1000);
+  const now = Math.max(clock, Date.now() / 1000);
+  // update at each projected departure without another location or provider request
+  useEffect(() => {
+    const nextDeparture = Math.min(
+      ...(response.sailingAssessments ?? [])
+        .map((sailing) => sailing.projectedDepartureAt)
+        .filter(
+          // the parent expires results before later sailings need a clock update
+          (departureAt) =>
+            departureAt > now && departureAt < response.validUntil
+        )
+    );
+    // already elapsed or absent sailings need no background timer
+    if (!Number.isFinite(nextDeparture)) {
+      return;
+    }
+    const timeout = window.setTimeout(
+      // rerender every displayed chance at the local departure boundary
+      () => setClock(Date.now() / 1000),
+      Math.max(1, (nextDeparture - now) * 1000)
+    );
+    // discard the old result's departure timer
+    return () => window.clearTimeout(timeout);
+  }, [now, response]);
   const sailings = displayedSailings(response, outcome, buffer);
-  const expanded = sailings.find(
-    // close a panel when its sailing leaves the displayed trio
-    (sailing) => sailing && sailingKey(sailing) === expandedId
-  );
-  const assessment = response.sailingAssessments?.find(
-    // resolve the shared full-width breakdown
-    (sailing) => expanded && sailingKey(sailing) === sailingKey(expanded)
-  );
-  const capacity = expanded?.capacity;
+  // retain a clicked sailing only while it belongs to this result and displayed trio
+  const expanded =
+    sailings.find(
+      (sailing) =>
+        sailing &&
+        selection?.response === response &&
+        sailingKey(sailing) === selection.key
+    ) ??
+    sailings[1] ??
+    sailings.find((sailing) => sailing !== null) ??
+    null;
+  // keep all three inventories tied to the same estimate snapshot
+  const chartSailings: TimelineSailing[] = sailings
+    .filter((sailing): sailing is RecommendedSailing => sailing !== null)
+    .map((sailing) => {
+      // a forecast event probability does not establish an occupancy curve
+      const assessment = response.sailingAssessments?.find(
+        (candidate) => sailingKey(candidate) === sailingKey(sailing)
+      );
+      return {
+        ...sailing,
+        eligibilityReason: assessment?.eligibilityReason,
+        capacity:
+          assessment?.chance.forecastFullProbability === undefined
+            ? sailing.capacity
+            : null,
+      };
+    });
   let trafficLabel =
     response.mode === "drive" ? "Traffic unavailable" : "Travel time";
   // describe color without depending on color perception
   if (response.trafficLevel) {
     trafficLabel = `${response.trafficLevel[0].toUpperCase()}${response.trafficLevel.slice(1)} traffic`;
   }
+  // share one traffic palette between the arrival time and both chart annotations
+  const arrivalColorClassName = clsx({
+    "text-green-dark dark:text-green-light": response.trafficLevel === "light",
+    "text-amber-700 dark:text-amber-300": response.trafficLevel === "moderate",
+    "text-red-700 dark:text-red-300": response.trafficLevel === "heavy",
+    "text-gray-dark dark:text-gray-light": !response.trafficLevel,
+  });
 
   return (
     <div className="mt-5">
-      {response.arrivalAt !== null && (
-        <div className="text-center">
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-dark dark:text-gray-light">
-            Estimated terminal arrival
-          </p>
+      {/* share the sailing columns while keeping the arrival time centered */}
+      <div className="grid grid-cols-3 items-center gap-x-2 text-center">
+        {response.arrivalAt !== null && (
+          <>
+            <p className="col-span-3 text-xs font-semibold uppercase tracking-wide text-gray-dark dark:text-gray-light">
+              Estimated terminal arrival
+            </p>
+            <p
+              className={clsx(
+                "col-start-2 row-start-2 mt-1 justify-self-center whitespace-nowrap text-2xl font-black tracking-tight min-[375px]:text-3xl sm:text-4xl",
+                arrivalColorClassName
+              )}
+            >
+              {timeLabel(response.arrivalAt)}
+            </p>
+            <p className="col-span-3 row-start-3 mt-1 text-xs text-gray-dark dark:text-gray-light">
+              {Math.ceil((response.durationSeconds ?? 0) / 60)} minutes ·{" "}
+              <span>{trafficLabel}</span>
+            </p>
+          </>
+        )}
+        <button
+          aria-label="Share trip"
+          title="Share trip"
+          className="col-start-3 row-start-2 mt-1 flex h-11 w-11 items-center justify-center justify-self-center rounded-lg text-gray-dark hover:bg-black/5 focus-visible:ring-2 focus-visible:ring-green-dark dark:text-gray-light dark:hover:bg-white/10 dark:focus-visible:ring-green-light"
+          disabled={sharing}
+          onClick={() => {
+            // share only in response to the icon tap
+            share();
+          }}
+          type="button"
+        >
+          <ShareIcon aria-hidden className="h-5 w-5" />
+        </button>
+        {shareMessage && (
           <p
-            className={clsx("mt-1 text-4xl font-black tracking-tight", {
-              "text-green-dark dark:text-green-light":
-                response.trafficLevel === "light",
-              "text-amber-700 dark:text-amber-300":
-                response.trafficLevel === "moderate",
-              "text-red-700 dark:text-red-300":
-                response.trafficLevel === "heavy",
-            })}
+            className="col-span-3 mt-2 text-xs text-gray-dark dark:text-gray-light"
+            role="status"
           >
-            {timeLabel(response.arrivalAt)}
+            {shareMessage}
           </p>
-          <p className="mt-1 text-xs text-gray-dark dark:text-gray-light">
-            {Math.ceil((response.durationSeconds ?? 0) / 60)} minutes ·{" "}
-            <span>{trafficLabel}</span>
-          </p>
-        </div>
-      )}
+        )}
+      </div>
       <div
-        className="mt-5 grid grid-cols-3 items-start gap-2"
+        className="mt-5 grid grid-cols-3 items-stretch gap-2"
         aria-label="Sailing estimates"
       >
         {sailings.map((sailing, index) => {
-          // emphasize the point-selected sailing while retaining adjacent chances
+          // make the complete sailing block the single selection target
           const center = index === 1;
           const candidate =
             response.sailingAssessments?.find(
-              // resolve this card's buffer-indexed estimate
+              // resolve this block's independent boarding assessment
               (entry) => sailing && sailingKey(entry) === sailingKey(sailing)
             ) ?? null;
-          const active = Boolean(sailing && sailingKey(sailing) === expandedId);
+          const active = Boolean(
+            sailing && expanded && sailingKey(sailing) === sailingKey(expanded)
+          );
           const label = ["Earlier", "Estimated", "Later"][index];
-          const ChevronIcon = active ? ChevronUpIcon : ChevronDownIcon;
+          const color = chanceColorClassName(
+            sailingProbability(candidate, now)
+          );
           return (
-            <div
+            <button
+              aria-controls="sailing-chance-details"
+              aria-expanded={active}
+              aria-pressed={active}
+              aria-label={
+                sailing
+                  ? `${label}: ${chanceLabel(candidate, now)}. Details for ${vesselLabel(sailing.vesselName)}`
+                  : `${label}: No sailing`
+              }
               className={clsx(
-                "min-w-0 rounded-xl px-1 py-3 text-center sm:px-3",
-                center
-                  ? "border border-green-dark/20 bg-green-lightest dark:border-green-light/25 dark:bg-green-dark/20"
-                  : "pt-4"
+                "min-w-0 rounded-xl border px-1 py-3 text-center focus-visible:ring-2 focus-visible:ring-green-dark dark:focus-visible:ring-green-light sm:px-3",
+                active
+                  ? "border-green-dark/20 bg-green-lightest dark:border-green-light/25 dark:bg-green-dark/20"
+                  : "border-transparent enabled:hover:bg-black/5 dark:enabled:hover:bg-white/5"
               )}
+              data-departure-at={sailing?.projectedDepartureAt}
+              disabled={!sailing}
               key={index}
+              onClick={() => {
+                // selection never collapses the chart or requests another paid route
+                if (sailing) {
+                  setSelection({ response, key: sailingKey(sailing) });
+                }
+              }}
+              type="button"
             >
-              <p
+              <span
+                data-sailing-label
                 className={clsx(
-                  "text-xs",
-                  center ? "font-bold" : "text-gray-dark dark:text-gray-light"
+                  "block text-xs",
+                  active ? "font-bold" : "text-gray-dark dark:text-gray-light"
                 )}
               >
                 {label}
-              </p>
+              </span>
               {sailing ? (
                 <>
-                  <p
+                  <span
+                    data-sailing-time
                     className={clsx(
-                      "mt-2 whitespace-nowrap font-black tracking-tight",
+                      "mt-2 block whitespace-nowrap font-black tracking-tight",
                       center ? "text-xl sm:text-2xl" : "text-base sm:text-xl",
-                      chanceColorClassName(
-                        candidate?.chance.probabilities[buffer]
-                      )
+                      color
                     )}
                   >
                     {timeLabel(sailing.projectedDepartureAt)}
-                  </p>
-                  <p className="mt-1 break-words text-xs text-gray-dark dark:text-gray-light">
-                    {vesselLabel(sailing.vesselName)}
-                  </p>
-                  <button
-                    aria-controls="sailing-chance-details"
-                    aria-expanded={active}
-                    aria-label={`${label}: ${chanceLabel(candidate, buffer)}. ${active ? "Hide" : "Show"} details for ${vesselLabel(sailing.vesselName)}`}
-                    className={clsx(
-                      "mt-3 flex min-h-11 w-full items-center justify-center gap-1.5 rounded-lg text-sm font-bold underline decoration-dotted underline-offset-4 focus-visible:ring-2 focus-visible:ring-green-dark dark:focus-visible:ring-green-light",
-                      chanceColorClassName(
-                        candidate?.chance.probabilities[buffer]
-                      )
-                    )}
-                    onClick={() => {
-                      // toggle details without requesting another paid route
-                      setExpandedId(active ? null : sailingKey(sailing));
-                    }}
-                    type="button"
+                  </span>
+                  <span
+                    data-sailing-vessel
+                    className="mt-1 block break-words text-xs text-gray-dark dark:text-gray-light"
                   >
-                    <span>{chanceLabel(candidate, buffer)}</span>
-                    <ChevronIcon
-                      aria-hidden
-                      className="h-3 w-3 shrink-0"
-                      data-direction={active ? "up" : "down"}
-                    />
-                  </button>
+                    {vesselLabel(sailing.vesselName)}
+                  </span>
+                  <span
+                    data-sailing-chance
+                    className={clsx(
+                      "mt-3 flex min-h-11 w-full items-center justify-center text-sm font-bold",
+                      color
+                    )}
+                  >
+                    {chanceLabel(candidate, now)}
+                  </span>
                 </>
               ) : (
-                <p className="mt-3 text-xs text-gray-dark dark:text-gray-light">
+                <span className="mt-3 block text-xs text-gray-dark dark:text-gray-light">
                   {
                     [
                       "No earlier sailing",
@@ -257,177 +409,22 @@ export const SailingEstimateResults = ({
                       "No later sailing",
                     ][index]
                   }
-                </p>
+                </span>
               )}
-            </div>
+            </button>
           );
         })}
       </div>
-      <div id="sailing-chance-details" hidden={!expanded}>
+      <div id="sailing-chance-details">
         {expanded && response.arrivalAt !== null && (
-          <div className="mt-3 rounded-xl border border-black/10 p-4 text-sm dark:border-white/15">
-            <h3 className="font-bold">
-              {timeLabel(expanded.projectedDepartureAt)} sailing details ·{" "}
-              {vesselLabel(expanded.vesselName)}
-            </h3>
-            <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
-              <dt>Estimated arrival</dt>
-              <dd className="text-right">{timeLabel(response.arrivalAt)}</dd>
-              {response.travelUncertainty && (
-                <>
-                  <dt>Planning arrival range</dt>
-                  <dd className="text-right">
-                    {timeLabel(response.travelUncertainty.earliestArrivalAt)}–
-                    {timeLabel(response.travelUncertainty.latestArrivalAt)}
-                  </dd>
-                </>
-              )}
-              <dt>Safety buffer</dt>
-              <dd className="text-right">{buffer} minutes</dd>
-              <dt>Arrival + buffer</dt>
-              <dd className="text-right">
-                {timeLabel(response.arrivalAt + buffer * 60)}
-              </dd>
-              <dt>Arrival deadline with buffer</dt>
-              <dd className="text-right">
-                {timeLabel(
-                  expanded.projectedDepartureAt -
-                    expanded.operatorCutoffSeconds -
-                    buffer * 60
-                )}
-              </dd>
-              <dt>Boarding cutoff</dt>
-              <dd className="text-right">
-                {expanded.operatorCutoffSeconds / 60} minutes before departure
-              </dd>
-              <dt>Estimated departure</dt>
-              <dd className="text-right">
-                {timeLabel(expanded.projectedDepartureAt)}
-              </dd>
-              <dt>Scheduled departure</dt>
-              <dd className="text-right">
-                {timeLabel(expanded.scheduledDepartureAt)}
-              </dd>
-              {capacity && (
-                <>
-                  <dt>Estimated drive-up spaces at arrival</dt>
-                  <dd className="text-right">
-                    {capacity.predictedSpacesAtArrival === null
-                      ? "Unavailable"
-                      : Math.floor(capacity.predictedSpacesAtArrival)}
-                  </dd>
-                </>
-              )}
-              {assessment?.spacesAtArrivalRange && (
-                <>
-                  <dt>Modeled spaces across arrival range</dt>
-                  <dd className="text-right">
-                    {Math.floor(assessment.spacesAtArrivalRange.minimum)}–
-                    {Math.ceil(assessment.spacesAtArrivalRange.maximum)}
-                  </dd>
-                </>
-              )}
-              {typeof capacity?.fillAt === "number" && (
-                <>
-                  <dt>Estimated fill time</dt>
-                  <dd className="text-right">{timeLabel(capacity.fillAt)}</dd>
-                </>
-              )}
-              {capacity?.fillRange && (
-                <>
-                  <dt>Planning fill range</dt>
-                  <dd className="text-right">
-                    {capacity.fillRange.earliest === null
-                      ? "Unknown"
-                      : timeLabel(capacity.fillRange.earliest)}
-                    –
-                    {capacity.fillRange.latest === null
-                      ? "Unknown"
-                      : timeLabel(capacity.fillRange.latest)}
-                  </dd>
-                </>
-              )}
-              {typeof capacity?.anchorAt === "number" && (
-                <>
-                  <dt>WSF capacity observed</dt>
-                  <dd className="text-right">
-                    {timeLabel(capacity.anchorAt)} (
-                    {Math.ceil((capacity.anchorAgeSeconds ?? 0) / 60)} min old)
-                  </dd>
-                  <dt>Fill estimate confidence</dt>
-                  <dd className="text-right">{capacity.confidence}</dd>
-                  <dt>Observed drive-up spaces</dt>
-                  <dd className="text-right">
-                    {capacity.observedSpacesAtAnchor ?? "Unavailable"}
-                  </dd>
-                </>
-              )}
-              {assessment?.chance.depletionRateRange && (
-                <>
-                  <dt>Assumed depletion range</dt>
-                  <dd className="text-right">
-                    {assessment.chance.depletionRateRange.minimum.toFixed(1)}–
-                    {assessment.chance.depletionRateRange.maximum.toFixed(1)}{" "}
-                    spaces/min
-                  </dd>
-                </>
-              )}
-              {assessment && (
-                <>
-                  <dt>Timing chance with buffer</dt>
-                  <dd className="text-right">
-                    {probabilityLabel(
-                      assessment.chance.timingProbabilities[buffer]
-                    )}
-                  </dd>
-                </>
-              )}
-              {assessment?.chance.basis === "timing-and-capacity" && (
-                <>
-                  <dt>Space remaining chance</dt>
-                  <dd className="text-right">
-                    {probabilityLabel(
-                      assessment.chance.capacityProbability,
-                      capacity?.state === "already-full"
-                    )}
-                  </dd>
-                </>
-              )}
-              {typeof response.trafficDelaySeconds === "number" && (
-                <>
-                  <dt>Estimated traffic delay</dt>
-                  <dd className="text-right">
-                    {Math.ceil(response.trafficDelaySeconds / 60)} minutes
-                  </dd>
-                </>
-              )}
-            </dl>
-            {assessment?.eligibilityReason && (
-              <p className="mt-3">
-                This sailing is{" "}
-                {assessment.eligibilityReason === "mode-ineligible"
-                  ? "unavailable for this travel method"
-                  : assessment.eligibilityReason}
-                .
-              </p>
-            )}
-            {capacity?.state === "already-full" && (
-              <p className="mt-3">WSF reported zero drive-up spaces.</p>
-            )}
-            {capacity?.state === "not-expected-before-departure" && (
-              <p className="mt-3">
-                Drive-up space is not expected to reach zero before departure.
-              </p>
-            )}
-            {response.mode === "drive" &&
-              (assessment?.chance.probabilities[buffer] === null ||
-                assessment?.chance.probabilities[buffer] === undefined) && (
-                <p className="mt-3">
-                  Drive-up availability could not be estimated. Timing alone
-                  cannot establish your chance of making this sailing.
-                </p>
-              )}
-          </div>
+          <SailingTimingTimeline
+            arrivalColorClassName={arrivalColorClassName}
+            arrivalAt={response.arrivalAt}
+            now={response.recommendationAsOf}
+            sailing={expanded}
+            sailings={chartSailings}
+            travelUncertainty={response.travelUncertainty}
+          />
         )}
       </div>
     </div>

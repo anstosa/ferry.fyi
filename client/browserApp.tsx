@@ -12,6 +12,7 @@ import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { getConfiguredAuth0RedirectUri } from "~/lib/auth";
 import { FeatureFlagProvider } from "~/lib/featureFlags";
 import { AppRenderProvider } from "~/lib/renderContext";
+import { stripSailingTripAddress } from "~/lib/sailingTrip";
 import { SupporterProvider } from "~/lib/supporterProvider";
 import { initializeTheme } from "~/lib/theme";
 import { UserProvider } from "~/lib/user";
@@ -43,7 +44,7 @@ const BrowserRenderContext = ({
         clock: () => Date.now(),
         hasInjectedRequest: true,
         platform: Capacitor.getPlatform() as "android" | "ios" | "web",
-        requestUrl: window.location.href,
+        requestUrl: stripSailingTripAddress(window.location.href),
         runtime: "browser",
         seoBaseUrl: window.location.origin,
         seoHost: hostProfile,

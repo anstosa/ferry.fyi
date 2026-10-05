@@ -11,6 +11,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { getSailingRecommendation } from "../../client/lib/sailingRecommendations";
+import { SailingEstimateResults } from "../../client/views/Schedule/SailingEstimateResults";
 import { SailingRecommendationCard } from "../../client/views/Schedule/SailingRecommendationCard";
 import { createTravelUncertainty } from "../../server/lib/sailingChance";
 import {
@@ -18,7 +19,16 @@ import {
   buildSailingAssessments,
 } from "../../server/lib/sailingRecommendations";
 
-const adapters = vi.hoisted(() => ({ post: vi.fn(), location: vi.fn() }));
+const adapters = vi.hoisted(() => ({
+  post: vi.fn(),
+  location: vi.fn(),
+  canShare: vi.fn(),
+  share: vi.fn(),
+  clipboard: vi.fn(),
+}));
+vi.mock("@capacitor/share", () => ({
+  Share: { canShare: adapters.canShare, share: adapters.share },
+}));
 vi.mock("../../client/lib/api", () => ({
   post: adapters.post,
   // retain the real error boundary shape without loading native networking
@@ -111,10 +121,11 @@ const makeSchedule = (): Schedule => ({
 // return the production selector's normalized buffer domain
 const makeResponse = (
   mode: SailingRecommendationResponse["mode"] = "drive",
-  asOf = NOW
+  asOf = NOW,
+  durationSeconds = 1200
 ): SailingRecommendationResponse => {
   const candidateInput = {
-    arrivalAt: asOf + 1200,
+    arrivalAt: asOf + durationSeconds,
     asOf,
     mode,
     schedule,
@@ -136,7 +147,7 @@ const makeResponse = (
   };
   const bands = buildRecommendationBands(candidateInput);
   const travelUncertainty = createTravelUncertainty({
-    durationSeconds: 1200,
+    durationSeconds,
     mode,
     routeRequestedAt: asOf,
     staticDurationSeconds: 1100,
@@ -152,11 +163,11 @@ const makeResponse = (
     trafficDelaySeconds: mode === "drive" ? 100 : null,
     trafficLevel: mode === "drive" ? "light" : null,
     travelUncertainty,
-    arrivalAt: asOf + 1200,
+    arrivalAt: asOf + durationSeconds,
     attribution: "Google Maps",
     bufferOutcomeBands: bands,
     capacityWatermark: null,
-    durationSeconds: 1200,
+    durationSeconds,
     mode,
     outcome: bands[0].outcome,
     partialMatch: false,
@@ -214,6 +225,18 @@ beforeEach(async () => {
   vi.setSystemTime(NOW * 1000);
   window.localStorage.clear();
   vi.resetAllMocks();
+  window.history.replaceState(
+    { idx: 3, key: "test" },
+    "",
+    "/clinton/mukilteo/navigation"
+  );
+  adapters.canShare.mockResolvedValue({ value: false });
+  adapters.share.mockResolvedValue({});
+  adapters.clipboard.mockResolvedValue(undefined);
+  Object.defineProperty(navigator, "clipboard", {
+    configurable: true,
+    value: { writeText: adapters.clipboard },
+  });
   schedule = makeSchedule();
   adapters.location.mockResolvedValue({ latitude: 47.9, longitude: -122.3 });
   adapters.post.mockImplementation(async (_path, request) =>
@@ -241,6 +264,214 @@ afterEach(async () => {
 });
 
 describe("leave-now sailing card", () => {
+  // safety margins choose a safer boat without delaying the rider's actual arrival
+  it.each(["drive", "walk", "bicycle", "transit", "forecast"] as const)(
+    "shows physical boarding chance rather than buffer-readiness chance for %s",
+    async (source) => {
+      const mode = source === "forecast" ? "drive" : source;
+      schedule.slots[0].time = NOW + 25 * 60;
+      // isolate timing risk with ample known vehicle inventory
+      for (const slot of schedule.slots) {
+        slot.estimate!.driveUpCapacity = 30;
+      }
+      const response = makeResponse(mode, NOW, 19 * 60);
+      const first = response.sailingAssessments![0];
+      // retain the independent forecast multiplier when live inventory is missing
+      if (source === "forecast") {
+        first.capacity!.state = "unavailable";
+        first.capacity!.predictedSpacesAtArrival = null;
+        delete first.capacity!.projection;
+        first.chance.capacityProbability = 0.8;
+        first.chance.forecastFullProbability = 0.2;
+        first.chance.depletionRateRange = null;
+        first.spacesAtArrivalRange = null;
+        first.chance.probabilities = first.chance.timingProbabilities.map(
+          // apply the sailing's forecast risk at each readiness target
+          (timing) => timing * 0.8
+        );
+      }
+      expect(first.chance.probabilities[0]).toBeGreaterThanOrEqual(0.8);
+      expect(first.chance.probabilities[5]).toBeLessThanOrEqual(0.05);
+      expect(response.arrivalAt! + 5 * 60).toBeGreaterThan(
+        first.projectedDepartureAt - first.operatorCutoffSeconds
+      );
+      adapters.post.mockResolvedValue(response);
+      await act(() => {
+        root.render(
+          <SailingRecommendationCard
+            onRefreshSchedule={refreshSchedule}
+            schedule={schedule}
+          />
+        );
+      });
+      // use the same production input boundary for each travel method
+      if (mode !== "drive") {
+        await click(
+          { walk: "Walk", bicycle: "Cycle", transit: "Transit" }[mode]
+        );
+      }
+      await click("Use my location");
+      const expectedChance = source === "forecast" ? "80%" : ">95%";
+      const firstBlock = container.querySelector(
+        `button[data-departure-at="${first.projectedDepartureAt}"]`
+      )!;
+      expect(
+        firstBlock.querySelector("[data-sailing-label]")?.textContent
+      ).toBe("Earlier");
+      expect(
+        firstBlock.querySelector("[data-sailing-chance]")?.textContent
+      ).toBe(expectedChance);
+      expect(
+        firstBlock
+          .querySelector("[data-sailing-time]")
+          ?.classList.contains("text-green-dark")
+      ).toBe(true);
+      expect(firstBlock.getAttribute("aria-label")).toContain(expectedChance);
+      await input("Safety buffer (minutes)", "0");
+      const nowSelected = container.querySelector(
+        `button[data-departure-at="${first.projectedDepartureAt}"]`
+      )!;
+      expect(
+        nowSelected.querySelector("[data-sailing-label]")?.textContent
+      ).toBe("Estimated");
+      expect(
+        nowSelected.querySelector("[data-sailing-chance]")?.textContent
+      ).toBe(expectedChance);
+      expect(adapters.post).toHaveBeenCalledOnce();
+    }
+  );
+
+  // a displayed response must not retain a positive or unknown chance after departure
+  it.each([false, true])(
+    "turns elapsed sailings into exact red zero with unknown=%s",
+    async (unknown) => {
+      const response = makeResponse();
+      const sailing = response.sailingAssessments![1];
+      sailing.projectedDepartureAt = NOW + 1;
+      response.outcome.sailing = sailing;
+      // retain missing inventory to prove departure wins even without a numeric chance
+      if (unknown) {
+        sailing.chance.probabilities = Array(61).fill(null);
+      }
+      await act(() => {
+        root.render(
+          <SailingEstimateResults
+            buffer={5}
+            outcome={response.outcome}
+            response={response}
+          />
+        );
+      });
+      await act(() => {
+        vi.advanceTimersByTime(1000);
+      });
+      const button = container.querySelector(
+        'button[aria-label^="Estimated:"]'
+      );
+      expect(button?.querySelector("[data-sailing-chance]")?.textContent).toBe(
+        "0%"
+      );
+      expect(
+        button
+          ?.querySelector("[data-sailing-chance]")
+          ?.classList.contains("text-red-700")
+      ).toBe(true);
+      await expandChance("Estimated");
+      expect(
+        container.querySelector("#sailing-chance-details [data-capacity-index]")
+      ).not.toBeNull();
+      expect(adapters.post).not.toHaveBeenCalled();
+    }
+  );
+
+  // accept explicitly forecast-backed chance without inventing live capacity details
+  it("renders numeric forecast chances without live capacity details", async () => {
+    const response = makeResponse();
+    const selected = response.sailingAssessments![1];
+    selected.capacity!.state = "unavailable";
+    selected.capacity!.predictedSpacesAtArrival = null;
+    delete selected.capacity!.projection;
+    selected.chance.forecastFullProbability = 0.2;
+    selected.chance.capacityProbability = 0.8;
+    selected.chance.depletionRateRange = null;
+    selected.spacesAtArrivalRange = null;
+    selected.chance.probabilities = selected.chance.timingProbabilities.map(
+      // apply the coherent forecast fallback across timing chances
+      (timing) => timing * 0.8
+    );
+    adapters.post.mockResolvedValue(response);
+    await click("Use my location");
+    expect(
+      container.querySelector(
+        'button[aria-label^="Estimated:"] [data-sailing-chance]'
+      )?.textContent
+    ).toBe("80%");
+    await expandChance("Estimated");
+    expect(container.querySelector("#sailing-chance-details dl")).toBeNull();
+    expect(container.querySelector('[data-capacity-index="1"]')).toBeNull();
+    expect(container.textContent).not.toContain(
+      "Timing alone cannot establish"
+    );
+  });
+
+  // name each forecast inconsistency in the test report
+  it.each([
+    {
+      name: "an out-of-range full probability",
+      // exceed the probability range
+      mutate: (value: SailingRecommendationResponse) => {
+        value.sailingAssessments![1].chance.forecastFullProbability = 2;
+      },
+    },
+    {
+      name: "a mismatched capacity probability",
+      // contradict the forecast complement
+      mutate: (value: SailingRecommendationResponse) => {
+        value.sailingAssessments![1].chance.capacityProbability = 0.7;
+      },
+    },
+    {
+      name: "a live capacity state",
+      // combine forecast fallback with live fullness
+      mutate: (value: SailingRecommendationResponse) => {
+        value.sailingAssessments![1].capacity!.state = "already-full";
+      },
+    },
+    {
+      name: "a mismatched joint probability",
+      // contradict the forecast-weighted timing chance
+      mutate: (value: SailingRecommendationResponse) => {
+        value.sailingAssessments![1].chance.probabilities[5] = 0.4;
+      },
+    },
+  ])("rejects a forecast response with $name", async ({ mutate }) => {
+    const response = makeResponse();
+    const selected = response.sailingAssessments![1];
+    selected.capacity!.state = "unavailable";
+    selected.capacity!.predictedSpacesAtArrival = null;
+    delete selected.capacity!.projection;
+    selected.chance.forecastFullProbability = 0.2;
+    selected.chance.capacityProbability = 0.8;
+    selected.chance.depletionRateRange = null;
+    selected.spacesAtArrivalRange = null;
+    selected.chance.probabilities = selected.chance.timingProbabilities.map(
+      // establish the valid fallback before corrupting one field
+      (timing) => timing * 0.8
+    );
+    const trip = {
+      arrivingTerminalId: "5",
+      departingTerminalId: "14",
+      bufferMinutes: 5,
+      mode: "drive" as const,
+      origin: { kind: "address" as const, address: "Synthetic test origin" },
+    };
+    mutate(response);
+    adapters.post.mockResolvedValue(response);
+    await expect(getSailingRecommendation(trip)).rejects.toThrow(
+      "Sailing estimate unavailable"
+    );
+  });
+
   // reuse app fields and action styles without changing accessible control names
   it("uses the shared app controls for method, buffer and origin", () => {
     const controls = Array.from(container.querySelectorAll("input"));
@@ -323,15 +554,237 @@ describe("leave-now sailing card", () => {
     expect(container.textContent).toContain("Later");
     expect(container.textContent).not.toContain("Tight timing");
     await expandChance("Estimated");
-    expect(container.textContent).toContain(
-      "Estimated drive-up spaces at arrival20"
+    expect(container.querySelector("#sailing-chance-details dl")).toBeNull();
+    expect(container.querySelector("[data-arrival-caption]")?.textContent).toBe(
+      "ETA"
     );
-    expect(container.textContent).toContain("Arrival + buffer");
+    expect(container.textContent).not.toContain("Arrival + buffer");
     expect(container.textContent).not.toContain(
       "assumed triangular distributions"
     );
     expect(container.textContent).not.toMatch(/provisional/i);
   });
+  // restore shared controls without silently acquiring location or paid directions
+  it("restores URL controls, syncs edits and retains router history state", async () => {
+    window.localStorage.setItem("ferry-fyi-sailing-buffer-minutes", "18");
+    window.history.replaceState(
+      { idx: 3, key: "test" },
+      "",
+      "/clinton/mukilteo/navigation?tripMode=transit&tripBuffer=7&keep=yes#anchor&tripAddress=Shared+Starting+Address"
+    );
+    await act(() => {
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    expect(
+      container.querySelector<HTMLButtonElement>('button[aria-pressed="true"]')
+        ?.textContent
+    ).toBe("Transit");
+    expect(
+      container.querySelector<HTMLInputElement>(
+        '[aria-label="Safety buffer (minutes)"]'
+      )?.value
+    ).toBe("7");
+    expect(
+      container.querySelector<HTMLInputElement>(
+        '[aria-label="Starting address"]'
+      )?.value
+    ).toBe("Shared Starting Address");
+    expect(adapters.post).not.toHaveBeenCalled();
+    expect(adapters.location).not.toHaveBeenCalled();
+    await input("Starting address", "123 A&B Street #4");
+    await click("Walk");
+    await input("Safety buffer (minutes)", "0");
+    const url = new URL(window.location.href);
+    expect(url.searchParams.get("tripMode")).toBe("walk");
+    expect(url.searchParams.get("tripBuffer")).toBe("0");
+    expect(url.searchParams.get("keep")).toBe("yes");
+    expect(new URLSearchParams(url.hash.slice(1)).get("tripAddress")).toBe(
+      "123 A&B Street #4"
+    );
+    expect(url.hash).toContain("anchor&");
+    expect(url.search).not.toContain("Street");
+    expect(window.history.state).toEqual({ idx: 3, key: "test" });
+    expect(window.localStorage.length).toBe(1);
+  });
+
+  // show results-shaped placeholders throughout the pending explicit estimate
+  it.each(["success", "failure"])(
+    "shows an accessible skeleton until %s",
+    async (outcome) => {
+      let resolve: (value: SailingRecommendationResponse) => void = () =>
+        undefined;
+      adapters.post.mockReturnValue(
+        new Promise<SailingRecommendationResponse>((finish) => {
+          resolve = finish;
+        })
+      );
+      await click("Use my location");
+      expect(
+        container
+          .querySelector('[aria-label="Estimating your trip"]')
+          ?.getAttribute("aria-busy")
+      ).toBe("true");
+      expect(
+        container.querySelectorAll(
+          '[aria-label="Estimating your trip"] .skeleton'
+        ).length
+      ).toBeGreaterThan(10);
+      expect(container.textContent).not.toContain("Estimating your trip…");
+      expect(
+        container.querySelector('[aria-label="Sailing estimates"]')
+      ).toBeNull();
+      await act(async () => {
+        resolve(
+          outcome === "success"
+            ? makeResponse()
+            : unavailableRecommendation("drive", "provider-unavailable", NOW)
+        );
+      });
+      expect(
+        container.querySelector('[aria-label="Estimating your trip"]')
+      ).toBeNull();
+      // only successful provider results have sailing blocks
+      if (outcome === "success") {
+        expect(
+          container.querySelector('[aria-label="Sailing estimates"]')
+        ).not.toBeNull();
+      } else {
+        expect(container.textContent).toContain(
+          "A travel estimate is unavailable."
+        );
+        expect(
+          container.querySelector('[aria-label="Sailing estimates"]')
+        ).toBeNull();
+      }
+    }
+  );
+
+  // a shared page only restores controls until the recipient explicitly estimates
+  it("restores all controls on remount without paid or location requests", async () => {
+    await input("Starting address", "Shared reload origin");
+    await click("Cycle");
+    await input("Safety buffer (minutes)", "11");
+    await act(() => {
+      root.unmount();
+      root = createRoot(container);
+      root.render(
+        <SailingRecommendationCard
+          onRefreshSchedule={refreshSchedule}
+          schedule={schedule}
+        />
+      );
+    });
+    expect(
+      container.querySelector<HTMLInputElement>(
+        '[aria-label="Starting address"]'
+      )?.value
+    ).toBe("Shared reload origin");
+    expect(
+      container.querySelector<HTMLButtonElement>('button[aria-pressed="true"]')
+        ?.textContent
+    ).toBe("Cycle");
+    expect(
+      container.querySelector<HTMLInputElement>(
+        '[aria-label="Safety buffer (minutes)"]'
+      )?.value
+    ).toBe("11");
+    expect(adapters.post).not.toHaveBeenCalled();
+    expect(adapters.location).not.toHaveBeenCalled();
+  });
+
+  // history changes discard a pending result without a paid retry
+  it("does not revive an estimate after restoring another shared origin", async () => {
+    let resolve: (value: SailingRecommendationResponse) => void = () =>
+      undefined;
+    adapters.post.mockReturnValue(
+      new Promise<SailingRecommendationResponse>((finish) => {
+        resolve = finish;
+      })
+    );
+    await click("Use my location");
+    window.history.replaceState(
+      window.history.state,
+      "",
+      "/clinton/mukilteo/navigation?tripMode=walk&tripBuffer=10#tripAddress=Another+Origin"
+    );
+    await act(() => {
+      window.dispatchEvent(new PopStateEvent("popstate"));
+    });
+    await act(async () => {
+      resolve(makeResponse());
+    });
+    expect(
+      container.querySelector('[aria-label="Sailing estimates"]')
+    ).toBeNull();
+    expect(
+      container.querySelector('[aria-label="Estimating your trip"]')
+    ).toBeNull();
+    expect(
+      container.querySelector<HTMLInputElement>(
+        '[aria-label="Starting address"]'
+      )?.value
+    ).toBe("Another Origin");
+    expect(adapters.post).toHaveBeenCalledOnce();
+  });
+
+  // unavailable clipboards must not masquerade as successful copies
+  it("reports an unavailable share fallback honestly", async () => {
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: undefined,
+    });
+    await click("Use my location");
+    await act(async () => {
+      container
+        .querySelector<HTMLButtonElement>('button[aria-label="Share trip"]')
+        ?.click();
+    });
+    expect(container.textContent).toContain(
+      "Sharing is unavailable on this device."
+    );
+    expect(container.textContent).not.toContain("Link copied.");
+    expect(adapters.share).not.toHaveBeenCalled();
+    expect(adapters.clipboard).not.toHaveBeenCalled();
+  });
+
+  // share the current controls without retaining or sharing coordinates
+  it.each([true, false])(
+    "shares the address fragment with native=%s",
+    async (native) => {
+      adapters.canShare.mockResolvedValue({ value: native });
+      await input("Starting address", "Synthetic shared origin");
+      await click("Estimate trip");
+      expect(
+        container.querySelector<HTMLInputElement>(
+          '[aria-label="Starting address"]'
+        )?.value
+      ).toBe("Synthetic shared origin");
+      const button = container.querySelector<HTMLButtonElement>(
+        'button[aria-label="Share trip"]'
+      );
+      expect(button).not.toBeNull();
+      await act(async () => {
+        button?.click();
+      });
+      const expectedUrl = window.location.href;
+      expect(expectedUrl).toContain("#tripAddress=Synthetic+shared+origin");
+      // a native sheet takes priority over clipboard fallback
+      if (native) {
+        expect(adapters.share).toHaveBeenCalledWith(
+          expect.objectContaining({ url: expectedUrl })
+        );
+        expect(adapters.clipboard).not.toHaveBeenCalled();
+      } else {
+        expect(adapters.clipboard).toHaveBeenCalledWith(expectedUrl);
+        expect(container.textContent).toContain("Link copied.");
+      }
+      expect(adapters.post).toHaveBeenCalledOnce();
+      await click("Use my location");
+      expect(window.location.hash).not.toContain("tripAddress");
+      expect(window.location.href).not.toMatch(/latitude|longitude|47.9|122.3/);
+    }
+  );
+
   // explain denial without sending an empty or stale fix
   it("offers manual entry when location is denied", async () => {
     adapters.location.mockResolvedValue(null);
@@ -349,9 +802,10 @@ describe("leave-now sailing card", () => {
           '[aria-label="Starting address"]'
         ) as HTMLInputElement
       ).value
-    ).toBe("");
+    ).toBe("Synthetic test origin");
     expect(window.localStorage.length).toBe(0);
-    expect(window.location.href).not.toContain("Synthetic");
+    expect(window.location.search).not.toContain("Synthetic");
+    expect(window.location.hash).toContain("tripAddress=Synthetic+test+origin");
   });
   // start selected places immediately while keeping raw edits user-submitted
   it("estimates selected places immediately and submits manual edits explicitly", async () => {
@@ -395,6 +849,8 @@ describe("leave-now sailing card", () => {
       if (action === "location") {
         await click("Use my location");
       } else {
+        // edit the retained address before choosing the same mocked place again
+        await input("Starting address", "");
         await input("Starting address", "Selected Google address");
       }
       expect(
@@ -658,7 +1114,189 @@ describe("leave-now sailing card", () => {
             '[aria-label="Starting address"]'
           ) as HTMLInputElement
         ).value
-      ).toBe("");
+      ).toBe("Selected Google address");
+    }
+  );
+
+  // an explicit estimate opens its middle sailing without an extra user action
+  it("selects Estimated by default and keeps exactly one whole block expanded", async () => {
+    await click("Use my location");
+    const blocks = Array.from(
+      container.querySelectorAll('[aria-label="Sailing estimates"] > button')
+    ) as HTMLButtonElement[];
+    expect(blocks).toHaveLength(3);
+    expect(blocks.map((block) => block.ariaExpanded)).toEqual([
+      "false",
+      "true",
+      "false",
+    ]);
+    expect(
+      container.querySelector("#sailing-chance-details figure")
+    ).not.toBeNull();
+    expect(blocks.every((block) => block.querySelector("svg") === null)).toBe(
+      true
+    );
+    // clicking a time or vessel selects that entire block without collapse
+    for (const [index, field] of [
+      [0, "[data-sailing-time]"],
+      [2, "[data-sailing-vessel]"],
+      [1, "[data-sailing-label]"],
+    ] as const) {
+      await act(() =>
+        (blocks[index].querySelector(field) as HTMLElement).click()
+      );
+      expect(blocks.map((block) => block.ariaExpanded)).toEqual(
+        blocks.map((_, position) => (position === index ? "true" : "false"))
+      );
+      await act(() => blocks[index].click());
+      expect(blocks[index].ariaExpanded).toBe("true");
+    }
+    expect(adapters.post).toHaveBeenCalledOnce();
+  });
+
+  // result identity resets the selected block even when sailing IDs are unchanged
+  it("defaults a refreshed explicit estimate back to Estimated", async () => {
+    await click("Use my location");
+    await expandChance("Later");
+    await click("Use my location");
+    expect(
+      container
+        .querySelector('button[aria-label^="Estimated:"]')
+        ?.getAttribute("aria-expanded")
+    ).toBe("true");
+    expect(
+      container
+        .querySelector('button[aria-label^="Later:"]')
+        ?.getAttribute("aria-expanded")
+    ).toBe("false");
+    expect(adapters.post).toHaveBeenCalledTimes(2);
+  });
+
+  // switching changes only the selected sailing lane, not the shared trip frame
+  it("keeps the Later endpoint, arrival lane and all capacity areas fixed across selections", async () => {
+    await click("Use my location");
+    const snapshot = () => {
+      // capture everything outside the selected blue sailing lane
+      const svg = container.querySelector(
+        "#sailing-chance-details svg[role=img]"
+      )!;
+      return {
+        start: svg.getAttribute("data-domain-start"),
+        end: svg.getAttribute("data-domain-end"),
+        width: svg.getAttribute("width"),
+        height: svg.getAttribute("height"),
+        arrival: svg.querySelector('[data-timeline-lane="arrival"]')!.innerHTML,
+        capacity: svg.querySelector("[data-capacity-background]")!.innerHTML,
+        axis: svg.querySelector('[data-timeline-lane="capacity"]')!.innerHTML,
+      };
+    };
+    const original = snapshot();
+    expect(Number(original.start)).toBe(NOW);
+    expect(Number(original.end)).toBe(NOW + 4800);
+    expect(container.querySelectorAll("[data-capacity-area]")).toHaveLength(3);
+    // a later click must not move now or remove earlier areas
+    for (const label of ["Earlier", "Later", "Estimated"]) {
+      await act(() => vi.advanceTimersByTime(1000));
+      await expandChance(label);
+      expect(snapshot()).toEqual(original);
+      expect(container.querySelectorAll("[data-capacity-area]")).toHaveLength(
+        3
+      );
+    }
+    expect(adapters.post).toHaveBeenCalledOnce();
+  });
+
+  // keep the result chart compact without the old detail title and statistics
+  it("shows only the chart beneath the sailing blocks", async () => {
+    await click("Use my location");
+    const details = container.querySelector("#sailing-chance-details")!;
+    expect(details.querySelector("figure")).not.toBeNull();
+    expect(details.querySelector("h3, figcaption, dl, p")).toBeNull();
+    expect(
+      details.querySelector('[aria-label="Scrollable trip timing timeline"]')
+    ).not.toBeNull();
+  });
+
+  // preserve page space without losing semantic grouping or estimate details
+  it("renders the navigation form and expanded sailing details without card wrappers", async () => {
+    await click("Use my location");
+    await expandChance("Estimated");
+    const section = container.querySelector("section")!;
+    const details = container.querySelector("#sailing-chance-details")!;
+    const figure = details.querySelector("figure")!;
+    expect(section.getAttribute("aria-labelledby")).toBe(
+      "sailing-recommendation-title"
+    );
+    // retain semantic grouping without bordered padded card containers
+    for (const wrapper of [section, figure.parentElement!]) {
+      expect(wrapper.className).not.toMatch(
+        /rounded|shadow|ring-|bg-|border|\bp-[0-9]/
+      );
+    }
+    expect(figure).not.toBeNull();
+    expect(container.textContent).toContain(
+      "Estimates do not guarantee boarding."
+    );
+  });
+
+  // hidden assessments cannot extend the displayed trio or add capacity beyond Later
+  it("retains three inventories ending at Later rather than a hidden following sailing", async () => {
+    const response = makeResponse();
+    const last = response.sailingAssessments!.at(-1)!;
+    response.sailingAssessments!.push({
+      ...last,
+      sailingId: "following-sailing",
+      projectedDepartureAt: NOW + 7200,
+      scheduledDepartureAt: NOW + 7200,
+    });
+    adapters.post.mockResolvedValueOnce(response);
+    await click("Use my location");
+    await expandChance("Later");
+    const svg = container.querySelector(
+      "#sailing-chance-details svg[role=img]"
+    )!;
+    expect(Number(svg.getAttribute("data-domain-end"))).toBe(NOW + 4800);
+    expect(svg.querySelectorAll("[data-capacity-area]")).toHaveLength(3);
+    expect(
+      svg.querySelector('[data-capacity-sailing="following-sailing"]')
+    ).toBeNull();
+    expect(adapters.post).toHaveBeenCalledOnce();
+  });
+
+  // structural ineligibility never becomes the next boarded sailing's inventory
+  it.each(["cancelled", "mode-ineligible"] as const)(
+    "skips a %s following assessment",
+    async (eligibilityReason) => {
+      const response = makeResponse();
+      const last = response.sailingAssessments!.at(-1)!;
+      response.sailingAssessments!.push({
+        ...last,
+        sailingId: "following-sailing",
+        projectedDepartureAt: NOW + 7200,
+        scheduledDepartureAt: NOW + 7200,
+      });
+      last.eligibilityReason = eligibilityReason;
+      last.capacity = null;
+      last.spacesAtArrivalRange = null;
+      last.chance = {
+        ...last.chance,
+        capacityProbability: null,
+        depletionRateRange: null,
+        probabilities: Array(61).fill(0),
+        timingProbabilities: Array(61).fill(0),
+      };
+      adapters.post.mockResolvedValueOnce(response);
+      await click("Use my location");
+      await expandChance("Estimated");
+      const svg = container.querySelector(
+        "#sailing-chance-details svg[role=img]"
+      )!;
+      expect(Number(svg.getAttribute("data-domain-end"))).toBe(NOW + 4800);
+      expect(svg.querySelectorAll("[data-capacity-area]")).toHaveLength(2);
+      expect(
+        svg.querySelector('[data-capacity-sailing="following-sailing"]')
+      ).toBeNull();
+      expect(adapters.post).toHaveBeenCalledOnce();
     }
   );
 
@@ -668,10 +1306,31 @@ describe("leave-now sailing card", () => {
     await input("Safety buffer (minutes)", "25");
     expect(adapters.post).toHaveBeenCalledOnce();
     await expandChance("Estimated");
-    expect(container.textContent).toContain("Safety buffer25 minutes");
-    expect(container.textContent).toContain(
-      "Estimated drive-up spaces at arrival25"
-    );
+    expect(
+      container.querySelector('[data-timeline-range="Safety buffer"]')
+    ).toBeNull();
+    expect(
+      container.querySelector('[data-timeline-point="Arrival + buffer"]')
+    ).toBeNull();
+    // timing fields now share a chart rather than repeated definition rows
+    expect(
+      container.querySelector('figure[aria-label="Trip timing timeline"]')
+    ).not.toBeNull();
+    const timingLabels = [
+      "Estimated arrival",
+      "Arrival + buffer",
+      "Arrival deadline with buffer",
+      "Estimated departure",
+      "Scheduled departure",
+      "Estimated fill time",
+      "WSF capacity observed",
+    ];
+    expect(
+      Array.from(container.querySelectorAll("#sailing-chance-details dt"))
+        .map((label) => label.textContent)
+        .filter((label) => label !== null && timingLabels.includes(label))
+    ).toEqual([]);
+    expect(container.querySelector("#sailing-chance-details dl")).toBeNull();
     expect(
       window.localStorage.getItem("ferry-fyi-sailing-buffer-minutes")
     ).toBe("25");
@@ -792,6 +1451,17 @@ describe("leave-now sailing card", () => {
       expect(time?.className).toContain(
         level === null ? "text-4xl" : severityClasses[level]
       );
+      const marker = container.querySelector("[data-arrival-marker]")!;
+      const caption = container.querySelector("[data-arrival-caption]")!;
+      const expectedColor =
+        level === null ? "text-gray-dark" : severityClasses[level];
+      expect(marker.getAttribute("class")).toContain(expectedColor);
+      expect(time?.className).toContain(marker.getAttribute("class"));
+      expect(caption.parentElement?.getAttribute("class")).toBe(
+        marker.getAttribute("class")
+      );
+      expect(marker.getAttribute("stroke")).toBe("currentColor");
+      expect(caption.getAttribute("fill")).toBe("currentColor");
       expect(arrival?.parentElement?.textContent).not.toContain("Google Maps");
       expect(container.querySelector("section")?.textContent).not.toContain(
         "Google Maps"
@@ -815,7 +1485,7 @@ describe("leave-now sailing card", () => {
   );
 
   // keep each column concise and identify the assigned vessel
-  it("shows Earlier, Estimated and Later with vessel names and chevrons", async () => {
+  it("shows Earlier, Estimated and Later with vessel names and no chance carets", async () => {
     schedule.slots.forEach((slot, index) => {
       // retain real display names rather than numbered test vessels
       slot.vessel.name = ["Wenatchee", "Puyallup", "Tacoma"][index];
@@ -828,15 +1498,17 @@ describe("leave-now sailing card", () => {
       columns.map((column) => column.firstElementChild?.textContent)
     ).toEqual(["Earlier", "Estimated", "Later"]);
     expect(
-      columns.map((column) => column.querySelectorAll("p")[2]?.textContent)
+      columns.map(
+        (column) => column.querySelector("[data-sailing-vessel]")?.textContent
+      )
     ).toEqual(["Wenatchee", "Puyallup", "Tacoma"]);
     expect(container.textContent).not.toContain("Estimated chance");
-    const button = columns[1].querySelector("button")!;
-    expect(button.querySelector('svg[data-direction="down"]')).not.toBeNull();
+    const button = columns[1] as HTMLButtonElement;
+    expect(button.querySelector("svg")).toBeNull();
     expect(button.textContent).not.toMatch(/[+−]/);
     await expandChance("Estimated");
     expect(button.ariaExpanded).toBe("true");
-    expect(button.querySelector('svg[data-direction="up"]')).not.toBeNull();
+    expect(button.querySelector("svg")).toBeNull();
     expect(
       container.querySelector("#sailing-chance-details")?.textContent
     ).not.toContain("Planning ranges use");
@@ -855,13 +1527,11 @@ describe("leave-now sailing card", () => {
       const center = container.querySelector(
         '[aria-label="Sailing estimates"]'
       )!.children[1];
-      expect(center.querySelectorAll("p")[2]?.textContent).toBe(
+      expect(center.querySelector("[data-sailing-vessel]")?.textContent).toBe(
         "Vessel unavailable"
       );
       await expandChance("Estimated");
-      expect(
-        container.querySelector("#sailing-chance-details h3")?.textContent
-      ).toContain("Vessel unavailable");
+      expect(container.querySelector("#sailing-chance-details h3")).toBeNull();
     }
   );
 
@@ -889,13 +1559,15 @@ describe("leave-now sailing card", () => {
     );
     // apply the requested color to every time and percentage
     for (const column of columns) {
-      expect(column.querySelectorAll("p")[1]?.classList.contains(color)).toBe(
-        true
-      );
-      expect(column.querySelector("button")?.textContent).toContain(label);
-      expect(column.querySelector("button")?.classList.contains(color)).toBe(
-        true
-      );
+      expect(
+        column.querySelector("[data-sailing-time]")?.classList.contains(color)
+      ).toBe(true);
+      expect(
+        column.querySelector("[data-sailing-chance]")?.textContent
+      ).toContain(label);
+      expect(
+        column.querySelector("[data-sailing-chance]")?.classList.contains(color)
+      ).toBe(true);
     }
   });
 
@@ -930,10 +1602,15 @@ describe("leave-now sailing card", () => {
     selected.spacesAtArrivalRange = null;
     selected.capacity!.state = "unavailable";
     selected.capacity!.predictedSpacesAtArrival = null;
+    delete selected.capacity!.projection;
     next.capacity!.state = "already-full";
     next.capacity!.predictedSpacesAtArrival = 0;
     next.capacity!.observedSpacesAtAnchor = 0;
     next.capacity!.fillAt = null;
+    next.capacity!.projection = {
+      rate: { maximum: 0, minimum: 0, mostLikely: 0 },
+      totalSpaces: 100,
+    };
     next.chance.probabilities = Array(61).fill(0);
     next.chance.capacityProbability = 0;
     next.chance.depletionRateRange = null;
@@ -950,19 +1627,31 @@ describe("leave-now sailing card", () => {
       '[aria-label="Sailing estimates"]'
     )!.children;
     expect(
-      columns[1].querySelectorAll("p")[1]?.classList.contains("text-gray-dark")
+      columns[1]
+        .querySelector("[data-sailing-time]")
+        ?.classList.contains("text-gray-dark")
     ).toBe(true);
     expect(
-      columns[2].querySelectorAll("p")[1]?.classList.contains("text-red-700")
+      columns[2]
+        .querySelector("[data-sailing-time]")
+        ?.classList.contains("text-red-700")
     ).toBe(true);
     expect(
-      columns[1].querySelector("button")?.classList.contains("text-gray-dark")
+      columns[1]
+        .querySelector("[data-sailing-chance]")
+        ?.classList.contains("text-gray-dark")
     ).toBe(true);
     expect(
-      columns[2].querySelector("button")?.classList.contains("text-red-700")
+      columns[2]
+        .querySelector("[data-sailing-chance]")
+        ?.classList.contains("text-red-700")
     ).toBe(true);
     await expandChance("Estimated");
-    expect(container.textContent).toContain("Timing alone cannot establish");
+    expect(
+      container.querySelector(
+        '#sailing-chance-details [data-capacity-index="1"] [data-capacity-area]'
+      )
+    ).toBeNull();
     await expandChance("Earlier");
     expect(container.querySelectorAll('[aria-expanded="true"]')).toHaveLength(
       1
@@ -973,7 +1662,7 @@ describe("leave-now sailing card", () => {
   });
 
   // retain neighboring chance data and locally switch the active buffer
-  it("shows three sailings with independently expandable model details", async () => {
+  it("shows three sailings with one always-expanded timing chart", async () => {
     await click("Use my location");
     const buttons = container.querySelectorAll(
       'button[aria-controls="sailing-chance-details"]'
@@ -981,20 +1670,18 @@ describe("leave-now sailing card", () => {
     expect(buttons).toHaveLength(3);
     expect(
       container.querySelector("#sailing-chance-details")?.hasAttribute("hidden")
-    ).toBe(true);
+    ).toBe(false);
     await expandChance("Earlier");
     expect(
       container.querySelector("#sailing-chance-details")?.hasAttribute("hidden")
     ).toBe(false);
     expect(container.textContent).toContain("Planning arrival range");
-    expect(container.textContent).toContain(
-      "Modeled spaces across arrival range"
-    );
+    expect(container.querySelector("#sailing-chance-details dl")).toBeNull();
     expect(container.textContent).not.toContain("assumed independent");
     await expandChance("Earlier");
     expect(
       container.querySelector("#sailing-chance-details")?.hasAttribute("hidden")
-    ).toBe(true);
+    ).toBe(false);
     await input("Safety buffer (minutes)", "25");
     expect(container.textContent).toContain("No later sailing");
     expect(adapters.post).toHaveBeenCalledOnce();
@@ -1012,7 +1699,9 @@ describe("leave-now sailing card", () => {
     expect(
       container.querySelector('button[aria-label^="Later:"]')?.textContent
     ).toContain(">95%");
-    expect(container.textContent).not.toContain("100%");
+    expect(
+      container.querySelector('[aria-label="Sailing estimates"]')?.textContent
+    ).not.toContain("100%");
     await input("Safety buffer (minutes)", "25");
     expect(container.textContent).toContain("No later sailing");
     expect(adapters.post).toHaveBeenCalledOnce();
@@ -1039,7 +1728,7 @@ describe("leave-now sailing card", () => {
     await click("Walk");
     await click("Use my location");
     await expandChance("Estimated");
-    expect(container.textContent).toContain("Timing chance with buffer");
+    expect(container.querySelector("#sailing-chance-details dl")).toBeNull();
     expect(container.textContent).not.toContain("drive-up spaces");
     expect(container.textContent).not.toContain("Space remaining chance");
   });
@@ -1097,14 +1786,18 @@ describe("leave-now sailing card", () => {
       ?.children[1];
     expect(center?.textContent).toContain("Chosen vessel");
     await expandChance("Estimated");
-    expect(container.textContent).toContain(
-      "Estimated drive-up spaces at arrival20"
-    );
-    expect(container.textContent).toContain(
-      "Modeled spaces across arrival range"
-    );
+    expect(container.querySelector("#sailing-chance-details dl")).toBeNull();
+    expect(
+      Array.from(container.querySelectorAll("[data-capacity-sailing] title"))
+        .map((title) => title.textContent)
+        .join(" ")
+    ).toContain("Chosen vessel");
     await expandChance("Earlier");
-    expect(container.textContent).toContain("This sailing is cancelled");
+    expect(
+      container.querySelector(
+        'button[aria-label^="Earlier:"] [data-sailing-chance]'
+      )?.textContent
+    ).toBe("0%");
     expect(container.textContent).not.toContain(
       "Estimated drive-up spaces at arrival"
     );
@@ -1150,8 +1843,181 @@ describe("leave-now sailing card", () => {
     expect(container.textContent).toContain("No later sailing");
   });
 
+  // retain a bounded live capacity projection for the estimate chart
+  it("accepts a normalized capacity projection", async () => {
+    const response = makeResponse();
+    adapters.post.mockResolvedValue(response);
+    const request = {
+      arrivingTerminalId: "5",
+      bufferMinutes: 5,
+      departingTerminalId: "14",
+      mode: "drive" as const,
+      origin: { address: "Synthetic test origin", kind: "address" as const },
+    };
+
+    const result = await getSailingRecommendation(request);
+    expect(result.sailingAssessments?.[1].capacity?.projection).toEqual({
+      rate: { maximum: 0.75, minimum: 0.25, mostLikely: 0.5 },
+      totalSpaces: 100,
+    });
+  });
+
   // reject malformed modeled data instead of displaying a fabricated percentage
-  it("rejects unsafe chance models, joint bounds and buffer increases", async () => {
+  it.each([
+    {
+      name: "an out-of-range joint probability",
+      // exceed the probability range
+      mutate: (value: SailingRecommendationResponse) => {
+        value.sailingAssessments![0].chance.probabilities[0] = 2;
+      },
+    },
+    {
+      name: "a joint chance above its timing chance",
+      // exceed the timing upper bound
+      mutate: (value: SailingRecommendationResponse) => {
+        value.sailingAssessments![0].chance.probabilities[0] = 1;
+        value.sailingAssessments![0].chance.timingProbabilities[0] = 0;
+      },
+    },
+    {
+      name: "a chance that increases with buffer",
+      // violate buffer monotonicity
+      mutate: (value: SailingRecommendationResponse) => {
+        value.sailingAssessments![0].chance.probabilities[1] = 1;
+      },
+    },
+    {
+      name: "an undeclared raw route",
+      // expose provider route data
+      mutate: (value: SailingRecommendationResponse) => {
+        Object.assign(value.sailingAssessments![0].chance, { rawRoutes: [] });
+      },
+    },
+    {
+      name: "a timing-only basis for driving",
+      // contradict the driving chance basis
+      mutate: (value: SailingRecommendationResponse) => {
+        value.sailingAssessments![0].chance.basis = "timing-only";
+      },
+    },
+    {
+      name: "a cancelled sailing with live details",
+      // retain details for an ineligible sailing
+      mutate: (value: SailingRecommendationResponse) => {
+        value.sailingAssessments![1].eligibilityReason = "cancelled";
+      },
+    },
+    {
+      name: "missing travel uncertainty",
+      // remove the declared uncertainty model
+      mutate: (value: SailingRecommendationResponse) => {
+        delete value.travelUncertainty;
+      },
+    },
+    {
+      name: "null chances with live capacity",
+      // discard chances without discarding live capacity
+      mutate: (value: SailingRecommendationResponse) => {
+        const { chance } = value.sailingAssessments![1];
+        chance.probabilities = Array(61).fill(null);
+        chance.capacityProbability = null;
+        chance.depletionRateRange = null;
+        value.sailingAssessments![1].spacesAtArrivalRange = null;
+      },
+    },
+    {
+      name: "an outcome sailing outside the snapshot",
+      // reference a missing assessment
+      mutate: (value: SailingRecommendationResponse) => {
+        value.outcome.sailing!.sailingId = "missing-snapshot-id";
+      },
+    },
+    {
+      name: "a missing outcome sailing id",
+      // remove the normalized sailing identity
+      mutate: (value: SailingRecommendationResponse) => {
+        delete value.outcome.sailing!.sailingId;
+      },
+    },
+    {
+      name: "an unavailable state with live details",
+      // retain live claims for unavailable capacity
+      mutate: (value: SailingRecommendationResponse) => {
+        value.sailingAssessments![1].capacity!.state = "unavailable";
+      },
+    },
+    {
+      name: "an already-full state with nonzero chance",
+      // contradict deterministic fullness
+      mutate: (value: SailingRecommendationResponse) => {
+        value.sailingAssessments![1].capacity!.state = "already-full";
+      },
+    },
+    {
+      name: "an arrival range after the point estimate",
+      // invert the travel uncertainty bound
+      mutate: (value: SailingRecommendationResponse) => {
+        value.travelUncertainty!.earliestArrivalAt = value.arrivalAt! + 1;
+      },
+    },
+    {
+      name: "a projection denominator below observed spaces",
+      // contradict the live inventory anchor
+      mutate: (value: SailingRecommendationResponse) => {
+        const capacity = value.sailingAssessments![1].capacity!;
+        Object.assign(capacity, {
+          projection: {
+            rate: { maximum: 1.5, minimum: 0.5, mostLikely: 1 },
+            totalSpaces: 29,
+          },
+        });
+      },
+    },
+    {
+      name: "an inverted projection rate range",
+      // reverse the depletion bounds
+      mutate: (value: SailingRecommendationResponse) => {
+        const capacity = value.sailingAssessments![1].capacity!;
+        Object.assign(capacity, {
+          projection: {
+            rate: { maximum: 0.5, minimum: 1.5, mostLikely: 1 },
+            totalSpaces: 100,
+          },
+        });
+      },
+    },
+    {
+      name: "non-finite and negative projection rates",
+      // reject nonphysical depletion rates
+      mutate: (value: SailingRecommendationResponse) => {
+        const capacity = value.sailingAssessments![1].capacity!;
+        Object.assign(capacity, {
+          projection: {
+            rate: {
+              maximum: Number.POSITIVE_INFINITY,
+              minimum: -1,
+              mostLikely: 1,
+            },
+            totalSpaces: 100,
+          },
+        });
+      },
+    },
+    {
+      name: "a projection without a live anchor",
+      // remove the projection intercept
+      mutate: (value: SailingRecommendationResponse) => {
+        const capacity = value.sailingAssessments![1].capacity!;
+        Object.assign(capacity, {
+          anchorAt: null,
+          projection: {
+            rate: { maximum: 1.5, minimum: 0.5, mostLikely: 1 },
+            totalSpaces: 100,
+          },
+        });
+      },
+    },
+  ])("rejects $name", async ({ mutate }) => {
     const trip = {
       arrivingTerminalId: "5",
       departingTerminalId: "14",
@@ -1159,60 +2025,12 @@ describe("leave-now sailing card", () => {
       mode: "drive" as const,
       origin: { kind: "address" as const, address: "Synthetic test origin" },
     };
-    // mutate isolated responses to cover each boundary failure
-    for (const mutate of [
-      (value: SailingRecommendationResponse) => {
-        value.sailingAssessments![0].chance.probabilities[0] = 2;
-      },
-      (value: SailingRecommendationResponse) => {
-        value.sailingAssessments![0].chance.probabilities[0] = 1;
-        value.sailingAssessments![0].chance.timingProbabilities[0] = 0;
-      },
-      (value: SailingRecommendationResponse) => {
-        value.sailingAssessments![0].chance.probabilities[1] = 1;
-      },
-      (value: SailingRecommendationResponse) => {
-        Object.assign(value.sailingAssessments![0].chance, { rawRoutes: [] });
-      },
-      (value: SailingRecommendationResponse) => {
-        value.sailingAssessments![0].chance.basis = "timing-only";
-      },
-      (value: SailingRecommendationResponse) => {
-        value.sailingAssessments![1].eligibilityReason = "cancelled";
-      },
-      (value: SailingRecommendationResponse) => {
-        delete value.travelUncertainty;
-      },
-      (value: SailingRecommendationResponse) => {
-        const { chance } = value.sailingAssessments![1];
-        chance.probabilities = Array(61).fill(null);
-        chance.capacityProbability = null;
-        chance.depletionRateRange = null;
-        value.sailingAssessments![1].spacesAtArrivalRange = null;
-      },
-      (value: SailingRecommendationResponse) => {
-        value.outcome.sailing!.sailingId = "missing-snapshot-id";
-      },
-      (value: SailingRecommendationResponse) => {
-        delete value.outcome.sailing!.sailingId;
-      },
-      (value: SailingRecommendationResponse) => {
-        value.sailingAssessments![1].capacity!.state = "unavailable";
-      },
-      (value: SailingRecommendationResponse) => {
-        value.sailingAssessments![1].capacity!.state = "already-full";
-      },
-      (value: SailingRecommendationResponse) => {
-        value.travelUncertainty!.earliestArrivalAt = value.arrivalAt! + 1;
-      },
-    ]) {
-      const value = makeResponse();
-      mutate(value);
-      adapters.post.mockResolvedValue(value);
-      await expect(getSailingRecommendation(trip)).rejects.toThrow(
-        "Sailing estimate unavailable"
-      );
-    }
+    const value = makeResponse();
+    mutate(value);
+    adapters.post.mockResolvedValue(value);
+    await expect(getSailingRecommendation(trip)).rejects.toThrow(
+      "Sailing estimate unavailable"
+    );
   });
 
   // refuse undeclared provider fields at every public boundary

@@ -11,9 +11,17 @@ const productionCard = path.resolve(
   repoRoot,
   "client/views/Schedule/SailingRecommendationCard.tsx"
 );
+const productionAddressSuggestions = path.resolve(
+  repoRoot,
+  "client/lib/addressSuggestions.ts"
+);
 const productionClient = path.resolve(
   repoRoot,
   "client/lib/sailingRecommendations.ts"
+);
+const productionResults = path.resolve(
+  repoRoot,
+  "client/views/Schedule/SailingEstimateResults.tsx"
 );
 
 // replace only the two side-effecting imports used by the production card
@@ -30,6 +38,20 @@ const deterministicAdapters = (): Plugin => ({
     // intercept the feature client's low-level transport
     if (source === "./api" && normalizedImporter === productionClient) {
       return path.resolve(configDirectory, "api.ts");
+    }
+    // keep address suggestions inside the same network-free transport fixture
+    if (
+      source === "./api" &&
+      normalizedImporter === productionAddressSuggestions
+    ) {
+      return path.resolve(configDirectory, "api.ts");
+    }
+    // replace only this result card's lazy native share provider
+    if (
+      source === "@capacitor/share" &&
+      normalizedImporter === productionResults
+    ) {
+      return path.resolve(configDirectory, "share.ts");
     }
     return null;
   },

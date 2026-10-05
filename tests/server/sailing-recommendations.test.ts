@@ -14,7 +14,11 @@ import {
   createApiRateLimitMiddleware,
   denyUntrustedPaidProviderOrigin,
 } from "../../server/lib/httpApiPolicy";
-import { buildRecommendationBands } from "../../server/lib/sailingRecommendations";
+import { createTravelUncertainty } from "../../server/lib/sailingChance";
+import {
+  buildRecommendationBands,
+  buildSailingAssessments,
+} from "../../server/lib/sailingRecommendations";
 import {
   createRecommendationCallLimiter,
   createSailingRecommendationService,
@@ -96,6 +100,201 @@ afterEach(() => {
 });
 
 describe("leave-now sailing recommendations", () => {
+  // assess every adjacent sailing from its own forecast without fresh inventory
+  it.each(["missing", "stale"])(
+    "uses forecasts for all driver chances with %s reports",
+    (kind) => {
+      const schedule = makeSchedule();
+      schedule.slots.push({ ...schedule.slots[1], time: NOW + 120 * 60 });
+      schedule.slots.forEach((slot, index) => {
+        // retain independent forecast risks across the result neighborhood
+        slot.estimate = {
+          driveUpCapacity: 10,
+          reservableCapacity: null,
+          fullProbability: [0.2, 0.6, 0.1][index],
+        };
+      });
+      const input = {
+        arrivalAt: NOW + 20 * 60,
+        asOf: NOW,
+        mode: "drive" as const,
+        schedule,
+        observations:
+          kind === "missing"
+            ? []
+            : makeObservations(schedule).map((row) => ({
+                ...row,
+                receivedAt: NOW - 181,
+              })),
+      };
+      const bands = buildRecommendationBands(input);
+      const assessments = buildSailingAssessments({
+        ...input,
+        bands,
+        travelUncertainty: createTravelUncertainty({
+          durationSeconds: 1200,
+          mode: "drive",
+          routeRequestedAt: NOW,
+          trafficAware: true,
+        }),
+      });
+      expect(assessments).toHaveLength(3);
+      expect(
+        assessments.map((sailing) => sailing.chance.probabilities[5])
+      ).toEqual([0.8, 0.4, 0.9]);
+      expect(
+        assessments.map((sailing) => sailing.chance.forecastFullProbability)
+      ).toEqual([0.2, 0.6, 0.1]);
+      expect(
+        assessments.every(
+          (sailing) => sailing.capacity?.state === "unavailable"
+        )
+      ).toBe(true);
+      expect(bands[0].outcome.sailing?.scheduledDepartureAt).toBe(
+        schedule.slots[0].time
+      );
+    }
+  );
+
+  // confirmed live departure outranks delayed projections and favorable forecasts
+  it.each(["drive", "walk", "bicycle", "transit"] as const)(
+    "hard-zeroes a GPS-matched departed %s sailing",
+    (mode) => {
+      const schedule = makeSchedule();
+      schedule.slots[0].time = NOW + 60;
+      schedule.slots[0].estimate!.fullProbability = 0;
+      schedule.slots[0].vessel = {
+        ...schedule.slots[0].vessel,
+        isAtDock: false,
+        gpsDelay: {
+          delaySeconds: 1200,
+          signals: { scheduledDepartureTime: schedule.slots[0].time },
+        },
+      } as Slot["vessel"];
+      const input = {
+        arrivalAt: NOW + 120,
+        asOf: NOW,
+        mode,
+        schedule,
+        observations: [],
+      };
+      const bands = buildRecommendationBands(input);
+      const assessment = buildSailingAssessments({
+        ...input,
+        bands,
+        travelUncertainty: createTravelUncertainty({
+          durationSeconds: 120,
+          mode,
+          routeRequestedAt: NOW,
+          trafficAware: true,
+        }),
+      })[0];
+      expect(assessment.eligibilityReason).toBe("departed");
+      expect(assessment.chance.probabilities).toEqual(Array(61).fill(0));
+      expect(assessment.chance.forecastFullProbability).toBeUndefined();
+      expect(bands[0].outcome.skipped[0].reason).toBe("departed");
+    }
+  );
+
+  // stale live flags and scheduled hasPassed cannot override a future delayed sailing
+  it.each(["loading", "prior-leg", "future-event"])(
+    "keeps a %s delayed sailing catchable",
+    (kind) => {
+      const schedule = makeSchedule();
+      const slot = schedule.slots[0];
+      slot.time = NOW - 60;
+      slot.hasPassed = true;
+      slot.estimate!.fullProbability = 0.2;
+      const departureEvents: Record<string, number | undefined> = {
+        loading: undefined,
+        "prior-leg": slot.time - 11 * 60,
+        "future-event": NOW + 10 * 60,
+      };
+      slot.vessel = {
+        ...slot.vessel,
+        scheduledDepartureTime: slot.time,
+        isAtDock: kind === "loading",
+        departedTime: departureEvents[kind],
+        gpsDelay: {
+          delaySeconds: 1200,
+          signals: { scheduledDepartureTime: slot.time },
+        },
+      } as Slot["vessel"];
+      const input = {
+        arrivalAt: NOW + 120,
+        asOf: NOW,
+        mode: "drive" as const,
+        schedule,
+        observations: [],
+      };
+      const bands = buildRecommendationBands(input);
+      const assessment = buildSailingAssessments({
+        ...input,
+        bands,
+        travelUncertainty: createTravelUncertainty({
+          durationSeconds: 120,
+          mode: "drive",
+          routeRequestedAt: NOW,
+          trafficAware: true,
+        }),
+      })[0];
+      expect(assessment.eligibilityReason).toBeNull();
+      expect(assessment.chance.probabilities[5]).toBe(0.8);
+      expect(bands[0].outcome.sailing?.scheduledDepartureAt).toBe(slot.time);
+    }
+  );
+
+  // actual departure timestamps win over a later GPS projection for every method
+  it.each(["drive", "walk", "bicycle", "transit"] as const)(
+    "hard-zeroes actual %s departures with unknown capacity",
+    (mode) => {
+      // cover both exact-leg live events and persisted crossing events
+      for (const source of ["live", "crossing"]) {
+        const schedule = makeSchedule();
+        const slot = schedule.slots[0];
+        slot.time = NOW + 60;
+        slot.estimate!.fullProbability = 0;
+        slot.vessel = {
+          ...slot.vessel,
+          scheduledDepartureTime: slot.time,
+          departedTime: source === "live" ? NOW - 60 : undefined,
+          gpsDelay: {
+            delaySeconds: 1200,
+            signals: { scheduledDepartureTime: slot.time },
+          },
+        } as Slot["vessel"];
+        // persist only the observed timestamp variant
+        if (source === "crossing") {
+          slot.crossing = {
+            departureDelta: -120,
+            isCancelled: false,
+          } as Slot["crossing"];
+        }
+        const input = {
+          arrivalAt: NOW + 120,
+          asOf: NOW,
+          mode,
+          schedule,
+          observations: [],
+        };
+        const bands = buildRecommendationBands(input);
+        const assessment = buildSailingAssessments({
+          ...input,
+          bands,
+          travelUncertainty: createTravelUncertainty({
+            durationSeconds: 120,
+            mode,
+            routeRequestedAt: NOW,
+            trafficAware: true,
+          }),
+        })[0];
+        expect(assessment.eligibilityReason).toBe("departed");
+        expect(assessment.chance.probabilities).toEqual(Array(61).fill(0));
+        expect(bands[0].outcome.skipped[0].reason).toBe("departed");
+      }
+    }
+  );
+
   // use the durable booth for every travel method without caller destination overrides
   it.each(["drive", "walk", "bicycle", "transit"] as const)(
     "routes %s to the saved booth",
@@ -225,13 +424,42 @@ describe("leave-now sailing recommendations", () => {
     expect(bands[0].outcome.sailing?.scheduledDepartureAt).toBe(
       schedule.slots[0].time
     );
-    const later = bands.find((band) => band.minimumBufferMinutes === 21);
+    const later = bands.find((band) => band.minimumBufferMinutes === 18);
     expect(later?.outcome.sailing?.scheduledDepartureAt).toBe(
       schedule.slots[1].time
     );
     expect(bands[0].outcome.sailing?.capacity?.predictedSpacesAtArrival).toBe(
       20
     );
+    expect(bands[0].outcome.sailing?.operatorCutoffSeconds).toBe(180);
+  });
+
+  // enforce the same three-minute cutoff in selection and chance timing
+  it("uses the global boarding cutoff at the selection boundary", () => {
+    const schedule = makeSchedule();
+    const onCutoff = buildRecommendationBands({
+      arrivalAt: schedule.slots[0].time - 180,
+      asOf: NOW,
+      mode: "walk",
+      observations: [],
+      schedule,
+    })[0].outcome;
+    const afterCutoff = buildRecommendationBands({
+      arrivalAt: schedule.slots[0].time - 179,
+      asOf: NOW,
+      mode: "walk",
+      observations: [],
+      schedule,
+    })[0].outcome;
+
+    expect(onCutoff.sailing?.scheduledDepartureAt).toBe(schedule.slots[0].time);
+    expect(afterCutoff.sailing?.scheduledDepartureAt).toBe(
+      schedule.slots[1].time
+    );
+    expect(afterCutoff.skipped[0]).toEqual({
+      departureAt: schedule.slots[0].time,
+      reason: "too-late",
+    });
   });
   // full vehicle inventory cannot disqualify walkers
   it("skips literal driver zero but not non-drivers or advisory-only timing", () => {
@@ -250,7 +478,7 @@ describe("leave-now sailing recommendations", () => {
       })[0].outcome.result
     ).toBe("no-catchable-sailing");
     const walk = buildRecommendationBands({
-      arrivalAt: NOW + 39 * 60,
+      arrivalAt: NOW + 36 * 60,
       asOf: NOW,
       mode: "walk",
       observations,

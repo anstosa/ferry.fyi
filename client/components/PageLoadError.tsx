@@ -1,5 +1,7 @@
 import React, { type ReactElement } from "react";
 
+import { stripSailingTripAddress } from "~/lib/sailingTrip";
+
 interface Props {
   error?: Error | null;
   message?: string;
@@ -11,7 +13,7 @@ interface Props {
 const getDeveloperContactHref = (error?: Error | null): string => {
   const details = [
     "A page failed to load in Ferry FYI.",
-    `URL: ${window.location.href}`,
+    `URL: ${stripSailingTripAddress(window.location.href)}`,
     error?.message ? `Error: ${error.message}` : null,
   ].filter(Boolean);
   return `mailto:dev@ferry.fyi?subject=${encodeURIComponent(

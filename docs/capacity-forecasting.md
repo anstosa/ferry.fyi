@@ -147,7 +147,8 @@ physical-decrement guarantee, so observed zero is a received reporting proxy, no
 proof of the exact tollbooth or loading event.
 
 The leave-now tool evaluates drive-up inventory at terminal ETA. Its adjustable
-five-minute buffer affects departure timing only. Vehicle fullness does not reject
+five-minute buffer affects the conservative sailing selection, not actual arrival
+or the displayed boarding probability. Vehicle fullness does not reject
 walking, cycling or transit. Booth queues, parking and reservation-aware boarding
 are excluded. Estimates do not guarantee boarding.
 
@@ -177,17 +178,24 @@ fill model's low, point and high rates. These assumptions are planning priors,
 not measured boarding-success rates or statistical confidence intervals.
 
 The model integrates 101 fixed midpoint travel quantiles with the analytic
-triangular rate CDF. Driver success requires both arrival before the projected
-departure minus cutoff and buffer, and positive drive-up inventory at that same
+triangular rate CDF. Displayed driver success requires both arrival before the
+projected departure minus cutoff and positive drive-up inventory at that same
 arrival. Travel and depletion rate are assumed independent; their marginal
 success probabilities are **not multiplied**. Capacity support spans the earliest
 arrival with the slowest depletion to the latest arrival with the fastest
-depletion. Increasing the buffer changes the deadline only, never inventory at
-arrival. Non-driving modes use travel timing only.
+depletion. The API retains 0–60 minute buffer-indexed readiness-target chances;
+entry zero is the actual-cutoff boarding chance shown by the UI. Increasing the
+preferred buffer changes the conservative recommendation, not that sailing's
+displayed probability or inventory at arrival. Non-driving modes use travel timing
+only.
 
 Cancelled, departed, mode-ineligible and directly observed-full driver sailings
-have zero joint chance; independently knowable timing remains available. Missing
-usable inventory is unknown, not zero. Point-full or point-late neighbors can
+have zero joint chance; independently knowable timing remains available. When
+usable live inventory is absent, a finite forecasted full probability in [0, 1]
+supplies the capacity chance as its complement, multiplied by the timing chance.
+This fallback does not invent observed spaces, depletion rates or an occupancy
+curve. Without either live inventory or a valid forecast, capacity remains
+unknown, not zero. Point-full or point-late neighbors can
 retain nonzero chance from earlier travel or slower depletion tails. The center
 remains the existing deterministic recommendation, not a new probability
 threshold. Snapshot sailing identities distinguish same-time vessels.
@@ -197,11 +205,15 @@ colors using the delay against Google's baseline. These are not Google's road
 segment categories and require no Enterprise traffic-polyline request. Unknown
 traffic remains neutral. Chance headings round to five-percentage-point steps;
 modeled extremes use `<5%` / `>95%`, while hard exclusions may show `0%`.
-Expanded details expose arrival support, deadlines, buffer, space support, fill
-range, causal anchor freshness, marginal chances and assumptions. All 0–60 minute
-buffer outcomes and nearby assessments reuse one provider request. Every displayed
-capacity anchor contributes to expiry, and material schedule or vessel changes
-invalidate the response. Google attribution remains below the card within its
-shared visual container.
+The app applies a global three-minute boarding cutoff separately from operator
+arrival advice. One Earlier, Estimated or Later block is always selected, with
+Estimated selected on a fresh response. Expanded details show a shared-scale
+timeline ending at Later's departure, independent live-capacity areas for each
+sailing, the selected Sailing markers, and a vertical ETA marker matching the
+arrival traffic color. Forecast-only sources do not fabricate capacity areas.
+All 0–60 minute buffer outcomes and nearby assessments reuse one provider request.
+Every displayed capacity anchor contributes to expiry, and material schedule or
+vessel changes invalidate the response. Google attribution remains below the
+results directly on the page background, outside the removed card wrapper.
 
 Lines outside the toll booth are not included. Estimates do not guarantee boarding.

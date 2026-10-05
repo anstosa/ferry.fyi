@@ -1,3 +1,4 @@
+import { DateTime } from "luxon";
 import type {
   SailingRecommendationRequest,
   SailingRecommendationResponse,
@@ -14,11 +15,20 @@ import {
 } from "../../../server/lib/sailingRecommendations";
 
 export type FixtureScenario =
+  | "buffer-only-late"
+  | "capacity-recovery"
+  | "tied-repair"
   | "capacity-unavailable"
   | "denied"
+  | "departed-clock"
   | "expired"
+  | "forecast-capacity"
   | "heavy"
+  | "midnight"
+  | "multi-full"
   | "moderate"
+  | "pending-error"
+  | "pending-success"
   | "provider-error"
   | "recursion"
   | "stale"
@@ -31,9 +41,11 @@ export interface FixtureAudit {
   apiCalls: number;
   lastBufferMinutes: number | null;
   lastMode: TravelMode | null;
-  lastOriginKind: "address" | "coordinates" | null;
+  lastOriginKind: "address" | "coordinates" | "place" | null;
+  lastSharedUrl: string | null;
   locationRequests: number;
   scenario: FixtureScenario;
+  shareCalls: number;
 }
 
 declare global {
@@ -43,11 +55,20 @@ declare global {
 }
 
 const SCENARIOS = new Set<FixtureScenario>([
+  "buffer-only-late",
+  "capacity-recovery",
+  "tied-repair",
   "capacity-unavailable",
   "denied",
+  "departed-clock",
   "expired",
+  "forecast-capacity",
   "heavy",
+  "midnight",
+  "multi-full",
   "moderate",
+  "pending-error",
+  "pending-success",
   "provider-error",
   "recursion",
   "stale",
@@ -72,13 +93,47 @@ export const fixtureAudit: FixtureAudit = {
   lastBufferMinutes: null,
   lastMode: null,
   lastOriginKind: null,
+  lastSharedUrl: null,
   locationRequests: 0,
   scenario: readScenario(),
+  shareCalls: 0,
 };
 
 window.__sailingFixture = fixtureAudit;
 
 const fixtureNow = Math.floor(Date.now() / 1000);
+const fixtureMidnightArrival = Math.floor(
+  DateTime.now()
+    .setZone("America/Los_Angeles")
+    .plus({ days: 1 })
+    .startOf("day")
+    .minus({ minutes: 10 })
+    .toSeconds()
+);
+
+// select departures around the active scenario's point arrival
+const readFixtureDepartureOffsets = (): number[] => {
+  // leave three real minutes before cutoff but miss the preferred five-minute margin
+  if (fixtureAudit.scenario === "buffer-only-late") {
+    return [25 * 60, 40 * 60, 80 * 60, 120 * 60];
+  }
+  // cross one near-term departure with the browser-controlled date
+  if (fixtureAudit.scenario === "departed-clock") {
+    return [8, 10 * 60, 20 * 60, 30 * 60];
+  }
+  // straddle terminal-local midnight with an earlier and later context
+  if (fixtureAudit.scenario === "midnight") {
+    return [
+      fixtureMidnightArrival - fixtureNow - 5 * 60,
+      fixtureMidnightArrival - fixtureNow + 20 * 60,
+      fixtureMidnightArrival - fixtureNow + 60 * 60,
+      fixtureMidnightArrival - fixtureNow + 100 * 60,
+    ];
+  }
+  return [19 * 60, 40 * 60, 80 * 60, 120 * 60];
+};
+const fixtureDepartureOffsets = readFixtureDepartureOffsets();
+const forecastFullProbabilities = [0.9, 0.6, 0.35, 0.15];
 
 // construct four future synthetic sailings around the browser clock
 export const fixtureSchedule: Schedule = {
@@ -87,7 +142,7 @@ export const fixtureSchedule: Schedule = {
   mateId: "5",
   terminalId: "14",
   validRange: null,
-  slots: [19, 40, 80, 120].map((minutes, index) => {
+  slots: fixtureDepartureOffsets.map((offsetSeconds, index) => {
     // expose adjacent sailings around both buffer-selected outcomes
     const names = [
       "MV Earlier Fixture",
@@ -95,16 +150,25 @@ export const fixtureSchedule: Schedule = {
       "MV Later Fixture",
       "MV Buffer Fixture",
     ];
+    let driveUpCapacity = index === 1 ? 0 : 10;
+    // isolate the safety-margin mismatch from actual capacity risk
+    if (fixtureAudit.scenario === "buffer-only-late") {
+      driveUpCapacity = 30;
+    }
     return {
       allowsPassengers: true,
       allowsVehicles: true,
       estimate: {
-        driveUpCapacity: index === 1 ? 0 : 10,
+        driveUpCapacity,
+        ...(fixtureAudit.scenario === "forecast-capacity" ||
+        fixtureAudit.scenario === "midnight"
+          ? { fullProbability: forecastFullProbabilities[index] }
+          : {}),
         reservableCapacity: null,
       },
       hasPassed: false,
       mateId: "5",
-      time: fixtureNow + minutes * 60,
+      time: fixtureNow + offsetSeconds,
       vessel: {
         id: String(index + 1),
         name: names[index],
@@ -141,27 +205,76 @@ export const recordLocationRequest = (): void => {
   publishFixtureAudit();
 };
 
+// record only the synthetic fixture link selected for native sharing
+export const recordShareCall = (url: string): void => {
+  fixtureAudit.lastSharedUrl = url;
+  fixtureAudit.shareCalls += 1;
+  publishFixtureAudit();
+};
+
 // create one current direct capacity anchor per sailing
 const makeObservations = (): FillTimingObservation[] => {
   // model an unknown inventory source without fabricating a chance
-  if (fixtureAudit.scenario === "capacity-unavailable") {
+  if (
+    fixtureAudit.scenario === "capacity-unavailable" ||
+    fixtureAudit.scenario === "forecast-capacity" ||
+    fixtureAudit.scenario === "midnight"
+  ) {
     return [];
   }
   const spaces = fixtureAudit.scenario === "vehicle-full" ? 0 : 30;
-  return fixtureSchedule.slots.map((slot, index) => ({
-    allocationGroupId: `fixture-allocation-${index + 1}`,
-    departureTime: slot.time,
-    driveUpDisplayed: true,
-    driveUpSpaces: spaces,
-    isCancelled: false,
-    maxSpaceCount: 100,
-    pollId: "fixture-poll",
-    receivedAt: fixtureNow - 15,
-    reportingStateAtReceipt: "active",
-    sourceKind: "wsf-direct",
-    usableForFillLabel: true,
-    vesselId: slot.vessel.id,
-  }));
+  const current = fixtureSchedule.slots.map(
+    (slot, index): FillTimingObservation => ({
+      allocationGroupId: `fixture-allocation-${index + 1}`,
+      departureTime: slot.time,
+      driveUpDisplayed: true,
+      driveUpSpaces: spaces,
+      isCancelled: false,
+      maxSpaceCount: 100,
+      pollId: "fixture-poll",
+      receivedAt: fixtureNow - 15,
+      reportingStateAtReceipt: "active",
+      sourceKind: "wsf-direct",
+      usableForFillLabel: true,
+      vesselId: slot.vessel.id,
+    })
+  );
+  // unavailable predecessors cannot hide the later sailing's own live model
+  if (fixtureAudit.scenario === "capacity-recovery") {
+    return current.slice(2);
+  }
+  // a repair at the same timestamp must yield to the direct WSF report
+  if (fixtureAudit.scenario === "tied-repair") {
+    return current.flatMap((observation) => [
+      observation,
+      {
+        ...observation,
+        allocationGroupId: `repair-${observation.allocationGroupId}`,
+        sourceKind: "repair-derived" as const,
+        reportingStateAtReceipt: "unknown" as const,
+        usableForFillLabel: false,
+      },
+    ]);
+  }
+  // a steep observed decline fills multiple sailing intervals for dense-caption verification
+  if (fixtureAudit.scenario === "multi-full") {
+    return current.flatMap((observation) => [
+      {
+        ...observation,
+        driveUpSpaces: 90,
+        receivedAt: fixtureNow - 315,
+        pollId: "fixture-earlier-poll",
+      },
+      {
+        ...observation,
+        driveUpSpaces: 60,
+        receivedAt: fixtureNow - 165,
+        pollId: "fixture-middle-poll",
+      },
+      observation,
+    ]);
+  }
+  return current;
 };
 
 // derive the fixture's provider duration and static baseline
@@ -170,6 +283,31 @@ const routeTiming = (): {
   staticDurationSeconds: number | null;
   trafficAware: boolean;
 } => {
+  // reproduce an arrival before cutoff but after the preferred buffered target
+  if (fixtureAudit.scenario === "buffer-only-late") {
+    return {
+      durationSeconds: 19 * 60,
+      staticDurationSeconds: 16 * 60,
+      trafficAware: true,
+    };
+  }
+  // keep one catchable sailing close enough for the browser clock to pass it
+  if (fixtureAudit.scenario === "departed-clock") {
+    return {
+      durationSeconds: 0,
+      staticDurationSeconds: 0,
+      trafficAware: true,
+    };
+  }
+  // place one deterministic estimate across the terminal-local midnight boundary
+  if (fixtureAudit.scenario === "midnight") {
+    const durationSeconds = fixtureMidnightArrival - fixtureNow;
+    return {
+      durationSeconds,
+      staticDurationSeconds: durationSeconds,
+      trafficAware: true,
+    };
+  }
   // retain a point route with no provider traffic classification
   if (fixtureAudit.scenario === "traffic-unavailable") {
     return {
@@ -273,7 +411,10 @@ export const makeFixtureResponse = (
   input: SailingRecommendationRequest
 ): SailingRecommendationResponse => {
   // exercise the provider failure copy without a network request
-  if (fixtureAudit.scenario === "provider-error") {
+  if (
+    fixtureAudit.scenario === "provider-error" ||
+    fixtureAudit.scenario === "pending-error"
+  ) {
     return makeFailure(input, "provider-quota-unavailable");
   }
   // exercise typed ferry recursion rejection and its warning
@@ -284,13 +425,22 @@ export const makeFixtureResponse = (
   const { durationSeconds, staticDurationSeconds, trafficAware } =
     routeTiming();
   const arrivalAt = fixtureNow + durationSeconds;
-  const travelUncertainty = createTravelUncertainty({
+  let travelUncertainty = createTravelUncertainty({
     durationSeconds,
     mode: input.mode,
     routeRequestedAt: fixtureNow,
     staticDurationSeconds,
     trafficAware,
   });
+  // keep the midnight fixture focused on label ordering rather than an all-day prior
+  if (fixtureAudit.scenario === "midnight") {
+    travelUncertainty = {
+      earliestArrivalAt: arrivalAt - 3 * 60,
+      latestArrivalAt: arrivalAt + 3 * 60,
+      modelVersion: "triangular-travel-v1",
+      widthSeconds: 3 * 60,
+    };
+  }
   const bufferOutcomeBands = buildRecommendationBands({
     arrivalAt,
     asOf: fixtureNow,

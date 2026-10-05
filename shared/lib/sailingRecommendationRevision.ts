@@ -28,6 +28,7 @@ export const getSailingRecommendationRevision = (schedule: Schedule): string =>
         slot.crossing?.totalCapacity ?? null,
         slot.estimate?.driveUpCapacity ?? null,
         slot.estimate?.reservableCapacity ?? null,
+        slot.estimate?.fullProbability ?? null,
         slot.vessel?.id,
         slot.vessel?.name,
         slot.vessel?.horsepower ?? null,

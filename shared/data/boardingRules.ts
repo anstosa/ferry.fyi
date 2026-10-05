@@ -12,6 +12,8 @@ const GENERAL_SOURCE =
   "https://wsdot.wa.gov/travel/washington-state-ferries/rider-information/first-time-riders";
 const BICYCLE_SOURCE =
   "https://wsdot.wa.gov/travel/washington-state-ferries/rider-information/what-you-can-bring-aboard/bicycles";
+// apply the app-wide boarding margin independently of operator arrival advice
+export const BOARDING_CUTOFF_SECONDS = 3 * 60;
 
 // enumerate domestic directional pairs only
 export const isRecommendationDirection = (
@@ -24,7 +26,7 @@ export const isRecommendationDirection = (
     return terminalIds.includes(departureId) && terminalIds.includes(arrivalId);
   });
 
-// keep general planning advice separate from mandatory closure
+// keep operator planning advice separate from the app's boarding cutoff
 export const getBoardingRule = (
   departureId: string,
   arrivalId: string,
@@ -36,7 +38,7 @@ export const getBoardingRule = (
   }
   return {
     advisorySeconds: mode === "drive" || mode === "bicycle" ? 1200 : 300,
-    cutoffSeconds: 0,
+    cutoffSeconds: BOARDING_CUTOFF_SECONDS,
     sourceUrl: mode === "bicycle" ? BICYCLE_SOURCE : GENERAL_SOURCE,
     verifiedAt: "2026-10-03",
   };

@@ -9,7 +9,7 @@ import React, {
   useEffect,
   useState,
 } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { isNull } from "shared/lib/identity";
 
 import {
@@ -20,6 +20,7 @@ import { getConfiguredAuth0RedirectUri, loginWithAppFlow } from "~/lib/auth";
 import { openCameraDetectionDebugger } from "~/lib/cameraDetectionDebugger";
 import { isInstalledApp, useDevice } from "~/lib/device";
 import { useFeatureFlags } from "~/lib/featureFlags";
+import { stripSailingTripAddress } from "~/lib/sailingTrip";
 import { colors } from "~/lib/theme";
 import logo from "~/static/images/icon_monochrome-256.png";
 import AppStoreIcon from "~/static/images/icons/brands/app-store-ios.svg";
@@ -103,9 +104,6 @@ export const Menu = ({
   } = useAuth0();
   const { leaderboardsEnabled } = useFeatureFlags();
   const [canShare, setShare] = useState<boolean>(false);
-  const location = useLocation();
-  // preserve the complete login return route
-  const authRedirectPath = `${location.pathname}${location.search}${location.hash}`;
   const isOwner = user?.email === "anstosa@gmail.com";
   const detectorEnabled = isOwner && environment === "development";
 
@@ -125,6 +123,10 @@ export const Menu = ({
 
   // login route
   const login = async () => {
+    // preserve current controls after url-only edits without router updates
+    const authRedirectPath = stripSailingTripAddress(
+      `${window.location.pathname}${window.location.search}${window.location.hash}`
+    );
     // native browser login
     if (device?.isNativeMobile) {
       await loginWithRedirect({
