@@ -63,7 +63,8 @@ jobs:
           java-version: '21'
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        # avoid the removed sdk tools package
+        uses: android-actions/setup-android@v4.0.2
 
       - name: Install required Android SDK packages
         run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'

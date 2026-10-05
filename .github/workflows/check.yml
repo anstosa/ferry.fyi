@@ -240,7 +240,8 @@ jobs:
           java-version: "21"
       # run one bounded native verification step
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v4.0.1
+        # avoid the removed sdk tools package
+        uses: android-actions/setup-android@v4.0.2
       # run one bounded native verification step
       - name: Install Android API 36
         run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
@@ -346,7 +347,8 @@ jobs:
           java-version: "21"
       # run one bounded native verification step
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v4.0.1
+        # avoid the removed sdk tools package
+        uses: android-actions/setup-android@v4.0.2
       # run one bounded native verification step
       - name: Install Android API 36
         run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
