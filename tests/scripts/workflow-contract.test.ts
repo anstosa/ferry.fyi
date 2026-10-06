@@ -10,6 +10,40 @@ const workflow = (name: string) =>
   );
 
 describe("CI workflow contract", () => {
+  // ensure new source revisions cannot silently reuse the package's OTA version
+  it("publishes an explicit source-versioned OTA bundle from complete history", () => {
+    const publish = workflow("publish-ota.yml");
+
+    expect(publish).toContain("fetch-depth: 0");
+    expect(publish).toContain("scripts/prepareOtaRelease.ts version");
+    expect(publish).toContain(
+      ['--bundle "', "$", '{OTA_RELEASE_VERSION}"'].join("")
+    );
+    expect(publish).toContain("scripts/prepareOtaRelease.ts index");
+    expect(publish).toContain(".bundle == $expected");
+  });
+
+  // preserve channel state when a restricted S3 read fails
+  it("requires a provisioned OTA index instead of treating failed reads as empty", () => {
+    const publish = workflow("publish-ota.yml");
+
+    expect(publish).toContain("if ! aws s3api get-object");
+    expect(publish).toContain("provision it before first publication");
+    expect(publish).not.toContain("NoSuchKey");
+    expect(publish).not.toContain(`'{"releases":[]}' > releases.json`);
+  });
+
+  // reject config changes disguised as retries of one source version
+  it("verifies ZIP contents before retaining metadata for a changed-checksum retry", () => {
+    const publish = workflow("publish-ota.yml");
+
+    expect(publish).toContain("python3 scripts/compare-ota-bundles.py");
+    expect(publish).toContain("sha256sum --check --status");
+    expect(
+      publish.indexOf("python3 scripts/compare-ota-bundles.py")
+    ).toBeLessThan(publish.indexOf('export BUNDLE_CHECKSUM="'));
+  });
+
   it("avoids duplicate branch pushes while cancelling superseded checks", () => {
     const checks = workflow("check.yml");
     expect(checks).toMatch(/pull_request:/);

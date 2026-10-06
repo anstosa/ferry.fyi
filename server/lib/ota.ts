@@ -108,7 +108,9 @@ const parseOtaRelease = (value: unknown): OtaRelease | undefined => {
 };
 
 // validate the complete release index before caching it
-const parseOtaReleaseIndex = (value: unknown): OtaRelease[] | undefined => {
+export const parseOtaReleaseIndex = (
+  value: unknown
+): OtaRelease[] | undefined => {
   // index guard
   if (value === null || typeof value !== "object") {
     return;
@@ -183,7 +185,7 @@ export const parseOtaManifestRequest = (
 };
 
 // compare semantic versions without accepting downgrades
-const isReleaseNewer = (release: string, current: string): boolean => {
+export const isReleaseNewer = (release: string, current: string): boolean => {
   // builtin guard
   if (current === "builtin") {
     return true;

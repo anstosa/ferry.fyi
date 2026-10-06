@@ -121,75 +121,38 @@ The generated CloudFront hostname uses AWS's default certificate, which AWS fixe
 
 ## Publishing workflow
 
-Every successful `production` deployment automatically builds and publishes a `production` OTA bundle after the combined web/scheduler service and detector service are stable. The publisher is idempotent for the same source revision: it verifies and reuses the existing immutable ZIP on a deployment retry.
+Every successful `production` deployment automatically builds and publishes a `production` OTA bundle after the combined web/scheduler service and detector service are stable. OTA publication is deployment-owned; do not publish a bundle separately.
 
-OTA publication is deployment-owned; do not publish a bundle separately.
+### Bundle version identity
 
-1. Build the Android-targeted web assets and inspect `dist/client`:
+The publisher checks out complete Git history and runs `server/scripts/prepareOtaRelease.ts version`. The OTA version uses the package's major/minor components and adds the complete source-history count to its patch component. For example, package `2.5.1` at source count `100` produces OTA `2.5.101`; the next descendant produces `2.5.102`. This is an independent web-asset version, not a change to the requested native store version.
 
-   ```sh
-   NODE_ENV=production CACHE_NAME=android yarn build:client
-   find dist/client -maxdepth 2 -type f | sort | sed -n '1,80p'
-   ```
+The version is passed explicitly to Capgo's `bundle zip --bundle` command. Never rely on the CLI's package-version default: publishing different ZIPs as the same semantic version makes installed devices report no update. Build metadata such as `+<sha>` does not advance semantic-version precedence either.
 
-2. Create an immutable ZIP outside the repository. Use a unique semver version and keep the object key immutable:
+The publisher refuses shallow history and unsafe version counts. Keep production history forward-moving; a history rewrite or package-version regression must not silently lower a channel's OTA version. The release-index guard rejects equal or older versions from different source revisions.
 
-   ```sh
-   OTA_RELEASE_VERSION=1.2.3
-   OTA_CHANNEL=staging
-   mkdir -p /tmp/ferry-fyi-ota/${OTA_RELEASE_VERSION}
-   (cd dist/client && zip -qr "/tmp/ferry-fyi-ota/${OTA_RELEASE_VERSION}/ferry-fyi-${OTA_RELEASE_VERSION}.zip" .)
-   sha256sum "/tmp/ferry-fyi-ota/${OTA_RELEASE_VERSION}/ferry-fyi-${OTA_RELEASE_VERSION}.zip"
-   ```
+### Immutable publication and retries
 
-3. Upload the bundle to `bundles/<version>/ferry-fyi-<version>.zip`. The object must not be overwritten:
+Bundle keys bind the OTA version, full source SHA and SHA-256 checksum:
 
-   ```sh
-   aws s3 cp \
-     "/tmp/ferry-fyi-ota/${OTA_RELEASE_VERSION}/ferry-fyi-${OTA_RELEASE_VERSION}.zip" \
-     "s3://${OTA_BUCKET_NAME}/bundles/${OTA_RELEASE_VERSION}/ferry-fyi-${OTA_RELEASE_VERSION}.zip" \
-     --region us-west-2
-   ```
+```text
+bundles/<version>/ferry-fyi-<version>-<source-sha>-<checksum>.zip
+```
 
-4. Write the channel pointer and aggregate release index locally. Each release record needs the channel, exact semver version, SHA-256 checksum, and the CloudFront bundle URL. The index may contain at most one record per channel, and the URL must have no query string or fragment:
+The publisher uses the exact ZIP path and checksum returned by Capgo and checks that its reported bundle version matches the requested version. Existing immutable objects are checksum-verified before reuse.
 
-   ```json
-   {
-     "releases": [
-       {
-         "channel": "staging",
-         "version": "1.2.3",
-         "checksum": "<64 lowercase hexadecimal SHA-256 characters>",
-         "url": "https://<ota_distribution_domain>/bundles/1.2.3/ferry-fyi-1.2.3.zip"
-       }
-     ]
-   }
-   ```
-
-   Keep the prior records for other channels when updating `releases.json`. A channel promotion changes only that channel's record.
-
-5. Publish the mutable pointer and index. The path layout is defined by `infra/aws/terraform/README.md` and `infra/aws/terraform/iam-github.tf`:
-
-   ```sh
-   aws s3 cp channels/${OTA_CHANNEL}.json \
-     "s3://${OTA_BUCKET_NAME}/channels/${OTA_CHANNEL}.json" \
-     --content-type application/json --region us-west-2
-   aws s3 cp releases.json \
-     "s3://${OTA_BUCKET_NAME}/releases.json" \
-     --content-type application/json --region us-west-2
-   ```
-
-6. Promote in order: `development` → `staging` → `production`. Verify the manifest endpoint and one Android and iOS device on each channel before promoting the same immutable bundle to the next channel. The server compares semver and will not downgrade an installed bundle.
-
-7. Invalidate mutable paths when rollout must be visible before the five-minute CloudFront TTL expires:
-
-   ```sh
-   aws cloudfront create-invalidation \
-     --distribution-id "${OTA_DISTRIBUTION_ID}" \
-     --paths "/channels/${OTA_CHANNEL}.json" /releases.json
-   ```
+`server/scripts/prepareOtaRelease.ts index` validates the existing aggregate index, preserves other channels and permits only increasing channel versions. A retry of the same source and version retains its original immutable pointer only after verifying the prior ZIP checksum and comparing exact archive member paths and content hashes. ZIP timestamp or ordering changes are ignored; changed assets or configuration fail publication and require a new source revision/version. The pure index helper accepts only exact metadata reuse after this comparison. Every failed index read stops publication. A new environment requires an explicitly authorized initialization of `releases.json` containing `{"releases":[]}` before its first deployment; never overwrite an existing index during initialization. The restricted publisher role cannot distinguish a missing key from a denied read because it does not have bucket-list permission. The workflow publishes `releases.json` with no-cache semantics and invalidates that CloudFront path. It does not depend on `channels/*.json` pointers.
 
 The IAM role is intentionally limited to `bundles/*`, `channels/*`, and `releases.json`; it does not permit deletion. Preserve immutable bundle keys and retain the checksum used in the release index.
+
+### Local validation without publication
+
+```sh
+(cd server && node ../scripts/register-esbuild.js scripts/prepareOtaRelease.ts version)
+yarn test tests/server/ota-publication.test.ts tests/server/ota-manifest.test.ts tests/scripts/workflow-contract.test.ts
+```
+
+After an authorized deployment, test the production manifest with both Android and iOS requests reporting the previously installed OTA version as `version_name`. A newly generated bundle must be offered to devices reporting the old version (including the formerly reused `2.5.1`), while devices reporting the new version receive `up_to_date`. Verify downloading and activation on a physical device; successful publication alone does not prove installation.
 
 ## Cache and monitoring
 

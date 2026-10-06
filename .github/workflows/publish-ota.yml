@@ -55,6 +55,8 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v7
         with:
+          # derive stable OTA versions from complete source history
+          fetch-depth: 0
           # do not retain the checkout token after source retrieval
           persist-credentials: false
 
@@ -145,12 +147,15 @@ jobs:
         run: |
           # fail on shell mistakes
           set -euo pipefail
-          # create the full bundle with Capgo's canonical checksum
-          ZIP_RESULT="$(npx @capgo/cli bundle zip --path dist/client --json)"
+          # advance OTA bundle versions independently of package and native versions
+          OTA_RELEASE_VERSION="$(cd server && node ../scripts/register-esbuild.js scripts/prepareOtaRelease.ts version)"
+          # create the full bundle with Capgo's canonical checksum and explicit version
+          ZIP_RESULT="$(npx @capgo/cli bundle zip --bundle "${OTA_RELEASE_VERSION}" --path dist/client --json)"
           printf '%s\n' "${ZIP_RESULT}" > ota-bundle.json
           # require the CLI's expected machine-readable result
-          jq -e '
+          jq -e --arg expected "${OTA_RELEASE_VERSION}" '
             type == "object" and
+            .bundle == $expected and
             (.bundle | type == "string" and test("^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$")) and
             (.filename | type == "string" and length > 0) and
             (.checksum | type == "string" and test("^[A-Fa-f0-9]{64}$"))
@@ -203,16 +208,16 @@ jobs:
       - name: Write validated release index
         env:
           BUNDLE_CHECKSUM: ${{ steps.bundle.outputs.checksum }}
+          BUNDLE_PATH: ${{ steps.bundle.outputs.zip_path }}
           BUNDLE_URL: ${{ steps.bundle.outputs.url }}
           RELEASE_VERSION: ${{ steps.bundle.outputs.version }}
         run: |
           # fail on shell mistakes
           set -euo pipefail
-          # start with an empty channel index on the first release
-          printf '%s\n' '{"releases":[]}' > releases.json
-          # preserve other channels when an existing index is available
-          if aws s3api get-object --bucket "${OTA_BUCKET_NAME}" --key releases.json releases-current.json >/dev/null 2>&1; then
-            mv releases-current.json releases.json
+          # require the existing index because missing keys and denied reads may both return 403
+          if ! aws s3api get-object --bucket "${OTA_BUCKET_NAME}" --key releases.json releases.json >/dev/null; then
+            echo "Cannot safely read the OTA release index; provision it before first publication" >&2
+            exit 1
           fi
           # reject malformed existing indexes instead of replacing them
           jq -e '
@@ -225,20 +230,28 @@ jobs:
               (.checksum | type != "string" or test("^[a-fA-F0-9]{64}$") | not) or
               (.url | type != "string" or test("^https://[^/[:space:]]+/bundles/[^?#[:space:]]+\\.zip$") | not)
             )] | length == 0) and
-            ([.releases[].channel] | unique | length == length)
+            (([.releases[].channel] | unique | length) == (.releases | length))
           ' releases.json > /dev/null
-          # replace only the selected channel with the new immutable release
-          jq --arg channel "${OTA_CHANNEL}" \
-            --arg checksum "${BUNDLE_CHECKSUM}" \
-            --arg url "${BUNDLE_URL}" \
-            --arg version "${RELEASE_VERSION}" \
-            '{releases: ((.releases | map(select(.channel != $channel))) + [{channel: $channel, checksum: $checksum, url: $url, version: $version}])}' \
-            releases.json > releases-next.json
+          # identify an existing pointer for the exact source and version
+          PREVIOUS_CHECKSUM="$(jq -r --arg channel "${OTA_CHANNEL}" --arg version "${RELEASE_VERSION}" '.releases[] | select(.channel == $channel and .version == $version) | .checksum' releases.json)"
+          PREVIOUS_URL="$(jq -r --arg channel "${OTA_CHANNEL}" --arg version "${RELEASE_VERSION}" '.releases[] | select(.channel == $channel and .version == $version) | .url' releases.json)"
+          # compare payloads before treating changed ZIP bytes as timestamp-only
+          if [[ -n "${PREVIOUS_CHECKSUM}" && "${PREVIOUS_CHECKSUM}" != "${BUNDLE_CHECKSUM}" && "${PREVIOUS_URL}" == "${OTA_BUNDLE_BASE_URL}/${RELEASE_VERSION}/ferry-fyi-${RELEASE_VERSION}-${GITHUB_SHA}-${PREVIOUS_CHECKSUM}.zip" ]]; then
+            PREVIOUS_KEY="bundles/${RELEASE_VERSION}/ferry-fyi-${RELEASE_VERSION}-${GITHUB_SHA}-${PREVIOUS_CHECKSUM}.zip"
+            aws s3api get-object --bucket "${OTA_BUCKET_NAME}" --key "${PREVIOUS_KEY}" ota-previous.zip >/dev/null
+            sha256sum --check --status <(printf '%s  ota-previous.zip\n' "${PREVIOUS_CHECKSUM}")
+            python3 scripts/compare-ota-bundles.py ota-previous.zip "${BUNDLE_PATH}"
+            # retain original metadata only after proving identical member paths and contents
+            export BUNDLE_CHECKSUM="${PREVIOUS_CHECKSUM}"
+            export BUNDLE_URL="${PREVIOUS_URL}"
+          fi
+          # preserve retry pointers and reject nonincreasing versions before publication
+          (cd server && node ../scripts/register-esbuild.js scripts/prepareOtaRelease.ts index ../releases.json) > releases-next.json
           # validate the generated index before publishing it
-          jq -e --arg channel "${OTA_CHANNEL}" --arg checksum "${BUNDLE_CHECKSUM}" --arg url "${BUNDLE_URL}" --arg version "${RELEASE_VERSION}" '
+          jq -e --arg channel "${OTA_CHANNEL}" --arg version "${RELEASE_VERSION}" '
             (.releases | length > 0) and
-            ([.releases[].channel] | unique | length == length) and
-            any(.releases[]; .channel == $channel and .checksum == $checksum and .url == $url and .version == $version)
+            (([.releases[].channel] | unique | length) == (.releases | length)) and
+            any(.releases[]; .channel == $channel and .version == $version)
           ' releases-next.json > /dev/null
           # publish the mutable aggregate index without retaining credentials
           aws s3 cp releases-next.json "s3://${OTA_BUCKET_NAME}/releases.json" \
