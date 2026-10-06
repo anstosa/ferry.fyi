@@ -43,6 +43,7 @@ const render = async (
   };
 };
 
+// public ssr fixtures
 const createPublicSsrFixtures = () => {
   const terminal = {
     abbreviation: "CLI",
@@ -56,7 +57,13 @@ const createPublicSsrFixtures = () => {
     id: "5",
     info: {},
     location: {
-      address: null,
+      address: {
+        city: "Clinton",
+        line1: "64 South Ferry Dock Road",
+        line2: null,
+        state: "WA",
+        zip: "98236",
+      },
       latitude: 47.9,
       link: null,
       longitude: -122.3,
@@ -417,7 +424,17 @@ describe("AppRoot server rendering", () => {
         expectation.sources.forEach((sourceKey) =>
           expect(markup).toContain(`data-public-ssr-source="${sourceKey}"`)
         );
+        // schedule content
         if (path === "/clinton") {
+          expect(markup).toContain(
+            "<h1>Clinton to Mukilteo Washington State Ferries schedule</h1>"
+          );
+          expect(markup).toContain("Departures from Clinton Ferry Terminal");
+          expect(markup).toContain("arrive at Mukilteo Ferry Terminal");
+          expect(markup).toContain('<time dateTime="2026-07-28"');
+          expect(markup).toContain("July 28, 2026");
+          expect(markup).not.toMatch(/today(?:'|&apos;)?s? schedule/i);
+          expect(markup).not.toMatch(/live schedule/i);
           expect(markup).toContain('data-public-ssr-freshness="schedule"');
           expect(markup).toContain("<time");
           expect(markup).toContain("18 vehicle spaces reported");
@@ -426,6 +443,20 @@ describe("AppRoot server rendering", () => {
           expect(markup).toContain("Near capacity · 46% full risk");
           expect(markup).not.toContain("unlikely full risk");
           expect(markup).toContain("Dock change");
+        }
+        // terminal content
+        if (path.endsWith("/terminal")) {
+          expect(markup).toContain("<h1>Clinton Ferry Terminal</h1>");
+          expect(markup).toContain("64 South Ferry Dock Road");
+          expect(markup).toContain("Clinton, WA 98236");
+          expect(markup).toContain("<h2>Facilities</h2>");
+          expect(markup).toContain("Waiting room: available");
+          expect(markup).toContain("Restrooms: available");
+          expect(markup).toContain("Food: unavailable");
+          expect(markup).toContain("Elevator: unavailable");
+          expect(markup).toContain("Overhead passenger loading: unavailable");
+          expect(markup).toContain("<h2>Routes</h2>");
+          expect(markup).toContain("Mukilteo");
         }
         if (path.endsWith("/cameras")) {
           expect(markup).toContain('data-public-ssr-freshness="cameraFrames"');

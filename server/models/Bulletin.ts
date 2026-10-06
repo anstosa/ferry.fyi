@@ -7,6 +7,10 @@ import {
   SortedLevels,
 } from "shared/contracts/bulletins";
 import { isSuppressedBulletin, isWaitTimeBulletin } from "shared/lib/bulletins";
+import {
+  getPublicSsrHostProfile,
+  getStaticPublicSsrTerminalSlug,
+} from "shared/lib/ssrRouteMatch";
 
 import { sendPush } from "~/lib/push";
 import { getSubscribedTerminalPushMessages } from "~/lib/pushSubscriptions";
@@ -63,7 +67,41 @@ export class Bulletin extends CacheableModel implements BulletinClass {
     const title = Bulletin.normalizeTitle(data.title);
     const level = Bulletin.getLevel(data);
     const ignoreAll = isSuppressedBulletin({ ...data, bodyText, title });
-    return { ...data, bodyText, id, ignoreAll, level, title };
+    return {
+      ...data,
+      bodyText,
+      id,
+      ignoreAll,
+      level,
+      title,
+      url: Bulletin.normalizeUrl(data),
+    };
+  }
+
+  // repair bundled and persisted own-site numeric landing links
+  static normalizeUrl({ terminalId, url }: BulletinInput): string | undefined {
+    const slug = getStaticPublicSsrTerminalSlug(terminalId);
+    // preserve absent links and unknown terminals
+    if (!slug || !url) {
+      return url;
+    }
+    try {
+      const parsed = new URL(url, "https://ferry.fyi");
+      // leave provider links and other destinations untouched
+      if (
+        getPublicSsrHostProfile(parsed.hostname) !== "ferry.fyi" ||
+        parsed.pathname !== `/${terminalId}/alerts`
+      ) {
+        return url;
+      }
+      parsed.pathname = `/${slug}/alerts`;
+      return url.startsWith("/") && !url.startsWith("//")
+        ? `${parsed.pathname}${parsed.search}${parsed.hash}`
+        : parsed.href;
+    } catch {
+      // preserve malformed upstream links without breaking bulletin parsing
+      return url;
+    }
   }
 
   // get or update cached bulletin

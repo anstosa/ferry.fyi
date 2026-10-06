@@ -10,7 +10,9 @@ import { wsfRequest } from "./api";
 
 // keep camera refresh inside the fixed WSF origin
 const API_CAMERAS = "https://www.wsdot.wa.gov/ferries/vesselwatch/Cameras.ashx";
+const UNCONFIGURED_CAMERA_ORDER = Number.MAX_SAFE_INTEGER;
 
+// import upstream cameras with conservative defaults and reviewed overrides
 export const updateCameras = async (): Promise<void> => {
   logger.info("Started camera update");
   const response = await wsfRequest<WSF.CamerasResponse>(API_CAMERAS);
@@ -20,9 +22,13 @@ export const updateCameras = async (): Promise<void> => {
     return;
   }
   const terminalIds = new Set<string>();
+  // normalize every upstream camera before storing it
   response.FeedContentList.forEach(({ TerminalID, FerryCamera }) => {
     terminalIds.add(String(TerminalID));
     const data = {
+      // preserve unknown capacity as explicit absence
+      carCapacity: null,
+      carsToBoat: null,
       id: String(FerryCamera.CamID),
       terminalId: String(TerminalID),
       location: {
@@ -41,6 +47,8 @@ export const updateCameras = async (): Promise<void> => {
             url: FerryCamera.OwnerURL,
           }
         : null,
+      // place unreviewed cameras after configured queue cameras
+      orderFromTerminal: UNCONFIGURED_CAMERA_ORDER,
       isActive: FerryCamera.IsActive,
     };
     const [camera, wasCreated] = Camera.getOrCreate(

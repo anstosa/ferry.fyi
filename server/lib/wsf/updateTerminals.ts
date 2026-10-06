@@ -1,3 +1,5 @@
+import { getStaticPublicSsrTerminalSlug } from "shared/lib/ssrRouteMatch";
+
 import logger from "~/lib/logger";
 import { formatLogBlock, formatTerminalList } from "~/lib/logging";
 import { Bulletin } from "~/models/Bulletin";
@@ -26,7 +28,7 @@ let lastBulletinSourceUpdatedAt: number | null = null;
 export const getBulletinSourceUpdatedAt = (): number | null =>
   lastBulletinSourceUpdatedAt;
 
-/** Returns whether terminal and bulletin source data was fetched from WSF. */
+// fetch terminal context with canonical bulletin landing links
 export const updateTerminals = async (
   options: { forceBulletins?: boolean } = {}
 ): Promise<boolean> => {
@@ -55,6 +57,8 @@ export const updateTerminals = async (
     ({ TerminalID }) => !isRemovedTerminalId(String(TerminalID))
   )) {
     const terminalId = String(TerminalData.TerminalID);
+    const terminalSlug =
+      getStaticPublicSsrTerminalSlug(terminalId) ?? terminalId;
     const bulletins: Bulletin[] = [];
     // bulletin refresh
     for (const {
@@ -67,7 +71,7 @@ export const updateTerminals = async (
         terminalId,
         bodyHTML: BulletinText,
         date: wsfDateToTimestamp(BulletinLastUpdated),
-        url: `${process.env.BASE_URL}/${terminalId}/alerts`,
+        url: `${process.env.BASE_URL}/${terminalSlug}/alerts`,
       };
       const [bulletin] = Bulletin.getOrUpdate(
         Bulletin.generateIndex(data),

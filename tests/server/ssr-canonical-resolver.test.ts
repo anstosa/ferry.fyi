@@ -50,6 +50,38 @@ describe("public SSR canonical resolver", () => {
     expect(getTerminals).not.toHaveBeenCalled();
   });
 
+  // recover indexed numeric routes without upstream data or tracking state
+  it.each([
+    ["/3/alerts?utm_source=bing&token=canary", "/bainbridge/alerts"],
+    ["/3/7/alerts", "/bainbridge/seattle/alerts"],
+    ["/7/4/fare", "/seattle/bremerton/fare"],
+    [
+      "/7/3?date=2026-10-06&origin=canary",
+      "/seattle/bainbridge?date=2026-10-06",
+    ],
+  ])(
+    "redirects legacy %s to its slug equivalent %s",
+    async (pathname, redirectTo) => {
+      const { getTerminals, resolve } = resolver();
+      await expect(
+        resolve(new URL(`https://ferry.fyi${pathname}`))
+      ).resolves.toMatchObject({ classification: "redirect", redirectTo });
+      expect(getTerminals).not.toHaveBeenCalled();
+    }
+  );
+
+  // unknown identifiers must not become guessed destinations
+  it("keeps unknown numeric terminal routes as not found", async () => {
+    const { getTerminals, resolve } = resolver();
+    await expect(
+      resolve(new URL("https://ferry.fyi/777/alerts"))
+    ).resolves.toMatchObject({
+      classification: "eligible",
+      match: { canonicalPath: "/404" },
+    });
+    expect(getTerminals).not.toHaveBeenCalled();
+  });
+
   it("keeps non-terminal dynamic routes out of terminal resolution", async () => {
     const { getTerminals, resolve } = resolver();
     for (const url of [

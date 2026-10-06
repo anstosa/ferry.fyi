@@ -59,14 +59,22 @@ export const createStaticPolicyRateLimiter = ({
     windowMs,
   });
 
-/** Dynamic policy documents must be mounted before development Vite middleware. */
+/** dynamic policy documents must be mounted before development vite middleware. */
 export const createStaticPolicyRouter = (
   dist = clientDist,
   dependencies: StaticPolicyRouterDependencies = {}
 ): Router => {
   const policyRouter = Router();
-  // separate discovery quota
-  policyRouter.use(
+  // limit discovery documents without charging assets or browser navigation
+  policyRouter.get(
+    [
+      "/robots.txt",
+      "/sitemap.xml",
+      "/llms.txt",
+      "/openapi.json",
+      "/.well-known/security.txt",
+      "/.well-known/assetlinks.json",
+    ],
     dependencies.policyRateLimiter ?? createStaticPolicyRateLimiter()
   );
   // These public documents are policy-controlled and must win over files in

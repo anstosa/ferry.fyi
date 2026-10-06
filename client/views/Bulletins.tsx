@@ -324,6 +324,7 @@ export const Bulletins = ({
     }
   };
 
+  // render bulletin details and their terminal landing link
   const renderBulletin = (bulletin: Bulletin): ReactNode => {
     const { bodyText, date, level, routePrefix, title, url } = bulletin;
     const { accent, badge, Icon, label } = getBulletinLevelStyles(level);
@@ -368,7 +369,7 @@ export const Bulletins = ({
               </p>
               {url && (
                 <ExternalPillLink className="mt-3" href={url}>
-                  View WSF alert
+                  View terminal alerts
                 </ExternalPillLink>
               )}
             </div>

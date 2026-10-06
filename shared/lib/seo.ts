@@ -36,7 +36,7 @@ export const SEO_DEFAULT_DESCRIPTION =
 export const SEO_DEFAULT_TITLE =
   "Ferry FYI - Washington State Ferries Schedules & Tracker";
 // advance only for substantial indexable content changes
-export const SEO_CONTENT_LAST_MODIFIED = "2026-10-05";
+export const SEO_CONTENT_LAST_MODIFIED = "2026-10-06";
 export const SEO_DESCRIPTION_FAILURE_LENGTH = 100;
 export const SEO_DESCRIPTION_TARGET_MIN_LENGTH = 120;
 export const SEO_DESCRIPTION_TARGET_MAX_LENGTH = 160;

@@ -27,6 +27,10 @@ one terminal rather than a route direction. Route tabs have distinct purposes:
 terminal geography, `/alerts` shows public service bulletins, `/subscribe`
 explains personal notification setup, and `/fare` provides fare planning.
 Date-selected schedule URLs are noindex variants of the undated route canonical.
+Schedules include their service date and departure-to-arrival direction in the
+initial HTML. Terminal-detail pages include the source-provided address, routes,
+and facility availability. Legacy numeric terminal page URLs redirect to slug
+URLs; API discovery and requests still use terminal ids.
 
 ## Features
 

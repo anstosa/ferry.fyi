@@ -386,11 +386,17 @@ export const PublicFares = (): ReactElement => {
   );
 };
 
-/** Server-safe schedule presentation from the complete anonymous schedule source. */
+/** server-safe schedule presentation from the complete anonymous schedule source. */
 export const PublicSchedule = (): ReactElement => {
   const route = usePublicSsrSource("route");
   const schedule = usePublicSsrSource("schedule")?.schedule;
   const wsf = usePublicSsrSource("wsf");
+  // selected schedule date
+  const scheduleDate = schedule
+    ? DateTime.fromISO(schedule.date, {
+        zone: "America/Los_Angeles",
+      }).toFormat("LLLL d, yyyy")
+    : null;
   let wsfNotice: ReactElement | null = null;
   if (wsf?.offline) {
     wsfNotice = (
@@ -406,9 +412,22 @@ export const PublicSchedule = (): ReactElement => {
       <SnapshotSeoHelmet fallback={getSeoMetadata("/")} />
       <h1>
         {route
-          ? `${route.terminal.name} to ${route.mate.name} schedule`
-          : "Ferry schedule"}
+          ? `${route.terminal.name} to ${route.mate.name} Washington State Ferries schedule`
+          : "Washington State Ferries schedule"}
       </h1>
+      {route ? (
+        <p>
+          Departures from {route.terminal.name} Ferry Terminal arrive at{" "}
+          {route.mate.name} Ferry Terminal
+          {schedule && scheduleDate ? (
+            <>
+              {" "}
+              on <time dateTime={schedule.date}>{scheduleDate}</time>
+            </>
+          ) : null}
+          .
+        </p>
+      ) : null}
       <SnapshotFreshness
         primarySource="schedule"
         sources={[
@@ -567,13 +586,23 @@ export const PublicBulletins = (): ReactElement => {
   );
 };
 
+/** server-safe terminal details from the anonymous route source. */
 export const PublicTerminalDetails = (): ReactElement => {
   const route = usePublicSsrSource("route");
   const terminal = route?.terminal;
+  const address = terminal?.location.address;
+  // terminal address
+  const locality = address
+    ? [address.city, [address.state, address.zip].filter(Boolean).join(" ")]
+        .filter(Boolean)
+        .join(", ")
+    : "";
   return (
     <SsrPage>
       <SnapshotSeoHelmet fallback={getSeoMetadata("/")} />
-      <h1>{terminal?.name ?? "Terminal details"}</h1>
+      <h1>
+        {terminal ? `${terminal.name} Ferry Terminal` : "Terminal details"}
+      </h1>
       <SnapshotFreshness
         primarySource="route"
         sources={[
@@ -585,18 +614,42 @@ export const PublicTerminalDetails = (): ReactElement => {
       <PublicAd className="my-4" />
       {terminal ? (
         <>
+          <h2>Address</h2>
+          {address && (address.line1 || address.line2 || locality) ? (
+            <address>
+              {address.line1 ? <>{address.line1}</> : null}
+              {address.line1 && (address.line2 || locality) ? <br /> : null}
+              {address.line2 ? <>{address.line2}</> : null}
+              {address.line2 && locality ? <br /> : null}
+              {locality}
+            </address>
+          ) : (
+            <p>Address unavailable.</p>
+          )}
+          <h2>Routes</h2>
           <p>
-            Routes from {terminal.name}:{" "}
+            Ferry service from {terminal.name} Ferry Terminal to{" "}
             {terminal.mates.map((mate) => mate.name).join(", ") ||
               "none listed"}
             .
           </p>
+          <h2>Facilities</h2>
           <ul>
-            {terminal.hasWaitingRoom ? <li>Waiting room</li> : null}
-            {terminal.hasRestroom ? <li>Restrooms</li> : null}
-            {terminal.hasFood ? <li>Food available</li> : null}
-            {terminal.hasElevator ? <li>Elevator</li> : null}
-            {terminal.hasOverheadLoading ? <li>Overhead loading</li> : null}
+            <li>
+              Waiting room:{" "}
+              {terminal.hasWaitingRoom ? "available" : "unavailable"}
+            </li>
+            <li>
+              Restrooms: {terminal.hasRestroom ? "available" : "unavailable"}
+            </li>
+            <li>Food: {terminal.hasFood ? "available" : "unavailable"}</li>
+            <li>
+              Elevator: {terminal.hasElevator ? "available" : "unavailable"}
+            </li>
+            <li>
+              Overhead passenger loading:{" "}
+              {terminal.hasOverheadLoading ? "available" : "unavailable"}
+            </li>
           </ul>
         </>
       ) : (

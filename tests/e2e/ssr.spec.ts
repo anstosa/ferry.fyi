@@ -420,7 +420,7 @@ test("serves page-specific React source from built artifacts", async () => {
   const cases = [
     ["/about", "About Ferry FYI"],
     ["/tickets", "Saved tickets and ticket lookup"],
-    ["/seattle", "Seattle to Bainbridge schedule"],
+    ["/seattle", "Seattle to Bainbridge Washington State Ferries schedule"],
     ["/seattle/cameras", "Seattle holding area"],
     ["/seattle/fare", "Adult passenger"],
     ["/seattle/map", "Fixture Ferry"],
@@ -488,6 +488,24 @@ test("serves page-specific React source from built artifacts", async () => {
   expect(alternateNonRoot.body).not.toContain(
     'data-ferry-fyi-render-mode="snapshot"'
   );
+});
+
+// recover indexed numeric links before rendering a canonical public document
+test("redirects legacy terminal ids without carrying private query state", async () => {
+  const legacy = await raw("/3/alerts?utm_source=bing&token=canary", {
+    redirect: "manual",
+  });
+  expect(legacy.response.status).toBe(301);
+  expect(legacy.response.headers.get("location")).toBe("/bainbridge/alerts");
+  expect(legacy.body).not.toContain("canary");
+  expect(legacy.body).not.toContain('id="ferry-fyi-public-ssr-snapshot"');
+  const canonical = await raw("/bainbridge/alerts");
+  expect(canonical.response.status).toBe(200);
+  expectDocumentHeaders(canonical.response);
+  expect(canonical.body).toContain(
+    'href="https://ferry.fyi/bainbridge/alerts"'
+  );
+  expect(canonical.body).not.toContain(privateCanary);
 });
 
 // verify web manual fallback and published privacy
@@ -614,7 +632,9 @@ test("retains rendered schedule when post-hydration refresh is blocked", async (
   await page.route("**/api/**", (route) => route.abort("failed"));
   await page.goto("/seattle", { waitUntil: "domcontentloaded" });
   await expect(
-    page.getByRole("heading", { name: "Seattle to Bainbridge schedule" })
+    page.getByRole("heading", {
+      name: "Seattle to Bainbridge Washington State Ferries schedule",
+    })
   ).toBeVisible();
   await expect(page.locator("#root")).toHaveAttribute(
     "data-ferry-fyi-snapshot-consumed",
@@ -640,17 +660,19 @@ test("retains alerts snapshot freshness when post-hydration refresh is blocked",
   await expect(marker).toHaveAttribute("data-source-updated-at", timestamp!);
 });
 
+// use an ad-free route because ad-bearing snapshots intentionally bypass caching
 test("rolls the cache at 03:00 Pacific and does not commit a crossing fill", async () => {
-  const before = await raw("/");
-  expect(before.body).toContain(">Seattle<");
+  const cachePath = "/seattle/alerts";
+  const before = await raw(cachePath);
+  expect(before.body).toContain("Seattle");
   await fixture("/__fixture__/control", { refreshVersion: 2 });
-  const sameDay = await raw("/");
+  const sameDay = await raw(cachePath);
   expect(sameDay.body).toBe(before.body);
 
   await fixture("/__fixture__/control", {
     clock: "2026-07-29T10:00:00.000Z",
   });
-  const nextDay = await raw("/");
+  const nextDay = await raw(cachePath);
   expect(nextDay.body).toContain("Seattle refreshed");
   expect(nextDay.body).not.toBe(before.body);
 
@@ -658,13 +680,13 @@ test("rolls the cache at 03:00 Pacific and does not commit a crossing fill", asy
   await fixture("/__fixture__/control", {
     advanceAfterLoadTo: "2026-07-29T10:00:00.000Z",
   });
-  const crossingFill = await raw("/");
+  const crossingFill = await raw(cachePath);
   expect(crossingFill.response.status).toBe(200);
   await fixture("/__fixture__/control", {
     advanceAfterLoadTo: null,
     refreshVersion: 2,
   });
-  const retry = await raw("/");
+  const retry = await raw(cachePath);
   expect(retry.body).toContain("Seattle refreshed");
   expect(retry.body).not.toBe(crossingFill.body);
 });
@@ -769,11 +791,13 @@ test("private and callback documents disclose no request or account state", asyn
   }
 });
 
+// verify credential independence on a route eligible for document reuse
 test("shares public document bytes and cache identity with credential-bearing requests", async () => {
-  const anonymous = await raw("/", { authenticated: false });
+  const cachePath = "/seattle/alerts";
+  const anonymous = await raw(cachePath, { authenticated: false });
   expect(anonymous.response.status).toBe(200);
   await fixture("/__fixture__/control", { refreshVersion: 2 });
-  const credentialed = await raw("/");
+  const credentialed = await raw(cachePath);
   expect(credentialed.response.status).toBe(200);
   expect(credentialed.body).toBe(anonymous.body);
   expect(credentialed.body).not.toContain(privateCanary);
@@ -913,7 +937,9 @@ test("installed production worker reaches SSR online and only the offline shell 
     waitUntil: "networkidle",
   });
   const beforeRollover = await scheduleResponse?.text();
-  expect(beforeRollover).toContain("Seattle to Bainbridge schedule");
+  expect(beforeRollover).toContain(
+    "Seattle to Bainbridge Washington State Ferries schedule"
+  );
   const afterOnlineNavigation = await fixtureState();
   expect(afterOnlineNavigation.requests).toBeGreaterThan(
     beforeOnlineNavigation.requests
@@ -932,7 +958,9 @@ test("installed production worker reaches SSR online and only the offline shell 
     waitUntil: "networkidle",
   });
   const afterRollover = await rolloverResponse?.text();
-  expect(afterRollover).toContain("Seattle refreshed to Bainbridge schedule");
+  expect(afterRollover).toContain(
+    "Seattle refreshed to Bainbridge Washington State Ferries schedule"
+  );
   expect(afterRollover).not.toBe(beforeRollover);
   const afterRolloverState = await fixtureState();
   expect(afterRolloverState.requests).toBeGreaterThan(

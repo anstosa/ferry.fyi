@@ -41,6 +41,7 @@ export const getStaticPublicSsrTerminalSlug = (
   catalog = TERMINAL_CATALOG as Record<string, { slug: string }>
 ): string | undefined => catalog[terminalId]?.slug;
 
+// resolve current slugs and legacy terminal identifiers from the same catalog
 export const createStaticPublicSsrTerminalResolver = (
   catalog = TERMINAL_CATALOG as Record<
     string,
@@ -48,8 +49,11 @@ export const createStaticPublicSsrTerminalResolver = (
   >
 ): PublicSsrTerminalResolver => {
   const bySlug = new Map<string, { id: string; slug: string }>();
+  // index canonical destinations before retaining old terminal links
   Object.entries(catalog).forEach(([id, entry]) => {
     bySlug.set(entry.slug, { id, slug: entry.slug });
+    bySlug.set(id, { id, slug: entry.slug });
+    // preserve configured aliases
     entry.aliases.forEach((alias) =>
       bySlug.set(alias, { id, slug: entry.slug })
     );

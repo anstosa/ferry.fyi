@@ -288,6 +288,9 @@ describe("public SSR seeds", () => {
     );
 
     expect(markup).toContain('aria-label="Ferry terminals"');
+    expect(markup).toContain(
+      "Washington State Ferries schedules, terminal cameras, vehicle capacity forecasts, service alerts, fares, and vessel tracking."
+    );
     expect(markup).toContain("Bainbridge Island");
   });
 });

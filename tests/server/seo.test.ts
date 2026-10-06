@@ -121,6 +121,7 @@ describe("SEO metadata", () => {
     await request(rateLimitedApp).get("/privacy").expect(429);
   });
 
+  // preserve one shared quota for policy get and head requests
   it("rate limits discovery documents independently", async () => {
     const rateLimitedApp = express();
     rateLimitedApp.use(
@@ -132,6 +133,41 @@ describe("SEO metadata", () => {
     await request(rateLimitedApp).get("/robots.txt").expect(200);
     const limited = await request(rateLimitedApp).get("/llms.txt").expect(429);
     expect(limited.headers.ratelimit).toBeDefined();
+    // retain protection for every remaining discovery document
+    for (const policyPath of [
+      "/sitemap.xml",
+      "/openapi.json",
+      "/.well-known/security.txt",
+      "/.well-known/assetlinks.json",
+    ]) {
+      await request(rateLimitedApp).get(policyPath).expect(429);
+    }
+    await request(rateLimitedApp).head("/robots.txt").expect(429);
+  });
+
+  // unrelated requests must not consume or inherit the discovery quota
+  it("keeps assets and browser documents outside the discovery limiter", async () => {
+    writeFileSync(path.join(clientDist, "fixture.js"), "window.fixture=true;");
+    const rateLimitedApp = express();
+    rateLimitedApp.use(
+      createStaticRouter(clientDist, {
+        policyRateLimiter: createStaticPolicyRateLimiter({ limit: 1 }),
+      })
+    );
+    const asset = await request(rateLimitedApp).get("/fixture.js").expect(200);
+    expect(asset.headers.ratelimit).toBeUndefined();
+    const page = await request(rateLimitedApp).get("/about").expect(200);
+    expect(page.headers.ratelimit).not.toContain("static-policy");
+    await request(rateLimitedApp).get("/robots.txt").expect(200);
+    await request(rateLimitedApp).get("/llms.txt").expect(429);
+    const repeatedAsset = await request(rateLimitedApp)
+      .get("/fixture.js")
+      .expect(200);
+    expect(repeatedAsset.headers.ratelimit).toBeUndefined();
+    const repeatedPage = await request(rateLimitedApp)
+      .get("/about")
+      .expect(200);
+    expect(repeatedPage.headers.ratelimit).not.toContain("static-policy");
   });
 
   it("allows only same-origin canonical redirect paths", () => {

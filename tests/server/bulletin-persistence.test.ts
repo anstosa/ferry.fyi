@@ -102,6 +102,7 @@ describe("bulletin persistence", () => {
     resetState();
   });
 
+  // persist canonical links while retaining bulletin lifecycle behavior
   it("persists active WSF bulletins and marks missing terminal rows inactive", async () => {
     persistedBulletinModel.findByPk.mockResolvedValue(null);
     wsfRequest
@@ -117,6 +118,7 @@ describe("bulletin persistence", () => {
         inactiveAt: null,
         terminalId: "5",
         title: "Service Alert - Dock work",
+        url: "https://ferry.fyi/clinton/alerts",
       })
     );
     expect(persistedBulletinModel.update).toHaveBeenCalledWith(
@@ -156,6 +158,7 @@ describe("bulletin persistence", () => {
         inactiveAt: null,
         lastSeenAt: 1781907800,
         title: "Service Alert - Dock work",
+        url: "https://ferry.fyi/clinton/alerts",
       }),
       {
         where: {

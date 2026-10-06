@@ -196,6 +196,26 @@ describe("bulletin hydration seed", () => {
     vi.clearAllMocks();
   });
 
+  // label a notification landing page without claiming an upstream source
+  it("labels canonical bulletin landing links as terminal alerts", async () => {
+    const linked = { ...fresh, url: "https://ferry.fyi/clinton/alerts" };
+    mocks.refreshBulletins.mockResolvedValue({
+      sourceUpdatedAt: 2,
+      terminal: terminal([linked]),
+    });
+    const container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+    await act(async () => {
+      root?.render(view(terminal([])));
+      await Promise.resolve();
+    });
+    expect(
+      container.querySelector(`a[href="${linked.url}"]`)?.textContent
+    ).toBe("View terminal alerts");
+    expect(container.textContent).not.toContain("View WSF alert");
+  });
+
   it("atomically replaces seeded alerts and freshness after a successful refresh", async () => {
     mocks.refreshBulletins.mockResolvedValue({
       sourceUpdatedAt: 2,
