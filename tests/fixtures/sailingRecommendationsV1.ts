@@ -1,3 +1,5 @@
+// frozen production v1 parser from 64ad1f90579975619f6842e01cb94d0664c5f251
+// only the transport import is relocated; preserve this historical wire contract
 import type {
   FillTimingCapacity,
   RecommendationOutcome,
@@ -8,12 +10,7 @@ import type {
 } from "shared/contracts/sailingRecommendations";
 import { unavailableRecommendation } from "shared/lib/sailingRecommendationResponse";
 
-import { ApiError, post } from "./api";
-
-// bind browser schedule checks to the endpoint that actually served the response
-export type SailingRecommendationResult = SailingRecommendationResponse & {
-  protocolVersion: "v1" | "v2";
-};
+import { ApiError, post } from "../../client/lib/api";
 
 const RESULTS = [
   "recommended",
@@ -64,65 +61,22 @@ const isNullableNumber = (value: unknown): boolean =>
   value === null ||
   (typeof value === "number" && Number.isFinite(value) && value >= 0);
 
-// validate one live-model percent-full projection
-const isCapacityProjection = (capacity: FillTimingCapacity): boolean => {
-  const { projection } = capacity;
-  // keep legacy responses valid when no projection is published
-  if (projection === undefined) {
-    return true;
-  }
-  // require a complete finite denominator and rate distribution
-  if (!hasKeys(projection, ["rate", "totalSpaces"])) {
-    return false;
-  }
-  const { rate, totalSpaces } = projection;
-  // validate nested rate keys before reading them
-  if (
-    !hasKeys(rate, ["maximum", "minimum", "mostLikely"]) ||
-    !Number.isFinite(totalSpaces) ||
-    totalSpaces <= 0 ||
-    ![rate.minimum, rate.mostLikely, rate.maximum].every(
-      (value) => Number.isFinite(value) && value >= 0
-    ) ||
-    rate.minimum > rate.mostLikely ||
-    rate.mostLikely > rate.maximum
-  ) {
-    return false;
-  }
-  // bind the curve to the retained live inventory anchor
-  return (
-    capacity.state !== "unavailable" &&
-    capacity.anchorAgeSeconds !== null &&
-    capacity.anchorAt !== null &&
-    capacity.observedSpacesAtAnchor !== null &&
-    totalSpaces >= capacity.observedSpacesAtAnchor &&
-    (capacity.predictedSpacesAtArrival === null ||
-      totalSpaces >= capacity.predictedSpacesAtArrival) &&
-    (capacity.state !== "already-full" ||
-      (rate.minimum === 0 && rate.mostLikely === 0 && rate.maximum === 0))
-  );
-};
-
 // validate the complete capacity summary before retaining it
 const isCapacity = (value: unknown): value is FillTimingCapacity => {
   // reject undeclared model fields and raw observation payloads
   if (
-    !hasKeys(
-      value,
-      [
-        "anchorAgeSeconds",
-        "anchorAt",
-        "confidence",
-        "fillAt",
-        "fillRange",
-        "modelVersion",
-        "observedSpacesAtAnchor",
-        "predictedSpacesAtArrival",
-        "priorKind",
-        "state",
-      ],
-      ["projection"]
-    )
+    !hasKeys(value, [
+      "anchorAgeSeconds",
+      "anchorAt",
+      "confidence",
+      "fillAt",
+      "fillRange",
+      "modelVersion",
+      "observedSpacesAtAnchor",
+      "predictedSpacesAtArrival",
+      "priorKind",
+      "state",
+    ])
   ) {
     return false;
   }
@@ -144,8 +98,7 @@ const isCapacity = (value: unknown): value is FillTimingCapacity => {
     (capacity.fillRange === null ||
       (hasKeys(capacity.fillRange, ["earliest", "latest"]) &&
         isNullableNumber(capacity.fillRange.earliest) &&
-        isNullableNumber(capacity.fillRange.latest))) &&
-    isCapacityProjection(capacity)
+        isNullableNumber(capacity.fillRange.latest)))
   );
 };
 
@@ -270,44 +223,23 @@ const isAssessment = (
     ![null, "cancelled", "departed", "mode-ineligible"].includes(
       eligibilityReason
     ) ||
-    !hasKeys(
-      chance,
-      [
-        "basis",
-        "capacityProbability",
-        "depletionRateRange",
-        "modelVersion",
-        "probabilities",
-        "timingProbabilities",
-      ],
-      ["forecastFullProbability"]
-    ) ||
+    !hasKeys(chance, [
+      "basis",
+      "capacityProbability",
+      "depletionRateRange",
+      "modelVersion",
+      "probabilities",
+      "timingProbabilities",
+    ]) ||
     chance.modelVersion !== "joint-triangular-v1" ||
     chance.basis !==
       (mode === "drive" ? "timing-and-capacity" : "timing-only") ||
     (chance.capacityProbability !== null &&
       !isProbability(chance.capacityProbability)) ||
-    (chance.forecastFullProbability !== undefined &&
-      !isProbability(chance.forecastFullProbability)) ||
     !Array.isArray(chance.probabilities) ||
     chance.probabilities.length !== 61 ||
     !Array.isArray(chance.timingProbabilities) ||
     chance.timingProbabilities.length !== 61
-  ) {
-    return false;
-  }
-  const forecast = chance.forecastFullProbability;
-  const hasForecast = forecast !== undefined;
-  // permit only the declared forecast fallback without fabricated live-model details
-  if (
-    hasForecast &&
-    (mode !== "drive" ||
-      eligibilityReason !== null ||
-      (sailing.capacity !== null && sailing.capacity.state !== "unavailable") ||
-      chance.capacityProbability === null ||
-      Math.abs(chance.capacityProbability - (1 - forecast)) > 1e-9 ||
-      chance.depletionRateRange !== null ||
-      spacesAtArrivalRange !== null)
   ) {
     return false;
   }
@@ -334,7 +266,6 @@ const isAssessment = (
         spacesAtArrivalRange !== null)) ||
     (mode === "drive" &&
       eligibilityReason === null &&
-      !hasForecast &&
       (sailing.capacity === null || sailing.capacity.state === "unavailable") &&
       (chance.probabilities[0] !== null ||
         chance.capacityProbability !== null ||
@@ -404,9 +335,6 @@ const isAssessment = (
       ((eligibilityReason !== null ||
         (mode === "drive" && sailing.capacity?.state === "already-full")) &&
         probability !== 0) ||
-      (hasForecast &&
-        (probability === null ||
-          Math.abs(probability - timing * (1 - forecast)) > 1e-9)) ||
       (probability !== null &&
         (!isProbability(probability) ||
           probability > timing + 1e-9 ||
@@ -429,37 +357,21 @@ const isAssessment = (
 // fetch one explicit trip without persisting the transient origin
 export const getSailingRecommendation = async (
   input: SailingRecommendationRequest
-): Promise<SailingRecommendationResult> => {
+): Promise<SailingRecommendationResponse> => {
   let value: unknown;
-  let protocolVersion: SailingRecommendationResult["protocolVersion"] = "v2";
   try {
-    try {
-      value = await post<unknown>(
-        "/sailing-recommendations/v2",
-        input as unknown as Record<string, unknown>
-      );
-    } catch (error) {
-      // downgrade only a missing endpoint, never an uncertain or paid completion
-      if (!(error instanceof ApiError) || error.status !== 404) {
-        throw error;
-      }
-      protocolVersion = "v1";
-      value = await post<unknown>(
-        "/sailing-recommendations",
-        input as unknown as Record<string, unknown>
-      );
-    }
+    value = await post<unknown>(
+      "/sailing-recommendations",
+      input as unknown as Record<string, unknown>
+    );
   } catch (error) {
     // discard response-bearing errors and preserve the normalized quota state
     if (error instanceof ApiError && error.status === 429) {
-      return {
-        ...unavailableRecommendation(
-          input.mode,
-          "provider-quota-unavailable",
-          Date.now() / 1000
-        ),
-        protocolVersion,
-      };
+      return unavailableRecommendation(
+        input.mode,
+        "provider-quota-unavailable",
+        Date.now() / 1000
+      );
     }
     throw new Error("Sailing estimate unavailable");
   }
@@ -642,5 +554,5 @@ export const getSailingRecommendation = async (
       throw new Error("Sailing estimate unavailable");
     }
   }
-  return { ...response, protocolVersion };
+  return response;
 };

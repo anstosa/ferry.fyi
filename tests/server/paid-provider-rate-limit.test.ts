@@ -2,12 +2,47 @@ import express from "express";
 import request from "supertest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createApiRateLimitMiddleware } from "../../server/lib/httpApiPolicy";
+import {
+  createApiRateLimitMiddleware,
+  denyUntrustedPaidProviderOrigin,
+} from "../../server/lib/httpApiPolicy";
 
 // restore quota configuration after each isolated middleware instance
 afterEach(() => vi.unstubAllEnvs());
 
 describe("paid provider quota response contracts", () => {
+  // enforce paid-provider controls on express-equivalent mixed-case paths
+  it("guards and rate-limits the mixed-case full recommendation path", async () => {
+    vi.stubEnv("API_PAID_PROVIDER_LIMIT", "1");
+    vi.stubEnv("BASE_URL", "https://ferry.fyi");
+    const invoked = vi.fn();
+    const app = express();
+    app.use(express.json());
+    app.use(denyUntrustedPaidProviderOrigin);
+    app.use(createApiRateLimitMiddleware());
+    app.post("/api/sailing-recommendations/v2", (_request, response) => {
+      // record only requests admitted through both production policies
+      invoked();
+      response.send({ accepted: true });
+    });
+    const mixedCasePath = "/API/Sailing-Recommendations/V2";
+
+    await request(app)
+      .post(mixedCasePath)
+      .set("Origin", "https://untrusted.invalid")
+      .send({ mode: "walk" })
+      .expect(403);
+    await request(app).post(mixedCasePath).send({ mode: "walk" }).expect(200);
+    const limited = await request(app)
+      .post(mixedCasePath)
+      .send({ mode: "walk" })
+      .expect(429);
+
+    expect(invoked).toHaveBeenCalledOnce();
+    expect(limited.body.mode).toBe("walk");
+    expect(limited.body.outcome.reason).toBe("provider-quota-unavailable");
+  });
+
   // preserve the endpoint response shape at the outer abuse boundary
   it.each(["/address-suggestions", "/address-suggestions/", ""])(
     "normalizes quota exhaustion for sailing-recommendations%s",

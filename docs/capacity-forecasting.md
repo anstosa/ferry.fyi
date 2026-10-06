@@ -167,7 +167,8 @@ tolerance as observation segmentation.
 
 `joint-triangular-v1` estimates the chance a rider can make each nearby sailing,
 not which boat they will actually board. Each sailing is evaluated independently.
-It does not reuse the historical probability that a sailing fills at departure.
+The primary live-inventory path does not reuse the historical probability that a
+sailing fills at departure; the separate forecast-only fallback is described below.
 
 Travel uses an assumed triangular duration distribution centered on Google's
 point duration `d`. Its half-width is `max(120s, 0.15*d, abs(d-staticDuration))`;
@@ -215,5 +216,19 @@ All 0–60 minute buffer outcomes and nearby assessments reuse one provider requ
 Every displayed capacity anchor contributes to expiry, and material schedule or
 vessel changes invalidate the response. Google attribution remains below the
 results directly on the page background, outside the removed card wrapper.
+
+Current clients explicitly use `POST /api/sailing-recommendations/v2` for live
+capacity projections and forecast-backed chances. The unversioned endpoint
+remains compatible with previously installed clients: its original response
+fields and schedule fingerprint are preserved, missing live capacity stays
+unknown, and a later live-capacity sailing remains the selection fallback.
+During rolling replacement or rollback, a current client retries the original
+endpoint only when `/v2` returns HTTP 404. That missing-route response performs
+no provider work. The returned legacy fingerprint is validated against the
+same schedule using the legacy serializer; v2 fingerprint checks remain strict.
+Quota, authorization, server and uncertain transport failures never trigger
+another estimate request.
+Both versions share the same request and provider-cost limits. Neither endpoint
+is intended for automated precise-origin requests.
 
 Lines outside the toll booth are not included. Estimates do not guarantee boarding.

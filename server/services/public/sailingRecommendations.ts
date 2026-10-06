@@ -1,5 +1,6 @@
 import { isGooglePlaceId } from "shared/contracts/addressSuggestions";
 import type {
+  FillTimingCapacity,
   SailingRecommendationRequest,
   SailingRecommendationResponse,
   TravelMode,
@@ -9,6 +10,7 @@ import { isRecommendationDirection } from "shared/data/boardingRules";
 import { unavailableRecommendation } from "shared/lib/sailingRecommendationResponse";
 import {
   getCapacityWatermark,
+  getLegacySailingRecommendationRevision,
   getRecommendationServiceDate,
   getSailingRecommendationRevision,
 } from "shared/lib/sailingRecommendationRevision";
@@ -192,7 +194,61 @@ export interface SailingRecommendationDependencies {
   now?: () => number;
 }
 
+// identify the endpoint-owned response contract
+export type SailingRecommendationProtocolVersion = "v1" | "v2";
+
 const defaultAdmitCall = createRecommendationCallLimiter();
+
+// copy capacity without the v2 projection extension
+const toLegacyCapacity = (
+  capacity: FillTimingCapacity | null
+): FillTimingCapacity | null => {
+  // preserve null and already-compatible capacity values by reference
+  if (!capacity?.projection) {
+    return capacity;
+  }
+  const legacyCapacity = { ...capacity };
+  delete legacyCapacity.projection;
+  return legacyCapacity;
+};
+
+// copy one outcome with a legacy-compatible nested capacity
+const toLegacyOutcome = (
+  outcome: SailingRecommendationResponse["outcome"]
+): SailingRecommendationResponse["outcome"] => ({
+  ...outcome,
+  sailing: outcome.sailing
+    ? {
+        ...outcome.sailing,
+        capacity: toLegacyCapacity(outcome.sailing.capacity),
+      }
+    : null,
+});
+
+// copy the response while removing only v2 nested wire extensions
+const toLegacyResponse = (
+  response: SailingRecommendationResponse
+): SailingRecommendationResponse => ({
+  ...response,
+  bufferOutcomeBands: response.bufferOutcomeBands.map((band) => {
+    // copy each compressed outcome without projection fields
+    return {
+      ...band,
+      outcome: toLegacyOutcome(band.outcome),
+    };
+  }),
+  outcome: toLegacyOutcome(response.outcome),
+  sailingAssessments: response.sailingAssessments?.map((assessment) => {
+    // copy each chance before removing its forecast extension
+    const legacyChance = { ...assessment.chance };
+    delete legacyChance.forecastFullProbability;
+    return {
+      ...assessment,
+      capacity: toLegacyCapacity(assessment.capacity),
+      chance: legacyChance,
+    };
+  }),
+});
 
 // compose one route call with causal schedule and inventory snapshots
 export const createSailingRecommendationService = (
@@ -227,7 +283,8 @@ export const createSailingRecommendationService = (
   };
   // expose a stateless recommendation operation
   return async (
-    request: SailingRecommendationRequest
+    request: SailingRecommendationRequest,
+    version: SailingRecommendationProtocolVersion = "v2"
   ): Promise<SailingRecommendationResponse> => {
     const requestedAt = now();
     let stage: SailingRecommendationTelemetry["failureStage"] = "configuration";
@@ -239,7 +296,9 @@ export const createSailingRecommendationService = (
     const finish = (
       response: SailingRecommendationResponse
     ): SailingRecommendationResponse => {
-      const capacity = response.outcome.sailing?.capacity;
+      const delivered =
+        version === "v1" ? toLegacyResponse(response) : response;
+      const capacity = delivered.outcome.sailing?.capacity;
       const event: SailingRecommendationTelemetry = {
         event: "sailing_recommendation",
         schemaVersion: 1,
@@ -248,8 +307,8 @@ export const createSailingRecommendationService = (
           request.mode === "drive"
             ? "compute_routes_pro"
             : "compute_routes_essentials",
-        result: response.outcome.result,
-        reason: response.outcome.reason ?? null,
+        result: delivered.outcome.result,
+        reason: delivered.outcome.reason ?? null,
         capacityState: capacity?.state ?? null,
         priorKind: capacity?.priorKind ?? null,
         confidence: capacity?.confidence ?? null,
@@ -270,7 +329,7 @@ export const createSailingRecommendationService = (
       } catch {
         // keep an unavailable diagnostic sink isolated from the feature
       }
-      return response;
+      return delivered;
     };
     // keep the disabled feature free of provider/database work
     if (!enabled()) {
@@ -369,7 +428,12 @@ export const createSailingRecommendationService = (
           unavailableRecommendation(request.mode, "schedule-unavailable", asOf)
         );
       }
-      const revision = getSailingRecommendationRevision(schedule);
+      // bind snapshot checks and response identity to one protocol
+      const getRevision =
+        version === "v1"
+          ? getLegacySailingRecommendationRevision
+          : getSailingRecommendationRevision;
+      const revision = getRevision(schedule);
       const readObservations =
         dependencies.getObservations ??
         (async (input: {
@@ -398,10 +462,7 @@ export const createSailingRecommendationService = (
         date
       );
       // discard snapshots changed during the observation read
-      if (
-        !currentSchedule ||
-        getSailingRecommendationRevision(currentSchedule) !== revision
-      ) {
+      if (!currentSchedule || getRevision(currentSchedule) !== revision) {
         return finish(
           unavailableRecommendation(request.mode, "stale-result", now())
         );
@@ -412,6 +473,7 @@ export const createSailingRecommendationService = (
       const bands = buildRecommendationBands({
         arrivalAt,
         asOf,
+        includeForecast: version !== "v1",
         mode: request.mode,
         observations,
         schedule,
@@ -424,6 +486,7 @@ export const createSailingRecommendationService = (
         arrivalAt,
         asOf,
         bands,
+        includeForecast: version !== "v1",
         mode: request.mode,
         observations,
         schedule,

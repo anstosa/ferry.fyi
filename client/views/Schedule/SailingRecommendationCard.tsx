@@ -2,11 +2,13 @@ import clsx from "clsx";
 import React, { useEffect, useRef, useState } from "react";
 import type {
   RecommendationOrigin,
-  SailingRecommendationResponse,
   TravelMode,
 } from "shared/contracts/sailingRecommendations";
 import type { Schedule } from "shared/contracts/schedules";
-import { getSailingRecommendationRevision } from "shared/lib/sailingRecommendationRevision";
+import {
+  getLegacySailingRecommendationRevision,
+  getSailingRecommendationRevision,
+} from "shared/lib/sailingRecommendationRevision";
 
 import BicycleIcon from "~/static/images/icons/solid/bicycle.svg";
 import BusIcon from "~/static/images/icons/solid/bus.svg";
@@ -16,7 +18,10 @@ import WalkingIcon from "~/static/images/icons/solid/walking.svg";
 
 import { AddressAutocomplete } from "../../components/AddressAutocomplete";
 import { requestForegroundLocation } from "../../lib/geo";
-import { getSailingRecommendation } from "../../lib/sailingRecommendations";
+import {
+  getSailingRecommendation,
+  type SailingRecommendationResult,
+} from "../../lib/sailingRecommendations";
 import {
   parseSailingTrip,
   type SailingTrip,
@@ -93,7 +98,7 @@ export const SailingRecommendationCard = ({
   const { address, buffer, mode } = trip;
   const [estimateResult, setEstimateResult] = useState<{
     browserRevisionBeforeRequest: string;
-    data: SailingRecommendationResponse;
+    data: SailingRecommendationResult;
     requestId: number;
     scheduleRevision: string;
   } | null>(null);
@@ -101,8 +106,12 @@ export const SailingRecommendationCard = ({
   const [loading, setLoading] = useState(false);
   const [expiredRequestId, setExpiredRequestId] = useState<number | null>(null);
   const requestIdentity = useRef(0);
-  const revision = getSailingRecommendationRevision(schedule);
   const response = estimateResult?.data ?? null;
+  // use the negotiated fingerprint without weakening the current protocol's guard
+  const revision =
+    response?.protocolVersion === "v1"
+      ? getLegacySailingRecommendationRevision(schedule)
+      : getSailingRecommendationRevision(schedule);
 
   // replace rather than append history while preserving router state and route parameters
   useEffect(() => {
@@ -190,7 +199,11 @@ export const SailingRecommendationCard = ({
     selectedOrigin?: RecommendationOrigin
   ): Promise<void> => {
     const identity = ++requestIdentity.current;
-    const browserRevisionBeforeRequest = revision;
+    // freeze both browser fingerprints before any asynchronous schedule reads
+    const browserRevisionsBeforeRequest = {
+      v1: getLegacySailingRecommendationRevision(schedule),
+      v2: getSailingRecommendationRevision(schedule),
+    };
     setLoading(true);
     setEstimateResult(null);
     setMessage("");
@@ -242,7 +255,11 @@ export const SailingRecommendationCard = ({
       ) {
         throw new Error("Schedule refresh unavailable");
       }
-      let freshRevision = getSailingRecommendationRevision(freshSchedule);
+      // freeze the fresh cache before either protocol's provider request
+      const freshRevisions = {
+        v1: getLegacySailingRecommendationRevision(freshSchedule),
+        v2: getSailingRecommendationRevision(freshSchedule),
+      };
       stage = "estimate";
       const result = await getSailingRecommendation({
         arrivingTerminalId: schedule.mateId,
@@ -255,6 +272,12 @@ export const SailingRecommendationCard = ({
       if (requestIdentity.current !== identity) {
         return;
       }
+      // a rolling or rollback task may serve only the original endpoint
+      const getRevision =
+        result.protocolVersion === "v1"
+          ? getLegacySailingRecommendationRevision
+          : getSailingRecommendationRevision;
+      let freshRevision = freshRevisions[result.protocolVersion];
       // inventory can advance while google calculates directions
       if (
         result.bufferOutcomeBands.length > 0 &&
@@ -276,10 +299,11 @@ export const SailingRecommendationCard = ({
         ) {
           throw new Error("Schedule refresh unavailable");
         }
-        freshRevision = getSailingRecommendationRevision(freshSchedule);
+        freshRevision = getRevision(freshSchedule);
       }
       setEstimateResult({
-        browserRevisionBeforeRequest,
+        browserRevisionBeforeRequest:
+          browserRevisionsBeforeRequest[result.protocolVersion],
         data: result,
         requestId: identity,
         scheduleRevision: freshRevision,

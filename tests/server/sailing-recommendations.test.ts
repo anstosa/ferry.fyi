@@ -542,6 +542,57 @@ describe("leave-now sailing recommendations", () => {
     expect(JSON.stringify(response)).not.toContain("Synthetic test origin");
     expect(JSON.stringify(response)).not.toContain("latitude");
   });
+  // preserve legacy selection, probabilities and nested capacity wire fields
+  it("serves v1 without forecast behavior or capacity projections", async () => {
+    const schedule = makeSchedule();
+    schedule.slots[0].estimate!.fullProbability = 0.2;
+    schedule.slots[1].estimate!.fullProbability = 0.1;
+    const observations = makeObservations(schedule).slice(1);
+    const service = createSailingRecommendationService({
+      enabled: () => true,
+      getAccessPoint: () => point,
+      getObservations: () => Promise.resolve(observations),
+      getRoute: () =>
+        Promise.resolve({
+          ok: true as const,
+          value: {
+            durationSeconds: 1200,
+            partialMatch: false,
+            routeRequestedAt: NOW,
+            trafficAware: true,
+            warnings: [],
+          },
+        }),
+      getSchedule: () => schedule,
+      now: () => NOW,
+      telemetry: vi.fn(),
+    });
+
+    const current = await service(trip);
+    const legacy = await service(trip, "v1");
+    // locate the unknown-capacity legacy assessment
+    const legacyUnknown = legacy.sailingAssessments?.find(
+      (assessment) => assessment.scheduledDepartureAt === schedule.slots[0].time
+    );
+
+    expect(current.outcome.sailing?.scheduledDepartureAt).toBe(
+      schedule.slots[0].time
+    );
+    expect(current.outcome.sailing?.capacity?.state).toBe("unavailable");
+    expect(current.sailingAssessments?.[0].chance).toMatchObject({
+      capacityProbability: 0.8,
+      forecastFullProbability: 0.2,
+    });
+    expect(current.sailingAssessments?.[1].capacity?.projection).toBeDefined();
+    expect(legacy.outcome.sailing?.scheduledDepartureAt).toBe(
+      schedule.slots[1].time
+    );
+    expect(legacy.revision).not.toBe(current.revision);
+    expect(legacyUnknown?.chance.capacityProbability).toBeNull();
+    expect(legacyUnknown?.chance.probabilities).toEqual(Array(61).fill(null));
+    expect(JSON.stringify(legacy)).not.toContain("forecastFullProbability");
+    expect(JSON.stringify(legacy)).not.toContain("projection");
+  });
   // return deduplicated neighbors and early tails from one route across every buffer
   it("builds bounded neighboring assessments for the complete buffer family", async () => {
     const schedule = makeSchedule();
@@ -989,8 +1040,8 @@ describe("leave-now sailing recommendations", () => {
     expect(response.headers["cache-control"]).toBe("no-store");
     expect(invoked).toHaveBeenCalledTimes(15);
   });
-  // retain the separate daily cap even when requests remain under the burst budget
-  it("normalizes daily exhaustion at two hundred requests per ip", async () => {
+  // retain one daily cap across both protocol routes
+  it("normalizes shared daily exhaustion at two hundred requests per ip", async () => {
     const app = express();
     app.use(express.json());
     const telemetry = vi.fn();
@@ -1002,13 +1053,17 @@ describe("leave-now sailing recommendations", () => {
         telemetry,
       })
     );
-    // exercise concurrent arrivals in bounded batches without a slow socket loop
+    // exercise both versions in bounded batches without a slow socket loop
     for (let batch = 0; batch < 10; batch += 1) {
       await Promise.all(
-        Array.from({ length: 20 }, () => {
-          // keep the same ip and daily budget for every parallel request
+        Array.from({ length: 20 }, (_, index) => {
+          // keep the same ip and daily budget across both protocol routes
           return request(app)
-            .post("/api/sailing-recommendations")
+            .post(
+              `/api/sailing-recommendations${
+                (batch * 20 + index) % 2 === 0 ? "" : "/v2"
+              }`
+            )
             .send({ ...trip, mode: "transit" })
             .expect(200);
         })
@@ -1023,6 +1078,53 @@ describe("leave-now sailing recommendations", () => {
     expect(response.headers["cache-control"]).toBe("no-store");
     expect(telemetry).toHaveBeenCalledTimes(200);
   }, 15000);
+  // share the process admission gate across both protocol paths
+  it("admits both protocol routes through one process budget", async () => {
+    const schedule = makeSchedule();
+    const admitCall = vi
+      .fn<() => boolean>()
+      .mockReturnValueOnce(true)
+      .mockReturnValue(false);
+    const getRoute = vi.fn().mockResolvedValue({
+      ok: true,
+      value: {
+        durationSeconds: 1200,
+        partialMatch: false,
+        routeRequestedAt: NOW,
+        trafficAware: true,
+        warnings: [],
+      },
+    });
+    const app = express();
+    app.use(express.json());
+    app.use(
+      "/api/sailing-recommendations",
+      createSailingRecommendationRouter({
+        admitCall,
+        enabled: () => true,
+        getAccessPoint: () => point,
+        getObservations: () => Promise.resolve(makeObservations(schedule)),
+        getRoute,
+        getSchedule: () => schedule,
+        now: () => NOW,
+        rateLimiter: (_request, _response, next) => next(),
+        telemetry: vi.fn(),
+      })
+    );
+
+    await request(app)
+      .post("/api/sailing-recommendations")
+      .send(trip)
+      .expect(200);
+    const limited = await request(app)
+      .post("/api/sailing-recommendations/v2")
+      .send(trip)
+      .expect(200);
+
+    expect(admitCall).toHaveBeenCalledTimes(2);
+    expect(getRoute).toHaveBeenCalledOnce();
+    expect(limited.body.outcome.reason).toBe("provider-quota-unavailable");
+  });
   // use confirmed departure evidence instead of permissive hasPassed flags
   it("skips an observed early departure and honors projected delay for the next sailing", () => {
     const schedule = makeSchedule();
@@ -1049,41 +1151,44 @@ describe("leave-now sailing recommendations", () => {
       schedule.slots[1].time + 1200
     );
   });
-  // preserve the api policy's origin-sensitive paid class
-  it("blocks cross-site writes and returns no-store normalized disabled state", async () => {
-    vi.stubEnv("BASE_URL", "https://ferry.fyi");
-    const app = express();
-    app.use(express.json());
-    app.use(createApiCorsMiddleware());
-    app.use(denyUntrustedPaidProviderOrigin);
-    app.use(
-      "/api/sailing-recommendations",
-      createSailingRecommendationRouter({
-        enabled: () => false,
-        rateLimiter: (_req, _res, next) => next(),
-        now: () => NOW,
-      })
-    );
-    expect(
-      classifyApiRequest({
-        method: "POST",
-        pathname: "/api/sailing-recommendations",
-      })
-    ).toBe("paid-provider");
-    await request(app)
-      .post("/api/sailing-recommendations")
-      .set("Origin", "https://evil.test")
-      .send(trip)
-      .expect(403);
-    const response = await request(app)
-      .post("/api/sailing-recommendations")
-      .set("Origin", "https://ferry.fyi")
-      .send(trip)
-      .expect(200);
-    expect(response.headers["cache-control"]).toBe("no-store");
-    expect(response.headers["access-control-allow-origin"]).toBe(
-      "https://ferry.fyi"
-    );
-    expect(response.body.outcome.reason).toBe("configuration-unavailable");
-  });
+  // preserve the api policy's origin-sensitive paid class for both protocols
+  it.each(["", "/v2"])(
+    "blocks cross-site writes for the %s protocol route",
+    async (suffix) => {
+      vi.stubEnv("BASE_URL", "https://ferry.fyi");
+      const app = express();
+      app.use(express.json());
+      app.use(createApiCorsMiddleware());
+      app.use(denyUntrustedPaidProviderOrigin);
+      app.use(
+        "/api/sailing-recommendations",
+        createSailingRecommendationRouter({
+          enabled: () => false,
+          rateLimiter: (_req, _res, next) => next(),
+          now: () => NOW,
+        })
+      );
+      expect(
+        classifyApiRequest({
+          method: "POST",
+          pathname: `/api/sailing-recommendations${suffix}`,
+        })
+      ).toBe("paid-provider");
+      await request(app)
+        .post(`/api/sailing-recommendations${suffix}`)
+        .set("Origin", "https://evil.test")
+        .send(trip)
+        .expect(403);
+      const response = await request(app)
+        .post(`/api/sailing-recommendations${suffix}`)
+        .set("Origin", "https://ferry.fyi")
+        .send(trip)
+        .expect(200);
+      expect(response.headers["cache-control"]).toBe("no-store");
+      expect(response.headers["access-control-allow-origin"]).toBe(
+        "https://ferry.fyi"
+      );
+      expect(response.body.outcome.reason).toBe("configuration-unavailable");
+    }
+  );
 });

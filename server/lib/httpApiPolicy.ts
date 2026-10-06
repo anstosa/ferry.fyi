@@ -54,9 +54,14 @@ const asPositiveInteger = (value: string | undefined, fallback: number) => {
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : fallback;
 };
 
+// normalize paths the same way express matches case-insensitive routes
+const normalizeApiPathname = (pathname: string): string =>
+  pathname.replace(/^\/api(?=\/|$)/i, "").toLowerCase() || "/";
+
+// read one query-free normalized request pathname
 const pathnameFor = (request: Pick<Request, "originalUrl" | "path">) => {
   const source = request.originalUrl || request.path;
-  return source.split("?", 1)[0].replace(/^\/api(?=\/|$)/, "") || "/";
+  return normalizeApiPathname(source.split("?", 1)[0]);
 };
 
 export const AUTOMATIC_NATIVE_RATE_LIMITS = Object.freeze({
@@ -103,7 +108,7 @@ export const classifyApiRequest = ({
   pathname: string;
 }): ApiRouteClass => {
   const normalizedMethod = method.toUpperCase();
-  const path = pathname.replace(/^\/api(?=\/|$)/, "") || "/";
+  const path = normalizeApiPathname(pathname);
   // isolate origin-sensitive paid routing traffic
   if (
     path === "/sailing-recommendations" ||
@@ -277,9 +282,7 @@ const createLimiter = (
       if (routeClass === "paid-provider") {
         const mode = request.body?.mode;
         applyApiErrorHeaders(response);
-        const path = request.path
-          .replace(/^\/api(?=\/|$)/, "")
-          .replace(/\/$/, "");
+        const path = pathnameFor(request).replace(/\/$/, "");
         // preserve autocomplete's distinct public response at the outer limiter
         if (path === "/sailing-recommendations/address-suggestions") {
           response.status(429).send({ available: false, suggestions: [] });

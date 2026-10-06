@@ -29,7 +29,7 @@ export const post = async <T>(
     return { available: false, suggestions: [] } as T;
   }
   // require the production feature endpoint
-  if (path !== "/sailing-recommendations") {
+  if (path !== "/sailing-recommendations/v2") {
     throw new Error("unexpected fixture endpoint");
   }
   const input = body as unknown as SailingRecommendationRequest;

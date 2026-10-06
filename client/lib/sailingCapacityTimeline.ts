@@ -8,14 +8,17 @@ export type TimelineSailing = RecommendedSailing & {
   eligibilityReason?: SailingAssessment["eligibilityReason"];
 };
 
-export interface SailingCapacityPoint {
+// sample an internal band's percentage at an exact timestamp
+interface SailingCapacityPoint {
   at: number;
   percent: number;
 }
 
-export type SailingCapacityModelBasis = "departure-reset" | "live" | "unknown";
+// identify which live or departure boundary owns the curve
+type SailingCapacityModelBasis = "departure-reset" | "live" | "unknown";
 
-export interface SailingCapacitySeries {
+// keep the builder's display geometry private to this module
+interface SailingCapacitySeries {
   fillRange: { earliest: number | null; latest: number | null } | null;
   from: number;
   fullAt: number | null;

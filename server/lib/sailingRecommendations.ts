@@ -24,6 +24,7 @@ import { estimateSailingChance } from "./sailingChance";
 interface RecommendationCandidatesInput {
   arrivalAt: number;
   asOf: number;
+  includeForecast?: boolean;
   mode: TravelMode;
   observations: FillTimingObservation[];
   schedule: Schedule;
@@ -105,6 +106,7 @@ const getRecommendationCandidates = ({
 export const buildRecommendationBands = ({
   arrivalAt,
   asOf,
+  includeForecast = true,
   mode,
   observations,
   schedule,
@@ -136,6 +138,7 @@ export const buildRecommendationBands = ({
       const { capacity, departed, projectedDepartureAt, slot } = candidate;
       const forecastFullProbability = slot.estimate?.fullProbability;
       const hasForecast =
+        includeForecast &&
         typeof forecastFullProbability === "number" &&
         Number.isFinite(forecastFullProbability) &&
         forecastFullProbability >= 0 &&
@@ -228,6 +231,7 @@ export const buildRecommendationBands = ({
 // expose only the neighboring sailings reachable through the fixed buffer domain
 export const buildSailingAssessments = ({
   bands,
+  includeForecast = true,
   travelUncertainty,
   ...input
 }: RecommendationCandidatesInput & {
@@ -316,7 +320,9 @@ export const buildSailingAssessments = ({
           arrivalAt,
           capacity,
           eligibilityReason,
-          forecastFullProbability: slot.estimate?.fullProbability,
+          forecastFullProbability: includeForecast
+            ? slot.estimate?.fullProbability
+            : undefined,
           latestArrivalAt: projectedDepartureAt - rule.cutoffSeconds,
           mode,
           rateDistribution,

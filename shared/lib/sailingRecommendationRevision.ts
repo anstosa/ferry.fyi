@@ -7,12 +7,15 @@ export const getRecommendationServiceDate = (seconds: number): string => {
   return (now.hour < 3 ? now.minus({ days: 1 }) : now).toISODate() ?? "";
 };
 
-// compare material public schedule inputs without rider data
-export const getSailingRecommendationRevision = (schedule: Schedule): string =>
+// serialize one versioned material schedule fingerprint without rider data
+const serializeSailingRecommendationRevision = (
+  schedule: Schedule,
+  includeForecast: boolean
+): string =>
   JSON.stringify([
     schedule.key,
     schedule.slots.map((slot) => {
-      // capture timing and inventory revisions
+      // capture timing and versioned inventory revisions
       return [
         slot.time,
         slot.arrivalTime ?? null,
@@ -28,7 +31,7 @@ export const getSailingRecommendationRevision = (schedule: Schedule): string =>
         slot.crossing?.totalCapacity ?? null,
         slot.estimate?.driveUpCapacity ?? null,
         slot.estimate?.reservableCapacity ?? null,
-        slot.estimate?.fullProbability ?? null,
+        ...(includeForecast ? [slot.estimate?.fullProbability ?? null] : []),
         slot.vessel?.id,
         slot.vessel?.name,
         slot.vessel?.horsepower ?? null,
@@ -44,6 +47,15 @@ export const getSailingRecommendationRevision = (schedule: Schedule): string =>
       ];
     }),
   ]);
+
+// preserve the exact pre-forecast material fingerprint
+export const getLegacySailingRecommendationRevision = (
+  schedule: Schedule
+): string => serializeSailingRecommendationRevision(schedule, false);
+
+// compare current material public schedule inputs
+export const getSailingRecommendationRevision = (schedule: Schedule): string =>
+  serializeSailingRecommendationRevision(schedule, true);
 
 // preserve the freshest public capacity receipt
 export const getCapacityWatermark = (schedule: Schedule): number | null => {

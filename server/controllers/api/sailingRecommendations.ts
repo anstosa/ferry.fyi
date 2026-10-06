@@ -44,9 +44,12 @@ export const createSailingRecommendationRouter = (
 ): Router => {
   const router = Router();
   const recommend = createSailingRecommendationService(dependencies);
+  // share one daily budget across both protocol paths
+  const dailyLimiter =
+    dependencies.rateLimiter ?? createRecommendationDailyLimiter();
   router.post(
-    "/",
-    dependencies.rateLimiter ?? createRecommendationDailyLimiter(),
+    ["/", "/v2"],
+    dailyLimiter,
     // return a bounded response without logging transient origins
     async (request, response) => {
       response.set({
@@ -59,7 +62,11 @@ export const createSailingRecommendationRouter = (
         response.status(400).send({ error: "invalid_request" });
         return;
       }
-      response.send(await recommend(input));
+      // preserve express's accepted casing and optional trailing slash
+      const version = request.path.toLowerCase().startsWith("/v2")
+        ? "v2"
+        : "v1";
+      response.send(await recommend(input, version));
     }
   );
   return router;

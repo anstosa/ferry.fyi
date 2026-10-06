@@ -5,11 +5,13 @@ import type { SailingRecommendationResponse } from "shared/contracts/sailingReco
 import type { Schedule, Slot } from "shared/contracts/schedules";
 import { unavailableRecommendation } from "shared/lib/sailingRecommendationResponse";
 import {
+  getLegacySailingRecommendationRevision,
   getRecommendationServiceDate,
   getSailingRecommendationRevision,
 } from "shared/lib/sailingRecommendationRevision";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { ApiError } from "../../client/lib/api";
 import { getSailingRecommendation } from "../../client/lib/sailingRecommendations";
 import { SailingEstimateResults } from "../../client/views/Schedule/SailingEstimateResults";
 import { SailingRecommendationCard } from "../../client/views/Schedule/SailingRecommendationCard";
@@ -917,6 +919,88 @@ describe("leave-now sailing card", () => {
       container.querySelector('[aria-label="Sailing estimates"]')?.textContent
     ).toContain("Estimated");
     expect(container.textContent).not.toContain("This estimate expired");
+  });
+
+  // validate a downgraded response against the prior protocol's material fingerprint
+  it("renders a legacy-server fallback without false expiry or another refresh", async () => {
+    const result = makeResponse();
+    result.revision = getLegacySailingRecommendationRevision(schedule);
+    const refresh = vi.fn(() => Promise.resolve(schedule));
+    adapters.post
+      .mockRejectedValueOnce(new ApiError(404, {}))
+      .mockResolvedValueOnce(result);
+    act(() => {
+      root.render(
+        <SailingRecommendationCard
+          schedule={schedule}
+          onRefreshSchedule={refresh}
+        />
+      );
+    });
+
+    await click("Use my location");
+
+    expect(refresh).toHaveBeenCalledOnce();
+    expect(adapters.post.mock.calls.map(([path]) => path)).toEqual([
+      "/sailing-recommendations/v2",
+      "/sailing-recommendations",
+    ]);
+    expect(container.textContent).not.toContain("This estimate expired");
+    expect(
+      container.querySelector('[aria-label="Sailing estimates"]')
+    ).not.toBeNull();
+  });
+
+  // do not accept a legacy fingerprint from an explicitly current server
+  it("keeps v2 schedule guards strict even when a revision matches v1", async () => {
+    const result = makeResponse();
+    result.revision = getLegacySailingRecommendationRevision(schedule);
+    const refresh = vi.fn(() => Promise.resolve(schedule));
+    adapters.post.mockResolvedValue(result);
+    act(() => {
+      root.render(
+        <SailingRecommendationCard
+          schedule={schedule}
+          onRefreshSchedule={refresh}
+        />
+      );
+    });
+
+    await click("Use my location");
+
+    expect(refresh).toHaveBeenCalledTimes(2);
+    expect(adapters.post).toHaveBeenCalledOnce();
+    expect(container.textContent).toContain("This estimate expired");
+    expect(
+      container.querySelector('[aria-label="Sailing estimates"]')
+    ).toBeNull();
+  });
+
+  // retain material schedule checks after a successful endpoint downgrade
+  it("rejects a legacy-server fallback from a different material snapshot", async () => {
+    const result = makeResponse();
+    result.revision = "different-legacy-snapshot";
+    const refresh = vi.fn(() => Promise.resolve(schedule));
+    adapters.post
+      .mockRejectedValueOnce(new ApiError(404, {}))
+      .mockResolvedValueOnce(result);
+    act(() => {
+      root.render(
+        <SailingRecommendationCard
+          schedule={schedule}
+          onRefreshSchedule={refresh}
+        />
+      );
+    });
+
+    await click("Use my location");
+
+    expect(refresh).toHaveBeenCalledTimes(2);
+    expect(adapters.post).toHaveBeenCalledTimes(2);
+    expect(container.textContent).toContain("This estimate expired");
+    expect(
+      container.querySelector('[aria-label="Sailing estimates"]')
+    ).toBeNull();
   });
 
   // retain genuine revision guards after the bounded cache retry

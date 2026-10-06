@@ -8,6 +8,7 @@ import {
 import ROUTES from "shared/data/route-terminal-ids.json";
 import {
   getCapacityWatermark,
+  getLegacySailingRecommendationRevision,
   getRecommendationServiceDate,
   getSailingRecommendationRevision,
 } from "shared/lib/sailingRecommendationRevision";
@@ -39,6 +40,58 @@ const makeSchedule = (): Schedule => ({
 });
 
 describe("sailing recommendation domain rules", () => {
+  // preserve the legacy tuple order without the forecast-only column
+  it("keeps the v1 revision wire exact while v2 tracks forecast changes", () => {
+    const schedule = makeSchedule();
+    schedule.slots[0].estimate = {
+      driveUpCapacity: 10,
+      reservableCapacity: null,
+      fullProbability: 0.2,
+    };
+    const legacyRevision = getLegacySailingRecommendationRevision(schedule);
+    expect(JSON.parse(legacyRevision)).toEqual([
+      schedule.key,
+      [
+        [
+          1800002400,
+          null,
+          false,
+          true,
+          true,
+          false,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          10,
+          null,
+          "1",
+          "test",
+          null,
+          null,
+          100,
+          0,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+        ],
+      ],
+    ]);
+    const currentRevision = getSailingRecommendationRevision(schedule);
+    schedule.slots[0].estimate.fullProbability = 0.8;
+    expect(getLegacySailingRecommendationRevision(schedule)).toBe(
+      legacyRevision
+    );
+    expect(getSailingRecommendationRevision(schedule)).not.toBe(
+      currentRevision
+    );
+  });
+
   // a forecast-only probability change must invalidate retained chances
   it("fingerprints calibrated full probability independently of point spaces", () => {
     const schedule = makeSchedule();
