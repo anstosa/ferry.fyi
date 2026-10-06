@@ -27,8 +27,9 @@ describe("CI workflow contract", () => {
   it("requires a provisioned OTA index instead of treating failed reads as empty", () => {
     const publish = workflow("publish-ota.yml");
 
-    expect(publish).toContain("if ! aws s3api get-object");
-    expect(publish).toContain("provision it before first publication");
+    expect(publish).toMatch(
+      /if ! aws s3api get-object[^\n]+; then[\s\S]*?exit 1\n\s+fi/
+    );
     expect(publish).not.toContain("NoSuchKey");
     expect(publish).not.toContain(`'{"releases":[]}' > releases.json`);
   });

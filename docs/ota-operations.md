@@ -100,7 +100,6 @@ terraform output -raw ota_bucket_name
 terraform output -raw ota_distribution_domain
 terraform output -raw ota_distribution_id
 terraform output -raw ota_bundle_base_url
-terraform output -raw ota_channel_release_base_url
 terraform output -raw ota_releases_url
 ```
 
@@ -112,7 +111,6 @@ Use the outputs as follows:
 | `OTA_DISTRIBUTION_DOMAIN` | `ota_distribution_domain` |
 | CloudFront invalidation target | `ota_distribution_id` |
 | Immutable bundle URL prefix | `ota_bundle_base_url` |
-| Channel JSON URL prefix | `ota_channel_release_base_url` |
 | Server `OTA_RELEASES_URL` | `ota_releases_url` |
 
 The OTA bucket is private. Publish through S3 using the GitHub OIDC deployment role or an explicitly authorized AWS identity, but put only CloudFront HTTPS URLs in release JSON. Never publish S3 website URLs or make the bucket public.
@@ -157,7 +155,7 @@ After an authorized deployment, test the production manifest with both Android a
 ## Cache and monitoring
 
 - Bundles under `bundles/*` are immutable and use the one-year CloudFront cache policy. Never replace a bundle at an existing key.
-- `channels/*.json` and `releases.json` use `ota_release_cache_ttl_seconds`, which defaults to five minutes and is constrained by `infra/aws/terraform/variables.tf`.
+- `releases.json` uses `ota_release_cache_ttl_seconds`, which defaults to five minutes and is constrained by `infra/aws/terraform/variables.tf`.
 - The server separately caches a validated `OTA_RELEASES_URL` response for five minutes in `server/lib/ota.ts`.
 - Check the public release index and manifest route after publication:
 
@@ -181,8 +179,8 @@ deployment recovery artifact, also follow
 Rollback the pointer, not the immutable bundle:
 
 1. Select the prior known-good release record for the affected channel.
-2. Publish that record to `channels/<channel>.json` and update `releases.json` with the prior record.
-3. Invalidate `/channels/<channel>.json` and `/releases.json` if immediate effect is required.
+2. Replace only the affected channel's record in `releases.json` with the prior record, preserving all other channels.
+3. Invalidate `/releases.json` if immediate effect is required.
 4. Check the manifest response and test a device that has not yet activated the bad release.
 
 The client downloads before activation and calls `notifyAppReady` on startup. If the new bundle fails before it acknowledges readiness, Capacitor's native updater can retain or roll back to the last known-good bundle. The server also returns no update when the release index cannot be fetched or validated.
