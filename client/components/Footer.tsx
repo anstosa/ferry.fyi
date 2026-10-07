@@ -21,13 +21,14 @@ import { GetPath } from "~/views/Route";
 
 import { getLastBulletinTime, getWaitTime } from "../lib/bulletins";
 
+// dock route navigation above the native inset
 const WrapFooter: FunctionComponent<PropsWithChildren> = ({ children }) => (
   <footer
     className={clsx(
       "fixed bottom-0 inset-x-0 z-10",
       "bg-ferry-footer-gradient text-white",
       // honor native bottom inset
-      "h-[calc(4rem+var(--safe-area-inset-bottom))] w-full border-t border-[rgba(255,255,255,0.12)] shadow-up-lg",
+      "h-[calc(var(--route-footer-height)+var(--safe-area-inset-bottom))] w-full border-t border-[rgba(255,255,255,0.12)] shadow-up-lg",
       "flex justify-center",
       "animate",
       "pr-safe-right pl-safe-left"

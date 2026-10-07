@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   location: vi.fn(() => ({ pathname: "/tickets", search: "" })),
   navigate: vi.fn(),
   routeElement: vi.fn<() => React.ReactElement>(),
+  otaMounted: vi.fn(),
 }));
 
 vi.mock("@auth0/auth0-react", () => ({
@@ -69,8 +70,14 @@ vi.mock("~/lib/auth", () => ({
 vi.mock("~/lib/device", () => ({
   useDevice: () => ({ isNativeMobile: false, platform: "web" }),
 }));
-vi.mock("~/lib/ota", () => ({
-  initializeOtaUpdater: () => Promise.resolve(),
+vi.mock("~/components/OtaUpdatePrompt", () => ({
+  // model the updater's post-commit initialization effect
+  OtaUpdatePrompt: () => {
+    useEffect(() => {
+      mocks.otaMounted();
+    }, []);
+    return null;
+  },
 }));
 vi.mock("~/lib/push", () => ({
   usePush: () => vi.fn(),
@@ -190,12 +197,14 @@ describe("App route suspense lifecycle", () => {
       container.querySelector("[data-retained-document=true]")
     ).not.toBeNull();
     expect(container.querySelector("[data-app-loading=true]")).toBeNull();
+    expect(mocks.otaMounted).not.toHaveBeenCalled();
 
     await act(async () => {
       await resolveRoute();
       await initialPending;
     });
     expect(container.querySelector("[data-route-probe=true]")).not.toBeNull();
+    expect(mocks.otaMounted).toHaveBeenCalledOnce();
 
     const nextPending = suspendRoute();
     mocks.location.mockReturnValue({ pathname: "/about", search: "" });

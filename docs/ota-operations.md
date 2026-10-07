@@ -1,6 +1,12 @@
 # OTA operations
 
-This runbook covers Android and iOS web-asset updates delivered by the Capacitor updater. The updater is configured in `capacitor.config.ts` with `autoUpdate: false`; `client/App.tsx` asks the server for an update at startup, downloads it in the background, and activates it on a later app start.
+This runbook covers Android and iOS web-asset updates delivered by the Capacitor updater. The updater is configured in `capacitor.config.ts` with `autoUpdate: false`; the app shell's `OtaUpdatePrompt` asks the server for an update at startup and downloads it in the background.
+
+A non-dismissable bottom notice shows native download progress. The reload button appears only after the complete bundle is queued successfully; choosing **Reload to apply** uses the native updater's pending-aware `reload()` to activate and clear the queued bundle before restarting the WebView. The queued bundle can also activate on a later background/restart. Already queued pending bundles restore the ready notice only when the configured channel's manifest still offers that version. Download and activation failures keep retry actions visible instead of silently claiming completion. The notice respects the schedule footer and device safe area; ordinary error/warning toasts remain visible above it rather than being suppressed.
+
+The manifest check controls new downloads and explicit apply prompts; it does not revoke a bundle already queued in native storage. Such a bundle can still activate on background/restart under the existing native updater policy.
+
+**OTA Built-in** identifies the assets packaged in the signed native app, not download progress. It remains correct until an OTA activates. If it persists after a ready update is applied, check native download/install and rollback logs; a bundle that does not acknowledge readiness can roll back to the built-in fallback. A publication or process restart alone does not prove installation.
 
 ## Release boundaries
 

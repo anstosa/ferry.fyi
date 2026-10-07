@@ -49,6 +49,10 @@ vi.mock("~/components/LeaderboardForegroundCheckins", () => ({
 vi.mock("~/components/NearbyTicketNotifications", () => ({
   NearbyTicketNotifications: () => null,
 }));
+vi.mock("~/components/OtaUpdatePrompt", () => ({
+  // isolate native navigation from the update lifecycle
+  OtaUpdatePrompt: () => null,
+}));
 vi.mock("~/components/Prompt", () => ({
   Prompt: ({ children }: React.PropsWithChildren) => children,
 }));
@@ -71,9 +75,6 @@ vi.mock("~/lib/auth", () => ({
 }));
 vi.mock("~/lib/device", () => ({
   useDevice: () => mocks.device,
-}));
-vi.mock("~/lib/ota", () => ({
-  initializeOtaUpdater: () => Promise.resolve(),
 }));
 vi.mock("~/lib/push", () => ({
   usePush: () => vi.fn(),

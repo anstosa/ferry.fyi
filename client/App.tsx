@@ -14,6 +14,7 @@ import { InstallPromptToast } from "~/components/InstallPromptToast";
 import { LeaderboardForegroundCheckins } from "~/components/LeaderboardForegroundCheckins";
 import { NativeAppUpdatePrompt } from "~/components/NativeAppUpdatePrompt";
 import { NearbyTicketNotifications } from "~/components/NearbyTicketNotifications";
+import { OtaUpdatePrompt } from "~/components/OtaUpdatePrompt";
 import { Prompt } from "~/components/Prompt";
 import { deferAnalytics, useRecordPageViews } from "~/lib/analytics";
 import { useOnline, useWSF } from "~/lib/api";
@@ -24,7 +25,6 @@ import {
   isStaleAuth0CallbackError,
 } from "~/lib/auth";
 import { useDevice } from "~/lib/device";
-import { initializeOtaUpdater } from "~/lib/ota";
 import { usePush } from "~/lib/push";
 import { slugs } from "~/lib/terminals";
 import { useUser } from "~/lib/user";
@@ -44,15 +44,6 @@ export const App = ({
 }: {
   suspendInitialRoute?: boolean;
 }): ReactElement => {
-  useEffect(() => {
-    // Acknowledge the bundle only after the app has rendered successfully.
-    initializeOtaUpdater({
-      environment: {
-        VITE_OTA_CHANNEL: process.env.VITE_OTA_CHANNEL,
-        VITE_OTA_MANIFEST_URL: process.env.VITE_OTA_MANIFEST_URL,
-      },
-    }).catch(() => undefined);
-  }, []);
   useEffect(() => deferAnalytics(), []);
   const isOnline = useOnline();
   const isWsfOffline = useWSF()?.offline ?? false;
@@ -205,6 +196,7 @@ export const App = ({
       <>
         {routeElement}
         <AnimatePresence>
+          <OtaUpdatePrompt footerDocked={hasBottomBar} key="ota-update" />
           <AutomaticCheckinsInstallBanner key="automatic-checkins-install" />
           {!isOnline && !offlineDismissed && (
             <Prompt

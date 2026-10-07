@@ -310,6 +310,8 @@ html {
     --safe-area-inset-right: env(safe-area-inset-right, 0px);
     --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
     --safe-area-inset-left: env(safe-area-inset-left, 0px);
+    --route-footer-height: theme("spacing.16");
+    --toast-stack-gap: 8px;
     --app-motion-duration-fast: 140ms;
     --app-motion-duration: 220ms;
     --app-motion-ease: cubic-bezier(0.22, 1, 0.36, 1);

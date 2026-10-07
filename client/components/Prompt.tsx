@@ -27,6 +27,7 @@ interface Props {
   Icon?: FunctionComponent<SVGAttributes<SVGElement>>;
   level?: "error" | "info" | "warning";
   onClose?: () => void;
+  persistent?: boolean;
   title?: ReactNode;
   top?: boolean;
 }
@@ -53,6 +54,7 @@ export const Prompt: FunctionComponent<PropsWithChildren<Props>> = ({
   Icon,
   level = "info",
   onClose,
+  persistent,
   title,
   top,
 }) => (
@@ -62,6 +64,7 @@ export const Prompt: FunctionComponent<PropsWithChildren<Props>> = ({
     Icon={Icon}
     info={level === "info"}
     onClose={onClose}
+    persistent={persistent}
     top={top}
     warning={level === "warning"}
   >
