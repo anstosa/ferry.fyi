@@ -109,27 +109,21 @@ describe("SSR document cache", () => {
     ).resolves.toMatchObject({ document: "retry", outcome: "miss" });
   });
 
-  it("reloads a persisted document when its reuse policy expires", async () => {
+  // refresh fixed-window documents by identity
+  it("reloads a persisted document when its refresh window changes", async () => {
     const cache = new SsrDocumentCache<string>();
-    let reusable = true;
-    const first = await cache.getOrCreate({
-      ...request(dynamicKey(), async () => "first"),
-      mayReuse: () => reusable,
-    });
+    const first = await cache.getOrCreate(
+      request(dynamicKey(), async () => "first")
+    );
     expect(first).toMatchObject({ document: "first", outcome: "miss" });
     await expect(
-      cache.getOrCreate({
-        ...request(dynamicKey(), async () => "wrong"),
-        mayReuse: () => reusable,
-      })
+      cache.getOrCreate(request(dynamicKey(), async () => "wrong"))
     ).resolves.toMatchObject({ document: "first", outcome: "hit" });
 
-    reusable = false;
     await expect(
-      cache.getOrCreate({
-        ...request(dynamicKey(), async () => "fresh"),
-        mayReuse: () => reusable,
-      })
+      cache.getOrCreate(
+        request(dynamicKey("2026-07-28T15:00"), async () => "fresh")
+      )
     ).resolves.toMatchObject({ document: "fresh", outcome: "miss" });
     expect(cache.sizes.dynamic).toBe(1);
   });
@@ -200,23 +194,37 @@ describe("SSR document cache", () => {
     ).resolves.toMatchObject({ document: "safe-query", outcome: "hit" });
   });
 
-  it("does not commit fills after a refresh-window boundary or invalidation", async () => {
+  // preserve asynchronous commit eligibility and session invalidation
+  it("does not commit rejected candidates or fills after invalidation", async () => {
     const cache = new SsrDocumentCache<string>();
     let current = true;
     await expect(
       cache.getOrCreate({
         ...request(dynamicKey(), async () => "old"),
-        mayCommit: (document) => current && document === "old",
+        // persist only the current candidate
+        validate: async (document) => ({
+          kind: "validated-candidate",
+          mayCommit: current && document === "old",
+        }),
       })
     ).resolves.toMatchObject({ document: "old" });
     current = false;
     await expect(
       cache.getOrCreate({
         ...request(dynamicKey("2026-07-28T15:00"), async () => "crossed"),
-        mayCommit: () => current,
+        // return boundary-crossing bytes without retaining them
+        validate: async () => ({
+          kind: "validated-candidate",
+          mayCommit: current,
+        }),
       })
     ).resolves.toMatchObject({ document: "crossed" });
     expect(cache.sizes.dynamic).toBe(1);
+    await expect(
+      cache.getOrCreate(
+        request(dynamicKey("2026-07-28T15:00"), async () => "fresh")
+      )
+    ).resolves.toMatchObject({ document: "fresh", outcome: "miss" });
     let resolve!: (value: string) => void;
     const fill = cache.getOrCreate(
       request(

@@ -14,12 +14,14 @@ const PURCHASE_LINK_CLASSES =
 
 interface TicketsPublicContentProps {
   showEmptyState?: boolean;
+  showPurchaseLinks?: boolean;
   tools?: ReactNode;
 }
 
 // render public wallet guidance without ticket state
 export const TicketsPublicContent = ({
   showEmptyState = false,
+  showPurchaseLinks = true,
   tools,
 }: TicketsPublicContentProps): ReactElement => (
   <>
@@ -55,31 +57,34 @@ export const TicketsPublicContent = ({
             </ul>
           )}
 
-          <div>
-            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-yellow-lightest">
-              Purchase tickets
-            </p>
-            <div className="mt-2 grid gap-2 sm:grid-cols-2">
-              <a
-                className={PURCHASE_LINK_CLASSES}
-                href={WSF_RESERVATION_URL}
-                rel="noreferrer"
-                target="_blank"
-              >
-                <span>Make a reservation</span>
-                <ExternalLinkIcon className="button-icon shrink-0" />
-              </a>
-              <a
-                className={PURCHASE_LINK_CLASSES}
-                href={WSF_MULTI_RIDE_URL}
-                rel="noreferrer"
-                target="_blank"
-              >
-                <span>Buy multi-ride passes</span>
-                <ExternalLinkIcon className="button-icon shrink-0" />
-              </a>
+          {/* preserve focused wallet entry */}
+          {showPurchaseLinks ? (
+            <div>
+              <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-yellow-lightest">
+                Purchase tickets
+              </p>
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                <a
+                  className={PURCHASE_LINK_CLASSES}
+                  href={WSF_RESERVATION_URL}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  <span>Make a reservation</span>
+                  <ExternalLinkIcon className="button-icon shrink-0" />
+                </a>
+                <a
+                  className={PURCHASE_LINK_CLASSES}
+                  href={WSF_MULTI_RIDE_URL}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  <span>Buy multi-ride passes</span>
+                  <ExternalLinkIcon className="button-icon shrink-0" />
+                </a>
+              </div>
             </div>
-          </div>
+          ) : null}
         </div>
       </div>
     </section>
@@ -94,9 +99,9 @@ export const TicketsPublicContent = ({
         ticket: do not post or share them publicly.
       </p>
       <p className="mt-2 text-sm leading-relaxed">
-        Reservations and multi-ride passes are purchased through the official
-        WSF links above. Ferry FYI helps display tickets but does not sell them
-        or guarantee that a ticket is valid for a particular sailing.
+        Reservations and multi-ride passes are purchased directly through WSF.
+        Ferry FYI helps display tickets but does not sell them or guarantee that
+        a ticket is valid for a particular sailing.
       </p>
       {/* explain the public empty state */}
       {showEmptyState ? (

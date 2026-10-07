@@ -39,10 +39,6 @@ export interface SsrDocumentCacheRequest<T> {
   readonly enabled: boolean;
   readonly key: SsrDocumentCacheKey;
   readonly load: () => Promise<T>;
-  /** Prevents a completed fill from being persisted after its result is known. */
-  readonly mayCommit?: (document: T) => boolean;
-  /** Rejects a persisted document that is no longer fresh enough to reuse. */
-  readonly mayReuse?: (document: T) => boolean;
   /** Validates shared async work before commit/return and once per waiter. */
   readonly validate?: (document?: T) => Promise<SsrCandidateValidation>;
 }
@@ -156,13 +152,12 @@ export class SsrDocumentCache<T> {
     assertKey(request.key);
     const key = keyString(request.key);
     const cache = request.key.kind === "dynamic" ? this.#dynamic : this.#static;
+    // reuse documents within their validated cache identity
     if (request.cacheEnabled) {
       const cached = cache.get(key);
+      // return retained documents directly
       if (cached !== undefined) {
-        if (request.mayReuse?.(cached) ?? true) {
-          return { document: cached, outcome: "hit" };
-        }
-        cache.delete(key);
+        return { document: cached, outcome: "hit" };
       }
     }
     const existing = this.#inFlight.get(key);
@@ -219,11 +214,11 @@ export class SsrDocumentCache<T> {
         return { failure: "invalidated", outcome: "failed" };
       }
       const { document } = result;
+      // retain only validated candidates from the current session
       if (
         request.cacheEnabled &&
         generation === this.#generation &&
-        result.mayCommit &&
-        (request.mayCommit?.(document) ?? true)
+        result.mayCommit
       ) {
         if (request.key.kind === "dynamic") {
           this.pruneDynamic(request.key);

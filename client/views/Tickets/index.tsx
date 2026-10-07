@@ -1148,6 +1148,7 @@ export const Tickets = (): ReactElement => {
       <SeoHelmet seo={getSeoMetadata("/tickets")} />
 
       <TicketsPublicContent
+        showPurchaseLinks={!isManualEntry}
         tools={
           <>
             <div className="grid grid-cols-3 gap-2">

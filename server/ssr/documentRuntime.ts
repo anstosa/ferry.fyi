@@ -489,9 +489,10 @@ export const createSsrDocumentRuntime = (
       | Awaited<ReturnType<SsrDocumentCache<SsrRuntimeFill>["getOrCreate"]>>
       | undefined;
     const servingClock = dependencies.servingClock ?? dependencies.clock;
+    // resolve an authoritative placement binding
     const readAdServingBinding = async (
       binding: PublicSsrAdPlacementBinding
-    ): Promise<{ binding: PublicSsrAdServingBinding; now: Date }> => {
+    ): Promise<PublicSsrAdServingBinding> => {
       const now = servingClock();
       const validationStarted = monotonicClock();
       adResolutionCount += 1;
@@ -511,7 +512,7 @@ export const createSsrDocumentRuntime = (
             "Public SSR ad serving state identity mismatch"
           );
         }
-        return { binding: { ...binding, ...state }, now };
+        return { ...binding, ...state };
       } finally {
         adValidationDurationMs += Math.max(
           0,
@@ -527,8 +528,7 @@ export const createSsrDocumentRuntime = (
       // observe the authoritative placement state before key selection
       if (adPlacementBinding) {
         try {
-          const observed = await readAdServingBinding(adPlacementBinding);
-          servingBinding = observed.binding;
+          servingBinding = await readAdServingBinding(adPlacementBinding);
         } catch (error) {
           failureClass =
             error instanceof PublicSsrIntegrityFailure ? "integrity" : "loader";
@@ -664,10 +664,8 @@ export const createSsrDocumentRuntime = (
                   try {
                     const observed =
                       await readAdServingBinding(adPlacementBinding);
-                    if (
-                      observed.binding.fingerprint !==
-                      servingBinding.fingerprint
-                    ) {
+                    // reject a changed effective creative
+                    if (observed.fingerprint !== servingBinding.fingerprint) {
                       adValidationOutcome = "changed";
                       return { kind: "invalidated" as const };
                     }

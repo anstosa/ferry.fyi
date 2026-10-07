@@ -1214,6 +1214,31 @@ for (const [path, title, required] of [
   });
 }
 
+// keep focused manual entry free of purchase distractions
+test("hides ticket purchase links during manual entry and restores them on cancel", async ({
+  page,
+}) => {
+  await page.goto("/tickets", { waitUntil: "networkidle" });
+  const reservation = page.getByRole("link", { name: "Make a reservation" });
+  const passes = page.getByRole("link", { name: "Buy multi-ride passes" });
+  await expect(reservation).toBeVisible();
+  await expect(passes).toBeVisible();
+
+  await page.getByRole("button", { name: "Manual Type code" }).click();
+  await expect(
+    page.getByRole("textbox", { name: "Ticket number" })
+  ).toBeVisible();
+  await expect(reservation).toHaveCount(0);
+  await expect(passes).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(
+    page.getByRole("textbox", { name: "Ticket number" })
+  ).toHaveCount(0);
+  await expect(reservation).toBeVisible();
+  await expect(passes).toBeVisible();
+});
+
 // native disclosure contains every fare before any client request
 test("opens the full fare table without JavaScript", async ({ browser }) => {
   const context = await browser.newContext({
