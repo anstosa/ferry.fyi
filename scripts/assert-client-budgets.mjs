@@ -8,8 +8,8 @@ import { fileURLToPath } from "node:url";
 export const DEFAULT_CLIENT_BUDGETS = Object.freeze({
   // allow measured navigation and terminal-editor style growth
   cssBytes: 152_000,
-  // keep core headroom tighter than before the new navigation route
-  javascriptBytes: 5_250_000,
+  // allow measured full public content growth with bounded core headroom
+  javascriptBytes: 5_300_000,
   // preserve lazy route and shared map chunks with bounded headroom
   javascriptFiles: 155,
   largestJavascriptBytes: 1_900_000,

@@ -27,15 +27,34 @@ afterEach(() => {
 });
 
 describe("client asset budgets", () => {
-  // bound new navigation growth without relaxing map or billing caps
-  it("locks the measured navigation and terminal editor allocation", () => {
+  // bound full public content without relaxing map or billing caps
+  it("locks the measured full public content allocation", () => {
     expect(DEFAULT_CLIENT_BUDGETS).toEqual({
       cssBytes: 152_000,
-      javascriptBytes: 5_250_000,
+      javascriptBytes: 5_300_000,
       javascriptFiles: 155,
       largestJavascriptBytes: 1_900_000,
       optionalBillingJavascriptBytes: 900_000,
     });
+  });
+
+  // retain a hard cap after the measured public content growth
+  it("accepts the measured production assets and rejects further unbounded growth", () => {
+    const summary = {
+      cssBytes: 150_631,
+      javascriptBytes: 5_260_065,
+      javascriptFiles: 150,
+      largestJavascriptBytes: 1_838_229,
+      optionalBillingJavascriptBytes: 840_269,
+    };
+
+    expect(() => assertClientBudgets(summary)).not.toThrow();
+    expect(() =>
+      assertClientBudgets({ ...summary, javascriptBytes: 5_300_000 })
+    ).not.toThrow();
+    expect(() =>
+      assertClientBudgets({ ...summary, javascriptBytes: 5_300_001 })
+    ).toThrow(/javascriptBytes/);
   });
 
   // protect the finite route-chunk allocation

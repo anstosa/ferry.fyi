@@ -169,6 +169,25 @@ After an authorized deployment, test the production manifest with both Android a
 - Confirm the response contains the expected HTTPS bundle URL, version, and checksum. A no-update response is expected when the installed version is current.
 - Monitor the application/API logs for repeated OTA manifest failures and use the existing `/healthz` endpoint to confirm the deployed service remains healthy. OTA failures deliberately preserve the last known-good bundle.
 
+### Recent changes missing from the app
+
+A pushed commit is not a published OTA release. Check the matching `Deploy AWS
+Production` run first: every validation and deployment gate must pass before
+`Publish production OTA` can run. If an earlier step fails, the app correctly
+continues to receive the previous release.
+
+For a `Client asset budget exceeded` failure, rebuild with the deployment's
+client configuration and run `yarn budget:client`. The full public-content
+allocation permits 5,300,000 aggregate core JavaScript bytes; the separate
+CSS, chunk-count, largest-chunk, and optional-billing limits remain unchanged.
+Only adjust an allocation for measured, intentional feature growth; do not
+remove the budget gate or publish an OTA separately to bypass a failed deploy.
+
+After a successful OTA publication, compare the source SHA in the manifest's
+immutable bundle URL with the intended deployment. An older SHA indicates that
+the expected release has not reached the manifest; repeated app restarts cannot
+install a bundle that has not been published.
+
 ## Rollback
 
 OTA pointer recovery is separate from ECS web/task-definition and detector
