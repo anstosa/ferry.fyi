@@ -5,6 +5,7 @@ import React, {
   ReactNode,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -130,6 +131,13 @@ const CameraList = ({
   const { cameras } = terminal;
   const hasCameras = cameras.length > 0;
   const [hasLoadedImage, setHasLoadedImage] = useState(false);
+  // invalidate successful image readiness only after an empty inventory commits
+  useLayoutEffect(() => {
+    // restored cameras must load before qualifying a new exposure
+    if (!hasCameras) {
+      setHasLoadedImage(false);
+    }
+  }, [hasCameras]);
   const usefulContentRef = useUsefulContent(
     "cameras",
     terminal.id,

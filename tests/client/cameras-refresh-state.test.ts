@@ -4,6 +4,8 @@ import React, { act } from "react";
 import { createRoot, Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import type { ShareOptions } from "../../client/views/Menu";
+
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 Object.defineProperty(window, "matchMedia", {
   configurable: true,
@@ -11,6 +13,7 @@ Object.defineProperty(window, "matchMedia", {
 });
 
 const useful = vi.hoisted(() => ({ hook: vi.fn(), ref: vi.fn() }));
+const headerShare = vi.hoisted(() => vi.fn());
 vi.mock("~/lib/usefulVisits", () => ({
   // capture readiness and node wiring without analytics side effects
   useUsefulContent: (...args: unknown[]) => {
@@ -47,7 +50,14 @@ vi.mock("~/components/TerminalDropdown", () => ({
   TerminalDropdown: () => null,
 }));
 vi.mock("~/views/Header", () => ({
-  Header: ({ children }: { children: React.ReactNode }) => children,
+  // inspect the actual public sharing payload from the rendered owner
+  Header: ({
+    children,
+    share,
+  }: React.PropsWithChildren<{ share?: ShareOptions }>) => {
+    headerShare(share);
+    return children;
+  },
 }));
 vi.mock("~/static/images/icons/solid/car.svg", () => ({ default: () => null }));
 vi.mock("~/static/images/icons/solid/location.svg", () => ({
@@ -110,6 +120,11 @@ describe("Cameras refresh state", () => {
       );
     };
     await renderTerminal(terminal);
+    expect(headerShare).toHaveBeenLastCalledWith({
+      shareSurface: "cameras",
+      shareButtonText: "Share Cameras",
+      sharedText: "Cameras for Terminal Ferry Terminal",
+    });
     expect(useful.hook).toHaveBeenLastCalledWith(
       "cameras",
       "terminal-1",

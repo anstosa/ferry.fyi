@@ -5,6 +5,8 @@ import { createRoot, type Root } from "react-dom/client";
 import { MemoryRouter, useNavigate } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import type { ShareOptions } from "../../client/views/Menu";
+
 const mocks = vi.hoisted(() => ({
   deferMapLoad: false,
   maps: [] as Array<{
@@ -17,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   refreshVessels: vi.fn(),
   theme: "light",
 }));
+const observeHeaderProps = vi.hoisted(() => vi.fn());
 
 vi.mock("mapbox-gl", () => {
   class Bounds {}
@@ -158,8 +161,14 @@ vi.mock("~/static/images/icons/wsdot.svg", () => ({
   default: () => null,
 }));
 vi.mock("../../client/views/Header", () => ({
-  Header: ({ children }: React.PropsWithChildren) =>
-    React.createElement("header", null, children),
+  // capture the map share contract
+  Header: ({
+    children,
+    share,
+  }: React.PropsWithChildren<{ share?: ShareOptions }>) => {
+    observeHeaderProps({ share });
+    return React.createElement("header", null, children);
+  },
 }));
 
 import { PublicSsrSeedProvider } from "../../client/lib/ssrSeed";
@@ -475,6 +484,26 @@ describe("map hydration seed freshness", () => {
     mocks.deferMapLoad = false;
     mocks.maps.length = 0;
     mocks.theme = "light";
+  });
+
+  // map owner boundary
+  it("provides the map share contract to Header", () => {
+    mocks.getVesselSnapshot.mockReturnValue(new Promise(() => undefined));
+    const container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+
+    act(() => {
+      root?.render(view());
+    });
+
+    expect(observeHeaderProps).toHaveBeenLastCalledWith({
+      share: {
+        shareButtonText: "Share Map",
+        sharedText: "Map for Clinton to Mukilteo ferry route",
+        shareSurface: "map",
+      },
+    });
   });
 
   // marker details interaction

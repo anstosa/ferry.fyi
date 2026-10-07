@@ -5,7 +5,10 @@ import { createRoot, type Root } from "react-dom/client";
 import { MemoryRouter, useNavigate } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import type { ShareOptions } from "../../client/views/Menu";
+
 const useful = vi.hoisted(() => ({ hook: vi.fn(), ref: vi.fn() }));
+const headerShare = vi.hoisted(() => vi.fn());
 vi.mock("~/lib/usefulVisits", () => ({
   // capture only the production readiness and target boundary
   useUsefulContent: (...args: unknown[]) => {
@@ -70,8 +73,14 @@ vi.mock("~/static/images/icons/wsdot.svg", () => ({
   default: () => null,
 }));
 vi.mock("../../client/views/Header", () => ({
-  Header: ({ children }: React.PropsWithChildren) =>
-    React.createElement("header", null, children),
+  // inspect the actual public sharing payload from the rendered owner
+  Header: ({
+    children,
+    share,
+  }: React.PropsWithChildren<{ share?: ShareOptions }>) => {
+    headerShare(share);
+    return React.createElement("header", null, children);
+  },
 }));
 
 import { PublicSsrSeedProvider } from "../../client/lib/ssrSeed";
@@ -247,6 +256,7 @@ describe("bulletin hydration seed", () => {
     expect(container.textContent).not.toContain("View WSF alert");
   });
 
+  // replace the live result while retaining its classified sharing payload
   it("atomically replaces seeded alerts and freshness after a successful refresh", async () => {
     mocks.refreshBulletins.mockResolvedValue({
       sourceUpdatedAt: 2,
@@ -262,6 +272,11 @@ describe("bulletin hydration seed", () => {
       await Promise.resolve();
     });
 
+    expect(headerShare).toHaveBeenLastCalledWith({
+      shareSurface: "bulletins",
+      shareButtonText: "Share Alerts",
+      sharedText: "Alerts for Clinton",
+    });
     expect(container.textContent).toContain(fresh.title);
     expect(container.textContent).not.toContain(stale.title);
     expect(

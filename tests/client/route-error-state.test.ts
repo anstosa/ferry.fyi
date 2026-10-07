@@ -12,6 +12,8 @@ import {
 } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import type { ShareOptions } from "../../client/views/Menu";
+
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 const getTerminal = vi.hoisted(() => vi.fn());
 const getSchedule = vi.hoisted(() => vi.fn());
@@ -19,6 +21,7 @@ const refreshSchedule = vi.hoisted(() => vi.fn());
 const dateButton = vi.hoisted(() => ({
   onDateChange: undefined as undefined | ((date: DateTime) => void),
 }));
+const observeHeaderProps = vi.hoisted(() => vi.fn());
 vi.mock("~/lib/terminals", () => ({
   getSlug: (id: string) => id,
   getTerminal,
@@ -70,7 +73,17 @@ vi.mock("~/components/DateButton", () => ({
 vi.mock("~/components/RouteSelector", () => ({ RouteSelector: () => null }));
 vi.mock("~/components/SeoHelmet", () => ({ SeoHelmet: () => null }));
 vi.mock("~/views/Header", () => ({
-  Header: ({ children }: { children: React.ReactNode }) => children,
+  // capture the schedule share contract
+  Header: ({
+    children,
+    share,
+  }: {
+    children: React.ReactNode;
+    share?: ShareOptions;
+  }) => {
+    observeHeaderProps({ share });
+    return children;
+  },
 }));
 vi.mock("../../client/views/Schedule", () => ({
   Schedule: ({
@@ -338,6 +351,21 @@ const renderSeededMapRoute = (seededVessels: unknown[]) =>
   renderSeededRoute({ seededVessels, view: "map" });
 
 describe("Route route-load errors", () => {
+  // schedule owner boundary
+  it("provides the schedule share contract to Header", async () => {
+    getSchedule.mockReturnValue(new Promise(() => undefined));
+
+    await renderSeededRoute({ view: "schedule" });
+
+    expect(observeHeaderProps).toHaveBeenLastCalledWith({
+      share: {
+        shareButtonText: "Share Schedule",
+        sharedText: "Schedule for A to B",
+        shareSurface: "schedule",
+      },
+    });
+  });
+
   it("updates the browser URL when the selected schedule date changes", async () => {
     // keep selected date off today
     vi.useFakeTimers();

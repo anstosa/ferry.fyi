@@ -14,10 +14,14 @@ const capacitor = vi.hoisted(() => ({
   isNativePlatform: vi.fn(),
 }));
 const updater = vi.hoisted(() => ({ current: vi.fn() }));
+const analytics = vi.hoisted(() => ({ trackUsefulEvent: vi.fn() }));
 
 vi.mock("@capacitor/app", () => ({ App: app }));
 vi.mock("@capacitor/core", () => ({ Capacitor: capacitor }));
 vi.mock("@capgo/capacitor-updater", () => ({ CapacitorUpdater: updater }));
+vi.mock("~/lib/analytics", () => ({
+  trackUsefulEvent: analytics.trackUsefulEvent,
+}));
 
 import {
   AppVersionInfo,
@@ -215,6 +219,7 @@ describe("AppVersionInfo", () => {
     expect(container.textContent).toBe("iOS 3.0 (263) · OTA Built-in");
   });
 
+  // copy support metadata without qualifying rider value
   it("copies the complete version string and briefly confirms success", async () => {
     vi.useFakeTimers();
     const writeText = vi.fn().mockResolvedValue(undefined);
@@ -234,6 +239,7 @@ describe("AppVersionInfo", () => {
     );
     expect(container.textContent).toContain("Copied to clipboard!");
     expect(button?.classList.contains("bg-green-100")).toBe(true);
+    expect(analytics.trackUsefulEvent).not.toHaveBeenCalled();
 
     await act(async () => vi.advanceTimersByTime(2_000));
 

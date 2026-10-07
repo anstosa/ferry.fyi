@@ -34,6 +34,7 @@ const terminals = vi.hoisted(() => ({
   ),
   refreshTerminalLocations: vi.fn(() => Promise.resolve()),
 }));
+const analytics = vi.hoisted(() => ({ trackUsefulEvent: vi.fn() }));
 
 const emptyInventoryReport = {
   daily: [],
@@ -85,6 +86,9 @@ vi.mock("~/components/Page", () => ({
     React.createElement("main", undefined, children),
 }));
 vi.mock("~/lib/api", () => api);
+vi.mock("~/lib/analytics", () => ({
+  trackUsefulEvent: analytics.trackUsefulEvent,
+}));
 vi.mock("~/lib/terminals", () => terminals);
 vi.mock("~/components/admin/TerminalLocationMap", () => ({
   TerminalLocationMap: () =>
@@ -1050,6 +1054,7 @@ describe("Admin", () => {
     ).toBe("Mukilteo offer");
   });
 
+  // copy a private advertiser report without qualifying rider value
   it("shows a linked advertiser report URL with clipboard copy", async () => {
     const reportUrl = "https://ferry.fyi/ad-reports/#adr_private";
     const writeText = vi.fn(() => Promise.reject(new Error("denied")));
@@ -1203,6 +1208,7 @@ describe("Admin", () => {
     expect(execCommand).toHaveBeenCalledWith("copy");
     expect(document.querySelector('textarea[aria-hidden="true"]')).toBeNull();
     expect(container.textContent).toContain("Copied");
+    expect(analytics.trackUsefulEvent).not.toHaveBeenCalled();
 
     // prefer a later clipboard success
     writeText.mockResolvedValueOnce(undefined);

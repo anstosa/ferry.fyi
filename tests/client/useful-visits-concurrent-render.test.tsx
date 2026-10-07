@@ -394,6 +394,45 @@ describe("useful visit concurrent render safety", () => {
     );
   });
 
+  // an empty inventory invalidates the prior successful image load
+  it("requires a fresh image after cameras disappear at the same terminal", async () => {
+    // keep component identity while replacing only the camera inventory
+    const cameraView = (terminal: Terminal): React.ReactElement => (
+      <Cameras setRoute={vi.fn()} terminal={terminal} />
+    );
+    const container = await render(cameraView(terminalA));
+    act(() => container.querySelector("img")?.dispatchEvent(new Event("load")));
+    act(() => currentObserver().intersect(1));
+    act(() => vi.advanceTimersByTime(5000));
+    expect(analytics.trackUsefulEvent).toHaveBeenCalledExactlyOnceWith(
+      "useful_content_view",
+      { surface: "cameras" }
+    );
+    analytics.trackUsefulEvent.mockClear();
+
+    await render(cameraView({ ...terminalA, cameras: [] }));
+    expect(container.querySelector("img")).toBeNull();
+    const restored = await render(cameraView(terminalA));
+    expect(restored.querySelector("img")).not.toBeNull();
+    // publish visibility only if an erroneous ready observer was created
+    const prematureObserver = observers.find(
+      ({ disconnected }) => !disconnected
+    );
+    act(() => prematureObserver?.intersect(1));
+    act(() => vi.advanceTimersByTime(5000));
+    expect(analytics.trackUsefulEvent).not.toHaveBeenCalled();
+
+    act(() => restored.querySelector("img")?.dispatchEvent(new Event("load")));
+    act(() => currentObserver().intersect(1));
+    act(() => vi.advanceTimersByTime(4999));
+    expect(analytics.trackUsefulEvent).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(1));
+    expect(analytics.trackUsefulEvent).toHaveBeenCalledExactlyOnceWith(
+      "useful_content_view",
+      { surface: "cameras" }
+    );
+  });
+
   // speculative route cannot discard a committed user quote result
   it("settles the committed fare quote while another route suspends", async () => {
     let resolveUserQuote: (response: FareQuoteApiResponse) => void = () =>

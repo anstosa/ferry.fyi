@@ -2,12 +2,18 @@
 
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const mocks = vi.hoisted(() => ({
+  canShare: vi.fn(() => Promise.resolve({ value: false })),
+  share: vi.fn(() => Promise.resolve()),
+  trackUsefulEvent: vi.fn(),
+}));
 
 vi.mock("@capacitor/share", () => ({
   Share: {
-    canShare: vi.fn(() => Promise.resolve({ value: false })),
-    share: vi.fn(),
+    canShare: mocks.canShare,
+    share: mocks.share,
   },
 }));
 vi.mock("@zxing/browser", () => ({
@@ -17,11 +23,20 @@ vi.mock("@zxing/browser", () => ({
     }
   },
 }));
+vi.mock("~/lib/analytics", () => ({
+  trackUsefulEvent: mocks.trackUsefulEvent,
+}));
 
 import { BarcodeOverlay } from "../../client/views/Tickets/BarcodeOverlay";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 let root: Root | undefined;
+
+// restore default native share behavior
+beforeEach(() => {
+  mocks.canShare.mockResolvedValue({ value: false });
+  mocks.share.mockResolvedValue(undefined);
+});
 
 afterEach(() => {
   act(() => root?.unmount());
@@ -108,7 +123,9 @@ describe("ticket overlay refresh", () => {
     expect(container.textContent).not.toContain(
       "Automatic ticket lookup failed"
     );
-    expect(container.querySelector('[role="status"] .animate-spin')).not.toBeNull();
+    expect(
+      container.querySelector('[role="status"] .animate-spin')
+    ).not.toBeNull();
 
     await act(async () => {
       finishRefresh?.();
@@ -163,5 +180,43 @@ describe("ticket overlay refresh", () => {
     expect(
       copiedButton?.querySelector(".ticket-copy-check-icon")
     ).not.toBeNull();
+  });
+
+  // keep ticket utility sharing outside rider sharing analytics
+  it("shares a ticket without qualifying rider sharing analytics", async () => {
+    mocks.canShare.mockResolvedValue({ value: true });
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root?.render(
+        <BarcodeOverlay
+          onClose={vi.fn()}
+          onDelete={vi.fn()}
+          ticket={{ codeFormat: "qr", id: "ticket-1", type: "ticket" }}
+        />
+      );
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const shareButton = [...container.querySelectorAll("button")].find(
+      (button) => button.textContent?.trim() === "Share"
+    );
+    expect(shareButton).toBeDefined();
+
+    await act(async () => {
+      shareButton?.click();
+      await Promise.resolve();
+    });
+
+    expect(mocks.share).toHaveBeenCalledWith({
+      dialogTitle: "WSF Ticket",
+      text: "WSF Ticket",
+      title: "Shared Ticket on Ferry FYI",
+      url: `${process.env.BASE_URL}/tickets?add=ticket-1&format=qr`,
+    });
+    expect(mocks.trackUsefulEvent).not.toHaveBeenCalled();
   });
 });

@@ -1,7 +1,5 @@
 // @vitest-environment jsdom
 
-import { readFileSync } from "node:fs";
-
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
@@ -125,32 +123,8 @@ const clickShare = async (container: HTMLElement): Promise<void> => {
 };
 
 describe("classified menu sharing", () => {
-  // fixed owner metadata contract
-  it.each([
-    ["client/views/Route.tsx", "schedule"],
-    ["client/views/Cameras.tsx", "cameras"],
-    ["client/views/Bulletins.tsx", "bulletins"],
-    ["client/views/TerminalDetails.tsx", "terminal"],
-    ["client/views/Map.tsx", "map"],
-  ])("wires %s to its fixed %s surface", (path, surface) => {
-    const source = readFileSync(path, "utf8");
-
-    expect(source).toContain(`shareSurface: "${surface}"`);
-  });
-
-  // excluded utility shares stay unmeasured
-  it.each([
-    "client/views/Admin.tsx",
-    "client/components/AppVersionInfo.tsx",
-    "client/views/Tickets/BarcodeOverlay.tsx",
-  ])("keeps %s outside rider-share analytics", (path) => {
-    const source = readFileSync(path, "utf8");
-
-    expect(source).not.toContain('trackUsefulEvent("share_completed"');
-  });
-
   // successful classified shares
-  it.each(["schedule", "terminal", "map"] as const)(
+  it.each(["schedule", "cameras", "bulletins", "terminal", "map"] as const)(
     "qualifies a resolved %s share with fixed metadata only",
     async (surface) => {
       const container = await renderShareMenu(surface);
