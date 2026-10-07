@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 
 import { OtaRelease } from "shared/contracts/ota";
+import { isOtaAppVersion } from "shared/lib/ota";
 
 import { isReleaseNewer, parseOtaReleaseIndex } from "../lib/ota";
 import { getPublishedAppVersion } from "./publishedAppVersion";
@@ -15,7 +16,7 @@ export const createOtaReleaseVersion = (
   const parts = appVersion.split(".").map(Number);
   // reject noncanonical base versions and unsafe history counts
   if (
-    !/^(0|[1-9]\d*)\.(0|[1-9]\d*)$/u.test(appVersion) ||
+    !isOtaAppVersion(appVersion) ||
     parts.some((part) => !Number.isSafeInteger(part)) ||
     !Number.isSafeInteger(sourceCount) ||
     sourceCount < 1

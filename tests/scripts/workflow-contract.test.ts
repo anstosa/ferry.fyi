@@ -41,6 +41,20 @@ describe("CI workflow contract", () => {
     expect(publish).not.toContain("contents: write");
   });
 
+  // keep read credentials away from third-party bundle packaging
+  it("removes GitHub credentials before invoking Capgo", () => {
+    const publish = workflow("publish-ota.yml");
+    const resolveVersion = publish.indexOf(
+      "scripts/prepareOtaRelease.ts version"
+    );
+    const removeToken = publish.indexOf("unset GH_TOKEN");
+    const packageBundle = publish.indexOf("npx @capgo/cli bundle zip");
+
+    expect(resolveVersion).toBeGreaterThan(-1);
+    expect(removeToken).toBeGreaterThan(resolveVersion);
+    expect(packageBundle).toBeGreaterThan(removeToken);
+  });
+
   // bind runtime publication targets to their exact workflow jobs and steps
   it("keeps native publication protocol names aligned with workflows", () => {
     const apps = workflow("publish-apps.yml");

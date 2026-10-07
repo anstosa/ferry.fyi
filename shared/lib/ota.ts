@@ -1,9 +1,23 @@
 import {
   OTA_CHANNELS,
+  type OtaAppVersion,
   OtaChannel,
   OtaClientConfig,
   OtaClientEnvironment,
 } from "../contracts/ota";
+
+// share canonical native prefixes with composite publication metadata patterns
+export const OTA_APP_VERSION_PATTERN_SOURCE =
+  "(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)";
+const APP_VERSION_PATTERN = new RegExp(
+  `^${OTA_APP_VERSION_PATTERN_SOURCE}$`,
+  "u"
+);
+
+// validate the shared two-component native app grammar
+export const isOtaAppVersion = (value: unknown): value is OtaAppVersion => {
+  return typeof value === "string" && APP_VERSION_PATTERN.test(value);
+};
 
 // validate staged channel
 export const isOtaChannel = (value: string): value is OtaChannel => {

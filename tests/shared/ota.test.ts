@@ -9,10 +9,38 @@ import {
   OtaNoUpdate,
   OtaUpdateRequest,
 } from "../../shared/contracts/ota";
-import { getOtaClientConfig, isOtaChannel } from "../../shared/lib/ota";
+import {
+  getOtaClientConfig,
+  isOtaAppVersion,
+  isOtaChannel,
+} from "../../shared/lib/ota";
 
 // OTA contract and staged configuration
 describe("OTA contract and configuration", () => {
+  // share canonical native prefixes across request and publication boundaries
+  it.each(["0.0", "3.6", "12.34"])(
+    "accepts canonical native app versions: %s",
+    (version) => {
+      expect(isOtaAppVersion(version)).toBe(true);
+    }
+  );
+
+  // reject incomplete, decorated and non-string native prefixes
+  it.each([
+    "3",
+    "03.6",
+    "3.06",
+    "3.6.0",
+    "3.6-beta",
+    "3.6+source",
+    " 3.6",
+    "3.6\n",
+    null,
+    3.6,
+  ])("rejects noncanonical native app versions: %s", (version) => {
+    expect(isOtaAppVersion(version)).toBe(false);
+  });
+
   // capgo request payload
   it("models the custom-backend POST metadata", () => {
     const request: OtaUpdateRequest = {

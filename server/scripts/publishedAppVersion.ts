@@ -1,8 +1,11 @@
+import {
+  isOtaAppVersion,
+  OTA_APP_VERSION_PATTERN_SOURCE as VERSION_PATTERN,
+} from "shared/lib/ota";
+
 const API_VERSION = "2026-03-10";
 const WORKFLOW_FILE = "publish-apps.yml";
 const PAGE_SIZE = 100;
-const VERSION_PATTERN = "(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)";
-const VERSION_EXACT_PATTERN = new RegExp(`^${VERSION_PATTERN}$`, "u");
 const RUN_TITLE_PATTERN = new RegExp(
   `^Publish apps (${VERSION_PATTERN}) \\((android|ios|both)\\)$`,
   "u"
@@ -412,7 +415,7 @@ export const getPublishedAppVersion = async ({
       fetchImpl
     );
     // enforce canonical two-part marketing versions
-    if (!VERSION_EXACT_PATTERN.test(version)) {
+    if (!isOtaAppVersion(version)) {
       throw new Error("Published app version is not canonical");
     }
     versions.add(version);

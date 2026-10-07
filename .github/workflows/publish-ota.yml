@@ -153,6 +153,8 @@ jobs:
           set -euo pipefail
           # retain the latest successfully published native prefix and advance source revisions
           OTA_RELEASE_VERSION="$(cd server && node ../scripts/register-esbuild.js scripts/prepareOtaRelease.ts version)"
+          # keep github credentials out of third-party packaging tools
+          unset GH_TOKEN
           # create the full bundle with Capgo's canonical checksum and explicit version
           ZIP_RESULT="$(npx @capgo/cli bundle zip --bundle "${OTA_RELEASE_VERSION}" --path dist/client --json)"
           printf '%s\n' "${ZIP_RESULT}" > ota-bundle.json

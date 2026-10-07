@@ -31,7 +31,6 @@ describe("OTA publication", () => {
   // retain the latest native prefix while advancing source revisions
   it("derives stable increasing bundle versions from the published app version", () => {
     expect(createOtaReleaseVersion("3.6", 100)).toBe("3.6.100");
-    expect(createOtaReleaseVersion("3.6", 100)).toBe("3.6.100");
     expect(createOtaReleaseVersion("3.6", 101)).toBe("3.6.101");
     expect(createOtaReleaseVersion("3.7", 101)).toBe("3.7.101");
   });
