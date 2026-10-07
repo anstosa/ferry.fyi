@@ -1260,9 +1260,26 @@ test("opens the full fare table without JavaScript", async ({ browser }) => {
     await page.keyboard.press("Enter");
     await expect(details.locator("table")).toBeVisible();
     await expect(details).toContainText("$22.25");
-    await expect(details).toContainText("Direction-independent");
+    await expect(details.getByRole("columnheader")).toHaveText([
+      "Fare",
+      "Price (USD)",
+    ]);
+    await expect(details.locator("summary svg")).toHaveCSS(
+      "transform",
+      "matrix(-1, 0, 0, -1, 0, 0)"
+    );
+    // keep the complete two-column table inside the mobile container
+    const fitsContainer = await details
+      .locator("table")
+      .evaluate(
+        (table) =>
+          table.getBoundingClientRect().width <=
+          (table.parentElement?.getBoundingClientRect().width ?? 0) + 1
+      );
+    expect(fitsContainer).toBe(true);
     await page.keyboard.press("Enter");
     await expect(details.locator("table")).not.toBeVisible();
+    await expect(details.locator("summary svg")).toHaveCSS("transform", "none");
   } finally {
     await context.close();
   }
