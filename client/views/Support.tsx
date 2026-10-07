@@ -38,7 +38,7 @@ const Content = (): ReactElement => (
 
 /** support page */
 export const Support = (): ReactElement => (
-  <Page title="Support">
+  <Page publicTitle="Support">
     <SeoHelmet seo={getSeoMetadata("/support")} />
     <Content />
   </Page>

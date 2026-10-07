@@ -25,8 +25,16 @@ describe("same-origin advertiser reports", () => {
 
   it("serves a branded analytics-free no-store shell", async () => {
     const response = await request(reportApp()).get("/ad-reports/").expect(200);
+    const { document } = new JSDOM(response.text).window;
+    const descriptions = document.head.querySelectorAll(
+      'meta[name="description"]'
+    );
 
     expect(response.text).toContain("Ferry FYI campaign report");
+    expect(descriptions).toHaveLength(1);
+    expect(descriptions[0]?.getAttribute("content")?.trim()).toBeTruthy();
+    expect(document.querySelectorAll("img")).toHaveLength(1);
+    expect(document.querySelectorAll("img:not([alt])")).toHaveLength(0);
     expect(response.text).toContain("/static/images/ferry-fyi-logo.png");
     expect(response.text).toContain("/ad-reports/report.css");
     expect(response.text).not.toMatch(/google|sentry|dataLayer/i);
@@ -140,6 +148,13 @@ describe("same-origin advertiser reports", () => {
     expect(dom.window.document.querySelector("#daily")?.textContent).toContain(
       "2026-08-011232291837"
     );
+    // inspect the actual report icons after the script renders metrics
+    expect(
+      dom.window.document.querySelectorAll("details.metric-help img").length
+    ).toBeGreaterThan(0);
+    expect(dom.window.document.querySelectorAll("img:not([alt])")).toHaveLength(
+      0
+    );
 
     dom.window.document.querySelector<HTMLButtonElement>("#download")?.click();
     await vi.waitFor(() => {
@@ -196,6 +211,11 @@ describe("same-origin advertiser reports", () => {
       .expect(200);
 
     expect(shell.text).toContain("/legacy-ad-report-redirect.js");
+    const descriptions = new JSDOM(
+      shell.text
+    ).window.document.head.querySelectorAll('meta[name="description"]');
+    expect(descriptions).toHaveLength(1);
+    expect(descriptions[0]?.getAttribute("content")?.trim()).toBeTruthy();
     expect(shell.headers["cache-control"]).toBe("no-store");
     expect(script.text).toContain(
       'new URL("/ad-reports/", "https://ferry.fyi")'

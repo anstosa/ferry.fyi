@@ -11,11 +11,12 @@ import { useAppRenderContext } from "../lib/renderContext";
 
 const seo = getSeoMetadata("/about");
 
+// render the public about page
 export const About = (): ReactElement => {
   const { runtime } = useAppRenderContext();
 
   return (
-    <Page>
+    <Page publicTitle="Ferry FYI">
       <SeoHelmet seo={seo} />
       <p className="mt-4">
         A ferry schedule and tracker for the greater Seattle area. Supports all{" "}

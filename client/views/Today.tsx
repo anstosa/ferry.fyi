@@ -12,10 +12,15 @@ import type { Terminal } from "shared/contracts/terminals";
 import { findWhere } from "shared/lib/arrays";
 import { isNull } from "shared/lib/identity";
 import { getSeoMetadata } from "shared/lib/seo";
+import { getPublicSsrHostProfile } from "shared/lib/ssrRouteMatch";
 
+import { PublicScheduleDetails } from "~/components/PublicScheduleDetails";
 import { SeoHelmet } from "~/components/SeoHelmet";
 import { Skeleton, SkeletonGroup } from "~/components/Skeleton";
-import { useAppRenderContext } from "~/lib/renderContext";
+import {
+  type AppRenderContextValue,
+  useAppRenderContext,
+} from "~/lib/renderContext";
 import { getSchedule, requireScheduleResponse } from "~/lib/schedule";
 import {
   getPublicSsrSource,
@@ -41,6 +46,42 @@ const TODAY_SOURCE_LABELS = {
 type TodaySourceKey = keyof typeof TODAY_SOURCE_LABELS;
 type RefreshableTodaySourceKey = "schedule" | "nextSchedule";
 type TodaySourceOverride = PublicSsrSourceOutcome<RefreshableTodaySourceKey>;
+
+// bind the persistent document seed to the current Today location
+function getMatchingTodaySnapshot(
+  snapshot: PublicSsrSnapshot | undefined,
+  context: Pick<AppRenderContextValue, "requestUrl" | "seoPathname">
+): PublicSsrSnapshot | undefined {
+  // reject a seed produced for another public route
+  if (!snapshot || snapshot.routeId !== "today") {
+    return undefined;
+  }
+  let currentUrl: URL;
+  try {
+    currentUrl = new URL(context.requestUrl);
+  } catch {
+    return undefined;
+  }
+  const currentHostProfile = getPublicSsrHostProfile(currentUrl.hostname);
+  // reject hosts outside the public resolver
+  if (!currentHostProfile) {
+    return undefined;
+  }
+  const expectedPath =
+    currentHostProfile === "howmanyboats.today" ? "/" : "/today";
+  // reject cross-host and post-navigation seed reuse
+  if (
+    snapshot.canonicalHost !== currentHostProfile ||
+    snapshot.hostProfile !== currentHostProfile ||
+    snapshot.canonicalPath !== expectedPath ||
+    snapshot.normalizedUrl.path !== expectedPath ||
+    context.seoPathname !== expectedPath ||
+    currentUrl.pathname !== expectedPath
+  ) {
+    return undefined;
+  }
+  return snapshot;
+}
 
 const UNAVAILABLE_REASON_LABELS = {
   "not-published": "not published",
@@ -84,14 +125,16 @@ interface TodaySourceFreshnessProps {
   nextScheduleOutcome: PublicSsrSourceOutcome<"nextSchedule"> | undefined;
   pageRenderedAt: string | null;
   scheduleOutcome: PublicSsrSourceOutcome<"schedule"> | undefined;
+  snapshot: PublicSsrSnapshot | undefined;
 }
 
 function TodaySourceFreshness({
   nextScheduleOutcome,
   pageRenderedAt,
   scheduleOutcome,
+  snapshot,
 }: TodaySourceFreshnessProps): ReactElement | null {
-  const snapshot = usePublicSsrSnapshot();
+  // omit freshness when the current page has no matching seed
   if (!snapshot) {
     return null;
   }
@@ -160,9 +203,14 @@ function getBoatCount(schedule: Schedule): number {
   return boatCount;
 }
 
+// combine the public boat count with complete service schedules
 export const Today = (): ReactElement => {
-  const { clock } = useAppRenderContext();
-  const snapshot = usePublicSsrSnapshot();
+  const renderContext = useAppRenderContext();
+  const { clock } = renderContext;
+  const snapshot = getMatchingTodaySnapshot(
+    usePublicSsrSnapshot(),
+    renderContext
+  );
   const seededSchedule = getPublicSsrSource(snapshot, "schedule");
   const seededNextSchedule = getPublicSsrSource(snapshot, "nextSchedule");
   const seededScheduleOutcome = getPublicSsrSourceOutcome(snapshot, "schedule");
@@ -329,6 +377,7 @@ export const Today = (): ReactElement => {
               nextScheduleOutcome={nextScheduleOutcome}
               pageRenderedAt={pageRenderedAt}
               scheduleOutcome={scheduleOutcome}
+              snapshot={snapshot}
             />
           </div>
           <div />
@@ -348,7 +397,7 @@ export const Today = (): ReactElement => {
       <SeoHelmet seo={getSeoMetadata("/today")} title="How Many Boats?" />
       <main
         className={clsx(
-          "fixed inset-0 h-full p-8",
+          "fixed inset-0 h-full overflow-auto p-8",
           "text-white text-center",
           "flex flex-col items-center justify-between",
           { "bg-green-dark": todayCount === 2, "bg-red-dark": todayCount === 1 }
@@ -396,9 +445,50 @@ export const Today = (): ReactElement => {
             nextScheduleOutcome={nextScheduleOutcome}
             pageRenderedAt={pageRenderedAt}
             scheduleOutcome={scheduleOutcome}
+            snapshot={snapshot}
           />
         </div>
-        <div />
+        <section className="mt-6 w-full max-w-6xl shrink-0 text-left">
+          <p>
+            Direction:{" "}
+            {getPublicSsrSource(snapshot, "route")?.terminal.name ??
+              terminal?.name ??
+              "Clinton"}{" "}
+            to{" "}
+            {getPublicSsrSource(snapshot, "route")?.mate.name ??
+              mate?.name ??
+              "Mukilteo"}
+            .
+          </p>
+          {getPublicSsrSource(snapshot, "wsf")?.offline ? (
+            <p>WSF live data is temporarily offline.</p>
+          ) : null}
+          {getPublicSsrSource(snapshot, "notices")?.maintenance.enabled ? (
+            <p>
+              {getPublicSsrSource(snapshot, "notices")?.maintenance.message}
+            </p>
+          ) : null}
+          {getPublicSsrSource(snapshot, "notices")?.announcements.map(
+            (notice) => (
+              <section key={notice.id}>
+                <h2>{notice.title}</h2>
+                <p>{notice.body}</p>
+              </section>
+            )
+          )}
+          <PublicScheduleDetails
+            schedule={schedule}
+            title="Current service date"
+          />
+          {nextSchedule ? (
+            <PublicScheduleDetails
+              schedule={nextSchedule}
+              title="Next service date"
+            />
+          ) : (
+            <p>Next service date schedule is temporarily unavailable.</p>
+          )}
+        </section>
       </main>
     </>
   );

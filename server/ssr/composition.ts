@@ -1,5 +1,8 @@
 import { getWsfStatus } from "~/lib/wsf/api";
-import { getServableAdCreative } from "~/services/public/adTracking";
+import {
+  getPublicAdServingState,
+  getServableAdCreative,
+} from "~/services/public/adTracking";
 import { getPublicCameraFrames } from "~/services/public/cameras";
 import { getPublicContent } from "~/services/public/content";
 import { createPublicFareQueryService } from "~/services/public/fares";
@@ -77,6 +80,7 @@ export const createSsrRuntime = async ({
     load: createPublicSsrSnapshotLoader({ services }),
     release,
     renderer,
+    resolveAdServingState: getPublicAdServingState,
     resolve: createPublicSsrCanonicalResolver({
       getTerminals: getPublicTerminals,
     }),

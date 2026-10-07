@@ -32,16 +32,6 @@ import { createAppRoutes } from "~/routes";
 import DumpsterFireIcon from "~/static/images/icons/solid/dumpster-fire.svg";
 import OfflineIcon from "~/static/images/icons/solid/signal-alt-slash.svg";
 
-const InitialRouteReady = ({
-  children,
-  onReady,
-}: React.PropsWithChildren<{ onReady: () => void }>): ReactElement => {
-  useEffect(() => {
-    onReady();
-  }, [onReady]);
-  return <>{children}</>;
-};
-
 // identify canonical advertiser reports
 const isAdvertiserReportUrl = (url: URL): boolean =>
   url.protocol === "https:" &&
@@ -54,7 +44,6 @@ export const App = ({
 }: {
   suspendInitialRoute?: boolean;
 }): ReactElement => {
-  const initialRoutePending = useRef(suspendInitialRoute);
   useEffect(() => {
     // Acknowledge the bundle only after the app has rendered successfully.
     initializeOtaUpdater({
@@ -77,6 +66,12 @@ export const App = ({
   const [{ alertRules }] = useUser();
   const initializePush = usePush(false);
   const routeResetKey = `${location.pathname}${location.search}`;
+  const initialRouteResetKey = useRef(routeResetKey);
+  const hasLeftInitialRoute = useRef(false);
+  // permanently enable in-app loading after navigation
+  if (routeResetKey !== initialRouteResetKey.current) {
+    hasLeftInitialRoute.current = true;
+  }
   const routeParts = location.pathname.split("/").filter(Boolean);
   const isScheduleRoute =
     // one-terminal route
@@ -199,13 +194,13 @@ export const App = ({
   const element = useRoutes(createAppRoutes(withRouteBoundary));
 
   if (element) {
-    const routeElement = initialRoutePending.current ? (
-      <InitialRouteReady onReady={() => (initialRoutePending.current = false)}>
-        {element}
-      </InitialRouteReady>
-    ) : (
-      <Suspense fallback={<AppLoadingState />}>{element}</Suspense>
-    );
+    // select the route loading boundary
+    const routeElement =
+      suspendInitialRoute && !hasLeftInitialRoute.current ? (
+        element
+      ) : (
+        <Suspense fallback={<AppLoadingState />}>{element}</Suspense>
+      );
     return (
       <>
         {routeElement}

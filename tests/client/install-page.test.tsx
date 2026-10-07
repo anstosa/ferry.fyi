@@ -18,6 +18,8 @@ vi.mock("~/components/Page", () => ({
 }));
 vi.mock("~/components/SeoHelmet", () => ({ SeoHelmet: () => null }));
 vi.mock("~/lib/appInstall", () => ({
+  APPLE_APP_STORE_URL: "https://apps.example/app",
+  GOOGLE_PLAY_URL: "https://play.example/app",
   getBrowserInstallPlatform: () => mocks.platform,
   getInstallStoreUrl: (platform: string) => {
     // deterministic store doubles

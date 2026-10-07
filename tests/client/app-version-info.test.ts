@@ -2,6 +2,10 @@
 
 import React, { act } from "react";
 import { createRoot, Root } from "react-dom/client";
+import {
+  PUBLIC_SSR_SNAPSHOT_VERSION,
+  type PublicSsrSnapshot,
+} from "shared/contracts/ssr";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const app = vi.hoisted(() => ({ getInfo: vi.fn() }));
@@ -20,6 +24,7 @@ import {
   getWebVersion,
 } from "../../client/components/AppVersionInfo";
 import { AppRenderProvider } from "../../client/lib/renderContext";
+import { PublicSsrSeedProvider } from "../../client/lib/ssrSeed";
 
 let root: Root | undefined;
 
@@ -38,8 +43,11 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+// render the requested platform and document phase
 const renderVersionInfo = async (
-  platform: "android" | "ios" | "web" = "web"
+  platform: "android" | "ios" | "web" = "web",
+  runtime: "browser" | "hydrate" | "server" = "browser",
+  snapshot?: PublicSsrSnapshot
 ): Promise<HTMLDivElement> => {
   const container = document.createElement("div");
   document.body.appendChild(container);
@@ -55,13 +63,17 @@ const renderVersionInfo = async (
             hasInjectedRequest: true,
             platform,
             requestUrl: "https://ferry.fyi/about",
-            runtime: "browser",
+            runtime,
             seoBaseUrl: "https://ferry.fyi",
             seoHost: "ferry.fyi",
             seoPathname: "/about",
           },
         },
-        React.createElement(AppVersionInfo)
+        React.createElement(
+          PublicSsrSeedProvider,
+          { snapshot },
+          React.createElement(AppVersionInfo)
+        )
       )
     );
     await Promise.resolve();
@@ -115,10 +127,7 @@ describe("getWebVersion", () => {
   // verify build-inlined defaults
   it("reads build-inlined production values without an environment argument", () => {
     vi.stubEnv("NODE_ENV", "production");
-    vi.stubEnv(
-      "RELEASE_VERSION",
-      "0123456789abcdef0123456789abcdef01234567"
-    );
+    vi.stubEnv("RELEASE_VERSION", "0123456789abcdef0123456789abcdef01234567");
     document.head.innerHTML =
       '<meta name="ferry-fyi-release" content="fedcba9876543210fedcba9876543210fedcba98" />';
 
@@ -127,6 +136,50 @@ describe("getWebVersion", () => {
 });
 
 describe("AppVersionInfo", () => {
+  // keep document text independent of ambient build and head values
+  it.each(["server", "hydrate"] as const)(
+    "uses the snapshot release during %s rendering",
+    async (runtime) => {
+      vi.stubEnv("NODE_ENV", "production");
+      vi.stubEnv("RELEASE_VERSION", "build-release");
+      document.head.innerHTML =
+        '<meta name="ferry-fyi-release" content="ambient-release" />';
+      const snapshot: PublicSsrSnapshot = {
+        canonicalHost: "ferry.fyi",
+        canonicalPath: "/about",
+        hostProfile: "ferry.fyi",
+        indexability: "indexable",
+        metadata: {
+          canonicalPath: "/about",
+          description: "About Ferry FYI",
+          robots: "index,follow",
+          title: "About Ferry FYI",
+        },
+        normalizedUrl: { path: "/about", query: {} },
+        renderedAt: "2026-07-29T00:00:00.000Z",
+        routeId: "about",
+        routeParams: {},
+        sources: {
+          editorial: {
+            observedAt: "2026-07-29T00:00:00.000Z",
+            outcome: "value",
+            sourceUpdatedAt: "2026-07-29T00:00:00.000Z",
+            value: {
+              contentRevision: "fixture-content",
+              release: { publishedAt: null, version: "snapshot-release" },
+            },
+          },
+        },
+        version: PUBLIC_SSR_SNAPSHOT_VERSION,
+      };
+      const container = await renderVersionInfo("web", runtime, snapshot);
+
+      expect(container.textContent).toBe("Web snapshot-release");
+      expect(app.getInfo).not.toHaveBeenCalled();
+      expect(updater.current).not.toHaveBeenCalled();
+    }
+  );
+
   it("shows the web version without querying native plugins", async () => {
     const container = await renderVersionInfo();
 

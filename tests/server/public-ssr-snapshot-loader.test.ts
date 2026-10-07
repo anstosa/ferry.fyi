@@ -11,10 +11,14 @@ import {
   createPublicSsrSnapshotLoader,
   createPublicSsrTerminalResolver,
   type PublicSsrSnapshotServices,
+  PublicSsrIntegrityFailure,
   PublicSsrTransientFailure,
   toPublicSsrVessel,
 } from "../../server/ssr/publicSnapshot";
+import { getPublicAdServingFingerprint } from "../../server/services/public/adTracking";
 import { PUBLIC_SSR_SNAPSHOT_SCRIPT_ID } from "../../shared/contracts/ssrDocument";
+import { getPublicSsrAdPlacementBinding } from "../../shared/lib/ssrAdPlacement";
+import { matchPublicSsrRoute } from "../../shared/lib/ssrRouteMatch";
 import { assertPublicSsrSnapshot } from "../../shared/lib/ssrValidation";
 
 const observedAt = "2026-07-28T12:00:00.000Z";
@@ -258,6 +262,60 @@ describe("public SSR snapshot loader", () => {
         placementKey: "home",
       },
     });
+  });
+
+  it("uses one injected serving decision and rejects a mismatched binding", async () => {
+    const publicServices = services();
+    const homeMatch = matchPublicSsrRoute(
+      new URL("https://ferry.fyi/"),
+      createPublicSsrTerminalResolver()
+    );
+    if (!homeMatch) {
+      throw new Error("Expected the home route");
+    }
+    const binding = getPublicSsrAdPlacementBinding(homeMatch);
+    if (!binding) {
+      throw new Error("Expected the home placement");
+    }
+    const publicCreative = {
+      advertiserName: "Injected advertiser",
+      body: "Injected body",
+      campaignId: "campaign-injected",
+      headline: "Injected headline",
+      placementKey: "home",
+      targetUrl: "https://example.com/injected",
+    };
+    const adServingBinding = {
+      ...binding,
+      creative: publicCreative,
+      fingerprint: getPublicAdServingFingerprint("home", publicCreative),
+    };
+    const loader = createPublicSsrSnapshotLoader({ services: publicServices });
+
+    await expect(
+      loader({ ...input("https://ferry.fyi/"), adServingBinding })
+    ).resolves.toMatchObject({
+      classification: "snapshot",
+      snapshot: {
+        sources: {
+          ad: { value: { creative: { headline: "Injected headline" } } },
+        },
+      },
+    });
+    expect(publicServices.getAdCreative).not.toHaveBeenCalled();
+
+    await expect(
+      loader({
+        ...input("https://ferry.fyi/"),
+        adServingBinding: {
+          ...adServingBinding,
+          routeIdentity: {
+            ...adServingBinding.routeIdentity,
+            canonicalPath: "/today",
+          },
+        },
+      })
+    ).rejects.toBeInstanceOf(PublicSsrIntegrityFailure);
   });
 
   it("round-trips a terminal-and-mate snapshot through the document seed parser", async () => {
@@ -1033,6 +1091,33 @@ describe("public SSR snapshot loader", () => {
       classification: "redirect",
       redirectTo: "/seattle/terminal",
       snapshot: undefined,
+    });
+  });
+
+  it("projects terminal information as meaningful plain text", async () => {
+    const publicServices = services();
+    const terminals = makeTerminals();
+    terminals["5"].info = {
+      construction:
+        "<p>Use the <strong>south lane</strong> &amp; follow signs.</p><p>Expect delays.</p>",
+    };
+    publicServices.getTerminals.mockResolvedValue(terminals);
+
+    const snapshot = await snapshotFor(
+      "https://ferry.fyi/clinton/terminal",
+      publicServices
+    );
+
+    expect(snapshot.sources.route).toMatchObject({
+      outcome: "value",
+      value: {
+        terminal: {
+          info: {
+            construction:
+              "Use the south lane & follow signs.\n\nExpect delays.",
+          },
+        },
+      },
     });
   });
 

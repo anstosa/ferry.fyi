@@ -5,7 +5,6 @@ import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 
 import { PrivacyPolicy } from "../../client/views/PrivacyPolicy";
-import { PublicEditorialPage } from "../../client/views/PublicSsrPages";
 
 describe("privacy and advertising policy", () => {
   // retain the same shared-origin disclosure before browser-only content loads
@@ -13,18 +12,16 @@ describe("privacy and advertising policy", () => {
     const html = renderToStaticMarkup(
       <HelmetProvider>
         <MemoryRouter>
-          <PublicEditorialPage page="privacy" />
+          <PrivacyPolicy />
         </MemoryRouter>
       </HelmetProvider>
     );
     expect(html).toContain("starting address is kept in the page URL fragment");
-    expect(html).toContain("may remain in browser history");
-    expect(html).toContain("included when you share the trip link");
-    expect(html).toContain("Shared links only prefill the form");
-    expect(html).toContain(
-      "without requesting location or automatically calculating an estimate"
-    );
-    expect(html).toContain("does not retain submitted origins or suggestions");
+    expect(html).toContain("may remain in your browser history");
+    expect(html).toContain("Sharing the trip link includes that address");
+    expect(html).toContain("Opening a shared link only prefills the form");
+    expect(html).toContain("does not request your location or automatically");
+    expect(html).toContain("does not retain these origins or suggestions");
   });
 
   // disclose transient travel inputs independently of advertising rules

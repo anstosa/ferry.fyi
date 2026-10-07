@@ -5,8 +5,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AppRenderContextValue } from "../../client/lib/renderContext";
 import type { Camera } from "../../shared/contracts/cameras";
 import {
-  type PublicSsrSnapshot,
   PUBLIC_SSR_SNAPSHOT_VERSION,
+  type PublicSsrSnapshot,
 } from "../../shared/contracts/ssr";
 import {
   createStaticPublicSsrTerminalResolver,
@@ -55,7 +55,10 @@ const createPublicSsrFixtures = () => {
     hasRestroom: true,
     hasWaitingRoom: true,
     id: "5",
-    info: {},
+    info: {
+      parking: "Use the public parking lot.",
+      ada: "Accessible boarding is available.",
+    },
     location: {
       address: {
         city: "Clinton",
@@ -81,9 +84,15 @@ const createPublicSsrFixtures = () => {
         terminalIds: ["5", "14"],
       },
     },
-    terminalUrl: null,
-    vesselWatchUrl: null,
-    waitTimes: [],
+    terminalUrl: "https://example.com/terminal",
+    vesselWatchUrl: "https://example.com/vessel-watch",
+    waitTimes: [
+      {
+        title: "Vehicle wait",
+        description: "One sailing wait",
+        time: 1785240000,
+      },
+    ],
   };
   const mate = {
     ...terminal,
@@ -132,7 +141,39 @@ const createPublicSsrFixtures = () => {
       bulletins: source([]),
       cameraFrames: source({ frames: {}, sourceUpdatedAt: null }),
       fares: source({
-        catalog: { fares: [] },
+        catalog: {
+          kind: "catalog",
+          collectionDescription: "Fixture one-way collection",
+          request: {
+            arrivingTerminalId: "14",
+            departingTerminalId: "5",
+            roundTrip: false,
+            tripDate: "2026-07-28",
+          },
+          freshness: {
+            fetchedAt: 1785240000,
+            sourceCacheFlushDate: null,
+            validFrom: "2026-07-01",
+            validThrough: "2026-09-30",
+            policyVersion: "fixture",
+          },
+          fares: [
+            {
+              id: 1,
+              label: "Adult passenger",
+              category: "Passenger",
+              amount: 10.5,
+              directionIndependent: false,
+            },
+            {
+              id: 2,
+              label: "Vehicle and driver",
+              category: "Vehicle",
+              amount: 22,
+              directionIndependent: true,
+            },
+          ],
+        },
         state: "current",
       }),
       nextSchedule: source({
@@ -161,6 +202,22 @@ const createPublicSsrFixtures = () => {
           mateId: "14",
           slots: [
             {
+              arrivalTime: 1_753_705_200,
+              weather: {
+                cloudCoverPercent: 30,
+                highTemperatureC: 22,
+                precipitationMm: 0.5,
+                temperatureC: 20,
+                windGustKmh: 18,
+                windSpeedKmh: 12,
+              },
+              tide: {
+                stationId: "9447130",
+                waterLevelM: 1.5,
+                arrivalStationId: "9444900",
+                arrivalWaterLevelM: 1.2,
+                lowestWaterLevelM: 1.1,
+              },
               allowsPassengers: true,
               allowsVehicles: true,
               crossing: {
@@ -177,6 +234,16 @@ const createPublicSsrFixtures = () => {
                 vesselName: "Tokitae",
               },
               estimate: {
+                confidence: "medium",
+                source: "blended",
+                sampleSize: 42,
+                factors: [
+                  {
+                    detail: "Afternoon commuter demand",
+                    impact: "higher",
+                    label: "Commute",
+                  },
+                ],
                 driveUpCapacity: 12,
                 fullProbability: 0.46,
                 fullRisk: "unlikely",
@@ -221,20 +288,16 @@ const createTodaySnapshot = (
 describe("AppRoot server rendering", () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  it(
-    "renders ad content into the initial route HTML",
-    async () => {
-      const { snapshot } = createPublicSsrFixtures();
+  it("renders ad content into the initial route HTML", async () => {
+    const { snapshot } = createPublicSsrFixtures();
 
-      const { markup } = await render("https://ferry.fyi/clinton", snapshot);
+    const { markup } = await render("https://ferry.fyi/clinton", snapshot);
 
-      expect(markup).toContain(
-        'data-ad-campaign="5ed338e9-acbb-4cca-9380-1a923bfca5c8"'
-      );
-      expect(markup).toContain("Fuel up before sailing");
-    },
-    30_000
-  );
+    expect(markup).toContain(
+      'data-ad-campaign="5ed338e9-acbb-4cca-9380-1a923bfca5c8"'
+    );
+    expect(markup).toContain("Fuel up before sailing");
+  }, 30_000);
 
   it("keeps the transition shell constrained to the scroll viewport", async () => {
     const { markup } = await render("https://ferry.fyi/about");
@@ -376,7 +439,7 @@ describe("AppRoot server rendering", () => {
         "/clinton/mukilteo/map",
         {
           sources: ["route", "vessels", "notices"],
-          text: "Live vessel positions",
+          text: "Vessel positions",
         },
       ],
       [
@@ -646,4 +709,116 @@ describe("AppRoot server rendering", () => {
       )
     );
   }, 15_000);
+  it("exposes complete schedule, terminal, fare and vessel facts in semantic initial HTML", async () => {
+    const { snapshot, source, terminal, mate } = createPublicSsrFixtures();
+    const schedule = await render("https://ferry.fyi/clinton", snapshot);
+    for (const text of [
+      "Next service date",
+      "2026-07-29",
+      "Arrival",
+      "Passengers: allowed",
+      "Vehicles: allowed",
+      "Confidence: medium",
+      "42",
+      "Afternoon commuter demand",
+      "20°C",
+      "12 km/h",
+      "1.5 m",
+      'aria-label="Route navigation"',
+    ]) {
+      expect(schedule.markup).toContain(text);
+    }
+    const details = await render(
+      "https://ferry.fyi/clinton/terminal",
+      snapshot
+    );
+    for (const text of [
+      "Use the public parking lot.",
+      "Accessible boarding is available.",
+      "One sailing wait",
+      "20 minutes",
+      "https://example.com/terminal",
+      "47.9",
+    ]) {
+      expect(details.markup).toContain(text);
+    }
+    const fare = await render(
+      "https://ferry.fyi/clinton/mukilteo/fare",
+      snapshot
+    );
+    expect(fare.markup).toMatch(
+      /<section[^>]*aria-label="Fare estimator"[\s\S]*<\/section><details/
+    );
+    expect(fare.markup).toContain("Show full fare table");
+    expect(fare.markup).toContain('data-fare-id="1"');
+    expect(fare.markup).toContain('data-fare-id="2"');
+    const vesselSnapshot = {
+      ...snapshot,
+      sources: {
+        ...snapshot.sources,
+        route: source({ terminal, mate }),
+        vessels: source([
+          {
+            id: "1",
+            abbreviation: "TOK",
+            name: "Tokitae",
+            inService: true,
+            inMaintenance: false,
+            isAtDock: false,
+            location: { latitude: 47.91, longitude: -122.31 },
+            heading: 90,
+            speed: 12,
+          },
+        ]),
+      },
+    } as PublicSsrSnapshot;
+    const map = await render(
+      "https://ferry.fyi/clinton/mukilteo/map",
+      vesselSnapshot
+    );
+    for (const text of [
+      "Tokitae",
+      "In service: yes",
+      "Maintenance: no",
+      "Heading: 90°",
+      "Speed: 12 knots",
+      "47.910",
+    ]) {
+      expect(map.markup).toContain(text);
+    }
+  });
+  // preserve exact direction and truthful provider units
+  it("keeps multi-mate route facts and terminal links canonical", async () => {
+    const { snapshot, source, terminal, mate } = createPublicSsrFixtures();
+    const seeded = {
+      ...snapshot,
+      sources: {
+        ...snapshot.sources,
+        route: source({
+          mate,
+          terminal: {
+            ...terminal,
+            mates: [
+              ...terminal.mates,
+              { id: "3", name: "Other terminal", abbreviation: "OTH" },
+            ],
+            routes: {
+              ...terminal.routes,
+              unrelated: {
+                id: "unrelated",
+                terminalIds: ["5", "3"],
+                description: "Unrelated crossing",
+                crossingTime: 99,
+              },
+            },
+          },
+        }),
+      },
+    } as PublicSsrSnapshot;
+    const schedule = await render("https://ferry.fyi/clinton/mukilteo", seeded);
+    expect(schedule.markup).toContain('href="/clinton/terminal"');
+    expect(schedule.markup).not.toContain('href="/clinton/mukilteo/terminal"');
+    expect(schedule.markup).not.toContain("Unrelated crossing");
+    expect(schedule.markup).toContain("m MLLW");
+  });
 });

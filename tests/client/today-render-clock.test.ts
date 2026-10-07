@@ -32,8 +32,15 @@ import {
   type PublicSsrSnapshot,
 } from "../../shared/contracts/ssr";
 
-const slot = (id: string): Slot =>
+globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+
+// create a complete public sailing fixture
+const slot = (id: string, index: number): Slot =>
   ({
+    allowsPassengers: true,
+    allowsVehicles: true,
+    time: 1785254400 + index * 3600,
+    wuid: `${id}-${index}`,
     hasPassed: false,
     vessel: { id, name: id },
   }) as Slot;
@@ -94,7 +101,16 @@ const snapshot = {
 
 const renderToday = (
   now: number,
-  seededSnapshot: PublicSsrSnapshot = snapshot
+  seededSnapshot: PublicSsrSnapshot = snapshot,
+  context: {
+    requestUrl: string;
+    seoHost: "ferry.fyi" | "howmanyboats.today";
+    seoPathname: string;
+  } = {
+    requestUrl: "https://ferry.fyi/today",
+    seoHost: "ferry.fyi",
+    seoPathname: "/today",
+  }
 ): string =>
   renderToStaticMarkup(
     React.createElement(
@@ -104,11 +120,11 @@ const renderToday = (
           clock: () => now,
           hasInjectedRequest: true,
           platform: "web",
-          requestUrl: "https://ferry.fyi/today",
+          requestUrl: context.requestUrl,
           runtime: "server",
-          seoBaseUrl: "https://ferry.fyi",
-          seoHost: "ferry.fyi",
-          seoPathname: "/today",
+          seoBaseUrl: new URL(context.requestUrl).origin,
+          seoHost: context.seoHost,
+          seoPathname: context.seoPathname,
         },
       },
       React.createElement(
@@ -162,6 +178,100 @@ describe("Today request clock", () => {
     );
   });
 
+  it("retains the matching howmanyboats.today root seed", () => {
+    const howManyBoatsSnapshot = {
+      ...snapshot,
+      canonicalHost: "howmanyboats.today",
+      canonicalPath: "/",
+      hostProfile: "howmanyboats.today",
+      metadata: { ...snapshot.metadata, canonicalPath: "/" },
+      normalizedUrl: { path: "/", query: {} },
+    } as PublicSsrSnapshot;
+    const markup = renderToday(
+      Date.parse("2026-07-29T05:00:00.000Z"),
+      howManyBoatsSnapshot,
+      {
+        requestUrl: "https://howmanyboats.today/",
+        seoHost: "howmanyboats.today",
+        seoPathname: "/",
+      }
+    );
+
+    expect(markup).toContain("How Many Boats Are There Today?");
+    expect(markup).toContain('data-public-ssr-source="schedule"');
+    expect(markup).not.toContain("Loading today&#x27;s boat count");
+  });
+
+  it.each([
+    "http://localhost:4040/today",
+    "https://dev.ferry.fyi/today",
+    "https://ferry.fyi./today",
+  ])("retains the Ferry FYI Today seed on approved host %s", (requestUrl) => {
+    const markup = renderToday(
+      Date.parse("2026-07-29T05:00:00.000Z"),
+      snapshot,
+      {
+        requestUrl,
+        seoHost: "ferry.fyi",
+        seoPathname: "/today",
+      }
+    );
+
+    expect(markup).toContain("How Many Boats Are There Today?");
+    expect(markup).toContain('data-public-ssr-source="schedule"');
+    expect(markup).not.toContain("Loading today&#x27;s boat count");
+  });
+
+  it.each([
+    [
+      "route",
+      { ...snapshot, routeId: "home" } as unknown as PublicSsrSnapshot,
+      {
+        requestUrl: "https://ferry.fyi/today",
+        seoHost: "ferry.fyi" as const,
+        seoPathname: "/today",
+      },
+    ],
+    [
+      "host",
+      {
+        ...snapshot,
+        canonicalHost: "howmanyboats.today",
+        canonicalPath: "/",
+        hostProfile: "howmanyboats.today",
+        metadata: { ...snapshot.metadata, canonicalPath: "/" },
+        normalizedUrl: { path: "/", query: {} },
+      } as PublicSsrSnapshot,
+      {
+        requestUrl: "https://ferry.fyi/today",
+        seoHost: "ferry.fyi" as const,
+        seoPathname: "/today",
+      },
+    ],
+    [
+      "path",
+      snapshot,
+      {
+        requestUrl: "https://ferry.fyi/about",
+        seoHost: "ferry.fyi" as const,
+        seoPathname: "/about",
+      },
+    ],
+  ])(
+    "rejects a persistent Today seed on another %s",
+    (_label, seed, context) => {
+      const markup = renderToday(
+        Date.parse("2026-07-29T05:00:00.000Z"),
+        seed,
+        context
+      );
+
+      expect(markup).toContain("Loading today&#x27;s boat count");
+      expect(markup).not.toContain("Direction:");
+      expect(markup).not.toContain('data-public-ssr-source="schedule"');
+    }
+  );
+
   it("renders deterministic semantic snapshot freshness metadata", () => {
     const markup = renderToday(Date.parse("2026-07-29T05:00:00.000Z"));
 
@@ -176,7 +286,13 @@ describe("Today request clock", () => {
     ]) {
       expect(markup).toContain(`data-public-ssr-source="${sourceKey}"`);
     }
-    expect(markup.match(/<time/g)).toHaveLength(6);
+    const document = new DOMParser().parseFromString(markup, "text/html");
+    expect(
+      document.querySelectorAll('[aria-label="Today source freshness"] time')
+    ).toHaveLength(6);
+    expect(
+      document.querySelectorAll("main > section time").length
+    ).toBeGreaterThan(0);
     expect(markup).toContain(
       '<time dateTime="2026-07-29T04:59:00.000Z">Jul 28, 9:59 PM PDT</time>'
     );
@@ -358,5 +474,96 @@ describe("Today request clock", () => {
       container.querySelector('[data-public-ssr-source="route"]')?.innerHTML
     ).toContain("2026-07-29T04:59:00.000Z");
     expect(container.textContent).not.toContain("Page generated");
+  });
+
+  it("uses only live Clinton-Mukilteo data after rejecting a stale route seed", async () => {
+    const staleSnapshot = {
+      ...snapshot,
+      canonicalPath: "/about",
+      metadata: { ...snapshot.metadata, canonicalPath: "/about" },
+      normalizedUrl: { path: "/about", query: {} },
+      sources: {
+        ...snapshot.sources,
+        notices: source({
+          announcements: [
+            {
+              body: "Old route announcement body",
+              id: "old-route-notice",
+              title: "Old route announcement",
+            },
+          ],
+          maintenance: { enabled: true, message: "Old route maintenance" },
+        }),
+        route: source({
+          mate: { id: "88", name: "Old Mate" },
+          terminal: { id: "99", name: "Old Terminal" },
+        }),
+      },
+    } as PublicSsrSnapshot;
+    mocks.getSchedule
+      .mockResolvedValueOnce({
+        schedule: schedule("2026-07-28", ["Kittitas", "Kittitas"]),
+        timestamp: Date.parse("2026-07-29T05:30:00.000Z") / 1000,
+      })
+      .mockResolvedValueOnce({
+        schedule: schedule("2026-07-29", ["Chelan", "Chelan"]),
+        timestamp: Date.parse("2026-07-29T06:00:00.000Z") / 1000,
+      });
+    const routeTerminal = {
+      id: "5",
+      mates: [{ id: "14" }],
+      name: "Clinton",
+    };
+    const routeMate = { id: "14", mates: [], name: "Mukilteo" };
+    mocks.getTerminal.mockImplementation((slug: string) =>
+      Promise.resolve(slug === "clinton" ? routeTerminal : routeMate)
+    );
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root?.render(
+        React.createElement(
+          AppRenderProvider,
+          {
+            value: {
+              clock: () => Date.parse("2026-07-29T05:00:00.000Z"),
+              hasInjectedRequest: true,
+              platform: "web",
+              requestUrl: "https://ferry.fyi/today",
+              runtime: "browser",
+              seoBaseUrl: "https://ferry.fyi",
+              seoHost: "ferry.fyi",
+              seoPathname: "/today",
+            },
+          },
+          React.createElement(
+            PublicSsrSeedProvider,
+            { snapshot: staleSnapshot },
+            React.createElement(
+              HelmetProvider,
+              null,
+              React.createElement(
+                MemoryRouter,
+                { initialEntries: ["/today"] },
+                React.createElement(Today)
+              )
+            )
+          )
+        )
+      );
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(container.querySelector("h2")?.textContent?.trim()).toBe("1 *");
+    expect(container.textContent).toContain("Direction: Clinton to Mukilteo.");
+    expect(container.textContent).not.toContain("Old Terminal");
+    expect(container.textContent).not.toContain("Old Mate");
+    expect(container.textContent).not.toContain("Old route announcement");
+    expect(container.textContent).not.toContain("Old route maintenance");
   });
 });

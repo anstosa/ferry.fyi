@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { Op } from "sequelize";
 
 const database = vi.hoisted(() => ({ query: vi.fn(), transaction: vi.fn() }));
 const campaigns = vi.hoisted(() => ({ findByPk: vi.fn(), findOne: vi.fn() }));
@@ -17,6 +18,8 @@ vi.mock("~/models/SiteControl", () => ({ SiteControl: controls }));
 import {
   claimAdExposure,
   cleanupExpiredAdExposures,
+  getPublicAdServingFingerprint,
+  getPublicAdServingState,
   getServableAdCreative,
   issueAdExposure,
   resolveAdClick,
@@ -95,6 +98,87 @@ describe("first-party ad measurement", () => {
       placementKey: "schedule--3--7",
     });
     expect(exposures.create).not.toHaveBeenCalled();
+  });
+
+  it("fingerprints the effective public creative in stable field order", async () => {
+    campaigns.findOne.mockResolvedValue({
+      advertiserName: "Island Coffee",
+      body: "Coffee near the dock.",
+      headline: "Fuel up before sailing",
+      id: "campaign",
+      placementKey: "schedule--3--7",
+      targetUrl: "https://example.com/menu",
+    });
+
+    const state = await getPublicAdServingState(
+      "schedule--3--7",
+      new Date("2026-08-04T12:00:00.000Z")
+    );
+
+    expect(state.fingerprint).toMatch(/^[a-f0-9]{64}$/);
+    expect(state.fingerprint).toBe(
+      getPublicAdServingFingerprint("schedule--3--7", state.creative)
+    );
+    expect(getPublicAdServingFingerprint("schedule--3--7", null)).not.toBe(
+      state.fingerprint
+    );
+  });
+
+  it("uses inclusive starts and exclusive end boundaries for every fresh decision", async () => {
+    const now = new Date("2026-08-04T12:00:00.000Z");
+    campaigns.findOne.mockResolvedValue(null);
+
+    await getPublicAdServingState("schedule--3--7", now);
+
+    const query = campaigns.findOne.mock.calls[0][0];
+    expect(query.where.startsAt[Op.lte]).toBe(now);
+    expect(query.where.endsAt[Op.gt]).toBe(now);
+    expect(query.where[Op.or]).toEqual([
+      { endedEarlyAt: null },
+      { endedEarlyAt: { [Op.gt]: now } },
+    ]);
+  });
+
+  it("fingerprints the environment kill switch without database access", async () => {
+    process.env.AD_MEASUREMENT_ENABLED = "false";
+
+    const state = await getPublicAdServingState(
+      "schedule--3--7",
+      new Date("2026-08-04T12:00:00.000Z")
+    );
+
+    expect(state.creative).toBeNull();
+    expect(state.fingerprint).toBe(
+      getPublicAdServingFingerprint("schedule--3--7", null)
+    );
+    expect(campaigns.findOne).not.toHaveBeenCalled();
+    expect(placements.findOrCreate).not.toHaveBeenCalled();
+    expect(controls.findOrCreate).not.toHaveBeenCalled();
+  });
+
+  it("changes fingerprints only when the effective public serving state changes", async () => {
+    campaigns.findOne.mockResolvedValue({
+      advertiserName: "Island Coffee",
+      body: "Coffee near the dock.",
+      headline: "Fuel up before sailing",
+      id: "campaign-A",
+      placementKey: "schedule--3--7",
+      targetUrl: "https://example.com/menu",
+    });
+    const enabled = await getPublicAdServingState("schedule--3--7");
+    controls.findOrCreate.mockResolvedValue([{ adsEnabled: false }]);
+    const globallyDisabled = await getPublicAdServingState("schedule--3--7");
+    controls.findOrCreate.mockResolvedValue([{ adsEnabled: true }]);
+    placements.findOrCreate.mockResolvedValue([
+      { enabled: false, key: "schedule--3--7" },
+    ]);
+    const placementDisabled = await getPublicAdServingState("schedule--3--7");
+
+    expect(enabled.creative).toMatchObject({ campaignId: "campaign-A" });
+    expect(globallyDisabled.creative).toBeNull();
+    expect(placementDisabled.creative).toBeNull();
+    expect(globallyDisabled.fingerprint).toBe(placementDisabled.fingerprint);
+    expect(enabled.fingerprint).not.toBe(globallyDisabled.fingerprint);
   });
 
   it("rejects malformed campaign ids before querying Postgres", async () => {

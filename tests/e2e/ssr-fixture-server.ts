@@ -1,4 +1,5 @@
 /* eslint-disable require-await -- fixture services implement async production interfaces. */
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import https, { type Server } from "node:https";
 import path from "node:path";
@@ -44,6 +45,8 @@ const rendererPath = path.join(
 const artifacts = new SsrArtifacts({ clientDirectory, rendererPath });
 
 type FixtureState = {
+  adEnabled: boolean;
+  adHeadline: string;
   advanceAfterLoadTo: string | null;
   cacheEnabled: boolean;
   clock: Date;
@@ -58,6 +61,8 @@ type FixtureState = {
 
 const initialClock = "2026-07-29T09:59:59.000Z";
 const state: FixtureState = {
+  adEnabled: true,
+  adHeadline: "Fixture dockside coffee",
   advanceAfterLoadTo: null,
   cacheEnabled: process.env.SSR_DOCUMENT_CACHE_ENABLED !== "false",
   clock: new Date(initialClock),
@@ -134,7 +139,10 @@ const makeTerminal = (
     hasRestroom: true,
     hasWaitingRoom: true,
     id,
-    info: {},
+    info: {
+      parking: "<p>Fixture parking &amp; connections</p>",
+      ada: "Accessible boarding assistance",
+    },
     location: {
       address: {
         city: name,
@@ -163,7 +171,13 @@ const makeTerminal = (
     },
     terminalUrl: "https://wsdot.wa.gov/ferries",
     vesselWatchUrl: "https://wsdot.wa.gov/ferries/vesselwatch",
-    waitTimes: [],
+    waitTimes: [
+      {
+        title: "Vehicle wait",
+        description: "One sailing wait",
+        time: 1785315600,
+      },
+    ],
   }) as Terminal;
 
 const terminals = (): Record<string, Terminal> => ({
@@ -188,6 +202,21 @@ const schedule = (departingId: string, arrivingId: string, date: string) => {
       mateId: arrivingId,
       slots: [
         {
+          arrivalTime: departureTime + 2100,
+          weather: {
+            temperatureC: 20,
+            highTemperatureC: 23,
+            windSpeedKmh: 12,
+            windGustKmh: 18,
+            precipitationMm: 0.5,
+            cloudCoverPercent: 30,
+          },
+          tide: {
+            stationId: "9447130",
+            waterLevelM: 1.5,
+            arrivalWaterLevelM: 1.2,
+            lowestWaterLevelM: 1.1,
+          },
           allowsPassengers: true,
           allowsVehicles: true,
           crossing: {
@@ -206,6 +235,17 @@ const schedule = (departingId: string, arrivingId: string, date: string) => {
           },
           estimate: {
             confidence: "high",
+            fullProbability: 0.1,
+            fullRisk: "low",
+            sampleSize: 42,
+            source: "blended",
+            factors: [
+              {
+                label: "Commute",
+                detail: "Fixture afternoon demand",
+                impact: "higher",
+              },
+            ],
             driveUpCapacity: 77 - state.refreshVersion,
             reservableCapacity: null,
           },
@@ -250,8 +290,39 @@ const schedule = (departingId: string, arrivingId: string, date: string) => {
   };
 };
 
+// observe one public fixture creative without issuing measurement tokens
+const fixtureAdState = (placementKey: string) => {
+  const creative = state.adEnabled
+    ? {
+        campaignId: "5ed338e9-acbb-4cca-9380-1a923bfca5c8",
+        advertiserName: "Fixture Coffee",
+        headline: state.adHeadline,
+        body: "Coffee by the dock.",
+        placementKey,
+        targetUrl: "https://example.com/coffee",
+      }
+    : null;
+  return {
+    placementKey,
+    creative,
+    fingerprint: createHash("sha256")
+      .update(
+        JSON.stringify([
+          placementKey,
+          creative?.campaignId ?? null,
+          creative?.advertiserName ?? null,
+          creative?.headline ?? null,
+          creative?.body ?? null,
+          creative?.placementKey ?? null,
+          creative?.targetUrl ?? null,
+        ])
+      )
+      .digest("hex"),
+  };
+};
+
 const services: PublicSsrSnapshotServices = {
-  getAdCreative: async () => null,
+  getAdCreative: async (placementKey) => fixtureAdState(placementKey).creative,
   getCameraFrames: async (cameraIds) => ({
     frames: Object.fromEntries(
       cameraIds.map((cameraId) => [
@@ -293,6 +364,13 @@ const services: PublicSsrSnapshotServices = {
           id: 1,
           label: "Adult passenger",
         },
+        {
+          amount: 22.25,
+          category: "Vehicle",
+          directionIndependent: true,
+          id: 2,
+          label: "Standard vehicle and driver",
+        },
       ],
       freshness: {
         fetchedAt: Math.floor(state.clock.getTime() / 1000),
@@ -309,7 +387,9 @@ const services: PublicSsrSnapshotServices = {
   getLeaderboard: async ({ entityId, period }) => ({
     entityId,
     period,
-    ranks: [{ label: "Fixture rider", rank: 1, score: 42 }],
+    ranks: [
+      { label: "Fixture rider", rank: 1, score: 42, supporterBadge: true },
+    ],
   }),
   getPublicLeaderboardsEnabled: async () => true,
   getSchedule: async ({ arrivingId, date, departingId }) =>
@@ -361,6 +441,7 @@ const makeRuntime = async () => {
       SSR_DOCUMENTS_ENABLED: String(state.documentsEnabled),
     }),
     contentRevision: () => "fixture-content",
+    resolveAdServingState: async (placementKey) => fixtureAdState(placementKey),
     load: async (input) => {
       state.fills += 1;
       if (state.failLoads > 0) {
@@ -401,6 +482,8 @@ fixtureRouter.get("/__fixture__/state", (_request, response) =>
 );
 fixtureRouter.post("/__fixture__/reset", async (_request, response) => {
   Object.assign(state, {
+    adEnabled: true,
+    adHeadline: "Fixture dockside coffee",
     advanceAfterLoadTo: null,
     cacheEnabled: startupConfig.cacheEnabled,
     clock: new Date(initialClock),
@@ -417,12 +500,21 @@ fixtureRouter.post("/__fixture__/reset", async (_request, response) => {
 });
 fixtureRouter.post("/__fixture__/control", async (request, response) => {
   const input = request.body as Partial<{
+    adEnabled: boolean;
+    adHeadline: string;
     advanceAfterLoadTo: string | null;
     clock: string;
     failLoads: number;
     failRenders: number;
     refreshVersion: number;
   }>;
+  // mutate only public fixture serving controls
+  if (typeof input.adEnabled === "boolean") {
+    state.adEnabled = input.adEnabled;
+  }
+  if (typeof input.adHeadline === "string") {
+    state.adHeadline = input.adHeadline;
+  }
   if (typeof input.clock === "string") {
     state.clock = new Date(input.clock);
   }
@@ -510,7 +602,7 @@ const start = async () => {
       },
       fixtureApp
     )
-    .listen(port, "0.0.0.0");
+    .listen(port, "127.0.0.1");
 };
 
 const stop = () => server?.close();

@@ -487,8 +487,13 @@ const publicPayload = (key: PublicSsrSourceKey, value: unknown): boolean =>
         entity: leaderboardEntity,
         entityId: string,
         period: oneOf(["all", "month", "week"]),
+        // allow only the public badge alongside legacy rank fields
         ranks: array((rank) =>
-          fields(rank, { label: string, rank: finite, score: finite })
+          fields(
+            rank,
+            { label: string, rank: finite, score: finite },
+            { supporterBadge: (badge) => typeof badge === "boolean" }
+          )
         ),
       }),
   })[key](value);

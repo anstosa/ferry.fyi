@@ -15,12 +15,16 @@ const staticKey = (
   normalizedQuery: "",
   ...overrides,
 });
-const dynamicKey = (serviceDayId = "2026-07-28"): SsrDocumentCacheKey => ({
+const dynamicKey = (
+  refreshWindowId = "2026-07-28T03:00",
+  adFingerprint?: string
+): SsrDocumentCacheKey => ({
+  ...(adFingerprint ? { adFingerprint } : {}),
   canonicalPath: "/today",
   hostProfile: "ferry.fyi",
   kind: "dynamic",
   normalizedQuery: "",
-  serviceDayId,
+  refreshWindowId,
 });
 const request = <T>(key: SsrDocumentCacheKey, load: () => Promise<T>) => ({
   cacheEnabled: true,
@@ -196,7 +200,7 @@ describe("SSR document cache", () => {
     ).resolves.toMatchObject({ document: "safe-query", outcome: "hit" });
   });
 
-  it("does not commit fills after a service-day boundary or invalidation", async () => {
+  it("does not commit fills after a refresh-window boundary or invalidation", async () => {
     const cache = new SsrDocumentCache<string>();
     let current = true;
     await expect(
@@ -208,7 +212,7 @@ describe("SSR document cache", () => {
     current = false;
     await expect(
       cache.getOrCreate({
-        ...request(dynamicKey("2026-07-29"), async () => "crossed"),
+        ...request(dynamicKey("2026-07-28T15:00"), async () => "crossed"),
         mayCommit: () => current,
       })
     ).resolves.toMatchObject({ document: "crossed" });
@@ -263,22 +267,147 @@ describe("SSR document cache", () => {
     ).resolves.toMatchObject({ document: "new", outcome: "hit" });
   });
 
-  it("prunes stale dynamic days and bounds retained work", async () => {
+  it("prunes stale dynamic windows and bounds retained work", async () => {
     const cache = new SsrDocumentCache<string>({
       maxDynamicEntries: 1,
       maxInFlight: 1,
       maxStaticEntries: 1,
     });
     await cache.getOrCreate(
-      request(dynamicKey("2026-07-27"), async () => "old")
+      request(dynamicKey("2026-07-27T15:00"), async () => "old")
     );
     await cache.getOrCreate(
-      request(dynamicKey("2026-07-28"), async () => "current")
+      request(dynamicKey("2026-07-28T03:00"), async () => "current")
     );
     await cache.getOrCreate(request(staticKey(), async () => "a"));
     await cache.getOrCreate(
       request(staticKey({ canonicalPath: "/privacy" }), async () => "b")
     );
     expect(cache.sizes).toEqual({ dynamic: 1, inFlight: 0, static: 1 });
+  });
+
+  it("validates shared fills before commit and validates every waiter after waiting", async () => {
+    const cache = new SsrDocumentCache<string>();
+    let resolve!: (value: string) => void;
+    const pending = new Promise<string>((done) => (resolve = done));
+    let state = "A";
+    const validate = async () =>
+      state === "A"
+        ? ({ kind: "validated-candidate", mayCommit: true } as const)
+        : ({ kind: "invalidated" } as const);
+    const first = cache.getOrCreate({
+      ...request(dynamicKey(), () => pending),
+      validate,
+    });
+    const waiter = cache.getOrCreate({
+      ...request(dynamicKey(), () => pending),
+      validate,
+    });
+
+    state = "B";
+    resolve("stale-A");
+
+    await expect(first).resolves.toEqual({
+      failure: "invalidated",
+      outcome: "failed",
+    });
+    await expect(waiter).resolves.toEqual({
+      failure: "invalidated",
+      outcome: "failed",
+    });
+    expect(cache.sizes.dynamic).toBe(0);
+  });
+
+  it("keeps fingerprint-specific fills separate and blocks a late stale commit", async () => {
+    const cache = new SsrDocumentCache<string>();
+    let resolveA!: (value: string) => void;
+    let stateAIsCurrent = true;
+    const loadA = cache.getOrCreate({
+      ...request(
+        dynamicKey("2026-07-28T03:00", "fingerprint-A"),
+        () => new Promise<string>((done) => (resolveA = done))
+      ),
+      validate: async () =>
+        stateAIsCurrent
+          ? { kind: "validated-candidate", mayCommit: true }
+          : { kind: "invalidated" },
+    });
+    const loadB = cache.getOrCreate(
+      request(
+        dynamicKey("2026-07-28T03:00", "fingerprint-B"),
+        async () => "document-B"
+      )
+    );
+
+    await expect(loadB).resolves.toMatchObject({
+      document: "document-B",
+      outcome: "miss",
+    });
+    stateAIsCurrent = false;
+    resolveA("document-A");
+    await expect(loadA).resolves.toEqual({
+      failure: "invalidated",
+      outcome: "failed",
+    });
+    await expect(
+      cache.getOrCreate(
+        request(
+          dynamicKey("2026-07-28T03:00", "fingerprint-B"),
+          async () => "wrong"
+        )
+      )
+    ).resolves.toMatchObject({ document: "document-B", outcome: "hit" });
+    expect(cache.sizes.dynamic).toBe(1);
+  });
+
+  it("does not requery a waiter after a shared validation error", async () => {
+    const cache = new SsrDocumentCache<string>();
+    let resolve!: (value: string) => void;
+    const pending = new Promise<string>((done) => (resolve = done));
+    const originValidation = async () =>
+      ({ kind: "validation-error" }) as const;
+    let waiterValidations = 0;
+    const origin = cache.getOrCreate({
+      ...request(dynamicKey(), () => pending),
+      validate: originValidation,
+    });
+    const waiter = cache.getOrCreate({
+      ...request(dynamicKey(), () => pending),
+      validate: async () => {
+        waiterValidations += 1;
+        return { kind: "validated-candidate", mayCommit: true };
+      },
+    });
+
+    resolve("candidate");
+    await expect(origin).resolves.toEqual({
+      failure: "validation",
+      outcome: "failed",
+    });
+    await expect(waiter).resolves.toEqual({
+      failure: "validation",
+      outcome: "failed",
+    });
+    expect(waiterValidations).toBe(0);
+  });
+
+  it("prunes obsolete variants without evicting unrelated placements", async () => {
+    const cache = new SsrDocumentCache<string>();
+    await cache.getOrCreate(
+      request(dynamicKey("2026-07-28T03:00", "home-A"), async () => "home-A")
+    );
+    const otherKey = {
+      ...dynamicKey("2026-07-28T03:00", "fare-X"),
+      canonicalPath: "/clinton/fare",
+    };
+    await cache.getOrCreate(request(otherKey, async () => "fare-X"));
+    await cache.getOrCreate(
+      request(dynamicKey("2026-07-28T03:00", "home-B"), async () => "home-B")
+    );
+
+    await expect(
+      cache.getOrCreate(request(otherKey, async () => "wrong"))
+    ).resolves.toMatchObject({ document: "fare-X", outcome: "hit" });
+    expect(cache.sizes.dynamic).toBe(2);
   });
 });

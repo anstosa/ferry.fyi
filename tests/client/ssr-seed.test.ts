@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { HelmetProvider } from "react-helmet-async";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -17,8 +18,8 @@ import {
   PublicHome,
   PublicLeaderboards,
   PublicRouteMap,
-  PublicTickets,
 } from "../../client/views/PublicSsrPages";
+import { TicketsPublicPage } from "../../client/views/TicketsPublicContent";
 import { PUBLIC_SSR_SNAPSHOT_VERSION } from "../../shared/contracts/ssr";
 import { PUBLIC_SSR_SNAPSHOT_SCRIPT_ID } from "../../shared/contracts/ssrDocument";
 
@@ -61,12 +62,17 @@ const snapshot = {
   version: PUBLIC_SSR_SNAPSHOT_VERSION,
 } as import("../../shared/contracts/ssr").PublicSsrSnapshot;
 
+// render one snapshot-backed public component
 const renderSeeded = (element: React.ReactElement): string =>
   renderToStaticMarkup(
     React.createElement(
       MemoryRouter,
       null,
-      React.createElement(PublicSsrSeedProvider, { snapshot }, element)
+      React.createElement(
+        HelmetProvider,
+        null,
+        React.createElement(PublicSsrSeedProvider, { snapshot }, element)
+      )
     )
   );
 
@@ -88,9 +94,10 @@ describe("public SSR seeds", () => {
   });
 
   it("presents ticket guidance synchronously before ticket-native code loads", () => {
-    const markup = renderSeeded(React.createElement(PublicTickets));
-    expect(markup).toContain("Use your saved tickets.");
-    expect(markup).toContain("Scanner availability: available");
+    const markup = renderSeeded(React.createElement(TicketsPublicPage));
+    expect(markup).toContain("Ferry tickets, ready to scan");
+    expect(markup).toContain("Scan a ticket code");
+    expect(markup).toContain("No saved tickets yet");
   });
 
   it("presents seeded public leaderboard ranks, alert guidance, and vessel context", () => {
@@ -109,8 +116,18 @@ describe("public SSR seeds", () => {
         }),
         leaderboardIndex: source({ defaultPeriod: "week", entities: [] }),
         route: source({
-          mate: { name: "Mukilteo" },
-          terminal: { name: "Clinton" },
+          mate: {
+            id: "14",
+            name: "Mukilteo",
+            location: { latitude: 47.95, longitude: -122.3 },
+            mates: [{ id: "5", name: "Clinton" }],
+          },
+          terminal: {
+            id: "5",
+            name: "Clinton",
+            location: { latitude: 47.9, longitude: -122.3 },
+            mates: [{ id: "14", name: "Mukilteo" }],
+          },
         }),
         vessels: source([
           {
@@ -270,8 +287,16 @@ describe("public SSR seeds", () => {
       sources: {
         features: source({ leaderboardsEnabled: false }),
         terminals: source([
-          { id: "3", name: "Bainbridge Island" },
-          { id: "7", name: "Seattle" },
+          {
+            id: "3",
+            name: "Bainbridge Island",
+            location: { address: null, latitude: 47.6, longitude: -122.5 },
+          },
+          {
+            id: "7",
+            name: "Seattle",
+            location: { address: null, latitude: 47.6, longitude: -122.3 },
+          },
         ]),
       },
     } as import("../../shared/contracts/ssr").PublicSsrSnapshot;

@@ -111,8 +111,31 @@ describe("public SSR canonical resolver", () => {
     expect(getTerminals).not.toHaveBeenCalled();
   });
 
-  it("canonicalizes terminal details before terminal service access", async () => {
-    const { getTerminals, resolve } = resolver();
+  it("binds canonical terminal details after redirect normalization", async () => {
+    const bainbridge = {
+      abbreviation: "BBG",
+      id: "3",
+      name: "Bainbridge",
+    };
+    const seattle = {
+      abbreviation: "SEA",
+      bulletins: [],
+      cameras: [],
+      hasElevator: false,
+      hasFood: false,
+      hasOverheadLoading: false,
+      hasRestroom: true,
+      hasWaitingRoom: true,
+      id: "7",
+      info: {},
+      location: { address: {}, latitude: 47, longitude: -122 },
+      mates: [bainbridge],
+      name: "Seattle",
+      popularity: 1,
+      routes: {},
+      waitTimes: [],
+    } as Terminal;
+    const { getTerminals, resolve } = resolver({ "7": seattle });
     expect(
       (await resolve(new URL("https://ferry.fyi/seattle/terminal")))
         .classification
@@ -123,7 +146,60 @@ describe("public SSR canonical resolver", () => {
       classification: "redirect",
       redirectTo: "/seattle/terminal",
     });
-    expect(getTerminals).not.toHaveBeenCalled();
+    expect(getTerminals).toHaveBeenCalledOnce();
+  });
+
+  it("keeps a multi-mate terminal-owned path canonical", async () => {
+    const seattle = {
+      abbreviation: "SEA",
+      id: "7",
+      mates: [
+        { abbreviation: "BBG", id: "3", name: "Bainbridge" },
+        { abbreviation: "BMT", id: "4", name: "Bremerton" },
+      ],
+      name: "Seattle",
+    } as Terminal;
+    const { resolve } = resolver({ "7": seattle });
+
+    await expect(
+      resolve(new URL("https://ferry.fyi/seattle/terminal"))
+    ).resolves.toMatchObject({
+      adPlacementBinding: { placementKey: "terminal--7--3" },
+      classification: "eligible",
+      match: { canonicalPath: "/seattle/terminal" },
+    });
+  });
+
+  it("binds one-mate and explicit multi-mate ad directions", async () => {
+    const clinton = {
+      abbreviation: "CLI",
+      id: "5",
+      mates: [{ abbreviation: "MUK", id: "14", name: "Mukilteo" }],
+      name: "Clinton",
+    } as Terminal;
+    const seattle = {
+      abbreviation: "SEA",
+      id: "7",
+      mates: [
+        { abbreviation: "BBG", id: "3", name: "Bainbridge" },
+        { abbreviation: "BMT", id: "4", name: "Bremerton" },
+      ],
+      name: "Seattle",
+    } as Terminal;
+    const { resolve } = resolver({ "5": clinton, "7": seattle });
+
+    await expect(
+      resolve(new URL("https://ferry.fyi/clinton/fare"))
+    ).resolves.toMatchObject({
+      adPlacementBinding: { placementKey: "fare--5--14" },
+      classification: "eligible",
+    });
+    await expect(
+      resolve(new URL("https://ferry.fyi/seattle/bainbridge/fare"))
+    ).resolves.toMatchObject({
+      adPlacementBinding: { placementKey: "fare--7--3" },
+      classification: "eligible",
+    });
   });
 
   it("treats unavailable data for a known terminal route as transient", async () => {

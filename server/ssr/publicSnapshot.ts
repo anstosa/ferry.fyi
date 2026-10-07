@@ -1,10 +1,7 @@
+import { convert } from "html-to-text";
 import { DateTime } from "luxon";
 import type { GetScheduleResponse } from "shared/api/schedules";
-import {
-  type AdCampaignCreative,
-  type AdSlotId,
-  getAdPlacementKey,
-} from "shared/contracts/ads";
+import type { AdCampaignCreative } from "shared/contracts/ads";
 import type { CameraFrameStatusEnvelope } from "shared/contracts/cameraFrames";
 import type { FareTripRequest } from "shared/contracts/fares";
 import type {
@@ -47,6 +44,12 @@ import {
   getVesselLeaderboardSeoMetadata,
   type SeoMetadata,
 } from "shared/lib/seo";
+import {
+  getPublicSsrAdPlacementBinding,
+  type PublicSsrAdPlacementBinding,
+  type PublicSsrAdServingBinding,
+  samePublicSsrAdPlacementBinding,
+} from "shared/lib/ssrAdPlacement";
 import { publicQueryCacheKey } from "shared/lib/ssrQueryPolicy";
 import {
   createStaticPublicSsrTerminalResolver,
@@ -76,6 +79,15 @@ export class PublicSsrTransientFailure extends Error {
   constructor(public readonly source: PublicSsrSourceKey) {
     super(`Public SSR source did not settle: ${source}`);
     this.name = "PublicSsrTransientFailure";
+  }
+}
+
+export class PublicSsrIntegrityFailure extends Error {
+  readonly code = "public-ssr-integrity-failure";
+
+  constructor(message: string) {
+    super(message);
+    this.name = "PublicSsrIntegrityFailure";
   }
 }
 
@@ -134,6 +146,7 @@ export interface PublicSsrSnapshotServices {
 
 export interface PublicSsrSnapshotLoaderInput {
   absoluteUrl: string;
+  adServingBinding?: PublicSsrAdServingBinding;
   contentRevision: string;
   fixedClock: Date;
   release: PublicSsrEditorial["release"];
@@ -159,14 +172,6 @@ const DEFAULT_TICKET_GUIDANCE: PublicSsrTicketGuidance = {
 const DEFAULT_ALERT_GUIDANCE: PublicSsrAlertGuidance = {
   body: "Sign in after the page loads to manage personal ferry alert rules.",
   title: "Ferry alerts",
-};
-const AD_SLOT_FOR_VIEW: Partial<
-  Record<NonNullable<PublicSsrRouteMatch["route"]["view"]>, AdSlotId>
-> = {
-  cameras: "cameras",
-  fare: "fare",
-  schedule: "schedule",
-  terminal: "terminal",
 };
 const iso = (value: SourceUpdatedAt): string | null => {
   if (typeof value === "string") {
@@ -198,7 +203,11 @@ const catalogIdForSlug = (
   Object.entries(catalog).find(([, entry]) => entry.slug === slug)?.[0];
 
 export type PublicSsrCanonicalResolution =
-  | { classification: "eligible"; match: PublicSsrRouteMatch }
+  | {
+      adPlacementBinding?: PublicSsrAdPlacementBinding;
+      classification: "eligible";
+      match: PublicSsrRouteMatch;
+    }
   | { classification: "private"; match: PublicSsrRouteMatch }
   | {
       classification: "redirect";
@@ -257,12 +266,17 @@ export const createPublicSsrCanonicalResolver = ({
     }
     const { terminalSlug } = match.params;
     if (!terminalSlug) {
-      return { classification: "eligible", match };
+      return {
+        adPlacementBinding: getPublicSsrAdPlacementBinding(match),
+        classification: "eligible",
+        match,
+      };
     }
     if (match.route.view === "terminal") {
-      return match.params.mateSlug
-        ? redirect(`/${terminalSlug}/terminal`)
-        : { classification: "eligible", match };
+      // remove the mate segment before selecting the terminal placement
+      if (match.params.mateSlug) {
+        return redirect(`/${terminalSlug}/terminal`);
+      }
     }
     if (options.pureOnly) {
       return { classification: "eligible", match };
@@ -276,7 +290,11 @@ export const createPublicSsrCanonicalResolver = ({
     const mates = terminal.mates ?? [];
     const suffix =
       match.route.view === "schedule" ? "" : `/${match.route.view}`;
-    if (!match.params.mateSlug && mates.length > 1) {
+    if (
+      match.route.view !== "terminal" &&
+      !match.params.mateSlug &&
+      mates.length > 1
+    ) {
       const mateId = mates[0]?.id;
       const mateSlug = mateId ? terminalCatalog[mateId]?.slug : undefined;
       if (!mateSlug) {
@@ -284,10 +302,30 @@ export const createPublicSsrCanonicalResolver = ({
       }
       return redirect(`/${terminalSlug}/${mateSlug}${suffix}`);
     }
-    if (match.params.mateSlug && mates.length === 1) {
+    if (
+      match.route.view !== "terminal" &&
+      match.params.mateSlug &&
+      mates.length === 1
+    ) {
       return redirect(`/${terminalSlug}${suffix}`);
     }
-    return { classification: "eligible", match };
+    const selectedMate = match.params.mateSlug
+      ? mates.find(
+          ({ id }) => terminalCatalog[id]?.slug === match.params.mateSlug
+        )
+      : mates[0];
+    let adPlacementBinding: PublicSsrAdPlacementBinding | undefined;
+    // bind only the route families that carry public ads
+    if (match.route.requiredSources.includes("ad")) {
+      if (!selectedMate) {
+        throw new PublicSsrTransientFailure("route");
+      }
+      adPlacementBinding = getPublicSsrAdPlacementBinding(match, {
+        arrivalTerminalId: selectedMate.id,
+        departureTerminalId: terminal.id,
+      });
+    }
+    return { adPlacementBinding, classification: "eligible", match };
   };
 };
 
@@ -310,9 +348,14 @@ const toTerminal = (
     hasRestroom: terminal.hasRestroom,
     hasWaitingRoom: terminal.hasWaitingRoom,
     info: Object.fromEntries(
-      Object.entries(terminal.info).filter(
-        (entry): entry is [string, string] => typeof entry[1] === "string"
-      )
+      Object.entries(terminal.info)
+        .filter(
+          (entry): entry is [string, string] => typeof entry[1] === "string"
+        )
+        .map(([key, value]) => [
+          key,
+          convert(value, { preserveNewlines: true, wordwrap: false }).trim(),
+        ])
     ),
     location: {
       address: terminal.location.address
@@ -736,17 +779,27 @@ export const createPublicSsrSnapshotLoader = ({
       value.maintenance.message === ""
         ? empty("notices")
         : source("notices", value);
-    const adSource = async (placementKey: string) =>
-      source(
+    const adSource = async (binding: PublicSsrAdPlacementBinding) => {
+      const injected = input.adServingBinding;
+      // reject a runtime binding that does not match the loader route seed
+      if (injected && !samePublicSsrAdPlacementBinding(binding, injected)) {
+        throw new PublicSsrIntegrityFailure(
+          "Public SSR ad placement binding mismatch"
+        );
+      }
+      return source(
         "ad",
         await from("ad", async () => ({
-          creative: await services.getAdCreative(
-            placementKey,
-            input.fixedClock
-          ),
-          placementKey,
+          creative: injected
+            ? injected.creative
+            : await services.getAdCreative(
+                binding.placementKey,
+                input.fixedClock
+              ),
+          placementKey: binding.placementKey,
         }))
       );
+    };
     const editorial = (): PublicSsrEditorial => ({
       contentRevision: input.contentRevision,
       release: input.release,
@@ -802,7 +855,7 @@ export const createPublicSsrSnapshotLoader = ({
           const [all, publicContent, ad] = await Promise.all([
             terminals(),
             content(),
-            adSource("home"),
+            adSource(getPublicSsrAdPlacementBinding(match)!),
           ]);
           sources.ad = ad;
           sources.terminals = source(
@@ -1006,17 +1059,12 @@ export const createPublicSsrSnapshotLoader = ({
             };
           }
           sources.route = source("route", selected.payload);
-          const adSlot = match.route.view
-            ? AD_SLOT_FOR_VIEW[match.route.view]
-            : undefined;
-          if (adSlot) {
-            sources.ad = await adSource(
-              getAdPlacementKey({
-                arrivalTerminalId: selected.mate.id,
-                departureTerminalId: selected.terminal.id,
-                slot: adSlot,
-              })
-            );
+          const adPlacementBinding = getPublicSsrAdPlacementBinding(match, {
+            arrivalTerminalId: selected.mate.id,
+            departureTerminalId: selected.terminal.id,
+          });
+          if (adPlacementBinding) {
+            sources.ad = await adSource(adPlacementBinding);
           }
           if (match.route.view === "schedule") {
             const date = match.query.values.date ?? dateFor(input.fixedClock);
@@ -1147,7 +1195,10 @@ export const createPublicSsrSnapshotLoader = ({
         }
       }
     } catch (error) {
-      if (error instanceof PublicSsrTransientFailure) {
+      if (
+        error instanceof PublicSsrTransientFailure ||
+        error instanceof PublicSsrIntegrityFailure
+      ) {
         throw error;
       }
       throw new PublicSsrTransientFailure("route");

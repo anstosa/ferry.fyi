@@ -26,6 +26,7 @@ import { ToggleSwitch } from "./ToggleSwitch";
 interface Props {
   embedded?: boolean;
   onPurchaseStateChange?: (state: SupporterPurchaseState) => void;
+  showPublicOverview?: boolean;
 }
 
 export type SupporterPurchaseState = "purchased" | "verification_pending";
@@ -142,6 +143,7 @@ const getPurchaseDisclosureCopy = (
 export const SupporterCard = ({
   embedded = false,
   onPurchaseStateChange,
+  showPublicOverview = true,
 }: Props): ReactElement => {
   const { loginWithPopup, loginWithRedirect } = useAuth0();
   const [userState] = useUser();
@@ -279,33 +281,37 @@ export const SupporterCard = ({
         </span>
       )}
 
-      {/* list supporter benefits vertically */}
-      <ul
-        className={clsx(
-          "flex flex-col gap-3 text-left",
-          embedded ? supporter.status?.active && "mt-5" : "mt-4"
-        )}
-      >
-        <SupporterBenefit>
-          No Ferry FYI advertisements while signed in
-        </SupporterBenefit>
-        <SupporterBenefit>
-          Optional Supporter badge on public leaderboards
-        </SupporterBenefit>
-        <SupporterBenefit>
-          Helps fund schedules, alerts, forecasts, cameras, and ticket tools
-        </SupporterBenefit>
-      </ul>
+      {/* keep reusable public copy outside the account controller */}
+      {showPublicOverview ? (
+        <>
+          <ul
+            className={clsx(
+              "flex flex-col gap-3 text-left",
+              embedded ? supporter.status?.active && "mt-5" : "mt-4"
+            )}
+          >
+            <SupporterBenefit>
+              No Ferry FYI advertisements while signed in
+            </SupporterBenefit>
+            <SupporterBenefit>
+              Optional Supporter badge on public leaderboards
+            </SupporterBenefit>
+            <SupporterBenefit>
+              Helps fund schedules, alerts, forecasts, cameras, and ticket tools
+            </SupporterBenefit>
+          </ul>
 
-      <p
-        className={clsx(
-          "text-xs text-gray-dark dark:text-gray-light",
-          embedded ? "mt-5 leading-relaxed" : "mt-3"
-        )}
-      >
-        Core ferry information, tickets, alerts, and manual check-ins remain
-        free.
-      </p>
+          <p
+            className={clsx(
+              "text-xs text-gray-dark dark:text-gray-light",
+              embedded ? "mt-5 leading-relaxed" : "mt-3"
+            )}
+          >
+            Core ferry information, tickets, alerts, and manual check-ins remain
+            free.
+          </p>
+        </>
+      ) : null}
 
       {/* signed-out subscription entry */}
       {!userState.isAuthenticated && (

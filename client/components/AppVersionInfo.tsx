@@ -1,6 +1,7 @@
 import React, { FunctionComponent, useEffect, useRef, useState } from "react";
 
 import { useAppRenderContext } from "~/lib/renderContext";
+import { usePublicSsrSource } from "~/lib/ssrSeed";
 
 interface Versions {
   app?: string;
@@ -40,7 +41,7 @@ export const getNativePlatformLabel = (platform: string): string => {
   return platform === "ios" ? "iOS" : "Android";
 };
 
-// Show native builds and active OTA source revisions for support requests.
+// show support build versions
 export const AppVersionInfo: FunctionComponent = () => {
   const [versions, setVersions] = useState<Versions>({});
   const [copied, setCopied] = useState(false);
@@ -48,6 +49,7 @@ export const AppVersionInfo: FunctionComponent = () => {
     undefined
   );
   const { platform, runtime } = useAppRenderContext();
+  const editorial = usePublicSsrSource("editorial");
   const isNative = platform === "android" || platform === "ios";
 
   useEffect(() => {
@@ -97,7 +99,15 @@ export const AppVersionInfo: FunctionComponent = () => {
         .filter(Boolean)
         .join(" · ")
     : (() => {
-        const webVersion = getWebVersion();
+        // keep the initial document independent of ambient browser metadata
+        const webVersion =
+          runtime === "server" || runtime === "hydrate"
+            ? formatReleaseVersion(
+                editorial?.release.version ??
+                  process.env.RELEASE_VERSION ??
+                  "UNKNOWN"
+              )
+            : getWebVersion();
         return webVersion === "DEVELOPMENT" ? webVersion : `Web ${webVersion}`;
       })();
 

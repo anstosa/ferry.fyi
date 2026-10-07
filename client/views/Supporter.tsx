@@ -10,6 +10,8 @@ import {
 import { SupporterPurchaseSplash } from "~/components/SupporterPurchaseSplash";
 import { useSupporter } from "~/lib/supporterContext";
 
+import { SupporterPublicContent } from "./SupporterPublicContent";
+
 const SUPPORTER_VERIFICATION_POLL_MS = 3_000;
 
 // select purchase-aware page copy
@@ -90,7 +92,14 @@ export const Supporter = (): ReactElement => {
         {purchaseState ? (
           <SupporterPurchaseSplash state={purchaseState} />
         ) : (
-          <SupporterCard embedded onPurchaseStateChange={setPurchaseState} />
+          <>
+            <SupporterPublicContent />
+            <SupporterCard
+              embedded
+              onPurchaseStateChange={setPurchaseState}
+              showPublicOverview={false}
+            />
+          </>
         )}
       </AuthPageShell>
     </>

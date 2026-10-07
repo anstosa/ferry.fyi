@@ -6,7 +6,16 @@ export type SsrCacheOutcome =
   | "failed"
   | "hit"
   | "miss";
-export type SsrCacheFailure = "capacity" | "load";
+export type SsrCacheFailure =
+  | "capacity"
+  | "invalidated"
+  | "load"
+  | "validation";
+
+export type SsrCandidateValidation =
+  | Readonly<{ kind: "invalidated" }>
+  | Readonly<{ kind: "validated-candidate"; mayCommit: boolean }>
+  | Readonly<{ kind: "validation-error" }>;
 
 /** Input is already route-validated and query-normalized by the SSR boundary. */
 export interface SsrDocumentCacheKey {
@@ -14,7 +23,8 @@ export interface SsrDocumentCacheKey {
   readonly hostProfile: SsrHostProfile;
   readonly kind: SsrDocumentKind;
   readonly normalizedQuery: string;
-  readonly serviceDayId?: string;
+  readonly adFingerprint?: string;
+  readonly refreshWindowId?: string;
 }
 
 export interface SsrDocumentCacheOptions {
@@ -33,6 +43,8 @@ export interface SsrDocumentCacheRequest<T> {
   readonly mayCommit?: (document: T) => boolean;
   /** Rejects a persisted document that is no longer fresh enough to reuse. */
   readonly mayReuse?: (document: T) => boolean;
+  /** Validates shared async work before commit/return and once per waiter. */
+  readonly validate?: (document?: T) => Promise<SsrCandidateValidation>;
 }
 
 export interface SsrDocumentCacheResult<T> {
@@ -42,9 +54,14 @@ export interface SsrDocumentCacheResult<T> {
   readonly outcome: SsrCacheOutcome;
 }
 
+type InFlightResult<T> =
+  | Readonly<{ document: T; kind: "validated-candidate"; mayCommit: boolean }>
+  | Readonly<{ kind: "invalidated" }>
+  | Readonly<{ kind: "load-error" }>
+  | Readonly<{ kind: "validation-error" }>;
+
 interface InFlight<T> {
-  readonly generation: number;
-  readonly promise: Promise<T>;
+  readonly promise: Promise<InFlightResult<T>>;
 }
 
 const keyString = (key: SsrDocumentCacheKey): string =>
@@ -53,7 +70,8 @@ const keyString = (key: SsrDocumentCacheKey): string =>
     key.hostProfile,
     key.canonicalPath,
     key.normalizedQuery,
-    key.kind === "dynamic" ? (key.serviceDayId ?? "") : "",
+    key.kind === "dynamic" ? (key.refreshWindowId ?? "") : "",
+    key.kind === "dynamic" ? (key.adFingerprint ?? "") : "",
   ].join("\u0000");
 
 const assertKey = (key: SsrDocumentCacheKey): void => {
@@ -61,7 +79,7 @@ const assertKey = (key: SsrDocumentCacheKey): void => {
     (key.hostProfile !== "ferry.fyi" &&
       key.hostProfile !== "howmanyboats.today") ||
     !key.canonicalPath.startsWith("/") ||
-    (key.kind === "dynamic" && !key.serviceDayId)
+    (key.kind === "dynamic" && !key.refreshWindowId)
   ) {
     throw new Error("Invalid normalized SSR document cache key");
   }
@@ -104,9 +122,18 @@ export class SsrDocumentCache<T> {
     this.beginSession();
   }
 
-  pruneDynamic(serviceDayId: string): void {
+  pruneDynamic(current: SsrDocumentCacheKey): void {
+    const currentKey = keyString(current);
+    const currentParts = currentKey.split("\u0000");
+    const currentBase = currentParts.slice(0, 4).join("\u0000");
     for (const key of this.#dynamic.keys()) {
-      if (!key.endsWith(`\u0000${serviceDayId}`)) {
+      const parts = key.split("\u0000");
+      const base = parts.slice(0, 4).join("\u0000");
+      // discard documents from prior fixed refresh windows
+      if (parts[4] !== current.refreshWindowId) {
+        this.#dynamic.delete(key);
+      } else if (base === currentBase && key !== currentKey) {
+        // retain only the current ad variant for this route identity
         this.#dynamic.delete(key);
       }
     }
@@ -140,34 +167,66 @@ export class SsrDocumentCache<T> {
     }
     const existing = this.#inFlight.get(key);
     if (existing) {
-      try {
-        return { document: await existing.promise, outcome: "coalesced" };
-      } catch {
+      const shared = await existing.promise;
+      // keep validation errors distinct from loader errors
+      if (shared.kind === "load-error") {
         return { failure: "load", outcome: "failed" };
       }
+      // propagate a known validation outage without another database read
+      if (shared.kind === "validation-error") {
+        return { failure: "validation", outcome: "failed" };
+      }
+      let waiterValidation: SsrCandidateValidation | undefined;
+      // revalidate every coalesced caller after waiting
+      if (request.validate) {
+        try {
+          waiterValidation = await request.validate(
+            shared.kind === "validated-candidate" ? shared.document : undefined
+          );
+        } catch {
+          waiterValidation = { kind: "validation-error" };
+        }
+      }
+      if (waiterValidation?.kind === "validation-error") {
+        return { failure: "validation", outcome: "failed" };
+      }
+      if (
+        shared.kind === "invalidated" ||
+        waiterValidation?.kind === "invalidated"
+      ) {
+        return { failure: "invalidated", outcome: "failed" };
+      }
+      return { document: shared.document, outcome: "coalesced" };
     }
     // Never launch unbounded unique work; existing keys above may still join.
     if (this.#inFlight.size >= this.#maxInFlight) {
       return { failure: "capacity", outcome: "failed" };
     }
     const generation = this.#generation;
-    let fill: Promise<T>;
-    try {
-      fill = request.load();
-    } catch {
-      return { failure: "load", outcome: "failed" };
-    }
-    const inFlight: InFlight<T> = { generation, promise: fill };
+    const fill = this.loadAndValidate(request);
+    const inFlight: InFlight<T> = { promise: fill };
     this.#inFlight.set(key, inFlight);
     try {
-      const document = await fill;
+      const result = await fill;
+      // fail closed without exposing rejected candidate bytes
+      if (result.kind === "load-error") {
+        return { failure: "load", outcome: "failed" };
+      }
+      if (result.kind === "validation-error") {
+        return { failure: "validation", outcome: "failed" };
+      }
+      if (result.kind === "invalidated") {
+        return { failure: "invalidated", outcome: "failed" };
+      }
+      const { document } = result;
       if (
         request.cacheEnabled &&
         generation === this.#generation &&
+        result.mayCommit &&
         (request.mayCommit?.(document) ?? true)
       ) {
         if (request.key.kind === "dynamic") {
-          this.pruneDynamic(request.key.serviceDayId ?? "");
+          this.pruneDynamic(request.key);
         }
         cache.set(key, document);
         this.bound(
@@ -181,13 +240,35 @@ export class SsrDocumentCache<T> {
         document,
         outcome: request.cacheEnabled ? "miss" : "cache_bypassed",
       };
-    } catch {
-      return { failure: "load", outcome: "failed" };
     } finally {
       if (this.#inFlight.get(key) === inFlight) {
         this.#inFlight.delete(key);
       }
     }
+  }
+
+  // include asynchronous candidate validation in shared in-flight work
+  private async loadAndValidate(
+    request: SsrDocumentCacheRequest<T>
+  ): Promise<InFlightResult<T>> {
+    let document: T;
+    try {
+      document = await request.load();
+    } catch {
+      return { kind: "load-error" };
+    }
+    if (!request.validate) {
+      return { document, kind: "validated-candidate", mayCommit: true };
+    }
+    let validation: SsrCandidateValidation;
+    try {
+      validation = await request.validate(document);
+    } catch {
+      return { kind: "validation-error" };
+    }
+    return validation.kind === "validated-candidate"
+      ? { document, kind: validation.kind, mayCommit: validation.mayCommit }
+      : validation;
   }
 
   private bound(cache: Map<string, T>, maximum: number): void {

@@ -18,6 +18,47 @@ const criticalPages = [
 const fixtureOrigin = "https://127.0.0.1:4177";
 const fixtureHeaders = { Host: "ferry.fyi" };
 
+// keep the hard-error recovery page accessible after hydration
+test("@accessibility has no serious violations on the not-found page", async ({
+  page,
+}) => {
+  const response = await page.goto("/not-a-ferry-page", {
+    waitUntil: "networkidle",
+  });
+  expect(response?.status()).toBe(404);
+  await expect(page.locator("#root")).toHaveAttribute(
+    "data-ferry-fyi-snapshot-consumed",
+    "true"
+  );
+  await expect(
+    page.getByRole("link", { name: "Find a ferry schedule" })
+  ).toBeVisible();
+  // retain visible keyboard focus on every recovery action
+  for (const name of [
+    "Ferry FYI home",
+    "Find a ferry schedule",
+    "Seattle–Bainbridge",
+    "Edmonds–Kingston",
+    "Mukilteo–Clinton",
+    "Contact Ferry FYI support",
+  ]) {
+    await page.keyboard.press("Tab");
+    const link = page.getByRole("link", { name, exact: true });
+    await expect(link).toBeFocused();
+    await expect(link).toHaveCSS("outline-style", "solid");
+    await expect(link).toHaveCSS("outline-width", "2px");
+    await expect(link).not.toHaveCSS("outline-color", "rgba(0, 0, 0, 0)");
+  }
+  const results = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+    .analyze();
+  expect(
+    results.violations.filter(
+      ({ impact }) => impact === "critical" || impact === "serious"
+    )
+  ).toEqual([]);
+});
+
 // scan critical hydrated pages
 for (const pageCase of criticalPages) {
   // verify one hydrated page

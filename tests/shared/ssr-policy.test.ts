@@ -19,7 +19,6 @@ import {
   SEO_INDEXABLE_ROUTE_VIEWS,
 } from "../../shared/lib/seo";
 import {
-  getNextSailingDayBoundary,
   getSailingDayId,
   SAILING_DAY_ZONE,
 } from "../../shared/lib/ssrCachePolicy";
@@ -469,6 +468,47 @@ describe("SSR contracts", () => {
     );
   });
 
+  // accept the public badge already emitted by the leaderboard service
+  it.each([true, false])(
+    "validates a public supporter badge of %s",
+    (badge) => {
+      const board = snapshot(
+        "leaderboards-terminal",
+        "/leaderboards/terminals/1",
+        {
+          features: source({ leaderboardsEnabled: true }),
+          notices: source(PUBLIC_SSR_EMPTY_DATA.notices),
+          leaderboard: source({
+            ...leaderboard,
+            ranks: [{ ...leaderboard.ranks[0], supporterBadge: badge }],
+          }),
+        },
+        { terminalId: "1" }
+      );
+
+      expect(assertPublicSsrSnapshot(board)).toBe(board);
+    }
+  );
+
+  // reject malformed badges without loosening the public allowlist
+  it("rejects a nonboolean public supporter badge", () => {
+    const board = snapshot(
+      "leaderboards-terminal",
+      "/leaderboards/terminals/1",
+      {
+        features: source({ leaderboardsEnabled: true }),
+        notices: source(PUBLIC_SSR_EMPTY_DATA.notices),
+        leaderboard: source({
+          ...leaderboard,
+          ranks: [{ ...leaderboard.ranks[0], supporterBadge: "private" }],
+        }),
+      },
+      { terminalId: "1" }
+    );
+
+    expect(() => assertPublicSsrSnapshot(board)).toThrow("sources");
+  });
+
   it("rejects unknown nested keys, invalid empty/outcomes, and private route source leaks", () => {
     const nested = structuredClone(home()) as Record<string, any>;
     nested.sources.terminals.value[0].location.extra = true;
@@ -687,16 +727,16 @@ describe("SSR matcher and query policy", () => {
 });
 
 describe("Pacific sailing-day policy", () => {
-  it("changes at 3 AM Pacific and respects DST", () => {
+  it("changes at 3 AM Pacific", () => {
     expect(
       getSailingDayId(
         DateTime.fromISO("2026-07-28T02:59:59", { zone: SAILING_DAY_ZONE })
       )
     ).toBe("2026-07-27");
     expect(
-      getNextSailingDayBoundary(
-        DateTime.fromISO("2026-03-08T00:30:00", { zone: SAILING_DAY_ZONE })
-      ).toISO()
-    ).toBe("2026-03-08T03:00:00.000-07:00");
+      getSailingDayId(
+        DateTime.fromISO("2026-07-28T03:00:00", { zone: SAILING_DAY_ZONE })
+      )
+    ).toBe("2026-07-28");
   });
 });

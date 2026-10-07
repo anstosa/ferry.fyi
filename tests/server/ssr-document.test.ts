@@ -14,7 +14,10 @@ import {
   renderPublicSsrDocument,
   serializePublicSsrSnapshot,
 } from "../../server/ssr/document";
-import { createPublicSsrSnapshotLoader } from "../../server/ssr/publicSnapshot";
+import {
+  createPublicSsrSnapshotLoader,
+  type PublicSsrSnapshotServices,
+} from "../../server/ssr/publicSnapshot";
 import type { PublicSsrSnapshot } from "../../shared/contracts/ssr";
 import {
   PUBLIC_SSR_DOCUMENT_MODE_ATTRIBUTE,
@@ -51,6 +54,81 @@ const loadAboutSnapshot = async (): Promise<PublicSsrSnapshot> => {
   });
   if (loaded.classification !== "snapshot") {
     throw new Error("Expected a public About snapshot");
+  }
+  return loaded.snapshot;
+};
+
+// build the smallest valid terminal pair for a real terminal document
+const terminal = (id: string, name: string, mateId: string) =>
+  ({
+    abbreviation: name.slice(0, 3).toUpperCase(),
+    bulletins: [],
+    cameras: [],
+    hasElevator: false,
+    hasFood: false,
+    hasOverheadLoading: false,
+    hasRestroom: true,
+    hasWaitingRoom: true,
+    id,
+    info: {},
+    location: {
+      address: {
+        city: name,
+        line1: "1 Ferry Dock",
+        line2: null,
+        state: "WA",
+        zip: "98200",
+      },
+      latitude: 47.9,
+      longitude: -122.3,
+    },
+    mates: [
+      {
+        abbreviation: mateId === "5" ? "CLI" : "MUK",
+        id: mateId,
+        name: mateId === "5" ? "Clinton" : "Mukilteo",
+      },
+    ],
+    name,
+    popularity: 1,
+    routes: {},
+    waitTimes: [],
+  }) as never;
+
+// load terminal metadata through the same boundary used by production SSR
+const loadTerminalSnapshot = async (): Promise<PublicSsrSnapshot> => {
+  const services = {
+    getAdCreative: () => Promise.resolve(null),
+    getCameraFrames: unavailable,
+    getContent: () =>
+      Promise.resolve({
+        announcements: [],
+        crawlerPolicy: { aiCrawlers: "allow", disallowPaths: [] },
+        leaderboardIndexingEnabled: true,
+        leaderboardSharingEnabled: true,
+        maintenance: { enabled: false, message: "" },
+      }),
+    getFareCatalog: unavailable,
+    getLeaderboard: unavailable,
+    getPublicLeaderboardsEnabled: unavailable,
+    getSchedule: unavailable,
+    getTerminals: () =>
+      Promise.resolve({
+        "5": terminal("5", "Clinton", "14"),
+        "14": terminal("14", "Mukilteo", "5"),
+      }),
+    getVessels: unavailable,
+    getWsfStatus: unavailable,
+  } satisfies PublicSsrSnapshotServices;
+  const loaded = await createPublicSsrSnapshotLoader({ services })({
+    absoluteUrl: "https://ferry.fyi/mukilteo/terminal",
+    contentRevision: "test",
+    fixedClock: new Date("2026-07-28T12:00:00.000Z"),
+    release: { publishedAt: null, version: "test" },
+  });
+  // require the real terminal snapshot path
+  if (loaded.classification !== "snapshot") {
+    throw new Error("Expected a public terminal snapshot");
   }
   return loaded.snapshot;
 };
@@ -162,13 +240,21 @@ describe("SSR document protocol", () => {
   });
 
   it("uses non-sensitive marker-only documents for callback, private, and failure paths", () => {
+    // verify every marker mode
     for (const mode of ["callback", "private", "failure"] as const) {
       const html = assemblePublicSsrMarkerDocument(realTemplate, mode);
+      const { document } = new JSDOM(html).window;
+      const descriptions = document.head.querySelectorAll(
+        'meta[name="description"]'
+      );
       expect(html).toContain(`${PUBLIC_SSR_DOCUMENT_MODE_ATTRIBUTE}="${mode}"`);
       expect(html).toContain('<meta name="robots" content="noindex,nofollow">');
+      expect(descriptions).toHaveLength(1);
+      expect(descriptions[0]?.getAttribute("content")?.trim()).toBeTruthy();
+      expect(descriptions[0]?.getAttribute("data-seo-seed")).toBe("true");
       expect(html).not.toContain(PUBLIC_SSR_SNAPSHOT_SCRIPT_ID);
       expect(html).not.toContain("must-not-be-accepted-by-render-boundary");
-      expect(html).not.toContain("data-seo-seed");
+      expect(document.body.querySelectorAll("[data-seo-seed]")).toHaveLength(0);
       expect(html).not.toContain("Loading Ferry FYI");
     }
   });
@@ -232,15 +318,22 @@ describe("SSR document protocol", () => {
         .filter((name) => name === PUBLIC_SSR_DOCUMENT_MODE_ATTRIBUTE)
     ).toHaveLength(1);
     expect(root?.textContent).toContain("A ferry schedule and tracker");
-    expect(document.title).toBe(snapshot.metadata.title);
+    expect(document.head.querySelector("title")?.textContent).toBe(
+      snapshot.metadata.title
+    );
     expect(
-      document
+      document.head
         .querySelector('meta[name="description"]')
         ?.getAttribute("content")
     ).toBe(snapshot.metadata.description);
     expect(
-      document.querySelector('link[rel="canonical"]')?.getAttribute("href")
+      document.head.querySelector('link[rel="canonical"]')?.getAttribute("href")
     ).toBe("https://ferry.fyi/about");
+    expect(
+      root?.querySelectorAll(
+        'title, meta[name], meta[property], link[rel="canonical"]'
+      )
+    ).toHaveLength(0);
     expect(document.querySelectorAll("[data-seo-seed]")).toHaveLength(0);
     expect(root?.textContent).not.toContain("Loading Ferry FYI");
     expect(snapshotScript).not.toBeNull();
@@ -251,6 +344,114 @@ describe("SSR document protocol", () => {
       document.querySelector('script[type="module"][src="/entry-bootstrap.ts"]')
     ).not.toBeNull();
   }, 30_000);
+
+  it("places terminal canonical metadata in the document head", async () => {
+    const snapshot = await loadTerminalSnapshot();
+    const result = await renderPublicSsrDocument({
+      context: {
+        clock: () => 1_753_704_000_000,
+        platform: "web",
+        requestUrl: "https://ferry.fyi/mukilteo/terminal",
+        runtime: "server",
+        seoBaseUrl: "https://ferry.fyi",
+        seoHost: "ferry.fyi",
+        seoPathname: "/mukilteo/terminal",
+      },
+      entry: { createServerApp },
+      snapshot,
+      template: realTemplate,
+    });
+
+    const { document } = new JSDOM(result.html).window;
+    const root = document.querySelector("#root");
+    const canonicalMarkup =
+      '<link rel="canonical" href="https://ferry.fyi/mukilteo/terminal"/>';
+    expect(result.html.match(/<link rel="canonical"/g)).toHaveLength(1);
+    expect(result.html.indexOf(canonicalMarkup)).toBeLessThan(
+      result.html.indexOf("</head>")
+    );
+    expect(result.html.indexOf(canonicalMarkup)).toBeLessThan(
+      result.html.indexOf('id="root"')
+    );
+    expect(
+      document.head.querySelectorAll('link[rel="canonical"]')
+    ).toHaveLength(1);
+    expect(
+      document.head.querySelector('link[rel="canonical"]')?.getAttribute("href")
+    ).toBe("https://ferry.fyi/mukilteo/terminal");
+    expect(document.head.querySelector("title")?.textContent).toBe(
+      snapshot.metadata.title
+    );
+    expect(
+      document.head
+        .querySelector('meta[name="description"]')
+        ?.getAttribute("content")
+    ).toBe(snapshot.metadata.description);
+    expect(
+      document.head
+        .querySelector('meta[name="robots"]')
+        ?.getAttribute("content")
+    ).toBe(snapshot.metadata.robots);
+    expect(
+      root?.querySelectorAll(
+        'title, meta[name], meta[property], link[rel="canonical"]'
+      )
+    ).toHaveLength(0);
+    expect(
+      root?.querySelectorAll('script[type="application/ld+json"]')
+    ).toHaveLength(1);
+    expect(
+      document.querySelectorAll('script[type="application/ld+json"]')
+    ).toHaveLength(1);
+  }, 30_000);
+
+  it("rejects arbitrary or ambiguous native head boundaries", async () => {
+    const snapshot = await loadAboutSnapshot();
+    const shell = '<div data-app-transition-shell="true">app</div>';
+
+    expect(() =>
+      assemblePublicSsrDocument({
+        appMarkup: `<main>not head metadata</main>${shell}`,
+        helmetContext: {},
+        snapshot,
+        template,
+      })
+    ).toThrow("unsupported head prefix");
+    expect(() =>
+      assemblePublicSsrDocument({
+        appMarkup: `<title>About</title>${shell}${shell}`,
+        helmetContext: {},
+        snapshot,
+        template,
+      })
+    ).toThrow("ambiguous app shell boundary");
+    expect(() =>
+      assemblePublicSsrDocument({
+        appMarkup: `<title>About</title>${shell}`,
+        helmetContext: {
+          helmet: { title: { toString: () => "<title>Legacy</title>" } },
+        },
+        snapshot,
+        template,
+      })
+    ).toThrow("conflicting head metadata sources");
+    expect(() =>
+      assemblePublicSsrDocument({
+        appMarkup: shell,
+        helmetContext: {},
+        snapshot,
+        template,
+      })
+    ).toThrow("app shell is missing head metadata");
+
+    const synthetic = assemblePublicSsrDocument({
+      appMarkup: "<main>synthetic renderer</main>",
+      helmetContext: {},
+      snapshot,
+      template,
+    });
+    expect(synthetic).toContain("<main>synthetic renderer</main>");
+  });
 
   it("rejects on a render error without returning partial HTML", async () => {
     let aborted = false;

@@ -2,6 +2,7 @@
 import React from "react";
 import { describe, expect, it, vi } from "vitest";
 
+import { getPublicAdServingFingerprint } from "../../server/services/public/adTracking";
 import {
   type PublicSsrServerEntry,
   renderPublicSsrDocument,
@@ -18,8 +19,13 @@ import {
   type PublicSsrLoadResult,
   PublicSsrTransientFailure,
 } from "../../server/ssr/publicSnapshot";
+import type { AdCampaignCreative } from "../../shared/contracts/ads";
 import { PUBLIC_SSR_SNAPSHOT_VERSION } from "../../shared/contracts/ssr";
 import type { Terminal } from "../../shared/contracts/terminals";
+import {
+  getPublicSsrAdPlacementBinding,
+  type PublicSsrAdServingBinding,
+} from "../../shared/lib/ssrAdPlacement";
 import { matchPublicSsrRoute } from "../../shared/lib/ssrRouteMatch";
 
 const template = '<html><head></head><body><div id="root"></div></body></html>';
@@ -141,6 +147,157 @@ const todaySnapshot = () => ({
   version: PUBLIC_SSR_SNAPSHOT_VERSION,
 });
 
+// build one valid home snapshot from the injected serving decision
+const homeSnapshot = (serving: PublicSsrAdServingBinding) => ({
+  canonicalHost: "ferry.fyi" as const,
+  canonicalPath: "/",
+  hostProfile: "ferry.fyi" as const,
+  indexability: "indexable" as const,
+  metadata: {
+    canonicalPath: "/",
+    description: "Current Washington State Ferries information",
+    robots: "index,follow" as const,
+    title: "Ferry FYI",
+  },
+  normalizedUrl: { path: "/", query: {} },
+  renderedAt: "2026-07-28T12:00:00.000Z",
+  routeId: "home" as const,
+  routeParams: {},
+  sources: {
+    ad: {
+      observedAt: "2026-07-28T12:00:00.000Z",
+      outcome: "value" as const,
+      sourceUpdatedAt: null,
+      value: {
+        creative: serving.creative,
+        placementKey: serving.placementKey,
+      },
+    },
+    features: {
+      observedAt: "2026-07-28T12:00:00.000Z",
+      outcome: "value" as const,
+      sourceUpdatedAt: null,
+      value: { leaderboardsEnabled: true },
+    },
+    notices: {
+      observedAt: "2026-07-28T12:00:00.000Z",
+      outcome: "empty" as const,
+      sourceUpdatedAt: null,
+      value: {
+        announcements: [],
+        maintenance: { enabled: false, message: "" },
+      },
+    },
+    terminals: {
+      observedAt: "2026-07-28T12:00:00.000Z",
+      outcome: "empty" as const,
+      sourceUpdatedAt: null,
+      value: [],
+    },
+  },
+  version: PUBLIC_SSR_SNAPSHOT_VERSION,
+});
+
+// build one immutable public creative fixture
+const creative = (campaignId: string): AdCampaignCreative => ({
+  advertiserName: `Advertiser ${campaignId}`,
+  body: `Body ${campaignId}`,
+  campaignId,
+  headline: `Headline ${campaignId}`,
+  placementKey: "home",
+  targetUrl: `https://example.com/${campaignId}`,
+});
+
+// bind a runtime to a shared mutable serving-state fixture
+const createHomeRuntime = ({
+  blockFirstLoad,
+  cache = new SsrDocumentCache<SsrRuntimeFill>(),
+  cacheEnabled = true,
+  clock = () => new Date("2026-07-28T12:00:00.000Z"),
+  servingState,
+}: {
+  blockFirstLoad?: Promise<void>;
+  cache?: SsrDocumentCache<SsrRuntimeFill>;
+  cacheEnabled?: boolean;
+  clock?: () => Date;
+  servingState: {
+    current: AdCampaignCreative | null;
+    errorAt?: number;
+    now: Date;
+    reads: number;
+  };
+}) => {
+  const home = match(new URL("https://ferry.fyi/"));
+  if (!home) {
+    throw new Error("Home route must be present");
+  }
+  const adPlacementBinding = getPublicSsrAdPlacementBinding(home);
+  if (!adPlacementBinding) {
+    throw new Error("Home placement must be present");
+  }
+  const resolveAdServingState = vi.fn(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- retain the timestamp for serving-decision assertions
+    async (placementKey: string, _now: Date) => {
+      servingState.reads += 1;
+      // simulate a selected authoritative database failure
+      if (servingState.errorAt === servingState.reads) {
+        throw new Error("private database detail");
+      }
+      return {
+        creative: servingState.current,
+        fingerprint: getPublicAdServingFingerprint(
+          placementKey,
+          servingState.current
+        ),
+        placementKey,
+      };
+    }
+  );
+  let loads = 0;
+  const load = vi.fn(async (input) => {
+    loads += 1;
+    // hold the first candidate across a serving-state transition
+    if (loads === 1 && blockFirstLoad) {
+      await blockFirstLoad;
+    }
+    if (!input.adServingBinding) {
+      throw new Error("Expected an injected serving binding");
+    }
+    return {
+      classification: "snapshot" as const,
+      match: home,
+      snapshot: homeSnapshot(input.adServingBinding),
+    };
+  });
+  const telemetry = vi.fn();
+  const run = createSsrDocumentRuntime({
+    cache,
+    clock,
+    config: { cacheEnabled, enabled: true },
+    contentRevision: () => "test",
+    load,
+    release: () => ({ publishedAt: null, version: "test" }),
+    renderer: rendererFor({
+      createServerApp: ({ snapshot }) => {
+        const { ad } = snapshot.sources;
+        const headline =
+          ad?.outcome === "value" ? ad.value.creative?.headline : null;
+        return React.createElement("main", null, headline ?? "Empty ad slot");
+      },
+    }),
+    resolve: async () => ({
+      adPlacementBinding,
+      classification: "eligible" as const,
+      match: home,
+    }),
+    resolveAdServingState,
+    servingClock: () => servingState.now,
+    telemetry,
+    template,
+  });
+  return { cache, load, resolveAdServingState, run, telemetry };
+};
+
 const terminal = (id: string, name: string): Terminal => ({
   abbreviation: name.slice(0, 3).toUpperCase(),
   bulletins: [],
@@ -223,7 +380,7 @@ const createCanonicalRuntime = (
 };
 
 describe("SSR document runtime cache integration", () => {
-  it("never persists a document that contains an ad source", () => {
+  it("allows ad documents while rejecting transient source outcomes", () => {
     expect(
       isPublicSsrDocumentCacheable({
         sources: {
@@ -233,7 +390,7 @@ describe("SSR document runtime cache integration", () => {
           },
         },
       })
-    ).toBe(false);
+    ).toBe(true);
     expect(
       isPublicSsrDocumentCacheable({
         sources: {
@@ -244,6 +401,16 @@ describe("SSR document runtime cache integration", () => {
         },
       })
     ).toBe(true);
+    expect(
+      isPublicSsrDocumentCacheable({
+        sources: {
+          schedule: {
+            observedAt: "2026-08-04T12:00:00.000Z",
+            outcome: "transiently-unavailable",
+          },
+        },
+      })
+    ).toBe(false);
   });
   it("keeps real resolver redirects and failures outside the document cache", async () => {
     const noTerminals = vi.fn(async () => ({}));
@@ -490,8 +657,8 @@ describe("SSR document runtime cache integration", () => {
     expect(cacheOutcomes).toEqual(["miss", "miss", "hit"]);
   });
 
-  it("expires dynamic documents after one minute", async () => {
-    let now = new Date("2026-07-28T12:00:00.000Z");
+  it("reuses dynamic documents until the next fixed refresh boundary", async () => {
+    let now = new Date("2026-07-28T21:58:00.000Z");
     const today = match(new URL("https://ferry.fyi/today"));
     if (!today) {
       throw new Error("Today route must be present");
@@ -504,9 +671,9 @@ describe("SSR document runtime cache integration", () => {
     const runtime = createRuntime({ clock: () => now, load });
 
     await runtime.run("https://ferry.fyi/today");
-    now = new Date("2026-07-28T12:00:59.999Z");
+    now = new Date("2026-07-28T21:59:59.999Z");
     await runtime.run("https://ferry.fyi/today");
-    now = new Date("2026-07-28T12:01:00.000Z");
+    now = new Date("2026-07-28T22:00:00.000Z");
     await runtime.run("https://ferry.fyi/today");
 
     expect(load).toHaveBeenCalledTimes(2);
@@ -583,5 +750,406 @@ describe("SSR document runtime cache integration", () => {
     });
     expect(attempts).toBe(2);
     expect(cache.sizes).toEqual({ dynamic: 0, inFlight: 0, static: 1 });
+  });
+
+  // keep the content window separate from later ad-serving observations
+  it.each([
+    ["03:00", "2026-07-28T09:59:59.999Z", "2026-07-28T10:00:00.000Z"],
+    ["15:00", "2026-07-28T21:59:59.999Z", "2026-07-28T22:00:00.000Z"],
+  ])(
+    "does not persist old content under a new %s ad window",
+    async (_label, before, after) => {
+      let now = new Date(before);
+      const servingState = {
+        current: creative("A"),
+        now: new Date(after),
+        reads: 0,
+      };
+      const runtime = createHomeRuntime({ clock: () => now, servingState });
+      const home = match(new URL("https://ferry.fyi/"));
+      // require the fixture route before observing cached content
+      if (!home) {
+        throw new Error("Home route must be present");
+      }
+      runtime.load.mockImplementation(async (input) => {
+        now = new Date(after);
+        return {
+          classification: "snapshot" as const,
+          match: home,
+          snapshot: {
+            ...homeSnapshot(input.adServingBinding),
+            renderedAt: input.fixedClock.toISOString(),
+          },
+        };
+      });
+
+      const old = await runtime.run("https://ferry.fyi/");
+      expect(old.status).toBe(200);
+      expect(old.html).toContain(before);
+      expect(runtime.cache.sizes.dynamic).toBe(0);
+      const fresh = await runtime.run("https://ferry.fyi/");
+      expect(fresh.status).toBe(200);
+      expect(fresh.html).toContain(after);
+      expect(fresh.html).not.toContain(before);
+      expect(runtime.cache.sizes.dynamic).toBe(1);
+      expect((await runtime.run("https://ferry.fyi/")).html).toBe(fresh.html);
+      expect(runtime.load).toHaveBeenCalledTimes(2);
+    }
+  );
+
+  // sample the content clock after the final database observation completes
+  it("does not commit across a refresh boundary during ad validation", async () => {
+    let now = new Date("2026-07-28T09:59:59.999Z");
+    const servingState = { current: creative("A"), now, reads: 0 };
+    const runtime = createHomeRuntime({ clock: () => now, servingState });
+    runtime.resolveAdServingState.mockImplementation(async (placementKey) => {
+      servingState.reads += 1;
+      // advance the content clock during the final serving decision
+      if (servingState.reads === 2) {
+        now = new Date("2026-07-28T10:00:00.000Z");
+        servingState.now = now;
+      }
+      return {
+        creative: servingState.current,
+        fingerprint: getPublicAdServingFingerprint(
+          placementKey,
+          servingState.current
+        ),
+        placementKey,
+      };
+    });
+
+    expect((await runtime.run("https://ferry.fyi/")).status).toBe(200);
+    expect(runtime.cache.sizes.dynamic).toBe(0);
+    expect((await runtime.run("https://ferry.fyi/")).status).toBe(200);
+    expect(runtime.cache.sizes.dynamic).toBe(1);
+    expect(runtime.load).toHaveBeenCalledTimes(2);
+  });
+
+  it("caches a stable ad document and performs the exact miss and hit decisions", async () => {
+    const servingState = {
+      current: creative("A"),
+      now: new Date("2026-07-28T12:00:00.000Z"),
+      reads: 0,
+    };
+    const runtime = createHomeRuntime({ servingState });
+
+    const first = await runtime.run("https://ferry.fyi/");
+    const second = await runtime.run("https://ferry.fyi/");
+
+    expect(first.html).toContain("Headline A");
+    expect(second.html).toBe(first.html);
+    expect(runtime.load).toHaveBeenCalledOnce();
+    expect(runtime.resolveAdServingState).toHaveBeenCalledTimes(3);
+    const events = runtime.telemetry.mock.calls
+      .map(([event]) => event)
+      .filter(({ event }) => event === "ssr_document");
+    expect(events).toMatchObject([
+      {
+        adResolutionCount: 2,
+        adRetryCount: 0,
+        adValidationOutcome: "stable",
+        cacheOutcome: "miss",
+        renderCount: 1,
+        snapshotLoadCount: 1,
+      },
+      {
+        adResolutionCount: 1,
+        adRetryCount: 0,
+        adValidationOutcome: "stable",
+        cacheOutcome: "hit",
+        renderCount: 0,
+        snapshotLoadCount: 0,
+      },
+    ]);
+    expect(JSON.stringify(events)).not.toContain("Headline A");
+    expect(JSON.stringify(events)).not.toContain("https://example.com/A");
+    expect(JSON.stringify(events)).not.toContain(
+      getPublicAdServingFingerprint("home", servingState.current)
+    );
+  });
+
+  it.each([
+    ["campaign start", null, creative("started")],
+    ["campaign end", creative("ending"), null],
+    ["campaign early end", creative("early"), null],
+  ])(
+    "invalidates an origin fill and coalesced waiter at exact %s",
+    async (_label, before, after) => {
+      let release!: () => void;
+      const blocked = new Promise<void>((done) => (release = done));
+      const servingState = {
+        current: before,
+        now: new Date("2026-07-28T12:00:00.000Z"),
+        reads: 0,
+      };
+      const runtime = createHomeRuntime({
+        blockFirstLoad: blocked,
+        servingState,
+      });
+      const secondRuntime = createHomeRuntime({
+        blockFirstLoad: blocked,
+        servingState,
+      });
+
+      const origin = runtime.run("https://ferry.fyi/");
+      const secondOrigin = secondRuntime.run("https://ferry.fyi/");
+      await vi.waitFor(() => {
+        expect(runtime.load).toHaveBeenCalledOnce();
+        expect(secondRuntime.load).toHaveBeenCalledOnce();
+      });
+      const waiter = runtime.run("https://ferry.fyi/");
+      const secondWaiter = secondRuntime.run("https://ferry.fyi/");
+      await vi.waitFor(() => {
+        expect(runtime.resolveAdServingState).toHaveBeenCalledTimes(2);
+        expect(secondRuntime.resolveAdServingState).toHaveBeenCalledTimes(2);
+      });
+      const transitionAt = new Date("2026-07-28T12:01:00.000Z");
+      servingState.current = after;
+      servingState.now = transitionAt;
+      release();
+
+      const responses = await Promise.all([
+        origin,
+        waiter,
+        secondOrigin,
+        secondWaiter,
+      ]);
+      const expectedText = after?.headline ?? "Empty ad slot";
+      expect(responses.every(({ html }) => html.includes(expectedText))).toBe(
+        true
+      );
+      if (before) {
+        expect(
+          responses.every(({ html }) => !html.includes(before.headline))
+        ).toBe(true);
+      }
+      expect(runtime.load).toHaveBeenCalledTimes(2);
+      expect(secondRuntime.load).toHaveBeenCalledTimes(2);
+      expect(runtime.resolveAdServingState).toHaveBeenCalledTimes(8);
+      expect(secondRuntime.resolveAdServingState).toHaveBeenCalledTimes(8);
+      expect(
+        [runtime, secondRuntime].every(({ resolveAdServingState }) =>
+          resolveAdServingState.mock.calls
+            .slice(2)
+            .every(([, observedAt]) => observedAt === transitionAt)
+        )
+      ).toBe(true);
+      expect(
+        [runtime, secondRuntime].every(({ load }) =>
+          load.mock.calls.every(
+            ([request]) =>
+              request.fixedClock.toISOString() === "2026-07-28T12:00:00.000Z"
+          )
+        )
+      ).toBe(true);
+      const events = [runtime, secondRuntime].flatMap(({ telemetry }) =>
+        telemetry.mock.calls
+          .map(([event]) => event)
+          .filter(({ event }) => event === "ssr_document")
+      );
+      expect(events).toHaveLength(4);
+      expect(
+        events.every(
+          ({ adResolutionCount, adRetryCount, adValidationOutcome }) =>
+            adResolutionCount === 4 &&
+            adRetryCount === 1 &&
+            adValidationOutcome === "changed"
+        )
+      ).toBe(true);
+      expect(events.map(({ renderCount }) => renderCount).sort()).toEqual([
+        0, 0, 2, 2,
+      ]);
+    }
+  );
+
+  it("fails immediately on serving-state errors and caps changed-state attempts", async () => {
+    const preErrorState = {
+      current: creative("A"),
+      errorAt: 1,
+      now: new Date("2026-07-28T12:00:00.000Z"),
+      reads: 0,
+    };
+    const preError = createHomeRuntime({ servingState: preErrorState });
+    const preErrorResponse = await preError.run("https://ferry.fyi/");
+    expect(preErrorResponse).toMatchObject({ status: 503 });
+    expect(preErrorResponse.html).not.toContain("private database detail");
+    expect(JSON.stringify(preError.telemetry.mock.calls)).not.toContain(
+      "private database detail"
+    );
+    expect(preError.resolveAdServingState).toHaveBeenCalledOnce();
+    expect(preError.load).not.toHaveBeenCalled();
+
+    const finalErrorState = {
+      current: creative("A"),
+      errorAt: 2,
+      now: new Date("2026-07-28T12:00:00.000Z"),
+      reads: 0,
+    };
+    const finalError = createHomeRuntime({ servingState: finalErrorState });
+    await expect(finalError.run("https://ferry.fyi/")).resolves.toMatchObject({
+      status: 503,
+    });
+    expect(finalError.resolveAdServingState).toHaveBeenCalledTimes(2);
+    expect(finalError.load).toHaveBeenCalledOnce();
+    expect(finalError.cache.sizes.dynamic).toBe(0);
+
+    const churnState = {
+      current: creative("A"),
+      now: new Date("2026-07-28T12:00:00.000Z"),
+      reads: 0,
+    };
+    const churn = createHomeRuntime({ servingState: churnState });
+    churn.resolveAdServingState.mockImplementation(async (placementKey) => {
+      churnState.reads += 1;
+      const current = creative(churnState.reads % 2 ? "A" : "B");
+      return {
+        creative: current,
+        fingerprint: getPublicAdServingFingerprint(placementKey, current),
+        placementKey,
+      };
+    });
+    await expect(churn.run("https://ferry.fyi/")).resolves.toMatchObject({
+      status: 503,
+    });
+    expect(churn.resolveAdServingState).toHaveBeenCalledTimes(6);
+    expect(churn.load).toHaveBeenCalledTimes(3);
+    expect(churn.cache.sizes.dynamic).toBe(0);
+    const churnEvent = churn.telemetry.mock.calls
+      .map(([event]) => event)
+      .find(({ event }) => event === "ssr_document");
+    expect(churnEvent).toMatchObject({
+      adResolutionCount: 6,
+      adRetryCount: 2,
+      adValidationOutcome: "changed",
+    });
+  });
+
+  it("propagates a shared final-validation outage without waiter requery", async () => {
+    let release!: () => void;
+    const blocked = new Promise<void>((done) => (release = done));
+    const servingState = {
+      current: creative("A"),
+      errorAt: 3,
+      now: new Date("2026-07-28T12:00:00.000Z"),
+      reads: 0,
+    };
+    const runtime = createHomeRuntime({
+      blockFirstLoad: blocked,
+      servingState,
+    });
+
+    const origin = runtime.run("https://ferry.fyi/");
+    await vi.waitFor(() => expect(runtime.load).toHaveBeenCalledOnce());
+    const waiter = runtime.run("https://ferry.fyi/");
+    await vi.waitFor(() =>
+      expect(runtime.resolveAdServingState).toHaveBeenCalledTimes(2)
+    );
+    release();
+    const responses = await Promise.all([origin, waiter]);
+
+    expect(responses.every(({ status }) => status === 503)).toBe(true);
+    expect(runtime.resolveAdServingState).toHaveBeenCalledTimes(3);
+    const events = runtime.telemetry.mock.calls
+      .map(([event]) => event)
+      .filter(({ event }) => event === "ssr_document");
+    expect(events).toHaveLength(2);
+    expect(
+      events.every(
+        ({ adRetryCount, adValidationOutcome }) =>
+          adRetryCount === 0 && adValidationOutcome === "error"
+      )
+    ).toBe(true);
+  });
+
+  it("observes ad mutations independently in two runtime caches", async () => {
+    const servingState = {
+      current: creative("A"),
+      now: new Date("2026-07-28T12:00:00.000Z"),
+      reads: 0,
+    };
+    const first = createHomeRuntime({ servingState });
+    const second = createHomeRuntime({ servingState });
+
+    await Promise.all([
+      first.run("https://ferry.fyi/"),
+      second.run("https://ferry.fyi/"),
+    ]);
+    servingState.current = creative("B");
+    servingState.now = new Date("2026-07-28T12:05:00.000Z");
+    const responses = await Promise.all([
+      first.run("https://ferry.fyi/"),
+      second.run("https://ferry.fyi/"),
+    ]);
+
+    expect(responses.every(({ html }) => html.includes("Headline B"))).toBe(
+      true
+    );
+    expect(first.load).toHaveBeenCalledTimes(2);
+    expect(second.load).toHaveBeenCalledTimes(2);
+    expect(first.cache.sizes.dynamic).toBe(1);
+    expect(second.cache.sizes.dynamic).toBe(1);
+  });
+
+  it("returns but does not commit a stable ad fill that crosses a refresh window", async () => {
+    let release!: () => void;
+    const blocked = new Promise<void>((done) => (release = done));
+    const servingState = {
+      current: creative("stable"),
+      now: new Date("2026-07-28T21:59:59.999Z"),
+      reads: 0,
+    };
+    const runtime = createHomeRuntime({
+      blockFirstLoad: blocked,
+      clock: () => servingState.now,
+      servingState,
+    });
+
+    const first = runtime.run("https://ferry.fyi/");
+    await vi.waitFor(() => expect(runtime.load).toHaveBeenCalledOnce());
+    // eslint-disable-next-line require-atomic-updates -- advance fixture time while the fill is intentionally pending
+    servingState.now = new Date("2026-07-28T22:00:00.000Z");
+    release();
+    await expect(first).resolves.toMatchObject({ status: 200 });
+    await expect(runtime.run("https://ferry.fyi/")).resolves.toMatchObject({
+      status: 200,
+    });
+
+    expect(runtime.load).toHaveBeenCalledTimes(2);
+    expect(runtime.cache.sizes.dynamic).toBe(1);
+    const events = runtime.telemetry.mock.calls
+      .map(([event]) => event)
+      .filter(({ event }) => event === "ssr_document");
+    expect(events).toMatchObject([
+      { adRetryCount: 0, cacheOutcome: "miss" },
+      { adRetryCount: 0, cacheOutcome: "miss" },
+    ]);
+  });
+
+  it("final-validates ad output while persistence is disabled", async () => {
+    const servingState = {
+      current: creative("temporary"),
+      now: new Date("2026-07-28T12:00:00.000Z"),
+      reads: 0,
+    };
+    const runtime = createHomeRuntime({
+      cacheEnabled: false,
+      servingState,
+    });
+
+    await expect(runtime.run("https://ferry.fyi/")).resolves.toMatchObject({
+      status: 200,
+    });
+
+    expect(runtime.resolveAdServingState).toHaveBeenCalledTimes(2);
+    expect(runtime.cache.sizes.dynamic).toBe(0);
+    const event = runtime.telemetry.mock.calls
+      .map(([value]) => value)
+      .find(({ event }) => event === "ssr_document");
+    expect(event).toMatchObject({
+      adResolutionCount: 2,
+      cacheOutcome: "cache_bypassed",
+      controlReason: "cache_bypassed",
+    });
   });
 });

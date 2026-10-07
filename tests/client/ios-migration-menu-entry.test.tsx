@@ -56,6 +56,14 @@ describe("iOS migration menu entry", () => {
     device.platform = "ios";
   });
 
+  // leave the page title as the only top-level heading
+  it("keeps navigation branding out of the page heading outline", () => {
+    const menu = renderMenu();
+
+    expect(menu).toContain("Ferry FYI");
+    expect(menu).not.toMatch(/<h1\b/);
+  });
+
   // ios navigation contract
   it("offers one login page entry in the iOS app", () => {
     const menu = renderMenu();

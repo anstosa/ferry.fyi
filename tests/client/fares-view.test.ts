@@ -27,8 +27,13 @@ vi.mock("~/components/DateButton", () => ({
   DateButton: () => React.createElement("div", null, "Date"),
 }));
 vi.mock("~/components/ExternalPillLink", () => ({
-  ExternalPillLink: ({ children, href }: { children: React.ReactNode; href: string }) =>
-    React.createElement("a", { href }, children),
+  ExternalPillLink: ({
+    children,
+    href,
+  }: {
+    children: React.ReactNode;
+    href: string;
+  }) => React.createElement("a", { href }, children),
 }));
 vi.mock("~/components/FareWizardIcons", () => {
   const Icon = () => React.createElement("svg");
@@ -53,8 +58,8 @@ vi.mock("~/components/RouteSelector", () => ({
 vi.mock("~/static/images/icons/solid/share-alt.svg", () => ({
   default: () => React.createElement("svg"),
 }));
-import { Fares } from "../../client/views/Fares";
 import { PublicSsrSeedProvider } from "../../client/lib/ssrSeed";
+import { Fares } from "../../client/views/Fares";
 vi.mock("react-router-dom", () => ({
   useLocation: () => ({ search: window.location.search }),
 }));
@@ -78,6 +83,23 @@ const terminal = {
   terminalUrl: null,
   waitTimes: [],
 } satisfies import("../../shared/contracts/terminals").Terminal;
+const catalogContext = {
+  kind: "catalog" as const,
+  collectionDescription: "One-way fares",
+  request: {
+    departingTerminalId: "1",
+    arrivingTerminalId: "2",
+    roundTrip: false,
+    tripDate: "2026-07-18" as const,
+  },
+  freshness: {
+    fetchedAt: 1784372400,
+    sourceCacheFlushDate: null,
+    validFrom: "2026-01-01" as const,
+    validThrough: "2026-12-31" as const,
+    policyVersion: "fixture",
+  },
+};
 const mate = {
   ...terminal,
   abbreviation: "BAI",
@@ -96,11 +118,36 @@ describe("Fares", () => {
   it("renders the vehicle wizard, counters, live quote, and bottom share action", async () => {
     fares.getFareCatalog.mockResolvedValue({
       catalog: {
+        ...catalogContext,
         fares: [
-          { id: 1, label: "Adult (age 19 - 64)" },
-          { id: 2, label: "Youth (age 18 and under)" },
-          { id: 3, label: "Senior (age 65 & over)" },
-          { id: 4, label: "Vehicle Under 22' (standard veh) & Driver" },
+          {
+            id: 1,
+            label: "Adult (age 19 - 64)",
+            amount: 10,
+            category: "Passenger",
+            directionIndependent: false,
+          },
+          {
+            id: 2,
+            label: "Youth (age 18 and under)",
+            amount: 10,
+            category: "Passenger",
+            directionIndependent: false,
+          },
+          {
+            id: 3,
+            label: "Senior (age 65 & over)",
+            amount: 10,
+            category: "Passenger",
+            directionIndependent: false,
+          },
+          {
+            id: 4,
+            label: "Vehicle Under 22' (standard veh) & Driver",
+            amount: 10,
+            category: "Passenger",
+            directionIndependent: false,
+          },
         ],
       },
       state: "current",
@@ -164,8 +211,9 @@ describe("Fares", () => {
     expect(
       container.querySelector('input[aria-label="Adults count"]')
     ).not.toBeNull();
-    expect(container.querySelector('a[href="https://wsdot.wa.gov/ferries/fares/"]'))
-      .not.toBeNull();
+    expect(
+      container.querySelector('a[href="https://wsdot.wa.gov/ferries/fares/"]')
+    ).not.toBeNull();
     expect(container.textContent).toContain("$10.50");
     expect(container.textContent).toContain("Share");
   });
@@ -178,9 +226,22 @@ describe("Fares", () => {
     );
     fares.getFareCatalog.mockResolvedValue({
       catalog: {
+        ...catalogContext,
         fares: [
-          { id: 1, label: "Adult (age 19 - 64)" },
-          { id: 4, label: "Vehicle Under 22' (standard veh) & Driver" },
+          {
+            id: 1,
+            label: "Adult (age 19 - 64)",
+            amount: 10,
+            category: "Passenger",
+            directionIndependent: false,
+          },
+          {
+            id: 4,
+            label: "Vehicle Under 22' (standard veh) & Driver",
+            amount: 10,
+            category: "Passenger",
+            directionIndependent: false,
+          },
         ],
       },
       state: "current",
@@ -255,7 +316,16 @@ describe("Fares", () => {
           value: {
             state: "current",
             catalog: {
-              fares: [{ id: 1, label: "Seeded walk-on fare" }],
+              ...catalogContext,
+              fares: [
+                {
+                  id: 1,
+                  label: "Seeded walk-on fare",
+                  amount: 10,
+                  category: "Passenger",
+                  directionIndependent: false,
+                },
+              ],
             },
           },
         },
@@ -277,9 +347,7 @@ describe("Fares", () => {
     expect(fares.getFareCatalog).not.toHaveBeenCalled();
 
     await act(async () => {
-      root?.render(
-        seededElement
-      );
+      root?.render(seededElement);
       await Promise.resolve();
       await Promise.resolve();
     });
@@ -288,6 +356,129 @@ describe("Fares", () => {
     expect(container.textContent).toContain("Fare estimator");
     expect(container.textContent).not.toContain("Fares unavailable");
     expect(container.textContent).toContain("Seeded walk-on fare");
+    expect(container.querySelectorAll("details table")).toHaveLength(1);
+    expect(
+      container.querySelector('[aria-label="Fare estimator"]')
+        ?.nextElementSibling?.tagName
+    ).toBe("DETAILS");
+    expect(container.querySelectorAll("tbody tr")).toHaveLength(1);
+  });
+
+  it.each([
+    ["departure", { departingTerminalId: "99" }],
+    ["arrival", { arrivingTerminalId: "99" }],
+    ["date", { tripDate: "2026-07-19" }],
+    ["trip type", { roundTrip: true }],
+  ] as const)(
+    "rejects a seeded catalog with a mismatched %s request",
+    async (_label, requestOverride) => {
+      let rejectCatalog: ((reason: Error) => void) | undefined;
+      const catalogRequest = new Promise((_, reject) => {
+        rejectCatalog = reject;
+      });
+      fares.getFareCatalog.mockReturnValue(catalogRequest);
+      const container = document.createElement("div");
+      document.body.appendChild(container);
+      root = createRoot(container);
+      const mismatchedSnapshot = {
+        sources: {
+          fares: {
+            outcome: "value",
+            value: {
+              state: "current",
+              catalog: {
+                ...catalogContext,
+                request: {
+                  ...catalogContext.request,
+                  ...requestOverride,
+                },
+                fares: [
+                  {
+                    id: 1,
+                    label: "Mismatched seeded fare",
+                    amount: 10,
+                    category: "Passenger",
+                    directionIndependent: false,
+                  },
+                ],
+              },
+            },
+          },
+        },
+      } as import("../../shared/contracts/ssr").PublicSsrSnapshot;
+
+      await act(async () => {
+        root?.render(
+          React.createElement(
+            PublicSsrSeedProvider,
+            { snapshot: mismatchedSnapshot },
+            React.createElement(Fares, {
+              date: DateTime.fromISO("2026-07-18"),
+              mate,
+              setDate: vi.fn(),
+              setRoute: vi.fn(),
+              terminal,
+            })
+          )
+        );
+        await Promise.resolve();
+      });
+
+      expect(container.textContent).not.toContain("Mismatched seeded fare");
+      expect(
+        container.querySelector('[aria-label="Loading fare estimator"]')
+      ).not.toBeNull();
+
+      await act(async () => {
+        rejectCatalog?.(new Error("refresh unavailable"));
+        await catalogRequest.catch(() => undefined);
+        await Promise.resolve();
+      });
+
+      expect(container.textContent).toContain("Fares unavailable");
+      expect(container.textContent).not.toContain("Mismatched seeded fare");
+    }
+  );
+
+  it("does not present an unavailable seed as a current fare response", async () => {
+    fares.getFareCatalog.mockReturnValue(new Promise(() => undefined));
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+    const unavailableSnapshot = {
+      sources: {
+        fares: {
+          outcome: "value",
+          value: {
+            calculatorUrl: "https://wsdot.wa.gov/ferries/fares/",
+            reason: "unavailable",
+            state: "unavailable",
+          },
+        },
+      },
+    } as unknown as import("../../shared/contracts/ssr").PublicSsrSnapshot;
+
+    await act(async () => {
+      root?.render(
+        React.createElement(
+          PublicSsrSeedProvider,
+          { snapshot: unavailableSnapshot },
+          React.createElement(Fares, {
+            date: DateTime.fromISO("2026-07-18"),
+            mate,
+            setDate: vi.fn(),
+            setRoute: vi.fn(),
+            terminal,
+          })
+        )
+      );
+      await Promise.resolve();
+    });
+
+    expect(
+      container.querySelector('[aria-label="Loading fare estimator"]')
+    ).not.toBeNull();
+    expect(container.textContent).not.toContain("Fares unavailable");
   });
 
   it("replaces the seeded catalog after a successful post-commit refresh", async () => {
@@ -306,7 +497,18 @@ describe("Fares", () => {
           outcome: "value",
           value: {
             state: "current",
-            catalog: { fares: [{ id: 1, label: "Old seeded fare" }] },
+            catalog: {
+              ...catalogContext,
+              fares: [
+                {
+                  id: 1,
+                  label: "Old seeded fare",
+                  amount: 10,
+                  category: "Passenger",
+                  directionIndependent: false,
+                },
+              ],
+            },
           },
         },
       },
@@ -333,11 +535,84 @@ describe("Fares", () => {
     await act(async () => {
       resolveCatalog?.({
         state: "current",
-        catalog: { fares: [{ id: 2, label: "Fresh refreshed fare" }] },
+        catalog: {
+          ...catalogContext,
+          fares: [
+            {
+              id: 2,
+              label: "Fresh refreshed fare",
+              amount: 10,
+              category: "Passenger",
+              directionIndependent: false,
+            },
+          ],
+        },
       });
       await Promise.resolve();
     });
     expect(container.textContent).toContain("Fresh refreshed fare");
     expect(container.textContent).not.toContain("Old seeded fare");
   });
+  // honor authoritative policy changes while retaining transient seeds
+  it.each(["policy", "invalid-request", "unavailable"] as const)(
+    "handles seeded first-refresh %s failures",
+    async (reason) => {
+      fares.getFareCatalog.mockResolvedValue({
+        state: "unavailable",
+        reason,
+        calculatorUrl: "https://wsdot.wa.gov/ferries/fares/",
+      });
+      const container = document.createElement("div");
+      document.body.appendChild(container);
+      root = createRoot(container);
+      const snapshot = {
+        sources: {
+          fares: {
+            outcome: "value",
+            value: {
+              state: "current",
+              catalog: {
+                ...catalogContext,
+                fares: [
+                  {
+                    id: 1,
+                    label: "Policy-sensitive fare",
+                    amount: 10,
+                    category: "Passenger",
+                    directionIndependent: false,
+                  },
+                ],
+              },
+            },
+          },
+        },
+      } as import("../../shared/contracts/ssr").PublicSsrSnapshot;
+      await act(async () => {
+        root?.render(
+          React.createElement(
+            PublicSsrSeedProvider,
+            { snapshot },
+            React.createElement(Fares, {
+              date: DateTime.fromISO("2026-07-18"),
+              mate,
+              terminal,
+              setDate: vi.fn(),
+              setRoute: vi.fn(),
+            })
+          )
+        );
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(container.querySelectorAll("details table")).toHaveLength(
+        reason === "unavailable" ? 1 : 0
+      );
+      expect(container.textContent?.includes("Policy-sensitive fare")).toBe(
+        reason === "unavailable"
+      );
+      expect(container.textContent?.includes("Fares unavailable")).toBe(
+        reason !== "unavailable"
+      );
+    }
+  );
 });

@@ -23,6 +23,8 @@ import AppStoreIcon from "~/static/images/icons/brands/app-store-ios.svg";
 import GooglePlayIcon from "~/static/images/icons/brands/google-play.svg";
 import DownloadIcon from "~/static/images/icons/solid/download.svg";
 
+import { InstallPublicContent } from "./InstallPublicContent";
+
 type InstallState = "checking" | "installed" | "ready" | "requested";
 
 // platform-aware installation page
@@ -129,16 +131,16 @@ export const Install = (): ReactElement => {
   }
 
   return (
-    <Page title="Install">
+    <Page publicTitle="Install">
       <SeoHelmet seo={getSeoMetadata("/install")} />
-      <section className="mx-auto mt-8 max-w-xl rounded-2xl bg-white p-6 text-center shadow-sm dark:bg-blue-dark sm:p-10">
-        <Icon className="mx-auto h-14 w-14 text-green dark:text-blue-light" />
-        <h2 className="mt-5 text-2xl font-bold text-blue-dark dark:text-white">
-          {title}
-        </h2>
-        <p className="mt-3 leading-relaxed">{message}</p>
-        {action}
-      </section>
+      <InstallPublicContent
+        action={action}
+        icon={
+          <Icon className="mx-auto h-14 w-14 text-green dark:text-blue-light" />
+        }
+        message={message}
+        statusTitle={title}
+      />
     </Page>
   );
 };

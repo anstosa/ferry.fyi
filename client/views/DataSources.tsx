@@ -16,7 +16,7 @@ const contentReviewDate = new Intl.DateTimeFormat("en-US", {
 
 // render public methodology with its shared revision
 export const DataSources = (): ReactElement => (
-  <Page title="Data sources and API guide">
+  <Page publicTitle="Data sources and API guide">
     <SeoHelmet seo={seo} />
     <p className="mt-4">
       Ferry FYI is an independent trip-planning app. This page explains which

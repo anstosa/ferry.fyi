@@ -4,6 +4,7 @@ import https from "node:https";
 import path from "node:path";
 
 import { expect, type Page, test } from "@playwright/test";
+import { JSDOM } from "jsdom";
 
 const privateCanary = "private-canary-must-never-cross";
 const fixtureCertificate = fs.readFileSync(
@@ -146,6 +147,33 @@ const expectDocumentHeaders = (response: {
   expect(response.headers.get("vary")).toContain("Host");
 };
 
+// check metadata placement and image alternatives before JavaScript runs
+const expectDescriptionAndImageAlt = (html: string): void => {
+  const dom = new JSDOM(html);
+  const { document } = dom.window;
+  const descriptions = document.head.querySelectorAll(
+    'meta[name="description"]'
+  );
+  expect(descriptions).toHaveLength(1);
+  expect(descriptions[0]?.getAttribute("content")?.trim()).toBeTruthy();
+  expect(
+    document.body.querySelectorAll('meta[name="description"]')
+  ).toHaveLength(0);
+  expect(document.querySelectorAll("img:not([alt])")).toHaveLength(0);
+  dom.window.close();
+};
+
+// retain exactly one description and image alternatives after browser updates
+const expectHydratedDescriptionAndImageAlt = async (
+  page: Page
+): Promise<void> => {
+  const description = page.locator('head meta[name="description"]');
+  await expect(description).toHaveCount(1);
+  await expect(description).toHaveAttribute("content", /\S/);
+  await expect(page.locator('body meta[name="description"]')).toHaveCount(0);
+  await expect(page.locator("img:not([alt])")).toHaveCount(0);
+};
+
 const installRootSentinel = async (page: Page) => {
   await page.addInitScript(() => {
     const observer = new MutationObserver(() => {
@@ -263,6 +291,7 @@ test("replays an early in-root button click exactly once after startup", async (
   ).toBe(1);
 });
 
+// check startup and metadata across public and private routed surfaces
 for (const [label, path] of [
   ["home", "/"],
   ["today", "/today"],
@@ -310,8 +339,10 @@ for (const [label, path] of [
       waitUntil: "domcontentloaded",
     });
     expect(response?.status(), `${label} document`).toBe(200);
+    expectDescriptionAndImageAlt(await response!.text());
     const root = page.locator("#root");
     await expect(root, `${label} root`).toHaveCount(1);
+    // consume the snapshot only when this document provides one
     if (
       (await root.getAttribute("data-ferry-fyi-render-mode")) === "snapshot"
     ) {
@@ -321,6 +352,15 @@ for (const [label, path] of [
       );
     }
     await page.waitForLoadState("networkidle");
+    const hydratedUrl = new URL(page.url());
+    // inspect first-party documents rather than the fixture login error page
+    if (hydratedUrl.hostname === "ferry.fyi") {
+      await expectHydratedDescriptionAndImageAlt(page);
+    } else {
+      // only login-gated views may leave for the unavailable fixture Auth0 host
+      expect(["/account", "/seattle/bainbridge/subscribe"]).toContain(path);
+      expect(hydratedUrl.protocol).toBe("chrome-error:");
+    }
 
     const counts = new Map<string, number>();
     apiRequests.forEach((request) =>
@@ -416,10 +456,38 @@ for (const [label, url] of [
   });
 }
 
+// keep terminal metadata available before and after the browser handoff
+test("retains one terminal canonical through hydration", async ({ page }) => {
+  // compare the same fixture host before and after hydration
+  const terminal = await raw("/seattle/terminal", {
+    authenticated: false,
+    headers: { Host: "ferry.fyi:4177" },
+  });
+  expect(terminal.response.status).toBe(200);
+  const head = terminal.body.split("</head>")[0];
+  expect(head.match(/rel="canonical"/g)).toHaveLength(1);
+  expect(head).toContain('href="https://ferry.fyi:4177/seattle/terminal"');
+
+  await page.goto("/seattle/terminal", { waitUntil: "networkidle" });
+  await expect(page.locator("#root")).toHaveAttribute(
+    "data-ferry-fyi-snapshot-consumed",
+    "true"
+  );
+  await expect(page.locator('head link[rel="canonical"]')).toHaveCount(1);
+  await expect(page.locator('head link[rel="canonical"]')).toHaveAttribute(
+    "href",
+    "https://ferry.fyi:4177/seattle/terminal"
+  );
+  await expect(page.locator('head meta[name="robots"]')).toHaveAttribute(
+    "content",
+    "index,follow"
+  );
+});
+
 test("serves page-specific React source from built artifacts", async () => {
   const cases = [
     ["/about", "About Ferry FYI"],
-    ["/tickets", "Saved tickets and ticket lookup"],
+    ["/tickets", "Using your ticket wallet"],
     ["/seattle", "Seattle to Bainbridge Washington State Ferries schedule"],
     ["/seattle/cameras", "Seattle holding area"],
     ["/seattle/fare", "Adult passenger"],
@@ -433,6 +501,7 @@ test("serves page-specific React source from built artifacts", async () => {
   for (const [path, visibleText] of cases) {
     const { body, response } = await raw(path);
     expect(response.status, path).toBe(200);
+    expectDescriptionAndImageAlt(body);
     expectDocumentHeaders(response);
     expect(body, path).toContain(visibleText);
     expect(body, path).toContain('data-ferry-fyi-render-mode="snapshot"');
@@ -442,15 +511,18 @@ test("serves page-specific React source from built artifacts", async () => {
   }
 
   const dated = await raw("/seattle?date=2026-08-01");
+  expectDescriptionAndImageAlt(dated.body);
   expect(dated.body).toContain('"robots":"noindex,follow"');
   const today = await raw("/", { host: "howmanyboats.today" });
   expect(today.response.status).toBe(200);
+  expectDescriptionAndImageAlt(today.body);
   expect(today.body).toContain("howmanyboats.today");
   expect(today.body).toContain("How Many Boats Are There Today?");
   expect(today.body).not.toContain("Loading ferry routes and terminals");
   expect(today.body).toContain('data-ferry-fyi-render-mode="snapshot"');
   const ferryToday = await raw("/today");
   expect(ferryToday.response.status).toBe(200);
+  expectDescriptionAndImageAlt(ferryToday.body);
   expect(ferryToday.body).toContain("How Many Boats Are There Today?");
   for (const sourceKey of [
     "route",
@@ -542,24 +614,16 @@ test("@automatic-checkins publishes the native privacy contract", async ({
   await expect(
     page.getByRole("heading", { name: "Privacy Policy" })
   ).toBeVisible();
-  // locate the hashed production privacy artifact
-  // find one generated privacy-policy artifact
-  const privacyArtifactName = fs
-    .readdirSync(path.resolve(process.cwd(), "dist/client/assets"))
-    // match only the privacy policy chunk
-    .find((name) => /^PrivacyPolicy\.[^.]+\.js$/.test(name));
-  expect(privacyArtifactName).toBeDefined();
-  const privacyArtifact = fs.readFileSync(
-    path.resolve(
-      process.cwd(),
-      "dist/client/assets",
-      privacyArtifactName as string
-    ),
-    "utf8"
+  // require the complete policy in initial HTML rather than a lazy chunk
+  await expect(page.locator("main")).toContainText(
+    "Optional automatic check-ins"
   );
-  expect(privacyArtifact).toContain("Optional automatic check-ins");
-  expect(privacyArtifact).toContain("becomes ineligible exactly 12 hours");
-  expect(privacyArtifact).toContain("Manual check-in remains available.");
+  await expect(page.locator("main")).toContainText(
+    "becomes ineligible exactly 12 hours"
+  );
+  await expect(page.locator("main")).toContainText(
+    "Manual check-in remains available."
+  );
   await expect(page.locator("main")).not.toContainText(privateCanary);
 });
 
@@ -660,7 +724,7 @@ test("retains alerts snapshot freshness when post-hydration refresh is blocked",
   await expect(marker).toHaveAttribute("data-source-updated-at", timestamp!);
 });
 
-// use an ad-free route because ad-bearing snapshots intentionally bypass caching
+// validate fixed Pacific origin reuse independent of ad placement
 test("rolls the cache at 03:00 Pacific and does not commit a crossing fill", async () => {
   const cachePath = "/seattle/alerts";
   const before = await raw(cachePath);
@@ -691,16 +755,22 @@ test("rolls the cache at 03:00 Pacific and does not commit a crossing fill", asy
   expect(retry.body).not.toBe(crossingFill.body);
 });
 
-test("serves the documents-disabled fallback with noindex intermediary headers", async () => {
+// retain a safe description through the disabled-document browser handoff
+test("serves the documents-disabled fallback with noindex intermediary headers", async ({
+  page,
+}) => {
   await fixture("/__fixture__/reset", {}, 4178);
   const disabled = await raw("/about", { port: 4178 });
   expect(disabled.response.status).toBe(200);
+  expectDescriptionAndImageAlt(disabled.body);
   expect(disabled.body).toContain('data-ferry-fyi-render-mode="disabled"');
   expect(disabled.body).not.toContain("ferry-fyi-public-ssr-snapshot");
   expect(disabled.response.headers.get("x-robots-tag")).toBe(
     "noindex, noarchive"
   );
   expectDocumentHeaders(disabled.response);
+  await page.goto("https://ferry.fyi:4178/about", { waitUntil: "networkidle" });
+  await expectHydratedDescriptionAndImageAlt(page);
 });
 
 test("changes cache-disabled output after the fixture clock advances", async () => {
@@ -717,14 +787,39 @@ test("changes cache-disabled output after the fixture clock advances", async () 
   expect(uncachedTwo.body).not.toBe(uncachedOne.body);
 });
 
-test("serves a hydratable 404 document with intermediary headers", async () => {
+// preserve hard errors while making the shared recovery links usable
+test("serves a hydratable 404 document with intermediary headers", async ({
+  page,
+}) => {
   await fixture("/__fixture__/reset", {});
   const notFound = await raw("/not-a-ferry-page");
   expect(notFound.response.status).toBe(404);
+  expectDescriptionAndImageAlt(notFound.body);
   expect(notFound.body).toContain("Page not found");
   expect(notFound.body).toContain('data-ferry-fyi-render-mode="snapshot"');
   expect(notFound.body).toContain('id="ferry-fyi-public-ssr-snapshot"');
   expectDocumentHeaders(notFound.response);
+  const response = await page.goto("/not-a-ferry-page", {
+    waitUntil: "networkidle",
+  });
+  expect(response?.status()).toBe(404);
+  await expect(page.locator("#root")).toHaveAttribute(
+    "data-ferry-fyi-snapshot-consumed",
+    "true"
+  );
+  await expect(
+    page.getByRole("heading", { name: "Page not found" })
+  ).toBeVisible();
+  await expect(page.locator('head meta[name="robots"]')).toHaveAttribute(
+    "content",
+    "noindex,follow"
+  );
+  await expectHydratedDescriptionAndImageAlt(page);
+  await page.getByRole("link", { name: "Find a ferry schedule" }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await expect(
+    page.getByRole("heading", { name: "Ferry FYI", exact: true })
+  ).toBeVisible();
 });
 
 test("serves machine discovery and isolates unknown API paths", async () => {
@@ -761,6 +856,7 @@ test("retries a render failure without caching the failed response", async () =>
   await fixture("/__fixture__/control", { failRenders: 1 });
   const failed = await raw("/about");
   expect(failed.response.status).toBe(503);
+  expectDescriptionAndImageAlt(failed.body);
   expect(failed.response.headers.get("retry-after")).toBe("30");
   expect(failed.response.headers.get("x-robots-tag")).toBe(
     "noindex, noarchive"
@@ -783,6 +879,7 @@ test("private and callback documents disclose no request or account state", asyn
   ]) {
     const { body, response } = await raw(path);
     expect(response.status).toBe(200);
+    expectDescriptionAndImageAlt(body);
     expect(response.headers.get("x-robots-tag")).toBe("noindex, noarchive");
     expectDocumentHeaders(response);
     expect(body).not.toContain(privateCanary);
@@ -898,6 +995,7 @@ test("keeps static assets cacheable independently of document policy", async () 
   expectDocumentHeaders(index.response);
   const offline = await raw("/offline.html");
   expect(offline.response.status).toBe(200);
+  expectDescriptionAndImageAlt(offline.body);
   expectDocumentHeaders(offline.response);
 });
 
@@ -1016,4 +1114,296 @@ test("installed production worker reaches SSR online and only the offline shell 
   ).toBe("csr-offline");
   expect(await page.locator("#root").count()).toBe(0);
   expect(await page.locator("#ferry-fyi-public-ssr-snapshot").count()).toBe(0);
+});
+
+// prove full meaningful documents with scripts disabled
+for (const [path, title, required] of [
+  ["/about", "Ferry FYI", ["Open-Meteo", "forecasts"]],
+  [
+    "/data-sources",
+    "Data sources and API guide",
+    [
+      "Data sources and freshness",
+      "Citing Ferry FYI data",
+      "Corrections and limits",
+      "/api/fares/catalog",
+    ],
+  ],
+  [
+    "/forecasting",
+    "Forecasting",
+    ["How delay forecasts work", "Why confidence changes", "Booth lines"],
+  ],
+  [
+    "/privacy",
+    "Privacy Policy",
+    ["Optional automatic check-ins", "advertising", "Google"],
+  ],
+  ["/terms", "Terms of Service", ["Google", "Supporter", "Liability"]],
+  ["/support", "Support", ["Supporter", "Email Support"]],
+  ["/install", "Install", ["iPhone and iPad", "Android", "Web app"]],
+  [
+    "/supporter",
+    "Support an independent ferry app",
+    ["Supporter benefits", "Billing and account access", "renew automatically"],
+  ],
+  [
+    "/tickets",
+    "Tickets",
+    [
+      "Using your ticket wallet",
+      "No saved tickets yet",
+      "Buy multi-ride passes",
+    ],
+  ],
+] as const) {
+  test(`full static initial HTML without JavaScript: ${path}`, async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({
+      javaScriptEnabled: false,
+      ignoreHTTPSErrors: true,
+    });
+    const page = await context.newPage();
+    try {
+      const result = await page.goto(`https://ferry.fyi:4177${path}`);
+      expect(result?.status()).toBe(200);
+      await expect(page.locator("h1")).toHaveCount(1);
+      await expect(page.locator("h1")).toHaveText(title);
+      for (const text of required) {
+        await expect(page.locator("main")).toContainText(text, {
+          ignoreCase: true,
+        });
+      }
+      const headings = await page
+        .locator("main h1, main h2, main h3, main h4")
+        .evaluateAll((nodes) =>
+          nodes.map((node) => Number(node.tagName.slice(1)))
+        );
+      expect(headings[0]).toBe(1);
+      headings.forEach((level, index) =>
+        expect(level - (headings[index - 1] ?? 0)).toBeLessThanOrEqual(1)
+      );
+      expect(await page.locator("img:not([alt])").count()).toBe(0);
+    } finally {
+      await context.close();
+    }
+  });
+
+  // retain meaningful copy and one page heading after compatible hydration
+  test(`full static content after hydration: ${path}`, async ({ page }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    await page.goto(`https://ferry.fyi:4177${path}`, {
+      waitUntil: "networkidle",
+    });
+    await expect(page.locator("#root")).toHaveAttribute(
+      "data-ferry-fyi-snapshot-consumed",
+      "true"
+    );
+    await expect(page.locator("h1")).toHaveCount(1);
+    await expect(page.locator("h1")).toHaveText(title);
+    // compare the same public fact oracle after browser enhancement
+    for (const text of required) {
+      await expect(page.locator("main")).toContainText(text, {
+        ignoreCase: true,
+      });
+    }
+    await expectHydratedDescriptionAndImageAlt(page);
+    expect(errors).toEqual([]);
+  });
+}
+
+// native disclosure contains every fare before any client request
+test("opens the full fare table without JavaScript", async ({ browser }) => {
+  const context = await browser.newContext({
+    javaScriptEnabled: false,
+    ignoreHTTPSErrors: true,
+    viewport: { width: 390, height: 844 },
+  });
+  const page = await context.newPage();
+  try {
+    await page.goto("https://ferry.fyi:4177/seattle/fare");
+    const details = page.locator("details[data-public-fare-catalog]");
+    await expect(details).not.toHaveAttribute("open", "");
+    await expect(details.locator("tbody tr")).toHaveCount(2);
+    await expect(details.locator("table")).not.toBeVisible();
+    await expect(
+      page.locator('[aria-label="Fare estimator"] + details')
+    ).toHaveCount(1);
+    await details.locator("summary").focus();
+    await page.keyboard.press("Enter");
+    await expect(details.locator("table")).toBeVisible();
+    await expect(details).toContainText("$22.25");
+    await expect(details).toContainText("Direction-independent");
+    await page.keyboard.press("Enter");
+    await expect(details.locator("table")).not.toBeVisible();
+  } finally {
+    await context.close();
+  }
+});
+
+// keep seeded fare rows through hydration and failed live refresh
+test("retains one full fare table through hydrated browser refresh failure", async ({
+  page,
+}) => {
+  // align the selected date with the seeded service day after 03:00
+  const now = "2026-07-29T12:00:00.000Z";
+  await fixture("/__fixture__/control", { clock: now });
+  await page.clock.setFixedTime(now);
+  const diagnostics: string[] = [];
+  page.on("pageerror", (error) => diagnostics.push(error.message));
+  page.on("console", (message) => {
+    if (/hydration|did not match|react-recoverable/i.test(message.text())) {
+      diagnostics.push(message.text());
+    }
+  });
+  await page.route("**/api/fares/catalog**", (route) => route.abort("failed"));
+  await page.goto("/seattle/fare", { waitUntil: "networkidle" });
+  await expect(page.locator("#root")).toHaveAttribute(
+    "data-ferry-fyi-snapshot-consumed",
+    "true"
+  );
+  await expect(
+    page.getByText("How are you traveling?", { exact: true })
+  ).toBeVisible();
+  await expect(page.locator("details[data-public-fare-catalog]")).toHaveCount(
+    1
+  );
+  await expect(page.locator("details tbody tr")).toHaveCount(2);
+  await expect(
+    page.locator('[aria-label="Fare estimator"] + details')
+  ).toHaveCount(1);
+  await page.locator("details summary").click();
+  await expect(page.locator("details table")).toBeVisible();
+  expect(diagnostics).toEqual([]);
+});
+
+// verify dynamic facts are readable without client SDKs
+for (const [path, facts] of [
+  ["/", ["Terminal locations", "Seattle", "1 Ferry Dock"]],
+  [
+    "/today",
+    [
+      "Clinton to Mukilteo",
+      "Current service date",
+      "Next service date",
+      "Fixture Ferry",
+    ],
+  ],
+  ["/leaderboards", ["All time", "Seattle", "Fixture Ferry"]],
+  ["/leaderboards/terminals/7", ["Fixture rider", "42", "Supporter badge"]],
+  [
+    "/seattle",
+    [
+      "Selected service date",
+      "Next service date",
+      "Arrival",
+      "76 vehicle spaces reported",
+      "Confidence: high",
+      "Fixture afternoon demand",
+      "20°C",
+      "1.5 m",
+    ],
+  ],
+  [
+    "/seattle/cameras",
+    [
+      "Seattle holding area",
+      "Camera: active",
+      "Holding capacity: 20 cars",
+      "Camera location: 5 car spaces from the boat",
+    ],
+  ],
+  [
+    "/seattle/terminal",
+    [
+      "Fixture parking & connections",
+      "Accessible boarding assistance",
+      "One sailing wait",
+      "35 minutes",
+      "Facilities",
+    ],
+  ],
+  [
+    "/seattle/map",
+    [
+      "Terminal coordinates",
+      "Fixture Ferry",
+      "In service: yes",
+      "Heading: 90°",
+      "Speed: 12 knots",
+    ],
+  ],
+  [
+    "/seattle/alerts",
+    ["Fixture service alert", "Fixture terminal notice", "info"],
+  ],
+  [
+    "/seattle/subscribe",
+    ["Alert subscriptions are personal", "Sign in", "notification permissions"],
+  ],
+] as const) {
+  test(`full dynamic initial HTML without JavaScript: ${path}`, async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({
+      javaScriptEnabled: false,
+      ignoreHTTPSErrors: true,
+    });
+    const page = await context.newPage();
+    try {
+      await page.goto(`https://ferry.fyi:4177${path}`);
+      for (const fact of facts) {
+        await expect(page.locator("main")).toContainText(fact);
+      }
+      await expect(page.locator("main time").first()).toBeVisible();
+      expect(await page.locator("img:not([alt])").count()).toBe(0);
+      if (path.startsWith("/seattle")) {
+        await expect(
+          page.getByRole("navigation", { name: "Route navigation" })
+        ).toBeVisible();
+      }
+    } finally {
+      await context.close();
+    }
+  });
+}
+
+// persist ad-bearing documents and invalidate changed effective creatives
+test("caches public ads and invalidates their relevant document variants", async () => {
+  const first = await raw("/seattle/fare");
+  expect(first.body).toContain("Fixture dockside coffee");
+  await fixture("/__fixture__/control", { refreshVersion: 2 });
+  const hit = await raw("/seattle/fare");
+  expect(hit.body).toBe(first.body);
+  expect((await fixtureState()).fills).toBe(1);
+  await fixture("/__fixture__/control", { adHeadline: "New fixture creative" });
+  const changed = await raw("/seattle/fare");
+  expect(changed.body).toContain("New fixture creative");
+  expect(changed.body).not.toContain("Fixture dockside coffee");
+  expect(changed.body).toContain("Seattle refreshed");
+  await fixture("/__fixture__/control", { adEnabled: false });
+  const disabled = await raw("/seattle/fare");
+  expect(disabled.body).not.toContain("New fixture creative");
+  expect(disabled.body).not.toContain('data-ad-click-target="true"');
+  await fixture("/__fixture__/control", { adEnabled: true });
+  const enabled = await raw("/seattle/fare");
+  expect(enabled.body).toContain("New fixture creative");
+  expect((await fixtureState()).fills).toBe(4);
+});
+
+// keep morning snapshots until the fixed afternoon boundary
+test("refreshes at 15:00 Pacific rather than a rolling twelve-hour TTL", async () => {
+  await fixture("/__fixture__/control", { clock: "2026-07-29T10:00:00.000Z" });
+  const morning = await raw("/seattle/alerts");
+  await fixture("/__fixture__/control", {
+    clock: "2026-07-29T21:59:59.999Z",
+    refreshVersion: 2,
+  });
+  expect((await raw("/seattle/alerts")).body).toBe(morning.body);
+  await fixture("/__fixture__/control", { clock: "2026-07-29T22:00:00.000Z" });
+  const afternoon = await raw("/seattle/alerts");
+  expect(afternoon.body).not.toBe(morning.body);
+  expect(afternoon.body).toContain("Seattle refreshed");
 });

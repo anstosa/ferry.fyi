@@ -6,11 +6,14 @@ import type {
   PublicSsrSourceKey,
 } from "shared/contracts/ssr";
 import { getSeoMetadata, type SeoMetadata } from "shared/lib/seo";
+import { getStaticPublicSsrTerminalSlug } from "shared/lib/ssrRouteMatch";
 
 import { AdCreativeCard } from "~/components/AdCreativeCard";
 import { CameraImageFooter } from "~/components/CameraImageFooter";
+import { FareCatalogDisclosure } from "~/components/FareCatalogDisclosure";
 import { HomeHero } from "~/components/HomeHero";
 import { HomeTerminalDirectory } from "~/components/HomeTerminalDirectory";
+import { PublicScheduleDetails } from "~/components/PublicScheduleDetails";
 import { SeoHelmet } from "~/components/SeoHelmet";
 import { SsrPage } from "~/components/SsrPage";
 import { useAppRenderContext } from "~/lib/renderContext";
@@ -21,15 +24,14 @@ import {
   usePublicSsrSourceOutcome,
 } from "~/lib/ssrSeed";
 
-import { getVesselVehicleCapacity } from "./Schedule/capacityFullness";
-import { formatForecast } from "./Schedule/forecastRiskPresentation";
-
+// format displayed pacific timestamps
 function formatSnapshotTime(value: string): string {
   return DateTime.fromISO(value, { zone: "America/Los_Angeles" }).toFormat(
     "MMM d, h:mm a ZZZZ"
   );
 }
 
+// show the anonymous creative
 const PublicAd = ({
   className = "",
 }: {
@@ -43,6 +45,77 @@ const PublicAd = ({
   ) : null;
 };
 
+// link public sibling views without browser-only navigation
+const PublicRouteNavigation = (): ReactElement | null => {
+  const route = usePublicSsrSource("route");
+  // omit navigation without a selected public direction
+  if (!route) {
+    return null;
+  }
+  const terminalSlug = getStaticPublicSsrTerminalSlug(route.terminal.id);
+  const mateSlug = getStaticPublicSsrTerminalSlug(route.mate.id);
+  // unknown terminal identities have no canonical links
+  if (!terminalSlug || !mateSlug) {
+    return null;
+  }
+  const base = `/${terminalSlug}${route.terminal.mates.length === 1 ? "" : `/${mateSlug}`}`;
+  return (
+    <nav aria-label="Route navigation" className="my-4 flex flex-wrap gap-3">
+      {[
+        ["", "Schedule"],
+        ["/cameras", "Cameras"],
+        ["/terminal", "Terminal"],
+        ["/fare", "Fares"],
+        ["/map", "Map"],
+        ["/alerts", "Alerts and bulletins"],
+        ["/subscribe", "Alert subscriptions"],
+      ].map(([suffix, label]) => (
+        <Link
+          className="underline"
+          key={suffix}
+          to={
+            suffix === "/terminal"
+              ? `/${terminalSlug}/terminal`
+              : `${base}${suffix}`
+          }
+        >
+          {label}
+        </Link>
+      ))}
+    </nav>
+  );
+};
+
+// expose a public bulletin with its original source context
+const PublicBulletin = ({
+  bulletin,
+}: {
+  bulletin: import("shared/contracts/bulletins").Bulletin;
+}): ReactElement => (
+  <section>
+    <h2>{bulletin.title}</h2>
+    <p className="whitespace-pre-line">{bulletin.bodyText}</p>
+    <p>
+      {bulletin.level} ·{" "}
+      <time
+        dateTime={
+          DateTime.fromSeconds(bulletin.date, { zone: "utc" }).toISO() ??
+          undefined
+        }
+      >
+        {formatSnapshotTime(
+          DateTime.fromSeconds(bulletin.date, { zone: "utc" }).toISO() ?? ""
+        )}
+      </time>
+    </p>
+    {bulletin.url ? (
+      <a className="underline" href={bulletin.url}>
+        Related alert page
+      </a>
+    ) : null}
+  </section>
+);
+
 const UNAVAILABLE_REASON_LABELS = {
   "not-published": "not published",
   "not-supported": "not supported",
@@ -54,6 +127,7 @@ type SnapshotSourceDescriptor = {
   label: string;
 };
 
+// show page and source timestamps
 const SnapshotFreshness = ({
   primarySource,
   sources,
@@ -106,6 +180,7 @@ const SnapshotFreshness = ({
   );
 };
 
+// show public service notices
 const PublicNotices = ({
   includeBulletins = false,
 }: {
@@ -135,15 +210,16 @@ const PublicNotices = ({
         </section>
       ))}
       {bulletins.map((bulletin) => (
-        <section key={`${bulletin.date}:${bulletin.title}`}>
-          <h2>{bulletin.title}</h2>
-          <p>{bulletin.bodyText}</p>
-        </section>
+        <PublicBulletin
+          bulletin={bulletin}
+          key={`${bulletin.date}:${bulletin.title}`}
+        />
       ))}
     </aside>
   );
 };
 
+// preserve canonical snapshot metadata
 export const resolveSnapshotSeo = (
   metadata: PublicSsrSnapshot["metadata"] | undefined,
   fallback: SeoMetadata,
@@ -161,6 +237,7 @@ export const resolveSnapshotSeo = (
       }
     : fallback;
 
+// render canonical public metadata
 export const SnapshotSeoHelmet = ({
   fallback,
   title,
@@ -174,25 +251,7 @@ export const SnapshotSeoHelmet = ({
   return <SeoHelmet seo={seo} title={title} />;
 };
 
-/** Anonymous portions of interactive pages; native/account controls mount later. */
-export const PublicTickets = (): ReactElement => {
-  const guidance = usePublicSsrSource("ticketGuidance");
-  return (
-    <SsrPage>
-      <SnapshotSeoHelmet fallback={getSeoMetadata("/tickets")} />
-      <p>
-        {guidance?.guidance.body ?? "Ticket tools load after the app is ready."}
-      </p>
-      {guidance ? (
-        <p className="mt-3 text-sm">
-          Saved tickets and ticket lookup become available after the app is
-          ready. Scanner availability: {guidance.capabilities.barcodeScanner}.
-        </p>
-      ) : null}
-    </SsrPage>
-  );
-};
-
+// render public leaderboards
 export const PublicLeaderboards = (): ReactElement => {
   const snapshot = usePublicSsrSnapshot();
   const features = usePublicSsrSource("features");
@@ -220,15 +279,33 @@ export const PublicLeaderboards = (): ReactElement => {
         ]}
       />
       <PublicNotices />
+      <PublicRouteNavigation />
       {features?.leaderboardsEnabled === false ? (
         <p>Public leaderboards are currently disabled.</p>
       ) : null}
-      {board ? <h2>{board.entity.label}</h2> : null}
+      <p>
+        Period:{" "}
+        {(board?.period ?? index?.defaultPeriod) === "all"
+          ? "All time"
+          : (board?.period ?? index?.defaultPeriod ?? "Unavailable")}
+        .
+      </p>
+      {board ? (
+        <h2>
+          {board.entity.label} ({board.entity.kind})
+        </h2>
+      ) : null}
+      {board && !board.ranks.length ? <p>No public ranks yet.</p> : null}
+      {index && !index.entities.length ? (
+        <p>No public leaderboard entities are available.</p>
+      ) : null}
       {board?.ranks.length ? (
         <ol>
           {board.ranks.map((rank) => (
             <li key={`${rank.rank}:${rank.label}`}>
-              {rank.rank}. {rank.label} — {rank.score}
+              {rank.rank}. {rank.label} — {rank.score}{" "}
+              {rank.score === 1 ? "check-in" : "check-ins"}
+              {rank.supporterBadge ? " · Supporter badge" : ""}
             </li>
           ))}
         </ol>
@@ -250,6 +327,7 @@ export const PublicLeaderboards = (): ReactElement => {
 };
 
 /** Public first-render copy for the account-backed alert editor. */
+// render public alertguidance
 export const PublicAlertGuidance = (): ReactElement => {
   const guidance = usePublicSsrSource("alertGuidance");
   const guidanceOutcome = usePublicSsrSourceOutcome("alertGuidance");
@@ -277,15 +355,21 @@ export const PublicAlertGuidance = (): ReactElement => {
         ]}
       />
       <PublicNotices />
+      <PublicRouteNavigation />
       <p>{guidanceBody}</p>
       <p className="mt-3 text-sm">
-        Alert subscriptions are personal and load only after sign-in.
+        Alert subscriptions are personal and load only after sign-in. Choose a
+        route and sailing time to receive the alerts you request; delivery
+        depends on service data and your device notification permissions. Review
+        and remove subscriptions from your account. Sign in to manage personal
+        alert rules.
       </p>
     </SsrPage>
   );
 };
 
 /** Anonymous map fallback that keeps live vessel context visible without Mapbox. */
+// render public routemap
 export const PublicRouteMap = (): ReactElement => {
   const route = usePublicSsrSource("route");
   const vessels = usePublicSsrSource("vessels");
@@ -311,18 +395,43 @@ export const PublicRouteMap = (): ReactElement => {
         ]}
       />
       <PublicNotices />
+      <PublicRouteNavigation />
       <p>
         {route
-          ? `Live vessel positions for ${route.terminal.name} and ${route.mate.name}.`
-          : "Live vessel positions load after the app is ready."}
+          ? `Vessel positions reported for ${route.terminal.name} and ${route.mate.name}.`
+          : "Vessel positions are temporarily unavailable."}
       </p>
+      {route ? (
+        <p>
+          Terminal coordinates: {route.terminal.name}{" "}
+          {route.terminal.location.latitude},{" "}
+          {route.terminal.location.longitude}; {route.mate.name}{" "}
+          {route.mate.location.latitude}, {route.mate.location.longitude}.{" "}
+          {route.terminal.vesselWatchUrl ? (
+            <a href={route.terminal.vesselWatchUrl}>WSF vessel watch</a>
+          ) : null}
+        </p>
+      ) : null}
       <ul>
         {(vessels ?? []).map((vessel) => (
           <li key={vessel.id}>
             {vessel.name}
             {vessel.location
               ? ` — ${vessel.location.latitude.toFixed(3)}, ${vessel.location.longitude.toFixed(3)}`
-              : ""}
+              : " — position unavailable"}
+            <p>
+              In service: {vessel.inService ? "yes" : "no"}. Maintenance:{" "}
+              {vessel.inMaintenance ? "yes" : "no"}.
+            </p>
+            {typeof vessel.isAtDock === "boolean" ? (
+              <p>At dock: {vessel.isAtDock ? "yes" : "no"}.</p>
+            ) : null}
+            {typeof vessel.heading === "number" ? (
+              <p>Heading: {vessel.heading}°.</p>
+            ) : null}
+            {typeof vessel.speed === "number" ? (
+              <p>Speed: {vessel.speed} knots.</p>
+            ) : null}
           </li>
         ))}
       </ul>
@@ -332,33 +441,11 @@ export const PublicRouteMap = (): ReactElement => {
 };
 
 /** Seeded official fare catalogue summary; the interactive calculator follows hydration. */
+// render public fares
 export const PublicFares = (): ReactElement => {
   const fares = usePublicSsrSource("fares");
   const route = usePublicSsrSource("route");
   const fareOutcome = usePublicSsrSourceOutcome("fares");
-  const catalog = fares?.state === "current" ? fares.catalog : null;
-  let fareContent: ReactElement;
-  if (catalog) {
-    fareContent = (
-      <ul>
-        {catalog.fares.map((fare) => (
-          <li key={fare.id}>
-            {fare.label} — ${fare.amount.toFixed(2)}
-          </li>
-        ))}
-      </ul>
-    );
-  } else if (fares?.state === "no-fare") {
-    fareContent = (
-      <p>{fares.noFare.message ?? "No fare is collected in this direction."}</p>
-    );
-  } else if (fareOutcome?.outcome === "authoritatively-unavailable") {
-    fareContent = (
-      <p>Official fare data is not available for this route and date.</p>
-    );
-  } else {
-    fareContent = <p>Fare details load after the app is ready.</p>;
-  }
   return (
     <SsrPage>
       <SnapshotSeoHelmet fallback={getSeoMetadata("/")} />
@@ -377,19 +464,57 @@ export const PublicFares = (): ReactElement => {
         ]}
       />
       <PublicNotices />
+      <PublicRouteNavigation />
       <PublicAd className="my-4" />
       {fareOutcome?.outcome === "stale-usable" ? (
         <p>The displayed fare catalog is stale; verify prices with WSDOT.</p>
       ) : null}
-      {fareContent}
+      <section
+        aria-label="Fare estimator"
+        className="my-4 rounded-xl border border-black/10 p-4 dark:border-white/10"
+      >
+        <h2>Estimate a one-way crossing</h2>
+        <p>
+          Choose how you are traveling, then your trip details after the
+          interactive estimator loads. Official WSDOT fares are used; Ferry FYI
+          does not determine eligibility. No personalized quote has been
+          calculated.
+        </p>
+        {route ? (
+          <p>
+            {route.terminal.name} to {route.mate.name}.
+          </p>
+        ) : null}
+        {fares ? (
+          <p>
+            Travel date:{" "}
+            {
+              (fares.state === "current" ? fares.catalog : fares.noFare).request
+                .tripDate
+            }
+            .
+          </p>
+        ) : null}
+      </section>
+      {fares ? (
+        <FareCatalogDisclosure
+          response={fares}
+          departingName={route?.terminal.name}
+          arrivingName={route?.mate.name}
+        />
+      ) : (
+        <p>Official fare data is not available for this route and date.</p>
+      )}
     </SsrPage>
   );
 };
 
 /** server-safe schedule presentation from the complete anonymous schedule source. */
+// render public schedule
 export const PublicSchedule = (): ReactElement => {
   const route = usePublicSsrSource("route");
   const schedule = usePublicSsrSource("schedule")?.schedule;
+  const nextSchedule = usePublicSsrSource("nextSchedule")?.schedule;
   const wsf = usePublicSsrSource("wsf");
   // selected schedule date
   const scheduleDate = schedule
@@ -440,40 +565,41 @@ export const PublicSchedule = (): ReactElement => {
         ]}
       />
       <PublicNotices includeBulletins />
+      <PublicRouteNavigation />
       {wsfNotice}
       <PublicAd className="my-4" />
-      {schedule ? (
+      {route ? (
         <ul>
-          {schedule.slots.map((slot) => {
-            // schedule slot capacity
-            const totalCapacity =
-              slot.crossing?.totalCapacity ??
-              getVesselVehicleCapacity({
-                tallVehicleCapacity: slot.vessel.tallVehicleCapacity,
-                vehicleCapacity: slot.vessel.vehicleCapacity,
-              });
-            return (
-              <li key={slot.wuid}>
-                {DateTime.fromSeconds(slot.time, {
-                  zone: "America/Los_Angeles",
-                }).toFormat("h:mm a")}
-                {slot.crossing?.isCancelled ? " — cancelled" : ""}
-                {slot.vessel?.name ? ` — ${slot.vessel.name}` : ""}
-                {slot.crossing && !slot.crossing.isCancelled
-                  ? ` — ${slot.crossing.driveUpCapacity + slot.crossing.reservableCapacity} vehicle spaces reported`
-                  : ""}
-                {formatForecast(slot.estimate, totalCapacity)}
+          {Object.values(route.terminal.routes)
+            .filter((item) => item.terminalIds.includes(route.mate.id))
+            .map((item) => (
+              <li key={item.id}>
+                {item.description} · crossing time: {item.crossingTime} minutes.
               </li>
-            );
-          })}
+            ))}
         </ul>
+      ) : null}
+      {schedule ? (
+        <PublicScheduleDetails
+          schedule={schedule}
+          title="Selected service date"
+        />
       ) : (
         <p>Schedule data is temporarily unavailable.</p>
+      )}
+      {nextSchedule ? (
+        <PublicScheduleDetails
+          schedule={nextSchedule}
+          title="Next service date"
+        />
+      ) : (
+        <p>Next service date schedule is temporarily unavailable.</p>
       )}
     </SsrPage>
   );
 };
 
+// render public cameras
 export const PublicCameras = (): ReactElement => {
   const snapshot = usePublicSsrSnapshot();
   const route = usePublicSsrSource("route");
@@ -485,6 +611,11 @@ export const PublicCameras = (): ReactElement => {
     <SsrPage>
       <SnapshotSeoHelmet fallback={getSeoMetadata("/")} />
       <h1>Cameras</h1>
+      {route ? (
+        <p>
+          Cameras for {route.terminal.name} to {route.mate.name}.
+        </p>
+      ) : null}
       <SnapshotFreshness
         primarySource="cameraFrames"
         sources={[
@@ -494,6 +625,7 @@ export const PublicCameras = (): ReactElement => {
         ]}
       />
       <PublicNotices />
+      <PublicRouteNavigation />
       <PublicAd className="my-4" />
       {cameras.length ? (
         <ul>
@@ -528,7 +660,29 @@ export const PublicCameras = (): ReactElement => {
                     passive
                   />
                 </div>
-                <p>{frameStatus}</p>
+                <p>
+                  {frameStatus} Camera:{" "}
+                  {camera.isActive ? "active" : "inactive"}.
+                </p>
+                {camera.owner ? (
+                  <p>
+                    Source: <a href={camera.owner.url}>{camera.owner.name}</a>
+                  </p>
+                ) : null}
+                <p>
+                  Location: {camera.location.latitude},{" "}
+                  {camera.location.longitude}. Queue order from terminal:{" "}
+                  {camera.orderFromTerminal}.
+                </p>
+                {typeof camera.carCapacity === "number" ? (
+                  <p>Holding capacity: {camera.carCapacity} cars.</p>
+                ) : null}
+                {typeof camera.carsToBoat === "number" ? (
+                  <p>
+                    Camera location: {camera.carsToBoat} car spaces from the
+                    boat.
+                  </p>
+                ) : null}
               </li>
             );
           })}
@@ -540,6 +694,7 @@ export const PublicCameras = (): ReactElement => {
   );
 };
 
+// render public bulletins
 export const PublicBulletins = (): ReactElement => {
   const bulletins = usePublicSsrSource("bulletins") ?? [];
   const route = usePublicSsrSource("route");
@@ -550,8 +705,7 @@ export const PublicBulletins = (): ReactElement => {
       <ul>
         {bulletins.map((bulletin) => (
           <li key={`${bulletin.date}:${bulletin.title}`}>
-            <h2>{bulletin.title}</h2>
-            <p>{bulletin.bodyText}</p>
+            <PublicBulletin bulletin={bulletin} />
           </li>
         ))}
       </ul>
@@ -581,12 +735,14 @@ export const PublicBulletins = (): ReactElement => {
         ]}
       />
       <PublicNotices />
+      <PublicRouteNavigation />
       {bulletinContent}
     </SsrPage>
   );
 };
 
 /** server-safe terminal details from the anonymous route source. */
+// render public terminaldetails
 export const PublicTerminalDetails = (): ReactElement => {
   const route = usePublicSsrSource("route");
   const terminal = route?.terminal;
@@ -611,6 +767,7 @@ export const PublicTerminalDetails = (): ReactElement => {
         ]}
       />
       <PublicNotices />
+      <PublicRouteNavigation />
       <PublicAd className="my-4" />
       {terminal ? (
         <>
@@ -633,6 +790,126 @@ export const PublicTerminalDetails = (): ReactElement => {
               "none listed"}
             .
           </p>
+          <ul>
+            {Object.values(terminal.routes).map((item) => (
+              <li key={item.id}>
+                {item.description} · crossing time: {item.crossingTime} minutes.
+                {typeof item.averageVehicleCapacity === "number" ? (
+                  <p>
+                    Average vehicle capacity: {item.averageVehicleCapacity}.
+                  </p>
+                ) : null}
+                {typeof item.normalVehicleCapacity === "number" ? (
+                  <p>Normal vehicle capacity: {item.normalVehicleCapacity}.</p>
+                ) : null}
+                {typeof item.normalVehicleMaxCapacity === "number" ? (
+                  <p>
+                    Maximum normal vehicle capacity:{" "}
+                    {item.normalVehicleMaxCapacity}.
+                  </p>
+                ) : null}
+                {item.galleyHours?.map((rule, index) => (
+                  <p key={index}>
+                    Galley, vessel position {rule.vesselPosition}:{" "}
+                    {rule.startTime}–{rule.endTime}, weekdays{" "}
+                    {rule.days
+                      .map(
+                        (day) =>
+                          [
+                            "",
+                            "Monday",
+                            "Tuesday",
+                            "Wednesday",
+                            "Thursday",
+                            "Friday",
+                            "Saturday",
+                            "Sunday",
+                          ][day]
+                      )
+                      .join(", ")}
+                    .
+                  </p>
+                ))}
+              </li>
+            ))}
+          </ul>
+          <p>
+            Coordinates: {terminal.location.latitude},{" "}
+            {terminal.location.longitude}.
+          </p>
+          {terminal.location.link ? (
+            <p>
+              <a href={terminal.location.link}>Open terminal in Maps</a>
+            </p>
+          ) : null}
+          {terminal.terminalUrl ? (
+            <p>
+              <a href={terminal.terminalUrl}>WSF terminal page</a>
+            </p>
+          ) : null}
+          {terminal.vesselWatchUrl ? (
+            <p>
+              <a href={terminal.vesselWatchUrl}>WSF vessel watch</a>
+            </p>
+          ) : null}
+          {Object.entries(terminal.info).map(([key, body]) =>
+            body ? (
+              <section key={key}>
+                <h2>
+                  {(
+                    {
+                      ada: "Accessibility",
+                      airport: "Airport connections",
+                      bicycle: "Bicycles",
+                      construction: "Construction",
+                      food: "Food",
+                      lost: "Lost and found",
+                      motorcycle: "Motorcycles",
+                      parking: "Parking",
+                      security: "Security",
+                      train: "Train connections",
+                      truck: "Trucks",
+                    } as Record<string, string>
+                  )[key] ?? key}
+                </h2>
+                <p className="whitespace-pre-line">{body}</p>
+              </section>
+            ) : null
+          )}
+          {terminal.waitTimes.length ? (
+            <section>
+              <h2>Wait times</h2>
+              <ul>
+                {terminal.waitTimes.map((wait, index) => (
+                  <li key={index}>
+                    <p>
+                      {wait.title ? `${wait.title}: ` : ""}
+                      {wait.description}
+                    </p>
+                    <time
+                      dateTime={
+                        DateTime.fromSeconds(wait.time, {
+                          zone: "utc",
+                        }).toISO() ?? undefined
+                      }
+                    >
+                      {formatSnapshotTime(
+                        DateTime.fromSeconds(wait.time, {
+                          zone: "utc",
+                        }).toISO() ?? ""
+                      )}
+                    </time>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
+          {terminal.bulletins.map((bulletin) => (
+            <PublicBulletin
+              key={`${bulletin.date}:${bulletin.title}`}
+              bulletin={bulletin}
+            />
+          ))}
           <h2>Facilities</h2>
           <ul>
             <li>
@@ -662,6 +939,7 @@ export const PublicTerminalDetails = (): ReactElement => {
 };
 
 /** Anonymous terminal index, intentionally free of geolocation and preferences. */
+// render public home
 export const PublicHome = (): ReactElement => {
   const terminals = usePublicSsrSource("terminals") ?? [];
   const features = usePublicSsrSource("features");
@@ -670,7 +948,7 @@ export const PublicHome = (): ReactElement => {
       <SnapshotSeoHelmet fallback={getSeoMetadata("/")} />
       <HomeHero leaderboardsEnabled={features?.leaderboardsEnabled ?? false} />
       <PublicAd className="mx-auto w-full max-w-6xl px-4 pb-4" />
-      <div className="sr-only">
+      <div className="mx-auto w-full max-w-6xl px-6 pb-4">
         <SnapshotFreshness
           primarySource="terminals"
           sources={[
@@ -682,86 +960,29 @@ export const PublicHome = (): ReactElement => {
       </div>
       <div className="px-6">
         <PublicNotices />
+        <PublicRouteNavigation />
       </div>
       <HomeTerminalDirectory terminals={[...terminals]} />
+      <section className="mx-auto w-full max-w-6xl px-6 pb-8">
+        <h2>Terminal locations</h2>
+        <ul>
+          {terminals.map((terminal) => (
+            <li key={terminal.id}>
+              {terminal.name}:{" "}
+              {[
+                terminal.location.address?.line1,
+                terminal.location.address?.line2,
+                terminal.location.address?.city,
+                terminal.location.address?.state,
+                terminal.location.address?.zip,
+              ]
+                .filter(Boolean)
+                .join(", ")}{" "}
+              · {terminal.location.latitude}, {terminal.location.longitude}.
+            </li>
+          ))}
+        </ul>
+      </section>
     </main>
-  );
-};
-
-const EDITORIAL_PAGES: Record<
-  | "data-sources"
-  | "install"
-  | "privacy"
-  | "forecasting"
-  | "support"
-  | "supporter"
-  | "terms",
-  { body: string; path: string; title: string }
-> = {
-  "data-sources": {
-    body: "Ferry FYI combines Washington State Ferries schedules and service context with weather, tide, historical, and live observations. Preserve displayed source timestamps when citing time-sensitive information.",
-    path: "/data-sources",
-    title: "Data sources and API guide",
-  },
-  install: {
-    body: "Install Ferry FYI from the App Store on iPhone and iPad, from Google Play on Android, or as an installable web app on desktop browsers.",
-    path: "/install",
-    title: "Install Ferry FYI",
-  },
-  support: {
-    body: "Questions, inaccurate information, app issues, and ideas are welcome. Email Ferry FYI support with the route or terminal, what happened, and the device you were using when those details are helpful.",
-    path: "/support",
-    title: "Support",
-  },
-  forecasting: {
-    body: "Vehicle-space, delay, weather, and tide forecasts are estimates, not confirmations of boarding availability, cancellations, or delays. The leave-now sailing tool uses Google travel timing and a Ferry FYI estimate of when reported drive-up space reaches zero. The adjustable buffer affects departure timing, not inventory at arrival. Booth lines, parking and reservation-aware boarding are not modeled.",
-    path: "/forecasting",
-    title: "Forecast methodology",
-  },
-  privacy: {
-    body: "Ferry FYI keeps account and notification controls private and lets signed-in users permanently delete their account from the Account page. Starting-address text is sent transiently to Google for suggestions as you type in Navigation. When you explicitly request a leave-now sailing estimate, your foreground location, manual origin or selected Google place identifier is sent transiently to Ferry FYI and Google to calculate the route. Ferry FYI does not retain submitted origins or suggestions or use them for analytics, advertisements or model training. Your starting address is kept in the page URL fragment, may remain in browser history and is included when you share the trip link. Shared links only prefill the form without requesting location or automatically calculating an estimate. Contextual advertisements may use the route, terminal, or page being viewed, but not account information, precise location, saved tickets, notification settings, or activity across other websites.",
-    path: "/privacy",
-    title: "Privacy Policy",
-  },
-  supporter: {
-    body: "Ferry FYI Supporter is an optional monthly or yearly subscription that removes Ferry FYI advertisements by default while signed in and can show an optional cosmetic leaderboard badge. Active supporters can voluntarily show ads from Account and turn them off again at any time. Core ferry information remains free.",
-    path: "/supporter",
-    title: "Ferry FYI Supporter",
-  },
-  terms: {
-    body: "Ferry FYI is an independent trip-planning service. Supporter subscriptions renew until cancelled through the provider that processed the purchase, and deleting a Ferry FYI account does not cancel billing.",
-    path: "/terms",
-    title: "Terms of Service",
-  },
-};
-
-/** Indexable editorial content that remains useful before browser-only views load. */
-export const PublicEditorialPage = ({
-  page,
-}: {
-  page: keyof typeof EDITORIAL_PAGES;
-}): ReactElement => {
-  const content = EDITORIAL_PAGES[page];
-  return (
-    <SsrPage>
-      <SnapshotSeoHelmet fallback={getSeoMetadata(content.path)} />
-      <h1>{content.title}</h1>
-      <p>{content.body}</p>
-      {/* expose provider terms on both public policy pages */}
-      {(page === "terms" || page === "privacy") && (
-        <p>
-          Address suggestions and travel estimates use Google Maps services
-          under the{" "}
-          <a href="https://cloud.google.com/maps-platform/terms">
-            Google Maps terms
-          </a>{" "}
-          and{" "}
-          <a href="https://policies.google.com/privacy">
-            Google Privacy Policy
-          </a>
-          .
-        </p>
-      )}
-    </SsrPage>
   );
 };

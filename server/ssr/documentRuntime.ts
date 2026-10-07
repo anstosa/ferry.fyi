@@ -3,16 +3,18 @@ import type {
   PublicSsrRendererArtifact,
 } from "shared/contracts/ssrRenderer";
 import type { PublicSsrSourceKey } from "shared/contracts/ssrRouting";
+import {
+  getPublicSsrAdPlacementBinding,
+  type PublicSsrAdPlacementBinding,
+  type PublicSsrAdServingBinding,
+} from "shared/lib/ssrAdPlacement";
 import { assemblePublicSsrMarkerDocument } from "shared/lib/ssrDocumentTemplate";
 import { publicQueryCacheKey } from "shared/lib/ssrQueryPolicy";
+import { getSsrRefreshWindow } from "shared/lib/ssrRefreshWindow";
 import {
   getPublicSsrHostProfile,
   type PublicSsrRouteMatch,
 } from "shared/lib/ssrRouteMatch";
-import {
-  getNextSsrSailingDayBoundary,
-  getSsrSailingDayId,
-} from "shared/lib/ssrSailingDay";
 import { assertPublicSsrSnapshot } from "shared/lib/ssrValidation";
 
 import type { SsrConfig } from "./config";
@@ -21,7 +23,11 @@ import type {
   SsrDocumentCache,
   SsrDocumentCacheKey,
 } from "./documentCache";
-import type { PublicSsrLoadResult } from "./publicSnapshot";
+import {
+  type PublicSsrCanonicalResolution,
+  PublicSsrIntegrityFailure,
+  type PublicSsrLoadResult,
+} from "./publicSnapshot";
 
 export type SsrTelemetryEvent =
   | Readonly<{
@@ -56,13 +62,24 @@ export type SsrTelemetryEvent =
       completedAt?: number;
       renderedAt?: number;
       release?: string;
-      sailingDayId?: string;
+      adResolutionCount?: number;
+      adRetryCount?: number;
+      adValidationDurationMs?: number;
+      adValidationOutcome?: "changed" | "error" | "not-applicable" | "stable";
+      refreshWindowClass?: "03:00" | "15:00";
+      refreshWindowId?: string;
+      renderCount?: number;
+      snapshotLoadCount?: number;
     }>
   | Readonly<{
       cacheEnabled: boolean;
       documentsEnabled: boolean;
       event: "ssr_startup";
     }>;
+
+export type SsrAdServingState = Readonly<
+  Pick<PublicSsrAdServingBinding, "creative" | "fingerprint" | "placementKey">
+>;
 
 export interface SsrDocumentRuntimeDependencies {
   readonly cache: SsrDocumentCache<SsrRuntimeFill>;
@@ -71,6 +88,7 @@ export interface SsrDocumentRuntimeDependencies {
   readonly contentRevision: () => string;
   readonly load: (input: {
     absoluteUrl: string;
+    adServingBinding?: PublicSsrAdServingBinding;
     contentRevision: string;
     fixedClock: Date;
     release: { publishedAt: string | null; version: string };
@@ -79,21 +97,17 @@ export interface SsrDocumentRuntimeDependencies {
   readonly resolve: (
     url: URL,
     options?: { pureOnly?: boolean }
-  ) => Promise<
-    | { classification: "eligible"; match: PublicSsrRouteMatch }
-    | { classification: "private"; match: PublicSsrRouteMatch }
-    | {
-        classification: "redirect";
-        match: PublicSsrRouteMatch;
-        redirectTo: string;
-      }
-    | { classification: "unknown" }
-  >;
+  ) => Promise<PublicSsrCanonicalResolution>;
+  readonly resolveAdServingState?: (
+    placementKey: string,
+    now: Date
+  ) => Promise<SsrAdServingState>;
   readonly release: () => { publishedAt: string | null; version: string };
   /** The sole production renderer is the validated ESM artifact. */
   readonly renderer: PublicSsrRendererArtifact;
   readonly telemetry?: (event: SsrTelemetryEvent) => void;
   readonly template: string;
+  readonly servingClock?: () => Date;
 }
 
 export type SsrRuntimeFill = {
@@ -103,12 +117,9 @@ export type SsrRuntimeFill = {
   result: PublicSsrRenderDocumentResult;
 };
 
-const DYNAMIC_DOCUMENT_CACHE_TTL_MS = 60_000;
-
 export const isPublicSsrDocumentCacheable = (snapshot: {
   sources: Readonly<Record<string, unknown>>;
 }): boolean =>
-  !("ad" in snapshot.sources) &&
   !Object.values(snapshot.sources).some(
     (source) =>
       typeof source === "object" &&
@@ -429,125 +440,275 @@ export const createSsrDocumentRuntime = (
       emitRequest({ ...safe, category: "failure", errorClass: "loader" });
       return failureResponse(dependencies.template);
     }
-    const now = dependencies.clock();
     const release = dependencies.release();
-    const sailingDayId =
-      match.route.kind === "dynamic" ? getSsrSailingDayId(now) : undefined;
-    const key: SsrDocumentCacheKey = {
-      canonicalPath: match.canonicalPath,
-      hostProfile: host,
-      kind: match.route.kind,
-      normalizedQuery: publicQueryCacheKey(match.query),
-      serviceDayId: sailingDayId,
-    };
+    const routeHasAd = match.route.requiredSources.includes("ad");
+    let { adPlacementBinding } = resolved;
+    // derive the seed-free home placement for injected test resolvers
+    if (routeHasAd && !adPlacementBinding) {
+      try {
+        adPlacementBinding = getPublicSsrAdPlacementBinding(match);
+      } catch {
+        adPlacementBinding = undefined;
+      }
+    }
+    // fail closed when an ad route lacks its canonical placement binding
+    if (
+      routeHasAd &&
+      (!adPlacementBinding || !dependencies.resolveAdServingState)
+    ) {
+      emitRequest({
+        ...safe,
+        adResolutionCount: 0,
+        adRetryCount: 0,
+        adValidationDurationMs: 0,
+        adValidationOutcome: "error",
+        category: "failure",
+        errorClass: "integrity",
+        renderCount: 0,
+        release: release.version,
+        snapshotLoadCount: 0,
+      });
+      return failureResponse(dependencies.template);
+    }
     let failureClass: Extract<
       SsrTelemetryEvent,
       { event: "ssr_document" }
     >["errorClass"] = "unknown";
+    let adResolutionCount = 0;
+    let adRetryCount = 0;
+    let adValidationDurationMs = 0;
+    let adValidationOutcome: Extract<
+      SsrTelemetryEvent,
+      { event: "ssr_document" }
+    >["adValidationOutcome"] = routeHasAd ? "stable" : "not-applicable";
+    let renderCount = 0;
+    let snapshotLoadCount = 0;
+    let finalRefreshWindowClass: "03:00" | "15:00" | undefined;
+    let finalRefreshWindowId: string | undefined;
+    let finalCached:
+      | Awaited<ReturnType<SsrDocumentCache<SsrRuntimeFill>["getOrCreate"]>>
+      | undefined;
+    const servingClock = dependencies.servingClock ?? dependencies.clock;
+    const readAdServingBinding = async (
+      binding: PublicSsrAdPlacementBinding
+    ): Promise<{ binding: PublicSsrAdServingBinding; now: Date }> => {
+      const now = servingClock();
+      const validationStarted = monotonicClock();
+      adResolutionCount += 1;
+      try {
+        const state = await dependencies.resolveAdServingState!(
+          binding.placementKey,
+          now
+        );
+        // reject service decisions for another placement or malformed hash
+        if (
+          state.placementKey !== binding.placementKey ||
+          !/^[a-f0-9]{64}$/u.test(state.fingerprint) ||
+          (state.creative !== null &&
+            state.creative.placementKey !== binding.placementKey)
+        ) {
+          throw new PublicSsrIntegrityFailure(
+            "Public SSR ad serving state identity mismatch"
+          );
+        }
+        return { binding: { ...binding, ...state }, now };
+      } finally {
+        adValidationDurationMs += Math.max(
+          0,
+          monotonicClock() - validationStarted
+        );
+      }
+    };
     const cacheStarted = monotonicClock();
-    const cached = await dependencies.cache.getOrCreate({
-      cacheEnabled: dependencies.config.cacheEnabled,
-      enabled: true,
-      key,
-      load: async () => {
-        const safeQuery = publicQueryCacheKey(match.query);
-        const canonicalUrl = new URL(match.canonicalPath, url.origin);
-        canonicalUrl.search = safeQuery;
-        let loaded: PublicSsrLoadResult;
-        const loadStarted = monotonicClock();
+    // retry only effective ad-state changes
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const fixedClock = dependencies.clock();
+      let servingBinding: PublicSsrAdServingBinding | undefined;
+      // observe the authoritative placement state before key selection
+      if (adPlacementBinding) {
         try {
-          loaded = await dependencies.load({
-            absoluteUrl: canonicalUrl.toString(),
-            contentRevision: dependencies.contentRevision(),
-            fixedClock: now,
-            release,
-          });
-          if (loaded.classification === "snapshot") {
-            phaseValues.sourceGroups = { ...(loaded.sourceDurationsMs ?? {}) };
-          }
+          const observed = await readAdServingBinding(adPlacementBinding);
+          servingBinding = observed.binding;
         } catch (error) {
+          failureClass =
+            error instanceof PublicSsrIntegrityFailure ? "integrity" : "loader";
+          adValidationOutcome = "error";
+          break;
+        }
+      }
+      // bind reuse to the content snapshot rather than ad-serving time
+      const refreshWindow =
+        match.route.kind === "dynamic"
+          ? getSsrRefreshWindow(fixedClock)
+          : undefined;
+      finalRefreshWindowId = refreshWindow?.id;
+      finalRefreshWindowClass = refreshWindow?.classification;
+      const key: SsrDocumentCacheKey = {
+        canonicalPath: match.canonicalPath,
+        hostProfile: host,
+        kind: match.route.kind,
+        normalizedQuery: publicQueryCacheKey(match.query),
+        ...(servingBinding
+          ? { adFingerprint: servingBinding.fingerprint }
+          : {}),
+        ...(refreshWindow ? { refreshWindowId: refreshWindow.id } : {}),
+      };
+      const cached = await dependencies.cache.getOrCreate({
+        cacheEnabled: dependencies.config.cacheEnabled,
+        enabled: true,
+        key,
+        // bind candidate work to this immutable attempt
+        // eslint-disable-next-line no-loop-func
+        load: async () => {
+          const safeQuery = publicQueryCacheKey(match.query);
+          const canonicalUrl = new URL(match.canonicalPath, url.origin);
+          canonicalUrl.search = safeQuery;
+          let loaded: PublicSsrLoadResult;
+          const loadStarted = monotonicClock();
+          snapshotLoadCount += 1;
+          try {
+            loaded = await dependencies.load({
+              absoluteUrl: canonicalUrl.toString(),
+              ...(servingBinding ? { adServingBinding: servingBinding } : {}),
+              contentRevision: dependencies.contentRevision(),
+              fixedClock,
+              release,
+            });
+            if (loaded.classification === "snapshot") {
+              phaseValues.sourceGroups = {
+                ...(loaded.sourceDurationsMs ?? {}),
+              };
+            }
+          } catch (error) {
+            failureClass =
+              error instanceof PublicSsrIntegrityFailure
+                ? "integrity"
+                : "loader";
+            throw error;
+          } finally {
+            phaseValues.snapshotLoad += Math.max(
+              0,
+              monotonicClock() - loadStarted
+            );
+          }
+          const validationStarted = monotonicClock();
+          let snapshot;
+          try {
+            if (loaded.classification !== "snapshot") {
+              failureClass = "loader";
+              throw new Error("SSR loader did not return a public snapshot");
+            }
+            if (!sameRouteMatch(match, loaded.match)) {
+              failureClass = "integrity";
+              throw new Error("SSR loader route identity mismatch");
+            }
+            snapshot = assertPublicSsrSnapshot(loaded.snapshot);
+            if (
+              snapshot.canonicalHost !== host ||
+              snapshot.hostProfile !== host ||
+              snapshot.canonicalPath !==
+                expectedSnapshotCanonicalPath(host, match) ||
+              snapshot.routeId !== match.route.id ||
+              publicQueryCacheKey({
+                rejected: [],
+                values: snapshot.normalizedUrl.query,
+              }) !== publicQueryCacheKey(match.query) ||
+              JSON.stringify(snapshot.routeParams) !==
+                JSON.stringify(match.params)
+            ) {
+              failureClass = "integrity";
+              throw new Error("SSR snapshot identity mismatch");
+            }
+          } catch (error) {
+            if (failureClass !== "integrity") {
+              failureClass = "integrity";
+            }
+            throw error;
+          } finally {
+            phaseValues.snapshotValidation += Math.max(
+              0,
+              monotonicClock() - validationStarted
+            );
+          }
+          const renderStarted = monotonicClock();
+          renderCount += 1;
+          try {
+            const result = await renderSnapshotDocument(dependencies, {
+              now: fixedClock,
+              requestUrl: canonicalUrl.toString(),
+              seoBaseUrl: url.origin,
+              seoHost: host,
+              seoPathname: snapshot.canonicalPath,
+              snapshot,
+            });
+            return {
+              cacheable: isPublicSsrDocumentCacheable(snapshot),
+              completedAt: dependencies.clock().getTime(),
+              renderedAt: fixedClock.getTime(),
+              result,
+            };
+          } catch (error) {
+            failureClass = "render";
+            throw error;
+          } finally {
+            phaseValues.render += Math.max(0, monotonicClock() - renderStarted);
+          }
+        },
+        ...(match.route.kind === "dynamic" || servingBinding
+          ? {
+              // validate against this immutable attempt state
+              // eslint-disable-next-line no-loop-func
+              validate: async (document?: SsrRuntimeFill) => {
+                // validate the effective ad state with a fresh clock sample
+                if (adPlacementBinding && servingBinding) {
+                  try {
+                    const observed =
+                      await readAdServingBinding(adPlacementBinding);
+                    if (
+                      observed.binding.fingerprint !==
+                      servingBinding.fingerprint
+                    ) {
+                      adValidationOutcome = "changed";
+                      return { kind: "invalidated" as const };
+                    }
+                  } catch (error) {
+                    failureClass =
+                      error instanceof PublicSsrIntegrityFailure
+                        ? "integrity"
+                        : "loader";
+                    adValidationOutcome = "error";
+                    return { kind: "validation-error" as const };
+                  }
+                }
+                // reject persistence after a boundary crossed during ad validation
+                const currentWindow = getSsrRefreshWindow(dependencies.clock());
+                return {
+                  kind: "validated-candidate" as const,
+                  mayCommit:
+                    Boolean(document?.cacheable) &&
+                    currentWindow.id === refreshWindow?.id,
+                };
+              },
+            }
+          : {}),
+      });
+      finalCached = cached;
+      // classify shared validation outages without another serving-state read
+      if (cached.failure === "validation") {
+        adValidationOutcome = "error";
+        if (failureClass === "unknown") {
           failureClass = "loader";
-          throw error;
-        } finally {
-          phaseValues.snapshotLoad = Math.max(
-            0,
-            monotonicClock() - loadStarted
-          );
         }
-        const validationStarted = monotonicClock();
-        let snapshot;
-        try {
-          if (loaded.classification !== "snapshot") {
-            failureClass = "loader";
-            throw new Error("SSR loader did not return a public snapshot");
-          }
-          if (!sameRouteMatch(match, loaded.match)) {
-            failureClass = "integrity";
-            throw new Error("SSR loader route identity mismatch");
-          }
-          snapshot = assertPublicSsrSnapshot(loaded.snapshot);
-          if (
-            snapshot.canonicalHost !== host ||
-            snapshot.hostProfile !== host ||
-            snapshot.canonicalPath !==
-              expectedSnapshotCanonicalPath(host, match) ||
-            snapshot.routeId !== match.route.id ||
-            publicQueryCacheKey({
-              rejected: [],
-              values: snapshot.normalizedUrl.query,
-            }) !== publicQueryCacheKey(match.query) ||
-            JSON.stringify(snapshot.routeParams) !==
-              JSON.stringify(match.params)
-          ) {
-            failureClass = "integrity";
-            throw new Error("SSR snapshot identity mismatch");
-          }
-        } catch (error) {
-          if (failureClass !== "integrity") {
-            failureClass = "integrity";
-          }
-          throw error;
-        } finally {
-          phaseValues.snapshotValidation = Math.max(
-            0,
-            monotonicClock() - validationStarted
-          );
+      }
+      // retry only a changed effective ad state
+      if (cached.failure === "invalidated" && adPlacementBinding) {
+        if (attempt < 2) {
+          adRetryCount += 1;
+          continue;
         }
-        const renderStarted = monotonicClock();
-        try {
-          const result = await renderSnapshotDocument(dependencies, {
-            now,
-            requestUrl: canonicalUrl.toString(),
-            seoBaseUrl: url.origin,
-            seoHost: host,
-            seoPathname: snapshot.canonicalPath,
-            snapshot,
-          });
-          return {
-            // Ad-bearing documents must reflect the persisted kill switches and
-            // campaign schedule on every request. In-flight requests may still
-            // coalesce, but a rendered creative is never persisted in this cache.
-            cacheable: isPublicSsrDocumentCacheable(snapshot),
-            completedAt: dependencies.clock().getTime(),
-            renderedAt: now.getTime(),
-            result,
-          };
-        } catch (error) {
-          failureClass = "render";
-          throw error;
-        } finally {
-          phaseValues.render = Math.max(0, monotonicClock() - renderStarted);
-        }
-      },
-      mayCommit: (document) =>
-        document.cacheable &&
-        (match.route.kind === "static" ||
-          dependencies.clock() < getNextSsrSailingDayBoundary(now)),
-      mayReuse: (document) =>
-        match.route.kind === "static" ||
-        dependencies.clock().getTime() - document.completedAt <
-          DYNAMIC_DOCUMENT_CACHE_TTL_MS,
-    });
+      }
+      break;
+    }
     const cacheDuration = Math.max(0, monotonicClock() - cacheStarted);
     phaseValues.cache = Math.max(
       0,
@@ -556,34 +717,49 @@ export const createSsrDocumentRuntime = (
         phaseValues.snapshotValidation -
         phaseValues.render
     );
-    if (!cached.document) {
+    if (!finalCached?.document) {
       emitRequest({
         ...safe,
+        adResolutionCount,
+        adRetryCount,
+        adValidationDurationMs,
+        adValidationOutcome,
         category: "failure",
-        cacheOutcome: cached.outcome,
-        errorClass: cached.failure === "capacity" ? "capacity" : failureClass,
+        cacheOutcome: finalCached?.outcome ?? "failed",
+        errorClass:
+          finalCached?.failure === "capacity" ? "capacity" : failureClass,
         controlReason: dependencies.config.cacheEnabled
           ? undefined
           : "cache_bypassed",
-        sailingDayId,
+        refreshWindowId: finalRefreshWindowId,
+        refreshWindowClass: finalRefreshWindowClass,
+        renderCount,
         release: release.version,
+        snapshotLoadCount,
       });
       return failureResponse(dependencies.template);
     }
     emitRequest({
       ...safe,
+      adResolutionCount,
+      adRetryCount,
+      adValidationDurationMs,
+      adValidationOutcome,
       category: "snapshot",
-      cacheOutcome: cached.outcome,
-      completedAt: cached.document.completedAt,
+      cacheOutcome: finalCached.outcome,
+      completedAt: finalCached.document.completedAt,
       controlReason: dependencies.config.cacheEnabled
         ? undefined
         : "cache_bypassed",
-      renderedAt: cached.document.renderedAt,
-      sailingDayId,
+      refreshWindowId: finalRefreshWindowId,
+      refreshWindowClass: finalRefreshWindowClass,
+      renderedAt: finalCached.document.renderedAt,
+      renderCount,
       release: release.version,
+      snapshotLoadCount,
     });
     return {
-      html: cached.document.result.html,
+      html: finalCached.document.result.html,
       headers: documentHeaders,
       status: 200,
     };

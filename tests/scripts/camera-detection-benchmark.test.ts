@@ -40,6 +40,13 @@ const iconSource = fs.readFileSync(
 );
 
 describe("camera detection benchmark", () => {
+  // standalone page metadata guard
+  it("describes the camera polygon annotator", () => {
+    expect(debuggerHtml).toMatch(
+      /<meta\s+name="description"\s+content="[^"]+"\s*\/>/
+    );
+  });
+
   // benchmark selection guard
   it("uses named pilot cameras and explicit disabled controls", () => {
     expect([

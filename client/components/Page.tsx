@@ -16,19 +16,31 @@ const Header = lazy(() =>
   import("../views/Header").then(({ Header }) => ({ default: Header }))
 );
 
-interface Props {
+interface BaseProps {
   headerAction?: ReactNode;
-  title?: string;
 }
+
+type Props =
+  | (BaseProps & { publicTitle: string; title?: never })
+  | (BaseProps & { publicTitle?: never; title?: string });
 
 // app page shell
 export const Page: FunctionComponent<PropsWithChildren<Props>> = ({
   headerAction,
+  publicTitle,
   title,
   children,
 }): ReactElement => {
   const { runtime } = useAppRenderContext();
-  const content = <main className="mx-auto w-full max-w-6xl">{children}</main>;
+  const content = (
+    <main className="mx-auto w-full max-w-6xl">
+      {/* expose the browser header title to universal readers */}
+      {publicTitle && runtime !== "browser" ? (
+        <h1 className="pt-4 min-w-0 font-bold text-2xl">{publicTitle}</h1>
+      ) : null}
+      {children}
+    </main>
+  );
 
   return (
     <div
@@ -44,7 +56,7 @@ export const Page: FunctionComponent<PropsWithChildren<Props>> = ({
         <Suspense fallback={null}>
           <Header>
             <h1 className="min-w-0 flex-1 truncate font-bold text-2xl">
-              {title ?? "Ferry FYI"}
+              {publicTitle ?? title ?? "Ferry FYI"}
             </h1>
             {headerAction && (
               <div className="ml-auto shrink-0">{headerAction}</div>

@@ -19,6 +19,7 @@ import type { Terminal } from "shared/contracts/terminals";
 import { AdSlot } from "~/components/AdSlot";
 import { DateButton } from "~/components/DateButton";
 import { ExternalPillLink } from "~/components/ExternalPillLink";
+import { FareCatalogDisclosure } from "~/components/FareCatalogDisclosure";
 import { FareWizardIcon, fareWizardIcons } from "~/components/FareWizardIcons";
 import { RouteSelector } from "~/components/RouteSelector";
 import { Skeleton, SkeletonGroup } from "~/components/Skeleton";
@@ -52,6 +53,35 @@ const currency = new Intl.NumberFormat("en-US", {
 const WSDOT_FARE_CALCULATOR_URL = "https://wsdot.wa.gov/ferries/fares/";
 const WSDOT_REDUCED_FARE_URL =
   "https://wsdot.wa.gov/ferries/rider-information/ada#Reduced%20fare%20passenger%20tickets";
+
+// accept only the catalog for this exact one-way request
+const getMatchingSeededCatalog = (
+  response: FareCatalogApiResponse | undefined,
+  terminal: Terminal,
+  mate: Terminal,
+  date: DateTime
+): FareCatalogApiResponse | undefined => {
+  // unavailable responses carry no request identity
+  if (!response || response.state === "unavailable") {
+    return undefined;
+  }
+  const request =
+    response.state === "current"
+      ? response.catalog.request
+      : response.noFare.request;
+  const tripDate = date.toISODate();
+  // prevent a persistent page seed from crossing request scopes
+  if (
+    !tripDate ||
+    request.departingTerminalId !== terminal.id ||
+    request.arrivingTerminalId !== mate.id ||
+    request.tripDate !== tripDate ||
+    request.roundTrip
+  ) {
+    return undefined;
+  }
+  return response;
+};
 
 const getTotal = (totals: FareTotal[]): FareTotal | undefined =>
   totals.find(({ type }) => type === "total");
@@ -280,6 +310,7 @@ const Counter = ({
   );
 };
 
+// enhance the public catalog with live quoting
 export const Fares = ({
   date,
   mate,
@@ -287,7 +318,12 @@ export const Fares = ({
   setRoute,
   terminal,
 }: Props): ReactElement => {
-  const seededCatalog = usePublicSsrSource("fares");
+  const seededCatalog = getMatchingSeededCatalog(
+    usePublicSsrSource("fares"),
+    terminal,
+    mate,
+    date
+  );
   const { search } = useLocation();
   const [catalogResponse, setCatalogResponse] =
     useState<FareCatalogApiResponse | null>(() => seededCatalog ?? null);
@@ -330,11 +366,23 @@ export const Fares = ({
       setCatalogResponse(null);
     }
     getFareCatalog(terminal, mate, date)
-      .then(
-        (response) =>
-          requestId === catalogRequestRef.current &&
-          setCatalogResponse(response)
-      )
+      .then((response) => {
+        // ignore superseded responses
+        if (requestId !== catalogRequestRef.current) {
+          return;
+        }
+        // retain initial data only for transient source failure
+        if (
+          isInitialSeedScope &&
+          seededCatalog &&
+          response.state === "unavailable" &&
+          response.reason === "unavailable"
+        ) {
+          setCatalogError(new Error("Live fare refresh unavailable"));
+          return;
+        }
+        setCatalogResponse(response);
+      })
       .catch(
         (error: unknown) =>
           requestId === catalogRequestRef.current &&
@@ -407,8 +455,6 @@ export const Fares = ({
     () => catalog && createFareWizardSelections(catalog.fares, config),
     [catalog, config]
   );
-
-  const catalogLabels = catalog?.fares.map((fare) => fare.label).join(", ");
 
   useEffect(() => {
     quoteRequestRef.current += 1;
@@ -579,11 +625,6 @@ export const Fares = ({
     <>
       {header}
       <main className="flex-grow overflow-y-auto bg-day-normal-light text-gray-dark dark:bg-night-normal-dark dark:text-[#e0f0f4]">
-        {catalogLabels ? (
-          <p className="sr-only" data-testid="fare-catalog-labels">
-            Available fare catalog: {catalogLabels}
-          </p>
-        ) : null}
         <div className="mx-auto w-full max-w-6xl space-y-4 p-4 pb-8">
           <AdSlot
             arrivalTerminalId={mate.id}
@@ -591,7 +632,10 @@ export const Fares = ({
             departureTerminalId={terminal.id}
             slot="fare"
           />
-          <section className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-blue-dark">
+          <section
+            aria-label="Fare estimator"
+            className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-blue-dark"
+          >
             <div className="flex items-center justify-between gap-3">
               <h1 className="text-xl font-bold">Fare estimator</h1>
               {config.travelMode && (
@@ -825,6 +869,17 @@ export const Fares = ({
               </fieldset>
             )}
           </section>
+          <FareCatalogDisclosure
+            response={{ state: "current", catalog }}
+            departingName={terminal.name}
+            arrivingName={mate.name}
+          />
+          {catalogError ? (
+            <p role="status">
+              The live refresh failed; the previously fetched fare catalog is
+              retained. Verify prices with WSDOT.
+            </p>
+          ) : null}
           {canEstimate && (
             <section className="rounded-2xl bg-white p-5 dark:bg-blue-dark">
               <div className="flex items-center justify-between gap-3">

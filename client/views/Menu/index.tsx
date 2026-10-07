@@ -368,7 +368,8 @@ export const Menu = ({
                 src={logo}
                 width={40}
               />
-              <h1 className="font-bold">Ferry FYI</h1>
+              {/* keep navigation branding outside the page heading outline */}
+              <span className="font-bold">Ferry FYI</span>
             </Link>
             <div className="flex-grow" />
             {share && canShare && (

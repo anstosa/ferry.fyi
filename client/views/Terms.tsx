@@ -6,7 +6,7 @@ import { SeoHelmet } from "~/components/SeoHelmet";
 
 /** Ferry FYI service and subscription terms. */
 export const Terms = (): ReactElement => (
-  <Page title="Terms of Service">
+  <Page publicTitle="Terms of Service">
     <SeoHelmet seo={getSeoMetadata("/terms")} />
     <p className="mt-4 text-sm">
       Last updated: <time dateTime="2026-10-03">October 3, 2026</time>

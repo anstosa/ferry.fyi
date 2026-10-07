@@ -9,7 +9,7 @@ const seo = getSeoMetadata("/forecasting");
 
 // forecasting explainer page
 export const ForecastingExplained = (): ReactElement => (
-  <Page title="Forecasting">
+  <Page publicTitle="Forecasting">
     <SeoHelmet seo={seo} />
     <p className="mt-4">
       Ferry FYI forecasts estimate vehicle space, schedule delay, and tidal
@@ -118,6 +118,21 @@ export const ForecastingExplained = (): ReactElement => (
       live WSF report, GPS match, or current tide forecast. It is lower when a
       route has sparse history, unusual timing, disruptions, or missing
       supporting data.
+    </p>
+
+    <h2 className="font-bold text-lg mt-8">
+      Leave-now timing and boarding limits
+    </h2>
+    <p className="mt-2">
+      The leave-now sailing tool uses Google travel timing and Ferry FYI&apos;s
+      estimate of when reported drive-up space reaches zero. Its adjustable
+      buffer changes the recommended departure time, not the vehicle inventory
+      expected when you arrive.
+    </p>
+    <p className="mt-2">
+      Booth lines, terminal parking, and reservation-aware boarding are not
+      modeled. Leave-now results and capacity forecasts do not guarantee
+      boarding.
     </p>
   </Page>
 );

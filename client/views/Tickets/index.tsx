@@ -45,13 +45,13 @@ import { useTerminals } from "~/lib/terminals";
 import { useUser } from "~/lib/user";
 import ScanIcon from "~/static/images/icons/solid/barcode-scan.svg";
 import ErrorIcon from "~/static/images/icons/solid/exclamation-triangle.svg";
-import ExternalLinkIcon from "~/static/images/icons/solid/external-link.svg";
 import UploadIcon from "~/static/images/icons/solid/image.svg";
 import ManualIcon from "~/static/images/icons/solid/keyboard.svg";
 import SpinnerIcon from "~/static/images/icons/solid/spinner-third.svg";
 import SyncIcon from "~/static/images/icons/solid/sync-alt.svg";
 import StopIcon from "~/static/images/icons/solid/times.svg";
 
+import { TicketsPublicContent } from "../TicketsPublicContent";
 const BarcodeOverlay = React.lazy(() =>
   import("./BarcodeOverlay").then(({ BarcodeOverlay }) => ({
     default: BarcodeOverlay,
@@ -203,18 +203,6 @@ const IMAGE_DECODE_CROP_SCALES = [0.24, 0.32, 0.42, 0.58, 0.74];
 const IMAGE_DECODE_MAX_VARIANTS = 72;
 const IMAGE_DECODE_MIN_CANVAS_SIZE = 900;
 const IMAGE_DECODE_MAX_CANVAS_SIZE = 1600;
-
-// WSF purchase links
-const WSF_RESERVATION_URL =
-  "https://secureapps.wsdot.wa.gov/ferries/reservations/vehicle/default.aspx?op=Make+reservations";
-const WSF_MULTI_RIDE_URL =
-  "https://wave2go.wsdot.com/webstore/landingPage?cg=21&c=76";
-
-// purchase button style
-const PURCHASE_LINK_CLASSES = clsx(
-  "button button-glass h-auto min-h-12 w-full justify-between px-4 py-3 text-left",
-  "overflow-visible whitespace-normal"
-);
 
 type BrowserBarcodeDetector = {
   detect: (
@@ -730,6 +718,7 @@ const isInvalidTicket = (
   return usesRemaining === 0;
 };
 
+// render the enhanced ticket wallet
 export const Tickets = (): ReactElement => {
   const [selectedCameraId, setSelectedCameraId] = useState<string | undefined>(
     undefined
@@ -1155,24 +1144,12 @@ export const Tickets = (): ReactElement => {
   const ticketCount = normalizedTickets.length;
 
   return (
-    <Page title="Tickets">
+    <Page publicTitle="Tickets">
       <SeoHelmet seo={getSeoMetadata("/tickets")} />
 
-      <section className="mt-4 overflow-hidden rounded-2xl border border-[rgba(0,0,0,0.08)] bg-[linear-gradient(135deg,#016f52_0%,#004d61_100%)] text-white shadow-lg dark:border-[rgba(255,255,255,0.08)]">
-        <div className="relative p-5 sm:p-6">
-          <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/10" />
-          <div className="absolute -bottom-16 right-12 h-36 w-36 rounded-full bg-yellow-medium/20 blur-sm" />
-          <div className="relative flex flex-col gap-5">
-            <div>
-              <div>
-                <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-yellow-lightest">
-                  Wallet
-                </p>
-                <h2 className="mt-2 text-3xl font-black tracking-tight">
-                  Ferry tickets, ready to scan
-                </h2>
-              </div>
-            </div>
+      <TicketsPublicContent
+        tools={
+          <>
             <div className="grid grid-cols-3 gap-2">
               <button
                 onClick={() => scan()}
@@ -1304,38 +1281,9 @@ export const Tickets = (): ReactElement => {
                 />
               </form>
             ) : null}
-
-            {/* purchase links */}
-            {isManualEntry ? null : (
-              <div>
-                <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-yellow-lightest">
-                  Purchase tickets
-                </p>
-                <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                  <a
-                    href={WSF_RESERVATION_URL}
-                    target="_blank"
-                    rel="noreferrer"
-                    className={PURCHASE_LINK_CLASSES}
-                  >
-                    <span>Make a reservation</span>
-                    <ExternalLinkIcon className="button-icon shrink-0" />
-                  </a>
-                  <a
-                    href={WSF_MULTI_RIDE_URL}
-                    target="_blank"
-                    rel="noreferrer"
-                    className={PURCHASE_LINK_CLASSES}
-                  >
-                    <span>Buy multi-ride passes</span>
-                    <ExternalLinkIcon className="button-icon shrink-0" />
-                  </a>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
+          </>
+        }
+      />
 
       <div className="mt-5">
         <AppTeaser />

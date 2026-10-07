@@ -1,7 +1,7 @@
 import React, { lazy, type ReactElement } from "react";
 import { Navigate, type RouteObject, useRoutes } from "react-router-dom";
 import type { PublicSsrRouteDefinition } from "shared/contracts/ssr";
-import { getNotFoundSeoMetadata, getSeoMetadata } from "shared/lib/seo";
+import { getSeoMetadata } from "shared/lib/seo";
 import {
   getPublicSsrHostProfile,
   type PublicSsrHostProfile,
@@ -14,19 +14,26 @@ import { useAppRenderContext } from "~/lib/renderContext";
 import type { RouteView } from "~/lib/routeViews";
 import { usePublicSsrSnapshot } from "~/lib/ssrSeed";
 import { About } from "~/views/About";
+import { DataSources } from "~/views/DataSources";
+import { ForecastingExplained } from "~/views/ForecastingExplained";
+import { InstallPublicPage } from "~/views/InstallPublicContent";
+import { NotFound } from "~/views/NotFound";
+import { PrivacyPolicy } from "~/views/PrivacyPolicy";
 import {
   PublicAlertGuidance,
   PublicBulletins,
   PublicCameras,
-  PublicEditorialPage,
   PublicFares,
   PublicHome,
   PublicLeaderboards,
   PublicRouteMap,
   PublicSchedule,
   PublicTerminalDetails,
-  PublicTickets,
 } from "~/views/PublicSsrPages";
+import { Support } from "~/views/Support";
+import { SupporterPublicPage } from "~/views/SupporterPublicContent";
+import { Terms } from "~/views/Terms";
+import { TicketsPublicPage } from "~/views/TicketsPublicContent";
 import { Today } from "~/views/Today";
 
 const loadAdmin = () =>
@@ -49,30 +56,13 @@ const Login = lazy(loadLogin);
 const loadLogout = () =>
   import("~/views/Logout").then(({ Logout }) => ({ default: Logout }));
 const Logout = lazy(loadLogout);
-const loadDataSources = () =>
-  import("~/views/DataSources").then(({ DataSources }) => ({
-    default: DataSources,
-  }));
-const DataSources = lazy(loadDataSources);
 // install route loader
 const loadInstall = () =>
   import("~/views/Install").then(({ Install }) => ({ default: Install }));
 const Install = lazy(loadInstall);
-// support route loader
-const loadSupport = () =>
-  import("~/views/Support").then(({ Support }) => ({ default: Support }));
-const Support = lazy(loadSupport);
 const loadSupporter = () =>
   import("~/views/Supporter").then(({ Supporter }) => ({ default: Supporter }));
 const Supporter = lazy(loadSupporter);
-const loadTerms = () =>
-  import("~/views/Terms").then(({ Terms }) => ({ default: Terms }));
-const Terms = lazy(loadTerms);
-const loadForecastingExplained = () =>
-  import("~/views/ForecastingExplained").then(({ ForecastingExplained }) => ({
-    default: ForecastingExplained,
-  }));
-const ForecastingExplained = lazy(loadForecastingExplained);
 const loadHome = () =>
   import("~/views/Home").then(({ Home }) => ({ default: Home }));
 const Home = lazy(loadHome);
@@ -81,11 +71,6 @@ const loadLeaderboards = () =>
     default: Leaderboards,
   }));
 const Leaderboards = lazy(loadLeaderboards);
-const loadPrivacyPolicy = () =>
-  import("~/views/PrivacyPolicy").then(({ PrivacyPolicy }) => ({
-    default: PrivacyPolicy,
-  }));
-const PrivacyPolicy = lazy(loadPrivacyPolicy);
 const loadRoute = () =>
   import("~/views/Route").then(({ Route }) => ({ default: Route }));
 const Route = lazy(loadRoute);
@@ -140,7 +125,6 @@ export const preloadBrowserRoute = async (
     return;
   }
   if (pathname === "/data-sources") {
-    await loadDataSources();
     return;
   }
   // install preload
@@ -149,16 +133,13 @@ export const preloadBrowserRoute = async (
     return;
   }
   if (pathname === "/privacy") {
-    await loadPrivacyPolicy();
     return;
   }
   if (pathname === "/forecasting" || pathname === "/forecasting-explained") {
-    await loadForecastingExplained();
     return;
   }
   // support preload
   if (pathname === "/support") {
-    await loadSupport();
     return;
   }
   // supporter preload
@@ -168,7 +149,6 @@ export const preloadBrowserRoute = async (
   }
   // terms preload
   if (pathname === "/terms") {
-    await loadTerms();
     return;
   }
   if (
@@ -259,19 +239,6 @@ const ClientOnlyPlaceholder = (): ReactElement => (
   </>
 );
 
-const notFoundSeo = getNotFoundSeoMetadata();
-
-/** Request-neutral fallback rendered by both browser and universal route trees. */
-const NotFound = (): ReactElement => (
-  <>
-    <SeoHelmet seo={notFoundSeo} />
-    <main aria-labelledby="not-found-title">
-      <h1 id="not-found-title">Page not found</h1>
-      <p>The requested Ferry FYI page could not be found.</p>
-    </main>
-  </>
-);
-
 // resolve the browser-neutral route view
 const universalRouteElement = (
   route: PublicSsrRouteDefinition
@@ -288,17 +255,6 @@ const universalRouteElement = (
   }
   if (route.id === "home") {
     return <PublicHome />;
-  }
-  if (
-    route.id === "data-sources" ||
-    route.id === "install" ||
-    route.id === "privacy" ||
-    route.id === "forecasting" ||
-    route.id === "support" ||
-    route.id === "supporter" ||
-    route.id === "terms"
-  ) {
-    return <PublicEditorialPage page={route.id} />;
   }
   if (route.view === "subscribe") {
     return <PublicAlertGuidance />;
@@ -321,16 +277,28 @@ const universalRouteElement = (
   if (route.view === "terminal") {
     return <PublicTerminalDetails />;
   }
-  // About is currently the only public view whose module boundary is free of
-  // browser-only SDK imports. Other public views are activated once their
-  // browser effects have an equivalent universal split.
+  // select browser-neutral static views
   switch (route.id) {
     case "today":
       return <Today />;
     case "about":
       return <About />;
+    case "data-sources":
+      return <DataSources />;
+    case "forecasting":
+      return <ForecastingExplained />;
+    case "install":
+      return <InstallPublicPage />;
+    case "privacy":
+      return <PrivacyPolicy />;
+    case "support":
+      return <Support />;
+    case "supporter":
+      return <SupporterPublicPage />;
+    case "terms":
+      return <Terms />;
     case "tickets":
-      return <PublicTickets />;
+      return <TicketsPublicPage />;
     case "leaderboards":
     case "leaderboards-terminal":
     case "leaderboards-vessel":

@@ -31,6 +31,23 @@ Schedules include their service date and departure-to-arrival direction in the
 initial HTML. Terminal-detail pages include the source-provided address, routes,
 and facility availability. Legacy numeric terminal page URLs redirect to slug
 URLs; API discovery and requests still use terminal ids.
+Static public pages include their full informational content in the initial HTML.
+Dynamic public pages include their complete anonymous URL/default-state snapshot.
+Origin documents are reused within fixed 03:00 and 15:00 America/Los_Angeles
+refresh windows and filled lazily; source observations can be older than the page
+snapshot, so preserve the displayed source timestamps. Browser updates and live
+read APIs can be fresher. Effective public ad changes invalidate relevant origin
+variants on their next request. No private account state or ad exposure token is
+included in these cached documents.
+Fare pages contain a native "Show full fare table" disclosure beneath the
+estimator; the full official catalog is present even when collapsed and can be
+opened without JavaScript. Catalog rows are not personalized quotes or eligibility
+decisions.
+Public page descriptions and canonical metadata appear in the document head.
+Images include text alternatives; decorative images use empty alt attributes.
+Unknown public pages return HTTP 404 with a noindex recovery page linking to
+ferry schedules and support. A page's absence from a search index does not mean
+the page is missing or that its current ferry information is unavailable.
 
 ## Features
 

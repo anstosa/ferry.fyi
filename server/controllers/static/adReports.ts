@@ -27,6 +27,7 @@ const legacyRedirectHtml = `<!doctype html>
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="description" content="Continue to a private Ferry FYI advertising campaign report.">
     <meta name="robots" content="noindex,nofollow">
     <title>Moving Ferry FYI campaign report</title>
   </head>
@@ -47,6 +48,7 @@ const reportHtml = `<!doctype html>
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="description" content="View private, aggregate performance reporting for a Ferry FYI advertising campaign.">
     <meta name="theme-color" content="#016f52">
     <title>Ferry FYI campaign report</title>
     <link rel="icon" href="/static/images/favicon.ico" sizes="any">

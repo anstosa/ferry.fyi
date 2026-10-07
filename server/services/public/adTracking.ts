@@ -95,6 +95,12 @@ interface AdServingDecision {
   servable: boolean;
 }
 
+export interface PublicAdServingState {
+  readonly creative: AdCampaignCreative | null;
+  readonly fingerprint: string;
+  readonly placementKey: string;
+}
+
 const getAdServingDecision = async (
   placementKey: string,
   now: Date
@@ -110,16 +116,52 @@ const getAdServingDecision = async (
   };
 };
 
+/** Hashes only the effective public creative decision in fixed field order. */
+export const getPublicAdServingFingerprint = (
+  placementKey: string,
+  creative: AdCampaignCreative | null
+): string =>
+  createHash("sha256")
+    .update(
+      JSON.stringify([
+        placementKey,
+        creative?.campaignId ?? null,
+        creative?.advertiserName ?? null,
+        creative?.headline ?? null,
+        creative?.body ?? null,
+        creative?.placementKey ?? null,
+        creative?.targetUrl ?? null,
+      ])
+    )
+    .digest("hex");
+
+/** Resolves the authoritative cache-safe serving state for one placement. */
+export const getPublicAdServingState = async (
+  placementKey: string,
+  now = new Date()
+): Promise<PublicAdServingState> => {
+  let creative: AdCampaignCreative | null = null;
+  // apply the environment kill switch before database serving checks
+  if (isMeasurementEnabled()) {
+    const { campaign, servable } = await getAdServingDecision(
+      placementKey,
+      now
+    );
+    creative = servable && campaign ? asCreative(campaign) : null;
+  }
+  return {
+    creative,
+    fingerprint: getPublicAdServingFingerprint(placementKey, creative),
+    placementKey,
+  };
+};
+
 /** Resolves cache-safe ad content for an SSR document without issuing a token. */
 export const getServableAdCreative = async (
   placementKey: string,
   now = new Date()
 ): Promise<AdCampaignCreative | null> => {
-  if (!isMeasurementEnabled()) {
-    return null;
-  }
-  const { campaign, servable } = await getAdServingDecision(placementKey, now);
-  return servable && campaign ? asCreative(campaign) : null;
+  return (await getPublicAdServingState(placementKey, now)).creative;
 };
 
 /** Issues one anonymous, short-lived measurement envelope for a mounted slot. */

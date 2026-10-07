@@ -149,6 +149,7 @@ describe("installed PWA SSR safety", () => {
     ]);
 
     expect(html).toContain('<meta name="robots" content="noindex,nofollow" />');
+    expect(html).toMatch(/<meta\s+name="description"\s+content="[^"]+"\s*\/>/);
     expect(html).toContain('content="csr-offline"');
     expect(html).toContain('data-document-mode="csr-offline"');
     expect(html).not.toContain("ferry-fyi-public-ssr-snapshot");
