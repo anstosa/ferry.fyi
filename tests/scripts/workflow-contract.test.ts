@@ -3,6 +3,8 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import { PUBLISH_TARGETS } from "../../server/scripts/publishedAppVersion";
+
 const workflow = (name: string) =>
   fs.readFileSync(
     path.resolve(__dirname, `../../.github/workflows/${name}`),
@@ -21,6 +23,38 @@ describe("CI workflow contract", () => {
     );
     expect(publish).toContain("scripts/prepareOtaRelease.ts index");
     expect(publish).toContain(".bundle == $expected");
+  });
+
+  // resolve native publication history without granting mutation authority
+  it("uses successful native publications as the OTA prefix source", () => {
+    const publish = workflow("publish-ota.yml");
+    const deploy = workflow("deploy-aws.yml");
+    const apps = workflow("publish-apps.yml");
+
+    expect(publish).toContain("actions: read");
+    expect(deploy).toContain("actions: read");
+    expect(publish).toContain(
+      ["GH_TOKEN: ", "$", "{{ github.token }}"].join("")
+    );
+    expect(apps).toContain("run-name: Publish apps");
+    expect(apps).toContain("inputs.version_name");
+    expect(publish).not.toContain("contents: write");
+  });
+
+  // bind runtime publication targets to their exact workflow jobs and steps
+  it("keeps native publication protocol names aligned with workflows", () => {
+    const apps = workflow("publish-apps.yml");
+    // verify every runtime target against its parent and reusable workflow
+    for (const target of Object.values(PUBLISH_TARGETS)) {
+      const [parentJobId, reusableJobName, ...extraParts] =
+        target.job.split(" / ");
+      expect(extraParts).toEqual([]);
+      expect(apps).toMatch(new RegExp(`^  ${parentJobId}:`, "mu"));
+      expect(apps).toContain(`uses: ./.github/workflows/${parentJobId}.yml`);
+      const reusable = workflow(`${parentJobId}.yml`);
+      expect(reusable).toContain(`    name: ${reusableJobName}\n`);
+      expect(reusable).toContain(`      - name: ${target.step}\n`);
+    }
   });
 
   // preserve channel state when a restricted S3 read fails

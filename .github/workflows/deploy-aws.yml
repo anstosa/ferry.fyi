@@ -7,6 +7,8 @@ on:
   workflow_dispatch:
 
 permissions:
+  # allow the reusable OTA publisher to read native release history
+  actions: read
   contents: read
   id-token: write
 

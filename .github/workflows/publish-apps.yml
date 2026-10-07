@@ -1,4 +1,6 @@
 name: Publish apps
+# retain the requested native version in publication history
+run-name: Publish apps ${{ inputs.version_name || github.ref_name }} (${{ inputs.platform || 'tag' }})
 
 on:
   push:

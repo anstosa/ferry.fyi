@@ -225,6 +225,68 @@ describe("OTA manifest API", () => {
     });
   });
 
+  // native and OTA versions share the published app's comparison domain
+  it.each(["android", "ios"])(
+    "offers a 3.6 OTA to the native 3.6 %s app",
+    async (platform) => {
+      configureReleaseIndex();
+      const release = { ...RELEASE, version: "3.6.788" };
+      vi.mocked(fetch).mockResolvedValue(releaseIndexResponse([release]));
+
+      const response = await request(createApp())
+        .post("/api/ota/manifest")
+        .send({
+          ...VALID_REQUEST,
+          defaultChannel: "production",
+          platform,
+          version_build: "3.6",
+          version_name: "3.6",
+        })
+        .expect(200);
+
+      expect(response.body).toEqual(release);
+    }
+  );
+
+  // normal comparison must still prevent repeats and downgrades
+  it.each([
+    ["3.6", "2.5.788"],
+    ["3.6", "3.6.0"],
+    ["3.7", "3.6.788"],
+    ["3.6.788", "3.6.788"],
+    ["3.6.789", "3.6.788"],
+  ])("does not replace %s with %s", async (current, version) => {
+    configureReleaseIndex();
+    vi.mocked(fetch).mockResolvedValue(
+      releaseIndexResponse([{ ...RELEASE, version }])
+    );
+
+    const response = await request(createApp())
+      .post("/api/ota/manifest")
+      .send({
+        ...VALID_REQUEST,
+        defaultChannel: "production",
+        version_build: "3.6",
+        version_name: current,
+      })
+      .expect(200);
+
+    expect(response.body.kind).toBe("up_to_date");
+    expect(fetch).toHaveBeenCalledOnce();
+  });
+
+  // published bundles must retain their full semantic version
+  it("rejects a two-part published OTA release", async () => {
+    configureReleaseIndex();
+    vi.mocked(fetch).mockResolvedValue(
+      releaseIndexResponse([{ ...RELEASE, version: "3.6" }])
+    );
+
+    await expect(getCachedOtaReleases()).rejects.toThrow(
+      "OTA release index is invalid"
+    );
+  });
+
   // stable releases supersede matching prerelease builds
   it("returns a stable release for a matching prerelease build", async () => {
     configureReleaseIndex();

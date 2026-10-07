@@ -9,6 +9,7 @@ on:
         type: string
 
 permissions:
+  actions: read
   contents: read
   id-token: write
 
@@ -144,10 +145,13 @@ jobs:
 
       - name: Create and validate OTA bundle
         id: bundle
+        env:
+          # read successful native publication evidence without a new secret
+          GH_TOKEN: ${{ github.token }}
         run: |
           # fail on shell mistakes
           set -euo pipefail
-          # advance OTA bundle versions independently of package and native versions
+          # retain the latest successfully published native prefix and advance source revisions
           OTA_RELEASE_VERSION="$(cd server && node ../scripts/register-esbuild.js scripts/prepareOtaRelease.ts version)"
           # create the full bundle with Capgo's canonical checksum and explicit version
           ZIP_RESULT="$(npx @capgo/cli bundle zip --bundle "${OTA_RELEASE_VERSION}" --path dist/client --json)"

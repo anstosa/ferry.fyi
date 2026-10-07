@@ -28,28 +28,35 @@ describe("OTA publication", () => {
     vi.unstubAllEnvs();
   });
 
-  // keep bundle identity stable while advancing descendant source revisions
-  it("derives increasing bundle versions independently of the native version", () => {
-    expect(createOtaReleaseVersion("2.5.1", 100)).toBe("2.5.101");
-    expect(createOtaReleaseVersion("2.5.1", 100)).toBe("2.5.101");
-    expect(createOtaReleaseVersion("2.5.1", 101)).toBe("2.5.102");
+  // retain the latest native prefix while advancing source revisions
+  it("derives stable increasing bundle versions from the published app version", () => {
+    expect(createOtaReleaseVersion("3.6", 100)).toBe("3.6.100");
+    expect(createOtaReleaseVersion("3.6", 100)).toBe("3.6.100");
+    expect(createOtaReleaseVersion("3.6", 101)).toBe("3.6.101");
+    expect(createOtaReleaseVersion("3.7", 101)).toBe("3.7.101");
   });
 
   // reject incomplete or unrepresentable source numbering
-  it.each([0, -1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER])(
+  it.each([0, -1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1])(
     "rejects invalid source counts: %s",
     (count) => {
-      expect(() => createOtaReleaseVersion("2.5.1", count)).toThrow();
+      expect(() => createOtaReleaseVersion("3.6", count)).toThrow();
     }
   );
 
-  // require canonical numeric base versions
-  it.each(["2.5", "02.5.1", "2.5.1-beta", "2.5.1+source", "x.y.z"])(
-    "rejects invalid package versions: %s",
-    (version) => {
-      expect(() => createOtaReleaseVersion(version, 100)).toThrow();
-    }
-  );
+  // require an unambiguous two-component published app prefix
+  it.each([
+    "3",
+    "03.6",
+    "3.06",
+    "3.6.0",
+    "3.6-beta",
+    "3.6+source",
+    "x.y",
+    "9007199254740992.6",
+  ])("rejects invalid published app versions: %s", (version) => {
+    expect(() => createOtaReleaseVersion(version, 100)).toThrow();
+  });
 
   // protect unrelated channels and caller-owned index data
   it("updates only the selected channel without mutating the existing index", () => {
@@ -146,7 +153,7 @@ describe("OTA publication", () => {
   it.each(["android", "ios"])(
     "offers the source-versioned release to an installed 2.5.1 %s bundle",
     async (platform) => {
-      const candidate = release(createOtaReleaseVersion("2.5.1", 100));
+      const candidate = release(createOtaReleaseVersion("3.6", 100));
       const index = prepareOtaReleaseIndex(
         { releases: [release("2.5.1", "a".repeat(40))] },
         candidate,

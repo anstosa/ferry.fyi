@@ -3,6 +3,7 @@ import {
   OTA_CHANNELS,
   OtaChannel,
   OtaRelease,
+  type OtaSemverVersion,
   OtaUpdateManifest,
   OtaUpdateRequest,
 } from "shared/contracts/ota";
@@ -11,6 +12,8 @@ const OTA_RELEASE_CACHE_TTL_MS = 5 * 60 * 1000;
 const SHA256_PATTERN = /^[a-f\d]{64}$/iu;
 const SEMVER_PATTERN =
   /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/u;
+// native releases use the same prefix without an OTA revision
+const APP_VERSION_PATTERN = /^(0|[1-9]\d*)\.(0|[1-9]\d*)$/u;
 
 interface OtaReleaseIndex {
   releases: unknown;
@@ -18,6 +21,8 @@ interface OtaReleaseIndex {
 
 interface OtaManifestRequest extends OtaUpdateRequest {
   defaultChannel?: OtaChannel;
+  // compare only complete semantic versions after parsing
+  version_name: "builtin" | OtaSemverVersion;
 }
 
 let cachedReleases: OtaRelease[] | undefined;
@@ -173,15 +178,23 @@ export const parseOtaManifestRequest = (
   ) {
     return;
   }
-  // version guard
+  // compare native app versions as their zero-revision baseline
+  const versionName =
+    typeof request.version_name === "string" &&
+    APP_VERSION_PATTERN.test(request.version_name)
+      ? `${request.version_name}.0`
+      : request.version_name;
+  // retain strict validation for complete OTA versions
   if (
-    request.version_name !== "builtin" &&
-    (typeof request.version_name !== "string" ||
-      !SEMVER_PATTERN.test(request.version_name))
+    versionName !== "builtin" &&
+    (typeof versionName !== "string" || !SEMVER_PATTERN.test(versionName))
   ) {
     return;
   }
-  return request as unknown as OtaManifestRequest;
+  return {
+    ...request,
+    version_name: versionName,
+  } as unknown as OtaManifestRequest;
 };
 
 // compare semantic versions without accepting downgrades

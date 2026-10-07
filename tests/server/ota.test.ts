@@ -18,11 +18,55 @@ const createManifestRequest = (platform: "android" | "ios") => ({
 
 // native OTA request validation
 describe("parseOtaManifestRequest", () => {
+  // compare native marketing versions as zero-patch semantic versions
+  it.each(["android", "ios"] as const)(
+    "normalizes the native version on %s without calling it built-in",
+    (platform) => {
+      const request = {
+        ...createManifestRequest(platform),
+        version_build: "3.6",
+        version_name: "3.6",
+      };
+      expect(parseOtaManifestRequest(request)).toMatchObject({
+        platform,
+        version_build: "3.6",
+        version_name: "3.6.0",
+      });
+      expect(request.version_name).toBe("3.6");
+    }
+  );
+
+  // normalization does not depend on a built-in bundle heuristic
+  it("compares any valid two-part current version normally", () => {
+    expect(
+      parseOtaManifestRequest({
+        ...createManifestRequest("android"),
+        version_build: "3.6",
+        version_name: "3.7",
+      })
+    ).toMatchObject({ version_name: "3.7.0" });
+  });
+
+  // malformed marketing versions must not bypass validation
+  it.each(["03.6", "3.06", "3.6-beta", "broken", null, 3.6])(
+    "rejects malformed current version %s",
+    (version_name) => {
+      expect(
+        parseOtaManifestRequest({
+          ...createManifestRequest("android"),
+          version_name,
+        })
+      ).toBeUndefined();
+    }
+  );
+
   // accept the iOS updater payload
   it("accepts iOS updater requests", () => {
-    expect(parseOtaManifestRequest(createManifestRequest("ios"))).toMatchObject({
-      platform: "ios",
-    });
+    expect(parseOtaManifestRequest(createManifestRequest("ios"))).toMatchObject(
+      {
+        platform: "ios",
+      }
+    );
   });
 
   // reject unsupported platform values

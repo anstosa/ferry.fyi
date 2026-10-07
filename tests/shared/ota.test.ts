@@ -31,6 +31,24 @@ describe("OTA contract and configuration", () => {
     expect(request.app_id).toBe("fyi.ferry");
   });
 
+  // native requests report the published app prefix before an OTA is active
+  it("models a two-component native app version", () => {
+    const request: OtaUpdateRequest = {
+      app_id: "fyi.ferry",
+      device_id: "device-id",
+      is_emulator: false,
+      is_prod: true,
+      platform: "android",
+      plugin_version: "8.50.2",
+      version_build: "3.6",
+      version_code: "262451507",
+      version_name: "3.6",
+      version_os: "17",
+    };
+
+    expect(request.version_name).toBe("3.6");
+  });
+
   // iOS custom-backend metadata
   it("models iOS updater requests", () => {
     const request: OtaUpdateRequest = {

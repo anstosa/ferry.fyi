@@ -5,24 +5,24 @@ import path from "node:path";
 import { OtaRelease } from "shared/contracts/ota";
 
 import { isReleaseNewer, parseOtaReleaseIndex } from "../lib/ota";
+import { getPublishedAppVersion } from "./publishedAppVersion";
 
-// assign each source revision a stable bundle version without changing the native version
+// prefix each source revision with the most recently published native version
 export const createOtaReleaseVersion = (
-  packageVersion: string,
+  appVersion: string,
   sourceCount: number
 ): string => {
-  const parts = packageVersion.split(".").map(Number);
+  const parts = appVersion.split(".").map(Number);
   // reject noncanonical base versions and unsafe history counts
   if (
-    !/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/u.test(packageVersion) ||
+    !/^(0|[1-9]\d*)\.(0|[1-9]\d*)$/u.test(appVersion) ||
     parts.some((part) => !Number.isSafeInteger(part)) ||
     !Number.isSafeInteger(sourceCount) ||
-    sourceCount < 1 ||
-    !Number.isSafeInteger(parts[2] + sourceCount)
+    sourceCount < 1
   ) {
     throw new Error("Invalid OTA base version or source history count");
   }
-  return `${parts[0]}.${parts[1]}.${parts[2] + sourceCount}`;
+  return `${appVersion}.${sourceCount}`;
 };
 
 // validate monotonic channel updates and preserve exact immutable retries
@@ -76,7 +76,7 @@ export const prepareOtaReleaseIndex = (
 };
 
 // run publisher preparation through the repository's TypeScript wrapper
-const run = (): void => {
+const run = async (): Promise<void> => {
   const mode = process.argv[3];
   // derive versions only from complete checkout history
   if (mode === "version") {
@@ -96,9 +96,10 @@ const run = (): void => {
         encoding: "utf8",
       }).trim()
     );
-    const { version } = JSON.parse(
-      readFileSync(path.resolve(__dirname, "../../package.json"), "utf8")
-    ) as { version: string };
+    const version = await getPublishedAppVersion({
+      repository: process.env.GITHUB_REPOSITORY ?? "",
+      token: process.env.GH_TOKEN ?? "",
+    });
     process.stdout.write(`${createOtaReleaseVersion(version, sourceCount)}\n`);
     return;
   }
@@ -123,5 +124,9 @@ const run = (): void => {
 
 // avoid executing the CLI when imported by regression tests
 if (process.argv[2] && path.resolve(process.argv[2]) === __filename) {
-  run();
+  // report failed publication evidence without continuing the publisher
+  run().catch((error: Error) => {
+    process.stderr.write(`${error.message}\n`);
+    process.exitCode = 1;
+  });
 }

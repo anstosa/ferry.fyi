@@ -4,6 +4,9 @@ export type OtaChannel = (typeof OTA_CHANNELS)[number];
 
 export type OtaPlatform = "android" | "ios";
 
+// native app versions omit the OTA revision component
+export type OtaAppVersion = `${number}.${number}`;
+
 export type OtaSemverVersion =
   | `${number}.${number}.${number}`
   | `${number}.${number}.${number}-${string}`
@@ -24,7 +27,7 @@ export interface OtaUpdateRequest {
   plugin_version: string;
   version_build: string;
   version_code: string;
-  version_name: "builtin" | OtaSemverVersion;
+  version_name: "builtin" | OtaAppVersion | OtaSemverVersion;
   version_os: string;
 }
 

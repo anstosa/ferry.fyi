@@ -60,6 +60,13 @@ Set these when building the web assets consumed by the native apps:
 
 The client disables OTA when either variable is missing or invalid. The manifest URL is a server endpoint, not the S3 or CloudFront release-index URL.
 
+Before an OTA is active, Capgo reports the native marketing version as
+`version_name`, for example `3.6`. The manifest compares a two-component native
+version as its zero-revision baseline, `3.6.0`; it does not reinterpret it as
+`builtin`. Activated OTA versions retain their normal semantic comparison.
+An old `2.5.x` OTA is therefore not offered to a native `3.6` app, while a newly
+published `3.6.x` OTA with a positive revision can be offered.
+
 Build the native web assets with the repository command for the platform being tested:
 
 ```sh
@@ -129,11 +136,38 @@ Every successful `production` deployment automatically builds and publishes a `p
 
 ### Bundle version identity
 
-The publisher checks out complete Git history and runs `server/scripts/prepareOtaRelease.ts version`. The OTA version uses the package's major/minor components and adds the complete source-history count to its patch component. For example, package `2.5.1` at source count `100` produces OTA `2.5.101`; the next descendant produces `2.5.102`. This is an independent web-asset version, not a change to the requested native store version.
+The publisher checks out complete Git history and runs
+`server/scripts/prepareOtaRelease.ts version`. The OTA version begins with the
+most recently successfully published app's two-component marketing version
+and appends the complete source-history count. For example, published native
+app `3.6` at source count `100` produces OTA `3.6.100`; the next descendant
+produces `3.6.101`. A later native `3.7` publication changes the prefix to
+`3.7`. This does not change the requested native store version or `package.json`.
+
+`server/scripts/publishedAppVersion.ts` reads the `Publish apps` workflow history
+with the automatic read-only GitHub token. It selects the latest successful
+Google Play internal-testing or TestFlight publication step by its completion
+time, across both platforms, not the highest version number or latest attempted
+run. A failure on the other platform or in a later cleanup step does not erase
+an already successful publication. The shared OTA channel uses this one common
+prefix; it does not create separate Android and iOS release streams.
+
+New app-release run titles preserve the exact requested version. Older runs
+without that metadata resolve it from the successful job's `VERSION_NAME` log
+line, never from a pre-publication artifact or an unsuccessful attempt.
+Missing, ambiguous, unsupported or unavailable publication evidence fails
+OTA publication instead of falling back to the stale package version. The
+workflow contract binds the resolver to the actual publication job and step
+names; unexpected name changes fail closed instead of selecting an older prefix.
+The supported native prefix is canonical `major.minor`; a three-component native
+version requires an explicit numbering policy rather than silent truncation.
+GitHub history and logs are retention-bound, so a repository with expired or
+deleted publication history must restore authoritative evidence before OTA
+publication can resume. The manifest does not query GitHub on device requests.
 
 The version is passed explicitly to Capgo's `bundle zip --bundle` command. Never rely on the CLI's package-version default: publishing different ZIPs as the same semantic version makes installed devices report no update. Build metadata such as `+<sha>` does not advance semantic-version precedence either.
 
-The publisher refuses shallow history and unsafe version counts. Keep production history forward-moving; a history rewrite or package-version regression must not silently lower a channel's OTA version. The release-index guard rejects equal or older versions from different source revisions.
+The publisher refuses shallow history and unsafe version counts. Keep production history forward-moving; a history rewrite or a lower native-version prefix must not silently lower a channel's OTA version. The release-index guard rejects equal or older versions from different source revisions.
 
 ### Immutable publication and retries
 
@@ -152,8 +186,12 @@ The IAM role is intentionally limited to `bundles/*`, `channels/*`, and `release
 ### Local validation without publication
 
 ```sh
+# read GitHub publication history without publishing anything
+export GH_TOKEN="$(gh auth token)"
+export GITHUB_REPOSITORY=anstosa/ferry.fyi
 (cd server && node ../scripts/register-esbuild.js scripts/prepareOtaRelease.ts version)
-yarn test tests/server/ota-publication.test.ts tests/server/ota-manifest.test.ts tests/scripts/workflow-contract.test.ts
+unset GH_TOKEN
+yarn test tests/server/published-app-version.test.ts tests/server/ota-publication.test.ts tests/server/ota-manifest.test.ts tests/scripts/workflow-contract.test.ts
 ```
 
 After an authorized deployment, test the production manifest with both Android and iOS requests reporting the previously installed OTA version as `version_name`. A newly generated bundle must be offered to devices reporting the old version (including the formerly reused `2.5.1`), while devices reporting the new version receive `up_to_date`. Verify downloading and activation on a physical device; successful publication alone does not prove installation.
