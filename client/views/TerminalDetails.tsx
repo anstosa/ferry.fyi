@@ -184,6 +184,7 @@ export const TerminalDetails = ({
     <>
       <Header
         share={{
+          shareSurface: "terminal",
           shareButtonText: "Share Terminal",
           sharedText: `${terminal.name} Ferry Terminal details`,
         }}

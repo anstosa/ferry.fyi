@@ -66,9 +66,10 @@ describe("analytics advertising privacy", () => {
         {
           allow_ad_personalization_signals: false,
           allow_google_signals: false,
-          page_location:
-            "http://localhost:3000/clinton/mukilteo/navigation?tripMode=walk",
+          page_location: "http://localhost:3000/clinton/mukilteo/navigation",
           page_referrer: "",
+          page_title: "Ferry FYI",
+          send_to: "G-PRIVACY-TEST",
         },
       ],
     ]);
@@ -78,17 +79,22 @@ describe("analytics advertising privacy", () => {
 
     expect(reactGa.initialize).toHaveBeenCalledWith("G-PRIVACY-TEST", {
       gtagOptions: {
-        page_location:
-          "http://localhost:3000/clinton/mukilteo/navigation?tripMode=walk",
+        send_page_view: false,
+        page_location: "http://localhost:3000/clinton/mukilteo/navigation",
         page_referrer: "",
+        page_title: "Ferry FYI",
+        send_to: "G-PRIVACY-TEST",
       },
       gaOptions: {
         allowAdFeatures: false,
         allowAdPersonalizationSignals: false,
       },
     });
-    const { trackEvent } = await import("../../client/lib/analytics");
-    trackEvent("Navigation", "Share trip");
+    const { trackUsefulEvent } = await import("../../client/lib/analytics");
+    trackUsefulEvent("share_completed", {
+      surface: "trip_plan",
+      method: "clipboard",
+    });
     await vi.waitFor(() => expect(reactGa.event).toHaveBeenCalled());
     expect(
       JSON.stringify([
@@ -130,22 +136,30 @@ describe("analytics advertising privacy", () => {
       expect(window.dataLayer).toContainEqual({
         event: "page_view",
         page_path: "/clinton/mukilteo/navigation",
-        page_location:
-          "http://localhost:3000/clinton/mukilteo/navigation?tripMode=walk",
+        page_location: "http://localhost:3000/clinton/mukilteo/navigation",
         page_referrer: "",
+        page_title: "Ferry FYI",
+        send_to: "G-PRIVACY-TEST",
       });
       window.dispatchEvent(new Event("pointerdown"));
       await vi.waitFor(() =>
         expect(reactGa.send).toHaveBeenCalledWith({
           hitType: "pageview",
           page: "/clinton/mukilteo/navigation",
+          page_location: "http://localhost:3000/clinton/mukilteo/navigation",
+          page_referrer: "",
+          page_title: "Ferry FYI",
+          send_to: "G-PRIVACY-TEST",
         })
       );
-      expect(reactGa.set).toHaveBeenCalledWith({
-        page_location:
-          "http://localhost:3000/clinton/mukilteo/navigation?tripMode=walk",
-        page_referrer: "",
-      });
+      expect(reactGa.send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          page_location: "http://localhost:3000/clinton/mukilteo/navigation",
+          page_referrer: "",
+          page_title: "Ferry FYI",
+          send_to: "G-PRIVACY-TEST",
+        })
+      );
       const payloads = JSON.stringify([
         window.dataLayer,
         reactGa.initialize.mock.calls,

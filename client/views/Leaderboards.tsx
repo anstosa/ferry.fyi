@@ -35,6 +35,7 @@ import { Page } from "~/components/Page";
 import { SeoHelmet } from "~/components/SeoHelmet";
 import { Skeleton, SkeletonGroup } from "~/components/Skeleton";
 import { SupporterUpgradeNudge } from "~/components/SupporterUpgradeNudge";
+import { trackUsefulEvent } from "~/lib/analytics";
 import { ApiError } from "~/lib/api";
 import { loginWithAppFlow } from "~/lib/auth";
 import { useFavoriteRoutes } from "~/lib/favoriteRoutes";
@@ -277,9 +278,14 @@ const PeriodSelector = ({
 
 const ShareButton = ({ title }: { title: string }): ReactElement => {
   const [message, setMessage] = useState("Share leaderboard");
+  // share one public leaderboard
   const share = async (): Promise<void> => {
     try {
       await Share.share({ title, text: title, url: window.location.href });
+      trackUsefulEvent("share_completed", {
+        method: "share_sheet",
+        surface: "leaderboard",
+      });
       setMessage("Shared!");
       window.setTimeout(() => setMessage("Share"), 3000);
     } catch {

@@ -1595,6 +1595,7 @@ export const Map = ({
         share={
           (terminal &&
             mate && {
+              shareSurface: "map",
               shareButtonText: "Share Map",
               sharedText: `Map for ${terminal.name} to ${mate.name} ferry route`,
             }) ??

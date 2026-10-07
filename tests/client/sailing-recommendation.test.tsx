@@ -28,9 +28,13 @@ const adapters = vi.hoisted(() => ({
   share: vi.fn(),
   clipboard: vi.fn(),
 }));
+const analytics = vi.hoisted(() => ({
+  trackUsefulEvent: vi.fn(),
+}));
 vi.mock("@capacitor/share", () => ({
   Share: { canShare: adapters.canShare, share: adapters.share },
 }));
+vi.mock("~/lib/analytics", () => analytics);
 vi.mock("../../client/lib/api", () => ({
   post: adapters.post,
   // retain the real error boundary shape without loading native networking
@@ -538,6 +542,7 @@ describe("leave-now sailing card", () => {
   it("starts with five minutes and waits for an explicit location tap", async () => {
     expect(adapters.location).not.toHaveBeenCalled();
     expect(adapters.post).not.toHaveBeenCalled();
+    expect(analytics.trackUsefulEvent).not.toHaveBeenCalled();
     expect(
       (
         container.querySelector(
@@ -565,6 +570,105 @@ describe("leave-now sailing card", () => {
       "assumed triangular distributions"
     );
     expect(container.textContent).not.toMatch(/provisional/i);
+  });
+
+  // qualify only the usable outcome returned for each explicit request
+  it.each([
+    ["drive", "recommended", "recommended"],
+    ["walk", "timing-only", "timing_only"],
+    ["bicycle", "recommended", "recommended"],
+    ["transit", "timing-only", "timing_only"],
+  ] as const)(
+    "tracks a usable %s %s estimate once per request",
+    async (mode, result, analyticsResult) => {
+      const response = makeResponse(mode);
+      const selectedBand = response.bufferOutcomeBands.find(
+        // select the request's original five-minute result
+        (band) =>
+          band.minimumBufferMinutes <= 5 && band.maximumBufferMinutes >= 5
+      );
+      expect(selectedBand?.outcome.sailing).not.toBeNull();
+      selectedBand!.outcome = {
+        ...selectedBand!.outcome,
+        result,
+      };
+      response.outcome = selectedBand!.outcome;
+      adapters.post.mockResolvedValue(response);
+
+      // choose the requested mode without starting an estimate
+      if (mode !== "drive") {
+        await click(
+          { walk: "Walk", bicycle: "Cycle", transit: "Transit" }[mode]
+        );
+      }
+      await click("Use my location");
+
+      expect(analytics.trackUsefulEvent).toHaveBeenCalledTimes(1);
+      expect(analytics.trackUsefulEvent).toHaveBeenLastCalledWith(
+        "trip_plan_available",
+        { result: analyticsResult, travel_mode: mode }
+      );
+
+      await input("Safety buffer (minutes)", "0");
+      await act(() => {
+        root.render(
+          <SailingRecommendationCard
+            onRefreshSchedule={refreshSchedule}
+            schedule={schedule}
+          />
+        );
+      });
+      expect(analytics.trackUsefulEvent).toHaveBeenCalledTimes(1);
+
+      await click("Use my location");
+      expect(analytics.trackUsefulEvent).toHaveBeenCalledTimes(2);
+    }
+  );
+
+  // keep failed, unusable and stale outcomes silent
+  it.each([
+    "routing-unavailable",
+    "schedule-unavailable",
+    "no-catchable-sailing",
+    "stale",
+    "expired",
+  ] as const)("does not qualify a %s estimate", async (kind) => {
+    // build the exact nonqualifying response shape
+    if (kind === "routing-unavailable" || kind === "schedule-unavailable") {
+      adapters.post.mockResolvedValue(
+        unavailableRecommendation(
+          "drive",
+          kind === "schedule-unavailable"
+            ? "schedule-unavailable"
+            : "provider-unavailable",
+          NOW
+        )
+      );
+    } else {
+      const response = makeResponse();
+      if (kind === "stale") {
+        response.revision = "superseded-schedule-revision";
+      } else if (kind === "expired") {
+        response.validUntil = NOW;
+      } else {
+        const selectedBand = response.bufferOutcomeBands.find(
+          // select the request's original five-minute result
+          (band) =>
+            band.minimumBufferMinutes <= 5 && band.maximumBufferMinutes >= 5
+        );
+        selectedBand!.outcome = {
+          ...selectedBand!.outcome,
+          result: "no-catchable-sailing",
+          sailing: null,
+        };
+        response.outcome = selectedBand!.outcome;
+      }
+      adapters.post.mockResolvedValue(response);
+    }
+
+    await click("Use my location");
+
+    expect(analytics.trackUsefulEvent).not.toHaveBeenCalled();
   });
   // restore shared controls without silently acquiring location or paid directions
   it("restores URL controls, syncs edits and retains router history state", async () => {
@@ -727,6 +831,7 @@ describe("leave-now sailing card", () => {
       )?.value
     ).toBe("Another Origin");
     expect(adapters.post).toHaveBeenCalledOnce();
+    expect(analytics.trackUsefulEvent).not.toHaveBeenCalled();
   });
 
   // unavailable clipboards must not masquerade as successful copies
@@ -736,6 +841,7 @@ describe("leave-now sailing card", () => {
       value: undefined,
     });
     await click("Use my location");
+    analytics.trackUsefulEvent.mockClear();
     await act(async () => {
       container
         .querySelector<HTMLButtonElement>('button[aria-label="Share trip"]')
@@ -747,6 +853,7 @@ describe("leave-now sailing card", () => {
     expect(container.textContent).not.toContain("Link copied.");
     expect(adapters.share).not.toHaveBeenCalled();
     expect(adapters.clipboard).not.toHaveBeenCalled();
+    expect(analytics.trackUsefulEvent).not.toHaveBeenCalled();
   });
 
   // share the current controls without retaining or sharing coordinates
@@ -765,6 +872,7 @@ describe("leave-now sailing card", () => {
         'button[aria-label="Share trip"]'
       );
       expect(button).not.toBeNull();
+      analytics.trackUsefulEvent.mockClear();
       await act(async () => {
         button?.click();
       });
@@ -780,12 +888,40 @@ describe("leave-now sailing card", () => {
         expect(adapters.clipboard).toHaveBeenCalledWith(expectedUrl);
         expect(container.textContent).toContain("Link copied.");
       }
+      expect(analytics.trackUsefulEvent).toHaveBeenCalledOnce();
+      expect(analytics.trackUsefulEvent).toHaveBeenCalledWith(
+        "share_completed",
+        {
+          method: native ? "share_sheet" : "clipboard",
+          surface: "trip_plan",
+        }
+      );
+      expect(JSON.stringify(analytics.trackUsefulEvent.mock.calls)).not.toMatch(
+        /Synthetic shared origin|tripAddress|test-google-place-id/
+      );
       expect(adapters.post).toHaveBeenCalledOnce();
       await click("Use my location");
       expect(window.location.hash).not.toContain("tripAddress");
       expect(window.location.href).not.toMatch(/latitude|longitude|47.9|122.3/);
     }
   );
+
+  // rejected share sheets never become completed rider actions
+  it("keeps a rejected trip share silent", async () => {
+    adapters.canShare.mockResolvedValue({ value: true });
+    adapters.share.mockRejectedValue(new Error("cancelled"));
+    await click("Use my location");
+    analytics.trackUsefulEvent.mockClear();
+
+    await act(async () => {
+      container
+        .querySelector<HTMLButtonElement>('button[aria-label="Share trip"]')
+        ?.click();
+    });
+
+    expect(container.textContent).toContain("Could not share this trip.");
+    expect(analytics.trackUsefulEvent).not.toHaveBeenCalled();
+  });
 
   // explain denial without sending an empty or stale fix
   it("offers manual entry when location is denied", async () => {

@@ -22,6 +22,7 @@ import { Toast } from "~/components/Toast";
 import { getBulletinTime, getRouteBulletins } from "~/lib/bulletins";
 import { getPublicSsrSourceOutcome, usePublicSsrSnapshot } from "~/lib/ssrSeed";
 import { getSlug, refreshBulletins, useTerminals } from "~/lib/terminals";
+import { useUsefulContent } from "~/lib/usefulVisits";
 import { useUser } from "~/lib/user";
 import UnsubscribedIcon from "~/static/images/icons/regular/bell.svg";
 import SubscribedIcon from "~/static/images/icons/solid/bell.svg";
@@ -257,6 +258,18 @@ export const Bulletins = ({
     };
   }, [routeKey, terminal?.id]);
 
+  const usefulContentRef = useUsefulContent(
+    "bulletins",
+    routeKey,
+    Boolean(
+      terminal &&
+      (currentRefreshState.terminal?.id === terminal.id ||
+        (seededBulletins !== undefined &&
+          terminal === initialTerminalRef.current))
+    )
+  );
+
+  // loading defaults are not a confirmed all-clear outcome
   if (!terminal) {
     return <BulletinsLoadingSkeleton />;
   }
@@ -383,6 +396,7 @@ export const Bulletins = ({
     <>
       <Header
         share={{
+          shareSurface: "bulletins",
           shareButtonText: "Share Alerts",
           sharedText: `Alerts for ${routeName}`,
         }}
@@ -422,7 +436,10 @@ export const Bulletins = ({
         <div className="min-w-0 flex-1" />
       </Header>
       <main className="flex-grow overflow-y-scroll scrolling-touch bg-day-normal-light text-gray-dark dark:bg-night-normal-dark dark:text-[#e0f0f4]">
-        <section className="mx-auto w-full max-w-6xl px-4 py-5 sm:px-6">
+        <section
+          ref={usefulContentRef}
+          className="mx-auto w-full max-w-6xl px-4 py-5 sm:px-6"
+        >
           <div
             className={clsx(
               "mb-4 overflow-hidden rounded-2xl border shadow-sm",

@@ -4,14 +4,35 @@ import { DateTime } from "luxon";
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { MemoryRouter } from "react-router-dom";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import {
+  createOneTimeSailingAlertRule,
+  getRouteSubscriptionKey,
+} from "shared/lib/alertSubscriptions";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
 import type { DetailTab } from "../../client/lib/sailingDeepLink";
 import { createForecastSlot } from "../fixtures/forecastSlot";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
-const updateUser = vi.hoisted(() => vi.fn());
+const mocks = vi.hoisted(() => ({
+  alertRules: [] as unknown[],
+  isAuthenticated: false,
+  isLoading: false,
+  isUserLoading: false,
+  requestNotificationPermission: vi.fn(() => Promise.resolve(false)),
+  requestPushInitialization: vi.fn(),
+  trackUsefulEvent: vi.fn(),
+  updateUser: vi.fn(() => Promise.resolve()),
+}));
 // define the sailing-share fixture
 const share = vi.hoisted(() => ({
   canShare: vi.fn(() => Promise.resolve({ value: false })),
@@ -20,8 +41,8 @@ const share = vi.hoisted(() => ({
 
 vi.mock("@auth0/auth0-react", () => ({
   useAuth0: () => ({
-    isAuthenticated: false,
-    isLoading: false,
+    isAuthenticated: mocks.isAuthenticated,
+    isLoading: mocks.isLoading,
     loginWithPopup: vi.fn(),
     loginWithRedirect: vi.fn(),
   }),
@@ -37,13 +58,26 @@ vi.mock("framer-motion", async () => {
   };
 });
 vi.mock("@capacitor/share", () => ({ Share: share }));
+vi.mock("~/lib/analytics", () => ({
+  trackUsefulEvent: mocks.trackUsefulEvent,
+}));
 vi.mock("~/lib/device", () => ({ useDevice: () => null }));
 vi.mock("~/lib/featureFlags", () => ({
   useFeatureFlags: () => ({ leaderboardsEnabled: false }),
 }));
 vi.mock("~/lib/generated/vesselAssets", () => ({ vesselAssets: {} }));
+vi.mock("~/lib/push", () => ({
+  requestNotificationPermission: mocks.requestNotificationPermission,
+  requestPushInitialization: mocks.requestPushInitialization,
+}));
 vi.mock("~/lib/user", () => ({
-  useUser: () => [{ alertRules: [], isUserLoading: false }, { updateUser }],
+  useUser: () => [
+    {
+      alertRules: mocks.alertRules,
+      isUserLoading: mocks.isUserLoading,
+    },
+    { updateUser: mocks.updateUser },
+  ],
 }));
 vi.mock("../../client/views/Schedule/VesselStatusView", () => ({
   VesselStatus: () => null,
@@ -73,6 +107,18 @@ class ResizeObserverMock {
 
 beforeAll(() => {
   globalThis.ResizeObserver = ResizeObserverMock;
+});
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mocks.alertRules = [];
+  mocks.isAuthenticated = false;
+  mocks.isLoading = false;
+  mocks.isUserLoading = false;
+  mocks.requestNotificationPermission.mockResolvedValue(false);
+  mocks.updateUser.mockResolvedValue(undefined);
+  share.canShare.mockResolvedValue({ value: false });
+  share.share.mockResolvedValue(undefined);
 });
 
 afterEach(() => {
@@ -116,6 +162,50 @@ const renderSlotInfo = (
 };
 
 describe("sailing detail sharing", () => {
+  // native share success
+  it("qualifies a resolved native share with fixed metadata", async () => {
+    share.canShare.mockResolvedValue({ value: true });
+    const container = renderSlotInfo();
+    const button = container.querySelector<HTMLButtonElement>(
+      '[aria-label="Share this sailing tab"]'
+    );
+
+    await act(async () => {
+      button?.click();
+      await vi.waitFor(() => expect(share.share).toHaveBeenCalledOnce());
+    });
+
+    expect(mocks.trackUsefulEvent).toHaveBeenCalledOnce();
+    expect(mocks.trackUsefulEvent).toHaveBeenCalledWith("share_completed", {
+      method: "share_sheet",
+      surface: "sailing",
+    });
+  });
+
+  // clipboard fallback success
+  it("qualifies a resolved clipboard fallback with fixed metadata", async () => {
+    const writeText = vi.fn(() => Promise.resolve());
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+    const container = renderSlotInfo();
+    const button = container.querySelector<HTMLButtonElement>(
+      '[aria-label="Share this sailing tab"]'
+    );
+
+    await act(async () => {
+      button?.click();
+      await vi.waitFor(() => expect(writeText).toHaveBeenCalledOnce());
+    });
+
+    expect(mocks.trackUsefulEvent).toHaveBeenCalledOnce();
+    expect(mocks.trackUsefulEvent).toHaveBeenCalledWith("share_completed", {
+      method: "clipboard",
+      surface: "sailing",
+    });
+  });
+
   // contain denied clipboard fallback
   it("shows a handled error when clipboard access is denied", async () => {
     const writeText = vi
@@ -143,6 +233,121 @@ describe("sailing detail sharing", () => {
     expect(container.querySelector('[role="alert"]')?.textContent).toContain(
       "Unable to share this sailing link"
     );
+    expect(mocks.trackUsefulEvent).not.toHaveBeenCalled();
+  });
+
+  // failed share attempts remain silent
+  it("stays silent on native cancellation and qualifies a later success", async () => {
+    share.canShare.mockResolvedValue({ value: true });
+    share.share
+      .mockRejectedValueOnce(new DOMException("canceled", "AbortError"))
+      .mockResolvedValueOnce(undefined);
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const container = renderSlotInfo();
+    const button = container.querySelector<HTMLButtonElement>(
+      '[aria-label="Share this sailing tab"]'
+    );
+
+    await act(async () => {
+      button?.click();
+      await vi.waitFor(() => expect(share.share).toHaveBeenCalledOnce());
+    });
+    expect(mocks.trackUsefulEvent).not.toHaveBeenCalled();
+
+    await act(async () => {
+      button?.click();
+      await vi.waitFor(() => expect(share.share).toHaveBeenCalledTimes(2));
+    });
+    expect(mocks.trackUsefulEvent).toHaveBeenCalledOnce();
+    expect(consoleError).toHaveBeenCalledOnce();
+  });
+});
+
+describe("one-time sailing alert analytics", () => {
+  // persisted alert without push permission
+  it("qualifies a saved alert even when push permission is denied", async () => {
+    mocks.isAuthenticated = true;
+    const container = renderSlotInfo(undefined, "sailing");
+    const button = container.querySelector<HTMLButtonElement>(
+      '[aria-label="Add this sailing alert"]'
+    );
+
+    await act(async () => {
+      button?.click();
+      await vi.waitFor(() => expect(mocks.updateUser).toHaveBeenCalledOnce());
+    });
+
+    expect(mocks.trackUsefulEvent).toHaveBeenCalledWith("alert_saved", {
+      kind: "one_time",
+    });
+    expect(mocks.requestPushInitialization).not.toHaveBeenCalled();
+  });
+
+  // push initialization remains separate
+  it("initializes push separately after the same saved milestone", async () => {
+    mocks.isAuthenticated = true;
+    mocks.requestNotificationPermission.mockResolvedValue(true);
+    const container = renderSlotInfo(undefined, "sailing");
+    const button = container.querySelector<HTMLButtonElement>(
+      '[aria-label="Add this sailing alert"]'
+    );
+
+    await act(async () => {
+      button?.click();
+      await vi.waitFor(() => expect(mocks.updateUser).toHaveBeenCalledOnce());
+    });
+
+    expect(mocks.trackUsefulEvent).toHaveBeenCalledWith("alert_saved", {
+      kind: "one_time",
+    });
+    expect(mocks.requestPushInitialization).toHaveBeenCalledOnce();
+  });
+
+  // persistence failure remains silent
+  it("does not qualify a rejected alert save", async () => {
+    mocks.isAuthenticated = true;
+    mocks.updateUser.mockRejectedValue(new Error("save failed"));
+    const container = renderSlotInfo(undefined, "sailing");
+    const button = container.querySelector<HTMLButtonElement>(
+      '[aria-label="Add this sailing alert"]'
+    );
+
+    await act(async () => {
+      button?.click();
+      await vi.waitFor(() => expect(mocks.updateUser).toHaveBeenCalledOnce());
+    });
+
+    expect(mocks.trackUsefulEvent).not.toHaveBeenCalled();
+    expect(container.textContent).toContain("save failed");
+  });
+
+  // persisted removals remain silent
+  it("does not qualify an existing alert removal", async () => {
+    mocks.isAuthenticated = true;
+    const slot = createForecastSlot({ fullRisk: "unlikely", spacesLeft: 15 });
+    const sailingTime = DateTime.fromSeconds(slot.time);
+    const routeKey = getRouteSubscriptionKey(["5", slot.mateId]);
+    mocks.alertRules = [
+      createOneTimeSailingAlertRule({
+        id: "one-time-alert-sentinel",
+        routeKey,
+        sailingTime,
+        terminalIds: ["5"],
+      }),
+    ];
+    const container = renderSlotInfo(slot, "sailing");
+    const button = container.querySelector<HTMLButtonElement>(
+      '[aria-label="Turn off this sailing alert"]'
+    );
+
+    await act(async () => {
+      button?.click();
+      await vi.waitFor(() => expect(mocks.updateUser).toHaveBeenCalledOnce());
+    });
+
+    expect(mocks.trackUsefulEvent).not.toHaveBeenCalled();
   });
 });
 

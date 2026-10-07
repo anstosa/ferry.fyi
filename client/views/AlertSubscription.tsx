@@ -36,6 +36,7 @@ import { HeaderDropdown } from "~/components/HeaderDropdown";
 import { NotificationPermissionWarning } from "~/components/NotificationPermissionWarning";
 import { Skeleton, SkeletonGroup } from "~/components/Skeleton";
 import { ToggleSwitch } from "~/components/ToggleSwitch";
+import { trackUsefulEvent } from "~/lib/analytics";
 import { getConfiguredAuth0RedirectUri, loginWithAppFlow } from "~/lib/auth";
 import { useDevice } from "~/lib/device";
 import {
@@ -1128,6 +1129,11 @@ export const AlertSubscription = ({
           alertRules: nextAlertRules,
         },
       });
+      // saved subscription guard
+      if (channels.length > 0) {
+        trackUsefulEvent("alert_saved", { kind: "recurring" });
+      }
+      // granted permission guard
       if (permissionGranted) {
         requestPushInitialization();
       }

@@ -8,9 +8,11 @@ import { getSeoMetadata } from "shared/lib/seo";
 
 import { Page } from "~/components/Page";
 import { SeoHelmet } from "~/components/SeoHelmet";
+import { trackProductEvent } from "~/lib/analytics";
 import {
   getBrowserInstallPlatform,
   getInstallStoreUrl,
+  type InstallPlatform,
   redirectToInstallStore,
 } from "~/lib/appInstall";
 import { isInstalledApp } from "~/lib/device";
@@ -27,6 +29,17 @@ import { InstallPublicContent } from "./InstallPublicContent";
 
 type InstallState = "checking" | "installed" | "ready" | "requested";
 
+// record one fixed native-store intent
+const trackStoreOpen = (platform: InstallPlatform): void => {
+  // google store guard
+  if (platform === "android") {
+    trackProductEvent("install_store_opened", { store: "google" });
+  } else if (platform === "ios") {
+    // apple store guard
+    trackProductEvent("install_store_opened", { store: "apple" });
+  }
+};
+
 // platform-aware installation page
 export const Install = (): ReactElement => {
   const platform = getBrowserInstallPlatform();
@@ -35,6 +48,11 @@ export const Install = (): ReactElement => {
   const [installState, setInstallState] = useState<InstallState>(
     installed ? "installed" : "checking"
   );
+
+  // record the detected native-store intent
+  const handleStoreOpen = (): void => {
+    trackStoreOpen(platform);
+  };
 
   // request the deferred browser installation prompt
   const requestDesktopInstall = useCallback(async (): Promise<void> => {
@@ -52,6 +70,10 @@ export const Install = (): ReactElement => {
     if (installed) {
       setInstallState("installed");
       return;
+    }
+    // mobile store intent
+    if (storeUrl) {
+      trackStoreOpen(platform);
     }
     // mobile store redirect
     if (redirectToInstallStore(platform)) {
@@ -104,7 +126,11 @@ export const Install = (): ReactElement => {
   // mobile store fallback
   if (storeUrl) {
     action = (
-      <a className="button button-primary mt-6 inline-flex" href={storeUrl}>
+      <a
+        className="button button-primary mt-6 inline-flex"
+        href={storeUrl}
+        onClick={handleStoreOpen}
+      >
         Open {platform === "android" ? "Google Play" : "the App Store"}
       </a>
     );

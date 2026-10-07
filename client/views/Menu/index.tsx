@@ -12,6 +12,7 @@ import React, {
 import { Link } from "react-router-dom";
 import { isNull } from "shared/lib/identity";
 
+import { type ShareSurface, trackUsefulEvent } from "~/lib/analytics";
 import {
   getBrowserInstallPlatform,
   requestInstallPrompt,
@@ -40,6 +41,7 @@ import AdminIcon from "~/static/images/icons/solid/user-shield.svg";
 import { MenuItem } from "./MenuItem";
 
 export interface ShareOptions {
+  shareSurface?: ShareSurface;
   sharedText: string;
   shareButtonText: string;
 }
@@ -107,9 +109,17 @@ export const Menu = ({
   const isOwner = user?.email === "anstosa@gmail.com";
   const detectorEnabled = isOwner && environment === "development";
 
-  const initShare = async () => {
-    const { value: canShare } = await Share.canShare();
-    setShare(canShare);
+  // detect native share support
+  const initShare = async (): Promise<void> => {
+    try {
+      const { value: canShare } = await Share.canShare();
+      setShare(canShare);
+    } catch {
+      // preserve diagnostics without logging provider errors or private share data
+      console.warn("Share availability could not be checked");
+      // unavailable share guard
+      setShare(false);
+    }
   };
 
   // open the authorized development detector
@@ -118,6 +128,34 @@ export const Menu = ({
       await openCameraDetectionDebugger(getAccessTokenSilently);
     } catch (error) {
       console.error("Failed to authorize camera detector", error);
+    }
+  };
+
+  // share the current classified page
+  const shareCurrentPage = async (): Promise<void> => {
+    // missing share payload guard
+    if (!share) {
+      return;
+    }
+    try {
+      await Share.share({
+        title: "Ferry FYI",
+        text: share.sharedText,
+        url: `${process.env.BASE_URL}${location.pathname}${location.search}`,
+        dialogTitle: share.sharedText,
+      });
+      // classified share guard
+      if (share.shareSurface) {
+        trackUsefulEvent("share_completed", {
+          method: "share_sheet",
+          surface: share.shareSurface,
+        });
+      }
+      setShareMenuText("Shared!");
+      // restore the share label
+      setTimeout(() => setShareMenuText(share.shareButtonText), 5000);
+    } catch (error) {
+      console.error("Failed to share", error);
     }
   };
 
@@ -375,23 +413,7 @@ export const Menu = ({
             {share && canShare && (
               <div
                 className="w-10 h-10 cursor-pointer text-md flex justify-center items-center"
-                onClick={async (): Promise<void> => {
-                  try {
-                    await Share.share({
-                      title: "Ferry FYI",
-                      text: share.sharedText,
-                      url: `${process.env.BASE_URL}${location.pathname}${location.search}`,
-                      dialogTitle: share.sharedText,
-                    });
-                    setShareMenuText("Shared!");
-                    setTimeout(
-                      () => setShareMenuText(share.shareButtonText),
-                      5000
-                    );
-                  } catch (error) {
-                    console.error("Failed to share", error);
-                  }
-                }}
+                onClick={shareCurrentPage}
                 aria-label={shareMenuText}
               >
                 <ShareIcon />

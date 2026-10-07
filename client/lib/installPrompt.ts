@@ -1,3 +1,5 @@
+import { trackProductEvent, trackUsefulEvent } from "./analytics";
+
 interface InstallPromptChoice {
   outcome: "accepted" | "dismissed";
   platform: string;
@@ -29,6 +31,7 @@ const handleBeforeInstallPrompt = (event: Event): void => {
 const handleAppInstalled = (): void => {
   installPromptEvent = null;
   notifyInstallPromptListeners();
+  trackUsefulEvent("pwa_install_completed");
 };
 
 // browser listener guard
@@ -59,12 +62,17 @@ export const triggerInstallPrompt = async (): Promise<boolean> => {
   }
   try {
     await promptEvent.prompt();
+    trackProductEvent("install_prompt", { result: "opened" });
     // consume the displayed prompt
     if (installPromptEvent === promptEvent) {
       installPromptEvent = null;
       notifyInstallPromptListeners();
     }
-    await promptEvent.userChoice?.catch(() => undefined);
+    const choice = await promptEvent.userChoice?.catch(() => undefined);
+    // resolved choice guard
+    if (choice) {
+      trackProductEvent("install_prompt", { result: choice.outcome });
+    }
     return true;
   } catch {
     // retain gesture-blocked prompts

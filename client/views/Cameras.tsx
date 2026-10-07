@@ -21,6 +21,7 @@ import { getCameraFrames } from "~/lib/cameras";
 import { locationToUrl } from "~/lib/maps";
 import { usePublicSsrSource } from "~/lib/ssrSeed";
 import { getSlug, useTerminals } from "~/lib/terminals";
+import { useUsefulContent } from "~/lib/usefulVisits";
 import CarIcon from "~/static/images/icons/solid/car.svg";
 import LocationIcon from "~/static/images/icons/solid/location.svg";
 import MapIcon from "~/static/images/icons/solid/map-marked.svg";
@@ -57,7 +58,14 @@ export const Cameras = ({ mate, setRoute, terminal }: Props): ReactElement => {
   if (!terminal) {
     return <CamerasLoadingSkeleton />;
   }
-  return <CameraList mate={mate} setRoute={setRoute} terminal={terminal} />;
+  return (
+    <CameraList
+      key={terminal.id}
+      mate={mate}
+      setRoute={setRoute}
+      terminal={terminal}
+    />
+  );
 };
 
 const CamerasLoadingSkeleton = (): ReactElement => {
@@ -121,6 +129,12 @@ const CameraList = ({
   const seededFrames = usePublicSsrSource("cameraFrames");
   const { cameras } = terminal;
   const hasCameras = cameras.length > 0;
+  const [hasLoadedImage, setHasLoadedImage] = useState(false);
+  const usefulContentRef = useUsefulContent(
+    "cameras",
+    terminal.id,
+    hasCameras && hasLoadedImage
+  );
   const activeRoute = mate
     ? Object.values(terminal.routes ?? {}).find(({ terminalIds }) => {
         // selected route match
@@ -266,6 +280,7 @@ const CameraList = ({
 
   // track image load
   const markImageLoaded = (imageKey: string): void => {
+    setHasLoadedImage(true);
     setLoadedImages((current) => ({ ...current, [imageKey]: true }));
   };
 
@@ -316,6 +331,7 @@ const CameraList = ({
                 (isTouchDevice ? "blur-sm" : "blur-sm group-hover:blur-none")
             )}
             alt={`Traffic Camera: ${title}`}
+            // qualify only after a successful current-terminal image load
             onLoad={() => {
               markImageLoaded(imageKey);
               // first image alignment
@@ -417,6 +433,7 @@ const CameraList = ({
     <>
       <Header
         share={{
+          shareSurface: "cameras",
           shareButtonText: "Share Cameras",
           sharedText: `Cameras for ${terminal.name} Ferry Terminal`,
         }}
@@ -502,7 +519,9 @@ const CameraList = ({
           )}
           {/* camera empty state */}
           {hasCameras ? (
-            <ul className="flex flex-col gap-8">{cameras.map(renderCamera)}</ul>
+            <ul ref={usefulContentRef} className="flex flex-col gap-8">
+              {cameras.map(renderCamera)}
+            </ul>
           ) : (
             <p>{NO_CAMERAS_MESSAGE}</p>
           )}

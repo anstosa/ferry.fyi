@@ -730,6 +730,7 @@ export const Route = ({
           <Header
             isReloading={isUpdating}
             share={{
+              shareSurface: "schedule",
               shareButtonText: "Share Schedule",
               sharedText: `Schedule for ${terminal.name} to ${mate.name}${
                 isToday ? "" : ` for ${toShortDateString(date)}`

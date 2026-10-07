@@ -2,6 +2,7 @@ import clsx from "clsx";
 import React, { useEffect, useRef, useState } from "react";
 import type {
   RecommendationOrigin,
+  RecommendationOutcome,
   TravelMode,
 } from "shared/contracts/sailingRecommendations";
 import type { Schedule } from "shared/contracts/schedules";
@@ -17,6 +18,7 @@ import LocationIcon from "~/static/images/icons/solid/location.svg";
 import WalkingIcon from "~/static/images/icons/solid/walking.svg";
 
 import { AddressAutocomplete } from "../../components/AddressAutocomplete";
+import { trackUsefulEvent } from "../../lib/analytics";
 import { requestForegroundLocation } from "../../lib/geo";
 import {
   getSailingRecommendation,
@@ -97,6 +99,7 @@ export const SailingRecommendationCard = ({
   const [trip, setTrip] = useState(readTrip);
   const { address, buffer, mode } = trip;
   const [estimateResult, setEstimateResult] = useState<{
+    actionOutcome: RecommendationOutcome;
     browserRevisionBeforeRequest: string;
     data: SailingRecommendationResult;
     requestId: number;
@@ -106,6 +109,7 @@ export const SailingRecommendationCard = ({
   const [loading, setLoading] = useState(false);
   const [expiredRequestId, setExpiredRequestId] = useState<number | null>(null);
   const requestIdentity = useRef(0);
+  const emittedRequestIdentity = useRef<number | null>(null);
   const response = estimateResult?.data ?? null;
   // use the negotiated fingerprint without weakening the current protocol's guard
   const revision =
@@ -301,7 +305,16 @@ export const SailingRecommendationCard = ({
         }
         freshRevision = getRevision(freshSchedule);
       }
+      const actionOutcome =
+        result.bufferOutcomeBands.find((band) => {
+          // freeze the outcome returned for the requested buffer
+          return (
+            buffer >= band.minimumBufferMinutes &&
+            buffer <= band.maximumBufferMinutes
+          );
+        })?.outcome ?? result.outcome;
       setEstimateResult({
+        actionOutcome,
         browserRevisionBeforeRequest:
           browserRevisionsBeforeRequest[result.protocolVersion],
         data: result,
@@ -344,6 +357,31 @@ export const SailingRecommendationCard = ({
         estimateResult.browserRevisionBeforeRequest !== revision) ||
       response.validUntil * 1000 <= Date.now())
   );
+
+  // qualify the first usable render of each current explicit request
+  useEffect(() => {
+    const actionOutcome = estimateResult?.actionOutcome;
+    // failures, stale results and obsolete requests remain silent
+    if (
+      !estimateResult ||
+      !response ||
+      stale ||
+      estimateResult.requestId !== requestIdentity.current ||
+      emittedRequestIdentity.current === estimateResult.requestId ||
+      response.arrivalAt === null ||
+      !actionOutcome?.sailing ||
+      (actionOutcome.result !== "recommended" &&
+        actionOutcome.result !== "timing-only")
+    ) {
+      return;
+    }
+    emittedRequestIdentity.current = estimateResult.requestId;
+    trackUsefulEvent("trip_plan_available", {
+      result:
+        actionOutcome.result === "timing-only" ? "timing_only" : "recommended",
+      travel_mode: response.mode,
+    });
+  }, [estimateResult, response, stale]);
 
   return (
     <div className="m-3">

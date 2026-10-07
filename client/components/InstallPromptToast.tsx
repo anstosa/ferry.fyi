@@ -1,5 +1,6 @@
 import React, { ReactElement, useEffect, useState } from "react";
 
+import { trackProductEvent } from "~/lib/analytics";
 import {
   APPLE_APP_STORE_URL,
   getBrowserInstallPlatform,
@@ -27,6 +28,16 @@ const INSTALL_PROMPT_LOAD_THRESHOLD = 2;
 interface Props {
   footerDocked?: boolean;
 }
+
+// record one apple-store intent
+const trackAppleStoreOpen = (): void => {
+  trackProductEvent("install_store_opened", { store: "apple" });
+};
+
+// record one google-store intent
+const trackGoogleStoreOpen = (): void => {
+  trackProductEvent("install_store_opened", { store: "google" });
+};
 
 // install prompt toast
 export const InstallPromptToast = ({
@@ -79,6 +90,7 @@ export const InstallPromptToast = ({
         Icon: GooglePlayIcon,
         href: GOOGLE_PLAY_URL,
         label: "Get the app",
+        onClick: trackGoogleStoreOpen,
         primary: true,
       },
       {
@@ -98,6 +110,7 @@ export const InstallPromptToast = ({
         Icon: AppStoreIcon,
         href: APPLE_APP_STORE_URL,
         label: "Get the app",
+        onClick: trackAppleStoreOpen,
         primary: true,
       },
       {

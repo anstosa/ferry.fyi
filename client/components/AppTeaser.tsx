@@ -1,5 +1,6 @@
 import React, { ReactElement } from "react";
 
+import { trackProductEvent } from "~/lib/analytics";
 import {
   APPLE_APP_STORE_URL,
   getBrowserInstallPlatform,
@@ -31,6 +32,19 @@ export const AppTeaser = (): ReactElement | null => {
     url = APPLE_APP_STORE_URL;
   }
 
+  // record the detected native-store intent
+  const handleStoreOpen = (): void => {
+    // google store guard
+    if (platform === "android") {
+      trackProductEvent("install_store_opened", { store: "google" });
+      return;
+    }
+    // apple store guard
+    if (platform === "ios") {
+      trackProductEvent("install_store_opened", { store: "apple" });
+    }
+  };
+
   return (
     <aside className="rounded-2xl border border-blue-dark/20 bg-blue-lightest/60 p-4 text-sm text-blue-dark dark:border-[#6fb8c8]/30 dark:bg-[#6fb8c8]/10 dark:text-[#d8f4fb]">
       <div className="flex items-start gap-3">
@@ -39,7 +53,11 @@ export const AppTeaser = (): ReactElement | null => {
           <p className="font-bold">Notifications work better in the app.</p>
           <p className="mt-1 leading-relaxed">
             {url ? (
-              <a className="font-bold underline" href={url}>
+              <a
+                className="font-bold underline"
+                href={url}
+                onClick={handleStoreOpen}
+              >
                 {label}
               </a>
             ) : (

@@ -34,6 +34,7 @@ import { pluralize } from "shared/lib/strings";
 
 import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { ExternalPillLink } from "~/components/ExternalPillLink";
+import { trackUsefulEvent } from "~/lib/analytics";
 import { getConfiguredAuth0RedirectUri, loginWithAppFlow } from "~/lib/auth";
 import { isDuringDaylight } from "~/lib/daylight";
 import { useDevice } from "~/lib/device";
@@ -499,6 +500,10 @@ export const SlotInfo = (props: Props): ReactElement => {
           alertRules: nextAlertRules,
         },
       });
+      // newly saved alert guard
+      if (!isSailingAlertSubscribed) {
+        trackUsefulEvent("alert_saved", { kind: "one_time" });
+      }
       // push permission guard
       if (permissionGranted) {
         requestPushInitialization();
@@ -520,6 +525,10 @@ export const SlotInfo = (props: Props): ReactElement => {
     }
     try {
       await navigator.clipboard.writeText(url);
+      trackUsefulEvent("share_completed", {
+        method: "clipboard",
+        surface: "sailing",
+      });
       setSailingShareError(null);
       setSailingShareCopied(true);
       setTimeout(() => {
@@ -552,6 +561,10 @@ export const SlotInfo = (props: Props): ReactElement => {
           text: title,
           title: "Ferry FYI",
           url,
+        });
+        trackUsefulEvent("share_completed", {
+          method: "share_sheet",
+          surface: "sailing",
         });
         return;
       }

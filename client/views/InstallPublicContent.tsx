@@ -3,6 +3,7 @@ import { getSeoMetadata } from "shared/lib/seo";
 
 import { Page } from "~/components/Page";
 import { SeoHelmet } from "~/components/SeoHelmet";
+import { trackProductEvent } from "~/lib/analytics";
 import { APPLE_APP_STORE_URL, GOOGLE_PLAY_URL } from "~/lib/appInstall";
 
 interface InstallPublicContentProps {
@@ -11,6 +12,16 @@ interface InstallPublicContentProps {
   message?: string;
   statusTitle?: string;
 }
+
+// record one apple-store intent
+const trackAppleStoreOpen = (): void => {
+  trackProductEvent("install_store_opened", { store: "apple" });
+};
+
+// record one google-store intent
+const trackGoogleStoreOpen = (): void => {
+  trackProductEvent("install_store_opened", { store: "google" });
+};
 
 // render install choices without platform detection
 export const InstallPublicContent = ({
@@ -50,6 +61,7 @@ export const InstallPublicContent = ({
           <a
             className="link mt-3 inline-flex"
             href={APPLE_APP_STORE_URL}
+            onClick={trackAppleStoreOpen}
             rel="noopener noreferrer"
             target="_blank"
           >
@@ -64,6 +76,7 @@ export const InstallPublicContent = ({
           <a
             className="link mt-3 inline-flex"
             href={GOOGLE_PLAY_URL}
+            onClick={trackGoogleStoreOpen}
             rel="noopener noreferrer"
             target="_blank"
           >

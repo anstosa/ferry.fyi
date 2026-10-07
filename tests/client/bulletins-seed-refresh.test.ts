@@ -5,6 +5,14 @@ import { createRoot, type Root } from "react-dom/client";
 import { MemoryRouter, useNavigate } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+const useful = vi.hoisted(() => ({ hook: vi.fn(), ref: vi.fn() }));
+vi.mock("~/lib/usefulVisits", () => ({
+  // capture only the production readiness and target boundary
+  useUsefulContent: (...args: unknown[]) => {
+    useful.hook(...args);
+    return useful.ref;
+  },
+}));
 const mocks = vi.hoisted(() => ({
   refreshBulletins: vi.fn(),
 }));
@@ -196,6 +204,29 @@ describe("bulletin hydration seed", () => {
     vi.clearAllMocks();
   });
 
+  // an unconfirmed default empty array is not useful all-clear content
+  it("waits for successful live settlement when an empty page has no matching seed", async () => {
+    let resolve: ((value: unknown) => void) | undefined;
+    mocks.refreshBulletins.mockImplementation(
+      () =>
+        new Promise((done) => {
+          resolve = done;
+        })
+    );
+    const container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+    await act(async () =>
+      root?.render(view(terminal([]), "/clinton/alerts", null))
+    );
+    expect(useful.hook.mock.calls.at(-1)?.[2]).toBe(false);
+    expect(useful.ref).toHaveBeenCalledWith(container.querySelector("section"));
+    await act(async () =>
+      resolve?.({ sourceUpdatedAt: 1, terminal: terminal([]) })
+    );
+    expect(useful.hook.mock.calls.at(-1)?.[2]).toBe(true);
+  });
+
   // label a notification landing page without claiming an upstream source
   it("labels canonical bulletin landing links as terminal alerts", async () => {
     const linked = { ...fresh, url: "https://ferry.fyi/clinton/alerts" };
@@ -263,6 +294,7 @@ describe("bulletin hydration seed", () => {
         ?.getAttribute("data-source-updated-at")
     ).toBe(String(expectedTimestamp));
     expect(container.textContent).toContain(stale.title);
+    expect(useful.hook.mock.calls.at(-1)?.[2]).toBe(true);
 
     await act(async () => {
       rejectRefresh(new Error("offline"));
@@ -276,6 +308,7 @@ describe("bulletin hydration seed", () => {
         ?.getAttribute("data-source-updated-at")
     ).toBe(String(expectedTimestamp));
     expect(container.textContent).toContain(stale.title);
+    expect(useful.hook.mock.calls.at(-1)?.[2]).toBe(true);
   });
 
   it("does not attach newer freshness to older no-seed cached content", async () => {
@@ -300,6 +333,7 @@ describe("bulletin hydration seed", () => {
     });
 
     expect(container.textContent).toContain(stale.title);
+    expect(useful.hook.mock.calls.at(-1)?.[2]).toBe(false);
     expect(
       container.querySelector('button[aria-label="refresh bulletins"]')
     ).toBeNull();
@@ -345,6 +379,7 @@ describe("bulletin hydration seed", () => {
     });
 
     expect(container.textContent).toContain("All clear");
+    expect(useful.hook.mock.calls.at(-1)?.[2]).toBe(true);
     expect(container.textContent).not.toContain(fresh.title);
   });
 
@@ -360,6 +395,7 @@ describe("bulletin hydration seed", () => {
       await Promise.resolve();
     });
     expect(container.textContent).toContain(stale.title);
+    expect(useful.hook.mock.calls.at(-1)?.[2]).toBe(true);
 
     act(() => {
       root?.render(view(terminal([fresh])));
@@ -379,6 +415,7 @@ describe("bulletin hydration seed", () => {
       await Promise.resolve();
     });
     expect(container.textContent).toContain(stale.title);
+    expect(useful.hook.mock.calls.at(-1)?.[2]).toBe(true);
 
     act(() => root?.unmount());
     root = createRoot(container);
@@ -426,6 +463,7 @@ describe("bulletin hydration seed", () => {
       await Promise.resolve();
     });
     expect(container.textContent).toContain(stale.title);
+    expect(useful.hook.mock.calls.at(-1)?.[2]).toBe(true);
 
     await act(async () => {
       controller.navigate(

@@ -9,7 +9,8 @@ const mocks = vi.hoisted(() => ({
   platform: "web" as "android" | "ios" | "web",
   redirectToInstallStore: vi.fn(() => false),
   subscribeInstallPrompt: vi.fn(() => vi.fn()),
-  triggerInstallPrompt: vi.fn(async () => false),
+  triggerInstallPrompt: vi.fn(() => Promise.resolve(false)),
+  trackProductEvent: vi.fn(),
 }));
 
 vi.mock("~/components/Page", () => ({
@@ -33,6 +34,9 @@ vi.mock("~/lib/appInstall", () => ({
 }));
 vi.mock("~/lib/device", () => ({
   isInstalledApp: () => mocks.installed,
+}));
+vi.mock("~/lib/analytics", () => ({
+  trackProductEvent: mocks.trackProductEvent,
 }));
 vi.mock("~/lib/installPrompt", () => ({
   hasInstallPrompt: mocks.hasInstallPrompt,
@@ -88,7 +92,28 @@ describe("Install page", () => {
 
     expect(mocks.redirectToInstallStore).toHaveBeenCalledWith("android");
     expect(mocks.triggerInstallPrompt).not.toHaveBeenCalled();
+    expect(mocks.trackProductEvent).toHaveBeenCalledWith(
+      "install_store_opened",
+      { store: "google" }
+    );
     expect(container.textContent).toContain("Opening Google Play");
+  });
+
+  // fallback links record a fixed store
+  it("records a native-store fallback click without sending its URL", async () => {
+    mocks.platform = "ios";
+    mocks.redirectToInstallStore.mockReturnValue(true);
+    const container = await renderInstall();
+    const link = container.querySelector<HTMLAnchorElement>(
+      'a[href="https://apps.example/app"]'
+    );
+
+    link?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+    expect(mocks.trackProductEvent.mock.calls).toEqual([
+      ["install_store_opened", { store: "apple" }],
+      ["install_store_opened", { store: "apple" }],
+    ]);
   });
 
   it("requests the PWA install prompt automatically on desktop", async () => {
@@ -108,7 +133,11 @@ describe("Install page", () => {
     );
 
     expect(container.textContent).toContain("did not open");
-    await act(async () => button?.click());
+    // settle the manual prompt request
+    await act(() => {
+      button?.click();
+      return Promise.resolve();
+    });
     expect(mocks.triggerInstallPrompt).toHaveBeenCalledTimes(2);
   });
 });

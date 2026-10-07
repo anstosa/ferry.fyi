@@ -3,6 +3,7 @@ import { DateTime } from "luxon";
 import React, {
   ReactElement,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -13,6 +14,7 @@ import type {
   FareQuoteApiResponse,
   FareQuoteRequest,
   FareTotal,
+  FareTripRequest,
 } from "shared/contracts/fares";
 import type { Terminal } from "shared/contracts/terminals";
 
@@ -23,6 +25,7 @@ import { FareCatalogDisclosure } from "~/components/FareCatalogDisclosure";
 import { FareWizardIcon, fareWizardIcons } from "~/components/FareWizardIcons";
 import { RouteSelector } from "~/components/RouteSelector";
 import { Skeleton, SkeletonGroup } from "~/components/Skeleton";
+import { trackUsefulEvent } from "~/lib/analytics";
 import { getFareCatalog, getFareQuote } from "~/lib/fares";
 import {
   createFareWizardSelections,
@@ -33,6 +36,7 @@ import {
   withFareWizardConfig,
 } from "~/lib/fareWizard";
 import { usePublicSsrSource } from "~/lib/ssrSeed";
+import { useUsefulContent } from "~/lib/usefulVisits";
 import ShareIcon from "~/static/images/icons/solid/share-alt.svg";
 import WSDOTIcon from "~/static/images/icons/wsdot.svg";
 import { Header } from "~/views/Header";
@@ -54,6 +58,112 @@ const WSDOT_FARE_CALCULATOR_URL = "https://wsdot.wa.gov/ferries/fares/";
 const WSDOT_REDUCED_FARE_URL =
   "https://wsdot.wa.gov/ferries/rider-information/ada#Reduced%20fare%20passenger%20tickets";
 
+// distinguish deliberate configuration and retry requests locally
+type FareQuoteCause = "user_config" | "user_retry";
+
+// bind one consumed cause to its concrete active request
+interface FareQuoteProvenance {
+  cause: FareQuoteCause;
+  configVersion: number;
+  requestId: number;
+  scope: string;
+}
+
+// hold one deliberate cause until the quote effect creates its request
+interface PendingFareQuoteCause {
+  cause: FareQuoteCause;
+  configVersion: number;
+  scope: string;
+}
+
+// match one fare response to the route and service date on screen
+const matchesFareTripRequest = (
+  request: FareTripRequest,
+  terminal: Terminal,
+  mate: Terminal,
+  date: DateTime
+): boolean => {
+  const tripDate = date.toISODate();
+  return Boolean(
+    tripDate &&
+    request.departingTerminalId === terminal.id &&
+    request.arrivingTerminalId === mate.id &&
+    request.tripDate === tripDate &&
+    !request.roundTrip
+  );
+};
+
+// normalize fare selections to the server's id-to-quantity representation
+const fareLineItemQuantities = (
+  lineItems: FareQuoteRequest["lineItems"]
+): Map<number, number> | null => {
+  const quantities = new Map<number, number>();
+  // aggregate duplicate ids without changing the caller-owned request
+  for (const lineItem of lineItems) {
+    // reject malformed ids or quantities before comparing requests
+    if (
+      !Number.isInteger(lineItem.fareLineItemId) ||
+      lineItem.fareLineItemId <= 0 ||
+      !Number.isInteger(lineItem.quantity) ||
+      lineItem.quantity < 0
+    ) {
+      return null;
+    }
+    // match the server's omission of zero-quantity selections
+    if (lineItem.quantity === 0) {
+      continue;
+    }
+    quantities.set(
+      lineItem.fareLineItemId,
+      (quantities.get(lineItem.fareLineItemId) ?? 0) + lineItem.quantity
+    );
+  }
+  return quantities;
+};
+
+// require the returned quote to echo the concrete request that produced it
+const matchesFareQuoteRequest = (
+  response: FareQuoteApiResponse,
+  request: FareQuoteRequest
+): boolean => {
+  // only usable quote states carry a request echo
+  if (response.state !== "current" && response.state !== "stale") {
+    return false;
+  }
+  const echoed = response.quote.request;
+  // reject incomplete client fixtures or malformed response echoes
+  if (!echoed || !Array.isArray(echoed.lineItems)) {
+    return false;
+  }
+  // reject a response from another route, date or trip type
+  if (
+    echoed.departingTerminalId !== request.departingTerminalId ||
+    echoed.arrivingTerminalId !== request.arrivingTerminalId ||
+    echoed.tripDate !== request.tripDate ||
+    echoed.roundTrip !== request.roundTrip
+  ) {
+    return false;
+  }
+  const echoedQuantities = fareLineItemQuantities(echoed.lineItems);
+  const requestedQuantities = fareLineItemQuantities(request.lineItems);
+  // reject malformed or differently sized normalized selections
+  if (
+    !echoedQuantities ||
+    !requestedQuantities ||
+    echoedQuantities.size !== requestedQuantities.size
+  ) {
+    return false;
+  }
+  // compare normalized quantities independently of server sorting
+  for (const [fareLineItemId, quantity] of requestedQuantities) {
+    // require the same total quantity for every selected fare id
+    if (echoedQuantities.get(fareLineItemId) !== quantity) {
+      return false;
+    }
+  }
+  return true;
+};
+
 // accept only the catalog for this exact one-way request
 const getMatchingSeededCatalog = (
   response: FareCatalogApiResponse | undefined,
@@ -69,15 +179,8 @@ const getMatchingSeededCatalog = (
     response.state === "current"
       ? response.catalog.request
       : response.noFare.request;
-  const tripDate = date.toISODate();
   // prevent a persistent page seed from crossing request scopes
-  if (
-    !tripDate ||
-    request.departingTerminalId !== terminal.id ||
-    request.arrivingTerminalId !== mate.id ||
-    request.tripDate !== tripDate ||
-    request.roundTrip
-  ) {
+  if (!matchesFareTripRequest(request, terminal, mate, date)) {
     return undefined;
   }
   return response;
@@ -325,6 +428,7 @@ export const Fares = ({
     date
   );
   const { search } = useLocation();
+  const fareScope = `${terminal.id}:${mate.id}:${date.toISODate() ?? ""}`;
   const [catalogResponse, setCatalogResponse] =
     useState<FareCatalogApiResponse | null>(() => seededCatalog ?? null);
   const [catalogError, setCatalogError] = useState<Error | null>(null);
@@ -344,11 +448,41 @@ export const Fares = ({
   const catalogScopeRef = useRef<string | null>(null);
   const catalogRetryRef = useRef({ attempts: 0, scope: "" });
   const quoteRequestRef = useRef(0);
+  const quoteConfigVersionRef = useRef(0);
+  const pendingQuoteCauseRef = useRef<PendingFareQuoteCause | null>(null);
+  const activeQuoteProvenanceRef = useRef<FareQuoteProvenance | null>(null);
+  const currentQuoteScopeRef = useRef(fareScope);
   const [catalogRetry, setCatalogRetry] = useState(0);
   const [quoteRetry, setQuoteRetry] = useState(0);
+  // expose only the committed scope to asynchronous quote completions
+  useLayoutEffect(() => {
+    currentQuoteScopeRef.current = fareScope;
+  }, [fareScope]);
+  const fareContentReady = Boolean(
+    !isLoadingCatalog &&
+    ((catalogResponse?.state === "current" &&
+      matchesFareTripRequest(
+        catalogResponse.catalog.request,
+        terminal,
+        mate,
+        date
+      )) ||
+      (catalogResponse?.state === "no-fare" &&
+        matchesFareTripRequest(
+          catalogResponse.noFare.request,
+          terminal,
+          mate,
+          date
+        )))
+  );
+  const usefulContentRef = useUsefulContent(
+    "fare",
+    `fare:${fareScope}`,
+    fareContentReady
+  );
 
   useEffect(() => {
-    const scope = `${terminal.id}:${mate.id}:${date.toISODate() ?? ""}`;
+    const scope = fareScope;
     const isInitialSeedScope = catalogScopeRef.current === null;
     catalogScopeRef.current = scope;
     if (catalogRetryRef.current.scope !== scope) {
@@ -394,7 +528,7 @@ export const Fares = ({
         () =>
           requestId === catalogRequestRef.current && setLoadingCatalog(false)
       );
-  }, [catalogRetry, date, mate, terminal]);
+  }, [catalogRetry, date, fareScope, mate, terminal]);
 
   useEffect(() => {
     if (
@@ -415,6 +549,11 @@ export const Fares = ({
   useEffect(() => {
     const sync = (): void => {
       const next = parseFareWizardConfig(window.location.search);
+      // history restoration invalidates every user-originated quote cause
+      quoteConfigVersionRef.current += 1;
+      quoteRequestRef.current += 1;
+      pendingQuoteCauseRef.current = null;
+      activeQuoteProvenanceRef.current = null;
       setConfig(next);
       setWizardStep(getWizardStep(next));
     };
@@ -422,7 +561,16 @@ export const Fares = ({
     return () => window.removeEventListener("popstate", sync);
   }, []);
 
+  // bind a user configuration edit to its next concrete quote request
   const setConfiguration = (next: FareWizardConfig): void => {
+    const configVersion = quoteConfigVersionRef.current + 1;
+    quoteConfigVersionRef.current = configVersion;
+    pendingQuoteCauseRef.current = {
+      cause: "user_config",
+      configVersion,
+      scope: fareScope,
+    };
+    activeQuoteProvenanceRef.current = null;
     const search = withFareWizardConfig(window.location.search, next);
     window.history.replaceState(
       null,
@@ -447,6 +595,13 @@ export const Fares = ({
     setCatalogRetry((current) => current + 1);
   };
   const retryQuote = (): void => {
+    // bind the retry intent only to the request it starts
+    pendingQuoteCauseRef.current = {
+      cause: "user_retry",
+      configVersion: quoteConfigVersionRef.current,
+      scope: fareScope,
+    };
+    activeQuoteProvenanceRef.current = null;
     setQuoteRetry((current) => current + 1);
   };
   const catalog =
@@ -459,37 +614,100 @@ export const Fares = ({
   useEffect(() => {
     quoteRequestRef.current += 1;
     const requestId = quoteRequestRef.current;
+    const configVersion = quoteConfigVersionRef.current;
+    const pendingCause = pendingQuoteCauseRef.current;
+    // consume provenance at request creation rather than a later response
+    pendingQuoteCauseRef.current = null;
+    activeQuoteProvenanceRef.current = null;
     setQuoteResponse(null);
     setQuoteError(null);
+    // invalid selections consume their cause without starting a request
     if (!selection?.ok) {
       setQuoting(false);
       return;
     }
+    // retain only a cause for this exact render scope and configuration
+    if (
+      pendingCause?.scope === fareScope &&
+      pendingCause.configVersion === configVersion
+    ) {
+      activeQuoteProvenanceRef.current = {
+        ...pendingCause,
+        requestId,
+      };
+    }
     setQuoting(true);
-    getFareQuote({
+    const quoteRequest: FareQuoteRequest = {
       arrivingTerminalId: mate.id,
       departingTerminalId: terminal.id,
       lineItems: selection.lineItems,
       roundTrip: false,
       tripDate: date.toISODate() as FareQuoteRequest["tripDate"],
-    })
-      .then(
-        (response) =>
-          requestId === quoteRequestRef.current && setQuoteResponse(response)
-      )
-      .catch(
-        (error: unknown) =>
-          requestId === quoteRequestRef.current &&
+    };
+    getFareQuote(quoteRequest)
+      .then((response) => {
+        // ignore obsolete requests and responses from another rendered scope
+        if (
+          requestId !== quoteRequestRef.current ||
+          currentQuoteScopeRef.current !== fareScope
+        ) {
+          return;
+        }
+        setQuoteResponse(response);
+        const provenance = activeQuoteProvenanceRef.current;
+        const usableQuote =
+          response.state === "current" || response.state === "stale"
+            ? {
+                freshness: response.state,
+                total: getTotal(response.quote.totals),
+              }
+            : null;
+        const ownsProvenance =
+          provenance?.requestId === requestId &&
+          provenance.configVersion === configVersion &&
+          provenance.scope === fareScope;
+        // consume every settled user-bound request before evaluating its result
+        if (ownsProvenance) {
+          activeQuoteProvenanceRef.current = null;
+        }
+        // qualify only the active user-bound request with a matching usable total
+        if (
+          ownsProvenance &&
+          usableQuote?.total &&
+          matchesFareQuoteRequest(response, quoteRequest)
+        ) {
+          trackUsefulEvent("fare_quote_available", {
+            freshness: usableQuote.freshness,
+          });
+        }
+      })
+      .catch((error: unknown) => {
+        // settle only the current request without preserving its cause
+        if (requestId === quoteRequestRef.current) {
+          activeQuoteProvenanceRef.current = null;
           setQuoteError(
             error instanceof Error
               ? error
               : new Error("Fare quote could not load.")
-          )
-      )
-      .finally(
-        () => requestId === quoteRequestRef.current && setQuoting(false)
-      );
-  }, [date, mate.id, quoteRetry, selection, terminal.id]);
+          );
+        }
+      })
+      .finally(() => {
+        // stop the spinner only for the active request
+        if (requestId === quoteRequestRef.current) {
+          setQuoting(false);
+        }
+      });
+    // invalidate late completions after replacement or unmount
+    return () => {
+      if (activeQuoteProvenanceRef.current?.requestId === requestId) {
+        activeQuoteProvenanceRef.current = null;
+      }
+      if (quoteRequestRef.current === requestId) {
+        quoteRequestRef.current += 1;
+      }
+    };
+  }, [date, fareScope, mate.id, quoteRetry, selection, terminal.id]);
 
   const share = async (): Promise<void> => {
     const title = `Fare estimate for ${terminal.name} to ${mate.name}`;
@@ -503,9 +721,20 @@ export const Fares = ({
           title,
           url: window.location.href,
         });
+        trackUsefulEvent("share_completed", {
+          method: "share_sheet",
+          surface: "fare",
+        });
         return;
       }
-      await navigator.clipboard?.writeText(window.location.href);
+      // qualify clipboard sharing only after an available write resolves
+      if (navigator.clipboard) {
+        await navigator.clipboard.writeText(window.location.href);
+        trackUsefulEvent("share_completed", {
+          method: "clipboard",
+          surface: "fare",
+        });
+      }
       setShareCopied(true);
       window.setTimeout(() => setShareCopied(false), 2500);
     } catch (error) {
@@ -594,9 +823,11 @@ export const Fares = ({
       <>
         {header}
         <StateCard>
-          <h1 className="text-xl font-bold">FREE</h1>
-          <p className="mt-2">{catalogResponse.noFare.message}</p>
-          <CalculatorLink href={WSDOT_FARE_CALCULATOR_URL} />
+          <div ref={usefulContentRef}>
+            <h1 className="text-xl font-bold">FREE</h1>
+            <p className="mt-2">{catalogResponse.noFare.message}</p>
+            <CalculatorLink href={WSDOT_FARE_CALCULATOR_URL} />
+          </div>
         </StateCard>
       </>
     );
@@ -624,7 +855,10 @@ export const Fares = ({
   return (
     <>
       {header}
-      <main className="flex-grow overflow-y-auto bg-day-normal-light text-gray-dark dark:bg-night-normal-dark dark:text-[#e0f0f4]">
+      <main
+        className="flex-grow overflow-y-auto bg-day-normal-light text-gray-dark dark:bg-night-normal-dark dark:text-[#e0f0f4]"
+        ref={usefulContentRef}
+      >
         <div className="mx-auto w-full max-w-6xl space-y-4 p-4 pb-8">
           <AdSlot
             arrivalTerminalId={mate.id}

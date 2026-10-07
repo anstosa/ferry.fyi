@@ -7,6 +7,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
+const useful = vi.hoisted(() => ({ hook: vi.fn(), ref: vi.fn() }));
+vi.mock("~/lib/usefulVisits", () => ({
+  // capture readiness and the actual meaningful schedule node
+  useUsefulContent: (...args: unknown[]) => {
+    useful.hook(...args);
+    return useful.ref;
+  },
+}));
 const freshnessPill = vi.hoisted(() => vi.fn(() => null));
 const scrollIntoView = vi.hoisted(() => vi.fn());
 const queryState = vi.hoisted(() => ({
@@ -145,6 +153,28 @@ const getActiveSchedule = (key = "5-14-2026-08-26") => {
 };
 
 describe("Schedule load states", () => {
+  // placeholders and empty schedules cannot start useful exposure
+  it("wires only usable sailings as useful content", () => {
+    render({ schedule: null });
+    expect(useful.hook).toHaveBeenLastCalledWith("schedule", "", false);
+    act(() => root?.unmount());
+    root = undefined;
+    render({ schedule: { key: "empty", slots: [] } as never });
+    expect(useful.hook).toHaveBeenLastCalledWith("schedule", "empty", false);
+    act(() => root?.unmount());
+    root = undefined;
+    const container = render({
+      schedule: getActiveSchedule(),
+      time: DateTime.fromSeconds(1_777_777_800),
+    });
+    expect(useful.hook).toHaveBeenLastCalledWith(
+      "schedule",
+      "5-14-2026-08-26",
+      true
+    );
+    expect(useful.ref).toHaveBeenCalledWith(container.querySelector("ul"));
+  });
+
   it("shows the separate schedule check time", () => {
     const schedule = {
       date: "2026-08-02",

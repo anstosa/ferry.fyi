@@ -9,6 +9,7 @@ import type {
   SailingRecommendationResponse,
 } from "shared/contracts/sailingRecommendations";
 
+import { trackUsefulEvent } from "~/lib/analytics";
 import type { TimelineSailing } from "~/lib/sailingCapacityTimeline";
 import { getSailingTripShareUrl } from "~/lib/sailingTrip";
 import ShareIcon from "~/static/images/icons/solid/share-alt.svg";
@@ -189,9 +190,17 @@ export const SailingEstimateResults = ({
           dialogTitle: title,
           url,
         });
+        trackUsefulEvent("share_completed", {
+          method: "share_sheet",
+          surface: "trip_plan",
+        });
       } else if (navigator.clipboard) {
         // copy only after the explicit share action
         await navigator.clipboard.writeText(url);
+        trackUsefulEvent("share_completed", {
+          method: "clipboard",
+          surface: "trip_plan",
+        });
         setShareMessage("Link copied.");
       } else {
         // never claim a copy when no clipboard is available

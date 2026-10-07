@@ -31,6 +31,7 @@ import {
   isDetailTab,
 } from "~/lib/sailingDeepLink";
 import { useTerminals } from "~/lib/terminals";
+import { useUsefulContent } from "~/lib/usefulVisits";
 import { useUser } from "~/lib/user";
 import IslandIcon from "~/static/images/icons/solid/island-tropical.svg";
 
@@ -108,6 +109,11 @@ export const Schedule = ({
   const linkedSailingTime = getLinkedSailingTime(sailingInput);
   const linkedDetailTab = isDetailTab(tabInput) ? tabInput : undefined;
   const scheduleIdentity = schedule?.key ?? "";
+  const usefulContentRef = useUsefulContent(
+    "schedule",
+    scheduleIdentity,
+    Boolean(schedule?.slots?.length)
+  );
   const linkedSlot =
     schedule?.slots?.find((slot) => {
       // linked sailing match
@@ -315,7 +321,7 @@ export const Schedule = ({
     });
     return (
       <>
-        <ul>{sailings}</ul>
+        <ul ref={usefulContentRef}>{sailings}</ul>
         <AnimatePresence>
           {!hasCapacityInfo &&
             isWSFToday(DateTime.fromISO(schedule.date)) &&

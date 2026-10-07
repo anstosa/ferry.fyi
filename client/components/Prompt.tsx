@@ -94,7 +94,12 @@ export const Prompt: FunctionComponent<PropsWithChildren<Props>> = ({
           }
           if (action.href) {
             return (
-              <a className={className} href={action.href} key={action.label}>
+              <a
+                className={className}
+                href={action.href}
+                key={action.label}
+                onClick={action.onClick}
+              >
                 {content}
               </a>
             );
