@@ -15,6 +15,24 @@ leaderboard content
 after`;
 
 describe("leaderboard discovery metadata", () => {
+  // retain bounded documentation for tasks and safe data interpretation
+  it("keeps the guide concise without dropping task or safety sections", () => {
+    const source = readFileSync("client/static/llms.txt", "utf8");
+    expect(source.split(/\s+/).filter(Boolean).length).toBeLessThanOrEqual(
+      2000
+    );
+    // preserve the requested documentation boundaries
+    for (const heading of [
+      "## Tasks",
+      "### Examples",
+      "## Freshness",
+      "## Safe AI use",
+      "## Citation guidance",
+    ]) {
+      expect(source).toContain(heading);
+    }
+  });
+
   it("builds canonical public entity paths", () => {
     expect(
       getTerminalLeaderboardSeoMetadata({ id: "seattle", name: "Seattle" })
