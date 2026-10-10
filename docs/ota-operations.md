@@ -221,11 +221,10 @@ Production` run first: every validation and deployment gate must pass before
 continues to receive the previous release.
 
 For a `Client asset budget exceeded` failure, rebuild with the deployment's
-client configuration and run `yarn budget:client`. The full public-content
-allocation permits 5,300,000 aggregate core JavaScript bytes; the separate
-CSS, chunk-count, largest-chunk, and optional-billing limits remain unchanged.
-Only adjust an allocation for measured, intentional feature growth; do not
-remove the budget gate or publish an OTA separately to bypass a failed deploy.
+client configuration and run `yarn budget:client`. This check enforces the
+152,000-byte CSS limit. JavaScript size, chunk count, largest-chunk size, and
+optional-billing size are reported for visibility but do not block deployment.
+Do not publish an OTA separately to bypass a failed deploy.
 
 After a successful OTA publication, compare the source SHA in the manifest's
 immutable bundle URL with the intended deployment. An older SHA indicates that

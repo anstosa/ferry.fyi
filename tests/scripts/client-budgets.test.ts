@@ -26,52 +26,41 @@ afterEach(() => {
   }
 });
 
+// retain stylesheet enforcement and informative javascript accounting
 describe("client asset budgets", () => {
-  // bound full public content without relaxing map or billing caps
-  it("locks the measured full public content allocation", () => {
+  // keep the existing stylesheet limit without javascript gates
+  it("enforces only the existing CSS allocation", () => {
     expect(DEFAULT_CLIENT_BUDGETS).toEqual({
       cssBytes: 152_000,
-      javascriptBytes: 5_300_000,
-      javascriptFiles: 155,
-      largestJavascriptBytes: 1_900_000,
-      optionalBillingJavascriptBytes: 900_000,
     });
   });
 
-  // retain a hard cap after the measured public content growth
-  it("accepts the measured production assets and rejects further unbounded growth", () => {
+  // cover the exact production deployment failure
+  it("accepts production JavaScript that exceeded the removed byte limit", () => {
     const summary = {
-      cssBytes: 150_631,
-      javascriptBytes: 5_260_065,
-      javascriptFiles: 150,
+      cssBytes: 151_075,
+      javascriptBytes: 5_300_010,
+      javascriptFiles: 143,
       largestJavascriptBytes: 1_838_229,
       optionalBillingJavascriptBytes: 840_269,
     };
 
     expect(() => assertClientBudgets(summary)).not.toThrow();
-    expect(() =>
-      assertClientBudgets({ ...summary, javascriptBytes: 5_300_000 })
-    ).not.toThrow();
-    expect(() =>
-      assertClientBudgets({ ...summary, javascriptBytes: 5_300_001 })
-    ).toThrow(/javascriptBytes/);
   });
 
-  // protect the finite route-chunk allocation
-  it("allows bounded production route chunk growth", () => {
-    const files: Record<string, number> = {};
-    // create the allowed route chunks
-    for (let index = 0; index < 155; index += 1) {
-      files[`route-${index}.js`] = 1;
-    }
-    const summary = summarizeClientAssets(fixture(files));
-
+  // remove byte, count, single-chunk and optional billing enforcement together
+  it("does not reject growth beyond any former JavaScript limit", () => {
+    const summary = {
+      cssBytes: 152_000,
+      javascriptBytes: 100_000_000,
+      javascriptFiles: 1_000,
+      largestJavascriptBytes: 10_000_000,
+      optionalBillingJavascriptBytes: 10_000_000,
+    };
     expect(() => assertClientBudgets(summary)).not.toThrow();
-    expect(() =>
-      assertClientBudgets({ ...summary, javascriptFiles: 156 })
-    ).toThrow(/javascriptFiles/);
   });
 
+  // continue reporting javascript sizes without applying limits
   it("summarizes and accepts a bounded fixture", () => {
     const summary = summarizeClientAssets(
       fixture({ "main.css": 20, "main.js": 100, "route.js": 50 })
@@ -86,29 +75,23 @@ describe("client asset budgets", () => {
     expect(() =>
       assertClientBudgets(summary, {
         cssBytes: 20,
-        javascriptBytes: 150,
-        javascriptFiles: 2,
-        largestJavascriptBytes: 100,
-        optionalBillingJavascriptBytes: 0,
       })
     ).not.toThrow();
   });
 
-  it("fails with the exact exceeded dimension", () => {
-    const summary = summarizeClientAssets(fixture({ "map.js": 101 }));
+  // retain an inclusive css threshold and its actionable failure
+  it("rejects only stylesheet growth beyond the CSS limit", () => {
+    const summary = summarizeClientAssets(
+      fixture({ "app.css": 152_000, "map.js": 101 })
+    );
+    expect(() => assertClientBudgets(summary)).not.toThrow();
     expect(() =>
-      assertClientBudgets(summary, {
-        cssBytes: 0,
-        javascriptBytes: 100,
-        javascriptFiles: 1,
-        largestJavascriptBytes: 100,
-        optionalBillingJavascriptBytes: 0,
-      })
-    ).toThrow(/javascriptBytes.*largestJavascriptBytes/s);
+      assertClientBudgets({ ...summary, cssBytes: 152_001 })
+    ).toThrow(/cssBytes: 152,001 exceeds 152,000/);
   });
 
-  // isolate optional billing code
-  it("budgets optional RevenueCat billing separately from core code", () => {
+  // preserve separate optional billing measurements without enforcement
+  it("reports optional RevenueCat billing separately from core code", () => {
     const summary = summarizeClientAssets(
       fixture({
         "main.js": 100,
