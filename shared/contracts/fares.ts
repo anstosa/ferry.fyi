@@ -50,6 +50,25 @@ export interface FareFreshness {
   policyVersion: string;
 }
 
+/** one public default fare amount with its independent source state */
+export interface FareDefaultRate {
+  amount: number;
+  freshness: FareFreshness;
+  state: "current" | "stale" | "no-fare";
+}
+
+/** comparable one-way and round-trip rates for one rider category */
+export interface FareDefaultRateComparison {
+  oneWay: FareDefaultRate | null;
+  roundTrip: FareDefaultRate | null;
+}
+
+/** public default rates for the fixed common passenger and vehicle choices */
+export interface FareDefaultRates {
+  passenger: FareDefaultRateComparison;
+  standardVehicle: FareDefaultRateComparison;
+}
+
 /** A catalog of prices collected for a route and travel date. */
 export interface FareCatalog {
   collectionDescription: string | null;
@@ -82,6 +101,7 @@ export type FareQuoteResult = FareQuote | FareNoFare;
 /** API state for a live official catalog response. */
 export interface FareCurrentCatalogResponse {
   catalog: FareCatalog;
+  defaultRates?: FareDefaultRates;
   state: "current";
 }
 
@@ -93,6 +113,7 @@ export interface FareCurrentQuoteResponse {
 
 /** API state for a policy-declared direction where no fare is collected. */
 export interface FareNoFareResponse {
+  defaultRates?: FareDefaultRates;
   noFare: FareNoFare;
   state: "no-fare";
 }

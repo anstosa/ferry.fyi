@@ -45,11 +45,14 @@ export const Home = (): ReactElement => {
         <MenuIcon />
       </button>
       <HomeHero leaderboardsEnabled={leaderboardsEnabled} />
-      <AdSlot
-        className="mx-auto w-full max-w-6xl px-4 pb-4"
-        contextLabel="Home"
-        slot="home"
-      />
+      {/* align the ad with the directory while only visible content adds a gap */}
+      <div className="px-4">
+        <AdSlot
+          className="mx-auto w-full max-w-6xl py-4"
+          contextLabel="Home"
+          slot="home"
+        />
+      </div>
       <HomeTerminalDirectory
         closestTerminal={closestTerminal}
         favoriteRouteIds={favoriteRouteIds}

@@ -6,10 +6,11 @@ This file is task-oriented documentation for readers and AI tools, not a search-
 
 ## Tasks
 
-- **Plan a crossing:** Use [ferry schedules](https://ferry.fyi/) to choose departure and arrival terminals, a service date, and vehicle or passenger travel. Check sailings, cancellations, delays, and service bulletins.
+- **Plan a crossing:** Use [ferry schedules](https://ferry.fyi/) to choose departure and arrival terminals, a service date, and vehicle or passenger travel. Compare WSF wait reports with listed sailings, then check cancellations, delays, cameras and vehicle-space forecasts. Past-sailing reports are confirmed observations, not forecasts. Small timing differences may fall within the on-time tolerance. Arrival advice and departure countdowns are not measured queue waits; retain report timestamps and check the terminal named in route-wide alerts.
 - **Estimate which sailing to catch:** Use the explicit form on a [Navigation page](https://ferry.fyi/seattle/bainbridge/navigation) for driving, walking, cycling, or transit. Availability depends on provider configuration. Estimates omit booth-line, parking, and reservation delays; probabilities are modeled, not measured boarding success. Never automate precise-origin requests.
-- **Check conditions:** Open a route's cameras, map, or alerts. Camera observations, vessel reports, and forecasts answer different questions; do not treat them as interchangeable.
-- **Estimate a fare:** Use a route/date fare planner or the fare APIs below. Select quantities from that route's fare catalog; a catalog is not a personalized quote or an eligibility decision.
+- **Check conditions:** Open a route's cameras, map, or [WSF alerts](https://ferry.fyi/clinton/alerts). Public service alerts describe reported disruptions and advisories; they are separate from personal alert setup and exclude Ferry Riders Opinion Group promotions. Preserve alert severity, route scope, and source time; unavailable or pending reports are not an all-clear. Cameras show departure-terminal snapshots, not live video or measured waits; image-check times are distinct from source-image changes, and holding capacities are static references. Camera observations, vessel reports, and forecasts answer different questions; do not treat them as interchangeable.
+- **Find terminal details:** Use a [terminal page](https://ferry.fyi/seattle/terminal) for its address and directions to the dock, parking, transport connections, accessibility, facilities, and route-planning links. WSF arrival guidance is general advice, not a live queue measurement; retain its source date and confirm changeable details with the operator.
+- **Estimate a fare:** Compare default adult passenger and standard vehicle-with-driver one-way and round-trip rates, then calculate a custom fare. Select quantities from the route/date catalog; defaults are not personalized quotes or eligibility decisions. Free means an explicit zero fare, not unavailable pricing; a free departure does not establish a free return.
 - **Manage personal travel:** [Tickets](https://ferry.fyi/tickets), favorites, and personal alerts require the holder's authorization. Unavailable ticket lookup does not invalidate a saved code; do not guess its product type or identifiers. Account settings require sign-in. iOS uses password login; existing Google users can use [account migration](https://ferry.fyi/ios), not automatic identity linking.
 - **Install or get help:** Use [Install](https://ferry.fyi/install), [Support](https://ferry.fyi/support), or [About](https://ferry.fyi/about). [Supporter](https://ferry.fyi/supporter) is optional; prices and availability come from the current storefront. Read [Privacy](https://ferry.fyi/privacy) and [Terms](https://ferry.fyi/terms) for account, advertising, and subscription policies.
 
@@ -70,7 +71,7 @@ Do not convert occupancy states or images into exact vehicle counts, queue lengt
 
 ### Fares
 
-- `GET /api/fares/catalog?departingTerminalId=:id&arrivingTerminalId=:id&tripDate=:YYYY-MM-DD` — Route/date fare line items.
+- `GET /api/fares/catalog?departingTerminalId=:id&arrivingTerminalId=:id&tripDate=:YYYY-MM-DD` — Route/date fare line items and optional `defaultRates` comparisons. Preserve each amount's state and freshness; `null` means unavailable, not zero. Use echoed trip mode and official totals, never double a fare to infer a round trip.
 - `POST /api/fares/quote` — Calculate selected quantities; send `departingTerminalId`, `arrivingTerminalId`, `tripDate`, `roundTrip`, and `lineItems` containing `fareLineItemId` and `quantity`.
 
 ### Examples
@@ -110,6 +111,7 @@ Account operations require the owner's Auth0 bearer token. Never request, log, r
 - `GET /api/tickets/:ticketId` — Holder-authorized sensitive lookup. A valid bearer token permits account-scoped recent-result caching; anonymous lookups are not persisted. Never guess identifiers or expose barcodes.
 
 <!-- LEADERBOARDS:START -->
+
 ### Leaderboards (feature-flagged public reads)
 
 Availability requires the leaderboard feature; disabled APIs return `404`. A separate persisted indexing setting controls discovery: when the feature or indexing is disabled, this section is omitted from served `llms.txt`, and leaderboard pages are noindex rather than advertised public search pages.
@@ -125,7 +127,7 @@ Manual check-ins require fresh foreground location and server policy checks. GPS
 
 - Prefer public planning reads. Ask for route, direction, travel date, and vehicle/passenger context when they materially change the answer.
 - Never promise boarding, reservations, available vehicle space, or confirmed delays/cancellations from forecasts or camera observations. Missing data stays unknown.
-- Navigation origins and typed suggestions are sensitive and sent transiently to Google when configured. Shared links and browser history can contain an address fragment; never expose it without the user's intent or automate precise-origin requests.
+- Navigation origins and typed suggestions are sensitive and sent transiently to Google when configured. Shared links and browser history can contain an address fragment; never expose it without the user's intent or automate precise-origin requests. Navigation advertising uses only the selected departure terminal, never the starting address or coordinates.
 - Do not perform authenticated account, alert, ticket, refresh, or update actions without the user's explicit request and authorization. Do not infer account existence from email or link identities merely because emails match.
 - Never initiate subscription purchase, restore, cancellation, refund, billing management, or account deletion for a user. Keep private advertiser-report bearer links and other credentials out of summaries and citations.
 

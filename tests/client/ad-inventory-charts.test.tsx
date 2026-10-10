@@ -60,6 +60,39 @@ const report: AdInventoryReport = {
 
 // cover aggregate and placement chart behavior
 describe("AdInventoryCharts", () => {
+  // label terminal-only inventory without an invented arrival
+  it("labels navigation inventory by terminal and selects its stable key", () => {
+    const onSelectPlacement = vi.fn();
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+    act(() => {
+      root?.render(
+        <AdInventoryCharts
+          loading={false}
+          onSelectPlacement={onSelectPlacement}
+          report={{
+            ...report,
+            placements: [
+              { opportunityCount: "5", placementKey: "navigation--7" },
+            ],
+            selectedPlacement: null,
+          }}
+          selectedPlacementKey={null}
+          terminals={terminals}
+        />
+      );
+    });
+    const placement = container.querySelector<HTMLButtonElement>(
+      'button[aria-pressed="false"]'
+    );
+    expect(placement?.textContent).toContain("Navigation · Seattle");
+    expect(placement?.textContent).not.toContain("→");
+    expect(placement?.textContent).not.toContain("null");
+    act(() => placement?.click());
+    expect(onSelectPlacement).toHaveBeenCalledWith("navigation--7");
+  });
+
   // render exact aggregate and temporal metrics
   it("selects placements and exposes weekday and hourly values", () => {
     const onSelectPlacement = vi.fn();

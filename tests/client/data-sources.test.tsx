@@ -14,7 +14,7 @@ import {
 describe("data sources editorial revision", () => {
   // keep page and dataset metadata aligned with the public policy revision
   it("publishes the substantive October content revision", () => {
-    expect(SEO_CONTENT_LAST_MODIFIED).toBe("2026-10-06");
+    expect(SEO_CONTENT_LAST_MODIFIED).toBe("2026-10-09");
     const schema = getSeoSchema(
       getSeoMetadata("/data-sources"),
       "https://ferry.fyi"
@@ -23,11 +23,11 @@ describe("data sources editorial revision", () => {
       expect.arrayContaining([
         expect.objectContaining({
           "@type": "WebPage",
-          dateModified: "2026-10-06",
+          dateModified: "2026-10-09",
         }),
         expect.objectContaining({
           "@type": "Dataset",
-          dateModified: "2026-10-06",
+          dateModified: "2026-10-09",
         }),
       ])
     );
@@ -44,7 +44,7 @@ describe("data sources editorial revision", () => {
     );
 
     expect(html).toContain(
-      `<time dateTime="${SEO_CONTENT_LAST_MODIFIED}">October 6, 2026</time>`
+      `<time dateTime="${SEO_CONTENT_LAST_MODIFIED}">October 9, 2026</time>`
     );
   });
 });

@@ -1,3 +1,4 @@
+import { JSDOM } from "jsdom";
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -18,13 +19,15 @@ type HelmetContext = Record<string, unknown> & {
   helmet?: { meta: { toString(): string } };
 };
 
+// render deterministic public markup
 const render = async (
   requestUrl: string,
-  snapshot?: PublicSsrSnapshot
+  snapshot?: PublicSsrSnapshot,
+  clock = 1_700_000_000_000
 ): Promise<{ helmet: string; markup: string }> => {
   const { AppRoot } = await import("../../client/AppRoot");
   const context: AppRenderContextValue = {
-    clock: () => 1_700_000_000_000,
+    clock: () => clock,
     hasInjectedRequest: false,
     platform: "web",
     requestUrl,
@@ -45,6 +48,18 @@ const render = async (
 
 // public ssr fixtures
 const createPublicSsrFixtures = () => {
+  // retain explicit public amounts with source timing in the anonymous fixture
+  const fareRate = (amount: number) => ({
+    amount,
+    freshness: {
+      fetchedAt: 1785240000,
+      sourceCacheFlushDate: null,
+      validFrom: "2026-07-01" as const,
+      validThrough: "2026-09-30" as const,
+      policyVersion: "fixture",
+    },
+    state: "current" as const,
+  });
   const terminal = {
     abbreviation: "CLI",
     bulletins: [],
@@ -141,6 +156,10 @@ const createPublicSsrFixtures = () => {
       bulletins: source([]),
       cameraFrames: source({ frames: {}, sourceUpdatedAt: null }),
       fares: source({
+        defaultRates: {
+          passenger: { oneWay: fareRate(10.5), roundTrip: fareRate(10.5) },
+          standardVehicle: { oneWay: fareRate(22), roundTrip: fareRate(44) },
+        },
         catalog: {
           kind: "catalog",
           collectionDescription: "Fixture one-way collection",
@@ -285,6 +304,66 @@ const createTodaySnapshot = (
   },
 });
 
+/** build a camera snapshot with an explicit public frame status */
+const createCameraSsrFixture = (
+  status: "available" | "unavailable" = "available"
+): { camera: Camera; snapshot: PublicSsrSnapshot } => {
+  const { snapshot, source, terminal } = createPublicSsrFixtures();
+  const camera = {
+    carCapacity: 20,
+    carsToBoat: 5,
+    id: "camera-1",
+    image: {
+      height: 245,
+      url: "https://example.com/camera.jpg",
+      width: 400,
+    },
+    isActive: true,
+    location: { latitude: 47.9, longitude: -122.3 },
+    owner: null,
+    orderFromTerminal: 1,
+    terminalId: terminal.id,
+    title: "Holding lane",
+  } satisfies Camera;
+  const renderedAt = Date.parse(snapshot.renderedAt) / 1000;
+  const cameraSnapshot: PublicSsrSnapshot = {
+    ...snapshot,
+    canonicalPath: "/clinton/mukilteo/cameras",
+    metadata: {
+      ...snapshot.metadata,
+      canonicalPath: "/clinton/mukilteo/cameras",
+    },
+    normalizedUrl: {
+      path: "/clinton/mukilteo/cameras",
+      query: {},
+    },
+    routeId: "mate-cameras",
+    sources: {
+      ...snapshot.sources,
+      cameraFrames: source({
+        frames: {
+          "camera-1": {
+            cameraId: "camera-1",
+            checkedAt: renderedAt,
+            frameToken: "frame-1",
+            frameUpdatedAt: renderedAt - 60,
+            imageUrl: camera.image.url,
+            isStale: false,
+            status,
+          },
+        },
+        sourceUpdatedAt: renderedAt - 60,
+      }),
+      route: source({
+        mate: snapshot.sources.route?.value?.mate,
+        terminal: { ...terminal, cameras: [camera] },
+      }),
+    },
+  };
+
+  return { camera, snapshot: cameraSnapshot };
+};
+
 describe("AppRoot server rendering", () => {
   afterEach(() => vi.unstubAllGlobals());
 
@@ -421,7 +500,7 @@ describe("AppRoot server rendering", () => {
         "/clinton/mukilteo/cameras",
         {
           sources: ["route", "cameraFrames", "notices"],
-          text: "This terminal does not have cameras",
+          text: "Camera views are not available in Ferry FYI for this terminal.",
         },
       ],
       [
@@ -431,8 +510,8 @@ describe("AppRoot server rendering", () => {
       [
         "/clinton/mukilteo/fare",
         {
-          sources: ["route", "fares", "notices"],
-          text: "Fare estimator",
+          sources: [],
+          text: "Calculate a custom fare",
         },
       ],
       [
@@ -484,16 +563,66 @@ describe("AppRoot server rendering", () => {
           routeSnapshot
         );
         expect(markup).toContain(expectation.text);
+        // route titles keep one inset before hydration rather than nested padding
+        if (!path.endsWith("/map") && !path.endsWith("/subscribe")) {
+          const title = JSDOM.fragment(markup).querySelector("h1");
+          const intro = title?.closest("[data-route-page-intro]");
+          const main = title?.closest("main");
+          expect(intro).not.toBeNull();
+          expect(main?.classList).toContain("p-4");
+          expect(main?.parentElement?.classList.contains("px-4")).toBe(false);
+          // inset-free overviews reuse the containing route page's padding
+          if (
+            path === "/clinton" ||
+            path.endsWith("/cameras") ||
+            path.endsWith("/alerts")
+          ) {
+            expect(intro?.parentElement?.classList.contains("p-4")).toBe(false);
+            expect(intro?.parentElement?.classList.contains("px-4")).toBe(
+              false
+            );
+          }
+        }
         expectation.sources.forEach((sourceKey) =>
           expect(markup).toContain(`data-public-ssr-source="${sourceKey}"`)
         );
+        // secondary initial-html navigation keeps the same relative bottom-bar order
+        const secondaryNavigation = JSDOM.fragment(markup).querySelector(
+          'nav[aria-label="Route navigation"]'
+        );
+        // only the initial-html pages that render this secondary landmark need the assertion
+        if (secondaryNavigation) {
+          expect(
+            [...secondaryNavigation.querySelectorAll("a")].map(
+              (link) => link.textContent
+            )
+          ).toEqual([
+            "Schedule",
+            "Cameras",
+            "Terminal",
+            "Map",
+            "Fares",
+            "Alerts and bulletins",
+            "Alert subscriptions",
+          ]);
+        }
         // schedule content
         if (path === "/clinton") {
-          expect(markup).toContain(
-            "<h1>Clinton to Mukilteo Washington State Ferries schedule</h1>"
+          expect(markup).toMatch(
+            /<h1\b[^>]*>Clinton to Mukilteo ferry wait times &amp; schedule<\/h1>/
           );
-          expect(markup).toContain("Departures from Clinton Ferry Terminal");
-          expect(markup).toContain("arrive at Mukilteo Ferry Terminal");
+          expect(markup).toContain("Vehicle wait");
+          expect(markup).toContain("Wait time not forecast");
+          expect(markup).toContain('aria-label="Route quick links"');
+          expect(markup).not.toContain("Plan your crossing");
+          expect(markup).not.toContain("How to read wait times");
+          expect(markup).not.toContain("Selected service date");
+          expect(markup).not.toContain("Sailings for this service date");
+          const next = JSDOM.fragment(markup).querySelector(
+            '[aria-labelledby="schedule-next-heading"]'
+          );
+          expect(next?.textContent).not.toContain("Tokitae");
+          expect(markup).not.toContain("What boat will I make?");
           expect(markup).toContain('<time dateTime="2026-07-28"');
           expect(markup).toContain("July 28, 2026");
           expect(markup).not.toMatch(/today(?:'|&apos;)?s? schedule/i);
@@ -509,19 +638,146 @@ describe("AppRoot server rendering", () => {
         }
         // terminal content
         if (path.endsWith("/terminal")) {
-          expect(markup).toContain("<h1>Clinton Ferry Terminal</h1>");
-          expect(markup).toContain("64 South Ferry Dock Road");
-          expect(markup).toContain("Clinton, WA 98236");
-          expect(markup).toContain("<h2>Facilities</h2>");
-          expect(markup).toContain("Waiting room: available");
-          expect(markup).toContain("Restrooms: available");
-          expect(markup).toContain("Food: unavailable");
-          expect(markup).toContain("Elevator: unavailable");
-          expect(markup).toContain("Overhead passenger loading: unavailable");
-          expect(markup).toContain("<h2>Routes</h2>");
-          expect(markup).toContain("Mukilteo");
+          const page = JSDOM.fragment(markup);
+          expect(page.querySelector("h1")?.textContent).toBe(
+            "Clinton Ferry Terminal"
+          );
+          expect(page.querySelector("address")?.textContent).toContain(
+            "64 South Ferry Dock Road"
+          );
+          expect(page.querySelector("address")?.textContent).toContain(
+            "Clinton, WA 98236"
+          );
+          const directions = page.querySelector(
+            'a[aria-label="Get directions"]'
+          );
+          expect(directions?.textContent).toBe("");
+          expect(page.querySelector("address")?.nextElementSibling).toBe(
+            directions
+          );
+          expect(
+            page.querySelector('a[href="https://example.com/terminal"]')
+          ).toBeNull();
+          const facilities = page.querySelector("#terminal-facilities");
+          expect(facilities?.textContent).toContain("Waiting room: available");
+          expect(facilities?.textContent).toContain("Restrooms: available");
+          expect(facilities?.textContent).toContain(
+            "Food service: unavailable"
+          );
+          expect(facilities?.textContent).toContain("Elevator: unavailable");
+          expect(facilities?.textContent).toContain(
+            "Overhead passenger loading: unavailable"
+          );
+          expect(page.querySelector("#terminal-routes")).toBeNull();
+          const planning = page.querySelector(
+            'nav[aria-label="Terminal planning links"]'
+          )!;
+          expect(
+            [...planning.querySelectorAll("a")].map((link) => link.textContent)
+          ).toEqual([
+            "Schedule & wait",
+            "What boat will I make?",
+            "Ferry line cameras",
+            "Route Map",
+            "How much does it cost?",
+            "WSF Alerts",
+          ]);
+          expect(
+            planning.querySelector('a[href="/clinton"]')?.textContent
+          ).toBe("Schedule & wait");
+          const ad = page.querySelector("[data-ad-slot]")!;
+          expect(page.querySelectorAll("[data-ad-slot]")).toHaveLength(1);
+          expect(ad.previousElementSibling?.getAttribute("aria-label")).toBe(
+            "Terminal planning links"
+          );
+          expect(
+            ad.nextElementSibling?.querySelector("#terminal-parking")
+          ).not.toBeNull();
+          expect(
+            page.querySelector("h1")?.closest("section")?.className
+          ).not.toMatch(/rounded|bg-|border/);
+          expect(
+            page.querySelector("#terminal-parking")?.textContent
+          ).toContain("Use the public parking lot.");
+          expect(
+            page.querySelector("#terminal-accessibility")?.textContent
+          ).toContain("Accessible boarding is available.");
+          expect(
+            page.querySelector("#terminal-arrival")?.textContent
+          ).toContain("not a measured live queue wait");
+        }
+        // fare presentation omits sources and puts its one ad before the custom form
+        if (path.endsWith("/fare")) {
+          const page = JSDOM.fragment(markup);
+          const planning = page.querySelector(
+            'nav[aria-label="Fare planning links"]'
+          );
+          expect(planning?.querySelectorAll("a")).toHaveLength(7);
+          const customFare = planning?.querySelector(
+            'a[href="#custom-fare-calculator"]'
+          );
+          expect(customFare?.textContent).toBe("Calculate a custom fare");
+          expect(customFare?.classList).toContain("bg-green-dark");
+          expect(
+            page.querySelector('[data-public-ssr-freshness="fares"]')
+          ).toBeNull();
+          expect(page.textContent).not.toMatch(
+            /USD|One way leaves|Source fetched|Official WSDOT quote/
+          );
+          const ad = page.querySelector("[data-ad-slot]")!;
+          expect(page.querySelectorAll("[data-ad-slot]")).toHaveLength(1);
+          expect(
+            ad.previousElementSibling?.getAttribute("aria-labelledby")
+          ).toBe("fare-rates-heading");
+          expect(
+            page.querySelector("#custom-fare-calculator")?.className
+          ).not.toMatch(/rounded|border|bg-|p-4/);
+        }
+        // initial alert html uses the same compact guide and directional tools
+        if (path.endsWith("/alerts")) {
+          const page = JSDOM.fragment(markup);
+          expect(page.querySelector("h1")?.textContent).toBe(
+            "Clinton to Mukilteo WSF alerts"
+          );
+          const planning = page.querySelector(
+            'nav[aria-label="Alert planning links"]'
+          );
+          expect(planning?.querySelectorAll("a")).toHaveLength(6);
+          expect(
+            planning?.querySelector('a[href="/clinton"]')?.textContent
+          ).toBe("Schedule & wait");
+          expect(
+            page.querySelector('a[href="/clinton/subscribe"]')?.textContent
+          ).toContain("Set up alerts");
+          expect(page.textContent).not.toContain("All clear");
         }
         if (path.endsWith("/cameras")) {
+          const page = JSDOM.fragment(markup);
+
+          expect(page.querySelector("h1")?.textContent).toBe(
+            "Clinton ferry terminal cameras"
+          );
+          expect(page.textContent).toContain(
+            "No camera views are listed for the Clinton ferry terminal. Check sailing times and WSF wait reports for trips to Mukilteo instead."
+          );
+          expect(page.textContent).toContain(
+            "Camera views are not available in Ferry FYI for this terminal."
+          );
+          expect(
+            page.querySelector(
+              'nav[aria-label="Camera planning links"] a[href="/clinton"]'
+            )?.textContent
+          ).toBe("Schedule & wait");
+          expect(
+            page.querySelector(
+              'nav[aria-label="Camera planning links"] a[href="/clinton/terminal"]'
+            )?.textContent
+          ).toBe("Terminal info");
+          expect(
+            page.querySelector(
+              'nav[aria-label="Camera planning links"] a[href="/clinton/alerts"]'
+            )?.textContent
+          ).toBe("WSF Alerts");
           expect(markup).toContain('data-public-ssr-freshness="cameraFrames"');
         }
       } catch (error) {
@@ -530,67 +786,111 @@ describe("AppRoot server rendering", () => {
     }
   }, 15_000);
 
-  it("renders camera freshness in the server-rendered image footer", async () => {
-    const { snapshot, source, terminal } = createPublicSsrFixtures();
-    const camera = {
-      carCapacity: null,
-      carsToBoat: null,
-      id: "camera-1",
-      image: {
-        height: 245,
-        url: "https://example.com/camera.jpg",
-        width: 400,
-      },
-      isActive: true,
-      location: { latitude: 47.9, longitude: -122.3 },
-      owner: null,
-      orderFromTerminal: 1,
-      terminalId: terminal.id,
-      title: "Holding lane",
-    } satisfies Camera;
-    const renderedAt = Date.parse(snapshot.renderedAt) / 1000;
-    const cameraSnapshot: PublicSsrSnapshot = {
+  // keep the schedule ad before visible current-day history in initial html
+  it("renders recent schedule history after its ad", async () => {
+    const { snapshot } = createPublicSsrFixtures();
+    const currentSnapshot: PublicSsrSnapshot = {
       ...snapshot,
-      canonicalPath: "/clinton/mukilteo/cameras",
-      metadata: {
-        ...snapshot.metadata,
-        canonicalPath: "/clinton/mukilteo/cameras",
-      },
-      normalizedUrl: {
-        path: "/clinton/mukilteo/cameras",
-        query: {},
-      },
-      routeId: "mate-cameras",
       sources: {
         ...snapshot.sources,
-        cameraFrames: source({
-          frames: {
-            "camera-1": {
-              cameraId: "camera-1",
-              checkedAt: renderedAt,
-              frameToken: "frame-1",
-              frameUpdatedAt: renderedAt - 60,
-              imageUrl: camera.image.url,
-              isStale: false,
-              status: "available",
+        schedule: {
+          ...snapshot.sources.schedule!,
+          value: {
+            schedule: {
+              ...snapshot.sources.schedule!.value!.schedule,
+              date: "2025-07-28",
             },
           },
-          sourceUpdatedAt: renderedAt - 60,
-        }),
-        route: source({
-          mate: snapshot.sources.route?.value?.mate,
-          terminal: { ...terminal, cameras: [camera] },
-        }),
+        },
       },
     };
+    const { markup } = await render(
+      "https://ferry.fyi/clinton",
+      currentSnapshot,
+      Date.parse("2025-07-28T19:00:00.000Z")
+    );
+    const page = JSDOM.fragment(markup);
+    const ad = page.querySelector("[data-ad-campaign]")!;
+    const departures = page.querySelector("#departures")!;
+    const history = page.querySelector("[data-past-sailings]")!;
+    const recentSummary = history.querySelector(
+      "[data-recent-sailings] > li > details > summary"
+    )!;
+
+    expect(
+      ad.compareDocumentPosition(departures) & ad.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(page.querySelectorAll("[data-ad-campaign]")).toHaveLength(1);
+    expect(history.tagName).toBe("DIV");
+    expect(history.querySelector("[data-older-sailings]")).toBeNull();
+    expect(recentSummary.textContent).not.toContain("Tokitae");
+    expect(recentSummary.querySelector("svg")).toBeNull();
+    expect(recentSummary.lastElementChild?.tagName).toBe("TIME");
+    expect(departures.querySelector(":scope > h2")).toBeNull();
+    expect(
+      recentSummary.querySelector("[data-confirmed-capacity-fill]")
+    ).not.toBeNull();
+    expect(history.textContent).toContain("Tokitae");
+  });
+
+  it("renders camera search-intent content and freshness in initial HTML", async () => {
+    const { camera, snapshot } = createCameraSsrFixture();
 
     const { markup } = await render(
       "https://ferry.fyi/clinton/mukilteo/cameras",
-      cameraSnapshot
+      snapshot
+    );
+    const page = JSDOM.fragment(markup);
+    const planning = page.querySelector(
+      'nav[aria-label="Camera planning links"]'
     );
 
-    expect(markup).toContain("Updated just now");
-    expect(markup).toContain("WSDOT");
+    expect(page.querySelector("h1")?.textContent).toBe(
+      "Clinton ferry terminal cameras"
+    );
+    expect(page.textContent).toContain(
+      "View traffic camera images at the Clinton ferry terminal before departing for Mukilteo. Check visible vehicle lines before you travel."
+    );
+    expect(page.textContent).not.toContain(
+      "Snapshots are not live video or measured wait times."
+    );
+    expect(page.querySelector("img")?.getAttribute("alt")).toBe(
+      `Traffic camera at Clinton ferry terminal: ${camera.title}`
+    );
+    expect(page.textContent).toContain("Image checked just now");
+    expect(page.textContent).toContain(
+      "Camera image available. Camera: active."
+    );
+    expect(page.textContent).toContain("Static holding capacity: 20 cars.");
+    expect(page.textContent).toContain(
+      "Camera position: 5 car spaces from boarding."
+    );
+    expect(planning?.querySelector('a[href="/clinton"]')?.textContent).toBe(
+      "Schedule & wait"
+    );
+    expect(
+      planning?.querySelector('a[href="/clinton/terminal"]')?.textContent
+    ).toBe("Terminal info");
+    expect(
+      planning?.querySelector('a[href="/clinton/alerts"]')?.textContent
+    ).toBe("WSF Alerts");
+    expect(page.textContent).toContain("WSDOT");
+  });
+
+  // keep unavailable frames from becoming available-image claims
+  it("renders explicit unavailable camera frame status", async () => {
+    const { snapshot } = createCameraSsrFixture("unavailable");
+
+    const { markup } = await render(
+      "https://ferry.fyi/clinton/mukilteo/cameras",
+      snapshot
+    );
+    const page = JSDOM.fragment(markup);
+
+    expect(page.textContent).toContain("Camera image unavailable.");
+    expect(page.textContent).not.toContain("Camera image available.");
+    expect(page.textContent).toContain("Image check failed");
+    expect(page.textContent).not.toContain("Image checked just now");
   });
 
   it("renders the public home route from its anonymous seed", async () => {
@@ -631,6 +931,61 @@ describe("AppRoot server rendering", () => {
     );
     expect(home.markup).not.toContain("Loading ferry routes and terminals");
   }, 15_000);
+
+  // match homepage ad gutters before hydration without reserving an empty slot
+  it.each([true, false])(
+    "keeps homepage ad spacing content-owned with a creative: %s",
+    async (hasCreative) => {
+      const { snapshot, source, terminal } = createPublicSsrFixtures();
+      const homeSnapshot = {
+        ...snapshot,
+        canonicalPath: "/",
+        metadata: { ...snapshot.metadata, canonicalPath: "/" },
+        normalizedUrl: { path: "/", query: {} },
+        routeId: "home",
+        sources: {
+          ad: source({
+            creative: hasCreative
+              ? {
+                  advertiserName: "Home Coffee",
+                  body: "Coffee near the dock.",
+                  campaignId: "5ed338e9-acbb-4cca-9380-1a923bfca5c8",
+                  headline: "Fuel up before sailing",
+                  placementKey: "home",
+                  targetUrl: "https://example.test/menu",
+                }
+              : null,
+            placementKey: "home",
+          }),
+          features: source({ leaderboardsEnabled: true }),
+          terminals: source([terminal]),
+        },
+      };
+      const { markup } = await render("https://ferry.fyi/", homeSnapshot);
+      const page = JSDOM.fragment(markup);
+      const hero = page.querySelector(
+        'nav[aria-label="Quick links"]'
+      )?.parentElement;
+      const gutter = hero?.nextElementSibling;
+      const ad = gutter?.querySelector('[data-ad-slot="home"]');
+
+      expect(hero?.classList).toContain(
+        "min-h-[calc(16rem+var(--safe-area-inset-top))]"
+      );
+      expect(gutter?.className).toBe("px-4");
+      // only the actual creative contributes vertical padding
+      if (hasCreative) {
+        expect(ad?.className).toBe("mx-auto w-full max-w-6xl py-4");
+        expect(ad?.querySelector("[data-ad-campaign]")).not.toBeNull();
+      } else {
+        expect(gutter?.children).toHaveLength(0);
+        expect(page.querySelector("[data-ad-campaign]")).toBeNull();
+      }
+      expect(
+        page.querySelector('nav[aria-label="Ferry terminals"]')
+      ).not.toBeNull();
+    }
+  );
 
   it("renders Today from its anonymous seed", async () => {
     const { snapshot } = createPublicSsrFixtures();
@@ -724,7 +1079,7 @@ describe("AppRoot server rendering", () => {
       "20°C",
       "12 km/h",
       "1.5 m",
-      'aria-label="Route navigation"',
+      'aria-label="Route quick links"',
     ]) {
       expect(schedule.markup).toContain(text);
     }
@@ -737,11 +1092,16 @@ describe("AppRoot server rendering", () => {
       "Accessible boarding is available.",
       "One sailing wait",
       "20 minutes",
-      "https://example.com/terminal",
       "47.9",
     ]) {
       expect(details.markup).toContain(text);
     }
+    expect(details.markup).not.toContain("https://example.com/terminal");
+    // native terminal anchors use the real server-rendered scroll container
+    const terminalDocument = JSDOM.fragment(details.markup);
+    expect(
+      terminalDocument.querySelector(".overflow-y-auto")?.classList
+    ).toContain("motion-safe:scroll-smooth");
     const fare = await render(
       "https://ferry.fyi/clinton/mukilteo/fare",
       snapshot
@@ -752,6 +1112,28 @@ describe("AppRoot server rendering", () => {
     expect(fare.markup).toContain("Show full fare table");
     expect(fare.markup).toContain('data-fare-id="1"');
     expect(fare.markup).toContain('data-fare-id="2"');
+    const fareDocument = JSDOM.fragment(fare.markup);
+    // no-js fare links retain enough height to align the custom section
+    expect(fareDocument.querySelector(".overflow-y-auto")?.classList).toContain(
+      "motion-safe:scroll-smooth"
+    );
+    expect(
+      fareDocument.querySelector("#custom-fare-calculator")?.classList
+    ).toContain("min-h-[100dvh]");
+    expect(fareDocument.querySelector("h1")?.textContent).toBe(
+      "Clinton to Mukilteo ferry fares"
+    );
+    expect(
+      fareDocument.querySelector('[aria-labelledby="fare-vehicle-heading"]')
+        ?.textContent
+    ).toContain("One way$22.00");
+    expect(
+      fareDocument.querySelector('[aria-labelledby="fare-vehicle-heading"]')
+        ?.textContent
+    ).toContain("Round trip$44.00");
+    expect(
+      fareDocument.querySelector('a[href="#custom-fare-calculator"]')
+    ).not.toBeNull();
     const vesselSnapshot = {
       ...snapshot,
       sources: {
@@ -816,7 +1198,13 @@ describe("AppRoot server rendering", () => {
       },
     } as PublicSsrSnapshot;
     const schedule = await render("https://ferry.fyi/clinton/mukilteo", seeded);
-    expect(schedule.markup).toContain('href="/clinton/terminal"');
+    const terminalLink = JSDOM.fragment(schedule.markup).querySelector(
+      'a[href^="/clinton/terminal"]'
+    );
+    expect(
+      new URL(terminalLink?.getAttribute("href") ?? "", "https://ferry.fyi")
+        .pathname
+    ).toBe("/clinton/terminal");
     expect(schedule.markup).not.toContain('href="/clinton/mukilteo/terminal"');
     expect(schedule.markup).not.toContain("Unrelated crossing");
     expect(schedule.markup).toContain("m MLLW");

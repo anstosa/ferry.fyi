@@ -86,6 +86,9 @@ vi.mock("../../client/views/Schedule/VesselStatusView", () => ({
 import { SlotInfo } from "../../client/views/Schedule/SlotInfo";
 
 let root: Root | undefined;
+const CompactSlotInfo = SlotInfo as React.ComponentType<
+  React.ComponentProps<typeof SlotInfo> & { compact?: boolean }
+>;
 
 // resize observer test double
 class ResizeObserverMock {
@@ -132,23 +135,39 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+interface RenderSlotOptions {
+  compact?: boolean;
+  getSailingShareUrl?: (tab: DetailTab) => string;
+  isExpanded?: boolean;
+  onClick?: () => void;
+}
+
 // render one sailing detail
 const renderSlotInfo = (
   slot = createForecastSlot({ fullRisk: "unlikely", spacesLeft: 15 }),
   initialDetailTab: DetailTab = "forecast",
-  initialEntry = "/"
+  initialEntry = "/",
+  options: RenderSlotOptions = {}
 ): HTMLElement => {
+  const {
+    compact = false,
+    getSailingShareUrl,
+    isExpanded = true,
+    onClick = vi.fn(),
+  } = options;
   const container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container);
   act(() =>
     root?.render(
       <MemoryRouter initialEntries={[initialEntry]}>
-        <SlotInfo
+        <CompactSlotInfo
+          compact={compact}
+          getSailingShareUrl={getSailingShareUrl}
           initialDetailTab={initialDetailTab}
-          isExpanded
+          isExpanded={isExpanded}
           location={{ address: {}, latitude: 47.98, longitude: -122.35 }}
-          onClick={vi.fn()}
+          onClick={onClick}
           schedule={[slot]}
           setElement={vi.fn()}
           slot={slot}
@@ -160,6 +179,150 @@ const renderSlotInfo = (
   );
   return container;
 };
+
+describe("compact past sailing row", () => {
+  // show only the past sailing essentials in one 28px header
+  it("renders clock time without a vessel or arrow in a compact header", () => {
+    const slot = createForecastSlot({
+      fullRisk: "unlikely",
+      spacesLeft: 15,
+    });
+    const container = renderSlotInfo(slot, "forecast", "/", {
+      compact: true,
+      isExpanded: false,
+    });
+    const header = container.querySelector<HTMLElement>(
+      'section[role="button"]'
+    );
+
+    expect(header?.classList).toContain("h-7");
+    expect(header?.textContent).toContain(
+      DateTime.fromSeconds(slot.time, {
+        zone: "America/Los_Angeles",
+      }).toFormat("h:mm a")
+    );
+    expect(header?.textContent).not.toContain("Test Vessel");
+    expect(header?.getAttribute("aria-expanded")).toBe("false");
+    expect(header?.querySelector("svg")).toBeNull();
+    expect(container.querySelector('[role="tablist"]')).toBeNull();
+  });
+
+  // retain native keyboard activation for a compact past row
+  it.each(["Enter", " "])("expands from the %s key", (key) => {
+    const onClick = vi.fn();
+    const container = renderSlotInfo(undefined, "forecast", "/", {
+      compact: true,
+      isExpanded: false,
+      onClick,
+    });
+    const header = container.querySelector<HTMLElement>(
+      'section[role="button"]'
+    );
+
+    act(() => {
+      header?.dispatchEvent(
+        new KeyboardEvent("keydown", { bubbles: true, key })
+      );
+    });
+
+    expect(onClick).toHaveBeenCalledOnce();
+  });
+
+  // keep a confirmed cancellation readable in the compressed row
+  it("shows a cancelled label without expanding details", () => {
+    const slot = createForecastSlot({
+      fullRisk: "unlikely",
+      spacesLeft: 15,
+      withLiveCapacity: true,
+    });
+    // mark the fixture as provider-cancelled
+    if (slot.crossing) {
+      slot.crossing.isCancelled = true;
+    }
+    const container = renderSlotInfo(slot, "forecast", "/", {
+      compact: true,
+      isExpanded: false,
+    });
+    const header = container.querySelector<HTMLElement>(
+      'section[role="button"]'
+    );
+
+    expect(header?.textContent).toContain("Cancelled");
+    expect(container.querySelector('[role="tablist"]')).toBeNull();
+  });
+
+  // source-only tidal cancellations keep the scheduled time in compact history
+  it("shows cancellationReason-only history at its scheduled clock", () => {
+    const slot = createForecastSlot({
+      fullRisk: "unlikely",
+      spacesLeft: 15,
+      withLiveCapacity: true,
+    });
+    slot.cancellationReason = "tidal";
+    slot.hasPassed = true;
+    // keep provider cancellation false while projecting a delayed departure
+    if (slot.crossing) {
+      slot.crossing.departureDelta = 10 * 60;
+      slot.crossing.isCancelled = false;
+    }
+    const scheduled = DateTime.fromSeconds(slot.time, {
+      zone: "America/Los_Angeles",
+    });
+    const container = renderSlotInfo(slot, "forecast", "/", {
+      compact: true,
+      isExpanded: false,
+    });
+    const header = container.querySelector<HTMLElement>(
+      'section[role="button"]'
+    );
+
+    expect(header?.textContent).toContain("Cancelled");
+    expect(header?.textContent).toContain(scheduled.toFormat("h:mm a"));
+    expect(header?.textContent).not.toContain(
+      scheduled.plus({ minutes: 10 }).toFormat("h:mm a")
+    );
+    expect(header?.querySelector("time")?.getAttribute("dateTime")).toBe(
+      scheduled.toISO()
+    );
+  });
+
+  // expanded compact rows retain the full tabs and selected-tab share action
+  it("keeps full details and share behavior when expanded", async () => {
+    share.canShare.mockResolvedValue({ value: true });
+    const getSailingShareUrl = vi.fn(
+      () => "https://ferry.fyi/clinton?date=2026-10-09&tab=vessel"
+    );
+    const container = renderSlotInfo(undefined, "vessel", "/clinton", {
+      compact: true,
+      getSailingShareUrl,
+    });
+    const tabs = Array.from(container.querySelectorAll('[role="tab"]'));
+    const button = container.querySelector<HTMLButtonElement>(
+      '[aria-label="Share this sailing tab"]'
+    );
+
+    expect(tabs.map((tab) => tab.textContent)).toEqual([
+      "Sailing",
+      "Forecast",
+      "Vessel",
+    ]);
+    expect(
+      container
+        .querySelector('[role="tab"][aria-selected="true"]')
+        ?.textContent?.trim()
+    ).toBe("Vessel");
+    await act(async () => {
+      button?.click();
+      await vi.waitFor(() => expect(share.share).toHaveBeenCalledOnce());
+    });
+    expect(getSailingShareUrl).toHaveBeenCalledWith("vessel");
+    expect(share.share).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: "https://ferry.fyi/clinton?date=2026-10-09&tab=vessel",
+      })
+    );
+  });
+});
 
 describe("sailing detail sharing", () => {
   // native share success

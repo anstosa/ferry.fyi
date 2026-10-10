@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Op } from "sequelize";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const database = vi.hoisted(() => ({ query: vi.fn(), transaction: vi.fn() }));
 const campaigns = vi.hoisted(() => ({ findByPk: vi.fn(), findOne: vi.fn() }));
@@ -62,6 +62,26 @@ describe("first-party ad measurement", () => {
       })
     );
     expect(database.query).not.toHaveBeenCalled();
+  });
+
+  it("creates a terminal-scoped navigation placement", async () => {
+    campaigns.findOne.mockResolvedValue(null);
+    exposures.create.mockResolvedValue({});
+
+    await issueAdExposure(
+      "navigation--3",
+      new Date("2026-08-05T06:59:00.000Z")
+    );
+
+    expect(placements.findOrCreate).toHaveBeenCalledWith({
+      defaults: expect.objectContaining({
+        arrivalTerminalId: null,
+        departureTerminalId: "3",
+        key: "navigation--3",
+        slot: "navigation",
+      }),
+      where: { key: "navigation--3" },
+    });
   });
 
   it("binds a paused scheduled campaign but exposes no creative", async () => {

@@ -27,6 +27,7 @@ const adapters = vi.hoisted(() => ({
   canShare: vi.fn(),
   share: vi.fn(),
   clipboard: vi.fn(),
+  scroll: vi.fn(),
 }));
 const analytics = vi.hoisted(() => ({
   trackUsefulEvent: vi.fn(),
@@ -93,6 +94,7 @@ const NOW = 1_800_000_000;
 let root: Root;
 let container: HTMLDivElement;
 let schedule: Schedule;
+const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
 
 // return the current deterministic schedule fixture
 const refreshSchedule = (): Promise<Schedule> => Promise.resolve(schedule);
@@ -231,6 +233,8 @@ beforeEach(async () => {
   vi.setSystemTime(NOW * 1000);
   window.localStorage.clear();
   vi.resetAllMocks();
+  // observe the real estimate target without jsdom layout support
+  HTMLElement.prototype.scrollIntoView = adapters.scroll;
   window.history.replaceState(
     { idx: 3, key: "test" },
     "",
@@ -266,10 +270,130 @@ afterEach(async () => {
     root.unmount();
   });
   document.body.innerHTML = "";
+  // restore the browser method after the isolated presentation fixture
+  HTMLElement.prototype.scrollIntoView = originalScrollIntoView;
   vi.useRealTimers();
 });
 
 describe("leave-now sailing card", () => {
+  // ordinary form edits must not jump away from the rider's controls
+  it("does not scroll on mount, typing, or travel preference changes", async () => {
+    expect(adapters.scroll).not.toHaveBeenCalled();
+    await input("Starting address", "Synthetic origin");
+    await click("Walk");
+    await input("Safety buffer (minutes)", "10");
+
+    expect(adapters.scroll).not.toHaveBeenCalled();
+    expect(adapters.post).not.toHaveBeenCalled();
+    expect(adapters.location).not.toHaveBeenCalled();
+  });
+
+  // every explicit origin action brings the pending estimate into view
+  it.each(["manual", "place", "location"])(
+    "scrolls to the loading estimate for a %s origin before the response",
+    async (origin) => {
+      let resolve: (value: SailingRecommendationResponse) => void = () =>
+        undefined;
+      adapters.post.mockReturnValue(
+        new Promise<SailingRecommendationResponse>((finish) => {
+          // hold provider completion while observing the committed skeleton
+          resolve = finish;
+        })
+      );
+      // choose the matching user-initiated request path
+      if (origin === "place") {
+        await input("Starting address", "Selected Google address");
+      } else if (origin === "manual") {
+        await input("Starting address", "Synthetic origin");
+        await click("Estimate trip");
+      } else {
+        await click("Use my location");
+      }
+      const estimate = container.querySelector(
+        '[aria-live="polite"][aria-busy="true"]'
+      );
+      expect(
+        estimate?.querySelector('[aria-label="Estimating your trip"]')
+      ).not.toBeNull();
+      expect(adapters.scroll).toHaveBeenCalledExactlyOnceWith({
+        block: "start",
+      });
+      expect(adapters.scroll.mock.contexts[0]).toBe(estimate);
+
+      await act(async () => {
+        resolve(makeResponse());
+        await Promise.resolve();
+      });
+      await input("Safety buffer (minutes)", "10");
+      expect(adapters.scroll).toHaveBeenCalledTimes(1);
+      // preserve manual and selected-address text through scrolling and completion
+      if (origin !== "location") {
+        expect(
+          container.querySelector<HTMLInputElement>(
+            '[aria-label="Starting address"]'
+          )?.value
+        ).toBe(
+          origin === "place" ? "Selected Google address" : "Synthetic origin"
+        );
+      }
+    }
+  );
+
+  // reveal progress during the free schedule read before starting paid directions
+  it("scrolls as loading starts even while the schedule refresh is pending", async () => {
+    let resolve: (value: Schedule) => void = () => undefined;
+    const pendingRefresh = new Promise<Schedule>((finish) => {
+      // hold the earlier request stage rather than the provider result
+      resolve = finish;
+    });
+    await act(() => {
+      root.render(
+        <SailingRecommendationCard
+          onRefreshSchedule={() => pendingRefresh}
+          schedule={schedule}
+        />
+      );
+    });
+    await input("Starting address", "Synthetic origin");
+    await click("Estimate trip");
+
+    expect(adapters.post).not.toHaveBeenCalled();
+    expect(adapters.scroll).toHaveBeenCalledExactlyOnceWith({ block: "start" });
+    await act(async () => {
+      resolve(schedule);
+      await Promise.resolve();
+    });
+    expect(adapters.post).toHaveBeenCalledTimes(1);
+    expect(adapters.scroll).toHaveBeenCalledTimes(1);
+  });
+
+  // a later explicit estimate scrolls again without repeated jumps within a request
+  it("scrolls once for each newly started estimate", async () => {
+    let resolve: (value: SailingRecommendationResponse) => void = () =>
+      undefined;
+    // supply a separately controlled completion for each explicit action
+    adapters.post.mockImplementation(
+      () =>
+        new Promise<SailingRecommendationResponse>((finish) => {
+          resolve = finish;
+        })
+    );
+    await input("Starting address", "Synthetic origin");
+    await click("Estimate trip");
+    expect(adapters.scroll).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      resolve(makeResponse());
+      await Promise.resolve();
+    });
+    await click("Estimate trip");
+    expect(adapters.scroll).toHaveBeenCalledTimes(2);
+    await act(async () => {
+      resolve(makeResponse());
+      await Promise.resolve();
+    });
+    expect(adapters.scroll).toHaveBeenCalledTimes(2);
+  });
+
   // safety margins choose a safer boat without delaying the rider's actual arrival
   it.each(["drive", "walk", "bicycle", "transit", "forecast"] as const)(
     "shows physical boarding chance rather than buffer-readiness chance for %s",
@@ -735,6 +859,12 @@ describe("leave-now sailing card", () => {
           '[aria-label="Estimating your trip"] .skeleton'
         ).length
       ).toBeGreaterThan(10);
+      expect(
+        container.querySelectorAll("[data-sailing-estimate-placeholder]")
+      ).toHaveLength(3);
+      expect(
+        container.querySelector("[data-estimate-timeline-placeholder]")
+      ).not.toBeNull();
       expect(container.textContent).not.toContain("Estimating your trip…");
       expect(
         container.querySelector('[aria-label="Sailing estimates"]')

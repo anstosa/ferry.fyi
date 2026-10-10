@@ -11,6 +11,7 @@ import { formatUpdatedAt } from "../../shared/lib/freshness";
 
 interface FreshnessPillBaseProps {
   className?: string;
+  labelPrefix?: string;
   now?: number;
   passive?: boolean;
   sourceUpdatedAt: number | null;
@@ -38,14 +39,13 @@ const baseClassName =
   "inline-flex w-fit items-center rounded-full border px-2 py-1 text-2xs font-bold " +
   "border-black bg-white text-black dark:border-white dark:bg-black dark:text-white";
 
-/**
- * Shows the age of source data, optionally as a refresh action.
- */
+// show source age with an optional precise label and refresh action
 export const FreshnessPill = (
   props: FreshnessPillProps
 ): ReactElement | null => {
   const {
     className,
+    labelPrefix = "Updated",
     now: fixedNow,
     passive = false,
     sourceUpdatedAt,
@@ -53,7 +53,7 @@ export const FreshnessPill = (
   } = props;
   const [currentNow, setCurrentNow] = useState(() => Date.now() / 1000);
   const now = fixedNow ?? currentNow;
-  const label = formatUpdatedAt(sourceUpdatedAt, now);
+  const label = formatUpdatedAt(sourceUpdatedAt, now, labelPrefix);
   const classes = clsx(baseClassName, className);
 
   useEffect(() => {

@@ -1,16 +1,17 @@
 import React, { type ReactElement } from "react";
-import type { CameraFrameStatus } from "shared/contracts/cameraFrames";
 
 import { CameraFrameFreshness } from "./CameraFrameFreshness";
 
 interface CameraImageFooterProps {
-  frameStatus?: Pick<CameraFrameStatus, "checkedAt">;
+  frameStatus?: React.ComponentProps<
+    typeof CameraFrameFreshness
+  >["frameStatus"];
   now?: number;
   ownerName?: string | null;
   passive?: boolean;
 }
 
-/** Keeps camera ownership and freshness visible over an image in every render mode. */
+// retain source attribution and truthful check status in every render mode
 export const CameraImageFooter = ({
   frameStatus,
   now,

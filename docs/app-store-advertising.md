@@ -1,6 +1,6 @@
 # App-store advertising launch checklist
 
-Last reviewed: August 21, 2026.
+Last reviewed: October 9, 2026.
 
 This checklist covers Ferry FYI's directly served contextual advertisements.
 Ferry FYI does not use a third-party advertising network or advertising SDK.
@@ -11,10 +11,11 @@ whether the app contains advertising must be answered **yes**.
 
 The app-store builds enforce these advertising boundaries:
 
-- Ads are selected only from the current page and, when relevant, route
-  direction. Account data, precise location, saved tickets, notification
-  settings, advertising identifiers, prior activity, and off-app activity are
-  excluded from selection.
+- Ads are selected only from the current page and, when relevant, ferry
+  terminal or route direction. Navigation inventory uses the selected departure
+  terminal, never the trip's starting address or coordinates. Account data,
+  precise location, saved tickets, notification settings, advertising
+  identifiers, prior activity, and off-app activity are excluded from selection.
 - Every creative identifies the advertiser, is labeled `Advertisement`, links
   to the in-app contextual-selection explanation, and provides a `Report ad`
   email action.
@@ -156,7 +157,8 @@ for the route where an active review campaign can be seen:
 > Ferry FYI displays manually reviewed contextual text advertisements on its
 > home and ferry-planning pages. It uses no third-party ad network or ad
 > SDK, IDFA, advertising identifier, cross-app tracking, or behavioral profile.
-> Selection uses only the current page and route direction. Anonymous
+> Selection uses only the current page and, when relevant, route direction or
+> selected departure terminal, never the trip origin or coordinates. Anonymous
 > two-hour exposure tokens provide aggregate campaign counts and are not linked
 > to an account, device, browser, visitor, or session. Each advertisement names
 > the advertiser, links to the contextual-selection explanation, and includes

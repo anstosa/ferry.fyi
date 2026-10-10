@@ -8,13 +8,13 @@ import TrophyIcon from "~/static/images/icons/solid/trophy.svg";
 const QUICK_LINK_CLASSES =
   "inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-3 py-1.5 text-sm font-bold shadow-sm transition hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white";
 
-// homepage introduction
+// let wrapped homepage copy fit above the ad and terminal directory
 export const HomeHero = ({
   leaderboardsEnabled,
 }: {
   leaderboardsEnabled: boolean;
 }): ReactElement => (
-  <div className="flex h-[calc(16rem+var(--safe-area-inset-top))] w-full flex-col items-center justify-center pt-safe-top">
+  <div className="flex min-h-[calc(16rem+var(--safe-area-inset-top))] w-full flex-col items-center justify-center pt-safe-top">
     <img
       alt=""
       className="w-28"

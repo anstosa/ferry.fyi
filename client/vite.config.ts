@@ -307,6 +307,14 @@ export default defineConfig(() => ({
           if (id.includes("/node_modules/@revenuecat/purchases-js/")) {
             return "revenuecat-web-billing";
           }
+          // combine static route overviews already imported by the loading shell
+          if (
+            /\/client\/components\/(AlertsOverview|CameraOverview|FareRatesOverview|ScheduleOverview|TerminalOverview|RoutePlanningLinks|RouteQuickLinks|RoutePageIntro)\.tsx$/.test(
+              id
+            )
+          ) {
+            return "routeOverviews";
+          }
           // feature module guard
           if (
             id.endsWith("/client/lib/leaderboardAutomatic.ts") ||

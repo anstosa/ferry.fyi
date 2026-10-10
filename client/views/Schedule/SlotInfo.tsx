@@ -32,6 +32,7 @@ import {
 import { isNull } from "shared/lib/identity";
 import { pluralize } from "shared/lib/strings";
 
+import { CompactSailingSummary } from "~/components/CompactSailingSummary";
 import { ErrorBoundary } from "~/components/ErrorBoundary";
 import { ExternalPillLink } from "~/components/ExternalPillLink";
 import { trackUsefulEvent } from "~/lib/analytics";
@@ -246,6 +247,7 @@ const removeSailingAlertRule = (
 
 interface Props {
   className?: string;
+  compact?: boolean;
   getSailingShareUrl?: (tab: DetailTab) => string;
   initialDetailTab?: DetailTab;
   isExpanded: boolean;
@@ -264,6 +266,7 @@ interface Props {
 export const SlotInfo = (props: Props): ReactElement => {
   const {
     className = "",
+    compact = false,
     getSailingShareUrl,
     initialDetailTab,
     isExpanded,
@@ -297,7 +300,9 @@ export const SlotInfo = (props: Props): ReactElement => {
   const currentSlot = getCurrentSlot(schedule, time);
   const isNext = slot === currentSlot;
   const timing = getProjectedTiming({ schedule, slot });
-  const sailingTime = DateTime.fromSeconds(slot.time);
+  const sailingTime = DateTime.fromSeconds(slot.time, {
+    zone: "America/Los_Angeles",
+  });
   const sailingTerminalIds = [terminalId, slot.mateId];
   const sailingRouteKey = getRouteSubscriptionKey(sailingTerminalIds);
   const sailingAlertRule = createOneTimeSailingAlertRule({
@@ -580,12 +585,14 @@ export const SlotInfo = (props: Props): ReactElement => {
     }
   };
 
+  // retain row activation and details while compressing completed sailings
   const renderHeader = (): ReactNode => (
     <section
       className={clsx(
-        // align full stripes
-        "relative isolate p-3 h-[84.85px]",
-        "flex justify-between",
+        // keep history to a single row without changing upcoming capacity stripes
+        compact
+          ? "relative isolate flex h-7 items-center gap-2 px-3 text-xs"
+          : "relative isolate flex justify-between p-3 h-[84.85px]",
         "cursor-pointer transition",
         "hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2",
         "focus-visible:ring-green-light dark:hover:bg-white/10"
@@ -600,47 +607,61 @@ export const SlotInfo = (props: Props): ReactElement => {
         }
       }}
       role="button"
-      aria-label={`${time.toLocaleString(DateTime.DATETIME_SHORT)} sailing`}
+      aria-label={
+        compact
+          ? undefined
+          : `${sailingTime.toLocaleString(DateTime.DATETIME_SHORT)} sailing`
+      }
       aria-expanded={isExpanded}
       tabIndex={0}
     >
-      {/* cancellation frame */}
-      {renderCancellationFrame()}
-      <Capacity
-        hasDeparted={hasDeparted}
-        isDaylight={isDaylight}
-        leftReservedWidth={isSmallBoat ? SMALL_BOAT_ROW_LABEL_SAFE_WIDTH : 0}
-        slot={slot}
-      />
-      {/* small boat guard */}
-      {isSmallBoat && (
-        <span
-          className={clsx(
-            "pointer-events-none absolute -left-px top-1/2 z-10",
-            "flex -translate-y-1/2 flex-col items-center justify-center",
-            "min-h-[4.5rem] w-5 rounded-r",
-            "bg-red-dark text-white dark:bg-red-dark dark:text-white",
-            "text-[9px] font-bold leading-none tracking-wide shadow-sm"
+      {compact ? (
+        <CompactSailingSummary isDaylight={isDaylight} slot={slot} />
+      ) : (
+        <>
+          {/* cancellation frame */}
+          {renderCancellationFrame()}
+          <Capacity
+            hasDeparted={hasDeparted}
+            isDaylight={isDaylight}
+            leftReservedWidth={
+              isSmallBoat ? SMALL_BOAT_ROW_LABEL_SAFE_WIDTH : 0
+            }
+            slot={slot}
+          />
+          {/* small boat guard */}
+          {isSmallBoat && (
+            <span
+              className={clsx(
+                "pointer-events-none absolute -left-px top-1/2 z-10",
+                "flex -translate-y-1/2 flex-col items-center justify-center",
+                "min-h-[4.5rem] w-5 rounded-r",
+                "bg-red-dark text-white dark:bg-red-dark dark:text-white",
+                "text-[9px] font-bold leading-none tracking-wide shadow-sm"
+              )}
+              aria-label="Small boat"
+            >
+              <ShipIcon className="mb-1 h-3 w-3 shrink-0" />
+              <span className="rotate-180 [writing-mode:vertical-rl]">
+                SMALL
+              </span>
+            </span>
           )}
-          aria-label="Small boat"
-        >
-          <ShipIcon className="mb-1 h-3 w-3 shrink-0" />
-          <span className="rotate-180 [writing-mode:vertical-rl]">SMALL</span>
-        </span>
+          <div className="flex flex-col justify-between items-start z-0">
+            <div className="flex-grow" />
+            <Status className="" hasDeparted={hasDeparted} timing={timing} />
+          </div>
+          <Time
+            context={sailingContext}
+            hasDeparted={hasDeparted}
+            isExpanded={isExpanded}
+            isNext={isNext}
+            rowState={timeRowState}
+            time={time}
+            timing={timing}
+          />
+        </>
       )}
-      <div className="flex flex-col justify-between items-start z-0">
-        <div className="flex-grow" />
-        <Status className="" hasDeparted={hasDeparted} timing={timing} />
-      </div>
-      <Time
-        context={sailingContext}
-        hasDeparted={hasDeparted}
-        isExpanded={isExpanded}
-        isNext={isNext}
-        rowState={timeRowState}
-        time={time}
-        timing={timing}
-      />
     </section>
   );
 

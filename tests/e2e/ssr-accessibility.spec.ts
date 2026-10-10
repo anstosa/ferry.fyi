@@ -10,7 +10,7 @@ const criticalPages = [
   },
   {
     label: "directional schedule",
-    liveText: "75 spaces left",
+    liveButtonName: /^Confirmed capacity: 25% full Scheduled departure /,
     path: "/seattle/bainbridge",
     ssrText: /76 vehicle spaces reported/,
   },
@@ -94,9 +94,16 @@ for (const pageCase of criticalPages) {
     expect(control.ok()).toBe(true);
     releaseBrowserPhase();
     await page.waitForLoadState("networkidle");
-    await expect(
-      page.getByText(pageCase.liveText, { exact: true }).first()
-    ).toBeVisible();
+    // confirmed past capacity stays accessible in the compact collapsed row
+    if ("liveButtonName" in pageCase) {
+      await expect(
+        page.getByRole("button", { name: pageCase.liveButtonName }).first()
+      ).toBeVisible();
+    } else {
+      await expect(
+        page.getByText(pageCase.liveText, { exact: true }).first()
+      ).toBeVisible();
+    }
     const results = await new AxeBuilder({ page })
       .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
       .analyze();

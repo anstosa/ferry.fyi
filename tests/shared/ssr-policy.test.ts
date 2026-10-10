@@ -22,7 +22,10 @@ import {
   getSailingDayId,
   SAILING_DAY_ZONE,
 } from "../../shared/lib/ssrCachePolicy";
-import { normalizePublicQuery } from "../../shared/lib/ssrQueryPolicy";
+import {
+  normalizePublicQuery,
+  publicQueryCacheKey,
+} from "../../shared/lib/ssrQueryPolicy";
 import {
   getPublicSsrHostProfile,
   matchPublicSsrRoute,
@@ -174,9 +177,37 @@ const farePayload = {
       tripDate: "2026-07-28",
     },
   },
+  defaultRates: {
+    passenger: {
+      oneWay: {
+        amount: 1,
+        freshness: {
+          fetchedAt: 1,
+          policyVersion: "v1",
+          sourceCacheFlushDate: null,
+          validFrom: "2026-07-28",
+          validThrough: "2026-07-29",
+        },
+        state: "current",
+      },
+      roundTrip: null,
+    },
+    standardVehicle: { oneWay: null, roundTrip: null },
+  },
 } satisfies PublicSsrPayloadMap["fares"];
 const noFarePayload = {
   state: "no-fare",
+  defaultRates: {
+    passenger: {
+      oneWay: {
+        amount: 0,
+        freshness: farePayload.catalog.freshness,
+        state: "no-fare",
+      },
+      roundTrip: null,
+    },
+    standardVehicle: { oneWay: null, roundTrip: null },
+  },
   noFare: {
     freshness: farePayload.catalog.freshness,
     kind: "no-fare",
@@ -468,6 +499,40 @@ describe("SSR contracts", () => {
     );
   });
 
+  // reject impossible flattened fare amounts at the snapshot boundary
+  it.each([
+    ["negative current", -1, "current"],
+    ["nonzero no-fare", 1, "no-fare"],
+  ] as const)("rejects a %s default fare rate", (_label, amount, state) => {
+    const invalidFarePayload = structuredClone(farePayload) as Record<
+      string,
+      any
+    >;
+    const rate = invalidFarePayload.defaultRates.passenger.oneWay;
+    // fixture always carries the selected default rate
+    if (!rate) {
+      throw new Error("Missing default fare test fixture");
+    }
+    rate.amount = amount;
+    rate.state = state;
+    const fares = snapshot(
+      "terminal-fares",
+      "/seattle/fare",
+      {
+        ad: ad("fare--1--2"),
+        route: source(routePayload),
+        fares: source(invalidFarePayload),
+        notices: source({
+          announcements: [],
+          maintenance: { enabled: false, message: "" },
+        }),
+      },
+      { terminalSlug: "seattle" }
+    );
+
+    expect(() => assertPublicSsrSnapshot(fares, resolver)).toThrow("fares");
+  });
+
   // accept the public badge already emitted by the leaderboard service
   it.each([true, false])(
     "validates a public supporter badge of %s",
@@ -658,16 +723,29 @@ describe("SSR matcher and query policy", () => {
       matchPublicSsrRoute(new URL("https://ferry.fyi/sea"))
     ).toBeUndefined();
   });
-  it("keeps fare selectors out of public SSR query and cache identity", () => {
+  it("keeps only the fare date in public SSR query and cache identity", () => {
     const fareRoute = PUBLIC_SSR_ROUTE_MANIFEST.find(
       (item) => item.id === "terminal-fares"
     ) as PublicSsrRouteDefinition;
-    expect(
-      normalizePublicQuery(
-        fareRoute,
-        new URLSearchParams("fareAdults=02&fareMode=vehicle&tracking=x")
+    const selectedDate = normalizePublicQuery(
+      fareRoute,
+      new URLSearchParams(
+        "date=2026-08-01&fareAdults=02&fareMode=vehicle&tracking=x"
       )
-    ).toEqual({ rejected: [], values: {} });
+    );
+    expect(selectedDate).toEqual({
+      rejected: [],
+      values: { date: "2026-08-01" },
+    });
+    expect(publicQueryCacheKey(selectedDate)).toBe("date=2026-08-01");
+    expect(
+      publicQueryCacheKey(
+        normalizePublicQuery(
+          fareRoute,
+          new URLSearchParams("date=2026-08-02&fareMode=walk-on")
+        )
+      )
+    ).toBe("date=2026-08-02");
     expect(
       normalizePublicQuery(
         fareRoute,

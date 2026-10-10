@@ -484,11 +484,113 @@ test("retains one terminal canonical through hydration", async ({ page }) => {
   );
 });
 
+// practical answers and source limits remain stable across the browser handoff
+test("keeps terminal travel answers visible before and after hydration", async ({
+  page,
+}) => {
+  const initial = await raw("/seattle/terminal", {
+    authenticated: false,
+    headers: { Host: "ferry.fyi:4177" },
+  });
+  const document = JSDOM.fragment(initial.body);
+  expect(document.querySelector("h1")?.textContent).toBe(
+    "Seattle Ferry Terminal"
+  );
+  expect(document.querySelector("#terminal-parking")?.textContent).toContain(
+    "Fixture parking & connections"
+  );
+  expect(
+    document.querySelector("#terminal-accessibility")?.textContent
+  ).toContain("Accessible boarding assistance");
+  expect(document.querySelector("#terminal-arrival")?.textContent).toContain(
+    "One sailing wait"
+  );
+  expect(
+    document.querySelector("#terminal-arrival")?.textContent
+  ).not.toContain("<p>");
+  expect(
+    document.querySelector(
+      'a[href="https://www.google.com/maps/search/47.6,-122.3"]'
+    )
+  ).not.toBeNull();
+  expect(document.querySelector('a[href*="%3C"]')).toBeNull();
+  expect(
+    document.querySelector('a[aria-label="Get directions"]')?.textContent
+  ).toBe("");
+  expect(
+    document
+      .querySelector("address")
+      ?.nextElementSibling?.getAttribute("aria-label")
+  ).toBe("Get directions");
+  expect(document.textContent).not.toContain("WSF terminal page");
+
+  await page.goto("/seattle/terminal", { waitUntil: "networkidle" });
+  await expect(page.locator("#root")).toHaveAttribute(
+    "data-ferry-fyi-snapshot-consumed",
+    "true"
+  );
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "Seattle Ferry Terminal"
+  );
+  await expect(page.locator("#terminal-parking")).toContainText(
+    "Fixture parking & connections"
+  );
+  await expect(page.locator("#terminal-accessibility")).toContainText(
+    "Accessible boarding assistance"
+  );
+  await expect(page.locator("#terminal-arrival")).toContainText(
+    "not a measured live queue wait"
+  );
+  await expect(page.locator("#terminal-arrival")).not.toContainText("<p>");
+  await expect(page.locator("#terminal-routes")).toHaveCount(0);
+  const directions = page.getByRole("link", {
+    name: "Get directions",
+    exact: true,
+  });
+  await expect(directions).toHaveCount(1);
+  await expect(directions.locator('svg[aria-hidden="true"]')).toHaveCount(1);
+  await expect(directions).toHaveText("");
+  await expect(
+    page.getByRole("link", { name: "WSF terminal page", exact: true })
+  ).toHaveCount(0);
+  const terminalLinks = page.getByRole("navigation", {
+    name: "Terminal planning links",
+  });
+  await expect(terminalLinks.getByRole("link")).toHaveText([
+    "Schedule & wait",
+    "What boat will I make?",
+    "Ferry line cameras",
+    "Route Map",
+    "How much does it cost?",
+    "WSF Alerts",
+  ]);
+  await expect(terminalLinks.locator('a[href="/seattle"]')).toHaveText(
+    "Schedule & wait"
+  );
+  await expect(terminalLinks.locator('a[href="/seattle/fare"]')).toHaveText(
+    "How much does it cost?"
+  );
+  await expect(page.locator('head meta[name="description"]')).toHaveAttribute(
+    "content",
+    /Seattle ferry terminal directions, parking/
+  );
+  await expect(page).toHaveTitle(
+    "Seattle Ferry Terminal: Parking & Directions - Ferry FYI"
+  );
+  const security = page
+    .locator("details")
+    .filter({ has: page.locator("summary", { hasText: /^Security$/ }) });
+  await security.locator("summary").focus();
+  await page.keyboard.press("Enter");
+  await expect(security).toHaveAttribute("open", "");
+  await expect(security).toContainText("Fixture terminal security guidance");
+});
+
 test("serves page-specific React source from built artifacts", async () => {
   const cases = [
     ["/about", "About Ferry FYI"],
-    ["/tickets", "Using your ticket wallet"],
-    ["/seattle", "Seattle to Bainbridge Washington State Ferries schedule"],
+    ["/tickets", "Ferry tickets, ready to scan"],
+    ["/seattle", "Seattle to Bainbridge ferry wait times & schedule"],
     ["/seattle/cameras", "Seattle holding area"],
     ["/seattle/fare", "Adult passenger"],
     ["/seattle/map", "Fixture Ferry"],
@@ -503,7 +605,13 @@ test("serves page-specific React source from built artifacts", async () => {
     expect(response.status, path).toBe(200);
     expectDescriptionAndImageAlt(body);
     expectDocumentHeaders(response);
-    expect(body, path).toContain(visibleText);
+    // compare visible text rather than react's inline text-boundary comments
+    const document = new JSDOM(body);
+    expect(
+      document.window.document.querySelector("main")?.textContent,
+      path
+    ).toContain(visibleText);
+    document.window.close();
     expect(body, path).toContain('data-ferry-fyi-render-mode="snapshot"');
     expect(body, path).toContain('id="ferry-fyi-public-ssr-snapshot"');
     expect(body, path).not.toContain('data-seo-seed="true" id="seo-content"');
@@ -560,6 +668,131 @@ test("serves page-specific React source from built artifacts", async () => {
   expect(alternateNonRoot.body).not.toContain(
     'data-ferry-fyi-render-mode="snapshot"'
   );
+});
+
+// preserve camera search-intent content before and after hydration
+test("keeps camera SEO content stable through built-artifact hydration", async ({
+  page,
+}) => {
+  const browserErrors: string[] = [];
+  // capture runtime errors rather than relying on screenshots alone
+  page.on("pageerror", (error) => browserErrors.push(error.message));
+  const response = await page.goto("https://ferry.fyi:4177/seattle/cameras", {
+    waitUntil: "domcontentloaded",
+  });
+  expect(response?.status()).toBe(200);
+  const initial = new JSDOM(await response!.text());
+  const { document } = initial.window;
+  const initialPlanning = document.querySelector(
+    'nav[aria-label="Camera planning links"]'
+  );
+
+  expect(document.title).toBe(
+    "Seattle to Bainbridge Ferry Traffic Cameras - Ferry FYI"
+  );
+  expect(
+    document.querySelector('meta[name="description"]')?.getAttribute("content")
+  ).toBe(
+    "Check Seattle ferry terminal camera availability for trips to Bainbridge. Images, when available, show traffic, not measured waits."
+  );
+  expect(document.querySelector("main h1")?.textContent).toBe(
+    "Seattle ferry terminal cameras"
+  );
+  expect(document.querySelector("main")?.textContent).toContain(
+    "View traffic camera images at the Seattle ferry terminal before departing for Bainbridge. Check visible vehicle lines before you travel."
+  );
+  expect(document.querySelector("main img")?.getAttribute("alt")).toBe(
+    "Traffic camera at Seattle ferry terminal: Seattle holding area"
+  );
+  expect(
+    initialPlanning?.querySelector('a[href="/seattle"]')?.textContent
+  ).toBe("Schedule & wait");
+  expect(
+    initialPlanning?.querySelector('a[href="/seattle/terminal"]')?.textContent
+  ).toBe("Terminal info");
+  expect(
+    initialPlanning?.querySelector('a[href="/seattle/alerts"]')?.textContent
+  ).toBe("WSF Alerts");
+  expect(document.querySelector("main")?.textContent).toContain(
+    "Image checked just now"
+  );
+  expect(document.querySelector("main")?.textContent).toContain(
+    "Static holding capacity: 20 cars."
+  );
+  expect(document.querySelector("main")?.textContent).toContain(
+    "Camera position: 5 car spaces from boarding."
+  );
+  initial.window.close();
+
+  await expect(page.locator("#root")).toHaveAttribute(
+    "data-ferry-fyi-snapshot-consumed",
+    "true"
+  );
+  // wait for the interactive camera view rather than only the hydrated snapshot
+  await expect(
+    page.getByRole("button", { name: "Reload Cameras" })
+  ).toBeVisible();
+  await expect(page).toHaveTitle(
+    "Seattle to Bainbridge Ferry Traffic Cameras - Ferry FYI"
+  );
+  await expect(page.locator('head meta[name="description"]')).toHaveAttribute(
+    "content",
+    "Check Seattle ferry terminal camera availability for trips to Bainbridge. Images, when available, show traffic, not measured waits."
+  );
+  await expect(
+    page.getByRole("heading", {
+      level: 1,
+      name: "Seattle ferry terminal cameras",
+    })
+  ).toBeVisible();
+  await expect(
+    page.getByAltText(
+      "Traffic camera at Seattle ferry terminal: Seattle holding area"
+    )
+  ).toBeVisible();
+  const planning = page.getByRole("navigation", {
+    name: "Camera planning links",
+  });
+  await expect(
+    planning.getByRole("link", { name: "Schedule & wait" })
+  ).toHaveAttribute("href", "/seattle");
+  await expect(
+    planning.getByRole("link", { name: "Terminal info" })
+  ).toHaveAttribute("href", "/seattle/terminal");
+  await expect(
+    planning.getByRole("link", { name: "WSF Alerts" })
+  ).toHaveAttribute("href", "/seattle/alerts");
+  // share the schedule's six natural-width buttons without the camera self-link
+  await expect(planning.locator("a")).toHaveText([
+    "Schedule & wait",
+    "What boat will I make?",
+    "Terminal info",
+    "Route Map",
+    "How much does it cost?",
+    "WSF Alerts",
+  ]);
+  await expect(page.locator("main")).not.toContainText(
+    "Snapshots are not live video or measured wait times."
+  );
+  // verify compact layouts and color schemes against the actual hydrated page
+  for (const layout of [
+    { width: 1440, height: 900, colorScheme: "light" as const },
+    { width: 390, height: 844, colorScheme: "light" as const },
+    { width: 390, height: 844, colorScheme: "dark" as const },
+  ]) {
+    await page.setViewportSize({ width: layout.width, height: layout.height });
+    await page.emulateMedia({ colorScheme: layout.colorScheme });
+    await expect(page.locator("main h1")).toHaveCount(1);
+    await expect(planning).toBeVisible();
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth)
+    ).toBeLessThanOrEqual(layout.width);
+    await page.screenshot({
+      path: `/tmp/cameras-seo-${layout.width}-${layout.colorScheme}.png`,
+      fullPage: true,
+    });
+  }
+  expect(browserErrors).toEqual([]);
 });
 
 // recover indexed numeric links before rendering a canonical public document
@@ -693,11 +926,13 @@ test("hydrates without replacing the root and refreshes anonymous data", async (
 test("retains rendered schedule when post-hydration refresh is blocked", async ({
   page,
 }) => {
+  // keep the browser and seeded schedule on the same overnight service day
+  await page.clock.setFixedTime("2026-07-29T09:59:59.000Z");
   await page.route("**/api/**", (route) => route.abort("failed"));
   await page.goto("/seattle", { waitUntil: "domcontentloaded" });
   await expect(
     page.getByRole("heading", {
-      name: "Seattle to Bainbridge Washington State Ferries schedule",
+      name: "Seattle to Bainbridge ferry wait times & schedule",
     })
   ).toBeVisible();
   await expect(page.locator("#root")).toHaveAttribute(
@@ -705,6 +940,301 @@ test("retains rendered schedule when post-hydration refresh is blocked", async (
     "true"
   );
   await expect(page.getByText(/\d+:\d+ [AP]M/).first()).toBeVisible();
+  await expect(page.getByText("None reported", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("Wait time not forecast", { exact: true })
+  ).toHaveCount(0);
+});
+
+// verify compact history in both source html and the hydrated production app
+for (const javaScriptEnabled of [false, true]) {
+  test(`keeps compact past sailings above now with JavaScript ${javaScriptEnabled}`, async ({
+    browser,
+  }) => {
+    const now = "2026-07-29T19:00:00.000Z";
+    await fixture("/__fixture__/control", {
+      adEnabled: true,
+      clock: now,
+      pastSailings: true,
+    });
+    const context = await browser.newContext({
+      ignoreHTTPSErrors: true,
+      javaScriptEnabled,
+      serviceWorkers: "block",
+      viewport: { height: 844, width: 390 },
+    });
+    const page = await context.newPage();
+    const diagnostics: string[] = [];
+    // record unexpected runtime failures or hydration mismatches
+    page.on("pageerror", (error) => diagnostics.push(error.message));
+    page.on("console", (message) => {
+      // ignore expected failed fixture refreshes
+      if (/hydration|did not match|react-recoverable/i.test(message.text())) {
+        diagnostics.push(message.text());
+      }
+    });
+    try {
+      // retain the compatible seed without relying on external providers
+      if (javaScriptEnabled) {
+        await page.clock.setFixedTime(now);
+        await page.addInitScript(() =>
+          localStorage.setItem("noLocation", "true")
+        );
+        await page.route("**/api/schedule/**", (route) =>
+          route.abort("failed")
+        );
+        // keep the fixture creative visible without creating a real campaign or exposure
+        await page.route("**/api/ads/exposures", (route) =>
+          route.fulfill({
+            contentType: "application/json",
+            json: {
+              creative: {
+                advertiserName: "Fixture Coffee",
+                body: "Coffee by the dock.",
+                campaignId: "5ed338e9-acbb-4cca-9380-1a923bfca5c8",
+                headline: "Fixture creative",
+                placementKey: route.request().postDataJSON().placementKey,
+                targetUrl: "https://example.com/coffee",
+              },
+              expiresAt: null,
+              token: null,
+            },
+          })
+        );
+      }
+      await page.goto("https://ferry.fyi:4177/seattle/bainbridge", {
+        waitUntil: "networkidle",
+      });
+      // wait until browser takeover finishes before measuring interactive rows
+      if (javaScriptEnabled) {
+        await expect(page.locator("#root")).toHaveAttribute(
+          "data-ferry-fyi-snapshot-consumed",
+          "true"
+        );
+        await expect(
+          page.locator('[data-recent-sailings] section[role="button"]')
+        ).toHaveCount(4);
+      }
+      const waitCard = page.locator(
+        '[aria-labelledby="schedule-wait-heading"]'
+      );
+      const sailingCard = page.locator(
+        '[aria-labelledby="schedule-next-heading"]'
+      );
+      // preserve the concise header in source html and browser takeover
+      await expect(page.locator("main")).not.toContainText("Pacific time");
+      await expect(sailingCard.locator("h2")).toHaveText("Next scheduled");
+      await expect(sailingCard).not.toContainText("Source:");
+      await expect(sailingCard).not.toContainText("Fixture Ferry");
+      await expect(page.locator("main")).not.toContainText(
+        "Sailings for this service date"
+      );
+      await expect(page.locator("#departures > h2")).toHaveCount(0);
+      const waitBox = await waitCard.boundingBox();
+      const sailingBox = await sailingCard.boundingBox();
+      expect(waitBox).not.toBeNull();
+      expect(sailingBox).not.toBeNull();
+      expect(waitBox!.y).toBe(sailingBox!.y);
+      expect(waitBox!.x + waitBox!.width).toBeLessThan(sailingBox!.x);
+      const links = page.getByRole("navigation", { name: "Route quick links" });
+      await expect(links.locator("a")).toHaveCount(6);
+      await expect(links.locator('a svg[aria-hidden="true"]')).toHaveCount(6);
+      await expect(page.locator("main")).not.toContainText(
+        "Plan your crossing"
+      );
+      await expect(page.locator("main")).not.toContainText("How to read");
+      await expect(links.locator("a")).toHaveText([
+        "What boat will I make?",
+        "Ferry line cameras",
+        "Terminal info",
+        "Route Map",
+        "How much does it cost?",
+        "WSF Alerts",
+      ]);
+      await expect(page.locator("main")).not.toContainText(
+        "boarding guarantee"
+      );
+      const history = page.locator("div[data-past-sailings]");
+      const older = history.locator("details[data-older-sailings]");
+      const summary = older.locator(":scope > summary");
+      await expect(summary).toHaveText("Earlier sailings (2)");
+      expect(await older.getAttribute("open")).toBeNull();
+      const recent = history.locator("ul[data-recent-sailings]");
+      const rows = javaScriptEnabled
+        ? recent.locator('section[role="button"]')
+        : recent.locator("li > details > summary");
+      await expect(rows).toHaveCount(4);
+      // preserve unpadded clock text and observed facts in the visible headers
+      expect(await rows.locator("time").allTextContents()).toEqual([
+        "9:30 AM",
+        "10:00 AM",
+        "10:30 AM",
+        "11:00 AM",
+      ]);
+      await expect(rows.first()).toContainText("7 min late");
+      await expect(rows.locator("svg")).toHaveCount(0);
+      const delay = rows
+        .first()
+        .locator('[title="Confirmed departure timing"]');
+      await expect(delay).toHaveClass(/text-late-light/);
+      await expect(
+        rows.nth(1).locator('[title="Confirmed departure timing"]')
+      ).toHaveCount(0);
+      const delayBox = await delay.boundingBox();
+      const compactTimeBox = await rows.first().locator("time").boundingBox();
+      const compactRowBox = await rows.first().boundingBox();
+      expect(delayBox!.x).toBeLessThan(compactTimeBox!.x);
+      expect(
+        Math.abs(
+          compactTimeBox!.x +
+            compactTimeBox!.width -
+            (compactRowBox!.x + compactRowBox!.width - 12)
+        )
+      ).toBeLessThan(1);
+      await expect(rows.first()).not.toContainText("Fixture Ferry");
+      await expect(rows.locator("[data-confirmed-capacity-fill]")).toHaveCount(
+        4
+      );
+      // compare semantic widths rather than renderer-specific style serialization
+      const fillWidths = await rows
+        .locator("[data-confirmed-capacity-fill]")
+        .evaluateAll((fills) =>
+          fills.map((fill) => (fill as HTMLElement).style.width)
+        );
+      expect(fillWidths).toEqual(["50%", "100%", "50%", "50%"]);
+      // keep hour digits right aligned without zero padding
+      const clockEdges = await rows
+        .locator("time > span:first-child")
+        .evaluateAll((clocks) =>
+          clocks.map((clock) => clock.getBoundingClientRect().right)
+        );
+      expect(new Set(clockEdges).size).toBe(1);
+      const ad = page.locator('[aria-label^="Advertisement from"]').first();
+      await expect(ad).toBeVisible();
+      const adBox = await ad.boundingBox();
+      const historyBox = await history.boundingBox();
+      const nowBox = await page
+        .locator('[aria-label="Current time"]')
+        .boundingBox();
+      expect((await rows.first().boundingBox())?.height).toBe(28);
+      expect(adBox!.y + adBox!.height).toBeLessThanOrEqual(historyBox!.y);
+      expect(historyBox!.y + historyBox!.height).toBeLessThanOrEqual(nowBox!.y);
+      await summary.focus();
+      await page.keyboard.press("Enter");
+      await expect(older).toHaveAttribute("open", "");
+      const olderRows = javaScriptEnabled
+        ? older.locator('section[role="button"]')
+        : older.locator("li > details > summary");
+      await expect(olderRows).toHaveCount(2);
+      // exercise native keyboard activation independently of the expected refresh-error toast
+      await rows.first().focus();
+      await page.keyboard.press("Enter");
+      // full historical details stay accessible behind the compact header
+      if (javaScriptEnabled) {
+        await expect(
+          history.getByRole("tab", { name: "Vessel", exact: true })
+        ).toBeVisible();
+      } else {
+        await expect(
+          recent.locator("[data-public-sailing]").first()
+        ).toBeVisible();
+        await expect(history).toContainText("Confidence: high");
+      }
+      expect(diagnostics).toEqual([]);
+    } finally {
+      await context.close();
+    }
+  });
+}
+
+// keep the wait-first initial document and live route on the same pacific ferry day
+for (const [instant, serviceDate, dateLabel] of [
+  ["2026-07-29T09:59:00.000Z", "2026-07-28", "July 28, 2026"],
+  ["2026-07-29T10:00:00.000Z", "2026-07-29", "July 29, 2026"],
+] as const) {
+  // compare initial html with the rendered browser at either side of 03:00
+  test(`keeps wait-first service date through hydration at ${instant}`, async ({
+    page,
+  }) => {
+    await fixture("/__fixture__/control", { clock: instant });
+    await page.clock.setFixedTime(instant);
+    const initial = await raw("/seattle/bainbridge");
+    const initialDocument = new JSDOM(initial.body);
+    expect(
+      initialDocument.window.document.querySelector("h1")?.textContent
+    ).toBe("Seattle to Bainbridge ferry wait times & schedule");
+    expect(
+      initialDocument.window.document.querySelector(
+        '[aria-labelledby="schedule-wait-heading"]'
+      )?.textContent
+    ).toContain("None reported");
+    expect(
+      initialDocument.window.document.querySelector(
+        `time[datetime="${serviceDate}"]`
+      )
+    ).not.toBeNull();
+    initialDocument.window.close();
+    const scheduleRequests: string[] = [];
+    // record the service date used by the browser's existing schedule refresh
+    page.on("request", (request) => {
+      const { pathname } = new URL(request.url());
+      // collect only this route's schedule reads
+      if (pathname.startsWith("/api/schedule/7/3/")) {
+        scheduleRequests.push(pathname);
+      }
+    });
+    await page.goto("/seattle/bainbridge", { waitUntil: "networkidle" });
+    await expect(page.locator("#root")).toHaveAttribute(
+      "data-ferry-fyi-snapshot-consumed",
+      "true"
+    );
+    await expect(page.locator("h1")).toHaveText(
+      "Seattle to Bainbridge ferry wait times & schedule"
+    );
+    await expect(page.locator(`time[datetime="${serviceDate}"]`)).toHaveText(
+      dateLabel
+    );
+    await expect(
+      page.getByText("None reported", { exact: true })
+    ).toBeVisible();
+    await expect(
+      page.getByText("Wait time not forecast", { exact: true })
+    ).toHaveCount(0);
+    await expect(
+      page
+        .getByRole("navigation", { name: "Route quick links" })
+        .getByRole("link", { name: "What boat will I make?", exact: true })
+    ).toBeVisible();
+    expect(scheduleRequests).toEqual([`/api/schedule/7/3/${serviceDate}`]);
+    expect(new URL(page.url()).searchParams.has("date")).toBe(false);
+  });
+}
+
+// exercise the real calendar callback contract during an open-page service-day rollover
+test("advances an undated wait-first schedule at 03:00 Pacific", async ({
+  page,
+}) => {
+  const before = "2026-07-29T09:59:55.000Z";
+  const after = "2026-07-29T10:00:00.000Z";
+  await fixture("/__fixture__/control", { clock: before });
+  await page.clock.setFixedTime(before);
+  await page.goto("/seattle/bainbridge", { waitUntil: "networkidle" });
+  await expect(page.locator('time[datetime="2026-07-28"]')).toHaveText(
+    "July 28, 2026"
+  );
+  await fixture("/__fixture__/control", { clock: after });
+  await page.clock.setFixedTime(after);
+  // allow the existing ten-second live clock tick to request the new service date
+  await expect(page.locator('time[datetime="2026-07-29"]')).toHaveText(
+    "July 29, 2026",
+    { timeout: 15_000 }
+  );
+  await expect(page.getByText("None reported", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("Wait time not forecast", { exact: true })
+  ).toHaveCount(0);
+  await expect(page.locator('[aria-label="Set Date"]')).toContainText("29");
+  expect(new URL(page.url()).searchParams.has("date")).toBe(false);
 });
 
 test("retains alerts snapshot freshness when post-hydration refresh is blocked", async ({
@@ -1035,9 +1565,12 @@ test("installed production worker reaches SSR online and only the offline shell 
     waitUntil: "networkidle",
   });
   const beforeRollover = await scheduleResponse?.text();
-  expect(beforeRollover).toContain(
-    "Seattle to Bainbridge Washington State Ferries schedule"
+  // inspect the directional heading across react's inline text boundaries
+  const beforeDocument = new JSDOM(beforeRollover);
+  expect(beforeDocument.window.document.querySelector("h1")?.textContent).toBe(
+    "Seattle to Bainbridge ferry wait times & schedule"
   );
+  beforeDocument.window.close();
   const afterOnlineNavigation = await fixtureState();
   expect(afterOnlineNavigation.requests).toBeGreaterThan(
     beforeOnlineNavigation.requests
@@ -1056,9 +1589,12 @@ test("installed production worker reaches SSR online and only the offline shell 
     waitUntil: "networkidle",
   });
   const afterRollover = await rolloverResponse?.text();
-  expect(afterRollover).toContain(
-    "Seattle refreshed to Bainbridge Washington State Ferries schedule"
+  // keep the refreshed heading assertion on the actual rendered page
+  const afterDocument = new JSDOM(afterRollover);
+  expect(afterDocument.window.document.querySelector("h1")?.textContent).toBe(
+    "Seattle refreshed to Bainbridge ferry wait times & schedule"
   );
+  afterDocument.window.close();
   expect(afterRollover).not.toBe(beforeRollover);
   const afterRolloverState = await fixtureState();
   expect(afterRolloverState.requests).toBeGreaterThan(
@@ -1150,11 +1686,7 @@ for (const [path, title, required] of [
   [
     "/tickets",
     "Tickets",
-    [
-      "Using your ticket wallet",
-      "No saved tickets yet",
-      "Buy multi-ride passes",
-    ],
+    ["Ferry tickets, ready to scan", "No saved tickets yet", "Buy Tickets"],
   ],
 ] as const) {
   test(`full static initial HTML without JavaScript: ${path}`, async ({
@@ -1220,23 +1752,23 @@ test("hides ticket purchase links during manual entry and restores them on cance
 }) => {
   await page.goto("/tickets", { waitUntil: "networkidle" });
   const reservation = page.getByRole("link", { name: "Make a reservation" });
-  const passes = page.getByRole("link", { name: "Buy multi-ride passes" });
+  const buyTickets = page.getByRole("link", { name: "Buy Tickets" });
   await expect(reservation).toBeVisible();
-  await expect(passes).toBeVisible();
+  await expect(buyTickets).toBeVisible();
 
   await page.getByRole("button", { name: "Manual Type code" }).click();
   await expect(
     page.getByRole("textbox", { name: "Ticket number" })
   ).toBeVisible();
   await expect(reservation).toHaveCount(0);
-  await expect(passes).toHaveCount(0);
+  await expect(buyTickets).toHaveCount(0);
 
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(
     page.getByRole("textbox", { name: "Ticket number" })
   ).toHaveCount(0);
   await expect(reservation).toBeVisible();
-  await expect(passes).toBeVisible();
+  await expect(buyTickets).toBeVisible();
 });
 
 // native disclosure contains every fare before any client request
@@ -1249,6 +1781,36 @@ test("opens the full fare table without JavaScript", async ({ browser }) => {
   const page = await context.newPage();
   try {
     await page.goto("https://ferry.fyi:4177/seattle/fare");
+    // common fares are readable before any browser calculator runs
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+      "Seattle to Bainbridge ferry fares"
+    );
+    await expect(page.locator("main")).not.toContainText("USD");
+    await expect(page.locator("main")).not.toContainText("One way leaves");
+    await expect(page.locator("main")).not.toContainText("Source fetched");
+    await expect(page.locator("main")).not.toContainText(
+      "Official WSDOT quote"
+    );
+    await expect(
+      page.locator('[data-public-ssr-freshness="fares"]')
+    ).toHaveCount(0);
+    await expect(
+      page.locator('[aria-labelledby="fare-passenger-heading"]')
+    ).toContainText("One way$9.85");
+    await expect(
+      page.locator('[aria-labelledby="fare-passenger-heading"]')
+    ).toContainText("Round trip$9.85");
+    await expect(
+      page.locator('[aria-labelledby="fare-vehicle-heading"]')
+    ).toContainText("One way$22.25");
+    await expect(
+      page.locator('[aria-labelledby="fare-vehicle-heading"]')
+    ).toContainText("Round trip$44.50");
+    await page
+      .getByRole("link", { name: "Calculate a custom fare", exact: true })
+      .click();
+    await expect(page).toHaveURL(/#custom-fare-calculator$/);
+    await expect(page.locator("#custom-fare-calculator")).toBeInViewport();
     const details = page.locator("details[data-public-fare-catalog]");
     await expect(details).not.toHaveAttribute("open", "");
     await expect(details.locator("tbody tr")).toHaveCount(2);
@@ -1262,7 +1824,7 @@ test("opens the full fare table without JavaScript", async ({ browser }) => {
     await expect(details).toContainText("$22.25");
     await expect(details.getByRole("columnheader")).toHaveText([
       "Fare",
-      "Price (USD)",
+      "Price",
     ]);
     await expect(details.locator("summary svg")).toHaveCSS(
       "transform",
@@ -1280,9 +1842,192 @@ test("opens the full fare table without JavaScript", async ({ browser }) => {
     await page.keyboard.press("Enter");
     await expect(details.locator("table")).not.toBeVisible();
     await expect(details.locator("summary svg")).toHaveCSS("transform", "none");
+    // reverse collection differs for passengers without making the return free
+    await page.goto("https://ferry.fyi:4177/bainbridge/fare");
+    await expect(
+      page.locator('[aria-labelledby="fare-passenger-heading"]')
+    ).toContainText("One wayFree");
+    await expect(
+      page.locator('[aria-labelledby="fare-passenger-heading"]')
+    ).toContainText("Round trip$9.85");
   } finally {
     await context.close();
   }
+});
+
+// isolate fixture API interception from service-worker routing
+test.describe("custom fare artifacts", () => {
+  test.use({ serviceWorkers: "block" });
+  // the built client uses the source trip mode and preserves both custom amounts
+  test("compares custom fares using official round-trip mode after hydration", async ({
+    page,
+  }) => {
+    const now = "2026-07-29T12:00:00.000Z";
+    await fixture("/__fixture__/control", { clock: now });
+    await page.clock.setFixedTime(now);
+    const freshness = {
+      fetchedAt: Math.floor(new Date(now).getTime() / 1000),
+      policyVersion: "fixture",
+      sourceCacheFlushDate: null,
+      validFrom: "2026-01-01",
+      validThrough: "2026-12-31",
+    };
+    const quoteRequests: Record<string, unknown>[] = [];
+    // provide supported line-item labels without calling live fare providers
+    await page.route("**/api/fares/catalog**", (route) =>
+      route.fulfill({
+        json: {
+          body: {
+            state: "current",
+            catalog: {
+              kind: "catalog",
+              collectionDescription: null,
+              freshness,
+              request: {
+                departingTerminalId: "7",
+                arrivingTerminalId: "3",
+                tripDate: "2026-07-29",
+                roundTrip: true,
+              },
+              fares: [
+                {
+                  id: 1,
+                  label: "Adult (age 19 - 64)",
+                  amount: 9.85,
+                  category: "Passenger",
+                  directionIndependent: false,
+                },
+                {
+                  id: 2,
+                  label: "Vehicle Under 22' (standard veh) & Driver",
+                  amount: 44.5,
+                  category: "Vehicle",
+                  directionIndependent: false,
+                },
+              ],
+            },
+          },
+          wsfStatus: { offline: false },
+        },
+      })
+    );
+    // echo each selected custom request and explicit source totals
+    await page.route("**/api/fares/quote", (route) => {
+      const request = route.request().postDataJSON() as Record<string, unknown>;
+      quoteRequests.push(request);
+      return route.fulfill({
+        json: {
+          body: {
+            state: "current",
+            quote: {
+              kind: "quote",
+              request,
+              freshness,
+              totals: [
+                {
+                  amount: 22.25,
+                  type: "depart",
+                  briefDescription: "Depart",
+                  description: "Departure",
+                },
+                {
+                  amount: 44.5,
+                  type: "total",
+                  briefDescription: "Total",
+                  description: "Round trip",
+                },
+              ],
+            },
+          },
+          wsfStatus: { offline: false },
+        },
+      });
+    });
+    await page.goto("/seattle/fare", { waitUntil: "networkidle" });
+    expect(quoteRequests).toEqual([]);
+    await page
+      .getByRole("link", { name: "Calculate a custom fare", exact: true })
+      .click();
+    await page.getByRole("button", { name: "Vehicle", exact: true }).click();
+    await page.getByRole("button", { name: "No", exact: true }).click();
+    await page.getByRole("button", { name: "Standard", exact: true }).click();
+    const estimate = page.getByRole("region", {
+      name: "Fare estimate",
+      exact: true,
+    });
+    await expect(estimate).toContainText("One way$22.25");
+    await expect(estimate).toContainText("Round trip$44.50");
+    expect(quoteRequests).toHaveLength(1);
+    expect(quoteRequests[0].roundTrip).toBe(true);
+    await expect(
+      page.getByRole("textbox", { name: "Adults count" })
+    ).toHaveValue("0");
+    await expect(
+      estimate.getByRole("button", { name: "Share", exact: true })
+    ).toBeVisible();
+  });
+});
+
+// keep seeded fare rows through hydration and failed live refresh
+test("keeps selected fare dates and prices isolated in SSR and hydration", async ({
+  page,
+}) => {
+  const now = "2026-07-29T12:00:00.000Z";
+  await fixture("/__fixture__/control", { clock: now });
+  await page.clock.setFixedTime(now);
+  const current = await raw("/seattle/fare");
+  const dated = await raw("/seattle/fare?date=2026-08-01");
+  const currentAgain = await raw("/seattle/fare");
+  const currentDocument = JSDOM.fragment(current.body);
+  const datedDocument = JSDOM.fragment(dated.body);
+  expect(
+    currentDocument.querySelector('[aria-labelledby="fare-vehicle-heading"]')
+      ?.textContent
+  ).toContain("Round trip$44.50");
+  expect(
+    datedDocument.querySelector('[aria-labelledby="fare-vehicle-heading"]')
+      ?.textContent
+  ).toContain("Round trip$48.00");
+  expect(
+    datedDocument.querySelector("#fare-rates-heading")?.parentElement
+      ?.textContent
+  ).toContain("August 1, 2026");
+  expect(
+    datedDocument.querySelector('meta[name="robots"]')?.getAttribute("content")
+  ).toBe("noindex,follow");
+  expect(
+    datedDocument.querySelector('link[rel="canonical"]')?.getAttribute("href")
+  ).toBe("https://ferry.fyi/seattle/fare");
+  expect(currentAgain.body).toBe(current.body);
+  const diagnostics: string[] = [];
+  // source refresh failure must retain the correct dated snapshot
+  page.on("pageerror", (error) => diagnostics.push(error.message));
+  page.on("console", (message) => {
+    // capture hydration mismatches without expected fixture fetch errors
+    if (/hydration|did not match|react-recoverable/i.test(message.text())) {
+      diagnostics.push(message.text());
+    }
+  });
+  await page.route("**/api/fares/catalog**", (route) => route.abort("failed"));
+  await page.goto("/seattle/fare?date=2026-08-01", {
+    waitUntil: "networkidle",
+  });
+  await expect(page.locator("#root")).toHaveAttribute(
+    "data-ferry-fyi-snapshot-consumed",
+    "true"
+  );
+  await expect(
+    page.locator('[aria-labelledby="fare-vehicle-heading"]')
+  ).toContainText("Round trip$48.00");
+  await expect(
+    page.locator(
+      '[aria-labelledby="fare-rates-heading"] time[datetime="2026-08-01"]'
+    )
+  ).toContainText("August 1, 2026");
+  await expect(
+    page.getByText("How are you traveling?", { exact: true })
+  ).toBeVisible();
+  expect(diagnostics).toEqual([]);
 });
 
 // keep seeded fare rows through hydration and failed live refresh
@@ -1309,6 +2054,14 @@ test("retains one full fare table through hydrated browser refresh failure", asy
   await expect(
     page.getByText("How are you traveling?", { exact: true })
   ).toBeVisible();
+  // default summaries survive compatible hydration and a failed catalog refresh
+  await expect(
+    page.locator('[aria-labelledby="fare-vehicle-heading"]')
+  ).toContainText("One way$22.25");
+  await expect(
+    page.locator('[aria-labelledby="fare-vehicle-heading"]')
+  ).toContainText("Round trip$44.50");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
   await expect(page.locator("details[data-public-fare-catalog]")).toHaveCount(
     1
   );
@@ -1322,6 +2075,12 @@ test("retains one full fare table through hydrated browser refresh failure", asy
 });
 
 // verify dynamic facts are readable without client SDKs
+const routePlanningLandmarks: Partial<Record<string, string>> = {
+  "/seattle": "Route quick links",
+  "/seattle/terminal": "Terminal planning links",
+  "/seattle/alerts": "Alert planning links",
+};
+
 for (const [path, facts] of [
   ["/", ["Terminal locations", "Seattle", "1 Ferry Dock"]],
   [
@@ -1338,7 +2097,7 @@ for (const [path, facts] of [
   [
     "/seattle",
     [
-      "Selected service date",
+      "Vehicle wait",
       "Next service date",
       "Arrival",
       "76 vehicle spaces reported",
@@ -1351,10 +2110,13 @@ for (const [path, facts] of [
   [
     "/seattle/cameras",
     [
+      "Seattle ferry terminal cameras",
+      "View traffic camera images at the Seattle ferry terminal before departing for Bainbridge",
       "Seattle holding area",
       "Camera: active",
-      "Holding capacity: 20 cars",
-      "Camera location: 5 car spaces from the boat",
+      "Image checked just now",
+      "Static holding capacity: 20 cars",
+      "Camera position: 5 car spaces from boarding",
     ],
   ],
   [
@@ -1403,8 +2165,25 @@ for (const [path, facts] of [
       expect(await page.locator("img:not([alt])").count()).toBe(0);
       if (path.startsWith("/seattle")) {
         await expect(
-          page.getByRole("navigation", { name: "Route navigation" })
+          page.getByRole("navigation", {
+            name: routePlanningLandmarks[path] ?? "Route navigation",
+          })
         ).toBeVisible();
+      }
+      // terminal disclosures and jump links remain usable without javascript
+      if (path === "/seattle/terminal") {
+        await page.locator('a[href="#terminal-accessibility"]').click();
+        await expect(
+          page.getByRole("heading", {
+            name: "Accessibility & boarding assistance",
+          })
+        ).toBeInViewport();
+        const security = page
+          .locator("details")
+          .filter({ has: page.locator("summary", { hasText: /^Security$/ }) });
+        await security.locator("summary").click();
+        await expect(security).toHaveAttribute("open", "");
+        await expect(security.locator("p")).toBeVisible();
       }
     } finally {
       await context.close();

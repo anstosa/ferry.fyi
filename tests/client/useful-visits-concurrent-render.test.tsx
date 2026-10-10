@@ -32,7 +32,33 @@ vi.mock("~/lib/terminals", () => ({
   useTerminals: () => ({ closestTerminal: null, terminals: [] }),
 }));
 vi.mock("react-router-dom", () => ({
-  useLocation: () => ({ search: window.location.search }),
+  // render public planning links without a router-owned test boundary
+  Link: ({
+    children,
+    to,
+    ...props
+  }: React.PropsWithChildren<{ className?: string; to: string }>) =>
+    React.createElement("a", { ...props, href: to }, children),
+  // expose the committed url used by fare configuration updates
+  useLocation: () => ({
+    hash: window.location.hash,
+    pathname: window.location.pathname,
+    search: window.location.search,
+  }),
+  // mirror replacement navigation while component state drives test renders
+  useNavigate:
+    () =>
+    // retain the updated configuration across suspended route renders
+    ({
+      hash,
+      pathname,
+      search,
+    }: {
+      hash: string;
+      pathname: string;
+      search: string;
+    }) =>
+      window.history.replaceState(null, "", `${pathname}${search}${hash}`),
 }));
 vi.mock("@capacitor/share", () => ({
   Share: {

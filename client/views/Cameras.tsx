@@ -17,6 +17,7 @@ import { isNull } from "shared/lib/identity";
 
 import { AdSlot } from "~/components/AdSlot";
 import { CameraImageFooter } from "~/components/CameraImageFooter";
+import { CameraOverview } from "~/components/CameraOverview";
 import { Skeleton, SkeletonGroup } from "~/components/Skeleton";
 import { getCameraFrames } from "~/lib/cameras";
 import { locationToUrl } from "~/lib/maps";
@@ -52,12 +53,13 @@ interface CameraCountDetails {
 }
 
 const CAMERA_REFRESH_MS = 10 * 1000;
-const NO_CAMERAS_MESSAGE = "This terminal does not have cameras";
+const NO_CAMERAS_MESSAGE =
+  "Camera views are not available in Ferry FYI for this terminal.";
 
 export const Cameras = ({ mate, setRoute, terminal }: Props): ReactElement => {
   // defensive isolated-render loading guard
   if (!terminal) {
-    return <CamerasLoadingSkeleton />;
+    return <CamerasLoadingState />;
   }
   return (
     <CameraList
@@ -69,23 +71,16 @@ export const Cameras = ({ mate, setRoute, terminal }: Props): ReactElement => {
   );
 };
 
-const CamerasLoadingSkeleton = (): ReactElement => {
+const CamerasLoadingState = (): ReactElement => {
   return (
     <main className="flex-grow overflow-y-scroll scrolling-touch bg-day-normal-light text-gray-dark dark:bg-night-normal-dark dark:text-[#e0f0f4]">
-      <SkeletonGroup
-        className="mx-auto w-full max-w-6xl space-y-8 py-6 pl-16 pr-4"
-        label="Loading cameras"
+      <p
+        aria-live="polite"
+        className="mx-auto w-full max-w-6xl p-4 text-sm"
+        role="status"
       >
-        {[0, 1].map((index) => (
-          <div className="w-full max-w-[480px]" key={index}>
-            <Skeleton className="h-[300px] w-full" />
-            <div className="space-y-2 px-1 pt-3">
-              <Skeleton className="h-6 w-2/3" variant="text" />
-              <Skeleton className="h-4 w-1/2" variant="text" />
-            </div>
-          </div>
-        ))}
-      </SkeletonGroup>
+        Loading terminal camera information…
+      </p>
     </main>
   );
 };
@@ -99,9 +94,15 @@ const getCameraCountDetails = (camera: Camera): CameraCountDetails => {
     if (isNull(carsToBoat)) {
       return { count: null, label: null };
     }
-    return { count: carsToBoat, label: `${carsToBoat} cars to boat` };
+    return {
+      count: carsToBoat,
+      label: `Camera position: ${carsToBoat} car spaces from boarding`,
+    };
   }
-  return { count: carCapacity, label: `${carCapacity} car capacity` };
+  return {
+    count: carCapacity,
+    label: `Static holding capacity: ${carCapacity} cars`,
+  };
 };
 
 // round sailings up
@@ -118,7 +119,7 @@ const formatSailingCount = (
   }
   const sailings = roundUpToTenth(cars / vehicleCapacity);
   const formattedSailings = sailings.toFixed(1);
-  return `${formattedSailings} sailings`;
+  return `Capacity reference: ${formattedSailings} sailings`;
 };
 
 // render loaded terminal
@@ -157,14 +158,22 @@ const CameraList = ({
     Record<string, CameraFrameStatus>
   >(() =>
     Object.fromEntries(
+      // preserve anonymous unavailable states across the live-app handoff
       Object.entries(seededFrames?.frames ?? {}).map(([id, frame]) => [
         id,
-        { ...frame, error: null },
+        {
+          ...frame,
+          error: frame.status === "unavailable" ? "unavailable" : null,
+        },
       ])
     )
   );
   const [timelineStart, setTimelineStart] = useState<number | null>(null);
   const [loadedImages, setLoadedImages] = useState<Record<string, boolean>>({});
+  const [imageSizes, setImageSizes] = useState<
+    Record<string, Pick<Camera["image"], "width" | "height">>
+  >({});
+  const [failedImages, setFailedImages] = useState<Record<string, boolean>>({});
   const [revealedStaleImages, setRevealedStaleImages] = useState<
     Record<string, boolean>
   >({});
@@ -200,9 +209,33 @@ const CameraList = ({
     if (cameraIds.length === 0) {
       return;
     }
-    const response = await getCameraFrames(cameraIds);
-    setFrameStatuses(response.frames);
-  }, [cameraIds]);
+    try {
+      const response = await getCameraFrames(cameraIds);
+      setFrameStatuses(response.frames);
+    } catch (error) {
+      // retain prior frames but mark every failed request as unverified
+      setFrameStatuses((current) =>
+        Object.fromEntries(
+          // unknown source images stay unknown rather than indefinitely loading
+          cameras.map((camera) => [
+            camera.id,
+            {
+              ...(current[camera.id] ?? {
+                cameraId: camera.id,
+                frameToken: null,
+                frameUpdatedAt: null,
+                imageUrl: camera.image.url,
+                isStale: false,
+              }),
+              checkedAt: Math.floor(Date.now() / 1000),
+              error: "unavailable",
+            },
+          ])
+        )
+      );
+      throw error;
+    }
+  }, [cameraIds, cameras]);
 
   // detect touch devices
   useEffect(() => {
@@ -257,10 +290,10 @@ const CameraList = ({
     };
   }, [refreshFrameStatuses]);
 
-  // recalculate rail start
-  useEffect(() => {
+  // align after committed image geometry and frame warnings change
+  useLayoutEffect(() => {
     updateTimelineStart();
-  }, [terminal.id, updateTimelineStart]);
+  }, [cameras, frameStatuses, loadedImages, updateTimelineStart]);
 
   // recalculate on resize
   useEffect(() => {
@@ -286,10 +319,28 @@ const CameraList = ({
     }
   };
 
-  // track image load
-  const markImageLoaded = (imageKey: string): void => {
+  // retain decoded proportions for subsequent frame placeholders
+  const markImageLoaded = (
+    imageKey: string,
+    cameraId: string,
+    element: HTMLImageElement
+  ): void => {
+    const { naturalWidth: width, naturalHeight: height } = element;
+    // never replace known dimensions with an undecoded image
+    if (width > 0 && height > 0) {
+      setImageSizes((current) => ({
+        ...current,
+        [cameraId]: { width, height },
+      }));
+    }
     setHasLoadedImage(true);
     setLoadedImages((current) => ({ ...current, [imageKey]: true }));
+    setFailedImages((current) => ({ ...current, [imageKey]: false }));
+  };
+
+  // settle one broken image without qualifying useful content
+  const markImageFailed = (imageKey: string): void => {
+    setFailedImages((current) => ({ ...current, [imageKey]: true }));
   };
 
   // reveal stale image
@@ -302,10 +353,13 @@ const CameraList = ({
     const { id, title, image, location, owner } = camera;
     const mapsUrl = locationToUrl(location);
     const frameStatus = frameStatuses[id];
+    const isCheckFailed = Boolean(frameStatus?.error);
     const frameToken = frameStatus?.frameToken ?? null;
     const isStale = frameStatus?.isStale ?? false;
     const imageKey = `${id}-${frameToken ?? "initial"}`;
     const imageLoaded = loadedImages[imageKey] ?? false;
+    const imageFailed = failedImages[imageKey] ?? false;
+    const placeholderSize = imageSizes[id] ?? image;
     const isStaleRevealed = revealedStaleImages[id] ?? false;
     const imageSource = frameToken
       ? `${image.url}?frame=${encodeURIComponent(frameToken)}`
@@ -328,30 +382,50 @@ const CameraList = ({
             "group relative w-full max-w-[480px] overflow-hidden shadow-sm",
             "bg-night-normal-light dark:bg-night-normal-dark"
           )}
+          style={{
+            aspectRatio: imageLoaded
+              ? undefined
+              : `${placeholderSize.width} / ${placeholderSize.height}`,
+          }}
         >
           <img
             src={imageSource}
             className={clsx(
-              "block w-full max-w-[480px] transition-[filter,opacity]",
-              imageLoaded ? "h-auto" : "h-[300px] opacity-0",
+              "block h-auto w-full transition-[filter,opacity]",
+              imageLoaded ? "opacity-100" : "absolute inset-0 opacity-0",
               isStale &&
                 !isStaleRevealed &&
                 (isTouchDevice ? "blur-sm" : "blur-sm group-hover:blur-none")
             )}
-            alt={`Traffic Camera: ${title}`}
+            alt={`Traffic camera at ${terminal.name} ferry terminal: ${title}`}
+            height={image.height}
             // qualify only after a successful current-terminal image load
-            onLoad={() => {
-              markImageLoaded(imageKey);
-              // first image alignment
-              if (isFirst) {
-                updateTimelineStart();
-              }
+            onLoad={(event) => {
+              markImageLoaded(imageKey, id, event.currentTarget);
             }}
+            onError={() => {
+              // stop the pending visual without claiming a useful image
+              markImageFailed(imageKey);
+            }}
+            width={image.width}
           />
+          {!imageLoaded && !imageFailed ? (
+            <SkeletonGroup
+              className="absolute inset-0"
+              label={`Loading camera image for ${title}`}
+            >
+              <Skeleton className="h-full w-full" />
+            </SkeletonGroup>
+          ) : null}
+          {imageFailed ? (
+            <p className="absolute inset-0 flex items-center justify-center p-4 text-center text-sm font-semibold text-gray-dark dark:text-gray-light">
+              Camera image unavailable
+            </p>
+          ) : null}
           {/* inset image edge */}
           <span className="pointer-events-none absolute inset-0 shadow-[inset_0_0_0_1px_#000]" />
           {/* stale frame warning */}
-          {isStale && !isStaleRevealed && (
+          {isStale && !imageFailed && !isStaleRevealed && (
             <div
               className={clsx(
                 "absolute inset-0 flex items-center justify-center p-4 text-center",
@@ -386,7 +460,14 @@ const CameraList = ({
             passive
           />
         </div>
-        <span className="relative mt-3 mb-2 flex flex-col gap-1 px-1 text-lg font-bold">
+        {/* identify unverified fallback images without exposing transport errors */}
+        {isCheckFailed && (
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+            Image check failed. Treat any displayed image as last-known; current
+            conditions could not be verified.
+          </p>
+        )}
+        <div className="relative mt-3 mb-2 flex flex-col gap-1 px-1 text-lg font-bold">
           <div
             ref={markerRef}
             className={clsx(
@@ -398,8 +479,8 @@ const CameraList = ({
             <span className="absolute inset-y-0 right-0 w-screen rounded-r-full bg-green-dark shadow-sm" />
             <PinIcon className="relative z-10 text-2xl" />
           </div>
-          <span className="flex min-h-9 items-center gap-3 text-gray-dark dark:text-[#e0f0f4]">
-            <span className="flex-1">{title}</span>
+          <div className="flex min-h-9 items-center gap-3 text-gray-dark dark:text-[#e0f0f4]">
+            <h2 className="flex-1">{title}</h2>
             <a
               href={mapsUrl}
               target="_blank"
@@ -413,7 +494,7 @@ const CameraList = ({
             >
               <MapIcon className="text-lg" />
             </a>
-          </span>
+          </div>
           {/* car count guard */}
           {carCountLabel && (
             <span
@@ -432,7 +513,7 @@ const CameraList = ({
               {sailingCount}
             </span>
           )}
-        </span>
+        </div>
       </li>
     );
   };
@@ -493,6 +574,7 @@ const CameraList = ({
         />
       </Header>
       <main className="flex-grow overflow-y-scroll scrolling-touch bg-day-normal-light text-gray-dark dark:bg-night-normal-dark dark:text-[#e0f0f4]">
+        <CameraOverview mate={mate} terminal={terminal} />
         <AdSlot
           arrivalTerminalId={mate?.id}
           className="mx-auto w-full max-w-6xl px-4 pt-4"
@@ -504,8 +586,8 @@ const CameraList = ({
           className={clsx(
             "mx-auto relative w-full max-w-6xl",
             hasCameras
-              ? "my-6 pl-16 pr-4"
-              : "flex min-h-full items-center justify-center p-4 text-center text-gray-dark dark:text-gray-light"
+              ? "my-4 pl-16 pr-4"
+              : "p-4 text-center text-gray-dark dark:text-gray-light"
           )}
           ref={timeline}
         >

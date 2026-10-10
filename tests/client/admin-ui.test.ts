@@ -961,6 +961,106 @@ describe("Admin", () => {
     expect(container.textContent).toContain("Selected: person@example.com");
   });
 
+  // restore terminal-only owner links and save the exact placement target
+  it("configures navigation ads by departure terminal without an arrival selector", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/admin?tab=ads&placement=navigation--14"
+    );
+    const placements = [
+      {
+        advertiserName: "Island Coffee",
+        arrivalTerminalId: null,
+        body: "",
+        departureTerminalId: "5",
+        enabled: true,
+        headline: "Clinton navigation offer",
+        key: "navigation--5",
+        slot: "navigation",
+        targetUrl: "https://example.com/clinton",
+      },
+      {
+        advertiserName: "Mainland Coffee",
+        arrivalTerminalId: null,
+        body: "",
+        departureTerminalId: "14",
+        enabled: true,
+        headline: "Mukilteo navigation offer",
+        key: "navigation--14",
+        slot: "navigation",
+        targetUrl: "https://example.com/mukilteo",
+      },
+    ];
+    api.get.mockImplementation((path: string) => {
+      // load the owner configuration without issuing ad exposures
+      if (path === "/admin/ads") {
+        return Promise.resolve({ adsEnabled: true, placements });
+      }
+      // keep campaign and inventory reads empty
+      if (path === "/admin/ads/campaigns") {
+        return Promise.resolve([]);
+      }
+      if (path.startsWith("/admin/ads/reports/inventory?")) {
+        return Promise.resolve(emptyInventoryReport);
+      }
+      return Promise.resolve({ leaderboardsEnabled: false });
+    });
+    api.put.mockResolvedValue({ adsEnabled: true, placements });
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+    await act(async () => {
+      root?.render(renderAdmin());
+      await Promise.resolve();
+    });
+    expect(
+      container.querySelector<HTMLSelectElement>("#admin-ad-slot")?.value
+    ).toBe("navigation");
+    expect(container.querySelector("#admin-ad-direction")).toBeNull();
+    const terminal =
+      container.querySelector<HTMLSelectElement>("#admin-ad-terminal");
+    expect(terminal?.value).toBe("14");
+    expect(terminal?.textContent).toContain("Clinton");
+    expect(terminal?.textContent).not.toContain("→");
+    expect(
+      container.querySelector<HTMLInputElement>("#admin-ad-headline")?.value
+    ).toBe("Mukilteo navigation offer");
+    await act(() => {
+      // select another departure without choosing a destination
+      if (terminal) {
+        terminal.value = "5";
+        terminal.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    });
+    expect(
+      container.querySelector<HTMLInputElement>("#admin-ad-headline")?.value
+    ).toBe("Clinton navigation offer");
+    const save = [...container.querySelectorAll("button")].find(
+      (button) => button.textContent === "Save ad placement"
+    );
+    await act(() => save?.click());
+    const dialog = container.querySelector('[role="dialog"]');
+    expect(dialog).not.toBeNull();
+    const confirm = [...(dialog?.querySelectorAll("button") ?? [])].find(
+      (button) => button.textContent === "Save ad placement"
+    );
+    await act(async () => {
+      confirm?.click();
+      await Promise.resolve();
+    });
+    expect(api.put).toHaveBeenCalledWith(
+      "/admin/ads/placements/navigation--5",
+      expect.objectContaining({
+        arrivalTerminalId: null,
+        departureTerminalId: "5",
+        slot: "navigation",
+        target: "ad:navigation--5",
+      }),
+      "access-token"
+    );
+  });
+
   it("edits route ad placements separately for each direction", async () => {
     api.get.mockImplementation((path: string) => {
       if (path === "/admin/ads") {

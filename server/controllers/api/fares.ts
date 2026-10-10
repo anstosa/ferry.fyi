@@ -112,10 +112,18 @@ const catalogApiResponse = (
   result: PublicFareCatalogOutcome
 ): FareCatalogApiResponse => {
   if (result.kind === "catalog") {
-    return { catalog: result.catalog, state: "current" };
+    return {
+      catalog: result.catalog,
+      ...(result.defaultRates ? { defaultRates: result.defaultRates } : {}),
+      state: "current",
+    };
   }
   if (result.kind === "no-fare") {
-    return { noFare: result.noFare, state: "no-fare" };
+    return {
+      ...(result.defaultRates ? { defaultRates: result.defaultRates } : {}),
+      noFare: result.noFare,
+      state: "no-fare",
+    };
   }
   return unavailable(result.reason);
 };
@@ -154,11 +162,17 @@ export const createFareRouter = (
       departingTerminalId: request.query.departingTerminalId,
       tripDate: request.query.tripDate,
     });
-    return response.send(
-      input
-        ? catalogApiResponse(await publicFares.getCatalog(input))
-        : unavailable("invalid-request")
-    );
+    // invalid catalog requests never trigger provider lookups
+    if (!input) {
+      return response.send(unavailable("invalid-request"));
+    }
+    const outcome = await publicFares.getCatalog(input);
+    const defaultRates = await publicFares.getDefaultRates(outcome, input);
+    const enriched =
+      defaultRates && outcome.kind !== "unavailable"
+        ? { ...outcome, defaultRates }
+        : outcome;
+    return response.send(catalogApiResponse(enriched));
   });
   router.post("/quote", async (request, response) => {
     const input = asQuoteRequest(request.body);

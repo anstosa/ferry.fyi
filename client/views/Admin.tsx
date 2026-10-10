@@ -24,6 +24,7 @@ import {
   type AdReportShareSummary,
   type AdSlotId,
   getAdPlacementKey,
+  parseAdPlacementKey,
 } from "shared/contracts/ads";
 import type {
   AdminTerminalLocation,
@@ -254,6 +255,7 @@ const adSlotLabels: Record<AdSlotId, string> = {
   cameras: "Cameras",
   fare: "Fares",
   home: "Home",
+  navigation: "Navigation",
   schedule: "Schedule",
   terminal: "Terminal details",
 };
@@ -284,6 +286,18 @@ const getAdDirections = (terminals: Terminal[]): AdDirection[] =>
         ) === index
     )
     .sort((left, right) => left.label.localeCompare(right.label));
+
+// offer each canonical terminal once for navigation inventory
+const getNavigationAdTerminals = (terminals: Terminal[]): Terminal[] =>
+  terminals
+    .filter((terminal) => {
+      // use the shared placement catalog for terminal validity
+      return Boolean(parseAdPlacementKey(`navigation--${terminal.id}`));
+    })
+    .sort((left, right) => {
+      // keep terminal choices readable and stable
+      return left.name.localeCompare(right.name);
+    });
 
 const emptyAdPlacement = ({
   arrivalTerminalId,
@@ -776,8 +790,17 @@ export const Admin = (): ReactElement => {
   const [selectedAdSlot, setSelectedAdSlot] = useState<AdSlotId>(
     requestedAdSelection?.slot ?? "home"
   );
+  // keep directional selection independent of terminal-only inventory
   const [selectedAdDirection, setSelectedAdDirection] = useState(
-    requestedAdSelection?.directionKey ?? ""
+    requestedAdSelection?.slot === "navigation"
+      ? ""
+      : (requestedAdSelection?.directionKey ?? "")
+  );
+  // restore navigation's departure-only owner link
+  const [selectedAdTerminal, setSelectedAdTerminal] = useState(
+    requestedAdSelection?.slot === "navigation"
+      ? requestedAdSelection.directionKey
+      : ""
   );
   const [adDraft, setAdDraft] = useState<AdPlacement | null>(null);
   const [adCampaigns, setAdCampaigns] = useState<AdCampaign[]>([]);
@@ -918,6 +941,10 @@ export const Admin = (): ReactElement => {
     setAdCampaigns(campaigns);
     setAdInventoryReport(inventory);
     setSelectedAdDirection((current) => current || directions[0]?.key || "");
+    setSelectedAdTerminal((current) => {
+      // preserve a terminal deep link or choose the first canonical terminal
+      return current || getNavigationAdTerminals(terminals)[0]?.id || "";
+    });
   };
 
   const loadAdCampaignReport = async (campaignId: string): Promise<void> => {
@@ -1087,23 +1114,34 @@ export const Admin = (): ReactElement => {
   const selectedDirection = adDirections.find(
     ({ key }) => key === selectedAdDirection
   );
+  const navigationAdTerminals = getNavigationAdTerminals(adTerminals);
+  const selectedTerminal = navigationAdTerminals.find((terminal) => {
+    // resolve the departure-only editor choice
+    return terminal.id === selectedAdTerminal;
+  });
 
+  // load the existing creative for the selected placement scope
   useEffect(() => {
+    // wait for owner configuration
     if (!ads) {
       return;
     }
     const isHome = selectedAdSlot === "home";
-    if (!isHome && !selectedDirection) {
+    const isTerminalScoped = selectedAdSlot === "navigation";
+    const departureTerminalId = isTerminalScoped
+      ? selectedTerminal?.id
+      : selectedDirection?.departureTerminalId;
+    // require terminal or route context before constructing a key
+    if (!isHome && !departureTerminalId) {
       setAdDraft(null);
       return;
     }
     const input = {
-      arrivalTerminalId: isHome
-        ? null
-        : (selectedDirection?.arrivalTerminalId ?? null),
-      departureTerminalId: isHome
-        ? null
-        : (selectedDirection?.departureTerminalId ?? null),
+      arrivalTerminalId:
+        isHome || isTerminalScoped
+          ? null
+          : (selectedDirection?.arrivalTerminalId ?? null),
+      departureTerminalId: isHome ? null : (departureTerminalId ?? null),
       slot: selectedAdSlot,
     };
     const key = getAdPlacementKey(input);
@@ -1111,7 +1149,13 @@ export const Admin = (): ReactElement => {
       ads.placements.find((placement) => placement.key === key) ??
         emptyAdPlacement(input)
     );
-  }, [adTerminals, ads, selectedAdDirection, selectedAdSlot]);
+  }, [
+    adTerminals,
+    ads,
+    selectedAdDirection,
+    selectedAdSlot,
+    selectedAdTerminal,
+  ]);
 
   useEffect(() => {
     if (!ads || !requestedAdSelection) {
@@ -1881,7 +1925,7 @@ export const Admin = (): ReactElement => {
 
         <AdminSection
           active={activeTab === "ads"}
-          description="Configure direct, contextual advertisements. Route placements are stored separately for each travel direction."
+          description="Configure contextual advertisements. Navigation placements are per departure terminal; other route placements are per travel direction."
           id="ads"
           load={loadAds}
           loadingFallback={
@@ -1958,30 +2002,58 @@ export const Admin = (): ReactElement => {
                   ))}
                 </select>
 
-                {selectedAdSlot === "home" ? null : (
+                {selectedAdSlot === "navigation" && (
                   <>
                     <label
                       className="mt-3 block font-semibold"
-                      htmlFor="admin-ad-direction"
+                      htmlFor="admin-ad-terminal"
                     >
-                      Travel direction
+                      Departure terminal
                     </label>
                     <select
                       className="mt-1 w-full rounded border border-gray-medium bg-white p-2 text-gray-900 dark:bg-blue-darkest dark:text-gray-100"
-                      id="admin-ad-direction"
-                      onChange={(event) =>
-                        setSelectedAdDirection(event.target.value)
-                      }
-                      value={selectedAdDirection}
+                      id="admin-ad-terminal"
+                      onChange={(event) => {
+                        // change only the navigation terminal placement
+                        setSelectedAdTerminal(event.target.value);
+                      }}
+                      value={selectedAdTerminal}
                     >
-                      {adDirections.map((direction) => (
-                        <option key={direction.key} value={direction.key}>
-                          {direction.label}
+                      {navigationAdTerminals.map((terminal) => (
+                        // reuse one placement for every destination at this terminal
+                        <option key={terminal.id} value={terminal.id}>
+                          {terminal.name}
                         </option>
                       ))}
                     </select>
                   </>
                 )}
+
+                {selectedAdSlot !== "home" &&
+                  selectedAdSlot !== "navigation" && (
+                    <>
+                      <label
+                        className="mt-3 block font-semibold"
+                        htmlFor="admin-ad-direction"
+                      >
+                        Travel direction
+                      </label>
+                      <select
+                        className="mt-1 w-full rounded border border-gray-medium bg-white p-2 text-gray-900 dark:bg-blue-darkest dark:text-gray-100"
+                        id="admin-ad-direction"
+                        onChange={(event) =>
+                          setSelectedAdDirection(event.target.value)
+                        }
+                        value={selectedAdDirection}
+                      >
+                        {adDirections.map((direction) => (
+                          <option key={direction.key} value={direction.key}>
+                            {direction.label}
+                          </option>
+                        ))}
+                      </select>
+                    </>
+                  )}
 
                 {adDraft ? (
                   <div className="mt-4 space-y-3">
@@ -2103,7 +2175,7 @@ export const Admin = (): ReactElement => {
                 <section className="rounded-xl border border-gray-light p-4 dark:border-gray-dark">
                   <h3 className="font-semibold">Schedule immutable campaign</h3>
                   <p className="mt-1 text-sm text-gray-dark dark:text-gray-light">
-                    Scheduling snapshots the placement creative and direction.
+                    Scheduling snapshots the placement creative and context.
                     Later placement edits do not change campaign reports. Times
                     use America/Los_Angeles; nonexistent or ambiguous DST times
                     are rejected.

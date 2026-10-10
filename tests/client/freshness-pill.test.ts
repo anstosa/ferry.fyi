@@ -65,4 +65,20 @@ describe("FreshnessPill", () => {
 
     expect(container.textContent).toBe("");
   });
+
+  // keep descriptive prefixes out of native element attributes
+  it("uses a custom freshness label without leaking props to the dom", () => {
+    const { container, root } = renderPill(
+      React.createElement(FreshnessPill, {
+        labelPrefix: "Image checked",
+        now: 1_000,
+        sourceUpdatedAt: 940,
+      })
+    );
+    const pill = container.querySelector("[role=status]");
+    expect(pill?.textContent).toBe("Image checked 1 min ago");
+    expect(pill?.getAttribute("aria-label")).toBe("Image checked 1 min ago");
+    expect(pill?.hasAttribute("labelPrefix")).toBe(false);
+    act(() => root.unmount());
+  });
 });

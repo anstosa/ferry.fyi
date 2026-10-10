@@ -10,6 +10,7 @@ const slotLabels = {
   cameras: "Cameras",
   fare: "Fares",
   home: "Home",
+  navigation: "Navigation",
   schedule: "Schedule",
   terminal: "Terminal details",
 } as const;
@@ -53,8 +54,13 @@ const formatAdInventoryPlacement = (
     return slotLabels.home;
   }
   const departure = terminals.find(
+    // locate the departure's public name
     (terminal) => terminal.id === parsed.departureTerminalId
   );
+  // label terminal inventory without an invented arrival
+  if (parsed.slot === "navigation") {
+    return `${slotLabels.navigation} · ${departure?.name ?? parsed.departureTerminalId}`;
+  }
   const arrival = terminals.find(
     (terminal) => terminal.id === parsed.arrivalTerminalId
   );

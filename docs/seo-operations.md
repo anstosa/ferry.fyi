@@ -27,6 +27,116 @@ views must agree on the same public URL policy:
 over that exact set. Do not add a URL directly to sitemap output or create a
 second route/indexability list.
 
+## Directional schedule wait-first contract
+
+Directional schedule pages answer the rider's wait-time question before the
+detailed sailing list. Their title follows
+`[departure] to [arrival] Ferry Wait Times & Schedule - Ferry FYI`, and their
+description identifies WSF wait reports, departures, capacity forecasts,
+cameras, alerts, source-time limits, and the lack of a boarding guarantee.
+
+The initial HTML must contain the useful anonymous wait-first summary rather
+than depending on hydration to introduce it. Keep the direction and selected
+sailing date explicit, show a reported wait state or an honest unavailable
+state, and retain the departure schedule and relevant camera and alert paths.
+The summary uses two compact side-by-side cards without introductory eyebrows,
+explanatory disclaimers or a how-to disclosure. Icon quick links use concise
+traveler questions and page descriptions, with left-aligned single-line labels
+and natural widths that wrap as needed. Their destinations mirror the remaining
+route tabs; terminal links remain terminal-scoped. Past sailings are
+shown above Now: the latest four completed sailings remain visible as compact
+28px expandable rows, while only older sailings use an additional disclosure.
+Compact summaries use confirmed capacity and departure timing only, visualize
+confirmed fullness, and omit the vessel name until expansion. Significant delay
+appears on the left in the full-card late or early colors; the unpadded scheduled
+clock is aligned on the right without an arrow. Suppress timing labels in the
+shared three-minute rounded on-time window. The complete sailing facts remain
+available inside each row. Place the schedule ad before
+this history so it does not separate past sailings from Now. Now is only a time
+marker, not a second trip-planning prompt. Wait-report source text and timestamps,
+the selected date, unknown states and cancellations remain visible. The next
+scheduled card omits the vessel name and duplicate source timestamp; schedule
+freshness remains available elsewhere on the page. Keep the departures anchor
+without a duplicate service-date header.
+A non-default `date` selection remains `noindex,follow`, uses the undated
+direction canonical, and must not silently present a current report as if it
+described another date.
+
+WSF wait reports are reports from the source, not Ferry FYI measurements or
+exact live numeric queue waits. WSF-reported capacity counts are observations;
+Ferry FYI capacity forecasts are predictions. Neither is a measured queue wait
+or a promise that a vehicle will board. Label reports, observations, and
+forecasts separately, preserve stale and unavailable states, and show source
+timestamps where the source provides them. Source timestamps describe data
+freshness; they are distinct from the page's render time and
+`SEO_CONTENT_LAST_MODIFIED`.
+
+Keep schedule structured data factual and limited to supported page content.
+Do not add FAQ schema solely for search appearance, and do not promise that
+wait-first wording, structured data, or any other page change will improve
+rankings.
+
+Use Google's people-first [helpful content guidance](https://developers.google.com/search/docs/fundamentals/creating-helpful-content),
+[title-link guidance](https://developers.google.com/search/docs/appearance/title-link),
+[snippet guidance](https://developers.google.com/search/docs/appearance/snippet),
+and [JavaScript SEO basics](https://developers.google.com/search/docs/crawling-indexing/javascript/javascript-seo-basics)
+when reviewing this contract. These references guide accurate, visible page
+content; they do not guarantee a chosen title, snippet, or ranking.
+
+## Departure-terminal camera contract
+
+Camera pages retain directional route canonicals and metadata while showing
+only the selected departure terminal's images. Use a prominent
+`[departure] ferry terminal cameras` heading, name the destination in the lead,
+and provide the shared schedule-planning buttons, replacing the camera self-link
+with `Schedule & wait`. Keep the introduction concise without an extra disclaimer
+paragraph. Keep this core content
+consistent in initial HTML and the interactive page, including empty states.
+Use each camera's location title in its heading and contextual image alt text.
+
+These are snapshots, not live video or measured wait times. `checkedAt` is an
+image-check time, not the last source-image change; unchanged images can still
+be stale after a recent check. Preserve unavailable and stale states. Static
+holding capacities, camera-position estimates and vessel-capacity equivalents
+are reference context, not current vehicle counts or boarding predictions.
+
+Use Google's [image search guidance](https://developers.google.com/search/docs/appearance/google-images)
+alongside the title and snippet guidance above. These inferred traveler needs
+are not measured query volumes or a ranking guarantee.
+
+## Terminal travel-planning contract
+
+Terminal pages answer practical travel questions: address and directions,
+parking and transport connections, when to arrive, accessible boarding,
+facilities, and route planning. Their title follows
+`[terminal] Ferry Terminal: Parking & Directions - Ferry FYI`; the description
+names the actual terminal answers, not generic current travel context.
+
+Keep these answers consistent in initial HTML and the interactive page.
+Parking and accessibility guidance is visible without opening a disclosure;
+less common vehicle, construction, security and lost-property details remain
+in native disclosures with their text present in the initial HTML. Include
+the shared route planning buttons for one-destination terminals as well as
+multi-route terminals, using the selected direction and replacing the terminal
+button with Schedule & wait. Retain `/:terminalSlug/terminal` as the sole
+terminal canonical. Present terminal answers without top-level card shells or
+a separate ferry-connections section. An accessible icon-only directions link
+sits beside the address; omit the WSF terminal-page link and keep in-page
+navigation compact. The terminal ad follows the navigation links; leaderboard
+promotions follow the travel answers.
+
+WSF `WaitTimeNotes` are arrival guidance, not measured live queue waits.
+Preserve each note's source update date or explicitly report an unavailable
+timestamp; do not use the page check time as its update time. Missing parking,
+accessibility or arrival guidance remains unknown. WSF food service does not
+specifically establish vending machines, and an elevator listing alone does
+not establish step-free boarding access. Confirm changeable parking rates,
+transport services and facilities with their operator.
+
+These topic priorities are inferred travel-planning needs, not measured
+Search Console query volumes or a promise of higher rankings. The Google
+guidance above applies to accurate, useful terminal content too.
+
 ## Description release gate
 
 `auditIndexableSeoDescriptions` normalizes whitespace and case, then checks the
@@ -160,9 +270,22 @@ Static public pages render their full shared informational content, including
 mixed-page installation, ticket-wallet and Supporter guidance; device/account
 controls mount only after compatible hydration. Dynamic public documents render
 the complete anonymous snapshot for the exact canonical URL/default state. The
-fare estimator is followed by native `details`/`summary` and a semantic full fare
-table, present in initial HTML even while collapsed. Quote selections and totals
-remain browser-only.
+fare page leads with adult passenger and standard vehicle-with-driver one-way
+and round-trip rates for its exact route/date, followed by the fare ad and
+custom calculator. Top-level fare sections are unboxed; zero-dollar amounts are
+labeled Free and missing amounts remain Unavailable. The route/date remains
+visible without currency-code, source-timestamp or quote-explanation paragraphs.
+Each published amount retains independent source freshness in its data contract
+and a visible warning when stale.
+Prices come from explicit official departure and total quote rows, not doubled
+catalog amounts. An explicit no-fare departure is zero; missing return pricing
+stays unavailable. Both legs use the selected travel date. Flattened fixed-choice
+rate summaries are safe anonymous SSR content; custom quote selections and full
+quote payloads remain browser-only. Native `details`/`summary` and the semantic
+full fare table follow the calculator and are present even while collapsed.
+Explicit fare `?date=` values select that date in both SSR and browser content
+and isolate the origin cache entry. Dated variants remain noindex with the
+undated canonical; rider/vehicle wizard selectors never enter SSR cache identity.
 
 Dynamic origin reuse follows fixed `03:00` and `15:00` boundaries in
 `America/Los_Angeles`, not a rolling twelve-hour TTL. Overnight DST windows can

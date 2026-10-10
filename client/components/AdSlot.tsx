@@ -334,7 +334,7 @@ const SupporterThankYou = (): ReactElement => {
   );
 };
 
-/** Renders a contextual campaign and measures its anonymous opportunity. */
+// render contextual campaigns with anonymous opportunity measurement
 export const AdSlot = ({
   arrivalTerminalId,
   className = "",
@@ -374,11 +374,16 @@ export const AdSlot = ({
     supporter?.active === true &&
     supporter.adsEnabled !== true &&
     slot === "home";
-  const hasDirection = Boolean(arrivalTerminalId && departureTerminalId);
+  // navigation inventory follows the terminal rather than the destination
+  const hasPlacementContext =
+    slot === "navigation"
+      ? Boolean(departureTerminalId)
+      : Boolean(arrivalTerminalId && departureTerminalId);
   const key =
-    slot === "home" || hasDirection
+    slot === "home" || hasPlacementContext
       ? getAdPlacementKey({
-          arrivalTerminalId: arrivalTerminalId ?? null,
+          arrivalTerminalId:
+            slot === "navigation" ? null : (arrivalTerminalId ?? null),
           departureTerminalId: departureTerminalId ?? null,
           slot,
         })

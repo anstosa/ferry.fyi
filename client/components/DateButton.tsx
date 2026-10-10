@@ -2,7 +2,7 @@ import "./DateButton.scss";
 
 import clsx from "clsx";
 import { DateTime } from "luxon";
-import React, { ReactElement, useEffect, useState } from "react";
+import React, { ReactElement, useState } from "react";
 import { DayPicker } from "react-day-picker";
 import type { ValidRange } from "shared/contracts/schedules";
 
@@ -11,13 +11,16 @@ interface Props {
   defaultDate?: DateTime;
   validRange?: ValidRange;
 }
+// display the parent service date and notify only real calendar selections
 export const DateButton = ({
   onDateChange,
   defaultDate,
   validRange,
 }: Props): ReactElement => {
   const [isOpen, setOpen] = useState<boolean>(false);
-  const [date, setDate] = useState<DateTime>(defaultDate || DateTime.local());
+  // retain a standalone selection when no parent date is supplied
+  const [localDate, setLocalDate] = useState<DateTime>(() => DateTime.local());
+  const date = defaultDate ?? localDate;
   const today = DateTime.local();
   // past date marker
   const pastDays = { before: today.startOf("day").toJSDate() };
@@ -29,8 +32,6 @@ export const DateButton = ({
         },
       ]
     : [];
-
-  useEffect(() => onDateChange?.(date), [date]);
 
   return (
     <div
@@ -79,7 +80,12 @@ export const DateButton = ({
               if (!day) {
                 return;
               }
-              setDate(DateTime.fromJSDate(day));
+              const nextDate = DateTime.fromJSDate(day);
+              // retain selections locally only when the parent does not supply one
+              if (!defaultDate) {
+                setLocalDate(nextDate);
+              }
+              onDateChange?.(nextDate);
               setOpen(false);
             }}
           />

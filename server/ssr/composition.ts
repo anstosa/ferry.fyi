@@ -55,7 +55,14 @@ export const createSsrRuntime = async ({
     getAdCreative: getServableAdCreative,
     getCameraFrames: getPublicCameraFrames,
     getContent: getPublicContent,
-    getFareCatalog: fareQueries.getCatalog,
+    getFareCatalog: async (input) => {
+      const outcome = await fareQueries.getCatalog(input);
+      const defaultRates = await fareQueries.getDefaultRates(outcome, input);
+      // enrich only usable public fare outcomes
+      return defaultRates && outcome.kind !== "unavailable"
+        ? { ...outcome, defaultRates }
+        : outcome;
+    },
     getLeaderboard: getPublicLeaderboard,
     getPublicLeaderboardsEnabled: publicLeaderboardsEnabled,
     getSchedule: getPublicSsrSchedule,

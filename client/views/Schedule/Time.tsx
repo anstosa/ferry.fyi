@@ -50,12 +50,18 @@ export const Time = ({
     diff.as("minutes") >= 0 &&
     diff.as("minutes") < 60
   ) {
+    // relative departure
     const mins = Math.round(diff.as("minutes"));
     majorTime = (
-      <span className="inline-flex items-baseline justify-center whitespace-nowrap leading-none">
-        <span className="text-[28px] leading-none">{mins}</span>
-        <span className="ml-0.5 text-[10px] font-medium leading-none">
-          min{mins === 1 ? "" : "s"}
+      <span className="inline-flex flex-col items-center justify-center whitespace-nowrap leading-none">
+        <span className="mb-0.5 text-[8px] font-black uppercase leading-none tracking-[0.08em]">
+          Departs in
+        </span>
+        <span className="inline-flex items-baseline justify-center">
+          <span className="text-[28px] leading-none">{mins}</span>
+          <span className="ml-0.5 text-[10px] font-medium leading-none">
+            min{mins === 1 ? "" : "s"}
+          </span>
         </span>
       </span>
     );

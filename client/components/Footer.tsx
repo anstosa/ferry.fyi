@@ -9,7 +9,13 @@ import React, {
 } from "react";
 import { NavLink } from "react-router-dom";
 import type { Terminal } from "shared/contracts/terminals";
+import { isSuppressedBulletin } from "shared/lib/bulletins";
 
+import {
+  type GetPath,
+  ROUTE_VIEW_ORDER,
+  type RouteView,
+} from "~/lib/routeViews";
 import BellAlertIcon from "~/static/images/icons/solid/bell-exclamation.svg";
 import ScheduleIcon from "~/static/images/icons/solid/calendar-week.svg";
 import VideoIcon from "~/static/images/icons/solid/cctv.svg";
@@ -17,9 +23,8 @@ import FareIcon from "~/static/images/icons/solid/dollar-sign.svg";
 import TerminalIcon from "~/static/images/icons/solid/garage-car.svg";
 import NavigationIcon from "~/static/images/icons/solid/location-arrow.svg";
 import MapIcon from "~/static/images/icons/solid/map.svg";
-import { GetPath } from "~/views/Route";
 
-import { getLastBulletinTime, getWaitTime } from "../lib/bulletins";
+import { getBulletinTime, getWaitTime } from "../lib/bulletins";
 
 // dock route navigation above the native inset
 const WrapFooter: FunctionComponent<PropsWithChildren> = ({ children }) => (
@@ -81,11 +86,34 @@ interface Props {
   getPath: GetPath;
 }
 
+interface FooterLinkDefinition {
+  decorative?: boolean;
+  Icon: React.FunctionComponent<React.SVGAttributes<SVGElement>>;
+  label: string;
+}
+
+// map visible footer destinations onto the canonical route order
+const FOOTER_LINKS: Partial<Record<RouteView, FooterLinkDefinition>> = {
+  schedule: { Icon: ScheduleIcon, label: "Schedule" },
+  navigation: {
+    decorative: true,
+    Icon: NavigationIcon,
+    label: "Navigation",
+  },
+  cameras: { Icon: VideoIcon, label: "Cameras" },
+  terminal: { Icon: TerminalIcon, label: "Terminal details" },
+  map: { Icon: MapIcon, label: "Map" },
+  fare: { Icon: FareIcon, label: "Fares" },
+};
+
 // fit every route tab within compact mobile screens
 export const Footer = ({ terminal, getPath }: Props): ReactElement => {
-  // show the terminal's available bulletin tab
+  // summarize only publishable terminal bulletins including cached responses
   const renderBulletins = (): ReactElement | null => {
-    const { bulletins } = terminal;
+    // exclude suppressed bulletins before selecting the latest alert
+    const bulletins = terminal.bulletins.filter(
+      (bulletin) => !isSuppressedBulletin(bulletin)
+    );
 
     // omit the empty bulletin tab
     if (!bulletins.length) {
@@ -101,7 +129,7 @@ export const Footer = ({ terminal, getPath }: Props): ReactElement => {
     );
     // highlight recent bulletin context
     if (hours < 6) {
-      summary = getWaitTime(latest) || getLastBulletinTime(terminal);
+      summary = getWaitTime(latest) || getBulletinTime(latest);
       backgroundColor = "bg-stale-light dark:bg-stale-dark";
     } else {
       summary = null;
@@ -144,28 +172,28 @@ export const Footer = ({ terminal, getPath }: Props): ReactElement => {
       />
       <WrapFooter>
         <LayoutGroup id="footer-nav">
-          <FooterLink label="Schedule" path={getPath({ view: "schedule" })}>
-            <ScheduleIcon className="text-2xl" />
-          </FooterLink>
-          <FooterLink label="Navigation" path={getPath({ view: "navigation" })}>
-            <NavigationIcon aria-hidden className="text-2xl" />
-          </FooterLink>
-          <FooterLink label="Cameras" path={getPath({ view: "cameras" })}>
-            <VideoIcon className="text-2xl" />
-          </FooterLink>
-          <FooterLink
-            label="Terminal details"
-            path={getPath({ view: "terminal" })}
-          >
-            <TerminalIcon className="text-2xl" />
-          </FooterLink>
-          <FooterLink label="Map" path={getPath({ view: "map" })}>
-            <MapIcon className="text-2xl" />
-          </FooterLink>
-          <FooterLink label="Fares" path={getPath({ view: "fare" })}>
-            <FareIcon className="text-2xl" />
-          </FooterLink>
-          {renderBulletins()}
+          {ROUTE_VIEW_ORDER.map((view) => {
+            // retain the conditional alert destination in its canonical position
+            if (view === "alerts") {
+              return (
+                <React.Fragment key={view}>{renderBulletins()}</React.Fragment>
+              );
+            }
+            const definition = FOOTER_LINKS[view];
+            // omit subscribe and any non-footer destinations
+            if (!definition) {
+              return null;
+            }
+            const { decorative, Icon, label } = definition;
+            return (
+              <FooterLink key={view} label={label} path={getPath({ view })}>
+                <Icon
+                  aria-hidden={decorative || undefined}
+                  className="text-2xl"
+                />
+              </FooterLink>
+            );
+          })}
         </LayoutGroup>
       </WrapFooter>
       {/* reserve native bottom inset */}

@@ -1827,7 +1827,7 @@
     },
     "/api/fares/catalog": {
       "get": {
-        "description": "Fare state and freshness fields determine whether values are current. Cache class: live-no-store. Rate class: anonymous-read. Ferry FYI provides best-effort operational data, not an SLA.",
+        "description": "Fare state and freshness fields determine whether values are current. Optional defaultRates compare one adult passenger and one standard vehicle with driver; each amount has independent state and freshness, and null means unavailable. Cache class: live-no-store. Rate class: anonymous-read. Ferry FYI provides best-effort operational data, not an SLA.",
         "operationId": "getFareCatalog",
         "parameters": [],
         "responses": {

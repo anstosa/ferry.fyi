@@ -1,11 +1,17 @@
 import { Router } from "express";
+import { parseAdPlacementKey } from "shared/contracts/ads";
 
 import { requireTypedConfirmation } from "./confirmation";
 
 export const adminAdsRouter = Router();
 const safeIdPattern = /^[0-9a-f]{8}-[0-9a-f-]{27}$/i;
-const safePlacementKeyPattern =
-  /^(?:home|(?:schedule|cameras|terminal|fare)--[A-Za-z0-9_][A-Za-z0-9_-]*--[A-Za-z0-9_][A-Za-z0-9_-]*)$/;
+const MAX_PLACEMENT_KEY_LENGTH = 300;
+
+// require a bounded canonical placement key
+const isSafePlacementKey = (value: unknown): value is string =>
+  typeof value === "string" &&
+  value.length <= MAX_PLACEMENT_KEY_LENGTH &&
+  parseAdPlacementKey(value) !== null;
 
 adminAdsRouter.get("/", async (_request, response) => {
   const { getAdminAds } = await import("~/lib/admin/ads");
@@ -45,9 +51,9 @@ adminAdsRouter.post(
   "/campaigns",
   requireTypedConfirmation({
     action: "schedule-ad-campaign",
+    // bind confirmation only to canonical placements
     getTarget: (request) =>
-      typeof request.body?.placementKey === "string" &&
-      safePlacementKeyPattern.test(request.body.placementKey)
+      isSafePlacementKey(request.body?.placementKey)
         ? `ad-campaign:${request.body.placementKey}`
         : undefined,
   }),
@@ -167,8 +173,9 @@ adminAdsRouter.put(
   "/placements/:key",
   requireTypedConfirmation({
     action: "save-ad-settings",
+    // bind confirmation only to canonical placements
     getTarget: (request) =>
-      safePlacementKeyPattern.test(request.params.key)
+      isSafePlacementKey(request.params.key)
         ? `ad:${request.params.key}`
         : undefined,
   }),

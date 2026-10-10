@@ -71,4 +71,65 @@ describe("admin ad persistence", () => {
     );
     expect(placements.findOrCreate).not.toHaveBeenCalled();
   });
+
+  it("persists a navigation placement for one canonical departure terminal", async () => {
+    const navigationInput = {
+      ...input,
+      arrivalTerminalId: null,
+      key: "navigation--3",
+      slot: "navigation",
+    };
+    const record = {
+      ...navigationInput,
+      update: vi.fn().mockResolvedValue(undefined),
+    };
+    placements.findOrCreate.mockResolvedValue([record]);
+    placements.findAll.mockResolvedValue([record]);
+
+    await expect(
+      saveAdPlacement(navigationInput.key, navigationInput)
+    ).resolves.toMatchObject({
+      placements: [
+        expect.objectContaining({
+          arrivalTerminalId: null,
+          departureTerminalId: "3",
+          key: "navigation--3",
+          slot: "navigation",
+        }),
+      ],
+    });
+    expect(record.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        arrivalTerminalId: null,
+        departureTerminalId: "3",
+        slot: "navigation",
+      })
+    );
+  });
+
+  it("rejects malformed and mismatched navigation placements", async () => {
+    await expect(
+      saveAdPlacement("navigation--3--7", {
+        ...input,
+        key: "navigation--3--7",
+        slot: "navigation",
+      })
+    ).rejects.toThrow("Invalid ad placement");
+    await expect(
+      saveAdPlacement("navigation--9999", {
+        ...input,
+        arrivalTerminalId: null,
+        key: "navigation--9999",
+        slot: "navigation",
+      })
+    ).rejects.toThrow("Invalid ad placement");
+    await expect(
+      saveAdPlacement("navigation--3", {
+        ...input,
+        key: "navigation--3",
+        slot: "navigation",
+      })
+    ).rejects.toThrow("Invalid ad placement");
+    expect(placements.findOrCreate).not.toHaveBeenCalled();
+  });
 });

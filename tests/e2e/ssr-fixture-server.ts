@@ -10,8 +10,10 @@ import {
   Router,
   static as serveStatic,
 } from "express";
+import type { FareDefaultRate, FareFreshness } from "shared/contracts/fares";
 import type { PublicSsrRendererArtifact } from "shared/contracts/ssrRenderer";
 import type { Terminal } from "shared/contracts/terminals";
+import { getRecommendationServiceDate } from "shared/lib/sailingRecommendationRevision";
 
 import { createStaticRouter } from "../../server/controllers/static";
 import { createApp } from "../../server/server";
@@ -54,6 +56,7 @@ type FixtureState = {
   failLoads: number;
   failRenders: number;
   fills: number;
+  pastSailings: boolean;
   refreshVersion: number;
   requests: number;
   telemetry: SsrTelemetryEvent[];
@@ -70,6 +73,7 @@ const state: FixtureState = {
   failLoads: 0,
   failRenders: 0,
   fills: 0,
+  pastSailings: false,
   refreshVersion: 1,
   requests: 0,
   telemetry: [],
@@ -142,6 +146,7 @@ const makeTerminal = (
     info: {
       parking: "<p>Fixture parking &amp; connections</p>",
       ada: "Accessible boarding assistance",
+      security: "<p>Fixture terminal security guidance</p>",
     },
     location: {
       address: {
@@ -152,6 +157,8 @@ const makeTerminal = (
       },
       latitude: 47.6,
       longitude: -122.3,
+      // exercise malformed upstream map destinations
+      link: id === "7" ? "https://maps.example/terminal</p>" : undefined,
     },
     mates: mateIds.map((mateId) =>
       identity(mateId, fixtureTerminalName(mateId))
@@ -174,7 +181,7 @@ const makeTerminal = (
     waitTimes: [
       {
         title: "Vehicle wait",
-        description: "One sailing wait",
+        description: "<p>One sailing wait</p>",
         time: 1785315600,
       },
     ],
@@ -192,10 +199,11 @@ const terminals = (): Record<string, Terminal> => ({
   "14": makeTerminal("14", "Mukilteo", ["5"]),
 });
 
+// build public schedule facts with optional completed history
 const schedule = (departingId: string, arrivingId: string, date: string) => {
   const sourceTime = Math.floor(state.clock.getTime() / 1000);
   const departureTime = sourceTime + 3_600 + state.refreshVersion * 60;
-  return {
+  const result = {
     schedule: {
       date,
       key: `${departingId}-${arrivingId}-${date}`,
@@ -288,6 +296,31 @@ const schedule = (departingId: string, arrivingId: string, date: string) => {
     status: "available" as const,
     timestamp: sourceTime,
   };
+  // add history only to the selected current service date
+  if (state.pastSailings && date === getRecommendationServiceDate(sourceTime)) {
+    const template = result.schedule.slots[0];
+    result.schedule.slots.unshift(
+      ...[12_600, 10_800, 9_000, 7_200, 5_400, 3_600].map((offset, index) => {
+        // retain complete source facts for each completed sailing
+        const time = sourceTime - offset;
+        const departureDelta = index === 2 ? 7 * 60 : 0;
+        return {
+          ...template,
+          arrivalTime: time + departureDelta + 2_100,
+          crossing: {
+            ...template.crossing,
+            departureDelta,
+            departureTime: time + departureDelta,
+            driveUpCapacity: index === 3 ? 0 : 50,
+          },
+          hasPassed: true,
+          time,
+          wuid: `fixture-past-${offset}`,
+        };
+      })
+    );
+  }
+  return result;
 };
 
 // observe one public fixture creative without issuing measurement tokens
@@ -320,6 +353,22 @@ const fixtureAdState = (placementKey: string) => {
       .digest("hex"),
   };
 };
+
+// attach the fixed source clock to each anonymous fare fixture
+const fixtureFareFreshness = (): FareFreshness => ({
+  fetchedAt: Math.floor(state.clock.getTime() / 1000),
+  policyVersion: "fixture",
+  sourceCacheFlushDate: "fixture",
+  validFrom: "2026-01-01",
+  validThrough: "2026-12-31",
+});
+
+// publish explicit fixture amounts rather than infer totals from catalog rows
+const fixtureFareRate = (amount: number): FareDefaultRate => ({
+  amount,
+  freshness: fixtureFareFreshness(),
+  state: "current",
+});
 
 const services: PublicSsrSnapshotServices = {
   getAdCreative: async (placementKey) => fixtureAdState(placementKey).creative,
@@ -354,6 +403,26 @@ const services: PublicSsrSnapshotServices = {
     maintenance: { enabled: false, message: "" },
   }),
   getFareCatalog: async (request) => ({
+    defaultRates: {
+      passenger: {
+        oneWay: fixtureFareRate(
+          request.departingTerminalId === "3"
+            ? 0
+            : request.tripDate === "2026-08-01"
+              ? 10.35
+              : 9.85
+        ),
+        roundTrip: fixtureFareRate(
+          request.tripDate === "2026-08-01" ? 10.35 : 9.85
+        ),
+      },
+      standardVehicle: {
+        oneWay: fixtureFareRate(request.tripDate === "2026-08-01" ? 24 : 22.25),
+        roundTrip: fixtureFareRate(
+          request.tripDate === "2026-08-01" ? 48 : 44.5
+        ),
+      },
+    },
     catalog: {
       collectionDescription: "Fixture fare collection",
       fares: [
@@ -372,15 +441,9 @@ const services: PublicSsrSnapshotServices = {
           label: "Standard vehicle and driver",
         },
       ],
-      freshness: {
-        fetchedAt: Math.floor(state.clock.getTime() / 1000),
-        policyVersion: "fixture",
-        sourceCacheFlushDate: "fixture",
-        validFrom: "2026-01-01",
-        validThrough: "2026-12-31",
-      },
+      freshness: fixtureFareFreshness(),
       kind: "catalog",
-      request,
+      request: { ...request, roundTrip: true },
     },
     kind: "catalog",
   }),
@@ -491,6 +554,7 @@ fixtureRouter.post("/__fixture__/reset", async (_request, response) => {
     failLoads: 0,
     failRenders: 0,
     fills: 0,
+    pastSailings: false,
     refreshVersion: 1,
     requests: 0,
     telemetry: [],
@@ -506,11 +570,16 @@ fixtureRouter.post("/__fixture__/control", async (request, response) => {
     clock: string;
     failLoads: number;
     failRenders: number;
+    pastSailings: boolean;
     refreshVersion: number;
   }>;
   // mutate only public fixture serving controls
   if (typeof input.adEnabled === "boolean") {
     state.adEnabled = input.adEnabled;
+  }
+  // opt into compact-history browser coverage
+  if (typeof input.pastSailings === "boolean") {
+    state.pastSailings = input.pastSailings;
   }
   if (typeof input.adHeadline === "string") {
     state.adHeadline = input.adHeadline;

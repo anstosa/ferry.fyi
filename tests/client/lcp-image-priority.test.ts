@@ -32,10 +32,12 @@ describe("initial-load resources", () => {
     expect(logo?.width).toBe(112);
   });
 
-  it("keeps the home hero below the native top safe area", () => {
+  // wrapped homepage copy must grow before the ad or directory starts
+  it("keeps the home hero flexible below the native top safe area", () => {
     expect(homeHeroSource).toContain(
-      "h-[calc(16rem+var(--safe-area-inset-top))]"
+      "min-h-[calc(16rem+var(--safe-area-inset-top))]"
     );
+    expect(homeHeroSource).not.toContain("flex h-[calc(16rem");
     expect(homeHeroSource).toContain("pt-safe-top");
   });
 

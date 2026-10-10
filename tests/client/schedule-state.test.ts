@@ -3,7 +3,11 @@
 import { DateTime } from "luxon";
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+import type { Terminal } from "../../shared/contracts/terminals";
+import { getRecommendationServiceDate } from "../../shared/lib/sailingRecommendationRevision";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -73,9 +77,19 @@ vi.mock("../../client/views/Schedule/SlotInfo", async () => {
   const { useEffect, useRef } = await import("react");
   return {
     SlotInfo: ({
+      compact,
+      getSailingShareUrl,
+      initialDetailTab,
+      isExpanded,
+      onClick,
       setElement,
       slot,
     }: {
+      compact?: boolean;
+      getSailingShareUrl: (tab: "vessel") => string;
+      initialDetailTab?: string;
+      isExpanded: boolean;
+      onClick: () => void;
       setElement: (element: HTMLDivElement) => void;
       slot: { time: number };
     }) => {
@@ -87,7 +101,12 @@ vi.mock("../../client/views/Schedule/SlotInfo", async () => {
         }
       }, []);
       return React.createElement("div", {
+        "data-compact": String(Boolean(compact)),
+        "data-expanded": String(isExpanded),
+        "data-initial-detail-tab": initialDetailTab,
+        "data-share-url": getSailingShareUrl("vessel"),
         "data-slot-time": slot.time,
+        onClick,
         ref: element,
       });
     },
@@ -152,6 +171,37 @@ const getActiveSchedule = (key = "5-14-2026-08-26") => {
   } as never;
 };
 
+// build the route context required by the browser schedule overview
+const getOverviewTerminals = (): {
+  arrivalTerminal: Terminal;
+  departureTerminal: Terminal;
+} => {
+  const departureTerminal: Terminal = {
+    abbreviation: "CLI",
+    bulletins: [],
+    cameras: [],
+    hasElevator: false,
+    hasFood: false,
+    hasOverheadLoading: false,
+    hasRestroom: true,
+    hasWaitingRoom: true,
+    id: "5",
+    info: {},
+    location: { address: {}, latitude: 47.98, longitude: -122.35 },
+    mates: [],
+    name: "Clinton",
+    popularity: 1,
+    waitTimes: [],
+  };
+  const arrivalTerminal = {
+    ...departureTerminal,
+    id: "14",
+    name: "Mukilteo",
+  };
+  departureTerminal.mates = [arrivalTerminal];
+  return { arrivalTerminal, departureTerminal };
+};
+
 describe("Schedule load states", () => {
   // placeholders and empty schedules cannot start useful exposure
   it("wires only usable sailings as useful content", () => {
@@ -172,7 +222,9 @@ describe("Schedule load states", () => {
       "5-14-2026-08-26",
       true
     );
-    expect(useful.ref).toHaveBeenCalledWith(container.querySelector("ul"));
+    expect(useful.ref).toHaveBeenCalledWith(
+      container.querySelector('[data-slot-time="1777778300"]')?.closest("ul")
+    );
   });
 
   it("shows the separate schedule check time", () => {
@@ -193,6 +245,32 @@ describe("Schedule load states", () => {
         sourceUpdatedAt: 2_000_000_000,
       })
     );
+  });
+
+  // floating freshness must not extend the sailing list's scroll boundary
+  it("keeps freshness out of layout while retaining the refresh action", async () => {
+    const onRefresh = vi.fn().mockResolvedValue(undefined);
+    const container = render({
+      checkedAt: 2_000_000_000,
+      onRefresh,
+      schedule: getActiveSchedule(),
+      time: DateTime.fromSeconds(1_777_777_800),
+    });
+    const overlay = container.querySelector("main")?.lastElementChild;
+    expect(overlay?.classList.contains("h-0")).toBe(true);
+    expect(overlay?.classList.contains("shrink-0")).toBe(true);
+    expect(overlay?.className).not.toMatch(/(?:^|\s)(?:mt-|pb-)/);
+    const pill = freshnessPill.mock.calls.at(-1)?.[0] as {
+      className: string;
+      onClick: () => void;
+    };
+    expect(pill.className).toContain("absolute");
+    expect(pill.className).toContain("bottom-1");
+    await act(async () => {
+      pill.onClick();
+      await Promise.resolve();
+    });
+    expect(onRefresh).toHaveBeenCalledOnce();
   });
 
   it("hides the check-time pill when no check time is available", () => {
@@ -236,22 +314,243 @@ describe("Schedule load states", () => {
 });
 
 describe("Schedule initial scroll", () => {
-  // prefer the selected sailing
-  it("scrolls to a deep-linked sailing instead of the now row", () => {
+  // recovery and empty states retain the wait answer and departures heading
+  it.each(["loading", "failed", "empty"])(
+    "keeps the overview and departures target when the schedule is %s",
+    (state) => {
+      const terminal = {
+        abbreviation: "CLI",
+        bulletins: [],
+        id: "5",
+        mates: [{ id: "14" }],
+        name: "Clinton",
+        waitTimes: [],
+      } as unknown as Terminal;
+      const mate = {
+        ...terminal,
+        abbreviation: "MUK",
+        id: "14",
+        name: "Mukilteo",
+      };
+      const now = DateTime.fromSeconds(1_777_777_800);
+      const selectedDate = getRecommendationServiceDate(now.toSeconds());
+      const container = document.createElement("div");
+      document.body.appendChild(container);
+      root = createRoot(container);
+      // exercise the real shared overview while changing only schedule readiness
+      act(() => {
+        root?.render(
+          React.createElement(
+            MemoryRouter,
+            null,
+            React.createElement(Schedule, {
+              arrivalTerminal: mate,
+              departureTerminal: terminal,
+              loadError: state === "failed" ? new Error("offline") : undefined,
+              schedule:
+                state === "empty"
+                  ? ({
+                      ...getActiveSchedule(),
+                      date: selectedDate,
+                      slots: [],
+                    } as never)
+                  : null,
+              selectedDate,
+              time: now,
+            })
+          )
+        );
+      });
+      expect(container.querySelector("h1")?.textContent).toContain(
+        "Clinton to Mukilteo"
+      );
+      expect(container.textContent).toContain("None reported");
+      expect(container.querySelector('a[href="#departures"]')).toBeNull();
+      expect(container.querySelector("#departures")).not.toBeNull();
+      expect(container.querySelector("h2#departures")).toBeNull();
+      expect(container.textContent).not.toContain(
+        "Sailings for this service date"
+      );
+    }
+  );
+
+  // past sailings stay compact above the live schedule while retaining row actions
+  it("does not auto-scroll past the wait overview and retains past sailings", () => {
+    const { arrivalTerminal, departureTerminal } = getOverviewTerminals();
+    const now = DateTime.fromSeconds(1_777_777_800);
+    const selectedDate = getRecommendationServiceDate(now.toSeconds());
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+    // mount the real route-link context used by the new summary
+    act(() => {
+      root?.render(
+        React.createElement(
+          MemoryRouter,
+          null,
+          React.createElement(Schedule, {
+            arrivalTerminal,
+            departureTerminal,
+            schedule: { ...getActiveSchedule(), date: selectedDate } as never,
+            selectedDate,
+            time: now,
+          })
+        )
+      );
+    });
+    expect(scrollIntoView).not.toHaveBeenCalled();
+    expect(container.querySelector("h1")?.textContent).toContain(
+      "Clinton to Mukilteo"
+    );
+    const past = container.querySelector<HTMLElement>("[data-past-sailings]");
+    const pastRow = past?.querySelector<HTMLElement>(
+      '[data-slot-time="1777777700"]'
+    );
+    const upcomingRow = container.querySelector<HTMLElement>(
+      '[data-slot-time="1777778300"]'
+    );
+    expect(past?.tagName).toBe("DIV");
+    expect(past?.querySelector("[data-older-sailings]")).toBeNull();
+    expect(pastRow).not.toBeNull();
+    expect(pastRow?.dataset.compact).toBe("true");
+    expect(upcomingRow).not.toBeNull();
+    expect(upcomingRow?.dataset.compact).toBe("false");
+    expect(
+      (past as Node).compareDocumentPosition(upcomingRow as Node) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(pastRow?.closest("details")).toBeNull();
+    act(() => pastRow?.click());
+    expect(pastRow?.dataset.expanded).toBe("true");
+    const shareUrl = new URL(pastRow?.dataset.shareUrl ?? "");
+    expect(shareUrl.searchParams.get("date")).toBe(selectedDate);
+    expect(shareUrl.searchParams.get("sailing")).toBe("1777777700");
+    expect(shareUrl.searchParams.get("tab")).toBe("vessel");
+  });
+
+  // recent past deep links expand their already visible row
+  it("opens and scrolls to a deep-linked past sailing", () => {
     const schedule = getActiveSchedule();
+    const { arrivalTerminal, departureTerminal } = getOverviewTerminals();
+    const now = DateTime.fromSeconds(1_777_777_800);
+    const selectedDate = getRecommendationServiceDate(now.toSeconds());
     queryState.query = {
       sailing: String(schedule.slots[0].time),
       tab: "vessel",
     };
 
-    render({
-      schedule,
-      time: DateTime.fromSeconds(1_777_777_800),
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+    // mount the real overview link context around the deep-linked schedule
+    act(() => {
+      root?.render(
+        React.createElement(
+          MemoryRouter,
+          null,
+          React.createElement(Schedule, {
+            arrivalTerminal,
+            departureTerminal,
+            schedule: { ...schedule, date: selectedDate } as never,
+            selectedDate,
+            time: now,
+          })
+        )
+      );
     });
 
     const target = scrollIntoView.mock.calls[0]?.[0] as HTMLElement;
     expect(target.dataset.slotTime).toBe(String(schedule.slots[0].time));
+    expect(target.dataset.compact).toBe("true");
+    expect(target.dataset.expanded).toBe("true");
+    expect(target.dataset.initialDetailTab).toBe("vessel");
+    expect(target.closest("[data-recent-sailings]")).not.toBeNull();
+    expect(target.closest("details")).toBeNull();
   });
+
+  // only older history needs a disclosure and ads precede the entire group
+  it.each([false, true])(
+    "shows four recent sailings and preserves older deep links: %s",
+    (linkedOlder) => {
+      const base = getActiveSchedule();
+      const now = DateTime.fromSeconds(1_777_777_800);
+      const selectedDate = getRecommendationServiceDate(now.toSeconds());
+      // keep six completed rows and the next departure in chronological order
+      const pastSlots = [1500, 1200, 900, 600, 300, 0].map((offset) => ({
+        ...base.slots[0],
+        time: base.slots[0].time - offset,
+        wuid: `past-${offset}`,
+      }));
+      const schedule = {
+        ...base,
+        date: selectedDate,
+        slots: [...pastSlots, base.slots[1]],
+      };
+      const { arrivalTerminal, departureTerminal } = getOverviewTerminals();
+      adSlot.ready = true;
+      // an older deep link must open only the older disclosure
+      if (linkedOlder) {
+        queryState.query = {
+          sailing: String(pastSlots[0].time),
+          tab: "vessel",
+        };
+      }
+      const container = document.createElement("div");
+      document.body.appendChild(container);
+      root = createRoot(container);
+      act(() => {
+        root?.render(
+          React.createElement(
+            MemoryRouter,
+            null,
+            React.createElement(Schedule, {
+              arrivalTerminal,
+              arrivalTerminalId: "14",
+              departureTerminal,
+              departureTerminalId: "5",
+              schedule,
+              selectedDate,
+              time: now,
+            })
+          )
+        );
+      });
+      const recent = container.querySelector("[data-recent-sailings]")!;
+      expect(
+        [...recent.querySelectorAll<HTMLElement>("[data-slot-time]")].map(
+          (row) => Number(row.dataset.slotTime)
+        )
+      ).toEqual(pastSlots.slice(-4).map((slot) => slot.time));
+      expect(recent.closest("details")).toBeNull();
+      const older = container.querySelector<HTMLDetailsElement>(
+        "details[data-older-sailings]"
+      )!;
+      expect(older.querySelector("summary")?.textContent?.trim()).toBe(
+        "Earlier sailings (2)"
+      );
+      expect(older.querySelectorAll("[data-slot-time]")).toHaveLength(2);
+      expect(older.open).toBe(linkedOlder);
+      const ad = container.querySelector('[data-testid="schedule-ad"]')!;
+      const history = container.querySelector("[data-past-sailings]")!;
+      expect(
+        ad.compareDocumentPosition(history) & Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
+      expect(
+        container.querySelectorAll('[data-testid="schedule-ad"]')
+      ).toHaveLength(1);
+      expect(
+        recent.compareDocumentPosition(
+          container.querySelector('[aria-label="Current time"]')!
+        ) & Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
+      // preserve expansion and scrolling when the target is outside the visible four
+      if (linkedOlder) {
+        const target = scrollIntoView.mock.calls[0]?.[0] as HTMLElement;
+        expect(target.dataset.slotTime).toBe(String(pastSlots[0].time));
+        expect(target.dataset.expanded).toBe("true");
+      }
+    }
+  );
 
   // wait for all layout-affecting requests
   it("waits for entitlement and ad settlement before scrolling", async () => {

@@ -35,6 +35,28 @@ describe("CameraFrameFreshness", () => {
     document.body.innerHTML = "";
   });
 
+  // distinguish failed checks from fresh images without revealing server details
+  it.each([
+    { error: "private transport diagnostic" },
+    { status: "unavailable" as const },
+  ])(
+    "reports unavailable checks without a fresh-image claim: %j",
+    (failure) => {
+      const { container } = renderFreshness(
+        React.createElement(CameraFrameFreshness, {
+          frameStatus: { checkedAt: 1_000, ...failure },
+          now: 1_000,
+          passive: true,
+        })
+      );
+      expect(container.textContent).toBe("Image check failed");
+      expect(container.textContent).not.toContain(
+        "private transport diagnostic"
+      );
+      expect(container.querySelector("[role=status]")).toBeNull();
+    }
+  );
+
   it("does not expose an implausibly old source timestamp", () => {
     const { container } = renderFreshness(
       React.createElement(CameraFrameFreshness, {
@@ -51,7 +73,7 @@ describe("CameraFrameFreshness", () => {
       })
     );
 
-    expect(container.textContent).toBe("Updated just now");
+    expect(container.textContent).toBe("Image checked just now");
   });
 
   it("shows the check time when the source does not provide an update time", () => {
@@ -70,7 +92,7 @@ describe("CameraFrameFreshness", () => {
       })
     );
 
-    expect(container.textContent).toBe("Updated 1 min ago");
+    expect(container.textContent).toBe("Image checked 1 min ago");
   });
 
   it("shows a loading status before camera metadata arrives", () => {
@@ -98,7 +120,7 @@ describe("CameraFrameFreshness", () => {
       })
     );
 
-    expect(container.textContent).toBe("Updated just now");
+    expect(container.textContent).toBe("Image checked just now");
     expect(container.querySelector("[role=status]")).toBeNull();
     expect(container.querySelector("[aria-live]")).toBeNull();
   });

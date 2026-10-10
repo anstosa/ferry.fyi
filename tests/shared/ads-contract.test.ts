@@ -11,6 +11,7 @@ describe("ad contracts", () => {
     expect(AD_SLOT_IDS).toEqual([
       "home",
       "schedule",
+      "navigation",
       "cameras",
       "terminal",
       "fare",
@@ -22,6 +23,21 @@ describe("ad contracts", () => {
         slot: "home",
       })
     ).toBe("home");
+  });
+
+  it("uses one canonical departure terminal for navigation placement keys", () => {
+    expect(
+      getAdPlacementKey({
+        arrivalTerminalId: null,
+        departureTerminalId: "3",
+        slot: "navigation",
+      })
+    ).toBe("navigation--3");
+    expect(parseAdPlacementKey("navigation--3")).toEqual({
+      arrivalTerminalId: null,
+      departureTerminalId: "3",
+      slot: "navigation",
+    });
   });
 
   it("keeps opposite route directions in distinct safe keys", () => {
@@ -47,6 +63,27 @@ describe("ad contracts", () => {
         arrivalTerminalId: null,
         departureTerminalId: "3",
         slot: "fare",
+      })
+    ).toThrow("Invalid ad placement direction");
+    expect(() =>
+      getAdPlacementKey({
+        arrivalTerminalId: "7",
+        departureTerminalId: "3",
+        slot: "navigation",
+      })
+    ).toThrow("Invalid ad placement direction");
+    expect(() =>
+      getAdPlacementKey({
+        arrivalTerminalId: null,
+        departureTerminalId: null,
+        slot: "navigation",
+      })
+    ).toThrow("Invalid ad placement direction");
+    expect(() =>
+      getAdPlacementKey({
+        arrivalTerminalId: null,
+        departureTerminalId: "some/id",
+        slot: "navigation",
       })
     ).toThrow("Invalid ad placement direction");
     expect(() =>
@@ -85,5 +122,9 @@ describe("ad contracts", () => {
     });
     expect(parseAdPlacementKey("schedule--3--9999")).toBeNull();
     expect(parseAdPlacementKey("schedule--3--3")).toBeNull();
+    expect(parseAdPlacementKey("navigation--9999")).toBeNull();
+    expect(parseAdPlacementKey("navigation--3--7")).toBeNull();
+    expect(parseAdPlacementKey("navigation--")).toBeNull();
+    expect(parseAdPlacementKey("navigation--some/id")).toBeNull();
   });
 });

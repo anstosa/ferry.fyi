@@ -1,10 +1,10 @@
-/**
- * Formats an epoch-second source timestamp for the freshness UI.
- */
+// format the age of a source update or image check
 export const formatUpdatedAt = (
   sourceUpdatedAt: number | null | undefined,
-  now: number
+  now: number,
+  labelPrefix = "Updated"
 ): string | null => {
+  // unknown source instants remain unknown
   if (
     sourceUpdatedAt === null ||
     sourceUpdatedAt === undefined ||
@@ -17,6 +17,6 @@ export const formatUpdatedAt = (
   const minutesAgo = Math.floor(Math.max(0, now - sourceUpdatedAt) / 60);
 
   return minutesAgo === 0
-    ? "Updated just now"
-    : `Updated ${minutesAgo} min${minutesAgo === 1 ? "" : "s"} ago`;
+    ? `${labelPrefix} just now`
+    : `${labelPrefix} ${minutesAgo} min${minutesAgo === 1 ? "" : "s"} ago`;
 };

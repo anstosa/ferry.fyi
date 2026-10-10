@@ -226,11 +226,10 @@ describe("SEO metadata", () => {
     expect(metadata).toMatchObject({
       canonicalPath: "/seattle",
       robots: "index,follow",
-      title: "Seattle to Bainbridge Island Ferry Schedule - Ferry FYI",
+      title:
+        "Seattle to Bainbridge Island Ferry Wait Times & Schedule - Ferry FYI",
     });
-    expect(metadata.description).toContain(
-      "Washington State Ferries sailing times"
-    );
+    expect(metadata.description).toContain("WSF wait reports");
   });
 
   it("indexes canonical route tabs and noindexes dated schedule variants", () => {
@@ -244,9 +243,9 @@ describe("SEO metadata", () => {
     });
     expect(getRouteSeoMetadata(seattle, bainbridge, "cameras")).toMatchObject({
       description:
-        "View traffic camera images, source update times, and freshness details for the Seattle to Bainbridge Island Washington State Ferries route before traveling.",
+        "Check Seattle ferry terminal camera availability for trips to Bainbridge Island. Images, when available, show traffic, not measured waits.",
       robots: "index,follow",
-      title: "Seattle to Bainbridge Island Ferry Cameras - Ferry FYI",
+      title: "Seattle to Bainbridge Island Ferry Traffic Cameras - Ferry FYI",
     });
   });
 
@@ -277,7 +276,7 @@ describe("SEO metadata", () => {
       canonicalPath: "/seattle/terminal",
       robots: "index,follow",
     });
-    expect(metadata.description).toContain("Seattle terminal");
+    expect(metadata.description).toContain("Seattle ferry terminal");
   });
 
   it("keeps product pages indexable and private pages noindexed", () => {
@@ -327,10 +326,10 @@ describe("SEO metadata", () => {
   it("keeps every route description directional and purpose-specific", () => {
     const expectedPurpose = {
       alerts: "service bulletins",
-      cameras: "camera images",
+      cameras: "ferry terminal camera availability",
       fare: "fare options",
       map: "vessel locations",
-      schedule: "sailing times",
+      schedule: "WSF wait reports",
       subscribe: "notifications",
     } as const;
     Object.entries(expectedPurpose).forEach(([view, purpose]) => {
@@ -339,7 +338,7 @@ describe("SEO metadata", () => {
         bainbridge,
         view as keyof typeof expectedPurpose
       );
-      expect(metadata.description).toContain("Seattle to Bainbridge Island");
+      expect(metadata.title).toContain("Seattle to Bainbridge Island");
       expect(metadata.description).toContain(purpose);
       expect(metadata.robots).toBe("index,follow");
     });
@@ -431,7 +430,7 @@ describe("SEO metadata", () => {
     const response = await request(app).get("/seattle/terminal").expect(200);
 
     expect(response.text).toContain(
-      "Seattle Ferry Terminal Information - Ferry FYI"
+      "Seattle Ferry Terminal: Parking & Directions - Ferry FYI"
     );
     expect(response.text).toContain(
       'rel="canonical" href="https://ferry.fyi/seattle/terminal"'
@@ -443,14 +442,14 @@ describe("SEO metadata", () => {
       .expect(200);
 
     expect(scheduleResponse.text).toContain(
-      "Seattle to Bremerton Ferry Schedule - Ferry FYI"
+      "Seattle to Bremerton Ferry Wait Times &amp; Schedule - Ferry FYI"
     );
     expect(scheduleResponse.text).toContain(
       'rel="canonical" href="https://ferry.fyi/seattle/bremerton"'
     );
     expect(scheduleResponse.text).toContain('content="index,follow"');
     expect(scheduleResponse.text).toContain(
-      '<h1 id="seo-page-title">Seattle to Bremerton Ferry Schedule</h1>'
+      '<h1 id="seo-page-title">Seattle to Bremerton Ferry Wait Times &amp; Schedule</h1>'
     );
     expect(scheduleResponse.text).not.toContain('"@type":"BreadcrumbList"');
 
@@ -577,7 +576,7 @@ describe("SEO metadata", () => {
 
     expect(datedResponse.text).toContain('content="noindex,follow"');
     expect(datedResponse.text).toContain(
-      "Seattle to Bremerton Ferry Schedule on Wed 15 - Ferry FYI"
+      "Seattle to Bremerton Ferry Wait Times &amp; Schedule on Wed 15 - Ferry FYI"
     );
     expect(datedResponse.text).toContain(
       'rel="canonical" href="https://ferry.fyi/seattle/bremerton"'

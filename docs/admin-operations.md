@@ -265,16 +265,32 @@ Advertising uses a persisted global switch plus one switch on each placement.
 The global switch overrides every placement. Route placements are keyed by the
 ordered departure and arrival terminal ids, so the reverse direction is a
 separate placement with separate creative and enabled state. The home placement
-has no route direction.
+has no route direction. Navigation placements are keyed by departure terminal
+only (`navigation--<terminal-id>`) and shared across that terminal's destinations.
+The Navigation editor selects a departure terminal, not a travel direction.
+Terminal-details ads retain their route direction and appear immediately after
+the page's navigation links, before parking and arrival guidance. Fare ads sit
+between the standard fare comparison and the custom calculator.
+Trip origins, typed addresses and precise coordinates never affect ad selection
+or enter ad measurement.
 
 The legacy public ads endpoint is intentionally empty. Server-rendered public
 documents may contain the current immutable creative, while mounted clients
 request a short-lived exposure envelope before recording measurements. Ad-bearing
-documents are not retained in the server document cache, so global and placement
-switches take effect on the next request. Disabled and draft creative remains
+documents use windowed origin caching with an effective-creative fingerprint
+revalidated before serving or committing a fill, so global and placement
+switches take effect on the next request. Browser and CDN document responses
+remain `no-store`; cached documents never contain visitor exposure tokens.
+Disabled and draft creative remains
 owner-only. Riders see no empty ad container. The owner may see a dashed
-placeholder on the home, schedule, cameras, terminal-details, and fare surfaces
-when their matching placement is empty or inactive.
+placeholder on the home, schedule, Navigation, cameras, terminal-details, and
+fare surfaces when their matching placement is empty or inactive.
+
+Navigation ads appear below the trip form and above estimate results. They use
+the existing campaign, confirmation, Supporter suppression and aggregate-measurement policy.
+Navigation remains a private, noindex, client-only route: its trip inputs and
+ad creative are not added to anonymous server snapshots. Newly encountered
+placements default to disabled; adding the surface does not enable a campaign.
 
 Ad creative is plain text plus one HTTPS destination URL. The server validates
 bounded advertiser, headline, body, and destination fields before storage.

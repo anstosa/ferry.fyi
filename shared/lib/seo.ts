@@ -36,7 +36,7 @@ export const SEO_DEFAULT_DESCRIPTION =
 export const SEO_DEFAULT_TITLE =
   "Ferry FYI - Washington State Ferries Schedules & Tracker";
 // advance only for substantial indexable content changes
-export const SEO_CONTENT_LAST_MODIFIED = "2026-10-06";
+export const SEO_CONTENT_LAST_MODIFIED = "2026-10-09";
 export const SEO_DESCRIPTION_FAILURE_LENGTH = 100;
 export const SEO_DESCRIPTION_TARGET_MIN_LENGTH = 120;
 export const SEO_DESCRIPTION_TARGET_MAX_LENGTH = 160;
@@ -268,10 +268,11 @@ export const getNotFoundSeoMetadata = (): SeoMetadata => {
   };
 };
 
+// describe practical terminal answers without promising live queue measurements
 export const getTerminalSeoMetadata = (terminal: SeoTerminal): SeoMetadata => {
   const canonicalPath = `/${terminal.slug}/terminal`;
-  const title = `${terminal.name} Ferry Terminal Information - ${SEO_APP_NAME}`;
-  const description = `Plan a trip through the Washington State Ferries ${terminal.name} terminal with location details, amenities, route connections, and current travel context.`;
+  const title = `${terminal.name} Ferry Terminal: Parking & Directions - ${SEO_APP_NAME}`;
+  const description = `Find ${terminal.name} ferry terminal directions, parking, transit, accessibility and facilities, plus routes, fares and dated WSF arrival guidance.`;
   return {
     canonicalPath,
     description,
@@ -318,7 +319,7 @@ export const getRouteSeoMetadata = (
   const isSchedule = view === "schedule";
   const canonicalPath = isSchedule ? routePath : `${routePath}/${view}`;
   const routeName = `${terminal.name} to ${mate.name}`;
-  const routePage = getRoutePageCopy(routeName, view);
+  const routePage = getRoutePageCopy(routeName, terminal.name, mate.name, view);
   return {
     canonicalPath,
     description: routePage.description,
@@ -337,13 +338,15 @@ export const getRouteSeoMetadata = (
 // select purpose-specific route copy
 const getRoutePageCopy = (
   routeName: string,
+  departureName: string,
+  arrivalName: string,
   view: Exclude<SeoView, "terminal">
 ): Pick<SeoMetadata, "title" | "description"> => {
   switch (view) {
     case "cameras":
       return {
-        title: `${routeName} Ferry Cameras - ${SEO_APP_NAME}`,
-        description: `View traffic camera images, source update times, and freshness details for the ${routeName} Washington State Ferries route before traveling.`,
+        title: `${routeName} Ferry Traffic Cameras - ${SEO_APP_NAME}`,
+        description: `Check ${departureName} ferry terminal camera availability for trips to ${arrivalName}. Images, when available, show traffic, not measured waits.`,
       };
     case "map":
       return {
@@ -373,8 +376,8 @@ const getRoutePageCopy = (
       };
     case "schedule":
       return {
-        title: `${routeName} Ferry Schedule - ${SEO_APP_NAME}`,
-        description: `Plan the ${routeName} direction with Washington State Ferries sailing times, schedule details, service updates, and vehicle-capacity forecasts.`,
+        title: `${routeName} Ferry Wait Times & Schedule - ${SEO_APP_NAME}`,
+        description: `Check WSF wait reports, departures, capacity forecasts, cameras, and alerts for ${routeName}; timestamps vary. Boarding is not guaranteed.`,
       };
   }
 };

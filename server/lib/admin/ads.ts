@@ -15,9 +15,8 @@ const SITE_CONTROL_KEY = "public";
 const MAX_ADVERTISER_NAME_LENGTH = 120;
 const MAX_BODY_LENGTH = 1_000;
 const MAX_HEADLINE_LENGTH = 180;
+const MAX_PLACEMENT_KEY_LENGTH = 300;
 const MAX_TARGET_URL_LENGTH = 2_048;
-const safePlacementKeyPattern =
-  /^(?:home|(?:schedule|cameras|terminal|fare)--[A-Za-z0-9_][A-Za-z0-9_-]*--[A-Za-z0-9_][A-Za-z0-9_-]*)$/;
 
 const getSiteControl = async (): Promise<SiteControl> => {
   const [control] = await SiteControl.findOrCreate({
@@ -96,8 +95,10 @@ const normalizedHttpsUrl = (value: unknown): string | undefined => {
   }
 };
 
+// accept only bounded canonical placement keys
 export const isSafeAdPlacementKey = (value: string): boolean =>
-  value.length <= 300 && safePlacementKeyPattern.test(value);
+  value.length <= MAX_PLACEMENT_KEY_LENGTH &&
+  parseAdPlacementKey(value) !== null;
 
 const parsePlacement = (
   routeKey: string,
@@ -124,7 +125,6 @@ const parsePlacement = (
   }
   if (
     key !== routeKey ||
-    !parseAdPlacementKey(routeKey) ||
     ("key" in value && value.key !== routeKey) ||
     !isSafeAdPlacementKey(routeKey)
   ) {

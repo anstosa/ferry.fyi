@@ -19,6 +19,38 @@ describe("bulletin summaries", () => {
 });
 
 describe("route bulletins", () => {
+  // filter cached promotions from both sides while retaining service alerts
+  it("excludes opinion-group alerts from the route list and count", () => {
+    const promotion = {
+      bodyText: "Join the Ferry Riders Opinion Group today.",
+      date: 300,
+      level: Level.HIGH,
+      terminalId: "5",
+      title: "All routes - Have your say",
+    } as Bulletin;
+    const legacyPromotion = {
+      bodyHTML:
+        "<p>Ferry Riders <strong>Opinion Group</strong> recruitment</p>",
+      date: 200,
+      terminalId: "14",
+      title: "All routes - Join us",
+    } as Bulletin;
+    const serviceAlert = {
+      bodyText: "Use the alternate loading area.",
+      date: 100,
+      level: Level.HIGH,
+      terminalId: "5",
+      title: "Terminal construction",
+    } as Bulletin;
+    const bulletins = getRouteBulletins(
+      getTerminal("5", [promotion, serviceAlert]),
+      getTerminal("14", [legacyPromotion])
+    );
+
+    expect(bulletins).toHaveLength(1);
+    expect(bulletins[0].title).toBe("Terminal construction");
+  });
+
   it("normalizes legacy API bulletins", () => {
     const legacyBulletin = {
       bodyHTML: "<p>Service &amp; loading update</p>",

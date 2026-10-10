@@ -218,7 +218,7 @@ export const publicApiOperations = [
     cache: "live-no-store",
     documentInDataSources: true,
     freshness:
-      "Fare state and freshness fields determine whether values are current.",
+      "Fare state and freshness fields determine whether values are current. Optional defaultRates compare one adult passenger and one standard vehicle with driver; each amount has independent state and freshness, and null means unavailable.",
     includeInOpenApi: true,
     method: "GET",
     operationId: "getFareCatalog",

@@ -30,6 +30,8 @@ vi.mock("~/lib/wsf/api", () => ({
 }));
 
 import { updateTerminals } from "~/lib/wsf/updateTerminals";
+import { sendPush } from "~/lib/push";
+import { getSubscribedTerminalPushMessages } from "~/lib/pushSubscriptions";
 import { Bulletin } from "~/models/Bulletin";
 import { Camera } from "~/models/Camera";
 import { Route } from "~/models/Route";
@@ -94,12 +96,53 @@ const resetState = (): void => {
   persistedBulletinModel.findByPk.mockReset();
   persistedBulletinModel.update.mockReset();
   wsfRequest.mockReset();
+  vi.mocked(sendPush).mockClear();
+  vi.mocked(getSubscribedTerminalPushMessages).mockClear();
   process.env.BASE_URL = "https://ferry.fyi";
 };
 
 describe("bulletin persistence", () => {
   beforeEach(() => {
     resetState();
+  });
+
+  // retain upstream history without publishing or pushing opinion-group promotions
+  it("filters opinion-group alerts from public terminals and push delivery", async () => {
+    const now = Math.floor(Date.now() / 1000) + 1;
+    persistedBulletinModel.findByPk.mockResolvedValue(null);
+    wsfRequest
+      .mockResolvedValueOnce(`/Date(${now * 1000}-0700)/`)
+      .mockResolvedValueOnce([
+        {
+          ...terminalResponse,
+          Bulletins: [
+            ...terminalResponse.Bulletins,
+            {
+              BulletinLastUpdated: `/Date(${now * 1000}-0700)/`,
+              BulletinSortSeq: 2,
+              BulletinText: "<p>Join the Ferry Riders Opinion Group.</p>",
+              BulletinTitle: "All Routes - Have your say",
+            },
+          ],
+        },
+      ]);
+
+    await updateTerminals();
+
+    expect(persistedBulletinModel.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ignoreAll: true,
+        level: "high",
+        title: "All Routes - Have your say",
+      })
+    );
+    const terminal = Terminal.getByIndex("5");
+    expect(terminal?.bulletins).toHaveLength(2);
+    expect(terminal?.serialize().bulletins).toMatchObject([
+      { title: "Service Alert - Dock work" },
+    ]);
+    expect(getSubscribedTerminalPushMessages).not.toHaveBeenCalled();
+    expect(sendPush).not.toHaveBeenCalled();
   });
 
   // persist canonical links while retaining bulletin lifecycle behavior
@@ -134,6 +177,31 @@ describe("bulletin persistence", () => {
       }
     );
     expect(Terminal.getByIndex("5")?.bulletins).toHaveLength(1);
+  });
+
+  // bundled raw bulletins must follow the same public suppression rules
+  it("filters opinion-group promotions from unrefreshed terminal seed data", () => {
+    const terminal = new Terminal({
+      id: "5",
+      bulletins: [
+        {
+          bodyHTML: "<p>Join the Ferry Riders Opinion Group.</p>",
+          date: 1,
+          terminalId: "5",
+          title: "Have your say",
+        },
+        {
+          bodyHTML: "<p>Use alternate route.</p>",
+          date: 1,
+          terminalId: "5",
+          title: "Dock work",
+        },
+      ],
+    });
+
+    expect(terminal.serialize().bulletins).toMatchObject([
+      { title: "Dock work" },
+    ]);
   });
 
   // insert race regression

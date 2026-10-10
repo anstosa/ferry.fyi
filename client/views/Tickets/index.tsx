@@ -127,15 +127,17 @@ interface TicketCodeScan {
   codeFormat: TicketCodeFormat;
 }
 
+// keep wallet actions readable without a colored wrapper
 const HEADER_ACTION_CLASSES = clsx(
-  "group flex min-h-16 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border px-2 py-2 text-center backdrop-blur transition",
+  "group flex min-h-16 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border px-2 py-2 text-center transition",
   "sm:flex-row sm:justify-start sm:gap-3 sm:px-3 sm:text-left",
-  "border-white/20 bg-white/15 text-white hover:-translate-y-0.5 hover:bg-white/25 hover:shadow-lg"
+  "border-black/10 bg-white text-gray-900 hover:-translate-y-0.5 hover:bg-green-dark/5 hover:shadow-lg dark:border-white/20 dark:bg-white/5 dark:text-gray-100 dark:hover:bg-white/10"
 );
 
+// retain recognizable icons on light and dark surfaces
 const HEADER_ACTION_ICON_CLASSES = clsx(
   "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-lg transition sm:h-10 sm:w-10 sm:text-xl",
-  "bg-white/15 text-yellow-lightest group-hover:bg-yellow-lightest group-hover:text-green-dark"
+  "bg-green-dark/10 text-green-dark dark:bg-white/10 dark:text-green-light"
 );
 
 const IMAGE_DECODE_CROP_CENTERS = [
@@ -153,18 +155,23 @@ const IMAGE_DECODE_CROP_CENTERS = [
   { x: 0.68, y: 0.7 },
 ];
 
+// keep known ticket copy visible while device tools and saved tickets resolve
 const TicketsLoadingState = (): ReactElement => (
-  <Page title="Tickets">
-    <SkeletonGroup className="space-y-5" label="Loading tickets">
-      <section className="overflow-hidden rounded-2xl bg-[linear-gradient(135deg,#016f52_0%,#004d61_100%)] p-5 sm:p-6">
-        <Skeleton className="h-4 w-20 bg-white/20" variant="text" />
-        <Skeleton className="mt-3 h-9 w-3/4 bg-white/20" variant="text" />
-        <div className="mt-6 grid gap-3 sm:grid-cols-3">
-          <Skeleton className="h-20 bg-white/20" />
-          <Skeleton className="h-20 bg-white/20" />
-          <Skeleton className="h-20 bg-white/20" />
-        </div>
-      </section>
+  <Page publicTitle="Tickets">
+    <TicketsPublicContent
+      tools={
+        <SkeletonGroup
+          className="grid grid-cols-3 gap-2"
+          label="Loading ticket tools"
+        >
+          <Skeleton className="h-[94px] sm:h-16" />
+          <Skeleton className="h-[94px] sm:h-16" />
+          <Skeleton className="h-[94px] sm:h-16" />
+        </SkeletonGroup>
+      }
+    />
+    <SkeletonGroup className="mt-5 space-y-3" label="Loading saved tickets">
+      {/* reserve only unresolved ticket rows */}
       {[0, 1].map((index) => (
         <section
           className="rounded-2xl border border-[rgba(0,0,0,0.08)] bg-white p-4 shadow-sm dark:border-[rgba(255,255,255,0.08)] dark:bg-[#00202a]"
@@ -1162,7 +1169,7 @@ export const Tickets = (): ReactElement => {
                 </span>
                 <span>
                   <span className="block text-sm font-black">Scan</span>
-                  <span className="block text-xs font-semibold text-white/70">
+                  <span className="block text-xs font-semibold text-gray-600 dark:text-gray-300">
                     Camera
                   </span>
                 </span>
@@ -1173,7 +1180,7 @@ export const Tickets = (): ReactElement => {
                 </span>
                 <span>
                   <span className="block text-sm font-black">Upload</span>
-                  <span className="block text-xs font-semibold text-white/70">
+                  <span className="block text-xs font-semibold text-gray-600 dark:text-gray-300">
                     Image
                   </span>
                 </span>
@@ -1230,7 +1237,7 @@ export const Tickets = (): ReactElement => {
                 </span>
                 <span>
                   <span className="block text-sm font-black">Manual</span>
-                  <span className="block text-xs font-semibold text-white/70">
+                  <span className="block text-xs font-semibold text-gray-600 dark:text-gray-300">
                     Type code
                   </span>
                 </span>
@@ -1238,8 +1245,8 @@ export const Tickets = (): ReactElement => {
             </div>
 
             {uploadError ? (
-              <div className="flex items-start gap-3 rounded-2xl border border-yellow-light/40 bg-yellow-lightest/15 p-3 text-sm font-bold text-white">
-                <ErrorIcon className="mt-0.5 shrink-0 text-yellow-lightest" />
+              <div className="flex items-start gap-3 rounded-2xl border border-yellow-medium bg-yellow-lightest p-3 text-sm font-bold text-gray-darkest dark:border-yellow-dark dark:bg-blue-dark dark:text-white">
+                <ErrorIcon className="mt-0.5 shrink-0" />
                 <span>{uploadError}</span>
               </div>
             ) : null}
@@ -1256,12 +1263,12 @@ export const Tickets = (): ReactElement => {
                 }}
               >
                 <label className="col-span-2 flex flex-col gap-2 sm:col-span-1">
-                  <span className="text-xs font-extrabold uppercase tracking-[0.18em] text-yellow-lightest">
+                  <span className="text-xs font-extrabold uppercase tracking-[0.18em] text-green-dark dark:text-green-light">
                     Ticket number
                   </span>
                   <input
                     autoFocus
-                    className="field my-0 w-full rounded-xl border border-white/20 bg-white px-4 py-3 text-lg font-bold tracking-wide text-green-dark shadow-sm dark:bg-blue-darkest dark:text-white"
+                    className="field my-0 w-full rounded-xl border border-black/15 bg-white px-4 py-3 text-lg font-bold tracking-wide text-green-dark shadow-sm dark:border-white/20 dark:bg-blue-darkest dark:text-white"
                     type="text"
                     value={ticketNumber}
                     onChange={(event) => setTicketNumber(event.target.value)}
@@ -1269,7 +1276,7 @@ export const Tickets = (): ReactElement => {
                   />
                 </label>
                 <button
-                  className="button button-glass"
+                  className="button button-secondary"
                   onClick={() => setManualEntry(false)}
                   type="button"
                 >

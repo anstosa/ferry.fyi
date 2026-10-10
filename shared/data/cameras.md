@@ -2,9 +2,14 @@
 
 `cameras.json` stores static display overrides for WSF ferry cameras.
 
-- `carCapacity` is used for terminal holding cameras and displays as `X car capacity`.
-- `carsToBoat` is used for upstream/tollbooth/road cameras and displays as `X cars to boat`.
+- `carCapacity` is used for terminal holding cameras and displays as `Static holding capacity: X cars`.
+- `carsToBoat` is used for upstream/tollbooth/road cameras and displays as `Camera position: X car spaces from boarding`.
 - Camera rows with neither meaningful value intentionally use `null` for both fields.
+
+These values describe static capacity and camera position, not vehicles visible
+in the image or a measured wait. `Capacity reference: X sailings` divides that
+static estimate by the route's average vessel capacity; it is not a predicted
+number of sailings a traveler must wait.
 
 ## Estimate source
 

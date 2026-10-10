@@ -171,7 +171,7 @@ export const FareCatalogDisclosure = ({
                   Fare
                 </th>
                 <th className="w-24 p-2 text-right" scope="col">
-                  Price (USD)
+                  Price
                 </th>
               </tr>
             </thead>
@@ -187,7 +187,8 @@ export const FareCatalogDisclosure = ({
                     {renderFareLabel(fare.label)}
                   </th>
                   <td className="whitespace-nowrap p-2 text-right tabular-nums">
-                    {currency.format(fare.amount)}
+                    {/* match the zero-fare wording used in price comparisons */}
+                    {fare.amount === 0 ? "Free" : currency.format(fare.amount)}
                   </td>
                 </tr>
               ))}

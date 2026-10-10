@@ -1,5 +1,7 @@
 const DELAY_ALERT_MATCH =
   /\b(delay|delayed|delays|late|behind schedule|running behind)\b/i;
+const FERRY_RIDERS_OPINION_GROUP_MATCH =
+  /\bferry\s+riders\s+opinion\s+group\b/i;
 const RUNNING_LATE_MATCH = /\brunning\b.*\blate\b/i;
 const SAILING_CONTEXT_MATCH =
   /\b(arrival|arrivals|boat|departure|departures|ferry|sailing|sailings|service|vessel)\b/i;
@@ -66,7 +68,13 @@ export const isWaitTimeBulletin = (bulletin: BulletinInput): boolean => {
   });
 };
 
-// app-managed alert detection
+// exclude app-managed alerts and opinion-group promotions
 export const isSuppressedBulletin = (bulletin: BulletinInput): boolean => {
-  return isDelayBulletin(bulletin) || isTidalCancellationBulletin(bulletin);
+  return (
+    FERRY_RIDERS_OPINION_GROUP_MATCH.test(
+      getSearchableChunks(bulletin).join(" ")
+    ) ||
+    isDelayBulletin(bulletin) ||
+    isTidalCancellationBulletin(bulletin)
+  );
 };

@@ -2,13 +2,14 @@ import clsx from "clsx";
 import { DateTime } from "luxon";
 import React, {
   ReactElement,
+  useCallback,
   useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import type {
   FareCatalogApiResponse,
   FareQuoteApiResponse,
@@ -17,14 +18,21 @@ import type {
   FareTripRequest,
 } from "shared/contracts/fares";
 import type { Terminal } from "shared/contracts/terminals";
+import { getQuotedFareRates } from "shared/lib/fareDefaults";
 
 import { AdSlot } from "~/components/AdSlot";
 import { DateButton } from "~/components/DateButton";
 import { ExternalPillLink } from "~/components/ExternalPillLink";
 import { FareCatalogDisclosure } from "~/components/FareCatalogDisclosure";
+import { CUSTOM_FARE_SECTION_CLASS } from "~/components/FareLoadingContent";
+import {
+  FarePriceComparison,
+  FareRatesOverview,
+} from "~/components/FareRatesOverview";
 import { FareWizardIcon, fareWizardIcons } from "~/components/FareWizardIcons";
+import { RoutePageIntro } from "~/components/RoutePageIntro";
+import { RoutePlanningLinks } from "~/components/RoutePlanningLinks";
 import { RouteSelector } from "~/components/RouteSelector";
-import { Skeleton, SkeletonGroup } from "~/components/Skeleton";
 import { trackUsefulEvent } from "~/lib/analytics";
 import { getFareCatalog, getFareQuote } from "~/lib/fares";
 import {
@@ -49,11 +57,6 @@ interface Props {
   terminal: Terminal;
 }
 
-const currency = new Intl.NumberFormat("en-US", {
-  currency: "USD",
-  style: "currency",
-});
-
 const WSDOT_FARE_CALCULATOR_URL = "https://wsdot.wa.gov/ferries/fares/";
 const WSDOT_REDUCED_FARE_URL =
   "https://wsdot.wa.gov/ferries/rider-information/ada#Reduced%20fare%20passenger%20tickets";
@@ -76,6 +79,28 @@ interface PendingFareQuoteCause {
   scope: string;
 }
 
+interface ScopedCatalogResponse {
+  response: FareCatalogApiResponse;
+  scope: string;
+}
+
+interface ScopedCatalogError {
+  error: Error;
+  scope: string;
+}
+
+interface ScopedQuoteResponse {
+  request: FareQuoteRequest;
+  response: FareQuoteApiResponse;
+  scope: string;
+}
+
+interface ScopedQuoteError {
+  error: Error;
+  request: FareQuoteRequest;
+  scope: string;
+}
+
 // match one fare response to the route and service date on screen
 const matchesFareTripRequest = (
   request: FareTripRequest,
@@ -89,7 +114,7 @@ const matchesFareTripRequest = (
     request.departingTerminalId === terminal.id &&
     request.arrivingTerminalId === mate.id &&
     request.tripDate === tripDate &&
-    !request.roundTrip
+    typeof request.roundTrip === "boolean"
   );
 };
 
@@ -121,20 +146,11 @@ const fareLineItemQuantities = (
   return quantities;
 };
 
-// require the returned quote to echo the concrete request that produced it
-const matchesFareQuoteRequest = (
-  response: FareQuoteApiResponse,
+// compare normalized quote inputs independently of server sorting
+const matchesFareQuoteInputs = (
+  echoed: FareQuoteRequest,
   request: FareQuoteRequest
 ): boolean => {
-  // only usable quote states carry a request echo
-  if (response.state !== "current" && response.state !== "stale") {
-    return false;
-  }
-  const echoed = response.quote.request;
-  // reject incomplete client fixtures or malformed response echoes
-  if (!echoed || !Array.isArray(echoed.lineItems)) {
-    return false;
-  }
   // reject a response from another route, date or trip type
   if (
     echoed.departingTerminalId !== request.departingTerminalId ||
@@ -164,7 +180,33 @@ const matchesFareQuoteRequest = (
   return true;
 };
 
-// accept only the catalog for this exact one-way request
+// require the returned quote to echo the concrete request that produced it
+const matchesFareQuoteRequest = (
+  response: FareQuoteApiResponse,
+  request: FareQuoteRequest
+): boolean => {
+  // only usable quote states carry a complete quote request echo
+  if (
+    (response.state !== "current" && response.state !== "stale") ||
+    !response.quote.request ||
+    !Array.isArray(response.quote.request.lineItems)
+  ) {
+    return false;
+  }
+  return matchesFareQuoteInputs(response.quote.request, request);
+};
+
+// require an echoed no-fare trip to match the active quote request
+const matchesFareQuoteTrip = (
+  echoed: FareTripRequest,
+  request: FareQuoteRequest
+): boolean =>
+  echoed.departingTerminalId === request.departingTerminalId &&
+  echoed.arrivingTerminalId === request.arrivingTerminalId &&
+  echoed.tripDate === request.tripDate &&
+  echoed.roundTrip === request.roundTrip;
+
+// accept the catalog for this exact route and date with its source-owned trip mode
 const getMatchingSeededCatalog = (
   response: FareCatalogApiResponse | undefined,
   terminal: Terminal,
@@ -184,6 +226,64 @@ const getMatchingSeededCatalog = (
     return undefined;
   }
   return response;
+};
+
+// expose only a response committed for the route and date on screen
+const getMatchingCatalogResponse = (
+  scoped: ScopedCatalogResponse | null,
+  scope: string,
+  terminal: Terminal,
+  mate: Terminal,
+  date: DateTime
+): FareCatalogApiResponse | null => {
+  // fail closed across route and date transitions
+  if (!scoped || scoped.scope !== scope) {
+    return null;
+  }
+  // unavailable responses are bound by the explicit request scope
+  if (scoped.response.state === "unavailable") {
+    return scoped.response;
+  }
+  const request =
+    scoped.response.state === "current"
+      ? scoped.response.catalog.request
+      : scoped.response.noFare.request;
+  return matchesFareTripRequest(request, terminal, mate, date)
+    ? scoped.response
+    : null;
+};
+
+// expose only a response for the active configuration and fare scope
+const getMatchingQuoteResponse = (
+  scoped: ScopedQuoteResponse | null,
+  request: FareQuoteRequest | null,
+  scope: string
+): FareQuoteApiResponse | null => {
+  // hide old configuration and route responses before passive cleanup runs
+  if (
+    !scoped ||
+    !request ||
+    scoped.scope !== scope ||
+    !matchesFareQuoteInputs(scoped.request, request)
+  ) {
+    return null;
+  }
+  // priced responses must echo the exact active request
+  if (
+    scoped.response.state === "current" ||
+    scoped.response.state === "stale"
+  ) {
+    return matchesFareQuoteRequest(scoped.response, request)
+      ? scoped.response
+      : null;
+  }
+  // no-fare responses still carry route, date and trip-mode identity
+  if (scoped.response.state === "no-fare") {
+    return matchesFareQuoteTrip(scoped.response.noFare.request, request)
+      ? scoped.response
+      : null;
+  }
+  return scoped.response;
 };
 
 const getTotal = (totals: FareTotal[]): FareTotal | undefined =>
@@ -255,15 +355,14 @@ const getVehicleTypeDescription = (
   }
 };
 
-const StateCard = ({
+// keep loading, unavailable and no-fare content in the same unboxed page layout
+const FarePageState = ({
   children,
 }: {
   children: React.ReactNode;
 }): ReactElement => (
-  <main className="flex-grow overflow-y-auto bg-day-normal-light p-4 text-gray-dark dark:bg-night-normal-dark dark:text-[#e0f0f4]">
-    <div className="mx-auto w-full max-w-6xl rounded-2xl border border-black/10 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-blue-dark">
-      {children}
-    </div>
+  <main className="flex-grow overflow-y-auto bg-day-normal-light text-gray-dark motion-safe:scroll-smooth dark:bg-night-normal-dark dark:text-[#e0f0f4]">
+    <div className="mx-auto w-full max-w-6xl p-4">{children}</div>
   </main>
 );
 
@@ -427,25 +526,37 @@ export const Fares = ({
     mate,
     date
   );
-  const { search } = useLocation();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { search } = location;
   const fareScope = `${terminal.id}:${mate.id}:${date.toISODate() ?? ""}`;
-  const [catalogResponse, setCatalogResponse] =
-    useState<FareCatalogApiResponse | null>(() => seededCatalog ?? null);
-  const [catalogError, setCatalogError] = useState<Error | null>(null);
+  const [scopedCatalogResponse, setScopedCatalogResponse] =
+    useState<ScopedCatalogResponse | null>(() =>
+      seededCatalog ? { response: seededCatalog, scope: fareScope } : null
+    );
+  const [scopedCatalogError, setScopedCatalogError] =
+    useState<ScopedCatalogError | null>(null);
   const [isLoadingCatalog, setLoadingCatalog] = useState(!seededCatalog);
   const [isQuoting, setQuoting] = useState(false);
-  const [quoteError, setQuoteError] = useState<Error | null>(null);
-  const [quoteResponse, setQuoteResponse] =
-    useState<FareQuoteApiResponse | null>(null);
+  const [scopedQuoteError, setScopedQuoteError] =
+    useState<ScopedQuoteError | null>(null);
+  const [scopedQuoteResponse, setScopedQuoteResponse] =
+    useState<ScopedQuoteResponse | null>(null);
   const [config, setConfig] = useState<FareWizardConfig>(() =>
     parseFareWizardConfig(search)
   );
   const [isShareCopied, setShareCopied] = useState(false);
+  // wait for the existing placement readiness signal before restoring a deep link
+  const [isAdReady, setAdReady] = useState(false);
+  const adReadyRef = useRef(false);
+  const initialHashRef = useRef<string | undefined>(undefined);
+  const restoredAnchorRef = useRef<HTMLElement | null>(null);
   const [wizardStep, setWizardStep] = useState(() =>
     getWizardStep(parseFareWizardConfig(search))
   );
   const catalogRequestRef = useRef(0);
   const catalogScopeRef = useRef<string | null>(null);
+  const scopedCatalogResponseRef = useRef(scopedCatalogResponse);
   const catalogRetryRef = useRef({ attempts: 0, scope: "" });
   const quoteRequestRef = useRef(0);
   const quoteConfigVersionRef = useRef(0);
@@ -454,36 +565,71 @@ export const Fares = ({
   const currentQuoteScopeRef = useRef(fareScope);
   const [catalogRetry, setCatalogRetry] = useState(0);
   const [quoteRetry, setQuoteRetry] = useState(0);
+  const catalogResponse = getMatchingCatalogResponse(
+    scopedCatalogResponse,
+    fareScope,
+    terminal,
+    mate,
+    date
+  );
+  const catalogError =
+    scopedCatalogError?.scope === fareScope ? scopedCatalogError.error : null;
+  const isCatalogPending = Boolean(
+    isLoadingCatalog ||
+    (catalogScopeRef.current !== null &&
+      catalogScopeRef.current !== fareScope) ||
+    (scopedCatalogResponse && scopedCatalogResponse.scope !== fareScope)
+  );
+  // expose the latest usable catalog to later same-scope refresh completions
+  useLayoutEffect(() => {
+    scopedCatalogResponseRef.current = scopedCatalogResponse;
+  }, [scopedCatalogResponse]);
   // expose only the committed scope to asynchronous quote completions
   useLayoutEffect(() => {
     currentQuoteScopeRef.current = fareScope;
   }, [fareScope]);
   const fareContentReady = Boolean(
-    !isLoadingCatalog &&
-    ((catalogResponse?.state === "current" &&
-      matchesFareTripRequest(
-        catalogResponse.catalog.request,
-        terminal,
-        mate,
-        date
-      )) ||
-      (catalogResponse?.state === "no-fare" &&
-        matchesFareTripRequest(
-          catalogResponse.noFare.request,
-          terminal,
-          mate,
-          date
-        )))
+    !isCatalogPending &&
+    (catalogResponse?.state === "current" ||
+      catalogResponse?.state === "no-fare")
   );
   const usefulContentRef = useUsefulContent(
     "fare",
     `fare:${fareScope}`,
     fareContentReady
   );
+  // invalidate readiness synchronously when a branch mounts a replacement placement
+  const handleAdReadyChange = useCallback((ready: boolean): void => {
+    adReadyRef.current = ready;
+    setAdReady(ready);
+  }, []);
+  // restore initial links instantly so browser anchoring can track late content above them
+  useEffect(() => {
+    initialHashRef.current ??= window.location.hash;
+    // native clicks handle later jumps and unrelated fragments remain untouched
+    if (
+      !isAdReady ||
+      !adReadyRef.current ||
+      !fareContentReady ||
+      initialHashRef.current !== window.location.hash ||
+      window.location.hash !== "#custom-fare-calculator"
+    ) {
+      return;
+    }
+    const target = document.getElementById("custom-fare-calculator");
+    // replacement scrollers restore once while quote and configuration updates stay put
+    if (!target || restoredAnchorRef.current === target) {
+      return;
+    }
+    restoredAnchorRef.current = target;
+    target.scrollIntoView?.({ behavior: "instant", block: "start" });
+  }, [isAdReady, fareContentReady, fareScope, catalogResponse?.state]);
 
   useEffect(() => {
     const scope = fareScope;
-    const isInitialSeedScope = catalogScopeRef.current === null;
+    const previousScope = catalogScopeRef.current;
+    const isInitialSeedScope = previousScope === null;
+    const isSameScope = previousScope === scope;
     catalogScopeRef.current = scope;
     if (catalogRetryRef.current.scope !== scope) {
       catalogRetryRef.current = { attempts: 0, scope };
@@ -493,11 +639,10 @@ export const Fares = ({
     if (!isInitialSeedScope) {
       setLoadingCatalog(true);
     }
-    setCatalogError(null);
-    // Keep the server-provided catalog visible during the first post-commit
-    // refresh. A failed refresh must not replace a usable anonymous seed.
-    if (!isInitialSeedScope) {
-      setCatalogResponse(null);
+    setScopedCatalogError(null);
+    // retain usable prices during same-scope and seeded refreshes
+    if (!isInitialSeedScope && !isSameScope) {
+      setScopedCatalogResponse(null);
     }
     getFareCatalog(terminal, mate, date)
       .then((response) => {
@@ -505,25 +650,32 @@ export const Fares = ({
         if (requestId !== catalogRequestRef.current) {
           return;
         }
-        // retain initial data only for transient source failure
+        const retainedResponse = scopedCatalogResponseRef.current;
+        // retain usable same-scope data only for transient source failure
         if (
-          isInitialSeedScope &&
-          seededCatalog &&
           response.state === "unavailable" &&
-          response.reason === "unavailable"
+          response.reason === "unavailable" &&
+          retainedResponse?.scope === scope &&
+          (retainedResponse.response.state === "current" ||
+            retainedResponse.response.state === "no-fare")
         ) {
-          setCatalogError(new Error("Live fare refresh unavailable"));
+          setScopedCatalogError({
+            error: new Error("Live fare refresh unavailable"),
+            scope,
+          });
           return;
         }
-        setCatalogResponse(response);
+        setScopedCatalogResponse({ response, scope });
       })
-      .catch(
-        (error: unknown) =>
-          requestId === catalogRequestRef.current &&
-          setCatalogError(
-            error instanceof Error ? error : new Error(String(error))
-          )
-      )
+      .catch((error: unknown) => {
+        // bind failures to the request scope that produced them
+        if (requestId === catalogRequestRef.current) {
+          setScopedCatalogError({
+            error: error instanceof Error ? error : new Error(String(error)),
+            scope,
+          });
+        }
+      })
       .finally(
         () =>
           requestId === catalogRequestRef.current && setLoadingCatalog(false)
@@ -571,11 +723,14 @@ export const Fares = ({
       scope: fareScope,
     };
     activeQuoteProvenanceRef.current = null;
-    const search = withFareWizardConfig(window.location.search, next);
-    window.history.replaceState(
-      null,
-      "",
-      `${window.location.pathname}?${search}${window.location.hash}`
+    const nextSearch = withFareWizardConfig(location.search, next);
+    navigate(
+      {
+        hash: location.hash,
+        pathname: location.pathname,
+        search: `?${nextSearch}`,
+      },
+      { replace: true, state: location.state }
     );
     setConfig(next);
   };
@@ -610,6 +765,31 @@ export const Fares = ({
     () => catalog && createFareWizardSelections(catalog.fares, config),
     [catalog, config]
   );
+  const quoteRequest = useMemo<FareQuoteRequest | null>(() => {
+    // wait for an exact catalog selection before requesting a quote
+    if (!selection?.ok) {
+      return null;
+    }
+    return {
+      arrivingTerminalId: mate.id,
+      departingTerminalId: terminal.id,
+      lineItems: selection.lineItems,
+      roundTrip: catalog?.request.roundTrip ?? false,
+      tripDate: date.toISODate() as FareQuoteRequest["tripDate"],
+    };
+  }, [catalog?.request.roundTrip, date, mate.id, selection, terminal.id]);
+  const quoteResponse = getMatchingQuoteResponse(
+    scopedQuoteResponse,
+    quoteRequest,
+    fareScope
+  );
+  const quoteError =
+    scopedQuoteError &&
+    quoteRequest &&
+    scopedQuoteError.scope === fareScope &&
+    matchesFareQuoteInputs(scopedQuoteError.request, quoteRequest)
+      ? scopedQuoteError.error
+      : null;
 
   useEffect(() => {
     quoteRequestRef.current += 1;
@@ -619,10 +799,10 @@ export const Fares = ({
     // consume provenance at request creation rather than a later response
     pendingQuoteCauseRef.current = null;
     activeQuoteProvenanceRef.current = null;
-    setQuoteResponse(null);
-    setQuoteError(null);
+    setScopedQuoteResponse(null);
+    setScopedQuoteError(null);
     // invalid selections consume their cause without starting a request
-    if (!selection?.ok) {
+    if (!quoteRequest) {
       setQuoting(false);
       return;
     }
@@ -637,13 +817,6 @@ export const Fares = ({
       };
     }
     setQuoting(true);
-    const quoteRequest: FareQuoteRequest = {
-      arrivingTerminalId: mate.id,
-      departingTerminalId: terminal.id,
-      lineItems: selection.lineItems,
-      roundTrip: false,
-      tripDate: date.toISODate() as FareQuoteRequest["tripDate"],
-    };
     getFareQuote(quoteRequest)
       .then((response) => {
         // ignore obsolete requests and responses from another rendered scope
@@ -653,7 +826,11 @@ export const Fares = ({
         ) {
           return;
         }
-        setQuoteResponse(response);
+        setScopedQuoteResponse({
+          request: quoteRequest,
+          response,
+          scope: fareScope,
+        });
         const provenance = activeQuoteProvenanceRef.current;
         const usableQuote =
           response.state === "current" || response.state === "stale"
@@ -685,11 +862,14 @@ export const Fares = ({
         // settle only the current request without preserving its cause
         if (requestId === quoteRequestRef.current) {
           activeQuoteProvenanceRef.current = null;
-          setQuoteError(
-            error instanceof Error
-              ? error
-              : new Error("Fare quote could not load.")
-          );
+          setScopedQuoteError({
+            error:
+              error instanceof Error
+                ? error
+                : new Error("Fare quote could not load."),
+            request: quoteRequest,
+            scope: fareScope,
+          });
         }
       })
       .finally(() => {
@@ -707,7 +887,7 @@ export const Fares = ({
         quoteRequestRef.current += 1;
       }
     };
-  }, [date, fareScope, mate.id, quoteRetry, selection, terminal.id]);
+  }, [fareScope, quoteRequest, quoteRetry]);
 
   const share = async (): Promise<void> => {
     const title = `Fare estimate for ${terminal.name} to ${mate.name}`;
@@ -742,6 +922,17 @@ export const Fares = ({
     }
   };
 
+  // keep the same directional placement between standard rates and customization
+  const fareAd = (
+    <AdSlot
+      arrivalTerminalId={mate.id}
+      contextLabel={`Fares · ${terminal.name} to ${mate.name}`}
+      departureTerminalId={terminal.id}
+      onReadyChange={handleAdReadyChange}
+      slot="fare"
+    />
+  );
+
   const header = (
     <Header
       items={
@@ -767,39 +958,23 @@ export const Fares = ({
       </div>
     </Header>
   );
-  if (isLoadingCatalog) {
-    return (
-      <>
-        {header}
-        <StateCard>
-          <SkeletonGroup label="Loading fare estimator" className="space-y-5">
-            <div>
-              <Skeleton className="h-7 w-40" variant="text" />
-              <Skeleton className="mt-3 h-4 w-full max-w-2xl" variant="text" />
-            </div>
-            <div>
-              <Skeleton className="h-6 w-52" variant="text" />
-              <div className="mt-3 grid grid-cols-3 gap-3">
-                <Skeleton className="h-32 w-full" />
-                <Skeleton className="h-32 w-full" />
-                <Skeleton className="h-32 w-full" />
-              </div>
-            </div>
-          </SkeletonGroup>
-        </StateCard>
-      </>
-    );
-  }
   if (catalogError && !catalogResponse) {
     return (
       <>
         {header}
-        <StateCard>
-          <h1 className="text-xl font-bold">Fares unavailable</h1>
+        <FarePageState>
+          <RoutePageIntro title="Fares unavailable" />
+          <RoutePlanningLinks
+            currentView="fare"
+            includeCustomFare={false}
+            mate={mate}
+            selectedDate={date.toISODate() ?? undefined}
+            terminal={terminal}
+          />
           <p className="mt-2">Fare information could not load right now.</p>
           <CalculatorLink href={WSDOT_FARE_CALCULATOR_URL} />
           <RetryButton onClick={retryCatalog} />
-        </StateCard>
+        </FarePageState>
       </>
     );
   }
@@ -807,14 +982,21 @@ export const Fares = ({
     return (
       <>
         {header}
-        <StateCard>
-          <h1 className="text-xl font-bold">Fares unavailable</h1>
+        <FarePageState>
+          <RoutePageIntro title="Fares unavailable" />
+          <RoutePlanningLinks
+            currentView="fare"
+            includeCustomFare={false}
+            mate={mate}
+            selectedDate={date.toISODate() ?? undefined}
+            terminal={terminal}
+          />
           <p className="mt-2">
             Current fare information is not available for this route and date.
           </p>
           <CalculatorLink href={catalogResponse.calculatorUrl} />
           <RetryButton onClick={retryCatalog} />
-        </StateCard>
+        </FarePageState>
       </>
     );
   }
@@ -822,32 +1004,57 @@ export const Fares = ({
     return (
       <>
         {header}
-        <StateCard>
-          <div ref={usefulContentRef}>
-            <h1 className="text-xl font-bold">FREE</h1>
-            <p className="mt-2">{catalogResponse.noFare.message}</p>
-            <CalculatorLink href={WSDOT_FARE_CALCULATOR_URL} />
+        <FarePageState>
+          <div className="space-y-4" ref={usefulContentRef}>
+            <FareRatesOverview
+              response={catalogResponse}
+              departingName={terminal.name}
+              arrivingName={mate.name}
+              mate={mate}
+              terminal={terminal}
+            />
+            {fareAd}
+            <section
+              id="custom-fare-calculator"
+              className={CUSTOM_FARE_SECTION_CLASS}
+            >
+              <h2 className="text-xl font-bold">Calculate a custom fare</h2>
+              <p className="mt-2">
+                No fare is collected for this departure. Use WSDOT’s calculator
+                for a custom return journey or different travel dates.
+              </p>
+              <CalculatorLink href={WSDOT_FARE_CALCULATOR_URL} />
+            </section>
           </div>
-        </StateCard>
+        </FarePageState>
       </>
     );
   }
-  if (!catalog) {
+  // reserve the unavailable fallback for a settled request without usable data
+  if (!catalog && !isCatalogPending) {
     return (
       <>
         {header}
-        <StateCard>
-          <h1 className="text-xl font-bold">Fares unavailable</h1>
+        <FarePageState>
+          <RoutePageIntro title="Fares unavailable" />
+          <RoutePlanningLinks
+            currentView="fare"
+            includeCustomFare={false}
+            mate={mate}
+            selectedDate={date.toISODate() ?? undefined}
+            terminal={terminal}
+          />
           <CalculatorLink href={WSDOT_FARE_CALCULATOR_URL} />
           <RetryButton onClick={retryCatalog} />
-        </StateCard>
+        </FarePageState>
       </>
     );
   }
-  const total =
+  // label both supported journey amounts instead of presenting a round trip as one crossing
+  const customRates =
     quoteResponse &&
     (quoteResponse.state === "current" || quoteResponse.state === "stale")
-      ? getTotal(quoteResponse.quote.totals)
+      ? getQuotedFareRates(quoteResponse.quote, quoteResponse.state)
       : undefined;
   const canEstimate = selection?.ok === true;
   const RestartIcon = fareWizardIcons.undo;
@@ -856,312 +1063,338 @@ export const Fares = ({
     <>
       {header}
       <main
-        className="flex-grow overflow-y-auto bg-day-normal-light text-gray-dark dark:bg-night-normal-dark dark:text-[#e0f0f4]"
+        className="flex-grow overflow-y-auto bg-day-normal-light text-gray-dark motion-safe:scroll-smooth dark:bg-night-normal-dark dark:text-[#e0f0f4]"
         ref={usefulContentRef}
       >
         <div className="mx-auto w-full max-w-6xl space-y-4 p-4 pb-8">
-          <AdSlot
-            arrivalTerminalId={mate.id}
-            contextLabel={`Fares · ${terminal.name} to ${mate.name}`}
-            departureTerminalId={terminal.id}
-            slot="fare"
-          />
-          <section
-            aria-label="Fare estimator"
-            className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm dark:border-white/10 dark:bg-blue-dark"
+          {catalog ? (
+            <FareRatesOverview
+              response={{
+                state: "current",
+                catalog,
+                defaultRates:
+                  catalogResponse?.state === "current"
+                    ? catalogResponse.defaultRates
+                    : undefined,
+              }}
+              departingName={terminal.name}
+              arrivingName={mate.name}
+              mate={mate}
+              terminal={terminal}
+            />
+          ) : (
+            <FareRatesOverview
+              arrivingName={mate.name}
+              departingName={terminal.name}
+              loadingTripDate={date.toISODate() ?? ""}
+              mate={mate}
+              terminal={terminal}
+            />
+          )}
+          {fareAd}
+          <div
+            id="custom-fare-calculator"
+            className={clsx("space-y-4", CUSTOM_FARE_SECTION_CLASS)}
           >
-            <div className="flex items-center justify-between gap-3">
-              <h1 className="text-xl font-bold">Fare estimator</h1>
-              {config.travelMode && (
-                <button
-                  className="button button-secondary button-small"
-                  onClick={restart}
-                  type="button"
-                >
-                  <RestartIcon />
-                  Restart
-                </button>
-              )}
-            </div>
-            <p className="mt-1 text-sm">
-              Choose trip details for one crossing. Ferry FYI uses official
-              WSDOT fares and does not determine eligibility.
-            </p>
-            <div className="mt-5 space-y-2">
-              {wizardStep > 0 && config.travelMode && (
-                <Answer
-                  {...getTravelModeAnswer(config.travelMode)}
-                  onClick={() => setWizardStep(0)}
-                  question="How are you traveling?"
-                />
-              )}
-              {wizardStep > 1 && config.travelMode === "vehicle" && (
-                <Answer
-                  answer={config.isSeniorOrDisabledDriver ? "Yes" : "No"}
-                  Icon={
-                    config.isSeniorOrDisabledDriver
-                      ? fareWizardIcons.wheelchair
-                      : fareWizardIcons.user
-                  }
-                  onClick={() => setWizardStep(1)}
-                  question="Driver is senior or has a disability"
-                />
-              )}
-              {wizardStep > 2 &&
-                config.travelMode === "vehicle" &&
-                config.vehicleType && (
-                  <Answer
-                    {...getVehicleTypeAnswer(config.vehicleType)}
-                    onClick={() => setWizardStep(2)}
-                    question="Vehicle type"
-                  />
-                )}
-              {wizardStep > 3 &&
-                config.vehicleType === "tall-or-long" &&
-                config.vehicleLength && (
-                  <Answer
-                    answer={`${config.vehicleLength} feet`}
-                    Icon={fareWizardIcons.ruler}
-                    onClick={() => setWizardStep(3)}
-                    question="Vehicle length"
-                  />
-                )}
-            </div>
-            {wizardStep === 0 && (
-              <fieldset className="mt-5">
-                <legend className="text-lg font-bold">
-                  How are you traveling?
-                </legend>
-                <div className="mt-3 grid grid-cols-3 gap-3">
-                  {(
-                    [
-                      ["vehicle", "Vehicle", fareWizardIcons.car],
-                      ["bicycle", "Bicycle", fareWizardIcons.bicycle],
-                      ["walk-on", "Walk on", fareWizardIcons.walking],
-                    ] as Array<[FareTravelMode, string, FareWizardIcon]>
-                  ).map(([value, label, Icon]) => (
-                    <Option
-                      active={config.travelMode === value}
-                      Icon={Icon}
-                      key={value}
-                      onClick={() => {
-                        updateConfig("travelMode", value);
-                        setWizardStep(value === "vehicle" ? 1 : 4);
-                      }}
-                    >
-                      {label}
-                    </Option>
-                  ))}
-                </div>
-              </fieldset>
-            )}
-            {wizardStep === 1 && config.travelMode === "vehicle" && (
-              <fieldset className="mt-5">
-                <legend className="text-lg font-bold">
-                  Is the driver a senior or a person with a disability?
-                </legend>
-                <p className="mt-1 text-sm opacity-75">
-                  Choose Yes only for a driver age 65 or older, or one who
-                  qualifies for WSF reduced fare disability eligibility.{" "}
-                  <a
-                    className="link text-green-dark dark:text-green-light"
-                    href={WSDOT_REDUCED_FARE_URL}
-                    rel="noopener noreferrer"
-                    target="_blank"
-                  >
-                    Read WSF eligibility details
-                  </a>
-                  .
-                </p>
-                <div className="mt-3 grid grid-cols-2 gap-3">
-                  <Option
-                    active={config.isSeniorOrDisabledDriver === false}
-                    Icon={fareWizardIcons.user}
-                    onClick={() => {
-                      updateConfig("isSeniorOrDisabledDriver", false);
-                      setWizardStep(2);
-                    }}
-                  >
-                    No
-                  </Option>
-                  <Option
-                    active={config.isSeniorOrDisabledDriver === true}
-                    Icon={fareWizardIcons.wheelchair}
-                    onClick={() => {
-                      updateConfig("isSeniorOrDisabledDriver", true);
-                      setWizardStep(2);
-                    }}
-                  >
-                    Yes
-                  </Option>
-                </div>
-              </fieldset>
-            )}
-            {wizardStep === 2 && config.travelMode === "vehicle" && (
-              <fieldset className="mt-5">
-                <legend className="text-lg font-bold">
-                  What type of vehicle?
-                </legend>
-                <div className="mt-3 grid grid-cols-2 gap-3">
-                  {(
-                    [
-                      ["standard", "Standard", fareWizardIcons.car],
-                      ["motorcycle", "Motorcycle", fareWizardIcons.motorcycle],
-                      ["tall-or-long", "Tall or long", fareWizardIcons.truck],
-                      ["short", "Short", fareWizardIcons.carSide],
-                    ] as Array<[FareVehicleType, string, FareWizardIcon]>
-                  ).map(([value, label, Icon]) => (
-                    <Option
-                      active={config.vehicleType === value}
-                      description={getVehicleTypeDescription(value)}
-                      Icon={Icon}
-                      key={value}
-                      onClick={() => {
-                        setConfiguration({
-                          ...config,
-                          vehicleLength:
-                            value === "tall-or-long"
-                              ? (config.vehicleLength ?? 29)
-                              : undefined,
-                          vehicleType: value,
-                        });
-                        setWizardStep(value === "tall-or-long" ? 3 : 4);
-                      }}
-                    >
-                      {label}
-                    </Option>
-                  ))}
-                </div>
-              </fieldset>
-            )}
-            {wizardStep === 3 && config.travelMode === "vehicle" && (
-              <fieldset className="mt-5">
-                <legend className="text-lg font-bold">Vehicle length</legend>
-                <p className="mt-1 text-sm opacity-75">
-                  Enter the full length in feet. Vehicles under 30 feet in this
-                  category use WSDOT's tall-vehicle fare.
-                </p>
-                <Counter
-                  label="Feet"
-                  min={1}
-                  onChange={(value) => updateConfig("vehicleLength", value)}
-                  value={config.vehicleLength ?? 29}
-                />
-                <button
-                  className="button mt-3 w-full"
-                  onClick={() => {
-                    if (config.vehicleLength === undefined) {
-                      updateConfig("vehicleLength", 29);
-                    }
-                    setWizardStep(4);
-                  }}
-                  type="button"
-                >
-                  Continue
-                </button>
-              </fieldset>
-            )}
-            {wizardStep === 4 && config.travelMode === "vehicle" && (
-              <fieldset className="mt-5">
-                <legend className="text-lg font-bold">
-                  Additional passengers
-                </legend>
-                <p className="mt-1 text-sm opacity-75">
-                  The driver is included with the vehicle fare.
-                </p>
-                <Counter
-                  description="Ages 19–64"
-                  label="Adults"
-                  onChange={(value) => updateConfig("adultPassengers", value)}
-                  value={config.adultPassengers}
-                />
-                <Counter
-                  description="Ages 18 and under"
-                  label="Children"
-                  onChange={(value) => updateConfig("childPassengers", value)}
-                  value={config.childPassengers}
-                />
-                <Counter
-                  description={
-                    <>
-                      Age 65+ or qualifying disability fare rider.{" "}
-                      <a
-                        className="link text-green-dark dark:text-green-light"
-                        href={WSDOT_REDUCED_FARE_URL}
-                        rel="noopener noreferrer"
-                        target="_blank"
-                      >
-                        Eligibility details
-                      </a>
-                      .
-                    </>
-                  }
-                  label="Seniors"
-                  onChange={(value) => updateConfig("seniorPassengers", value)}
-                  value={config.seniorPassengers}
-                />
-              </fieldset>
-            )}
-          </section>
-          <FareCatalogDisclosure
-            response={{ state: "current", catalog }}
-            departingName={terminal.name}
-            arrivingName={mate.name}
-          />
-          {catalogError ? (
-            <p role="status">
-              The live refresh failed; the previously fetched fare catalog is
-              retained. Verify prices with WSDOT.
-            </p>
-          ) : null}
-          {canEstimate && (
-            <section className="rounded-2xl bg-white p-5 dark:bg-blue-dark">
+            <section aria-label="Fare estimator">
               <div className="flex items-center justify-between gap-3">
-                <h2 className="text-xl font-bold">Fare estimate</h2>
-                <button
-                  className="button button-secondary button-small"
-                  onClick={share}
-                  type="button"
-                >
-                  <ShareIcon />
-                  {isShareCopied ? "Copied" : "Share"}
-                </button>
+                <h2 className="text-xl font-bold">Calculate a custom fare</h2>
+                {config.travelMode && (
+                  <button
+                    className="button button-secondary button-small"
+                    onClick={restart}
+                    type="button"
+                  >
+                    <RestartIcon />
+                    Restart
+                  </button>
+                )}
               </div>
-              {isQuoting && <p className="mt-3">Calculating official fare…</p>}
-              {quoteResponse?.state === "unavailable" && (
-                <div className="mt-3">
-                  <p>Fare unavailable.</p>
-                  <CalculatorLink href={quoteResponse.calculatorUrl} />
-                  <RetryButton onClick={retryQuote} />
-                </div>
+              <p className="mt-1 text-sm">
+                Choose passengers, vehicle size and eligible discounts. Ferry
+                FYI uses official WSDOT fares and does not determine
+                eligibility.
+              </p>
+              <div className="mt-5 space-y-2">
+                {wizardStep > 0 && config.travelMode && (
+                  <Answer
+                    {...getTravelModeAnswer(config.travelMode)}
+                    onClick={() => setWizardStep(0)}
+                    question="How are you traveling?"
+                  />
+                )}
+                {wizardStep > 1 && config.travelMode === "vehicle" && (
+                  <Answer
+                    answer={config.isSeniorOrDisabledDriver ? "Yes" : "No"}
+                    Icon={
+                      config.isSeniorOrDisabledDriver
+                        ? fareWizardIcons.wheelchair
+                        : fareWizardIcons.user
+                    }
+                    onClick={() => setWizardStep(1)}
+                    question="Driver is senior or has a disability"
+                  />
+                )}
+                {wizardStep > 2 &&
+                  config.travelMode === "vehicle" &&
+                  config.vehicleType && (
+                    <Answer
+                      {...getVehicleTypeAnswer(config.vehicleType)}
+                      onClick={() => setWizardStep(2)}
+                      question="Vehicle type"
+                    />
+                  )}
+                {wizardStep > 3 &&
+                  config.vehicleType === "tall-or-long" &&
+                  config.vehicleLength && (
+                    <Answer
+                      answer={`${config.vehicleLength} feet`}
+                      Icon={fareWizardIcons.ruler}
+                      onClick={() => setWizardStep(3)}
+                      question="Vehicle length"
+                    />
+                  )}
+              </div>
+              {wizardStep === 0 && (
+                <fieldset className="mt-5">
+                  <legend className="text-lg font-bold">
+                    How are you traveling?
+                  </legend>
+                  <div className="mt-3 grid grid-cols-3 gap-3">
+                    {(
+                      [
+                        ["vehicle", "Vehicle", fareWizardIcons.car],
+                        ["bicycle", "Bicycle", fareWizardIcons.bicycle],
+                        ["walk-on", "Walk on", fareWizardIcons.walking],
+                      ] as Array<[FareTravelMode, string, FareWizardIcon]>
+                    ).map(([value, label, Icon]) => (
+                      <Option
+                        active={config.travelMode === value}
+                        Icon={Icon}
+                        key={value}
+                        onClick={() => {
+                          updateConfig("travelMode", value);
+                          setWizardStep(value === "vehicle" ? 1 : 4);
+                        }}
+                      >
+                        {label}
+                      </Option>
+                    ))}
+                  </div>
+                </fieldset>
               )}
-              {quoteError && (
-                <div className="mt-3">
-                  <p>Fare unavailable.</p>
-                  <CalculatorLink href={WSDOT_FARE_CALCULATOR_URL} />
-                  <RetryButton onClick={retryQuote} />
-                </div>
-              )}
-              {quoteResponse?.state === "no-fare" && (
-                <p className="mt-3">{quoteResponse.noFare.message}</p>
-              )}
-              {total && (
-                <>
-                  <p className="mt-3 text-3xl font-bold">
-                    {currency.format(total.amount)}
+              {wizardStep === 1 && config.travelMode === "vehicle" && (
+                <fieldset className="mt-5">
+                  <legend className="text-lg font-bold">
+                    Is the driver a senior or a person with a disability?
+                  </legend>
+                  <p className="mt-1 text-sm opacity-75">
+                    Choose Yes only for a driver age 65 or older, or one who
+                    qualifies for WSF reduced fare disability eligibility.{" "}
+                    <a
+                      className="link text-green-dark dark:text-green-light"
+                      href={WSDOT_REDUCED_FARE_URL}
+                      rel="noopener noreferrer"
+                      target="_blank"
+                    >
+                      Read WSF eligibility details
+                    </a>
+                    .
                   </p>
-                  <p className="mt-2 text-sm">
-                    {quoteResponse?.state === "stale"
-                      ? "This is a stale official quote."
-                      : "Current official WSDOT quote."}
-                  </p>
-                </>
+                  <div className="mt-3 grid grid-cols-2 gap-3">
+                    <Option
+                      active={config.isSeniorOrDisabledDriver === false}
+                      Icon={fareWizardIcons.user}
+                      onClick={() => {
+                        updateConfig("isSeniorOrDisabledDriver", false);
+                        setWizardStep(2);
+                      }}
+                    >
+                      No
+                    </Option>
+                    <Option
+                      active={config.isSeniorOrDisabledDriver === true}
+                      Icon={fareWizardIcons.wheelchair}
+                      onClick={() => {
+                        updateConfig("isSeniorOrDisabledDriver", true);
+                        setWizardStep(2);
+                      }}
+                    >
+                      Yes
+                    </Option>
+                  </div>
+                </fieldset>
               )}
-              {!quoteError && quoteResponse?.state !== "unavailable" && (
-                <CalculatorLink href={WSDOT_FARE_CALCULATOR_URL} />
+              {wizardStep === 2 && config.travelMode === "vehicle" && (
+                <fieldset className="mt-5">
+                  <legend className="text-lg font-bold">
+                    What type of vehicle?
+                  </legend>
+                  <div className="mt-3 grid grid-cols-2 gap-3">
+                    {(
+                      [
+                        ["standard", "Standard", fareWizardIcons.car],
+                        [
+                          "motorcycle",
+                          "Motorcycle",
+                          fareWizardIcons.motorcycle,
+                        ],
+                        ["tall-or-long", "Tall or long", fareWizardIcons.truck],
+                        ["short", "Short", fareWizardIcons.carSide],
+                      ] as Array<[FareVehicleType, string, FareWizardIcon]>
+                    ).map(([value, label, Icon]) => (
+                      <Option
+                        active={config.vehicleType === value}
+                        description={getVehicleTypeDescription(value)}
+                        Icon={Icon}
+                        key={value}
+                        onClick={() => {
+                          setConfiguration({
+                            ...config,
+                            vehicleLength:
+                              value === "tall-or-long"
+                                ? (config.vehicleLength ?? 29)
+                                : undefined,
+                            vehicleType: value,
+                          });
+                          setWizardStep(value === "tall-or-long" ? 3 : 4);
+                        }}
+                      >
+                        {label}
+                      </Option>
+                    ))}
+                  </div>
+                </fieldset>
+              )}
+              {wizardStep === 3 && config.travelMode === "vehicle" && (
+                <fieldset className="mt-5">
+                  <legend className="text-lg font-bold">Vehicle length</legend>
+                  <p className="mt-1 text-sm opacity-75">
+                    Enter the full length in feet. Vehicles under 30 feet in
+                    this category use WSDOT's tall-vehicle fare.
+                  </p>
+                  <Counter
+                    label="Feet"
+                    min={1}
+                    onChange={(value) => updateConfig("vehicleLength", value)}
+                    value={config.vehicleLength ?? 29}
+                  />
+                  <button
+                    className="button mt-3 w-full"
+                    onClick={() => {
+                      if (config.vehicleLength === undefined) {
+                        updateConfig("vehicleLength", 29);
+                      }
+                      setWizardStep(4);
+                    }}
+                    type="button"
+                  >
+                    Continue
+                  </button>
+                </fieldset>
+              )}
+              {wizardStep === 4 && config.travelMode === "vehicle" && (
+                <fieldset className="mt-5">
+                  <legend className="text-lg font-bold">
+                    Additional passengers
+                  </legend>
+                  <p className="mt-1 text-sm opacity-75">
+                    The driver is included with the vehicle fare.
+                  </p>
+                  <Counter
+                    description="Ages 19–64"
+                    label="Adults"
+                    onChange={(value) => updateConfig("adultPassengers", value)}
+                    value={config.adultPassengers}
+                  />
+                  <Counter
+                    description="Ages 18 and under"
+                    label="Children"
+                    onChange={(value) => updateConfig("childPassengers", value)}
+                    value={config.childPassengers}
+                  />
+                  <Counter
+                    description={
+                      <>
+                        Age 65+ or qualifying disability fare rider.{" "}
+                        <a
+                          className="link text-green-dark dark:text-green-light"
+                          href={WSDOT_REDUCED_FARE_URL}
+                          rel="noopener noreferrer"
+                          target="_blank"
+                        >
+                          Eligibility details
+                        </a>
+                        .
+                      </>
+                    }
+                    label="Seniors"
+                    onChange={(value) =>
+                      updateConfig("seniorPassengers", value)
+                    }
+                    value={config.seniorPassengers}
+                  />
+                </fieldset>
               )}
             </section>
-          )}
+            {catalog ? (
+              <FareCatalogDisclosure
+                response={{ state: "current", catalog }}
+                departingName={terminal.name}
+                arrivingName={mate.name}
+              />
+            ) : null}
+            {catalogError ? (
+              <p role="status">
+                The live refresh failed; the previously fetched fare catalog is
+                retained. Verify prices with WSDOT.
+              </p>
+            ) : null}
+            {canEstimate && (
+              <section aria-label="Fare estimate">
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="text-xl font-bold">Fare estimate</h2>
+                  <button
+                    className="button button-secondary button-small"
+                    onClick={share}
+                    type="button"
+                  >
+                    <ShareIcon />
+                    {isShareCopied ? "Copied" : "Share"}
+                  </button>
+                </div>
+                {isQuoting && (
+                  <FarePriceComparison
+                    loading
+                    loadingLabel="Calculating custom fare"
+                  />
+                )}
+                {quoteResponse?.state === "unavailable" && (
+                  <div className="mt-3">
+                    <p>Fare unavailable.</p>
+                    <CalculatorLink href={quoteResponse.calculatorUrl} />
+                    <RetryButton onClick={retryQuote} />
+                  </div>
+                )}
+                {quoteError && (
+                  <div className="mt-3">
+                    <p>Fare unavailable.</p>
+                    <CalculatorLink href={WSDOT_FARE_CALCULATOR_URL} />
+                    <RetryButton onClick={retryQuote} />
+                  </div>
+                )}
+                {quoteResponse?.state === "no-fare" && (
+                  <p className="mt-3">{quoteResponse.noFare.message}</p>
+                )}
+                {customRates && (
+                  <FarePriceComparison comparison={customRates} />
+                )}
+                {!quoteError && quoteResponse?.state !== "unavailable" && (
+                  <CalculatorLink href={WSDOT_FARE_CALCULATOR_URL} />
+                )}
+              </section>
+            )}
+          </div>
         </div>
       </main>
     </>

@@ -190,7 +190,16 @@ export const App = ({
       suspendInitialRoute && !hasLeftInitialRoute.current ? (
         element
       ) : (
-        <Suspense fallback={<AppLoadingState />}>{element}</Suspense>
+        <Suspense
+          fallback={
+            <AppLoadingState
+              pathname={location.pathname}
+              search={location.search}
+            />
+          }
+        >
+          {element}
+        </Suspense>
       );
     return (
       <>
@@ -236,6 +245,8 @@ export const App = ({
       </>
     );
   } else {
-    return <AppLoadingState />;
+    return (
+      <AppLoadingState pathname={location.pathname} search={location.search} />
+    );
   }
 };

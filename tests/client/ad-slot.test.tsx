@@ -61,9 +61,11 @@ const ACTIVE_AD_EXPOSURE = {
   token: "adx_test",
 };
 
+// render one ad with optional placement context
 const renderSlot = async (
   className?: string,
-  onReadyChange?: (ready: boolean) => void
+  onReadyChange?: (ready: boolean) => void,
+  overrides: Partial<React.ComponentProps<typeof AdSlot>> = {}
 ): Promise<HTMLDivElement> => {
   const container = document.createElement("div");
   document.body.appendChild(container);
@@ -78,6 +80,7 @@ const renderSlot = async (
           departureTerminalId="5"
           onReadyChange={onReadyChange}
           slot="schedule"
+          {...overrides}
         />
       </MemoryRouter>
     );
@@ -102,6 +105,46 @@ afterEach(() => {
 });
 
 describe("AdSlot", () => {
+  // request navigation inventory with only the departure terminal
+  it("issues a terminal-only navigation exposure", async () => {
+    api.post.mockResolvedValue({
+      ...ACTIVE_AD_EXPOSURE,
+      creative: {
+        ...ACTIVE_AD_EXPOSURE.creative,
+        placementKey: "navigation--7",
+      },
+    });
+    const container = await renderSlot(undefined, undefined, {
+      arrivalTerminalId: undefined,
+      contextLabel: "Navigation · Seattle",
+      departureTerminalId: "7",
+      slot: "navigation",
+    });
+
+    expect(api.post).toHaveBeenCalledWith(
+      "/ads/exposures",
+      { placementKey: "navigation--7" },
+      undefined
+    );
+    expect(
+      container.querySelector('[aria-label="Advertisement from Island Coffee"]')
+    ).not.toBeNull();
+  });
+
+  // keep supporters ad-free on the new surface
+  it("suppresses navigation inventory for an active supporter", async () => {
+    auth.isAuthenticated = true;
+    user.user.supporter.active = true;
+    const container = await renderSlot(undefined, undefined, {
+      arrivalTerminalId: undefined,
+      departureTerminalId: "7",
+      slot: "navigation",
+    });
+
+    expect(container.textContent).toBe("");
+    expect(api.post).not.toHaveBeenCalled();
+  });
+
   // wait for both authoritative outcomes
   it("reports readiness after account policy and exposure settle", async () => {
     const onReadyChange = vi.fn();
@@ -144,7 +187,7 @@ describe("AdSlot", () => {
       root?.render(
         <MemoryRouter>
           <AdSlot
-            className="mx-auto w-full max-w-6xl px-4 pb-4"
+            className="mx-auto w-full max-w-6xl py-4"
             contextLabel="Home"
             slot="home"
           />
@@ -351,19 +394,56 @@ describe("AdSlot", () => {
     expect(container.textContent).toBe("");
   });
 
-  it("does not retain placement spacing when no ad is visible", async () => {
+  // visible homepage ads own their vertical gap without altering other placements
+  it("applies homepage spacing to a visible creative", async () => {
     api.post.mockResolvedValue({
-      creative: null,
-      expiresAt: "2026-08-04T18:00:00.000Z",
-      token: "adx_test",
+      ...ACTIVE_AD_EXPOSURE,
+      creative: { ...ACTIVE_AD_EXPOSURE.creative, placementKey: "home" },
     });
-
-    const container = await renderSlot("p-2");
-
-    expect(container.querySelector("[data-ad-slot]")?.className).toBe(
-      "relative h-0"
+    const container = await renderSlot(
+      "mx-auto w-full max-w-6xl py-4",
+      undefined,
+      {
+        arrivalTerminalId: undefined,
+        departureTerminalId: undefined,
+        slot: "home",
+      }
     );
+
+    expect(
+      container.querySelector('[data-ad-slot="home"]')?.classList
+    ).toContain("py-4");
+    expect(
+      container.querySelector('[data-ad-placement="home"]')
+    ).not.toBeNull();
   });
+
+  // absent creatives must not leave a homepage-sized gap
+  it.each(["home", "schedule"] as const)(
+    "does not retain %s placement spacing when no ad is visible",
+    async (slot) => {
+      api.post.mockResolvedValue({
+        creative: null,
+        expiresAt: "2026-08-04T18:00:00.000Z",
+        token: "adx_test",
+      });
+
+      // homepage inventory has no directional terminal context
+      const container = await renderSlot(
+        "mx-auto w-full max-w-6xl py-4",
+        undefined,
+        {
+          arrivalTerminalId: slot === "home" ? undefined : "14",
+          departureTerminalId: slot === "home" ? undefined : "5",
+          slot,
+        }
+      );
+
+      expect(container.querySelector("[data-ad-slot]")?.className).toBe(
+        "relative h-0"
+      );
+    }
+  );
 
   it("lets the global switch suppress a configured placement", async () => {
     api.post.mockResolvedValue({

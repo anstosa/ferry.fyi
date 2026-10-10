@@ -94,7 +94,7 @@ describe("full fare catalog disclosure", () => {
       Array.from(details?.querySelectorAll("th[scope=col]") ?? []).map(
         (heading) => heading.textContent
       )
-    ).toEqual(["Fare", "Price (USD)"]);
+    ).toEqual(["Fare", "Price"]);
     expect(details?.querySelectorAll("tbody td")).toHaveLength(2);
     expect(markup).toContain("$10.50");
     expect(markup).toContain("$22.25");
@@ -102,6 +102,31 @@ describe("full fare catalog disclosure", () => {
     expect(markup).toContain("Seattle to Bainbridge");
     expect(markup).toContain("2026-07-29");
     expect(markup).toContain("one-way");
+  });
+
+  // zero-priced catalog rows use the same wording as the standard comparisons
+  it("labels zero-dollar line items as free without currency-code text", () => {
+    const container = document.createElement("div");
+    container.innerHTML = renderToStaticMarkup(
+      <FareCatalogDisclosure
+        response={{
+          ...response,
+          catalog: {
+            ...response.catalog,
+            fares: response.catalog.fares.map((fare) => ({
+              ...fare,
+              amount: 0,
+            })),
+          },
+        }}
+      />
+    );
+    expect(
+      [...container.querySelectorAll("tbody td")].map(
+        (cell) => cell.textContent
+      )
+    ).toEqual(["Free", "Free"]);
+    expect(container.textContent).not.toMatch(/USD|\$0\.00/);
   });
 
   // convert the provider's unquoted link without adopting active attributes

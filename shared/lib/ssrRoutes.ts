@@ -56,12 +56,10 @@ const part = (view: PublicSsrView) => {
   return view === "fare" ? "fares" : view;
 };
 const allowedQuery = (view: PublicSsrView) => {
-  if (view === "schedule") {
+  if (view === "schedule" || view === "fare") {
     return ["date"] as const;
   }
-  // Fare selectors are browser-only interactive state. The public SSR fare
-  // tree renders the same catalog summary for every selector combination, so
-  // selectors must not create distinct snapshots or cache entries.
+  // fare selectors remain browser-only interactive state
   return [];
 };
 const PUBLIC_SSR_VIEWS = [

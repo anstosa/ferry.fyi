@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { createServerApp } from "../../client/entry-server";
 import { readPublicSsrSeedResult } from "../../client/lib/ssrSeed";
+import { getPublicAdServingFingerprint } from "../../server/services/public/adTracking";
 import {
   renderPublicSsrDocument,
   serializePublicSsrSnapshot,
@@ -10,12 +11,11 @@ import {
 import {
   createPublicSsrSnapshotLoader,
   createPublicSsrTerminalResolver,
-  type PublicSsrSnapshotServices,
   PublicSsrIntegrityFailure,
+  type PublicSsrSnapshotServices,
   PublicSsrTransientFailure,
   toPublicSsrVessel,
 } from "../../server/ssr/publicSnapshot";
-import { getPublicAdServingFingerprint } from "../../server/services/public/adTracking";
 import { PUBLIC_SSR_SNAPSHOT_SCRIPT_ID } from "../../shared/contracts/ssrDocument";
 import { getPublicSsrAdPlacementBinding } from "../../shared/lib/ssrAdPlacement";
 import { matchPublicSsrRoute } from "../../shared/lib/ssrRouteMatch";
@@ -834,27 +834,89 @@ describe("public SSR snapshot loader", () => {
 
   it("loads a current fare catalog with its original freshness timestamp", async () => {
     const publicServices = services();
+    const current = catalog();
+    // include only flattened rates rather than quote request details
+    if (current.kind === "catalog") {
+      publicServices.getFareCatalog.mockResolvedValue({
+        ...current,
+        catalog: {
+          ...current.catalog,
+          request: {
+            ...current.catalog.request,
+            tripDate: "2026-08-01",
+          },
+        },
+        defaultRates: {
+          passenger: {
+            oneWay: {
+              amount: 11.35,
+              freshness: current.catalog.freshness,
+              state: "current",
+            },
+            roundTrip: {
+              amount: 11.35,
+              freshness: current.catalog.freshness,
+              state: "current",
+            },
+          },
+          standardVehicle: { oneWay: null, roundTrip: null },
+        },
+      });
+    }
     const snapshot = await snapshotFor(
-      "https://ferry.fyi/clinton/fare?fareMode=vehicle&fareAdults=02",
+      "https://ferry.fyi/clinton/fare?date=2026-08-01&fareMode=vehicle&fareAdults=02",
       publicServices
     );
-    expect(snapshot.normalizedUrl.query).toEqual({});
+    expect(snapshot.normalizedUrl.query).toEqual({ date: "2026-08-01" });
+    expect(snapshot.indexability).toBe("noindex");
+    expect(snapshot.metadata).toMatchObject({
+      canonicalPath: "/clinton/fare",
+      robots: "noindex,follow",
+    });
     expect(snapshot.sources.fares).toMatchObject({
       outcome: "value",
       sourceUpdatedAt,
-      value: { state: "current" },
+      value: {
+        defaultRates: {
+          passenger: {
+            oneWay: { amount: 11.35, state: "current" },
+            roundTrip: { amount: 11.35, state: "current" },
+          },
+        },
+        state: "current",
+      },
     });
+    expect(JSON.stringify(snapshot.sources.fares)).not.toMatch(
+      /lineItems|quote/i
+    );
     expect(publicServices.getFareCatalog).toHaveBeenCalledWith({
       arrivingTerminalId: "14",
       departingTerminalId: "5",
       roundTrip: false,
-      tripDate: "2026-07-28",
+      tripDate: "2026-08-01",
     });
   });
 
   it("loads an authoritative no-fare outcome", async () => {
     const publicServices = services();
-    publicServices.getFareCatalog.mockResolvedValue(catalog("no-fare"));
+    const noFare = catalog("no-fare");
+    // retain explicit no-fare zero rates in the public snapshot
+    if (noFare.kind === "no-fare") {
+      publicServices.getFareCatalog.mockResolvedValue({
+        ...noFare,
+        defaultRates: {
+          passenger: {
+            oneWay: {
+              amount: 0,
+              freshness: noFare.noFare.freshness,
+              state: "no-fare",
+            },
+            roundTrip: null,
+          },
+          standardVehicle: { oneWay: null, roundTrip: null },
+        },
+      });
+    }
     const snapshot = await snapshotFor(
       "https://ferry.fyi/clinton/fare",
       publicServices
@@ -862,7 +924,15 @@ describe("public SSR snapshot loader", () => {
     expect(snapshot.sources.fares).toMatchObject({
       outcome: "value",
       sourceUpdatedAt,
-      value: { state: "no-fare" },
+      value: {
+        defaultRates: {
+          passenger: {
+            oneWay: { amount: 0, state: "no-fare" },
+            roundTrip: null,
+          },
+        },
+        state: "no-fare",
+      },
     });
   });
 
@@ -1094,13 +1164,22 @@ describe("public SSR snapshot loader", () => {
     });
   });
 
-  it("projects terminal information as meaningful plain text", async () => {
+  // keep source html inert and readable across the browser handoff
+  it("projects terminal information and arrival guidance as meaningful plain text", async () => {
     const publicServices = services();
     const terminals = makeTerminals();
     terminals["5"].info = {
       construction:
         "<p>Use the <strong>south lane</strong> &amp; follow signs.</p><p>Expect delays.</p>",
     };
+    terminals["5"].waitTimes = [
+      {
+        description:
+          "<p>Arrive <strong>early</strong> &amp; check conditions.</p><p>Allow extra time.</p>",
+        time: 1688212800,
+        title: "Clinton / Mukilteo",
+      },
+    ];
     publicServices.getTerminals.mockResolvedValue(terminals);
 
     const snapshot = await snapshotFor(
@@ -1116,6 +1195,14 @@ describe("public SSR snapshot loader", () => {
             construction:
               "Use the south lane & follow signs.\n\nExpect delays.",
           },
+          waitTimes: [
+            {
+              description:
+                "Arrive early & check conditions.\n\nAllow extra time.",
+              time: 1688212800,
+              title: "Clinton / Mukilteo",
+            },
+          ],
         },
       },
     });
@@ -1158,6 +1245,25 @@ describe("public SSR snapshot loader", () => {
       redirectTo: "/clinton",
       snapshot: undefined,
     });
+  });
+
+  // preserve only the selected fare date across canonical redirects
+  it("keeps the fare date when canonicalizing a one-mate route", async () => {
+    const publicServices = services();
+    const { loader } = loaderFor(publicServices);
+
+    await expect(
+      loader(
+        input(
+          "https://ferry.fyi/clinton/mukilteo/fare?date=2026-08-01&fareMode=vehicle"
+        )
+      )
+    ).resolves.toMatchObject({
+      classification: "redirect",
+      redirectTo: "/clinton/fare?date=2026-08-01",
+      snapshot: undefined,
+    });
+    expect(publicServices.getFareCatalog).not.toHaveBeenCalled();
   });
 
   it("redirects a mate-elided route when the terminal has multiple mates", async () => {

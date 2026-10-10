@@ -21,4 +21,18 @@ describe("formatUpdatedAt", () => {
     expect(formatUpdatedAt(now - 60, now)).toBe("Updated 1 min ago");
     expect(formatUpdatedAt(now - 179, now)).toBe("Updated 2 mins ago");
   });
+
+  // distinguish camera checks from source image changes
+  it("accepts a precise prefix without changing unknown-time behavior", () => {
+    expect(formatUpdatedAt(now, now, "Image checked")).toBe(
+      "Image checked just now"
+    );
+    expect(formatUpdatedAt(now - 60, now, "Image checked")).toBe(
+      "Image checked 1 min ago"
+    );
+    expect(formatUpdatedAt(now - 179, now, "Image checked")).toBe(
+      "Image checked 2 mins ago"
+    );
+    expect(formatUpdatedAt(null, now, "Image checked")).toBeNull();
+  });
 });

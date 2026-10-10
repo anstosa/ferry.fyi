@@ -6,6 +6,7 @@ const placementSources = {
   cameras: readFileSync("client/views/Cameras.tsx", "utf8"),
   fare: readFileSync("client/views/Fares.tsx", "utf8"),
   home: readFileSync("client/views/Home.tsx", "utf8"),
+  navigation: readFileSync("client/views/Navigation.tsx", "utf8"),
   schedule: readFileSync("client/views/Schedule/index.tsx", "utf8"),
   terminal: readFileSync("client/views/TerminalDetails.tsx", "utf8"),
 };
@@ -19,15 +20,15 @@ describe("advertising surfaces", () => {
     }
   );
 
-  // preserve ad order before the expanded current-time banner
-  it("places the schedule ad immediately before the current-time divider", () => {
+  // keep the settled placement above visible sailing history
+  it("places the schedule ad before past sailings", () => {
     const source = placementSources.schedule;
-    const boundaryIndex = source.indexOf("{showNowDivider && (");
+    const boundaryIndex = source.indexOf("{hasScheduleAd ? (");
     const adIndex = source.indexOf("<AdSlot", boundaryIndex);
-    const nowIndex = source.indexOf("<NowDivider", boundaryIndex);
+    const historyIndex = source.indexOf("data-past-sailings", boundaryIndex);
 
     expect(boundaryIndex).toBeGreaterThan(-1);
     expect(adIndex).toBeGreaterThan(boundaryIndex);
-    expect(nowIndex).toBeGreaterThan(adIndex);
+    expect(historyIndex).toBeGreaterThan(adIndex);
   });
 });

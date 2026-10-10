@@ -14,7 +14,9 @@ import type {
   Schedule as ScheduleClass,
   Slot,
 } from "shared/contracts/schedules";
+import type { Terminal } from "shared/contracts/terminals";
 import { isEmpty } from "shared/lib/arrays";
+import { getRecommendationServiceDate } from "shared/lib/sailingRecommendationRevision";
 
 import { AdSlot } from "~/components/AdSlot";
 import { ErrorBoundary } from "~/components/ErrorBoundary";
@@ -22,6 +24,7 @@ import { FreshnessPill } from "~/components/FreshnessPill";
 import { PageLoadError } from "~/components/PageLoadError";
 import { Prompt } from "~/components/Prompt";
 import { ScheduleLoadingRows } from "~/components/ScheduleLoadingRows";
+import { ScheduleOverview } from "~/components/ScheduleOverview";
 import { Toast } from "~/components/Toast";
 import { useQuery } from "~/lib/browser";
 import { isWSFToday } from "~/lib/date";
@@ -44,8 +47,10 @@ import {
 } from "./smallBoat";
 
 interface Props {
+  arrivalTerminal?: Terminal;
   arrivalTerminalId?: string;
   checkedAt?: number | null;
+  departureTerminal?: Terminal;
   departureTerminalId?: string;
   isRefreshing?: boolean;
   loadError?: Error | null;
@@ -54,6 +59,7 @@ interface Props {
   onRefresh?: () => Promise<void>;
   route?: Route;
   schedule: ScheduleClass | null;
+  selectedDate?: string;
   time: DateTime;
 }
 
@@ -79,8 +85,10 @@ const getLinkedSailingTime = (input?: string): number | null => {
 
 // render sailings with their current-time navigation boundary
 export const Schedule = ({
+  arrivalTerminal,
   arrivalTerminalId,
   checkedAt = null,
+  departureTerminal,
   departureTerminalId,
   isRefreshing = false,
   loadError,
@@ -89,6 +97,7 @@ export const Schedule = ({
   onRefresh,
   route,
   schedule,
+  selectedDate,
   time,
 }: Props): ReactElement => {
   const { sailing: sailingInput, tab: tabInput } = useQuery();
@@ -109,6 +118,9 @@ export const Schedule = ({
   const linkedSailingTime = getLinkedSailingTime(sailingInput);
   const linkedDetailTab = isDetailTab(tabInput) ? tabInput : undefined;
   const scheduleIdentity = schedule?.key ?? "";
+  const hasOverview = Boolean(
+    departureTerminal && arrivalTerminal && selectedDate
+  );
   const usefulContentRef = useUsefulContent(
     "schedule",
     scheduleIdentity,
@@ -156,10 +168,11 @@ export const Schedule = ({
     [scheduleIdentity]
   );
 
-  // scroll once after schedule, entitlement, and ad settlement
+  // retain the wait-first introduction unless a rider opens a sailing deep link
   useEffect(() => {
     // scroll readiness guard
     if (
+      (hasOverview && !linkedSlot) ||
       !scheduleIdentity ||
       currentElement.scheduleIdentity !== scheduleIdentity ||
       !currentElement.element ||
@@ -171,7 +184,14 @@ export const Schedule = ({
     }
     scrolledSchedule.current = scheduleIdentity;
     scrollIntoView(currentElement.element, { align: { top: 0.3 } });
-  }, [currentElement, isScheduleAdReady, isUserLoading, scheduleIdentity]);
+  }, [
+    currentElement,
+    hasOverview,
+    isScheduleAdReady,
+    isUserLoading,
+    linkedSlot,
+    scheduleIdentity,
+  ]);
 
   // expand deep-linked sailing
   useEffect(() => {
@@ -222,14 +242,22 @@ export const Schedule = ({
     }
     // schedule loading guard
     if (!schedule?.slots) {
-      return <ScheduleLoadingSkeleton />;
+      return (
+        <ScheduleLoadingSkeleton
+          showPastSailings={
+            !selectedDate ||
+            selectedDate === getRecommendationServiceDate(time.toSeconds())
+          }
+        />
+      );
     }
     const { slots } = schedule;
+    // keep the introduction visible on empty service dates
     if (isEmpty(slots)) {
       return (
         <div
           className={clsx(
-            "absolute inset-0",
+            hasOverview ? "py-10" : "absolute inset-0",
             "bg-white text-gray-500 dark:bg-black",
             "flex justify-center items-center"
           )}
@@ -245,9 +273,18 @@ export const Schedule = ({
         return vessel.vehicleCapacity;
       })
     );
+    // group only completed sailings on the current ferry service date
+    let earlierCount = 0;
+    if (
+      hasOverview &&
+      selectedDate === getRecommendationServiceDate(time.toSeconds())
+    ) {
+      earlierCount = currentSlot ? slots.indexOf(currentSlot) : slots.length;
+    }
+    const olderCount = Math.max(0, earlierCount - 4);
     let hasCapacityInfo = false;
     // build sailing rows
-    const sailings = slots.map((slot) => {
+    const sailings = slots.map((slot, index) => {
       const { time: slotTime, crossing } = slot;
       if (crossing) {
         hasCapacityInfo = true;
@@ -268,23 +305,7 @@ export const Schedule = ({
       return (
         <React.Fragment key={slotTime}>
           {/* current-time boundary */}
-          {showNowDivider && (
-            <>
-              {arrivalTerminalId && departureTerminalId ? (
-                <li>
-                  <AdSlot
-                    arrivalTerminalId={arrivalTerminalId}
-                    className="p-2"
-                    contextLabel="Schedule"
-                    departureTerminalId={departureTerminalId}
-                    onReadyChange={handleAdReadyChange}
-                    slot="schedule"
-                  />
-                </li>
-              ) : null}
-              <NowDivider navigationPath={navigationPath} time={time} />
-            </>
-          )}
+          {showNowDivider && <NowDivider time={time} />}
           <ErrorBoundary
             className="m-2"
             fallbackTitle="Sailing crashed"
@@ -292,6 +313,7 @@ export const Schedule = ({
             resetKey={slotTime}
           >
             <SlotInfo
+              compact={index < earlierCount}
               getSailingShareUrl={(tab) => {
                 // sailing link
                 return getSailingShareUrl(slot, tab);
@@ -321,7 +343,50 @@ export const Schedule = ({
     });
     return (
       <>
-        <ul ref={usefulContentRef}>{sailings}</ul>
+        {/* settle the existing placement before history and deep-link scrolling */}
+        {hasScheduleAd ? (
+          <AdSlot
+            arrivalTerminalId={arrivalTerminalId}
+            className="p-2"
+            contextLabel="Schedule"
+            departureTerminalId={departureTerminalId}
+            onReadyChange={handleAdReadyChange}
+            slot="schedule"
+          />
+        ) : null}
+        {/* keep compact history directly above the current-time boundary */}
+        {earlierCount > 0 ? (
+          <div
+            data-past-sailings
+            key={scheduleIdentity}
+            className="border-y border-black/10 dark:border-white/10"
+          >
+            {/* retain older history and automatically reveal deep-linked rows */}
+            {olderCount > 0 ? (
+              <details
+                data-older-sailings
+                open={
+                  linkedSlot && slots.indexOf(linkedSlot) < olderCount
+                    ? true
+                    : undefined
+                }
+              >
+                <summary className="min-h-7 cursor-pointer px-4 py-1 text-xs font-semibold sm:px-6">
+                  Earlier sailings ({olderCount})
+                </summary>
+                <ul>{sailings.slice(0, olderCount)}</ul>
+              </details>
+            ) : null}
+            <ul data-recent-sailings>
+              {sailings.slice(olderCount, earlierCount)}
+            </ul>
+          </div>
+        ) : null}
+        <ul ref={usefulContentRef}>
+          {/* retain now after history when the service date has finished */}
+          {earlierCount > 0 && !currentSlot ? <NowDivider time={time} /> : null}
+          {sailings.slice(earlierCount)}
+        </ul>
         <AnimatePresence>
           {!hasCapacityInfo &&
             isWSFToday(DateTime.fromISO(schedule.date)) &&
@@ -354,14 +419,21 @@ export const Schedule = ({
         )}
         id="main"
       >
-        <div
-          className={clsx(
-            "w-full max-w-6xl bg-white dark:bg-black",
-            "lg:border-l lg:border-r",
-            "border-[rgba(0,0,0,0.08)] dark:border-[rgba(255,255,255,0.08)]"
-          )}
-        >
-          {renderSchedule()}
+        <div className="w-full max-w-6xl bg-white dark:bg-black">
+          {/* share the truthful wait summary with the anonymous server document */}
+          {departureTerminal && arrivalTerminal && selectedDate ? (
+            <ScheduleOverview
+              mate={arrivalTerminal}
+              navigationPath={navigationPath}
+              schedule={schedule}
+              scheduleLoading={!schedule && !loadError}
+              selectedDate={selectedDate}
+              terminal={departureTerminal}
+              time={time}
+            />
+          ) : null}
+          {/* retain the departures anchor without a duplicate service-date heading */}
+          <div id="departures">{renderSchedule()}</div>
         </div>
         {loadError && schedule?.slots ? (
           <Toast footerDocked error>
@@ -369,8 +441,10 @@ export const Schedule = ({
           </Toast>
         ) : null}
         {onRefresh && schedule && Number.isFinite(checkedAt) ? (
-          <div className="sticky bottom-1 z-10 mt-2 flex justify-center pb-1">
+          // float freshness above the last sailing without extending scroll content
+          <div className="sticky bottom-0 z-10 flex h-0 w-full shrink-0 justify-center">
             <FreshnessPill
+              className="absolute bottom-1 whitespace-nowrap"
               isRefreshing={isRefreshing}
               onClick={() => {
                 onRefresh().catch(console.error);
@@ -384,11 +458,16 @@ export const Schedule = ({
   );
 };
 
-const ScheduleLoadingSkeleton = (): ReactElement => {
+// match current compact history without reserving an extra viewport below the overview
+const ScheduleLoadingSkeleton = ({
+  showPastSailings,
+}: {
+  showPastSailings: boolean;
+}): ReactElement => {
   return (
     <ScheduleLoadingRows
-      className="h-[calc(100vh-8rem-var(--safe-area-inset-top)-var(--safe-area-inset-bottom))]"
       label="Loading schedule"
+      showPastSailings={showPastSailings}
     />
   );
 };

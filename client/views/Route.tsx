@@ -3,6 +3,7 @@ import { DateTime } from "luxon";
 import React, {
   ReactElement,
   Suspense,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -33,7 +34,12 @@ import { useQuery } from "~/lib/browser";
 import { toShortDateString } from "~/lib/date";
 import { isFavoriteRoute, useFavoriteRoutes } from "~/lib/favoriteRoutes";
 import { useAppRenderContext } from "~/lib/renderContext";
-import type { RouteView } from "~/lib/routeViews";
+import { getRouteLoadingContext } from "~/lib/routeLoadingContext";
+import {
+  type GetPath,
+  ROUTE_VIEW_ORDER,
+  type RouteView,
+} from "~/lib/routeViews";
 import {
   getSchedule,
   getScheduleCheckedAt,
@@ -136,17 +142,6 @@ type TodayOnlyView = Exclude<
   "schedule" | "terminal" | "subscribe" | "fare" | "navigation"
 >;
 
-const TAB_ORDER: View[] = [
-  "schedule",
-  "navigation",
-  "fare",
-  "cameras",
-  "terminal",
-  "map",
-  "alerts",
-  "subscribe",
-];
-
 type TabDirection = "to-left" | "to-right";
 
 export const getRouteTabClassName = (
@@ -196,7 +191,7 @@ const getNavigationIdentity = ({
   ]);
 
 // tab order index
-const getTabIndex = (input: View): number => TAB_ORDER.indexOf(input);
+const getTabIndex = (input: View): number => ROUTE_VIEW_ORDER.indexOf(input);
 
 // tab slide direction
 const getTabDirection = (previous: View, current: View): TabDirection => {
@@ -237,11 +232,6 @@ const TodayOnlyContent = ({
   </main>
 );
 
-export type GetPath = (input?: {
-  view?: View;
-  terminal?: Terminal;
-  mate?: Terminal;
-}) => string;
 interface Props {
   onTerminalChange?: (terminal: Terminal | null) => void;
   onMateChange?: (mate: Terminal | null) => void;
@@ -255,11 +245,15 @@ export const Route = ({
   view,
 }: Props): ReactElement => {
   const { clock } = useAppRenderContext();
-  const todayKey = DateTime.fromMillis(clock()).toISODate() ?? "";
-  const today = useMemo(() => DateTime.fromISO(todayKey), [todayKey]);
+  const todayKey = getRecommendationServiceDate(clock() / 1000);
+  // match the server's pacific service day rather than the device calendar
+  const today = useMemo(
+    () => DateTime.fromISO(todayKey, { zone: "America/Los_Angeles" }),
+    [todayKey]
+  );
   const { terminalSlug, mateSlug } = useParams();
   const { date: dateInput } = useQuery();
-  const { pathname, search } = useLocation();
+  const { pathname, search, hash } = useLocation();
   const navigationIdentity = getNavigationIdentity({
     mateSlug,
     pathname,
@@ -267,6 +261,13 @@ export const Route = ({
     terminalSlug,
     view,
   });
+  // retain terminal facts across tabs and dates, never across different pairs
+  const terminalPairIdentity = JSON.stringify([
+    terminalSlug ?? "",
+    mateSlug ?? "",
+  ]);
+  const activeTerminalPairIdentityRef = useRef(terminalPairIdentity);
+  activeTerminalPairIdentityRef.current = terminalPairIdentity;
   const activeNavigationIdentityRef = useRef(navigationIdentity);
   activeNavigationIdentityRef.current = navigationIdentity;
   const snapshot = usePublicSsrSnapshot();
@@ -290,20 +291,36 @@ export const Route = ({
     ? getPublicSsrSource(snapshot, "vessels")
     : undefined;
   const navigate = useNavigate();
-  const urlDateKey = useMemo(() => {
-    const inputDate = dateInput ? DateTime.fromISO(dateInput) : null;
-    return inputDate?.isValid ? (inputDate.toISODate() ?? todayKey) : todayKey;
-  }, [dateInput, todayKey]);
-  const urlDate = useMemo(() => DateTime.fromISO(urlDateKey), [urlDateKey]);
+  // keep explicit dates fixed while invalid queries use the current service day
+  const inputDate = useMemo(
+    () =>
+      dateInput
+        ? DateTime.fromISO(dateInput, { zone: "America/Los_Angeles" })
+        : null,
+    [dateInput]
+  );
+  const urlDateKey = inputDate?.isValid
+    ? (inputDate.toISODate() ?? todayKey)
+    : todayKey;
+  // parse service dates independently of the device time zone
+  const urlDate = useMemo(
+    () => DateTime.fromISO(urlDateKey, { zone: "America/Los_Angeles" }),
+    [urlDateKey]
+  );
   const [dateState, setDateState] = useState<{
     date: DateTime;
+    followsCurrentDay: boolean;
     identity: string;
   }>(() => ({
     date: urlDate,
+    followsCurrentDay: !inputDate?.isValid,
     identity: navigationIdentity,
   }));
-  const date =
-    dateState.identity === navigationIdentity ? dateState.date : urlDate;
+  let date: DateTime = urlDate;
+  // an undated or reset page follows the 03:00 rollover without becoming dated
+  if (dateState.identity === navigationIdentity) {
+    date = dateState.followsCurrentDay ? today : dateState.date;
+  }
   const scheduleIdentity = `${navigationIdentity}:${date.toISODate() ?? ""}`;
   const activeScheduleIdentityRef = useRef(scheduleIdentity);
   activeScheduleIdentityRef.current = scheduleIdentity;
@@ -349,13 +366,13 @@ export const Route = ({
     identity: string;
     terminals: Array<Terminal | null>;
   }>(() => ({
-    identity: navigationIdentity,
+    identity: terminalPairIdentity,
     terminals: seededRoute
       ? ([seededRoute.terminal, seededRoute.mate] as Terminal[])
       : [null],
   }));
   const resolvedTerminals =
-    terminalState.identity === navigationIdentity
+    terminalState.identity === terminalPairIdentity
       ? terminalState.terminals
       : [null];
   const [resolvedTerminal, resolvedMate] = resolvedTerminals;
@@ -366,9 +383,44 @@ export const Route = ({
       (resolvedMate !== null && getSlug(resolvedMate.id) === mateSlug));
   const terminal = resolvedRouteMatchesPath ? resolvedTerminal : null;
   const mate = resolvedRouteMatchesPath ? resolvedMate : null;
-  const [time, setTime] = useState<DateTime>(today);
+  const activeDepartureTerminalIdRef = useRef(terminal?.id);
+  activeDepartureTerminalIdRef.current = terminal?.id;
+  // retain refreshed terminal facts only for the active departure pair
+  const handleTerminalRefresh = useCallback(
+    (refreshedTerminal: Terminal): void => {
+      // compare against current refs so late callbacks cannot cross route pairs
+      setTerminalState((current) => {
+        const [currentTerminal, currentMate] = current.terminals;
+        if (
+          current.identity !== activeTerminalPairIdentityRef.current ||
+          currentTerminal?.id !== activeDepartureTerminalIdRef.current ||
+          refreshedTerminal.id !== activeDepartureTerminalIdRef.current
+        ) {
+          return current;
+        }
+        return {
+          identity: current.identity,
+          terminals: [refreshedTerminal, currentMate],
+        };
+      });
+    },
+    []
+  );
+  // use resolved facts when available and stable dock identities before API resolution
+  const loadingContext =
+    terminal && mate
+      ? { terminal, mate, selectedDate: date.toISODate() ?? todayKey, view }
+      : (getRouteLoadingContext(pathname, search, clock()) ?? undefined);
+  // evaluate the initial overview at the full request instant rather than midnight
+  const [time, setTime] = useState<DateTime>(() =>
+    DateTime.fromMillis(clock(), { zone: "America/Los_Angeles" })
+  );
   const previousViewRef = useRef<View>(view);
-  const tabDirection = getTabDirection(previousViewRef.current, view);
+  // retain one motion direction until the next tab change
+  const tabDirection = useMemo(
+    () => getTabDirection(previousViewRef.current, view),
+    [view]
+  );
   const [favoriteRouteIds, toggleFavoriteRoute] = useFavoriteRoutes();
 
   // remember selected tab
@@ -395,13 +447,14 @@ export const Route = ({
 
   // update clock
   useEffect(() => {
+    // retain the injected clock during the browser handoff and subsequent ticks
     const updateTime = (): void => {
-      setTime(DateTime.local());
+      setTime(DateTime.fromMillis(clock(), { zone: "America/Los_Angeles" }));
     };
     updateTime();
     const interval = window.setInterval(updateTime, 10 * 1000);
     return () => window.clearInterval(interval);
-  }, []);
+  }, [clock]);
 
   const isToday = date.toISODate() === today.toISODate();
   const recommendationServiceDate = getRecommendationServiceDate(
@@ -429,7 +482,8 @@ export const Route = ({
       getSlug(terminal.id) === terminalSlug &&
       (!mateSlug || getSlug(mate.id) === mateSlug);
     if (terminalSlug && !routeMatchesPath) {
-      setRoute(terminalSlug, mateSlug);
+      // retain deep links during initial route resolution, not deliberate terminal changes
+      setRoute(terminalSlug, mateSlug, true);
     }
   }, [mate, mateSlug, navigationIdentity, seededRoute, terminal, terminalSlug]);
 
@@ -446,7 +500,7 @@ export const Route = ({
       return;
     }
     const url = new URL(window.location.href);
-    // today query branch
+    // current service-day urls remain undated
     if (nextDate === todayKey) {
       url.searchParams.delete("date");
     } else {
@@ -513,7 +567,8 @@ export const Route = ({
   // route parameter sync
   const setRoute = async (
     terminalSlug: string,
-    mateSlug?: string
+    mateSlug?: string,
+    preserveHash = false
   ): Promise<void> => {
     const requestIdentity = activeNavigationIdentityRef.current;
     try {
@@ -535,12 +590,13 @@ export const Route = ({
       const targetPathname = new URL(path, "https://ferry.fyi").pathname;
       // route path sync guard
       if (normalizePath(pathname) !== normalizePath(targetPathname)) {
-        navigate(path);
+        // canonical aliases retain their section destination
+        navigate(`${path}${preserveHash ? hash : ""}`);
         return;
       }
       setRouteErrorState({ error: null, identity: requestIdentity });
       setTerminalState({
-        identity: requestIdentity,
+        identity: terminalPairIdentity,
         terminals: [terminal, mate],
       });
     } catch (error) {
@@ -569,7 +625,11 @@ export const Route = ({
 
   // reset selected date
   const goToToday = (): void => {
-    setDateState({ date: DateTime.local(), identity: navigationIdentity });
+    setDateState({
+      date: today,
+      followsCurrentDay: true,
+      identity: navigationIdentity,
+    });
   };
 
   // keep only the latest schedule read for this route and ferry day
@@ -795,16 +855,23 @@ export const Route = ({
             <div className="flex-grow" />
             <DateButton
               defaultDate={date}
+              // preserve explicit calendar selections across the service-day boundary
               onDateChange={(nextDate) =>
-                setDateState({ date: nextDate, identity: navigationIdentity })
+                setDateState({
+                  date: nextDate,
+                  followsCurrentDay: false,
+                  identity: navigationIdentity,
+                })
               }
               validRange={displayedSchedule?.validRange || undefined}
             />
           </Header>
         )}
         <Schedule
+          arrivalTerminal={mate ?? undefined}
           arrivalTerminalId={mate?.id}
           checkedAt={scheduleCheckedAt}
+          departureTerminal={terminal ?? undefined}
           departureTerminalId={terminal?.id}
           isRefreshing={isUpdating}
           loadError={scheduleError}
@@ -820,6 +887,7 @@ export const Route = ({
             await refreshScheduleFromCache();
           }}
           route={selectedRoute}
+          selectedDate={date.toISODate() ?? undefined}
           time={time}
           schedule={displayedSchedule}
         />
@@ -834,13 +902,7 @@ export const Route = ({
         isRefreshing={isUpdating}
         loadError={scheduleError}
         mate={mate}
-        onGoToCurrentDay={() => {
-          // choose the current ferry day without collecting an origin
-          setDateState({
-            date: DateTime.fromISO(recommendationServiceDate),
-            identity: navigationIdentity,
-          });
-        }}
+        onGoToCurrentDay={goToToday}
         onRefresh={refreshScheduleFromCache}
         onReload={updateSchedule}
         schedule={displayedSchedule}
@@ -865,7 +927,12 @@ export const Route = ({
         date={date}
         mate={mate}
         setDate={(nextDate) =>
-          setDateState({ date: nextDate, identity: navigationIdentity })
+          // retain explicit fare dates rather than following the clock
+          setDateState({
+            date: nextDate,
+            followsCurrentDay: false,
+            identity: navigationIdentity,
+          })
         }
         setRoute={setRoute}
         terminal={terminal}
@@ -876,6 +943,7 @@ export const Route = ({
       <Bulletins
         getPath={getPath}
         mate={mate}
+        onTerminalRefresh={handleTerminalRefresh}
         setRoute={setRoute}
         terminal={terminal}
         time={time}
@@ -915,7 +983,7 @@ export const Route = ({
         </Page>
       );
     }
-    return <RouteLoadingState view={view} />;
+    return <RouteLoadingState context={loadingContext} view={view} />;
   }
 
   const seoTerminal = {
@@ -948,7 +1016,15 @@ export const Route = ({
           fallbackTitle="Route view crashed"
           fallbackMessage="This route section hit an unexpected error. Switch tabs or try again."
         >
-          <Suspense fallback={<RouteLoadingState hasRouteFooter view={view} />}>
+          <Suspense
+            fallback={
+              <RouteLoadingState
+                context={loadingContext}
+                hasRouteFooter
+                view={view}
+              />
+            }
+          >
             <div
               className={getRouteTabClassName(view, tabDirection)}
               key={contentMotionKey}

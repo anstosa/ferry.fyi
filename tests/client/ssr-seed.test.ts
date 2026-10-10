@@ -14,10 +14,13 @@ import {
 import {
   PublicAlertGuidance,
   PublicBulletins,
+  PublicCameras,
   PublicFares,
   PublicHome,
   PublicLeaderboards,
   PublicRouteMap,
+  PublicSchedule,
+  PublicTerminalDetails,
 } from "../../client/views/PublicSsrPages";
 import { TicketsPublicPage } from "../../client/views/TicketsPublicContent";
 import { PUBLIC_SSR_SNAPSHOT_VERSION } from "../../shared/contracts/ssr";
@@ -79,6 +82,117 @@ const renderSeeded = (element: React.ReactElement): string =>
 describe("public SSR seeds", () => {
   afterEach(() => {
     document.body.innerHTML = "";
+  });
+
+  // unknown route sources retain the same page typography as known overviews
+  it.each([
+    ["schedule", PublicSchedule],
+    ["cameras", PublicCameras],
+    ["terminal", PublicTerminalDetails],
+    ["fares", PublicFares],
+    ["alerts", PublicBulletins],
+  ])("normalizes the public %s fallback title", (_name, Page) => {
+    const page = document.createElement("div");
+    page.innerHTML = renderSeeded(React.createElement(Page));
+    const heading = page.querySelector("h1");
+
+    expect(heading?.className).toBe(
+      "text-xl font-bold leading-tight sm:text-2xl text-black dark:text-white"
+    );
+    expect(heading?.closest('[role="status"]')).toBeNull();
+  });
+
+  // old snapshots must not reintroduce opinion-group promotions
+  it.each([
+    ["alerts", PublicBulletins],
+    ["schedule", PublicSchedule],
+    ["terminal", PublicTerminalDetails],
+  ])("filters opinion-group alerts from public %s snapshots", (_name, Page) => {
+    const promotion = {
+      bodyHTML: "<p>Join the Ferry Riders Opinion Group.</p>",
+      bodyText: "Join the Ferry Riders Opinion Group.",
+      date: 1_785_240_000,
+      level: "high",
+      routePrefix: "All",
+      terminalId: "5",
+      title: "Have your say",
+    };
+    const serviceAlert = {
+      ...promotion,
+      bodyHTML: "<p>Use the alternate loading area.</p>",
+      bodyText: "Use the alternate loading area.",
+      title: "Terminal construction",
+    };
+    const publicSnapshot = {
+      ...snapshot,
+      sources: {
+        bulletins: source([promotion, serviceAlert]),
+        route: source({
+          mate: { id: "14", name: "Mukilteo", mates: [{ id: "5" }] },
+          terminal: {
+            bulletins: [promotion, serviceAlert],
+            id: "5",
+            info: {},
+            location: { latitude: 47.9, longitude: -122.4 },
+            mates: [{ id: "14" }],
+            name: "Clinton",
+            routes: {},
+            waitTimes: [],
+          },
+        }),
+      },
+    } as import("../../shared/contracts/ssr").PublicSsrSnapshot;
+    const markup = renderToStaticMarkup(
+      React.createElement(
+        MemoryRouter,
+        null,
+        React.createElement(
+          PublicSsrSeedProvider,
+          { snapshot: publicSnapshot },
+          React.createElement(Page)
+        )
+      )
+    );
+
+    expect(markup).toContain("Terminal construction");
+    expect(markup).not.toContain("Ferry Riders Opinion Group");
+    expect(markup).not.toContain("Have your say");
+  });
+
+  // initial markup must not restore the removed per-alert shortcut
+  it("omits redundant alert page links from public bulletin rows", () => {
+    const publicSnapshot = {
+      ...snapshot,
+      sources: {
+        bulletins: source([
+          {
+            bodyText: "Use the alternate loading area.",
+            date: 1_785_240_000,
+            level: "high",
+            routePrefix: "All",
+            terminalId: "5",
+            title: "Terminal construction",
+            url: "https://ferry.fyi/clinton/alerts",
+          },
+        ]),
+      },
+    } as import("../../shared/contracts/ssr").PublicSsrSnapshot;
+    const markup = renderToStaticMarkup(
+      React.createElement(
+        MemoryRouter,
+        null,
+        React.createElement(
+          PublicSsrSeedProvider,
+          { snapshot: publicSnapshot },
+          React.createElement(PublicBulletins)
+        )
+      )
+    );
+
+    expect(markup).toContain("Terminal construction");
+    expect(markup).toContain("Use the alternate loading area.");
+    expect(markup).not.toContain('href="https://ferry.fyi/clinton/alerts"');
+    expect(markup).not.toContain("Related alert page");
   });
 
   it("reads only versioned, anonymous snapshot data from the document", () => {
@@ -259,7 +373,6 @@ describe("public SSR seeds", () => {
 
     const categories = [
       React.createElement(PublicHome),
-      React.createElement(PublicFares),
       React.createElement(PublicRouteMap),
       React.createElement(PublicBulletins),
       React.createElement(PublicAlertGuidance),
@@ -273,9 +386,10 @@ describe("public SSR seeds", () => {
     expect(render(React.createElement(PublicBulletins))).not.toContain(
       "No active alerts"
     );
-    expect(render(React.createElement(PublicFares))).toContain(
-      "Official fare data is not available"
-    );
+    // fares intentionally omit provenance blocks but retain unavailable prices
+    const fareMarkup = render(React.createElement(PublicFares));
+    expect(fareMarkup).toContain("Official fare data is not available");
+    expect(fareMarkup).not.toContain('data-public-ssr-freshness="fares"');
   });
 
   it("renders the public home terminal directory in route groups", () => {

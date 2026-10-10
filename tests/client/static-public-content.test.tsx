@@ -60,7 +60,7 @@ const STATIC_PAGE_ORACLES: StaticPageOracle[] = [
   {
     path: "/tickets",
     title: "Tickets",
-    visibleFacts: ["Ferry tickets, ready to scan", "Buy multi-ride passes"],
+    visibleFacts: ["Ferry tickets, ready to scan", "Buy Tickets"],
   },
 ];
 

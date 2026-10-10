@@ -192,7 +192,7 @@ describe("WSF camera refresh", () => {
     expect(result.snapshot?.metadata).toMatchObject({
       canonicalPath: "/seattle/terminal",
       robots: "index,follow",
-      title: "Seattle Ferry Terminal Information - Ferry FYI",
+      title: "Seattle Ferry Terminal: Parking & Directions - Ferry FYI",
     });
   });
 });

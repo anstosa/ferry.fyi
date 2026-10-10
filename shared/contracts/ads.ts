@@ -1,6 +1,7 @@
 export const AD_SLOT_IDS = [
   "home",
   "schedule",
+  "navigation",
   "cameras",
   "terminal",
   "fare",
@@ -132,6 +133,10 @@ type AdPlacementKeyInput = Pick<
 >;
 
 const safeTerminalIdPattern = /^[A-Za-z0-9_][A-Za-z0-9_-]*$/;
+// cache canonical terminal membership
+const canonicalTerminalIds = new Set(
+  Object.values(ROUTE_TERMINAL_IDS).flatMap(({ terminalIds }) => terminalIds)
+);
 
 /** Returns the stable URL- and confirmation-safe key for an ad placement. */
 export const getAdPlacementKey = ({
@@ -142,6 +147,19 @@ export const getAdPlacementKey = ({
   if (slot === "home") {
     if (departureTerminalId === null && arrivalTerminalId === null) {
       return slot;
+    }
+    throw new Error("Invalid ad placement direction");
+  }
+  // scope navigation ads to one departure terminal
+  if (slot === "navigation") {
+    // require the terminal-only shape
+    if (
+      departureTerminalId !== null &&
+      arrivalTerminalId === null &&
+      safeTerminalIdPattern.test(departureTerminalId) &&
+      !departureTerminalId.includes("--")
+    ) {
+      return `${slot}--${departureTerminalId}`;
     }
     throw new Error("Invalid ad placement direction");
   }
@@ -177,6 +195,23 @@ export const parseAdPlacementKey = (
   }
   const [slotValue, departureTerminalId, arrivalTerminalId, extra] =
     key.split("--");
+  // accept only canonical terminal-scoped navigation keys
+  if (slotValue === "navigation") {
+    // reject directional, unsafe, and unknown terminals
+    if (
+      arrivalTerminalId !== undefined ||
+      !departureTerminalId ||
+      !safeTerminalIdPattern.test(departureTerminalId) ||
+      !canonicalTerminalIds.has(departureTerminalId)
+    ) {
+      return null;
+    }
+    return {
+      arrivalTerminalId: null,
+      departureTerminalId,
+      slot: "navigation",
+    };
+  }
   if (
     extra !== undefined ||
     slotValue === "home" ||

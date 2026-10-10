@@ -369,40 +369,69 @@ const fareRequest = (value: unknown) =>
     roundTrip: (item) => typeof item === "boolean",
     tripDate: date,
   });
+// validate one flattened rate and its source state
+const defaultFareRate = (value: unknown) =>
+  fields(value, {
+    amount: (item) => finite(item) && item >= 0,
+    freshness,
+    state: oneOf(["current", "stale", "no-fare"]),
+  }) &&
+  object(value) &&
+  (value.state !== "no-fare" || value.amount === 0);
+// validate one category comparison
+const defaultFareRateComparison = (value: unknown) =>
+  fields(value, {
+    oneWay: nullable(defaultFareRate),
+    roundTrip: nullable(defaultFareRate),
+  });
+// allow only the two fixed public categories
+const defaultFareRates = (value: unknown) =>
+  fields(value, {
+    passenger: defaultFareRateComparison,
+    standardVehicle: defaultFareRateComparison,
+  });
 const fares = (value: unknown) =>
   object(value) &&
   (value.state === "current"
-    ? fields(value, {
-        catalog: (catalog) =>
-          fields(catalog, {
-            collectionDescription: nullable(string),
-            fares: array((fare) =>
-              fields(fare, {
-                amount: finite,
-                category: string,
-                directionIndependent: (item) => typeof item === "boolean",
-                id: finite,
-                label: string,
-              })
-            ),
-            freshness,
-            kind: (item) => item === "catalog",
-            request: fareRequest,
-          }),
-        state: (item) => item === "current",
-      })
+    ? fields(
+        value,
+        {
+          catalog: (catalog) =>
+            fields(catalog, {
+              collectionDescription: nullable(string),
+              fares: array((fare) =>
+                fields(fare, {
+                  amount: finite,
+                  category: string,
+                  directionIndependent: (item) => typeof item === "boolean",
+                  id: finite,
+                  label: string,
+                })
+              ),
+              freshness,
+              kind: (item) => item === "catalog",
+              request: fareRequest,
+            }),
+          state: (item) => item === "current",
+        },
+        { defaultRates: defaultFareRates }
+      )
     : value.state === "no-fare" &&
-      fields(value, {
-        noFare: (noFare) =>
-          fields(noFare, {
-            freshness,
-            kind: (item) => item === "no-fare",
-            message: nullable(string),
-            request: fareRequest,
-            sourceUrl: nullable(string),
-          }),
-        state: (item) => item === "no-fare",
-      }));
+      fields(
+        value,
+        {
+          noFare: (noFare) =>
+            fields(noFare, {
+              freshness,
+              kind: (item) => item === "no-fare",
+              message: nullable(string),
+              request: fareRequest,
+              sourceUrl: nullable(string),
+            }),
+          state: (item) => item === "no-fare",
+        },
+        { defaultRates: defaultFareRates }
+      ));
 const notices = (value: unknown) =>
   fields(value, {
     announcements: array((item) =>

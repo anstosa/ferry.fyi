@@ -27,20 +27,25 @@ export const getAdAdminConfigurationPath = (placementKey: string): string => {
   return `/admin?${params.toString()}#admin-ad-placement`;
 };
 
-/** Reads a validated placement selection from an admin-page query string. */
+// restore a validated terminal or directional owner selection
 export const getAdAdminSelection = (
   search: string
 ): AdAdminSelection | null => {
   const placementKey = new URLSearchParams(search).get("placement") ?? "";
   const placement = parseAdPlacementKey(placementKey);
+  // ignore unknown or unsafe owner selections
   if (!placement) {
     return null;
   }
+  // terminal-only selections omit the destination from owner context
+  let directionKey = "";
+  if (placement.slot === "navigation") {
+    directionKey = placement.departureTerminalId ?? "";
+  } else if (placement.slot !== "home") {
+    directionKey = `${placement.departureTerminalId}--${placement.arrivalTerminalId}`;
+  }
   return {
-    directionKey:
-      placement.slot === "home"
-        ? ""
-        : `${placement.departureTerminalId}--${placement.arrivalTerminalId}`,
+    directionKey,
     placementKey,
     slot: placement.slot,
   };

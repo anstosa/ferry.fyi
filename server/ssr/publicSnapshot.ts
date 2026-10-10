@@ -329,6 +329,7 @@ export const createPublicSsrCanonicalResolver = ({
   };
 };
 
+// project public terminal facts as inert source text
 const toTerminal = (
   terminal: Terminal,
   routeDate: string
@@ -404,8 +405,16 @@ const toTerminal = (
     ),
     terminalUrl: terminal.terminalUrl ?? null,
     vesselWatchUrl: terminal.vesselWatchUrl ?? null,
+    // arrival notes contain provider html just like terminal information
     waitTimes: terminal.waitTimes.map(({ title, ...waitTime }) => ({
       ...waitTime,
+      description:
+        typeof waitTime.description === "string"
+          ? convert(waitTime.description, {
+              preserveNewlines: true,
+              wordwrap: false,
+            }).trim()
+          : "",
       ...(typeof title === "string" ? { title } : {}),
     })),
   };
@@ -1112,9 +1121,8 @@ export const createPublicSsrSnapshotLoader = ({
                 : source("cameraFrames", framePayload, frames.sourceUpdatedAt);
             sources.notices = noticeSource(publicNotices);
           } else if (match.route.view === "fare") {
-            const tripDate = dateFor(
-              input.fixedClock
-            ) as FareTripRequest["tripDate"];
+            const tripDate = (match.query.values.date ??
+              dateFor(input.fixedClock)) as FareTripRequest["tripDate"];
             const fare = await from("fares", () =>
               services.getFareCatalog({
                 arrivingTerminalId: selected.mate.id,
@@ -1126,13 +1134,25 @@ export const createPublicSsrSnapshotLoader = ({
             if (fare.kind === "catalog") {
               sources.fares = source(
                 "fares",
-                { catalog: fare.catalog, state: "current" },
+                {
+                  catalog: fare.catalog,
+                  ...(fare.defaultRates
+                    ? { defaultRates: fare.defaultRates }
+                    : {}),
+                  state: "current",
+                },
                 fare.catalog.freshness.fetchedAt
               );
             } else if (fare.kind === "no-fare") {
               sources.fares = source(
                 "fares",
-                { noFare: fare.noFare, state: "no-fare" },
+                {
+                  ...(fare.defaultRates
+                    ? { defaultRates: fare.defaultRates }
+                    : {}),
+                  noFare: fare.noFare,
+                  state: "no-fare",
+                },
                 fare.noFare.freshness.fetchedAt
               );
             } else if (fare.reason === "policy") {

@@ -112,6 +112,7 @@ export interface PublicSsrTerminal extends PublicSsrTerminalIdentity {
   routes: Readonly<Record<string, PublicSsrRoute>>;
   terminalUrl: string | null;
   vesselWatchUrl: string | null;
+  /** plain WSF arrival guidance with its original source timestamps */
   waitTimes: readonly WaitTime[];
 }
 /** The selected terminal and its mate seed Route and TerminalDetails together. */

@@ -29,15 +29,14 @@ describe("loading-state source policy", () => {
     const route = source("client/views/Route.tsx");
     const tickets = source("client/views/Tickets/index.tsx");
 
-    expect(app).toContain(
-      "<Suspense fallback={<AppLoadingState />}>{element}</Suspense>"
-    );
+    expect(app).toContain("<AppLoadingState");
+    expect(app).toContain("pathname={location.pathname}");
+    expect(app).toContain("search={location.search}");
     const routes = source("client/routes.tsx");
     expect(routes).toContain('case "callback":');
     expect(routes).toContain("return <Splash />;");
-    expect(route).toContain(
-      "fallback={<RouteLoadingState hasRouteFooter view={view} />}"
-    );
+    expect(route).toContain("context={loadingContext}");
+    expect(route).toContain("hasRouteFooter");
     expect(route).not.toContain(
       "<Suspense fallback={<Splash />}>{content}</Suspense>"
     );
@@ -69,7 +68,7 @@ describe("loading-state source policy", () => {
       );
     });
     expect(route).toContain("RouteLoadingState");
-    expect(route).toContain("<RouteLoadingState view={view} />");
+    expect(route).toContain("context={loadingContext}");
 
     const loadingState = source("client/components/RouteLoadingState.tsx");
     expect(loadingState).not.toMatch(/(?:import|export).*views\//);
@@ -92,7 +91,11 @@ describe("loading-state source policy", () => {
     expect(errorGuard).toBeGreaterThan(-1);
     expect(loadingGuard).toBeGreaterThan(errorGuard);
     expect(schedule).toContain('title="Schedule could not load"');
-    expect(schedule).toContain("return <ScheduleLoadingSkeleton />;");
+    expect(schedule).toContain("<ScheduleLoadingSkeleton");
+    expect(schedule).toContain(
+      "selectedDate === getRecommendationServiceDate(time.toSeconds())"
+    );
+    expect(schedule).toContain("showPastSailings={showPastSailings}");
   });
 
   it("keys leaderboard rank content by entity scope and selected period", () => {
@@ -140,17 +143,23 @@ describe("loading-state source policy", () => {
     expect(cameras).toContain("passive");
   });
 
-  it("uses page-specific skeletons for Today, Admin, and Fares", () => {
+  it("keeps static fare content outside source-owned loading amounts", () => {
     const today = source("client/views/Today.tsx");
     const admin = source("client/views/Admin.tsx");
     const fares = source("client/views/Fares.tsx");
+    const fareLoading = source("client/components/FareLoadingContent.tsx");
+    const fareRates = source("client/components/FareRatesOverview.tsx");
 
     expect(today).toContain('label="Loading today\'s boat count"');
     expect(admin).toContain("loadingFallback: ReactNode");
     expect(admin).toContain("if (!active || loaded || !load || error)");
-    expect(fares.indexOf("const header =")).toBeLessThan(
-      fares.indexOf("if (isLoadingCatalog)")
-    );
-    expect(fares).toContain('label="Loading fare estimator"');
+    expect(fares).toContain("FareLoadingContent");
+    expect(fares).toContain("FareRatesOverview");
+    expect(fares).not.toContain('label="Loading fare estimator"');
+    expect(fareLoading).toContain("<FareRatesOverview");
+    expect(fareLoading).toContain("<StaticFareCalculator />");
+    expect(fareRates).toContain('label="Loading fare prices"');
+    expect(fareRates).toContain('label="One way"');
+    expect(fareRates).toContain('label="Round trip"');
   });
 });

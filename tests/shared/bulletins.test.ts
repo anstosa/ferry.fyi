@@ -7,6 +7,28 @@ import {
 } from "../../shared/lib/bulletins";
 
 describe("bulletin helpers", () => {
+  // suppress opinion-group promotions regardless of their source field
+  it.each([
+    { title: "All Routes - Join the Ferry Riders Opinion Group" },
+    { title: "Join FROG", bodyText: "Join the ferry riders opinion group." },
+    {
+      title: "Tell us what you think",
+      bodyHTML: "<p>Join the Ferry <strong>Riders</strong> Opinion Group.</p>",
+    },
+    { title: "Ferry Riders\nOpinion\u00a0Group recruitment" },
+  ])("suppresses Ferry Riders Opinion Group alerts: $title", (bulletin) => {
+    expect(isSuppressedBulletin(bulletin)).toBe(true);
+  });
+
+  // keep unrelated rider and group travel advisories
+  it.each([
+    "Ferry riders - Terminal loading changes",
+    "Group travel advisory",
+    "Share your opinion about terminal accessibility",
+  ])("keeps unrelated advisories visible: %s", (title) => {
+    expect(isSuppressedBulletin({ title })).toBe(false);
+  });
+
   it("identifies WSF sailing delay alerts", () => {
     expect(
       isDelayBulletin({

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { DateTime } from "luxon";
+import { DateTime, Settings } from "luxon";
 import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import {
@@ -22,6 +22,16 @@ const dateButton = vi.hoisted(() => ({
   onDateChange: undefined as undefined | ((date: DateTime) => void),
 }));
 const observeHeaderProps = vi.hoisted(() => vi.fn());
+const observeScheduleProps = vi.hoisted(() => vi.fn());
+const bulletinRefresh = vi.hoisted(() => ({
+  onTerminalRefresh: undefined as
+    | ((terminal: {
+        bulletins?: unknown[];
+        id: string;
+        waitTimes?: Array<{ description: string }>;
+      }) => void)
+    | undefined,
+}));
 vi.mock("~/lib/terminals", () => ({
   getSlug: (id: string) => id,
   getTerminal,
@@ -59,17 +69,20 @@ vi.mock("~/components/RouteLoadingState", () => ({
   RouteLoadingState: () => React.createElement("p", undefined, "Loading route"),
 }));
 vi.mock("~/components/Footer", () => ({ Footer: () => null }));
-vi.mock("~/components/DateButton", () => ({
-  // expose date changes to route tests
-  DateButton: ({
-    onDateChange,
-  }: {
-    onDateChange?: (date: DateTime) => void;
-  }) => {
-    dateButton.onDateChange = onDateChange;
-    return null;
-  },
-}));
+vi.mock("~/components/DateButton", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../client/components/DateButton")>();
+  return {
+    ...actual,
+    // expose the callback without hiding the real mount behavior
+    DateButton: (
+      props: React.ComponentProps<typeof actual.DateButton>
+    ): React.ReactElement => {
+      dateButton.onDateChange = props.onDateChange;
+      return React.createElement(actual.DateButton, props);
+    },
+  };
+});
 vi.mock("~/components/RouteSelector", () => ({ RouteSelector: () => null }));
 vi.mock("~/components/SeoHelmet", () => ({ SeoHelmet: () => null }));
 vi.mock("~/views/Header", () => ({
@@ -88,25 +101,42 @@ vi.mock("~/views/Header", () => ({
 vi.mock("../../client/views/Schedule", () => ({
   Schedule: ({
     checkedAt,
+    departureTerminal,
     onRefresh,
     schedule,
+    selectedDate,
+    time,
   }: {
     checkedAt?: number | null;
+    departureTerminal?: {
+      bulletins?: unknown[];
+      waitTimes?: Array<{ description: string }>;
+    };
     onRefresh?: () => Promise<void>;
     schedule: {
       date: string;
       sourceUpdatedAt?: number | null;
       terminalId: string;
     } | null;
-  }) =>
-    React.createElement(
+    selectedDate?: string;
+    time: DateTime;
+  }) => {
+    // capture the route-to-schedule date and clock contract
+    observeScheduleProps({ selectedDate, time });
+    return React.createElement(
       React.Fragment,
       undefined,
       React.createElement(
         "p",
         {
           "data-checked-at": checkedAt ?? "",
+          "data-departure-bulletin-count":
+            departureTerminal?.bulletins?.length ?? "",
+          "data-departure-wait":
+            departureTerminal?.waitTimes?.[0]?.description ?? "",
+          "data-selected-date": selectedDate ?? "",
           "data-source-updated-at": schedule?.sourceUpdatedAt ?? "",
+          "data-time": time.toISO() ?? "",
         },
         schedule
           ? `Schedule ${schedule.terminalId} ${schedule.date}`
@@ -119,7 +149,8 @@ vi.mock("../../client/views/Schedule", () => ({
             "Check schedule"
           )
         : null
-    ),
+    );
+  },
 }));
 vi.mock("../../client/views/Map", () => ({
   Map: ({
@@ -139,19 +170,43 @@ vi.mock("../../client/views/Map", () => ({
         .join(",")}`
     ),
 }));
+vi.mock("../../client/views/Cameras", () => ({
+  Cameras: ({ terminal }: { terminal: { name: string } | null }) =>
+    React.createElement("p", undefined, `Cameras ${terminal?.name ?? "empty"}`),
+}));
+vi.mock("../../client/views/Fares", () => ({
+  Fares: ({ terminal }: { terminal: { name: string } }) =>
+    React.createElement("p", undefined, `Fares ${terminal.name}`),
+}));
 vi.mock("../../client/views/Bulletins", () => ({
-  Bulletins: ({ terminal }: { terminal: { name: string } | null }) =>
-    React.createElement("p", undefined, `Alerts ${terminal?.name ?? "empty"}`),
+  Bulletins: ({
+    onTerminalRefresh,
+    terminal,
+  }: {
+    onTerminalRefresh?: typeof bulletinRefresh.onTerminalRefresh;
+    terminal: { name: string } | null;
+  }) => {
+    // expose accepted alert refreshes to the route owner
+    bulletinRefresh.onTerminalRefresh = onTerminalRefresh;
+    return React.createElement(
+      "p",
+      undefined,
+      `Alerts ${terminal?.name ?? "empty"}`
+    );
+  },
 }));
 
+import { AppRenderProvider } from "../../client/lib/renderContext";
 import { PublicSsrSeedProvider } from "../../client/lib/ssrSeed";
 import { Route } from "../../client/views/Route";
 import {
   PUBLIC_SSR_SNAPSHOT_VERSION,
   type PublicSsrSnapshot,
 } from "../../shared/contracts/ssr";
+import { getRecommendationServiceDate } from "../../shared/lib/sailingRecommendationRevision";
 
 let root: Root | undefined;
+const originalZone = Settings.defaultZone;
 afterEach(() => {
   act(() => root?.unmount());
   // restore real clock
@@ -160,6 +215,8 @@ afterEach(() => {
   document.body.innerHTML = "";
   window.history.replaceState(null, "", "/");
   dateButton.onDateChange = undefined;
+  bulletinRefresh.onTerminalRefresh = undefined;
+  Settings.defaultZone = originalZone;
   vi.clearAllMocks();
 });
 
@@ -197,11 +254,22 @@ const deferred = <T>() => {
   return { promise, reject, resolve };
 };
 
-function getLocalScheduleDate(): string {
-  return DateTime.local().toFormat("yyyy-MM-dd");
+// mirror the Route default across the pacific 03:00 boundary
+function getCurrentServiceDate(): string {
+  return getRecommendationServiceDate(Date.now() / 1000);
 }
 
-const getView = (pathname: string): "alerts" | "map" | "schedule" => {
+const getView = (
+  pathname: string
+): "alerts" | "cameras" | "fare" | "map" | "schedule" => {
+  // match the camera tab before the default schedule branch
+  if (pathname.endsWith("/cameras")) {
+    return "cameras";
+  }
+  // match the fare tab before the default schedule branch
+  if (pathname.endsWith("/fare")) {
+    return "fare";
+  }
   if (pathname.endsWith("/map")) {
     return "map";
   }
@@ -227,9 +295,9 @@ const renderNavigableRoute = async (
   // route harness
   const Harness = () => {
     const navigate = useNavigate();
-    const { pathname, search } = useLocation();
+    const { pathname, search, hash } = useLocation();
     controller.navigate = navigate;
-    controller.currentPath = `${pathname}${search}`;
+    controller.currentPath = `${pathname}${search}${hash}`;
     return React.createElement(Route, { view: getView(pathname) });
   };
   await act(async () => {
@@ -254,15 +322,23 @@ const renderNavigableRoute = async (
 };
 
 const renderSeededRoute = async ({
+  clock = () => Date.now(),
+  initialEntry,
+  scheduleDate,
   scheduleTimestamp = 0,
   seededVessels = [],
+  syncWindowLocation = false,
   view,
 }: {
+  clock?: () => number;
+  initialEntry?: string;
+  scheduleDate?: string;
   scheduleTimestamp?: number;
   seededVessels?: unknown[];
+  syncWindowLocation?: boolean;
   view: "map" | "schedule";
 }) => {
-  const date = getLocalScheduleDate();
+  const date = scheduleDate ?? getCurrentServiceDate();
   const terminal = {
     id: "terminal-a",
     mates: [{ id: "terminal-b", name: "B" }],
@@ -282,9 +358,12 @@ const renderSeededRoute = async ({
     value,
   });
   const pathSuffix = view === "map" ? "/map" : "";
+  const routePath = `/terminal-a/terminal-b${pathSuffix}`;
+  const routeEntry = initialEntry ?? routePath;
+  const routeUrl = new URL(routeEntry, "https://ferry.fyi");
   const snapshot = {
     canonicalHost: "ferry.fyi",
-    canonicalPath: `/terminal-a/terminal-b${pathSuffix}`,
+    canonicalPath: routePath,
     hostProfile: "ferry.fyi",
     indexability: "indexable",
     metadata: {
@@ -294,8 +373,8 @@ const renderSeededRoute = async ({
       title: view === "map" ? "Map" : "Schedule",
     },
     normalizedUrl: {
-      path: `/terminal-a/terminal-b${pathSuffix}`,
-      query: {},
+      path: routePath,
+      query: Object.fromEntries(routeUrl.searchParams),
     },
     renderedAt: "2026-07-30T12:00:00.000Z",
     routeId: view === "map" ? "mate-map" : "mate-schedule",
@@ -319,24 +398,43 @@ const renderSeededRoute = async ({
     },
     version: PUBLIC_SSR_SNAPSHOT_VERSION,
   } as PublicSsrSnapshot;
+  // align the browser URL when the assertion covers query cleanup
+  if (syncWindowLocation) {
+    window.history.replaceState(null, "", routeEntry);
+  }
   const container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container);
   await act(async () => {
     root?.render(
       React.createElement(
-        PublicSsrSeedProvider,
-        { snapshot },
+        AppRenderProvider,
+        {
+          value: {
+            clock,
+            hasInjectedRequest: false,
+            platform: "web",
+            requestUrl: routeUrl.toString(),
+            runtime: "browser",
+            seoBaseUrl: "https://ferry.fyi",
+            seoHost: "ferry.fyi",
+            seoPathname: routeUrl.pathname,
+          },
+        },
         React.createElement(
-          MemoryRouter,
-          { initialEntries: [`/terminal-a/terminal-b${pathSuffix}`] },
+          PublicSsrSeedProvider,
+          { snapshot },
           React.createElement(
-            Routes,
-            undefined,
-            React.createElement(RouterRoute, {
-              path: `/:terminalSlug/:mateSlug${pathSuffix}`,
-              element: React.createElement(Route, { view }),
-            })
+            MemoryRouter,
+            { initialEntries: [routeEntry] },
+            React.createElement(
+              Routes,
+              undefined,
+              React.createElement(RouterRoute, {
+                path: `/:terminalSlug/:mateSlug${pathSuffix}`,
+                element: React.createElement(Route, { view }),
+              })
+            )
           )
         )
       )
@@ -351,6 +449,30 @@ const renderSeededMapRoute = (seededVessels: unknown[]) =>
   renderSeededRoute({ seededVessels, view: "map" });
 
 describe("Route route-load errors", () => {
+  // canonicalizing an initial alias must not discard its in-page destination
+  it("preserves the fragment while resolving a route alias", async () => {
+    const terminal = {
+      id: "terminal-a",
+      mates: [{ id: "terminal-b" }, { id: "terminal-c" }],
+      name: "A",
+      routes: {},
+    };
+    const mate = { id: "terminal-b", mates: [], name: "B", routes: {} };
+    // serve the same resolved terminals before and after canonical navigation
+    getTerminal.mockImplementation((slug: string) =>
+      Promise.resolve(slug === mate.id ? mate : terminal)
+    );
+    getSchedule.mockReturnValue(new Promise(() => undefined));
+    const controller: NavigationController = { navigate: () => undefined };
+    await renderNavigableRoute(
+      controller,
+      "/old-terminal/terminal-b#terminal-parking"
+    );
+    expect(controller.currentPath).toBe(
+      "/terminal-a/terminal-b#terminal-parking"
+    );
+  });
+
   // schedule owner boundary
   it("provides the schedule share contract to Header", async () => {
     getSchedule.mockReturnValue(new Promise(() => undefined));
@@ -364,6 +486,157 @@ describe("Route route-load errors", () => {
         shareSurface: "schedule",
       },
     });
+  });
+
+  // pacific service-day boundary
+  it.each([
+    ["2026-10-07T09:59:59.000Z", "2026-10-06"],
+    ["2026-10-07T10:00:00.000Z", "2026-10-07"],
+  ])(
+    "defaults an undated seeded route at %s to service date %s",
+    async (instant, expectedDate) => {
+      const now = Date.parse(instant);
+      getSchedule.mockReturnValue(new Promise(() => undefined));
+
+      const { container } = await renderSeededRoute({
+        clock: () => now,
+        scheduleDate: expectedDate,
+        view: "schedule",
+      });
+
+      expect(
+        container
+          .querySelector("[data-selected-date]")
+          ?.getAttribute("data-selected-date")
+      ).toBe(expectedDate);
+      expect(getSchedule.mock.calls[0]?.[2].toISODate()).toBe(expectedDate);
+    }
+  );
+
+  // ambient-zone independence
+  it.each([
+    ["UTC", "/terminal-a/terminal-b"],
+    ["Asia/Tokyo", "/terminal-a/terminal-b?date=not-a-date"],
+  ])(
+    "defaults an absent or invalid date in %s to the Pacific service date",
+    async (zone, initialEntry) => {
+      Settings.defaultZone = zone;
+      const now = Date.parse("2026-10-07T09:59:59.000Z");
+      getSchedule.mockReturnValue(new Promise(() => undefined));
+
+      const { container } = await renderSeededRoute({
+        clock: () => now,
+        initialEntry,
+        scheduleDate: "2026-10-06",
+        syncWindowLocation: true,
+        view: "schedule",
+      });
+
+      expect(
+        container
+          .querySelector("[data-selected-date]")
+          ?.getAttribute("data-selected-date")
+      ).toBe("2026-10-06");
+      expect(window.location.search).not.toContain("date=");
+    }
+  );
+
+  // injected instant precision
+  it("passes the full injected instant to the first Schedule render", async () => {
+    const now = Date.parse("2026-10-07T09:59:42.123Z");
+    getSchedule.mockReturnValue(new Promise(() => undefined));
+
+    await renderSeededRoute({
+      clock: () => now,
+      scheduleDate: "2026-10-06",
+      view: "schedule",
+    });
+
+    const firstTime = observeScheduleProps.mock.calls[0]?.[0].time as DateTime;
+    expect(firstTime.toMillis()).toBe(now);
+    expect(firstTime.zoneName).toBe("America/Los_Angeles");
+  });
+
+  // fixed explicit selection
+  it("keeps an explicit date fixed across the service-day rollover", async () => {
+    vi.useFakeTimers();
+    Settings.defaultZone = "Asia/Tokyo";
+    let now = Date.parse("2026-10-07T09:59:55.000Z");
+    getSchedule.mockReturnValue(new Promise(() => undefined));
+    const { container } = await renderSeededRoute({
+      clock: () => now,
+      initialEntry: "/terminal-a/terminal-b?date=2026-10-05",
+      scheduleDate: "2026-10-05",
+      syncWindowLocation: true,
+      view: "schedule",
+    });
+
+    now = Date.parse("2026-10-07T10:00:05.000Z");
+    await act(async () => {
+      vi.advanceTimersByTime(10_000);
+      await Promise.resolve();
+    });
+
+    expect(
+      container
+        .querySelector("[data-selected-date]")
+        ?.getAttribute("data-selected-date")
+    ).toBe("2026-10-05");
+    expect(window.location.search).toBe("?date=2026-10-05");
+  });
+
+  // live service-day rollover
+  it("advances an undated route at 03:00 without adding a date query", async () => {
+    vi.useFakeTimers();
+    let now = Date.parse("2026-10-07T09:59:55.000Z");
+    getSchedule.mockReturnValue(new Promise(() => undefined));
+    const { container } = await renderSeededRoute({
+      clock: () => now,
+      scheduleDate: "2026-10-06",
+      syncWindowLocation: true,
+      view: "schedule",
+    });
+
+    now = Date.parse("2026-10-07T10:00:05.000Z");
+    await act(async () => {
+      vi.advanceTimersByTime(10_000);
+      await Promise.resolve();
+    });
+
+    expect(
+      container
+        .querySelector("[data-selected-date]")
+        ?.getAttribute("data-selected-date")
+    ).toBe("2026-10-07");
+    expect(window.location.pathname).toBe("/terminal-a/terminal-b");
+    expect(window.location.search).toBe("");
+  });
+
+  // current-day reset
+  it("resets an off-date tab to the current Pacific service day", async () => {
+    const now = Date.parse("2026-10-07T09:59:59.000Z");
+    getSchedule.mockReturnValue(new Promise(() => undefined));
+    const { container } = await renderSeededRoute({
+      clock: () => now,
+      initialEntry: "/terminal-a/terminal-b/map?date=2026-10-05",
+      scheduleDate: "2026-10-05",
+      syncWindowLocation: true,
+      view: "map",
+    });
+    const goToToday = [...container.querySelectorAll("button")].find(
+      (button) => button.textContent === "Go to today"
+    );
+
+    await act(async () => {
+      goToToday?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const requestedDate = getSchedule.mock.calls.at(-1)?.[2] as DateTime;
+    expect(requestedDate.toISODate()).toBe("2026-10-06");
+    expect(window.location.search).toBe("");
+    expect(container.textContent).toContain("Map A");
   });
 
   it("updates the browser URL when the selected schedule date changes", async () => {
@@ -380,7 +653,7 @@ describe("Route route-load errors", () => {
     getTerminal.mockResolvedValueOnce(terminal).mockResolvedValueOnce(mate);
     getSchedule.mockResolvedValue({
       schedule: {
-        date: getLocalScheduleDate(),
+        date: getCurrentServiceDate(),
         mateId: mate.id,
         slots: [],
         terminalId: terminal.id,
@@ -434,7 +707,7 @@ describe("Route route-load errors", () => {
       routes: {},
     };
     const schedule = {
-      date: getLocalScheduleDate(),
+      date: getCurrentServiceDate(),
       mateId: mate.id,
       slots: [],
       sourceUpdatedAt: 1,
@@ -689,7 +962,7 @@ describe("Route route-load errors", () => {
   });
 
   it.each(["map", "alerts"] as const)(
-    "synchronously hides prior route content on same-tree navigation to %s",
+    "retains terminal facts while replacing the same-pair tab with %s",
     async (view) => {
       const terminal = {
         id: "terminal-a",
@@ -701,7 +974,7 @@ describe("Route route-load errors", () => {
       getTerminal.mockResolvedValueOnce(terminal).mockResolvedValueOnce(mate);
       getSchedule.mockResolvedValue({
         schedule: {
-          date: getLocalScheduleDate(),
+          date: getCurrentServiceDate(),
           mateId: mate.id,
           slots: [],
           terminalId: terminal.id,
@@ -715,17 +988,179 @@ describe("Route route-load errors", () => {
       expect(container.textContent).toContain("Schedule terminal-a");
 
       const nextTerminal = deferred<typeof terminal>();
-      getTerminal.mockReturnValueOnce(nextTerminal.promise);
-      act(() => {
+      getTerminal.mockReturnValue(nextTerminal.promise);
+      await act(async () => {
         controller.navigate(`/terminal-a/terminal-b/${view}`);
+        await Promise.resolve();
       });
 
-      expect(container.textContent).toContain("Loading route");
+      expect(container.textContent).not.toContain("Loading route");
       expect(container.textContent).not.toContain("Schedule terminal-a");
-      expect(container.textContent).not.toContain("Map A");
-      expect(container.textContent).not.toContain("Alerts A");
+      expect(container.textContent).toContain(
+        view === "map" ? "Map A" : "Alerts A"
+      );
+      expect(getTerminal).toHaveBeenCalledTimes(2);
     }
   );
+
+  // follow the visual bar when moving from fares back to cameras
+  it("animates fare-to-camera navigation toward the left", async () => {
+    const terminal = {
+      id: "terminal-a",
+      mates: [{ id: "terminal-b" }, { id: "terminal-c" }],
+      name: "A",
+      routes: {},
+    };
+    const mate = {
+      id: "terminal-b",
+      mates: [{ id: "terminal-a" }],
+      name: "B",
+      routes: {},
+    };
+    getTerminal.mockImplementation((id: string) =>
+      Promise.resolve(id === terminal.id ? terminal : mate)
+    );
+    getSchedule.mockResolvedValue({
+      schedule: {
+        date: getCurrentServiceDate(),
+        mateId: mate.id,
+        slots: [],
+        terminalId: terminal.id,
+      },
+      timestamp: 0,
+    });
+    const controller: NavigationController = { navigate: () => undefined };
+    const container = await renderNavigableRoute(
+      controller,
+      "/terminal-a/terminal-b/fare"
+    );
+    expect(container.textContent).toContain("Fares A");
+
+    await act(async () => {
+      controller.navigate("/terminal-a/terminal-b/cameras");
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const motion = [...container.querySelectorAll(".route-tab-motion")].find(
+      (element) => element.textContent?.includes("Cameras A")
+    );
+    expect(motion?.classList).toContain("route-tab-motion--to-left");
+    expect(motion?.textContent).toContain("Cameras A");
+  });
+
+  // retain accepted terminal facts across tabs without crossing route pairs
+  it("propagates alert refresh facts across tabs and ignores stale pair results", async () => {
+    const terminalA = {
+      bulletins: [{ title: "Old wait alert" }],
+      id: "terminal-a",
+      mates: [{ id: "terminal-b" }, { id: "terminal-x" }],
+      name: "A",
+      routes: {},
+      waitTimes: [{ description: "Old wait", time: 1 }],
+    };
+    const mateB = {
+      id: "terminal-b",
+      mates: [{ id: "terminal-a" }],
+      name: "B",
+      routes: {},
+    };
+    const terminalC = {
+      bulletins: [{ title: "Current C alert" }],
+      id: "terminal-c",
+      mates: [{ id: "terminal-d" }, { id: "terminal-y" }],
+      name: "C",
+      routes: {},
+      waitTimes: [{ description: "Current C wait", time: 2 }],
+    };
+    const mateD = {
+      id: "terminal-d",
+      mates: [{ id: "terminal-c" }],
+      name: "D",
+      routes: {},
+    };
+    const terminals = new Map(
+      [terminalA, mateB, terminalC, mateD].map((terminal) => [
+        terminal.id,
+        terminal,
+      ])
+    );
+    getTerminal.mockImplementation((id: string) =>
+      Promise.resolve(terminals.get(id))
+    );
+    getSchedule.mockImplementation(
+      (terminal: { id: string }, mate: { id: string }) =>
+        Promise.resolve({
+          schedule: {
+            date: getCurrentServiceDate(),
+            mateId: mate.id,
+            slots: [],
+            terminalId: terminal.id,
+          },
+          timestamp: 0,
+        })
+    );
+    const controller: NavigationController = { navigate: () => undefined };
+    const container = await renderNavigableRoute(controller);
+
+    await act(async () => {
+      controller.navigate("/terminal-a/terminal-b/alerts");
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    const firstPairRefresh = bulletinRefresh.onTerminalRefresh;
+    expect(firstPairRefresh).toBeTypeOf("function");
+
+    await act(async () => {
+      firstPairRefresh?.({
+        ...terminalA,
+        bulletins: [],
+        waitTimes: [{ description: "Fresh wait", time: 3 }],
+      });
+      await Promise.resolve();
+    });
+    expect(bulletinRefresh.onTerminalRefresh).toBe(firstPairRefresh);
+
+    await act(async () => {
+      controller.navigate("/terminal-a/terminal-b");
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    let scheduleView = container.querySelector("[data-departure-wait]");
+    expect(scheduleView?.getAttribute("data-departure-wait")).toBe(
+      "Fresh wait"
+    );
+    expect(scheduleView?.getAttribute("data-departure-bulletin-count")).toBe(
+      "0"
+    );
+
+    await act(async () => {
+      controller.navigate("/terminal-c/terminal-d/alerts");
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    expect(container.textContent).toContain("Alerts C");
+
+    await act(async () => {
+      firstPairRefresh?.({
+        ...terminalA,
+        bulletins: [],
+        waitTimes: [{ description: "Stale A wait", time: 4 }],
+      });
+      controller.navigate("/terminal-c/terminal-d");
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+    scheduleView = container.querySelector("[data-departure-wait]");
+    expect(scheduleView?.getAttribute("data-departure-wait")).toBe(
+      "Current C wait"
+    );
+    expect(scheduleView?.getAttribute("data-departure-bulletin-count")).toBe(
+      "1"
+    );
+  });
 
   it("updates the schedule once per tab navigation without entering a render loop", async () => {
     const terminal = {
@@ -748,7 +1183,7 @@ describe("Route route-load errors", () => {
     );
     getSchedule.mockResolvedValue({
       schedule: {
-        date: getLocalScheduleDate(),
+        date: getCurrentServiceDate(),
         mateId: mate.id,
         slots: [],
         terminalId: terminal.id,
@@ -872,7 +1307,7 @@ describe("Route route-load errors", () => {
       .mockResolvedValueOnce(mate);
     getSchedule.mockResolvedValue({
       schedule: {
-        date: getLocalScheduleDate(),
+        date: getCurrentServiceDate(),
         mateId: mate.id,
         slots: [],
         terminalId: terminal.id,
@@ -885,7 +1320,7 @@ describe("Route route-load errors", () => {
     const sailingQuery = "sailing=1788327000&tab=vessel";
     const container = await renderNavigableRoute(
       controller,
-      `/terminal-a/terminal-b?date=${getLocalScheduleDate()}&${sailingQuery}`
+      `/terminal-a/terminal-b?date=${getCurrentServiceDate()}&${sailingQuery}`
     );
 
     await act(async () => {
@@ -913,7 +1348,7 @@ describe("Route route-load errors", () => {
     getTerminal.mockResolvedValueOnce(terminal).mockResolvedValueOnce(mate);
     getSchedule.mockResolvedValue({
       schedule: {
-        date: getLocalScheduleDate(),
+        date: getCurrentServiceDate(),
         mateId: mate.id,
         slots: [],
         terminalId: terminal.id,
@@ -927,12 +1362,14 @@ describe("Route route-load errors", () => {
     expect(container.textContent).toContain("Schedule terminal-a");
 
     const nextTerminal = deferred<typeof terminal>();
-    getTerminal.mockReturnValueOnce(nextTerminal.promise);
+    getTerminal.mockReturnValue(nextTerminal.promise);
     act(() => {
       controller.navigate("/terminal-a/terminal-b?date=2026-08-14");
     });
 
-    expect(container.textContent).toContain("Loading route");
+    expect(container.textContent).not.toContain("Loading route");
+    expect(container.textContent).toContain("Empty schedule");
     expect(container.textContent).not.toContain("Schedule terminal-a");
+    expect(getTerminal).toHaveBeenCalledTimes(2);
   });
 });

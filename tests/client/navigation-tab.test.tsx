@@ -31,12 +31,35 @@ vi.mock("~/components/RouteSelector", () => ({
   // identify the selected direction without terminal network calls
   RouteSelector: () => <span>Seattle to Bainbridge</span>,
 }));
+// isolate contextual ads from explicit trip requests
+vi.mock("~/components/AdSlot", () => ({
+  // expose terminal targeting without issuing an exposure
+  AdSlot: ({
+    arrivalTerminalId,
+    departureTerminalId,
+    slot,
+  }: {
+    arrivalTerminalId?: string;
+    departureTerminalId?: string;
+    slot: string;
+  }) => (
+    <div
+      data-ad-arrival={arrivalTerminalId}
+      data-ad-departure={departureTerminalId}
+      data-ad-slot={slot}
+    />
+  ),
+}));
 
 import { Footer } from "../../client/components/Footer";
 import { Navigation } from "../../client/views/Navigation";
 import { NowDivider } from "../../client/views/Schedule/NowDividerView";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+const LegacyNowDivider = NowDivider as React.ComponentType<{
+  navigationPath?: string;
+  time: DateTime;
+}>;
 const NOW = 1_800_000_000;
 const PATH = "/seattle/bainbridge";
 const terminal = {
@@ -103,7 +126,7 @@ const TabHarness = (): React.ReactElement => {
           <header>Schedule header</header>
           <main>
             <ul>
-              <NowDivider
+              <LegacyNowDivider
                 navigationPath={`${PATH}/navigation`}
                 time={DateTime.fromSeconds(NOW)}
               />
@@ -133,6 +156,8 @@ beforeEach(() => {
   vi.resetAllMocks();
   onRefresh.mockResolvedValue(schedule);
   window.localStorage.clear();
+  // isolate saved trip parameters and private address fragments between cases
+  window.history.replaceState(null, "", PATH);
   container = document.createElement("div");
   document.body.appendChild(container);
   root = createRoot(container);
@@ -147,6 +172,169 @@ afterEach(async () => {
 
 // keep route navigation separate from paid directions and foreground location
 describe("navigation trip tab", () => {
+  // the visible trip prompt is the page title across loading and dated recovery states
+  it.each(["loaded", "loading", "dated"])(
+    "uses one normalized page title while %s",
+    async (state) => {
+      await render(
+        navigation({
+          isCurrentServiceDay: state !== "dated",
+          schedule: state === "loading" ? null : schedule,
+        })
+      );
+      const titles = container.querySelectorAll("h1");
+
+      expect(titles).toHaveLength(1);
+      expect(titles[0]?.textContent).toBe("What boat will I make?");
+      expect(titles[0]?.className).toBe(
+        "text-xl font-bold leading-tight sm:text-2xl text-black dark:text-white"
+      );
+      expect(titles[0]?.previousElementSibling).toBeNull();
+      expect(titles[0]?.closest("main")).not.toBeNull();
+      // all navigation states share the other pages' title width and inset
+      expect(titles[0]?.closest("[data-route-page-intro]")).not.toBeNull();
+      expect(titles[0]?.closest(".max-w-2xl")).toBeNull();
+      const page = titles[0]?.closest(".max-w-6xl");
+      expect(page?.classList).toContain("p-4");
+      expect(page?.classList).not.toContain("py-2");
+      // retain the centered trip layout below the full-width introduction
+      if (state !== "dated") {
+        const body = page?.querySelector(".max-w-2xl");
+        expect(body?.classList).toContain("mx-auto");
+      }
+    }
+  );
+
+  // keep one terminal-scoped placement between controls and trip results
+  it.each([true, false])(
+    "keeps the navigation planning links above the form while loading: %s",
+    async (loading) => {
+      await render(navigation({ schedule: loading ? null : schedule }));
+      const links = [
+        ...container.querySelectorAll(
+          'nav[aria-label="Navigation planning links"] a'
+        ),
+      ];
+      expect(links.map((link) => link.textContent)).toEqual([
+        "Schedule & wait",
+        "Ferry line cameras",
+        "Terminal info",
+        "Route Map",
+        "How much does it cost?",
+        "WSF Alerts",
+      ]);
+      expect(links[0]?.getAttribute("href")).toBe(PATH);
+      expect(links[0]?.closest('[aria-busy="true"]')).toBeNull();
+      // animate estimate jumps without overriding reduced-motion preferences
+      expect(container.querySelector("main")?.classList).toContain(
+        "motion-safe:scroll-smooth"
+      );
+      const form = container.querySelector(
+        loading ? "[data-navigation-form-loading]" : "form"
+      );
+      expect(links[0]?.compareDocumentPosition(form!)).toBe(
+        Node.DOCUMENT_POSITION_FOLLOWING
+      );
+      expect(adapters.post).not.toHaveBeenCalled();
+      expect(adapters.location).not.toHaveBeenCalled();
+    }
+  );
+
+  // preserve the placement after the complete form and before explicit trip results
+  it("renders one navigation ad after the form and before results without targeting its origin", async () => {
+    await render(navigation());
+    const ad = container.querySelector('[data-ad-slot="navigation"]');
+    const form = container.querySelector("form");
+
+    expect(
+      container.querySelectorAll('[data-ad-slot="navigation"]')
+    ).toHaveLength(1);
+    expect(ad?.getAttribute("data-ad-departure")).toBe("7");
+    expect(ad?.hasAttribute("data-ad-arrival")).toBe(false);
+    expect(form).not.toBeNull();
+    expect(form?.compareDocumentPosition(ad!)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING
+    );
+    expect(form?.nextElementSibling).toBe(ad);
+    expect(
+      ad?.compareDocumentPosition(
+        container.querySelector('[aria-live="polite"][aria-busy]')!
+      )
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(adapters.post).not.toHaveBeenCalled();
+    expect(adapters.location).not.toHaveBeenCalled();
+  });
+
+  // preserve ad identity and order while a foreground estimate resolves
+  it("keeps the same ad above loading and completed estimate feedback", async () => {
+    let resolveRecommendation:
+      | ((response: ReturnType<typeof unavailableRecommendation>) => void)
+      | undefined;
+    adapters.post.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveRecommendation = resolve;
+        })
+    );
+    adapters.location.mockResolvedValue({
+      latitude: 47.602,
+      longitude: -122.338,
+    });
+    await render(navigation());
+    const ad = container.querySelector('[data-ad-slot="navigation"]');
+    const button = Array.from(container.querySelectorAll("button")).find(
+      (entry) => entry.textContent === "Use my location"
+    );
+    await act(() => {
+      button?.click();
+    });
+    const results = container.querySelector('[aria-live="polite"][aria-busy]');
+
+    expect(results?.getAttribute("aria-busy")).toBe("true");
+    expect(
+      results?.querySelector('[aria-label="Estimating your trip"]')
+    ).not.toBeNull();
+    expect(ad?.compareDocumentPosition(results!)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING
+    );
+    expect(container.querySelector('[data-ad-slot="navigation"]')).toBe(ad);
+    await act(() => {
+      resolveRecommendation?.(
+        unavailableRecommendation("drive", "configuration-unavailable", NOW)
+      );
+    });
+    expect(results?.getAttribute("aria-busy")).toBe("false");
+    expect(results?.textContent).toContain(
+      "Travel estimates are not enabled yet."
+    );
+    expect(
+      container.querySelectorAll('[data-ad-slot="navigation"]')
+    ).toHaveLength(1);
+    expect(container.querySelector('[data-ad-slot="navigation"]')).toBe(ad);
+    expect(ad?.compareDocumentPosition(results!)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING
+    );
+  });
+
+  // share a placement across destinations but keep departure terminals distinct
+  it("updates ad targeting only when the departure terminal changes", async () => {
+    await render(navigation());
+    await render(navigation({ mate: { ...mate, id: "10" } }));
+    expect(
+      container
+        .querySelector('[data-ad-slot="navigation"]')
+        ?.getAttribute("data-ad-departure")
+    ).toBe("7");
+    await render(navigation({ terminal: mate, mate: terminal }));
+    expect(
+      container
+        .querySelector('[data-ad-slot="navigation"]')
+        ?.getAttribute("data-ad-departure")
+    ).toBe("3");
+    expect(adapters.post).not.toHaveBeenCalled();
+    expect(adapters.location).not.toHaveBeenCalled();
+  });
+
   // keep the header focused on the selected direction and the icon in the footer
   it("removes the navigation icon from the header but keeps the footer tab", async () => {
     await render(<TabHarness />, `${PATH}/navigation`);
@@ -159,19 +347,16 @@ describe("navigation trip tab", () => {
     ).not.toBeNull();
   });
 
-  // place the trip prompt in the second row of the current-time banner
-  it("opens the form from the two-row Now banner inside the schedule", async () => {
+  // keep the current-time divider compact without duplicating navigation
+  it("renders one Now row without a trip-planning prompt", async () => {
     await render(<TabHarness />);
     const banner = container.querySelector('[aria-label="Current time"]');
-    const prompt = banner?.querySelector(
-      'a[href$="/navigation"]'
-    ) as HTMLAnchorElement;
-    expect(prompt.textContent).toBe("What boat will I make?");
-    expect(banner?.children).toHaveLength(2);
+    expect(banner?.querySelector("a")).toBeNull();
+    expect(banner?.children).toHaveLength(1);
     expect(banner?.firstElementChild?.textContent).toBe(
       `Now${DateTime.fromSeconds(NOW).setZone("America/Los_Angeles").toFormat("h:mm a")}`
     );
-    expect(banner?.lastElementChild).toBe(prompt);
+    expect(banner?.textContent).not.toContain("What boat will I make?");
     expect(container.querySelector("main")?.contains(banner)).toBe(true);
     expect(container.querySelector("header")?.nextElementSibling?.tagName).toBe(
       "MAIN"
@@ -179,22 +364,6 @@ describe("navigation trip tab", () => {
     expect(
       container.querySelector('[aria-label="Starting address"]')
     ).toBeNull();
-    await act(() => prompt.click());
-    expect(
-      container.querySelector('[aria-label="Starting address"]')
-    ).not.toBeNull();
-    expect(
-      container
-        .querySelector('[aria-label="Navigation"]')
-        ?.getAttribute("aria-current")
-    ).toBe("page");
-    expect(
-      (
-        container.querySelector(
-          '[aria-label="Safety buffer (minutes)"]'
-        ) as HTMLInputElement
-      ).value
-    ).toBe("5");
     expect(adapters.post).not.toHaveBeenCalled();
     expect(adapters.location).not.toHaveBeenCalled();
   });
@@ -204,7 +373,7 @@ describe("navigation trip tab", () => {
     const time = DateTime.fromISO("2026-10-03T17:04:00Z");
     await render(
       <ul>
-        <NowDivider navigationPath={`${PATH}/navigation`} time={time} />
+        <LegacyNowDivider navigationPath={`${PATH}/navigation`} time={time} />
       </ul>
     );
     expect(container.querySelector("time")?.textContent).toBe("10:04 AM");
@@ -213,7 +382,7 @@ describe("navigation trip tab", () => {
     );
     await render(
       <ul>
-        <NowDivider
+        <LegacyNowDivider
           navigationPath={`${PATH}/navigation`}
           time={time.plus({ minutes: 1 })}
         />
@@ -263,9 +432,48 @@ describe("navigation trip tab", () => {
     ).toBe(`${PATH}/navigation`);
   });
 
+  // cached promotions must not create or timestamp a footer alert
+  it("ignores opinion-group bulletins in the footer summary", async () => {
+    const promotion = {
+      ...terminal.bulletins[0],
+      date: NOW - 60,
+      title: "Join the Ferry Riders Opinion Group",
+    };
+    await render(
+      <Footer
+        terminal={{ ...terminal, bulletins: [promotion] }}
+        getPath={getPath}
+      />
+    );
+    expect(
+      container.querySelector('[aria-label="Alerts and bulletins"]')
+    ).toBeNull();
+
+    await render(
+      <Footer
+        terminal={{
+          ...terminal,
+          bulletins: [
+            promotion,
+            { ...terminal.bulletins[0], date: NOW - 1200 },
+          ],
+        }}
+        getPath={getPath}
+      />
+    );
+    expect(
+      container.querySelector('[aria-label="Alerts and bulletins"]')
+        ?.textContent
+    ).toContain("20 mins ago");
+    expect(container.textContent).not.toContain("1 min ago");
+  });
+
   // require the correct ferry service day before showing the origin form
   it("offers current-day recovery instead of a dated estimate", async () => {
     await render(navigation({ isCurrentServiceDay: false }));
+    expect(
+      container.querySelectorAll('[data-ad-slot="navigation"]')
+    ).toHaveLength(1);
     expect(container.textContent).toContain(
       "Leave-now estimates use the current ferry day."
     );
@@ -280,12 +488,76 @@ describe("navigation trip tab", () => {
     expect(adapters.post).not.toHaveBeenCalled();
   });
 
-  // retain a retry path when a direct tab load cannot get its schedule
-  it("shows loading and sanitized API recovery without requesting an origin", async () => {
+  // keep known page copy visible while schedule-dependent controls load
+  it("shows form skeletons until the schedule loads and preserves saved controls", async () => {
+    window.history.replaceState(
+      null,
+      "",
+      `${PATH}/navigation?tripMode=walk&tripBuffer=9#tripAddress=Saved+while+loading`
+    );
     await render(navigation({ schedule: null }));
+    const loader = container.querySelector('[aria-label="Loading navigation"]');
+    expect(loader).not.toBeNull();
+    expect(loader?.getAttribute("aria-busy")).toBe("true");
+    expect(loader?.querySelectorAll(".skeleton")).toHaveLength(8);
+    expect(container.textContent).toContain("What boat will I make?");
     expect(
-      container.querySelector('[aria-label="Loading navigation"]')
+      container.querySelector("h1")?.closest('[aria-busy="true"]')
+    ).toBeNull();
+    expect(container.querySelector("input, form")).toBeNull();
+    expect(
+      container.querySelector("[data-sailing-estimate-placeholder]")
+    ).toBeNull();
+    const ad = container.querySelector('[data-ad-slot="navigation"]');
+    expect(
+      container.querySelectorAll('[data-ad-slot="navigation"]')
+    ).toHaveLength(1);
+    expect(
+      loader!.compareDocumentPosition(ad!) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(adapters.post).not.toHaveBeenCalled();
+    expect(adapters.location).not.toHaveBeenCalled();
+
+    await render(navigation());
+    expect(
+      container.querySelector("[data-navigation-form-loading]")
+    ).toBeNull();
+    expect(
+      container.querySelector<HTMLInputElement>(
+        '[aria-label="Starting address"]'
+      )?.value
+    ).toBe("Saved while loading");
+    expect(
+      container.querySelector<HTMLInputElement>(
+        '[aria-label="Safety buffer (minutes)"]'
+      )?.value
+    ).toBe("9");
+    const walkButton = Array.from(container.querySelectorAll("button")).find(
+      (entry) => entry.textContent === "Walk"
+    );
+    expect(walkButton?.getAttribute("aria-pressed")).toBe("true");
+    expect(adapters.post).not.toHaveBeenCalled();
+    expect(adapters.location).not.toHaveBeenCalled();
+  });
+
+  // cached schedules remain usable during refresh and refresh failure
+  it("keeps the loaded form instead of restoring skeletons during refresh", async () => {
+    await render(
+      navigation({ isRefreshing: true, loadError: new Error("refresh failed") })
+    );
+    expect(
+      container.querySelector("[data-navigation-form-loading]")
+    ).toBeNull();
+    expect(
+      container.querySelector('[aria-label="Starting address"]')
     ).not.toBeNull();
+    expect(container.textContent).toContain("Showing saved data");
+    expect(adapters.post).not.toHaveBeenCalled();
+    expect(adapters.location).not.toHaveBeenCalled();
+  });
+
+  // failed initial reads settle to recovery rather than indefinite skeletons
+  it("shows sanitized recovery without form skeletons or origin requests", async () => {
     onReload.mockResolvedValue(undefined);
     await render(
       navigation({
@@ -294,11 +566,16 @@ describe("navigation trip tab", () => {
       })
     );
     expect(container.textContent).toContain("Navigation could not load");
+    expect(container.querySelector(".skeleton, input, form")).toBeNull();
+    expect(
+      container.querySelectorAll('[data-ad-slot="navigation"]')
+    ).toHaveLength(1);
     const button = Array.from(container.querySelectorAll("button")).find(
-      (entry) => entry.textContent === "Reload"
+      (entry) => entry.textContent === "Retry schedule"
     );
     await act(() => button?.click());
     expect(onReload).toHaveBeenCalledTimes(1);
+    expect(adapters.post).not.toHaveBeenCalled();
     expect(adapters.location).not.toHaveBeenCalled();
   });
 

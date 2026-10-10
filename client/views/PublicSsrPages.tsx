@@ -1,21 +1,31 @@
 import { DateTime } from "luxon";
 import React, { type ReactElement } from "react";
 import { Link } from "react-router-dom";
+import { Level } from "shared/contracts/bulletins";
 import type {
   PublicSsrSnapshot,
   PublicSsrSourceKey,
 } from "shared/contracts/ssr";
+import { isSuppressedBulletin } from "shared/lib/bulletins";
+import { getRecommendationServiceDate } from "shared/lib/sailingRecommendationRevision";
 import { getSeoMetadata, type SeoMetadata } from "shared/lib/seo";
 import { getStaticPublicSsrTerminalSlug } from "shared/lib/ssrRouteMatch";
 
 import { AdCreativeCard } from "~/components/AdCreativeCard";
+import { AlertsOverview } from "~/components/AlertsOverview";
 import { CameraImageFooter } from "~/components/CameraImageFooter";
+import { CameraOverview } from "~/components/CameraOverview";
 import { FareCatalogDisclosure } from "~/components/FareCatalogDisclosure";
+import { FareRatesOverview } from "~/components/FareRatesOverview";
 import { HomeHero } from "~/components/HomeHero";
 import { HomeTerminalDirectory } from "~/components/HomeTerminalDirectory";
 import { PublicScheduleDetails } from "~/components/PublicScheduleDetails";
+import { RoutePageIntro } from "~/components/RoutePageIntro";
+import { RoutePlanningLinks } from "~/components/RoutePlanningLinks";
+import { ScheduleOverview } from "~/components/ScheduleOverview";
 import { SeoHelmet } from "~/components/SeoHelmet";
 import { SsrPage } from "~/components/SsrPage";
+import { TerminalOverview } from "~/components/TerminalOverview";
 import { useAppRenderContext } from "~/lib/renderContext";
 import {
   getPublicSsrSourceOutcome,
@@ -23,6 +33,7 @@ import {
   usePublicSsrSource,
   usePublicSsrSourceOutcome,
 } from "~/lib/ssrSeed";
+import AlertsIcon from "~/static/images/icons/solid/bell-exclamation.svg";
 
 // format displayed pacific timestamps
 function formatSnapshotTime(value: string): string {
@@ -65,8 +76,8 @@ const PublicRouteNavigation = (): ReactElement | null => {
         ["", "Schedule"],
         ["/cameras", "Cameras"],
         ["/terminal", "Terminal"],
-        ["/fare", "Fares"],
         ["/map", "Map"],
+        ["/fare", "Fares"],
         ["/alerts", "Alerts and bulletins"],
         ["/subscribe", "Alert subscriptions"],
       ].map(([suffix, label]) => (
@@ -86,35 +97,53 @@ const PublicRouteNavigation = (): ReactElement | null => {
   );
 };
 
-// expose a public bulletin with its original source context
+// retain public alert text and source time without redundant landing links
 const PublicBulletin = ({
   bulletin,
+  compact = false,
 }: {
   bulletin: import("shared/contracts/bulletins").Bulletin;
-}): ReactElement => (
-  <section>
-    <h2>{bulletin.title}</h2>
-    <p className="whitespace-pre-line">{bulletin.bodyText}</p>
-    <p>
-      {bulletin.level} ·{" "}
-      <time
-        dateTime={
-          DateTime.fromSeconds(bulletin.date, { zone: "utc" }).toISO() ??
-          undefined
+  compact?: boolean;
+}): ReactElement => {
+  const severity = bulletin.level === Level.HIGH ? "High impact" : "Advisory";
+  return (
+    <section>
+      <h2 className={compact ? "text-lg font-bold leading-snug" : undefined}>
+        {bulletin.title}
+      </h2>
+      <p
+        className={
+          compact
+            ? "mt-2 whitespace-pre-line break-words text-sm leading-relaxed"
+            : "whitespace-pre-line"
         }
       >
-        {formatSnapshotTime(
-          DateTime.fromSeconds(bulletin.date, { zone: "utc" }).toISO() ?? ""
-        )}
-      </time>
-    </p>
-    {bulletin.url ? (
-      <a className="underline" href={bulletin.url}>
-        Related alert page
-      </a>
-    ) : null}
-  </section>
-);
+        {bulletin.bodyText}
+      </p>
+      <p
+        className={
+          compact ? "mt-2 text-xs text-gray-600 dark:text-gray-300" : undefined
+        }
+      >
+        {/* retain severity labels in the compact initial alert view */}
+        {compact ? severity : bulletin.level} ·{" "}
+        <time
+          dateTime={
+            DateTime.fromSeconds(bulletin.date, { zone: "utc" }).toISO() ??
+            undefined
+          }
+        >
+          {formatSnapshotTime(
+            DateTime.fromSeconds(bulletin.date, { zone: "utc" }).toISO() ?? ""
+          )}
+        </time>
+        {compact && bulletin.routePrefix !== "All"
+          ? ` · ${bulletin.routePrefix}`
+          : null}
+      </p>
+    </section>
+  );
+};
 
 const UNAVAILABLE_REASON_LABELS = {
   "not-published": "not published",
@@ -187,7 +216,10 @@ const PublicNotices = ({
   includeBulletins?: boolean;
 }): ReactElement | null => {
   const notices = usePublicSsrSource("notices");
-  const bulletinsSource = usePublicSsrSource("bulletins") ?? [];
+  // apply current suppression rules to saved snapshot notices
+  const bulletinsSource = (usePublicSsrSource("bulletins") ?? []).filter(
+    (bulletin) => !isSuppressedBulletin(bulletin)
+  );
   const bulletins = includeBulletins ? bulletinsSource : [];
   if (
     (!notices ||
@@ -440,71 +472,77 @@ export const PublicRouteMap = (): ReactElement => {
   );
 };
 
-/** Seeded official fare catalogue summary; the interactive calculator follows hydration. */
-// render public fares
+// render common official rates before the interactive custom calculator
 export const PublicFares = (): ReactElement => {
   const fares = usePublicSsrSource("fares");
   const route = usePublicSsrSource("route");
   const fareOutcome = usePublicSsrSourceOutcome("fares");
   return (
-    <SsrPage>
+    <SsrPage routePage>
       <SnapshotSeoHelmet fallback={getSeoMetadata("/")} />
-      <h1>Fare estimator</h1>
-      <p>
-        {route
-          ? `Official WSDOT fares for ${route.terminal.name} to ${route.mate.name}.`
-          : "Official WSDOT fare information."}
-      </p>
-      <SnapshotFreshness
-        primarySource="fares"
-        sources={[
-          { key: "route", label: "Route details" },
-          { key: "fares", label: "Official fare data" },
-          { key: "notices", label: "Service notices" },
-        ]}
-      />
-      <PublicNotices />
-      <PublicRouteNavigation />
+      {fares && route ? (
+        <FareRatesOverview
+          response={fares}
+          departingName={route.terminal.name}
+          arrivingName={route.mate.name}
+          mate={route.mate}
+          terminal={route.terminal}
+        />
+      ) : (
+        <>
+          <RoutePageIntro title="Ferry fares" />
+          {route ? (
+            <RoutePlanningLinks
+              currentView="fare"
+              mate={route.mate}
+              terminal={route.terminal}
+            />
+          ) : null}
+        </>
+      )}
       <PublicAd className="my-4" />
+      <PublicNotices />
       {fareOutcome?.outcome === "stale-usable" ? (
         <p>The displayed fare catalog is stale; verify prices with WSDOT.</p>
       ) : null}
-      <section
-        aria-label="Fare estimator"
-        className="my-4 rounded-xl border border-black/10 p-4 dark:border-white/10"
+      <div
+        id="custom-fare-calculator"
+        className="my-4 min-h-[100dvh] scroll-mt-4 space-y-4"
       >
-        <h2>Estimate a one-way crossing</h2>
-        <p>
-          Choose how you are traveling, then your trip details after the
-          interactive estimator loads. Official WSDOT fares are used; Ferry FYI
-          does not determine eligibility. No personalized quote has been
-          calculated.
-        </p>
-        {route ? (
+        <section aria-label="Fare estimator">
+          <h2>Calculate a custom fare</h2>
           <p>
-            {route.terminal.name} to {route.mate.name}.
+            Choose passengers, vehicle size and eligible discounts after the
+            interactive calculator loads. Official WSDOT fares are used; Ferry
+            FYI does not determine eligibility. The rates above are standard
+            choices, not a personalized estimate.
           </p>
-        ) : null}
+          {route ? (
+            <p>
+              {route.terminal.name} to {route.mate.name}.
+            </p>
+          ) : null}
+          {fares ? (
+            <p>
+              Travel date:{" "}
+              {
+                (fares.state === "current" ? fares.catalog : fares.noFare)
+                  .request.tripDate
+              }
+              .
+            </p>
+          ) : null}
+        </section>
         {fares ? (
-          <p>
-            Travel date:{" "}
-            {
-              (fares.state === "current" ? fares.catalog : fares.noFare).request
-                .tripDate
-            }
-            .
-          </p>
-        ) : null}
-      </section>
-      {fares ? (
-        <FareCatalogDisclosure
-          response={fares}
-          departingName={route?.terminal.name}
-          arrivingName={route?.mate.name}
-        />
-      ) : (
-        <p>Official fare data is not available for this route and date.</p>
-      )}
+          <FareCatalogDisclosure
+            response={fares}
+            departingName={route?.terminal.name}
+            arrivingName={route?.mate.name}
+          />
+        ) : (
+          <p>Official fare data is not available for this route and date.</p>
+        )}
+      </div>
     </SsrPage>
   );
 };
@@ -512,16 +550,17 @@ export const PublicFares = (): ReactElement => {
 /** server-safe schedule presentation from the complete anonymous schedule source. */
 // render public schedule
 export const PublicSchedule = (): ReactElement => {
+  const { clock } = useAppRenderContext();
+  const snapshot = usePublicSsrSnapshot();
   const route = usePublicSsrSource("route");
   const schedule = usePublicSsrSource("schedule")?.schedule;
   const nextSchedule = usePublicSsrSource("nextSchedule")?.schedule;
   const wsf = usePublicSsrSource("wsf");
-  // selected schedule date
-  const scheduleDate = schedule
-    ? DateTime.fromISO(schedule.date, {
-        zone: "America/Los_Angeles",
-      }).toFormat("LLLL d, yyyy")
-    : null;
+  const time = DateTime.fromMillis(clock(), { zone: "America/Los_Angeles" });
+  const selectedDate =
+    schedule?.date ??
+    snapshot?.normalizedUrl.query.date ??
+    getRecommendationServiceDate(time.toSeconds());
   let wsfNotice: ReactElement | null = null;
   if (wsf?.offline) {
     wsfNotice = (
@@ -533,41 +572,23 @@ export const PublicSchedule = (): ReactElement => {
     wsfNotice = <p>Washington State Ferries core data is not ready.</p>;
   }
   return (
-    <SsrPage>
+    <SsrPage routePage>
       <SnapshotSeoHelmet fallback={getSeoMetadata("/")} />
-      <h1>
-        {route
-          ? `${route.terminal.name} to ${route.mate.name} Washington State Ferries schedule`
-          : "Washington State Ferries schedule"}
-      </h1>
+      {/* keep the same route answer visible before browser hydration */}
       {route ? (
-        <p>
-          Departures from {route.terminal.name} Ferry Terminal arrive at{" "}
-          {route.mate.name} Ferry Terminal
-          {schedule && scheduleDate ? (
-            <>
-              {" "}
-              on <time dateTime={schedule.date}>{scheduleDate}</time>
-            </>
-          ) : null}
-          .
-        </p>
-      ) : null}
-      <SnapshotFreshness
-        primarySource="schedule"
-        sources={[
-          { key: "route", label: "Route details" },
-          { key: "schedule", label: "Schedule data" },
-          { key: "nextSchedule", label: "Next-day schedule" },
-          { key: "wsf", label: "WSF status" },
-          { key: "bulletins", label: "Service alerts" },
-          { key: "notices", label: "Service notices" },
-        ]}
-      />
+        <ScheduleOverview
+          inset={false}
+          mate={route.mate}
+          schedule={schedule ?? null}
+          selectedDate={selectedDate}
+          terminal={route.terminal}
+          time={time}
+        />
+      ) : (
+        <RoutePageIntro title="Washington State Ferries schedule" />
+      )}
       <PublicNotices includeBulletins />
-      <PublicRouteNavigation />
       {wsfNotice}
-      <PublicAd className="my-4" />
       {route ? (
         <ul>
           {Object.values(route.terminal.routes)
@@ -579,10 +600,15 @@ export const PublicSchedule = (): ReactElement => {
             ))}
         </ul>
       ) : null}
+      <PublicAd className="my-4" />
       {schedule ? (
         <PublicScheduleDetails
+          id="departures"
+          location={route?.terminal.location}
           schedule={schedule}
-          title="Selected service date"
+          showDisclaimer={false}
+          time={time}
+          title={null}
         />
       ) : (
         <p>Schedule data is temporarily unavailable.</p>
@@ -590,11 +616,23 @@ export const PublicSchedule = (): ReactElement => {
       {nextSchedule ? (
         <PublicScheduleDetails
           schedule={nextSchedule}
+          showDisclaimer={false}
           title="Next service date"
         />
       ) : (
         <p>Next service date schedule is temporarily unavailable.</p>
       )}
+      <SnapshotFreshness
+        primarySource="schedule"
+        sources={[
+          { key: "route", label: "Route details" },
+          { key: "schedule", label: "Schedule data" },
+          { key: "nextSchedule", label: "Next-day schedule" },
+          { key: "wsf", label: "WSF status" },
+          { key: "bulletins", label: "Service alerts" },
+          { key: "notices", label: "Service notices" },
+        ]}
+      />
     </SsrPage>
   );
 };
@@ -608,31 +646,28 @@ export const PublicCameras = (): ReactElement => {
   const cameras = route?.terminal.cameras ?? [];
   const renderedAt = snapshot ? Date.parse(snapshot.renderedAt) / 1000 : NaN;
   return (
-    <SsrPage>
+    <SsrPage routePage>
       <SnapshotSeoHelmet fallback={getSeoMetadata("/")} />
-      <h1>Cameras</h1>
       {route ? (
-        <p>
-          Cameras for {route.terminal.name} to {route.mate.name}.
-        </p>
-      ) : null}
-      <SnapshotFreshness
-        primarySource="cameraFrames"
-        sources={[
-          { key: "route", label: "Route details" },
-          { key: "cameraFrames", label: "Camera data" },
-          { key: "notices", label: "Service notices" },
-        ]}
-      />
+        <CameraOverview
+          inset={false}
+          mate={route.mate}
+          terminal={route.terminal}
+        />
+      ) : (
+        <RoutePageIntro title="Ferry terminal cameras" />
+      )}
       <PublicNotices />
-      <PublicRouteNavigation />
       <PublicAd className="my-4" />
       {cameras.length ? (
-        <ul>
+        <ul className="space-y-8 py-4">
           {cameras.map((camera) => {
             const frame = frames?.frames[camera.id];
             let frameStatus = "Camera image status was not reported.";
-            if (frame?.isStale) {
+            // unavailable source status must not become a fresh-image claim
+            if (frame?.status === "unavailable") {
+              frameStatus = "Camera image unavailable.";
+            } else if (frame?.isStale) {
               frameStatus = "Camera image may be stale.";
             } else if (frame) {
               frameStatus = "Camera image available.";
@@ -646,10 +681,10 @@ export const PublicCameras = (): ReactElement => {
             }
             return (
               <li key={camera.id}>
-                <h2>{camera.title}</h2>
+                <h2 className="text-lg font-bold">{camera.title}</h2>
                 <div className="relative w-full max-w-[480px] overflow-hidden">
                   <img
-                    alt={camera.title}
+                    alt={`Traffic camera at ${route?.terminal.name ?? "the"} ferry terminal: ${camera.title}`}
                     className="block w-full max-w-[480px]"
                     src={frame?.imageUrl ?? camera.image.url}
                   />
@@ -675,12 +710,12 @@ export const PublicCameras = (): ReactElement => {
                   {camera.orderFromTerminal}.
                 </p>
                 {typeof camera.carCapacity === "number" ? (
-                  <p>Holding capacity: {camera.carCapacity} cars.</p>
+                  <p>Static holding capacity: {camera.carCapacity} cars.</p>
                 ) : null}
                 {typeof camera.carsToBoat === "number" ? (
                   <p>
-                    Camera location: {camera.carsToBoat} car spaces from the
-                    boat.
+                    Camera position: {camera.carsToBoat} car spaces from
+                    boarding.
                   </p>
                 ) : null}
               </li>
@@ -688,44 +723,88 @@ export const PublicCameras = (): ReactElement => {
           })}
         </ul>
       ) : (
-        <p>This terminal does not have cameras</p>
+        <p>Camera views are not available in Ferry FYI for this terminal.</p>
       )}
+      <PublicRouteNavigation />
+      <SnapshotFreshness
+        primarySource="cameraFrames"
+        sources={[
+          { key: "route", label: "Route details" },
+          { key: "cameraFrames", label: "Camera data" },
+          { key: "notices", label: "Service notices" },
+        ]}
+      />
     </SsrPage>
   );
 };
 
-// render public bulletins
+// share the compact route overview and retain snapshot source states
 export const PublicBulletins = (): ReactElement => {
-  const bulletins = usePublicSsrSource("bulletins") ?? [];
+  // prevent old snapshots from publishing suppressed promotions
+  const bulletins = (usePublicSsrSource("bulletins") ?? []).filter(
+    (bulletin) => !isSuppressedBulletin(bulletin)
+  );
   const route = usePublicSsrSource("route");
   const bulletinsOutcome = usePublicSsrSourceOutcome("bulletins");
   let bulletinContent: ReactElement;
+  // usable reports remain visible even when their snapshot is stale
   if (bulletins.length) {
     bulletinContent = (
-      <ul>
+      <ul className="mt-2">
         {bulletins.map((bulletin) => (
-          <li key={`${bulletin.date}:${bulletin.title}`}>
-            <PublicBulletin bulletin={bulletin} />
+          // match unboxed browser rows without hiding source dates or severity
+          <li
+            className="border-b border-black/10 py-4 last:border-b-0 dark:border-white/10"
+            key={`${bulletin.date}:${bulletin.title}`}
+          >
+            <PublicBulletin bulletin={bulletin} compact />
           </li>
         ))}
       </ul>
     );
   } else if (bulletinsOutcome?.outcome === "authoritatively-unavailable") {
     bulletinContent = (
-      <p>Service alerts are not available from their authoritative source.</p>
+      <p className="mt-3">
+        Service alerts are not available from their authoritative source.
+      </p>
+    );
+  } else if (
+    bulletinsOutcome?.outcome === "empty" ||
+    bulletinsOutcome?.outcome === "value" ||
+    bulletinsOutcome?.outcome === "stale-usable"
+  ) {
+    // describe the saved list without claiming a live all-clear
+    bulletinContent = (
+      <p className="mt-3">No active alerts are listed in this snapshot.</p>
     );
   } else {
-    bulletinContent = <p>No active alerts</p>;
+    // missing source results remain unknown
+    bulletinContent = (
+      <p className="mt-3">Current WSF alert status is unavailable.</p>
+    );
   }
+  const terminalSlug = route
+    ? getStaticPublicSsrTerminalSlug(route.terminal.id)
+    : undefined;
+  const mateSlug = route
+    ? getStaticPublicSsrTerminalSlug(route.mate.id)
+    : undefined;
+  const subscribePath =
+    terminalSlug && mateSlug
+      ? `/${terminalSlug}${route?.terminal.mates.length === 1 ? "" : `/${mateSlug}`}/subscribe`
+      : null;
   return (
-    <SsrPage>
+    <SsrPage routePage>
       <SnapshotSeoHelmet fallback={getSeoMetadata("/")} />
-      <h1>Alerts</h1>
       {route ? (
-        <p>
-          Public service alerts for {route.terminal.name} to {route.mate.name}.
-        </p>
-      ) : null}
+        <AlertsOverview
+          inset={false}
+          mate={route.mate}
+          terminal={route.terminal}
+        />
+      ) : (
+        <RoutePageIntro title="WSF service alerts" />
+      )}
       <SnapshotFreshness
         primarySource="bulletins"
         sources={[
@@ -735,30 +814,46 @@ export const PublicBulletins = (): ReactElement => {
         ]}
       />
       <PublicNotices />
-      <PublicRouteNavigation />
-      {bulletinContent}
+      <section className="py-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <h2 className="text-lg font-bold">Service alerts</h2>
+          {subscribePath ? (
+            <Link
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-green-dark px-3 py-2 text-sm font-semibold text-white"
+              to={subscribePath}
+            >
+              <AlertsIcon aria-hidden="true" className="h-4 w-4" />
+              Set up alerts
+            </Link>
+          ) : null}
+        </div>
+        {bulletinContent}
+      </section>
     </SsrPage>
   );
 };
 
-/** server-safe terminal details from the anonymous route source. */
-// render public terminaldetails
+/** server-safe terminal answers from the anonymous route source */
 export const PublicTerminalDetails = (): ReactElement => {
   const route = usePublicSsrSource("route");
   const terminal = route?.terminal;
-  const address = terminal?.location.address;
-  // terminal address
-  const locality = address
-    ? [address.city, [address.state, address.zip].filter(Boolean).join(" ")]
-        .filter(Boolean)
-        .join(", ")
-    : "";
+  // apply current alert policy to cached terminal snapshots
+  const bulletins = (terminal?.bulletins ?? []).filter(
+    (bulletin) => !isSuppressedBulletin(bulletin)
+  );
   return (
-    <SsrPage>
+    <SsrPage routePage>
       <SnapshotSeoHelmet fallback={getSeoMetadata("/")} />
-      <h1>
-        {terminal ? `${terminal.name} Ferry Terminal` : "Terminal details"}
-      </h1>
+      {/* use the same practical answers before and after hydration */}
+      {terminal ? (
+        <TerminalOverview
+          afterNavigation={<PublicAd />}
+          mate={route.mate}
+          terminal={terminal}
+        />
+      ) : (
+        <RoutePageIntro title="Terminal details" />
+      )}
       <SnapshotFreshness
         primarySource="route"
         sources={[
@@ -767,173 +862,83 @@ export const PublicTerminalDetails = (): ReactElement => {
         ]}
       />
       <PublicNotices />
-      <PublicRouteNavigation />
-      <PublicAd className="my-4" />
       {terminal ? (
         <>
-          <h2>Address</h2>
-          {address && (address.line1 || address.line2 || locality) ? (
-            <address>
-              {address.line1 ? <>{address.line1}</> : null}
-              {address.line1 && (address.line2 || locality) ? <br /> : null}
-              {address.line2 ? <>{address.line2}</> : null}
-              {address.line2 && locality ? <br /> : null}
-              {locality}
-            </address>
-          ) : (
-            <p>Address unavailable.</p>
-          )}
-          <h2>Routes</h2>
-          <p>
-            Ferry service from {terminal.name} Ferry Terminal to{" "}
-            {terminal.mates.map((mate) => mate.name).join(", ") ||
-              "none listed"}
-            .
-          </p>
-          <ul>
-            {Object.values(terminal.routes).map((item) => (
-              <li key={item.id}>
-                {item.description} · crossing time: {item.crossingTime} minutes.
-                {typeof item.averageVehicleCapacity === "number" ? (
-                  <p>
-                    Average vehicle capacity: {item.averageVehicleCapacity}.
-                  </p>
-                ) : null}
-                {typeof item.normalVehicleCapacity === "number" ? (
-                  <p>Normal vehicle capacity: {item.normalVehicleCapacity}.</p>
-                ) : null}
-                {typeof item.normalVehicleMaxCapacity === "number" ? (
-                  <p>
-                    Maximum normal vehicle capacity:{" "}
-                    {item.normalVehicleMaxCapacity}.
-                  </p>
-                ) : null}
-                {item.galleyHours?.map((rule, index) => (
-                  <p key={index}>
-                    Galley, vessel position {rule.vesselPosition}:{" "}
-                    {rule.startTime}–{rule.endTime}, weekdays{" "}
-                    {rule.days
-                      .map(
-                        (day) =>
-                          [
-                            "",
-                            "Monday",
-                            "Tuesday",
-                            "Wednesday",
-                            "Thursday",
-                            "Friday",
-                            "Saturday",
-                            "Sunday",
-                          ][day]
-                      )
-                      .join(", ")}
-                    .
-                  </p>
-                ))}
-              </li>
-            ))}
-          </ul>
-          <p>
-            Coordinates: {terminal.location.latitude},{" "}
-            {terminal.location.longitude}.
-          </p>
-          {terminal.location.link ? (
-            <p>
-              <a href={terminal.location.link}>Open terminal in Maps</a>
-            </p>
-          ) : null}
-          {terminal.terminalUrl ? (
-            <p>
-              <a href={terminal.terminalUrl}>WSF terminal page</a>
-            </p>
-          ) : null}
-          {terminal.vesselWatchUrl ? (
-            <p>
-              <a href={terminal.vesselWatchUrl}>WSF vessel watch</a>
-            </p>
-          ) : null}
-          {Object.entries(terminal.info).map(([key, body]) =>
-            body ? (
-              <section key={key}>
-                <h2>
-                  {(
-                    {
-                      ada: "Accessibility",
-                      airport: "Airport connections",
-                      bicycle: "Bicycles",
-                      construction: "Construction",
-                      food: "Food",
-                      lost: "Lost and found",
-                      motorcycle: "Motorcycles",
-                      parking: "Parking",
-                      security: "Security",
-                      train: "Train connections",
-                      truck: "Trucks",
-                    } as Record<string, string>
-                  )[key] ?? key}
-                </h2>
-                <p className="whitespace-pre-line">{body}</p>
-              </section>
-            ) : null
-          )}
-          {terminal.waitTimes.length ? (
-            <section>
-              <h2>Wait times</h2>
-              <ul>
-                {terminal.waitTimes.map((wait, index) => (
-                  <li key={index}>
+          {/* retain complete route reference facts without crowding practical answers */}
+          <details className="my-4">
+            <summary className="cursor-pointer font-bold">
+              Route crossing times &amp; vessel facilities
+            </summary>
+            <ul>
+              {Object.values(terminal.routes).map((item) => (
+                <li key={item.id}>
+                  {item.description} · crossing time: {item.crossingTime}{" "}
+                  minutes.
+                  {typeof item.averageVehicleCapacity === "number" ? (
                     <p>
-                      {wait.title ? `${wait.title}: ` : ""}
-                      {wait.description}
+                      Average vehicle capacity: {item.averageVehicleCapacity}.
                     </p>
-                    <time
-                      dateTime={
-                        DateTime.fromSeconds(wait.time, {
-                          zone: "utc",
-                        }).toISO() ?? undefined
-                      }
-                    >
-                      {formatSnapshotTime(
-                        DateTime.fromSeconds(wait.time, {
-                          zone: "utc",
-                        }).toISO() ?? ""
-                      )}
-                    </time>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ) : null}
-          {terminal.bulletins.map((bulletin) => (
+                  ) : null}
+                  {typeof item.normalVehicleCapacity === "number" ? (
+                    <p>
+                      Normal vehicle capacity: {item.normalVehicleCapacity}.
+                    </p>
+                  ) : null}
+                  {typeof item.normalVehicleMaxCapacity === "number" ? (
+                    <p>
+                      Maximum normal vehicle capacity:{" "}
+                      {item.normalVehicleMaxCapacity}.
+                    </p>
+                  ) : null}
+                  {item.galleyHours?.map((rule, index) => (
+                    <p key={index}>
+                      Galley, vessel position {rule.vesselPosition}:{" "}
+                      {rule.startTime}–{rule.endTime}, weekdays{" "}
+                      {rule.days
+                        .map(
+                          (day) =>
+                            [
+                              "",
+                              "Monday",
+                              "Tuesday",
+                              "Wednesday",
+                              "Thursday",
+                              "Friday",
+                              "Saturday",
+                              "Sunday",
+                            ][day]
+                        )
+                        .join(", ")}
+                      .
+                    </p>
+                  ))}
+                </li>
+              ))}
+            </ul>
+            <p>
+              Coordinates: {terminal.location.latitude},{" "}
+              {terminal.location.longitude}.
+            </p>
+            {terminal.vesselWatchUrl ? (
+              <p>
+                <a href={terminal.vesselWatchUrl}>WSF vessel watch</a>
+              </p>
+            ) : null}
+          </details>
+          {bulletins.map((bulletin) => (
             <PublicBulletin
               key={`${bulletin.date}:${bulletin.title}`}
               bulletin={bulletin}
             />
           ))}
-          <h2>Facilities</h2>
-          <ul>
-            <li>
-              Waiting room:{" "}
-              {terminal.hasWaitingRoom ? "available" : "unavailable"}
-            </li>
-            <li>
-              Restrooms: {terminal.hasRestroom ? "available" : "unavailable"}
-            </li>
-            <li>Food: {terminal.hasFood ? "available" : "unavailable"}</li>
-            <li>
-              Elevator: {terminal.hasElevator ? "available" : "unavailable"}
-            </li>
-            <li>
-              Overhead passenger loading:{" "}
-              {terminal.hasOverheadLoading ? "available" : "unavailable"}
-            </li>
-          </ul>
         </>
       ) : (
         <p>
           Terminal details are not available from their authoritative source.
         </p>
       )}
+      {/* preserve an available ad when the terminal source is missing */}
+      {!terminal && <PublicAd className="my-4" />}
     </SsrPage>
   );
 };
@@ -947,7 +952,10 @@ export const PublicHome = (): ReactElement => {
     <main className="relative min-h-screen min-h-[100dvh] overflow-y-scroll scrolling-touch bg-ferry-gradient text-white">
       <SnapshotSeoHelmet fallback={getSeoMetadata("/")} />
       <HomeHero leaderboardsEnabled={features?.leaderboardsEnabled ?? false} />
-      <PublicAd className="mx-auto w-full max-w-6xl px-4 pb-4" />
+      {/* use the same content-owned ad spacing before hydration */}
+      <div className="px-4">
+        <PublicAd className="mx-auto w-full max-w-6xl py-4" />
+      </div>
       <div className="mx-auto w-full max-w-6xl px-6 pb-4">
         <SnapshotFreshness
           primarySource="terminals"
