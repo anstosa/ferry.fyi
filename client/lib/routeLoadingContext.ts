@@ -13,7 +13,7 @@ import { compareTerminalsByName } from "shared/lib/terminalSorting";
 import type { OverviewTerminal } from "~/components/TerminalOverview";
 import type { RouteView } from "~/lib/routeViews";
 
-export type LoadingTerminal = OverviewTerminal & {
+type LoadingTerminal = OverviewTerminal & {
   bulletins?: Terminal["bulletins"];
   cameras?: Camera[];
   routes?: Terminal["routes"];
@@ -83,10 +83,9 @@ export const getRouteLoadingContext = (
   });
   return {
     mate: mateSlug ? getLoadingTerminal(mateSlug) : undefined,
-    selectedDate: requestedDate.isValid
-      ? requestedDate.toISODate()!
-      : getRecommendationServiceDate(now / 1000),
+    selectedDate:
+      requestedDate.toISODate() ?? getRecommendationServiceDate(now / 1000),
     terminal,
-    view: match.route.view as RouteView,
+    view: match.route.view,
   };
 };

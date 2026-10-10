@@ -9,7 +9,10 @@ import type {
 import { isSuppressedBulletin } from "shared/lib/bulletins";
 import { getRecommendationServiceDate } from "shared/lib/sailingRecommendationRevision";
 import { getSeoMetadata, type SeoMetadata } from "shared/lib/seo";
-import { getStaticPublicSsrTerminalSlug } from "shared/lib/ssrRouteMatch";
+import {
+  getCanonicalRouteBasePath,
+  getStaticPublicSsrTerminalSlug,
+} from "shared/lib/ssrRouteMatch";
 
 import { AdCreativeCard } from "~/components/AdCreativeCard";
 import { AlertsOverview } from "~/components/AlertsOverview";
@@ -64,12 +67,11 @@ const PublicRouteNavigation = (): ReactElement | null => {
     return null;
   }
   const terminalSlug = getStaticPublicSsrTerminalSlug(route.terminal.id);
-  const mateSlug = getStaticPublicSsrTerminalSlug(route.mate.id);
+  const base = getCanonicalRouteBasePath(route.terminal.id, route.mate.id);
   // unknown terminal identities have no canonical links
-  if (!terminalSlug || !mateSlug) {
+  if (!terminalSlug || !base) {
     return null;
   }
-  const base = `/${terminalSlug}${route.terminal.mates.length === 1 ? "" : `/${mateSlug}`}`;
   return (
     <nav aria-label="Route navigation" className="my-4 flex flex-wrap gap-3">
       {[
@@ -783,16 +785,10 @@ export const PublicBulletins = (): ReactElement => {
       <p className="mt-3">Current WSF alert status is unavailable.</p>
     );
   }
-  const terminalSlug = route
-    ? getStaticPublicSsrTerminalSlug(route.terminal.id)
-    : undefined;
-  const mateSlug = route
-    ? getStaticPublicSsrTerminalSlug(route.mate.id)
-    : undefined;
-  const subscribePath =
-    terminalSlug && mateSlug
-      ? `/${terminalSlug}${route?.terminal.mates.length === 1 ? "" : `/${mateSlug}`}/subscribe`
-      : null;
+  const routePath = route
+    ? getCanonicalRouteBasePath(route.terminal.id, route.mate.id)
+    : null;
+  const subscribePath = routePath ? `${routePath}/subscribe` : null;
   return (
     <SsrPage routePage>
       <SnapshotSeoHelmet fallback={getSeoMetadata("/")} />

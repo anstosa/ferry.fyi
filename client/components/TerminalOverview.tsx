@@ -2,7 +2,7 @@ import { DateTime } from "luxon";
 import React, { type ReactElement, type ReactNode } from "react";
 import type { PublicSsrTerminal } from "shared/contracts/ssr";
 import type { Address, TerminalInfo } from "shared/contracts/terminals";
-import { getStaticPublicSsrTerminalSlug } from "shared/lib/ssrRouteMatch";
+import { getCanonicalRouteBasePath } from "shared/lib/ssrRouteMatch";
 
 import { RoutePageIntro } from "~/components/RoutePageIntro";
 import { RouteQuickLinks } from "~/components/RouteQuickLinks";
@@ -155,15 +155,10 @@ export const TerminalOverview = ({
   );
   // preserve the selected direction or use the terminal's first listed destination
   const destination = mate ?? terminal.mates?.[0];
-  const terminalSlug = getStaticPublicSsrTerminalSlug(terminal.id);
-  const mateSlug = destination
-    ? getStaticPublicSsrTerminalSlug(destination.id)
-    : undefined;
   // unknown identities have no fabricated route links
-  const routePath =
-    terminalSlug && mateSlug
-      ? `/${terminalSlug}${terminal.mates?.length === 1 ? "" : `/${mateSlug}`}`
-      : null;
+  const routePath = destination
+    ? getCanonicalRouteBasePath(terminal.id, destination.id)
+    : null;
   // match the bottom bar while omitting the current terminal destination
   const links = routePath
     ? [

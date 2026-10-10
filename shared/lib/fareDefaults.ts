@@ -6,7 +6,7 @@ import type {
   FareQuote,
 } from "../contracts/fares";
 
-export type DefaultFareCategory = "passenger" | "standardVehicle";
+type DefaultFareCategory = "passenger" | "standardVehicle";
 
 // choose one unambiguous standard rider without charging the driver again
 export const getDefaultFareSelections = (

@@ -80,6 +80,31 @@ export const createStaticPublicSsrTerminalResolver = (
     },
   };
 };
+
+const staticPublicSsrTerminalResolver = createStaticPublicSsrTerminalResolver();
+
+// build a catalog-validated canonical route base
+export const getCanonicalRouteBasePath = (
+  terminalId: string,
+  mateId?: string
+): string | null => {
+  const terminalSlug = getStaticPublicSsrTerminalSlug(terminalId);
+  // reject terminals outside the canonical catalog
+  if (!terminalSlug) {
+    return null;
+  }
+  const terminal = staticPublicSsrTerminalResolver.resolveSlug(terminalSlug);
+  const mateSlug =
+    mateId === undefined
+      ? terminal?.mateSlugs?.[0]
+      : getStaticPublicSsrTerminalSlug(mateId);
+  // reject missing and unrelated destination identities
+  if (!mateSlug || !terminal?.mateSlugs?.includes(mateSlug)) {
+    return null;
+  }
+  return `/${terminal.slug}${terminal.mateSlugs.length === 1 ? "" : `/${mateSlug}`}`;
+};
+
 export interface PublicSsrRouteMatch {
   /** Public URL path after alias normalization; this is the SEO/snapshot path. */
   canonicalPath: string;

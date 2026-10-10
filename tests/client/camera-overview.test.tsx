@@ -115,7 +115,7 @@ describe("departure-terminal camera overview", () => {
           terminal={{
             ...terminal,
             id: "5",
-            mates: [{ id: "14" }],
+            mates: undefined,
             name: "Clinton",
           }}
         />

@@ -33,17 +33,21 @@ vi.mock("~/lib/terminals", async (importOriginal) => {
 });
 vi.mock("~/components/FreshnessPill", () => ({
   FreshnessPill: ({
+    isRefreshing,
     onClick,
     sourceUpdatedAt,
   }: {
+    isRefreshing?: boolean;
     onClick: () => void;
     sourceUpdatedAt: number;
   }) =>
     React.createElement(
       "button",
       {
+        "aria-busy": Boolean(isRefreshing),
         "aria-label": "refresh bulletins",
         "data-source-updated-at": sourceUpdatedAt,
+        disabled: Boolean(isRefreshing),
         onClick,
         type: "button",
       },
@@ -283,6 +287,129 @@ describe("bulletin hydration seed", () => {
     });
     expect(onTerminalRefresh).toHaveBeenCalledTimes(2);
     expect(onTerminalRefresh).toHaveBeenLastCalledWith(manual);
+  });
+
+  // keep a newer manual result when its older automatic request finishes later
+  it("keeps the latest manual refresh after an older automatic success", async () => {
+    let resolveAutomatic:
+      | ((result: {
+          sourceUpdatedAt: number | null;
+          terminal: Terminal;
+        }) => void)
+      | undefined;
+    const manual = terminal([fresh]);
+    mocks.refreshBulletins
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveAutomatic = resolve;
+          })
+      )
+      .mockResolvedValueOnce({ sourceUpdatedAt: 3, terminal: manual });
+    const onTerminalRefresh = vi.fn();
+    const container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root?.render(
+        view(terminal([stale]), "/clinton/alerts", snapshot, {
+          onTerminalRefresh,
+        })
+      );
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      container
+        .querySelector<HTMLButtonElement>('[aria-label="refresh bulletins"]')
+        ?.click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(container.textContent).toContain(fresh.title);
+    expect(container.textContent).not.toContain(stale.title);
+    expect(onTerminalRefresh).toHaveBeenCalledExactlyOnceWith(manual);
+    expect(
+      container
+        .querySelector('[aria-label="refresh bulletins"]')
+        ?.getAttribute("data-source-updated-at")
+    ).toBe("3");
+
+    await act(async () => {
+      resolveAutomatic?.({ sourceUpdatedAt: 2, terminal: terminal([]) });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(container.textContent).toContain(fresh.title);
+    expect(container.textContent).not.toContain("All clear");
+    expect(onTerminalRefresh).toHaveBeenCalledExactlyOnceWith(manual);
+    expect(
+      container
+        .querySelector('[aria-label="refresh bulletins"]')
+        ?.getAttribute("data-source-updated-at")
+    ).toBe("3");
+  });
+
+  // ignore an older automatic failure after a newer manual result settles
+  it("keeps the latest manual refresh after an older automatic failure", async () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    let rejectAutomatic: ((error: Error) => void) | undefined;
+    const manual = terminal([fresh]);
+    mocks.refreshBulletins
+      .mockImplementationOnce(
+        () =>
+          new Promise((_, reject) => {
+            rejectAutomatic = reject;
+          })
+      )
+      .mockResolvedValueOnce({ sourceUpdatedAt: 3, terminal: manual });
+    const onTerminalRefresh = vi.fn();
+    const container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root?.render(
+        view(terminal([stale]), "/clinton/alerts", snapshot, {
+          onTerminalRefresh,
+        })
+      );
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      container
+        .querySelector<HTMLButtonElement>('[aria-label="refresh bulletins"]')
+        ?.click();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const freshness = container.querySelector<HTMLButtonElement>(
+      '[aria-label="refresh bulletins"]'
+    );
+    expect(freshness?.getAttribute("aria-busy")).toBe("false");
+    expect(freshness?.disabled).toBe(false);
+    expect(onTerminalRefresh).toHaveBeenCalledExactlyOnceWith(manual);
+
+    await act(async () => {
+      rejectAutomatic?.(new Error("older offline response"));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(container.textContent).toContain(fresh.title);
+    expect(container.textContent).not.toContain("Service alerts unavailable");
+    expect(container.textContent).not.toContain("Could not refresh alerts");
+    expect(freshness?.getAttribute("aria-busy")).toBe("false");
+    expect(freshness?.disabled).toBe(false);
+    expect(onTerminalRefresh).toHaveBeenCalledExactlyOnceWith(manual);
+    consoleError.mockRestore();
   });
 
   // an unconfirmed default empty array is not useful all-clear content

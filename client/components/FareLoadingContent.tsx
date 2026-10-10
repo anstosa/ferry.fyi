@@ -14,7 +14,7 @@ import {
 export const CUSTOM_FARE_SECTION_CLASS =
   "scroll-mt-4 min-h-[calc(100dvh-8rem-var(--safe-area-inset-top)-var(--safe-area-inset-bottom))]";
 
-export interface FareLoadingContentProps {
+interface FareLoadingContentProps {
   afterRates?: ReactNode;
   arrivingName: string;
   calculator?: ReactNode;

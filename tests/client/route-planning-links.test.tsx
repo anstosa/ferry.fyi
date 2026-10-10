@@ -145,6 +145,9 @@ describe("shared route planning buttons", () => {
     expect(page.querySelector('a[href="/clinton/cameras"]')).not.toBeNull();
     expect(page.querySelector('a[href="/clinton/fare"]')).not.toBeNull();
     expect(page.innerHTML).not.toContain("/clinton/mukilteo");
+    const catalogDefault = render({ terminal: { id: "5" }, mate: undefined });
+    expect(catalogDefault.querySelector('a[href="/clinton"]')).not.toBeNull();
+    expect(catalogDefault.innerHTML).not.toContain("/clinton/mukilteo");
   });
 
   // only date-capable destinations retain a selected historical service day

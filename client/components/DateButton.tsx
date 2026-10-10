@@ -2,7 +2,7 @@ import "./DateButton.scss";
 
 import clsx from "clsx";
 import { DateTime } from "luxon";
-import React, { ReactElement, useState } from "react";
+import React, { type ReactElement, useState } from "react";
 import { DayPicker } from "react-day-picker";
 import type { ValidRange } from "shared/contracts/schedules";
 

@@ -1,7 +1,10 @@
 import clsx from "clsx";
 import React, { type ReactElement } from "react";
 import type { PublicSsrTerminal } from "shared/contracts/ssr";
-import { getStaticPublicSsrTerminalSlug } from "shared/lib/ssrRouteMatch";
+import {
+  getCanonicalRouteBasePath,
+  getStaticPublicSsrTerminalSlug,
+} from "shared/lib/ssrRouteMatch";
 
 import { RoutePageIntro } from "~/components/RoutePageIntro";
 import { RouteQuickLinks } from "~/components/RouteQuickLinks";
@@ -30,11 +33,9 @@ export const CameraOverview = ({
   terminal: CameraTerminal;
 }): ReactElement => {
   const terminalSlug = getStaticPublicSsrTerminalSlug(terminal.id);
-  const mateSlug = mate ? getStaticPublicSsrTerminalSlug(mate.id) : undefined;
-  const routePath =
-    terminalSlug && mateSlug
-      ? `/${terminalSlug}${terminal.mates?.length === 1 ? "" : `/${mateSlug}`}`
-      : null;
+  const routePath = mate
+    ? getCanonicalRouteBasePath(terminal.id, mate.id)
+    : null;
   const hasCameras = loading || terminal.cameras.length > 0;
   // match the bottom bar while omitting the current camera destination
   const links = [

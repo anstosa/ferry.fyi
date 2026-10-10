@@ -56,10 +56,6 @@ import { Navigation } from "../../client/views/Navigation";
 import { NowDivider } from "../../client/views/Schedule/NowDividerView";
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
-const LegacyNowDivider = NowDivider as React.ComponentType<{
-  navigationPath?: string;
-  time: DateTime;
-}>;
 const NOW = 1_800_000_000;
 const PATH = "/seattle/bainbridge";
 const terminal = {
@@ -126,10 +122,7 @@ const TabHarness = (): React.ReactElement => {
           <header>Schedule header</header>
           <main>
             <ul>
-              <LegacyNowDivider
-                navigationPath={`${PATH}/navigation`}
-                time={DateTime.fromSeconds(NOW)}
-              />
+              <NowDivider time={DateTime.fromSeconds(NOW)} />
             </ul>
           </main>
         </>
@@ -373,7 +366,7 @@ describe("navigation trip tab", () => {
     const time = DateTime.fromISO("2026-10-03T17:04:00Z");
     await render(
       <ul>
-        <LegacyNowDivider navigationPath={`${PATH}/navigation`} time={time} />
+        <NowDivider time={time} />
       </ul>
     );
     expect(container.querySelector("time")?.textContent).toBe("10:04 AM");
@@ -382,10 +375,7 @@ describe("navigation trip tab", () => {
     );
     await render(
       <ul>
-        <LegacyNowDivider
-          navigationPath={`${PATH}/navigation`}
-          time={time.plus({ minutes: 1 })}
-        />
+        <NowDivider time={time.plus({ minutes: 1 })} />
       </ul>
     );
     expect(container.querySelector("time")?.textContent).toBe("10:05 AM");

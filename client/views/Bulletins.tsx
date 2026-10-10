@@ -205,6 +205,7 @@ export const Bulletins = ({
   }`;
   const activeRouteKeyRef = useRef(routeKey);
   activeRouteKeyRef.current = routeKey;
+  const refreshGenerationRef = useRef(0);
   const [refreshState, setRefreshState] = useState<{
     routeKey: string;
     sourceUpdatedAt: number | null;
@@ -240,20 +241,24 @@ export const Bulletins = ({
     setRefreshError(false);
     setFailedRefreshRouteKey(null);
   }, [routeKey, seededSourceUpdatedAt]);
+  // refresh the current alert feed automatically
   useEffect(() => {
     const terminalId = terminal?.id;
     if (!terminalId) {
       return;
     }
+    const refreshGeneration = ++refreshGenerationRef.current;
     let isCurrent = true;
+    // accept only the latest request for the active feed
+    const isCurrentRequest = (): boolean =>
+      isCurrent &&
+      refreshGeneration === refreshGenerationRef.current &&
+      activeRouteKeyRef.current === routeKey &&
+      activeTerminalIdRef.current === terminalId;
     refreshBulletins(terminalId)
       .then((result) => {
-        // accept only the response for the route still on screen
-        if (
-          isCurrent &&
-          activeRouteKeyRef.current === routeKey &&
-          activeTerminalIdRef.current === terminalId
-        ) {
+        // accept only the newest automatic result
+        if (isCurrentRequest()) {
           setRefreshState({
             routeKey,
             sourceUpdatedAt: result.sourceUpdatedAt,
@@ -264,16 +269,13 @@ export const Bulletins = ({
         }
       })
       .catch((error) => {
-        // settle a failed initial request without claiming an all-clear
-        if (
-          isCurrent &&
-          activeRouteKeyRef.current === routeKey &&
-          activeTerminalIdRef.current === terminalId
-        ) {
+        // record only the newest automatic failure
+        if (isCurrentRequest()) {
           setFailedRefreshRouteKey(routeKey);
         }
         console.error(error);
       });
+    // stop accepting after effect cleanup
     return () => {
       isCurrent = false;
     };
@@ -363,16 +365,20 @@ export const Bulletins = ({
     )
   );
 
+  // refresh active alerts on demand
   const refresh = async (): Promise<void> => {
     const terminalId = displayTerminal.id;
+    const refreshGeneration = ++refreshGenerationRef.current;
+    // accept only the latest request for the active feed
     const isCurrentRequest = (): boolean =>
+      refreshGeneration === refreshGenerationRef.current &&
       activeRouteKeyRef.current === routeKey &&
       activeTerminalIdRef.current === terminalId;
     setRefreshing(true);
     setRefreshError(false);
     try {
       const result = await refreshBulletins(terminalId);
-      // accept only the manual response for the route still on screen
+      // accept only the newest manual result
       if (isCurrentRequest()) {
         setRefreshState({
           routeKey,
@@ -383,13 +389,14 @@ export const Bulletins = ({
         setFailedRefreshRouteKey(null);
       }
     } catch (error) {
-      // expose the error only while this route remains active
+      // expose only the newest manual failure
       if (isCurrentRequest()) {
         setRefreshError(true);
         setFailedRefreshRouteKey(routeKey);
       }
       throw error;
     } finally {
+      // settle loading only for the newest request
       if (isCurrentRequest()) {
         setRefreshing(false);
       }

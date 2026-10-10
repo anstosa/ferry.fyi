@@ -564,12 +564,13 @@ test("keeps terminal travel answers visible before and after hydration", async (
     "How much does it cost?",
     "WSF Alerts",
   ]);
-  await expect(terminalLinks.locator('a[href="/seattle"]')).toHaveText(
-    "Schedule & wait"
-  );
-  await expect(terminalLinks.locator('a[href="/seattle/fare"]')).toHaveText(
-    "How much does it cost?"
-  );
+  // canonical topology stays authoritative when fixture mates are incomplete
+  await expect(
+    terminalLinks.locator('a[href="/seattle/bainbridge"]')
+  ).toHaveText("Schedule & wait");
+  await expect(
+    terminalLinks.locator('a[href="/seattle/bainbridge/fare"]')
+  ).toHaveText("How much does it cost?");
   await expect(page.locator('head meta[name="description"]')).toHaveAttribute(
     "content",
     /Seattle ferry terminal directions, parking/
@@ -705,13 +706,14 @@ test("keeps camera SEO content stable through built-artifact hydration", async (
     "Traffic camera at Seattle ferry terminal: Seattle holding area"
   );
   expect(
-    initialPlanning?.querySelector('a[href="/seattle"]')?.textContent
+    initialPlanning?.querySelector('a[href="/seattle/bainbridge"]')?.textContent
   ).toBe("Schedule & wait");
   expect(
     initialPlanning?.querySelector('a[href="/seattle/terminal"]')?.textContent
   ).toBe("Terminal info");
   expect(
-    initialPlanning?.querySelector('a[href="/seattle/alerts"]')?.textContent
+    initialPlanning?.querySelector('a[href="/seattle/bainbridge/alerts"]')
+      ?.textContent
   ).toBe("WSF Alerts");
   expect(document.querySelector("main")?.textContent).toContain(
     "Image checked just now"
@@ -755,13 +757,13 @@ test("keeps camera SEO content stable through built-artifact hydration", async (
   });
   await expect(
     planning.getByRole("link", { name: "Schedule & wait" })
-  ).toHaveAttribute("href", "/seattle");
+  ).toHaveAttribute("href", "/seattle/bainbridge");
   await expect(
     planning.getByRole("link", { name: "Terminal info" })
   ).toHaveAttribute("href", "/seattle/terminal");
   await expect(
     planning.getByRole("link", { name: "WSF Alerts" })
-  ).toHaveAttribute("href", "/seattle/alerts");
+  ).toHaveAttribute("href", "/seattle/bainbridge/alerts");
   // share the schedule's six natural-width buttons without the camera self-link
   await expect(planning.locator("a")).toHaveText([
     "Schedule & wait",

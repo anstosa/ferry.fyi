@@ -1,7 +1,7 @@
 import React, { type ReactElement } from "react";
 import { getRecommendationServiceDate } from "shared/lib/sailingRecommendationRevision";
 import {
-  createStaticPublicSsrTerminalResolver,
+  getCanonicalRouteBasePath,
   getStaticPublicSsrTerminalSlug,
 } from "shared/lib/ssrRouteMatch";
 
@@ -22,7 +22,6 @@ export interface PlanningTerminal {
   mates?: readonly { id: string }[];
 }
 
-const resolver = createStaticPublicSsrTerminalResolver();
 const PLANNING_LABELS = {
   alerts: "Alert planning links",
   fare: "Fare planning links",
@@ -65,15 +64,10 @@ export const RoutePlanningLinks = ({
   const terminalSlug = terminal
     ? getStaticPublicSsrTerminalSlug(terminal.id)
     : undefined;
-  const route = terminalSlug ? resolver.resolveSlug(terminalSlug) : undefined;
   const destination = mate ?? terminal?.mates?.[0];
-  const mateSlug = destination
-    ? getStaticPublicSsrTerminalSlug(destination.id)
-    : route?.mateSlugs?.[0];
-  const routePath =
-    terminalSlug && mateSlug && route?.mateSlugs?.includes(mateSlug)
-      ? `/${terminalSlug}${route.mateSlugs.length === 1 ? "" : `/${mateSlug}`}`
-      : null;
+  const routePath = terminal
+    ? getCanonicalRouteBasePath(terminal.id, destination?.id)
+    : null;
   const dateQuery =
     selectedDate &&
     selectedDate !== getRecommendationServiceDate(clock() / 1000)

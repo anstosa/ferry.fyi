@@ -34,6 +34,7 @@ const getApiTerminal = (id: string): string => `/terminals/${id}`;
 
 let hasAll = false;
 const terminalCache: Record<string, Terminal> = {};
+const bulletinRefreshGenerationByTerminal = new Map<string, number>();
 
 export const getSlug = (targetId: string): string =>
   findKey(terminalIdByCanonicalSlug, targetId) as string;
@@ -69,15 +70,24 @@ export interface TerminalBulletinResult {
   terminal: Terminal;
 }
 
+// refresh one terminal bulletin snapshot
 export const refreshBulletins = async (
   terminalId: string
 ): Promise<TerminalBulletinResult> => {
+  const refreshGeneration =
+    (bulletinRefreshGenerationByTerminal.get(terminalId) ?? 0) + 1;
+  bulletinRefreshGenerationByTerminal.set(terminalId, refreshGeneration);
   const result = await post<{ sourceUpdatedAt: number | null }>(
     "/terminals/bulletins/refresh",
     {}
   );
   const terminal = await get<Terminal>(getApiTerminal(terminalId));
-  terminalCache[terminalId] = terminal;
+  // cache only the latest-started refresh for this terminal
+  if (
+    bulletinRefreshGenerationByTerminal.get(terminalId) === refreshGeneration
+  ) {
+    terminalCache[terminalId] = terminal;
+  }
   return { ...result, terminal };
 };
 

@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import React, { ReactElement, useEffect, useRef, useState } from "react";
+import React, { type ReactElement, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import type { Terminal } from "shared/contracts/terminals";
 

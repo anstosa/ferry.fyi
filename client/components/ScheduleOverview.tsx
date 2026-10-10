@@ -6,7 +6,10 @@ import type { Schedule, Slot } from "shared/contracts/schedules";
 import type { PublicSsrTerminal } from "shared/contracts/ssr";
 import { isSuppressedBulletin, isWaitTimeBulletin } from "shared/lib/bulletins";
 import { getRecommendationServiceDate } from "shared/lib/sailingRecommendationRevision";
-import { getStaticPublicSsrTerminalSlug } from "shared/lib/ssrRouteMatch";
+import {
+  getCanonicalRouteBasePath,
+  getStaticPublicSsrTerminalSlug,
+} from "shared/lib/ssrRouteMatch";
 
 import { RoutePageIntro } from "~/components/RoutePageIntro";
 import { RouteQuickLinks } from "~/components/RouteQuickLinks";
@@ -74,8 +77,7 @@ export const ScheduleOverview = ({
     zone: "America/Los_Angeles",
   });
   const terminalSlug = getStaticPublicSsrTerminalSlug(terminal.id);
-  const mateSlug = getStaticPublicSsrTerminalSlug(mate.id);
-  const routePath = `/${terminalSlug}${terminal.mates?.length === 1 ? "" : `/${mateSlug}`}`;
+  const routePath = getCanonicalRouteBasePath(terminal.id, mate.id);
   // restrict alerts to this departure feed and a known route or terminal-wide scope
   const waitAlert = terminal.bulletins
     .filter((bulletin) => {
@@ -116,8 +118,9 @@ export const ScheduleOverview = ({
       ? path
       : `${path}?date=${encodeURIComponent(selectedDate)}`;
   };
-  const tools = [
-    ...(isCurrentDay
+  // offer trip planning only for the current service day
+  const navigationTools =
+    routePath && terminalSlug && isCurrentDay
       ? [
           {
             Icon: NavigationIcon,
@@ -125,21 +128,31 @@ export const ScheduleOverview = ({
             path: navigationPath ?? toolPath("navigation"),
           },
         ]
-      : []),
-    {
-      Icon: CamerasIcon,
-      label: "Ferry line cameras",
-      path: toolPath("cameras"),
-    },
-    { Icon: TerminalIcon, label: "Terminal info", path: toolPath("terminal") },
-    { Icon: MapIcon, label: "Route Map", path: toolPath("map") },
-    {
-      Icon: FaresIcon,
-      label: "How much does it cost?",
-      path: toolPath("fare"),
-    },
-    { Icon: AlertsIcon, label: "WSF Alerts", path: toolPath("alerts") },
-  ];
+      : [];
+  // omit route tools without a canonical direction
+  const tools =
+    routePath && terminalSlug
+      ? [
+          ...navigationTools,
+          {
+            Icon: CamerasIcon,
+            label: "Ferry line cameras",
+            path: toolPath("cameras"),
+          },
+          {
+            Icon: TerminalIcon,
+            label: "Terminal info",
+            path: toolPath("terminal"),
+          },
+          { Icon: MapIcon, label: "Route Map", path: toolPath("map") },
+          {
+            Icon: FaresIcon,
+            label: "How much does it cost?",
+            path: toolPath("fare"),
+          },
+          { Icon: AlertsIcon, label: "WSF Alerts", path: toolPath("alerts") },
+        ]
+      : [];
 
   return (
     <section
@@ -248,7 +261,8 @@ export const ScheduleOverview = ({
           ) : null}
         </section>
       </div>
-      <RouteQuickLinks links={tools} />
+      {/* omit the planning landmark when no canonical direction exists */}
+      {tools.length > 0 ? <RouteQuickLinks links={tools} /> : null}
     </section>
   );
 };

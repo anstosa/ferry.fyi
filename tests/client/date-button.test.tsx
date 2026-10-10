@@ -73,15 +73,18 @@ describe("DateButton", () => {
       await Promise.resolve();
     });
 
-    expect(
-      container.querySelector(".rdp-selected .rdp-day_button")?.textContent
-    ).toBe("19");
+    const selectedDate = container.querySelector(
+      '[role="gridcell"][aria-selected="true"] button'
+    );
+    expect(selectedDate?.getAttribute("aria-label")).toContain(
+      "July 19th, 2026"
+    );
     expect(onDateChange).not.toHaveBeenCalled();
   });
 
   // user selection notification
   it("notifies exactly once when the user selects a day", async () => {
-    const onDateChange = vi.fn();
+    const onDateChange = vi.fn<(date: DateTime) => void>();
     // update the controlled value in response to a genuine selection
     const Harness = (): React.ReactElement => {
       const [date, setDate] = useState(DateTime.fromISO("2026-07-18"));
@@ -103,14 +106,11 @@ describe("DateButton", () => {
         ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
       await Promise.resolve();
     });
-    const dayButton = [
-      ...container.querySelectorAll<HTMLButtonElement>(".rdp-day_button"),
-    ].find(
-      (button) =>
-        button.textContent === "20" &&
-        !button.closest(".rdp-outside") &&
-        !button.disabled
+    const dayButton = container.querySelector<HTMLButtonElement>(
+      'button[aria-label="Monday, July 20th, 2026"]'
     );
+    expect(dayButton).not.toBeNull();
+    expect(dayButton?.disabled).toBe(false);
 
     await act(async () => {
       dayButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -118,9 +118,7 @@ describe("DateButton", () => {
     });
 
     expect(onDateChange).toHaveBeenCalledTimes(1);
-    expect((onDateChange.mock.calls[0]?.[0] as DateTime).toISODate()).toBe(
-      "2026-07-20"
-    );
+    expect(onDateChange.mock.calls[0]?.[0].toISODate()).toBe("2026-07-20");
     expect(
       container.querySelectorAll('[aria-label="Set Date"] > span')[1]
         ?.textContent

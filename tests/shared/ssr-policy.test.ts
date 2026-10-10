@@ -27,6 +27,7 @@ import {
   publicQueryCacheKey,
 } from "../../shared/lib/ssrQueryPolicy";
 import {
+  getCanonicalRouteBasePath,
   getPublicSsrHostProfile,
   matchPublicSsrRoute,
 } from "../../shared/lib/ssrRouteMatch";
@@ -677,6 +678,15 @@ describe("SSR contracts", () => {
 });
 
 describe("SSR matcher and query policy", () => {
+  // derive canonical route bases from the shared terminal relationship catalog
+  it("builds only canonical terminal-pair base paths", () => {
+    expect(getCanonicalRouteBasePath("5", "14")).toBe("/clinton");
+    expect(getCanonicalRouteBasePath("7", "3")).toBe("/seattle/bainbridge");
+    expect(getCanonicalRouteBasePath("7")).toBe("/seattle/bremerton");
+    expect(getCanonicalRouteBasePath("7", "14")).toBeNull();
+    expect(getCanonicalRouteBasePath("unknown", "3")).toBeNull();
+  });
+
   it("uses the Ferry FYI host profile on the documented local origin", () => {
     expect(getPublicSsrHostProfile("localhost")).toBe("ferry.fyi");
     expect(getPublicSsrHostProfile("dev.ferry.fyi")).toBe("ferry.fyi");
