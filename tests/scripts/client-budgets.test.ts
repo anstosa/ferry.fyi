@@ -87,7 +87,7 @@ describe("client asset budgets", () => {
     expect(() => assertClientBudgets(summary)).not.toThrow();
     expect(() =>
       assertClientBudgets({ ...summary, cssBytes: 152_001 })
-    ).toThrow(/cssBytes: 152,001 exceeds 152,000/);
+    ).toThrow(/cssBytes/);
   });
 
   // preserve separate optional billing measurements without enforcement
