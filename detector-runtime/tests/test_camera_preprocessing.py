@@ -322,6 +322,129 @@ def test_rotated_lane_landmarks_preserve_scale_bounds_and_masking() -> None:
     assert decoded.getpixel(hole_center) == (0, 0, 0)
 
 
+# dense sections retain visible unique identities without painting over target pixels
+@pytest.mark.parametrize("nested", [False, True])
+def test_dense_fourteen_section_crop_keeps_every_marker_visible(nested: bool) -> None:
+    image = Image.new("RGB", (280, 48), color=(23, 29, 41))
+    areas = []
+    # cover the full crop, including cases with interior-only section boundaries
+    for index in range(14):
+        left = index / 14
+        right = (index + 1) / 14
+        top, bottom = 0.0, 1.0
+        # leave interior masks at least two source pixels from the outer perimeter
+        if nested:
+            left = (index + 1) / 56 if index else 0.0
+            right = 1 - left
+            top = left
+            bottom = right
+        areas.append(
+            {
+                "id": f"lane-{index + 1}",
+                "label": f"lane {index + 1}",
+                "polygon": [[left, top], [right, top], [right, bottom], [left, bottom]],
+            }
+        )
+    header = json.dumps({"allowedAreas": areas, "excludedAreas": []})
+    prepared = prepare_camera_request(encode_png(image), header, "dense-camera")
+    decoded = decode_prepared_image(prepared.image_base64)
+    annotations = json.loads(decoded.info["laneAnnotations"])
+    assert len(annotations) == 14
+    assert len({tuple(annotation["colorRgb"]) for annotation in annotations}) == 14
+    assert [annotation["laneId"] for annotation in annotations] == [
+        area["id"] for area in areas
+    ]
+    bounds = [annotation["transformedBounds"] for annotation in annotations]
+    panel_box = (
+        min(bound[0] for bound in bounds),
+        min(bound[1] for bound in bounds),
+        max(bound[2] for bound in bounds),
+        max(bound[3] for bound in bounds),
+    )
+    assert decoded.crop(panel_box).size == image.size
+    assert decoded.crop(panel_box).tobytes() == image.tobytes()
+    measure = ImageDraw.Draw(decoded)
+    # verify actual numeric glyph ink outside the untouched lane panel
+    for index, annotation in enumerate(annotations):
+        marker = str(index + 1)
+        assert annotation["marker"] == marker
+        assert annotation["markerPosition"] is not None
+        x, y = annotation["markerPosition"]
+        glyph_box = measure.textbbox((x, y), marker)
+        assert glyph_box[1] >= panel_box[3]
+        assert glyph_box[2] <= decoded.width
+        assert glyph_box[3] <= decoded.height
+        colors = {color for _, color in decoded.crop(glyph_box).getcolors(1000)}
+        ink = max(colors, key=sum)
+        scale = max(ink) / max(annotation["colorRgb"])
+        assert scale > 0.5
+        assert ink == pytest.approx(
+            tuple(channel * scale for channel in annotation["colorRgb"]), abs=1
+        )
+        expected_label = marker
+        # interior sections must render their actual native bounds, not only an id
+        if nested and index > 0:
+            expected_label += (
+                " ["
+                + ",".join(str(value) for value in annotation["transformedBounds"])
+                + "]"
+            )
+        label_box = measure.textbbox((x, y), expected_label)
+        legend_box = annotation["legendBounds"]
+        assert label_box[2] <= legend_box[2]
+        assert label_box[3] <= legend_box[3]
+        glyph_origin = measure.textbbox((0, 0), expected_label)
+        expected_ink = Image.new(
+            "RGB",
+            (label_box[2] - label_box[0], label_box[3] - label_box[1]),
+            color="black",
+        )
+        ImageDraw.Draw(expected_ink).text(
+            (-glyph_origin[0], -glyph_origin[1]),
+            expected_label,
+            fill=tuple(annotation["colorRgb"]),
+        )
+        assert decoded.crop(label_box).tobytes() == expected_ink.tobytes()
+    # the visible caption defines the positional legend contract
+    if nested:
+        band = decoded.crop(
+            (0, panel_box[3] + 1, decoded.width, annotations[0]["legendBounds"][1])
+        )
+        caption_box = band.getbbox()
+        assert caption_box is not None
+        caption = "bounds [x0,y0,x1,y1]"
+        origin = measure.textbbox((0, 0), caption)
+        expected_caption = Image.new(
+            "RGB", (origin[2] - origin[0], origin[3] - origin[1]), color="black"
+        )
+        ImageDraw.Draw(expected_caption).text(
+            (-origin[0], -origin[1]), caption, fill="white"
+        )
+        expected_box = expected_caption.getbbox()
+        assert expected_box is not None
+        expected_caption = expected_caption.crop(expected_box)
+        assert band.crop(caption_box).size == expected_caption.size
+        assert band.crop(caption_box).tobytes() == expected_caption.tobytes()
+
+
+# an entirely excluded section cannot be assigned an invented visual identity
+def test_fully_masked_section_rejects_ambiguous_preparation() -> None:
+    image = Image.new("RGB", (40, 20), color="white")
+    left = [[0, 0], [0.5, 0], [0.5, 1], [0, 1]]
+    right = [[0.5, 0], [1, 0], [1, 1], [0.5, 1]]
+    header = json.dumps(
+        {
+            "allowedAreas": [
+                {"id": "left", "label": "left", "polygon": left},
+                {"id": "right", "label": "right", "polygon": right},
+            ],
+            "excludedAreas": [{"polygon": left}],
+        }
+    )
+    with pytest.raises(CameraPreparationError):
+        prepare_camera_request(encode_png(image), header, "masked-section-camera")
+
+
 # the endpoint never resolves or invokes inference
 def test_prepare_endpoint_returns_contract_without_provider_calls() -> None:
     provider = ProviderSpy()

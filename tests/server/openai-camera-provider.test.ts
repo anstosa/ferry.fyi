@@ -123,7 +123,7 @@ afterEach(() => {
 describe("OpenAI camera prompt", () => {
   // preserve the approved semantic instructions and a cacheable version
   it("exports the approved strict classification prompt", () => {
-    expect(OPENAI_CAMERA_PROMPT_VERSION).toBe("2026-10-23.1");
+    expect(OPENAI_CAMERA_PROMPT_VERSION).toBe("2026-10-23.2");
     expect(OPENAI_CAMERA_PROMPT).toContain(
       'Return exactly one JSON object with an "images" array.'
     );
@@ -135,6 +135,12 @@ describe("OpenAI camera prompt", () => {
     );
     expect(OPENAI_CAMERA_PROMPT).toContain(
       'occupancyState: "empty", "low", "high", "full", or null only when skipped'
+    );
+    expect(OPENAI_CAMERA_PROMPT).toContain(
+      "Match each legend marker's unique color swatch to its lane outline."
+    );
+    expect(OPENAI_CAMERA_PROMPT).toContain(
+      "the legend gives [x0,y0,x1,y1] native pixel bounds in the lane panel above the legend."
     );
     expect(OPENAI_CAMERA_PROMPT).toContain(
       "Classify front and back lane sections independently."

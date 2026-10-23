@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import colorsys
 import hashlib
 import io
 import json
@@ -22,20 +23,10 @@ from PIL import (
 MAX_IMAGE_BYTES = 10 * 1024 * 1024
 MAX_IMAGE_PIXELS = 20_000_000
 _FINGERPRINT_VERSION = "ferry-fyi-camera-fingerprint-v1"
-_OUTLINE_COLORS = (
-    (255, 76, 76),
-    (72, 214, 109),
-    (75, 156, 255),
-    (255, 199, 64),
-    (210, 98, 255),
-    (57, 220, 220),
-    (255, 127, 42),
-    (232, 232, 232),
-)
 
 
 # normalized annotated area
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class CameraArea:
     area_id: str
     label: str
@@ -43,7 +34,7 @@ class CameraArea:
 
 
 # validated preprocessing configuration
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class CameraAreas:
     allowed: tuple[CameraArea, ...]
     excluded: tuple[CameraArea, ...]
@@ -51,7 +42,7 @@ class CameraAreas:
 
 
 # serialized preprocessing response
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True, slots=True)
 class PreparedCameraImage:
     image_base64: str
     fingerprint: str
@@ -224,7 +215,9 @@ def parse_camera_areas(header: str | None) -> CameraAreas:
                 "frameSize width and height must be positive integers"
             )
         frame_size = (frame_width, frame_height)
-    return CameraAreas(tuple(allowed), tuple(excluded), frame_size)
+    return CameraAreas(
+        allowed=tuple(allowed), excluded=tuple(excluded), frame_size=frame_size
+    )
 
 
 # decode image bytes safely
@@ -446,122 +439,93 @@ def _fingerprint(image: Image.Image, mask: Image.Image, areas: CameraAreas) -> s
     return digest.hexdigest()
 
 
-# find a label position outside target pixels
-def _find_label_position(
-    occupied_mask: Image.Image,
-    lane_mask: Image.Image,
-    text_size: tuple[int, int],
-) -> tuple[int, int] | None:
-    lane_bbox = lane_mask.getbbox()
-    # empty-lane guard
-    if lane_bbox is None:
-        return None
-    text_width, text_height = text_size
-    left, top, right, bottom = lane_bbox
-    candidates = (
-        (left, max(0, top - text_height - 1)),
-        (left, min(occupied_mask.height - text_height, bottom + 1)),
-        (max(0, right - text_width), max(0, top - text_height - 1)),
-        (
-            max(0, right - text_width),
-            min(occupied_mask.height - text_height, bottom + 1),
-        ),
-    )
-    # placement scan
-    for x, y in candidates:
-        # bounds guard
-        if (
-            x < 0
-            or y < 0
-            or x + text_width > occupied_mask.width
-            or y + text_height > occupied_mask.height
-        ):
-            continue
-        occupied = occupied_mask.crop((x, y, x + text_width, y + text_height)).getbbox()
-        # free-space branch
-        if occupied is None:
-            return x, y
-    lane_center_x = (left + right) / 2
-    lane_center_y = (top + bottom) / 2
-    best: tuple[float, int, int] | None = None
-    max_x = occupied_mask.width - text_width
-    max_y = occupied_mask.height - text_height
-    # fallback row scan
-    for y in range(max(0, max_y + 1)):
-        # fallback column scan
-        for x in range(max(0, max_x + 1)):
-            label_center_x = x + (text_width / 2)
-            label_center_y = y + (text_height / 2)
-            distance = ((label_center_x - lane_center_x) ** 2) + (
-                (label_center_y - lane_center_y) ** 2
-            )
-            candidate = (distance, y, x)
-            # farther-candidate guard
-            if best is not None and candidate >= best:
-                continue
-            occupied = occupied_mask.crop(
-                (x, y, x + text_width, y + text_height)
-            ).getbbox()
-            # occupied-candidate guard
-            if occupied is not None:
-                continue
-            best = candidate
-    # no-space guard
-    if best is None:
-        return None
-    return best[2], best[1]
-
-
-# annotate rotated lane identities without covering target pixels
+# preserve visible lane identity without covering or resampling target pixels
 def _annotate_lanes(
     image: Image.Image,
     combined_mask: Image.Image,
     lane_masks: list[Image.Image],
     areas: tuple[CameraArea, ...],
-) -> list[dict[str, object]]:
-    draw = ImageDraw.Draw(image)
+) -> tuple[Image.Image, list[dict[str, object]]]:
+    panel_size = (image.width + 2, image.height + 2)
+    # bound padding before allocating a larger native-scale canvas
+    if panel_size[0] * panel_size[1] > MAX_IMAGE_PIXELS or max(panel_size) > 20_000:
+        raise CameraPreparationError(
+            "annotated image dimensions are unsupported", status_code=413
+        )
+    panel = Image.new("RGB", panel_size, color="black")
+    panel.paste(image, (1, 1))
+    padded_combined = Image.new("L", panel_size, color=0)
+    padded_combined.paste(combined_mask, (1, 1))
     annotations: list[dict[str, object]] = []
-    occupied_mask = combined_mask.copy()
-    # lane-outline pass
+    legend_labels: list[str] = []
+    needs_coordinates = False
+    # reserve a unique outline and legend color for every supplied section
     for index, (area, lane_mask) in enumerate(zip(areas, lane_masks, strict=True)):
-        color = _OUTLINE_COLORS[index % len(_OUTLINE_COLORS)]
-        expanded = lane_mask.filter(ImageFilter.MaxFilter(3))
-        outer_edge = ImageChops.subtract(expanded, combined_mask)
-        color_layer = Image.new("RGB", image.size, color=color)
-        image.paste(color_layer, mask=outer_edge)
-        occupied_mask = ImageChops.lighter(occupied_mask, outer_edge)
-    # lane-label pass
-    for index, (area, lane_mask) in enumerate(zip(areas, lane_masks, strict=True)):
-        color = _OUTLINE_COLORS[index % len(_OUTLINE_COLORS)]
+        padded_lane = Image.new("L", panel_size, color=0)
+        padded_lane.paste(lane_mask, (1, 1))
+        lane_bbox = padded_lane.getbbox()
+        # a fully excluded section has no reliable image-to-id mapping
+        if lane_bbox is None:
+            raise CameraPreparationError("lane area selects no countable source pixels")
+        color = tuple(
+            round(channel * 255)
+            for channel in colorsys.hsv_to_rgb(index / len(areas), 0.75, 1)
+        )
+        outer_edge = ImageChops.subtract(
+            padded_lane.filter(ImageFilter.MaxFilter(3)), padded_combined
+        )
+        panel.paste(Image.new("RGB", panel_size, color=color), mask=outer_edge)
         marker = str(index + 1)
-        marker_bbox = draw.textbbox((0, 0), marker)
-        marker_size = (marker_bbox[2] - marker_bbox[0], marker_bbox[3] - marker_bbox[1])
-        marker_position = _find_label_position(occupied_mask, lane_mask, marker_size)
-        # non-occluding-label branch
-        if marker_position is not None:
-            draw.text(marker_position, marker, fill=color)
-            label_left, label_top = marker_position
-            ImageDraw.Draw(occupied_mask).rectangle(
-                (
-                    label_left,
-                    label_top,
-                    label_left + marker_size[0] - 1,
-                    label_top + marker_size[1] - 1,
-                ),
-                fill=255,
-            )
-        lane_bbox = lane_mask.getbbox()
+        legend_label = marker
+        # interior or overlapping sections need an explicit positional fallback
+        if outer_edge.getbbox() is None:
+            legend_label += " [" + ",".join(str(value) for value in lane_bbox) + "]"
+            needs_coordinates = True
+        legend_labels.append(legend_label)
         annotations.append(
             {
                 "marker": marker,
                 "laneId": area.area_id,
                 "label": area.label,
                 "colorRgb": color,
-                "markerPosition": marker_position,
                 "transformedBounds": lane_bbox,
             }
         )
-    return annotations
+    measure = ImageDraw.Draw(panel)
+    label_bounds = [measure.textbbox((0, 0), label) for label in legend_labels]
+    cell_width = max(bounds[2] for bounds in label_bounds) + 16
+    cell_height = max(bounds[3] for bounds in label_bounds) + 4
+    caption = "bounds [x0,y0,x1,y1]" if needs_coordinates else ""
+    caption_bounds = measure.textbbox((0, 0), caption)
+    caption_height = caption_bounds[3] + 4 if caption else 0
+    width = max(panel.width, cell_width, caption_bounds[2] + 4)
+    columns = max(1, min(len(areas), width // cell_width))
+    rows = math.ceil(len(areas) / columns)
+    height = panel.height + caption_height + rows * cell_height + 4
+    # reject annotation amplification rather than downsampling countable pixels
+    if width * height > MAX_IMAGE_PIXELS or max(width, height) > 20_000:
+        raise CameraPreparationError(
+            "annotated image dimensions are unsupported", status_code=413
+        )
+    annotated = Image.new("RGB", (width, height), color="black")
+    annotated.paste(panel)
+    draw = ImageDraw.Draw(annotated)
+    # explain positional entries only when an outline cannot identify an interior region
+    if caption:
+        draw.text((2, panel.height + 2), caption, fill="white")
+    # every numeric marker is visibly rendered in the non-target legend
+    for index, (annotation, legend_label) in enumerate(
+        zip(annotations, legend_labels, strict=True)
+    ):
+        x = (index % columns) * cell_width
+        y = panel.height + caption_height + (index // columns) * cell_height + 2
+        color = annotation["colorRgb"]
+        draw.rectangle((x + 2, y + 2, x + 8, y + 8), fill=color)
+        marker_position = (x + 12, y + 2)
+        draw.text(marker_position, legend_label, fill=color)
+        annotation["markerPosition"] = marker_position
+        annotation["legendBounds"] = (x, y, x + cell_width, y + cell_height)
+    return annotated, annotations
 
 
 # encode the prepared PNG with lane identity metadata
@@ -641,7 +605,7 @@ def prepare_camera_request(
         rotated_lane_masks.append(
             _rotate_crop_mask(lane_mask, rotation_degrees, crop_bbox)
         )
-    annotations = _annotate_lanes(
+    prepared_image, annotations = _annotate_lanes(
         prepared_image,
         rotated_combined_mask,
         rotated_lane_masks,

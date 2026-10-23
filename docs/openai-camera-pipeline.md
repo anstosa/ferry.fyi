@@ -69,8 +69,11 @@ does not warm this pipeline with an off-tick startup inference.
 
 The processor validates the annotated source dimensions, masks target/excluded
 polygons, and selects a minimum-area native-scale rotated crop. It never
-downsamples. Thin outer outlines and numeric markers identify the ordered
-section IDs without painting over countable pixels. Non-right-angle rotation
+downsamples. Unique-color outer outlines and a compact non-target numeric legend identify
+every ordered section without painting over countable pixels. A one-pixel
+black perimeter keeps edge outlines visible; interior sections without visible
+outlines include native pixel bounds in the legend. The annotation gutter may
+increase dimensions beyond the minimum-area lane crop, but never rescales it. Non-right-angle rotation
 uses interpolation, not scaling.
 
 Canonical decoded countable-pixel fingerprints ignore outside-lane changes,

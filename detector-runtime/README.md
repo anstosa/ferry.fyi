@@ -30,7 +30,7 @@ Pass `X-Detection-Areas` as JSON with `allowedAreas` and `excludedAreas` polygon
 - `X-Detection-Areas`: JSON containing at least one `allowedAreas` entry. Each allowed entry requires a unique `id`, a non-empty `label`, and a normalized polygon. `excludedAreas` entries require a polygon and may include an ID/label.
 - Optional `frameSize: { "width": ..., "height": ... }` inside `X-Detection-Areas`. When supplied, it must exactly match the decoded source dimensions; mismatches return HTTP 400 instead of applying stale geometry.
 
-The endpoint masks all non-target and excluded pixels, chooses the minimum-area enclosing rotation at native scale, tightly crops the result, and adds thin colored lane-section outlines plus PNG identity metadata. It does not stretch, perspective-warp, resize, archive, or infer over the image. The response is:
+The endpoint masks all non-target and excluded pixels, chooses the minimum-area enclosing rotation at native scale, tightly crops the result, and adds unique-color lane-section outlines, a compact non-target numeric legend, and PNG identity metadata. A one-pixel perimeter exposes edge outlines; interior sections use explicit native pixel bounds in the legend. This annotation gutter may add pixels beyond the minimum-area crop, without scaling or covering countable pixels. It does not stretch, perspective-warp, resize, archive, or infer over the image. The response is:
 
 ```json
 {

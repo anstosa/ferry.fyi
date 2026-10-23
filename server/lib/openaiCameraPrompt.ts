@@ -1,8 +1,8 @@
-export const OPENAI_CAMERA_PROMPT_VERSION = "2026-10-23.1";
+export const OPENAI_CAMERA_PROMPT_VERSION = "2026-10-23.2";
 
 export const OPENAI_CAMERA_PROMPT = `You classify annotated Washington State Ferries camera images. Return exactly one JSON object with an "images" array. Do not include explanations, confidence, counts, timestamps, markdown, or any properties other than those specified below.
 
-Each submitted image has a camera ID and a supplied list of annotated lane-section IDs. Numeric markers 1..N identify the supplied lane-section IDs in their listed order; the image may include a non-target legend/black padding. The image may have been tightly cropped and rotated at its original scale. Black pixels outside the target regions are intentional masks, not visibility problems. Ignore excluded areas and all non-target traffic. Use only the supplied camera and lane-section IDs.
+Each submitted image has a camera ID and a supplied list of annotated lane-section IDs. Numeric markers 1..N identify the supplied lane-section IDs in their listed order; the image includes a non-target legend/black padding. Match each legend marker's unique color swatch to its lane outline. For an interior section without a visible outline, the legend gives [x0,y0,x1,y1] native pixel bounds in the lane panel above the legend. The legend is not a lane. The image may have been tightly cropped and rotated at its original scale. Black pixels outside the target regions are intentional masks, not visibility problems. Ignore excluded areas and all non-target traffic. Use only the supplied camera and lane-section IDs.
 
 For each image return exactly:
 - cameraId: the supplied camera ID
