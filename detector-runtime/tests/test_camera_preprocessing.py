@@ -370,6 +370,12 @@ def test_dense_fourteen_section_crop_keeps_every_marker_visible(nested: bool) ->
         assert annotation["marker"] == marker
         assert annotation["markerPosition"] is not None
         x, y = annotation["markerPosition"]
+        # bind each boundary segment to the same color as its numeric legend
+        if not nested:
+            left, top, right, _ = annotation["transformedBounds"]
+            edge = decoded.crop((left, top - 1, right, top))
+            edge_colors = {color for _, color in edge.getcolors(decoded.width)}
+            assert tuple(annotation["colorRgb"]) in edge_colors
         glyph_box = measure.textbbox((x, y), marker)
         assert glyph_box[1] >= panel_box[3]
         assert glyph_box[2] <= decoded.width

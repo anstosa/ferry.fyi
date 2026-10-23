@@ -38,11 +38,15 @@ describePostgres("OpenAI camera store Postgres integration", () => {
   const migrationInterface = () => ({
     // preserve the migration's real columns and indexes
     createTable: (
-      _name: string,
+      tableName: string,
       columns: Parameters<QueryInterface["createTable"]>[1]
-    ) => database!.getQueryInterface().createTable(table, columns),
+    ) =>
+      database!
+        .getQueryInterface()
+        .createTable({ ...table, tableName }, columns),
     // remove only this suite's state table
-    dropTable: () => database!.getQueryInterface().dropTable(table),
+    dropTable: (tableName: string) =>
+      database!.getQueryInterface().dropTable({ ...table, tableName }),
   });
 
   // initialize a separate schema before loading the production model
@@ -165,7 +169,7 @@ describePostgres("OpenAI camera store Postgres integration", () => {
   });
 
   // execute real rollback and recreation without touching any other schema
-  it("rolls the migration down and up reversibly", async () => {
+  it("creates the exact non-null JSONB schema and reversibly recreates it", async () => {
     await migration.down(migrationInterface());
     const rows = await database!.query<{ name: string | null }>(
       `SELECT to_regclass('"${schemaName}"."OpenaiCameraPipelineStates"')::text AS "name"`,
@@ -173,6 +177,18 @@ describePostgres("OpenAI camera store Postgres integration", () => {
     );
     expect(rows).toEqual([{ name: null }]);
     await migration.up(migrationInterface(), Sequelize);
+    // inspect the applied schema rather than mocked migration arguments
+    const definition = await database!.getQueryInterface().describeTable(table);
+    expect(Object.keys(definition)).toEqual([
+      "key",
+      "state",
+      "createdAt",
+      "updatedAt",
+    ]);
+    expect(definition).toMatchObject({
+      key: { allowNull: false, primaryKey: true },
+      state: { allowNull: false, type: "JSONB" },
+    });
     await expect(first.beginRound(slot)).resolves.toMatchObject({
       lastStartedSlot: slot,
     });

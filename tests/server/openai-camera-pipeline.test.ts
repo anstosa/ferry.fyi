@@ -272,6 +272,20 @@ const harness = (options: HarnessOptions = {}) => {
     prepare,
     results,
     store,
+    // seed exact provider results without repeating camera-key plumbing
+    setResult(
+      definition: OpenaiCameraDefinition,
+      occupancyState: OpenaiCameraOccupancy | null,
+      passing = false,
+      visibilityProblems = false
+    ) {
+      results[definition.cameraId] = resultFor(
+        definition,
+        occupancyState,
+        passing,
+        visibilityProblems
+      );
+    },
     // replace current predicted departures between rounds
     setDepartures(value: typeof departures) {
       departures = value;
@@ -379,14 +393,8 @@ describe("OpenAI camera pipeline", () => {
     const context = harness({ definitions });
     context.frameUpdatedAts[definitions[0].cameraId] = null;
     context.frameUpdatedAts[definitions[1].cameraId] = BASE + 2 * 60_000;
-    context.results[definitions[0].cameraId] = resultFor(
-      definitions[0],
-      "high"
-    );
-    context.results[definitions[1].cameraId] = resultFor(
-      definitions[1],
-      "high"
-    );
+    context.setResult(definitions[0], "high");
+    context.setResult(definitions[1], "high");
 
     const state = await context.createPipeline().run();
 
@@ -499,18 +507,9 @@ describe("OpenAI camera pipeline", () => {
       [definitions[3].cameraId]: "empty",
     });
     const context = harness({ definitions, initial: state });
-    context.results[definitions[1].cameraId] = resultFor(
-      definitions[1],
-      "high"
-    );
-    context.results[definitions[2].cameraId] = resultFor(
-      definitions[2],
-      "high"
-    );
-    context.results[definitions[3].cameraId] = resultFor(
-      definitions[3],
-      "empty"
-    );
+    context.setResult(definitions[1], "high");
+    context.setResult(definitions[2], "high");
+    context.setResult(definitions[3], "empty");
     context.classify.mockImplementationOnce(
       // let serial follow-ups occur one minute into the original slot
       (images: OpenaiCameraPromptImage[]) => {
@@ -587,15 +586,9 @@ describe("OpenAI camera pipeline", () => {
       [definitions[3].cameraId]: "empty",
     });
     const context = harness({ definitions, initial: state });
-    context.results[definitions[1].cameraId] = resultFor(
-      definitions[1],
-      "high"
-    );
-    context.results[definitions[2].cameraId] = resultFor(definitions[2], "low");
-    context.results[definitions[3].cameraId] = resultFor(
-      definitions[3],
-      "empty"
-    );
+    context.setResult(definitions[1], "high");
+    context.setResult(definitions[2], "low");
+    context.setResult(definitions[3], "empty");
 
     const current = await context.createPipeline().run();
 
@@ -618,10 +611,10 @@ describe("OpenAI camera pipeline", () => {
       [anchor.cameraId]: "high",
     });
     const context = harness({ definitions, initial });
-    context.results[anchor.cameraId] = resultFor(anchor, "high");
-    context.results[firstView.cameraId] = resultFor(firstView, "empty");
-    context.results[secondView.cameraId] = resultFor(secondView, "high");
-    context.results[outer.cameraId] = resultFor(outer, "empty");
+    context.setResult(anchor, "high");
+    context.setResult(firstView, "empty");
+    context.setResult(secondView, "high");
+    context.setResult(outer, "empty");
 
     const state = await context.createPipeline().run();
 
@@ -644,9 +637,9 @@ describe("OpenAI camera pipeline", () => {
       [firstView.cameraId]: "high",
     });
     const context = harness({ definitions, initial });
-    context.results[firstView.cameraId] = resultFor(firstView, "empty");
-    context.results[secondView.cameraId] = resultFor(secondView, "high");
-    context.results[outer.cameraId] = resultFor(outer, "empty");
+    context.setResult(firstView, "empty");
+    context.setResult(secondView, "high");
+    context.setResult(outer, "empty");
 
     const state = await context.createPipeline().run();
 
@@ -671,14 +664,8 @@ describe("OpenAI camera pipeline", () => {
       [definitions[3].cameraId]: "empty",
     });
     const context = harness({ definitions, initial: state });
-    context.results[definitions[2].cameraId] = resultFor(
-      definitions[2],
-      "empty"
-    );
-    context.results[definitions[1].cameraId] = resultFor(
-      definitions[1],
-      "high"
-    );
+    context.setResult(definitions[2], "empty");
+    context.setResult(definitions[1], "high");
 
     const current = await context.createPipeline().run();
 
@@ -700,16 +687,8 @@ describe("OpenAI camera pipeline", () => {
       [definitions[2].cameraId]: "empty",
     });
     const context = harness({ definitions, initial: state });
-    context.results[definitions[1].cameraId] = resultFor(
-      definitions[1],
-      "high",
-      true
-    );
-    context.results[definitions[0].cameraId] = resultFor(
-      definitions[0],
-      "low",
-      true
-    );
+    context.setResult(definitions[1], "high", true);
+    context.setResult(definitions[0], "low", true);
 
     const current = await context.createPipeline().run();
 
@@ -732,20 +711,9 @@ describe("OpenAI camera pipeline", () => {
       [definitions[2].cameraId]: "empty",
     });
     const context = harness({ definitions, initial: state });
-    context.results[definitions[1].cameraId] = resultFor(
-      definitions[1],
-      null,
-      false,
-      true
-    );
-    context.results[definitions[0].cameraId] = resultFor(
-      definitions[0],
-      "empty"
-    );
-    context.results[definitions[2].cameraId] = resultFor(
-      definitions[2],
-      "empty"
-    );
+    context.setResult(definitions[1], null, false, true);
+    context.setResult(definitions[0], "empty");
+    context.setResult(definitions[2], "empty");
 
     const current = await context.createPipeline().run();
 
@@ -790,10 +758,7 @@ describe("OpenAI camera pipeline", () => {
   it("expires old-round output without publishing stale classifications", async () => {
     const definitions = clinton.slice(0, 1);
     const context = harness({ definitions });
-    context.results[definitions[0].cameraId] = resultFor(
-      definitions[0],
-      "full"
-    );
+    context.setResult(definitions[0], "full");
     context.classify.mockImplementationOnce(
       // cross the boundary while the paid request is in flight
       (images: OpenaiCameraPromptImage[]) => {
@@ -825,10 +790,7 @@ describe("OpenAI camera pipeline", () => {
   it("rejects inference completing at the four-minute-thirty-second cutoff", async () => {
     const definitions = clinton.slice(0, 1);
     const context = harness({ definitions });
-    context.results[definitions[0].cameraId] = resultFor(
-      definitions[0],
-      "full"
-    );
+    context.setResult(definitions[0], "full");
     context.classify.mockImplementationOnce(
       // land exactly on the exclusive round deadline
       (images: OpenaiCameraPromptImage[]) => {

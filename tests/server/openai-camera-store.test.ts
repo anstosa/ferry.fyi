@@ -1,11 +1,9 @@
-import { DataTypes } from "sequelize";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type {
   OpenaiCameraObservation,
   OpenaiCameraPipelineState,
 } from "../../server/lib/openaiCameraTypes";
-import migration from "../../server/migrations/20261023000100-create-openai-camera-pipeline-state.js";
 
 const rows = vi.hoisted(() => new Map<string, ReturnType<typeof makeRow>>());
 const transaction = vi.hoisted(() => ({ LOCK: { UPDATE: "UPDATE" } }));
@@ -206,40 +204,5 @@ describe("database openai camera store", () => {
     );
     await expect(store.beginRound(-1)).rejects.toThrow("non-negative integer");
     expect(model.sequelize.transaction).not.toHaveBeenCalled();
-  });
-});
-
-describe("openai camera state migration", () => {
-  // prove the model-aligned schema and reversible rollback
-  it("creates one jsonb state table and drops it on rollback", async () => {
-    const queryInterface = {
-      createTable: vi.fn().mockResolvedValue(undefined),
-      dropTable: vi.fn().mockResolvedValue(undefined),
-    };
-
-    await migration.up(queryInterface, DataTypes);
-
-    expect(queryInterface.createTable).toHaveBeenCalledWith(
-      "OpenaiCameraPipelineStates",
-      expect.objectContaining({
-        key: expect.objectContaining({ allowNull: false, primaryKey: true }),
-        state: expect.objectContaining({
-          allowNull: false,
-          type: DataTypes.JSONB,
-        }),
-      })
-    );
-    const attributes = queryInterface.createTable.mock.calls[0][1];
-    expect(Object.keys(attributes)).toEqual([
-      "key",
-      "state",
-      "createdAt",
-      "updatedAt",
-    ]);
-
-    await migration.down(queryInterface);
-    expect(queryInterface.dropTable).toHaveBeenCalledWith(
-      "OpenaiCameraPipelineStates"
-    );
   });
 });

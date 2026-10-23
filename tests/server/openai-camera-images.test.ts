@@ -107,6 +107,28 @@ describe("OpenAI camera image adapter", () => {
     ).rejects.toThrow("Malformed");
   });
 
+  // numeric image markers must retain the configured section order
+  it("rejects a processor response that reverses lane identities", async () => {
+    const firstArea = definition.config.allowedAreas[0];
+    const multiLane = {
+      ...definition,
+      config: {
+        ...definition.config,
+        allowedAreas: [
+          firstArea,
+          { ...firstArea, id: `${firstArea.id}-second` },
+        ],
+      },
+    };
+    const { client } = setup({
+      ...prepared(),
+      laneIds: multiLane.config.allowedAreas.map(({ id }) => id).reverse(),
+    });
+    await expect(
+      client.prepare(multiLane, new AbortController().signal)
+    ).rejects.toThrow("Malformed");
+  });
+
   // cap raw image bytes even when the trusted upstream advertises a bad payload
   it("rejects oversized source bodies before contacting the processor", async () => {
     const fetchImpl = vi.fn().mockResolvedValue(

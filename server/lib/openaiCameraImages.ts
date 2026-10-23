@@ -135,7 +135,7 @@ export class OpenaiCameraImageClient {
     }
     const candidate = body as Record<string, unknown>;
     const laneIds = definition.config.allowedAreas.map((area) => area.id);
-    // verify geometry, fingerprint, image bytes and section cardinality
+    // verify geometry, fingerprint, image bytes and ordered marker identities
     if (
       ![
         candidate.width,
@@ -163,7 +163,7 @@ export class OpenaiCameraImageClient {
       candidate.laneIds.length !== laneIds.length ||
       new Set(candidate.laneIds).size !== laneIds.length ||
       candidate.laneIds.some(
-        (id) => typeof id !== "string" || !laneIds.includes(id)
+        (id, index) => typeof id !== "string" || id !== laneIds[index]
       )
     ) {
       throw new Error("Malformed camera preprocessor response");
