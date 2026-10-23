@@ -694,8 +694,7 @@ export const assertPublicSsrSnapshot = (
   assertPublicSsrRouteCoherence(
     {
       canonicalHost: snapshot.canonicalHost as
-        | "ferry.fyi"
-        | "howmanyboats.today",
+        "ferry.fyi" | "howmanyboats.today",
       canonicalPath: snapshot.canonicalPath as string,
       query: (snapshot.normalizedUrl as RecordValue).query as Record<
         string,

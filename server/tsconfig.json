@@ -5,6 +5,8 @@
     "lib": [
       "DOM"
     ],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
     "outDir": "../dist/server",
     "rootDir": "..",
     "paths": {

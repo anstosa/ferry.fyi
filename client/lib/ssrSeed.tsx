@@ -122,8 +122,7 @@ export const getPublicSsrSourceOutcome = <K extends PublicSsrSourceKey>(
 ): PublicSsrSourceOutcome<K> | undefined =>
   (
     snapshot?.sources as
-      | Partial<Record<PublicSsrSourceKey, PublicSsrSourceOutcome<K>>>
-      | undefined
+      Partial<Record<PublicSsrSourceKey, PublicSsrSourceOutcome<K>>> | undefined
   )?.[key];
 
 export const usePublicSsrSourceOutcome = <K extends PublicSsrSourceKey>(

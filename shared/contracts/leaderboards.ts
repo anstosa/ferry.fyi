@@ -323,8 +323,7 @@ export type AutomaticVesselCheckinCandidateV1 =
   };
 
 export type AutomaticCheckinCandidateV1 =
-  | AutomaticTerminalCheckinCandidateV1
-  | AutomaticVesselCheckinCandidateV1;
+  AutomaticTerminalCheckinCandidateV1 | AutomaticVesselCheckinCandidateV1;
 
 export interface AutomaticCheckinResponseV1 {
   credited: boolean;

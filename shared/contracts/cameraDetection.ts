@@ -1,8 +1,5 @@
 export type CameraDetectionAreaType =
-  | "queue_lane"
-  | "holding_lane"
-  | "holding_lot"
-  | "ferry_slip";
+  "queue_lane" | "holding_lane" | "holding_lot" | "ferry_slip";
 
 export type CameraDetectionExclusionType =
   | "intersection_break"
@@ -61,9 +58,7 @@ export interface VehicleDetection {
 }
 
 export type CameraLineDetectionDisposition =
-  | "included"
-  | "excluded"
-  | "outside";
+  "included" | "excluded" | "outside";
 
 export interface CameraLineVehicleDetection extends VehicleDetection {
   allowedAreaIds: string[];
@@ -73,10 +68,7 @@ export interface CameraLineVehicleDetection extends VehicleDetection {
 }
 
 export type CameraAreaOccupancyState =
-  | "empty"
-  | "minority_full"
-  | "majority_full"
-  | "full";
+  "empty" | "minority_full" | "majority_full" | "full";
 
 export interface CameraAreaOccupancy {
   areaId: string;

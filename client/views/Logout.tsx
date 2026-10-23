@@ -1,4 +1,3 @@
-import { useAuth0 } from "@auth0/auth0-react";
 import React, {
   type ReactElement,
   useCallback,
@@ -9,6 +8,7 @@ import React, {
 import { Navigate } from "react-router-dom";
 
 import { Splash } from "~/components/Splash";
+import { useRequiredAuth0 } from "~/lib/auth0";
 import { clearCameraDetectionDebuggerAuthorization } from "~/lib/cameraDetectionDebugger";
 import { disableAutomaticLeaderboardAccount } from "~/lib/leaderboardAutomatic";
 
@@ -16,7 +16,7 @@ type LogoutState = "complete" | "failed" | "running";
 
 // forced local logout route
 export const Logout = (): ReactElement => {
-  const { getAccessTokenSilently, logout, user } = useAuth0();
+  const { getAccessTokenSilently, logout, user } = useRequiredAuth0();
   const [state, setState] = useState<LogoutState>("running");
   const hasStartedRef = useRef(false);
   // track the current cleanup owner across asynchronous auth changes

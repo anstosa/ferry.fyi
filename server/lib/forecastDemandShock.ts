@@ -54,8 +54,7 @@ export interface DemandShockHistoryIndex {
 }
 
 export type DemandShockHistorySource =
-  | DemandShockCrossing[]
-  | DemandShockHistoryIndex;
+  DemandShockCrossing[] | DemandShockHistoryIndex;
 
 export interface DemandShockTarget extends DemandShockDirection {
   departureTime: number;

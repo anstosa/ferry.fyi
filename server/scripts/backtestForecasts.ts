@@ -536,12 +536,10 @@ const loadHolidayMap = async (
     cursor = cursor.plus({ years: 1 });
   }
   const entries = await Promise.all(
-    Array.from(years).map(
-      async (year): Promise<[number, Set<string>]> => [
-        year,
-        await getHolidayDates(year),
-      ]
-    )
+    Array.from(years).map(async (year): Promise<[number, Set<string>]> => [
+      year,
+      await getHolidayDates(year),
+    ])
   );
   return Object.fromEntries(entries) as HolidayDateMap;
 };

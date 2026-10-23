@@ -1,4 +1,4 @@
-import { useAuth0, withAuthenticationRequired } from "@auth0/auth0-react";
+import { withAuthenticationRequired } from "@auth0/auth0-react";
 import { Browser } from "@capacitor/browser";
 import clsx from "clsx";
 import { useAtomValue } from "jotai";
@@ -36,6 +36,7 @@ import {
   getLogoutMode,
   logoutWithAppFlow,
 } from "~/lib/auth";
+import { useRequiredAuth0 } from "~/lib/auth0";
 import { clearCameraDetectionDebuggerAuthorization } from "~/lib/cameraDetectionDebugger";
 import { useDevice } from "~/lib/device";
 import { disableAutomaticLeaderboardAccount } from "~/lib/leaderboardAutomatic";
@@ -312,7 +313,11 @@ export const AccountLoadingState = (): ReactElement => (
 
 export const Account = withAuthenticationRequired(
   (): ReactElement => {
-    const { getAccessTokenSilently, user: authUser, logout } = useAuth0();
+    const {
+      getAccessTokenSilently,
+      user: authUser,
+      logout,
+    } = useRequiredAuth0();
     const [
       { alertRules, isUserLoading, tickets, user: accountUser, userError },
       { deleteAccount, refreshUser },

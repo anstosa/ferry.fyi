@@ -4,8 +4,11 @@ import React, { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+// expose nullable SDK token responses
 const auth = vi.hoisted(() => ({
-  getAccessTokenSilently: vi.fn(() => Promise.resolve("fresh-owner-token")),
+  getAccessTokenSilently: vi.fn<() => Promise<string | undefined>>(() =>
+    Promise.resolve("fresh-owner-token")
+  ),
   isAuthenticated: true,
   isLoading: false,
   loginWithRedirect: vi.fn(() => Promise.resolve()),
@@ -18,6 +21,8 @@ import {
   CAMERA_DETECTION_DEBUGGER_AUTHORIZATION_REFRESHED_KEY,
   CAMERA_DETECTION_DEBUGGER_TOKEN_KEY,
 } from "../../client/lib/cameraDetectionDebugger";
+
+globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 describe("camera detection debugger authorization", () => {
   let root: Root | undefined;
@@ -102,6 +107,23 @@ describe("camera detection debugger authorization", () => {
         redirectPath: "/?authorizeCameraDetectionDebugger=benchmarks",
       },
     });
+  });
+
+  // missing session fallback contract
+  it("starts login instead of stalling when the SDK returns no token", async () => {
+    auth.getAccessTokenSilently.mockResolvedValueOnce(undefined);
+
+    const navigate = await renderAuthorization();
+
+    expect(auth.loginWithRedirect).toHaveBeenCalledWith({
+      appState: {
+        redirectPath: "/?authorizeCameraDetectionDebugger=benchmarks",
+      },
+    });
+    expect(
+      sessionStorage.getItem(CAMERA_DETECTION_DEBUGGER_TOKEN_KEY)
+    ).toBeNull();
+    expect(navigate).not.toHaveBeenCalled();
   });
 
   // transient refresh failure contract

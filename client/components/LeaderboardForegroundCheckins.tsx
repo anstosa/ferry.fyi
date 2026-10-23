@@ -1,4 +1,3 @@
-import { useAuth0 } from "@auth0/auth0-react";
 import React, {
   FunctionComponent,
   useCallback,
@@ -13,6 +12,7 @@ import {
   LeaderboardForegroundCheckinWatcher,
   LeaderboardTerminal,
 } from "~/components/LeaderboardForegroundCheckinWatcher";
+import { useRequiredAuth0 } from "~/lib/auth0";
 import { useFeatureFlags } from "~/lib/featureFlags";
 import type { ForegroundLocation } from "~/lib/geo";
 import {
@@ -53,7 +53,7 @@ const initialEnrollment = (): LeaderboardLocationEnrollmentState => {
  * unsigned-in account, or an opted-out profile.
  */
 export const LeaderboardForegroundCheckins: FunctionComponent = () => {
-  const { getAccessTokenSilently, isAuthenticated } = useAuth0();
+  const { getAccessTokenSilently, isAuthenticated } = useRequiredAuth0();
   // Do not use useTerminals here: it reads the shared useGeo cache and could
   // acquire location before this foreground-only watcher has explicit consent.
   const terminals = useTerminalList();

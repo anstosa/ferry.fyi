@@ -50,9 +50,7 @@ const CANDIDATE_BASE_KEYS = [
 ] as const;
 
 export type AutomaticCheckinCandidateJsonError =
-  | "malformed_payload"
-  | "payload_too_large"
-  | "schema_invalid";
+  "malformed_payload" | "payload_too_large" | "schema_invalid";
 
 export type AutomaticCheckinCandidateJsonResult =
   | { candidate: AutomaticCheckinCandidateV1; ok: true }

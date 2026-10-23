@@ -1,4 +1,3 @@
-import { useAuth0 } from "@auth0/auth0-react";
 import { DateTime } from "luxon";
 import React, {
   ReactElement,
@@ -42,6 +41,7 @@ import { ToggleSwitch } from "~/components/ToggleSwitch";
 import { confirmationPhrase } from "~/lib/adminConfirmation";
 import { getAdAdminSelection } from "~/lib/ads";
 import { del, get, post, put } from "~/lib/api";
+import { useRequiredAuth0 } from "~/lib/auth0";
 import { getTerminals } from "~/lib/terminals";
 
 const ADMIN_EMAIL = "anstosa@gmail.com";
@@ -735,7 +735,7 @@ const TicketLookupAdminSection = ({
 
 export const Admin = (): ReactElement => {
   const { getAccessTokenSilently, isAuthenticated, isLoading, user } =
-    useAuth0();
+    useRequiredAuth0();
   const location = useLocation();
   const navigate = useNavigate();
   const adminSearch = location.search;

@@ -79,8 +79,13 @@ describe("Logout", () => {
       "identity_lost",
       "auth0|rider",
       expect.any(Function),
-      auth.getAccessTokenSilently
+      expect.any(Function)
     );
+    // exercise the guarded token provider passed to session cleanup
+    const getToken = automatic.disableAutomaticLeaderboardAccount.mock
+      .calls[0][3] as () => Promise<string>;
+    await expect(getToken()).resolves.toBe("access-token");
+    expect(auth.getAccessTokenSilently).toHaveBeenCalledOnce();
     expect(auth.logout).toHaveBeenCalledWith({ openUrl: false });
     expect(
       sessionStorage.getItem(CAMERA_DETECTION_DEBUGGER_TOKEN_KEY)

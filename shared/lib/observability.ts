@@ -5,12 +5,7 @@ export type SourceAgeResult =
   | { ageMs: null; outcome: "future" | "invalid" | "unavailable" };
 
 export type OperationLagOutcome =
-  | "failed"
-  | "never-run"
-  | "overdue"
-  | "running"
-  | "stale"
-  | "succeeded";
+  "failed" | "never-run" | "overdue" | "running" | "stale" | "succeeded";
 
 export interface OperationLagInput {
   cadenceMs: number;

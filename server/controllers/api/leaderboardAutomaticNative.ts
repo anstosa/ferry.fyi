@@ -52,9 +52,7 @@ const SHA256_HEX_PATTERN = /^[a-f0-9]{64}$/u;
 const BEARER_PATTERN = /^Bearer ([A-Za-z0-9_-]{43})$/u;
 
 type AutomaticNativeAuthenticationOutcome =
-  | "authentication_failed"
-  | "enrollment_expired"
-  | "enrollment_revoked";
+  "authentication_failed" | "enrollment_expired" | "enrollment_revoked";
 
 type AutomaticNativeErrorCode =
   | AutomaticCheckinOutcome

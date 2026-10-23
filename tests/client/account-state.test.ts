@@ -247,8 +247,13 @@ describe("Account state predicates", () => {
       "identity_lost",
       "google-oauth2|rider",
       expect.any(Function),
-      auth.getAccessTokenSilently
+      expect.any(Function)
     );
+    // exercise the guarded token provider passed to account cleanup
+    const getToken = automatic.disableAutomaticLeaderboardAccount.mock
+      .calls[0][3] as () => Promise<string>;
+    await expect(getToken()).resolves.toBe("access-token");
+    expect(auth.getAccessTokenSilently).toHaveBeenCalledOnce();
     expect(auth.logout).toHaveBeenCalledOnce();
   });
 
@@ -274,8 +279,7 @@ describe("Account state predicates", () => {
 
     expect(auth.logout).toHaveBeenCalledWith({
       logoutParams: {
-        returnTo:
-          "fyi.ferry://auth.ferry.fyi/capacitor/fyi.ferry/callback",
+        returnTo: "fyi.ferry://auth.ferry.fyi/capacitor/fyi.ferry/callback",
       },
       openUrl: expect.any(Function),
     });
@@ -319,8 +323,13 @@ describe("Account state predicates", () => {
       "account_deleted",
       "auth0|rider",
       expect.any(Function),
-      auth.getAccessTokenSilently
+      expect.any(Function)
     );
+    // preserve token acquisition before permanent account cleanup
+    const getToken = automatic.disableAutomaticLeaderboardAccount.mock
+      .calls[0][3] as () => Promise<string>;
+    await expect(getToken()).resolves.toBe("access-token");
+    expect(auth.getAccessTokenSilently).toHaveBeenCalledOnce();
     expect(auth.logout).toHaveBeenCalledWith({ openUrl: false });
     expect(
       container.querySelector('[data-testid="location"]')?.textContent

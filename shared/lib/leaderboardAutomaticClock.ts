@@ -17,9 +17,7 @@ export interface AutomaticTrustedClockSampleV1 {
 }
 
 export type AutomaticCandidateServerTimeDecisionV1 =
-  | "admitted"
-  | "expired"
-  | "future_timestamp";
+  "admitted" | "expired" | "future_timestamp";
 
 export interface AutomaticQueueCapacityResultV1 {
   dropped: AutomaticCheckinCandidateV1[];

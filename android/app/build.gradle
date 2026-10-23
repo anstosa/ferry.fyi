@@ -152,13 +152,11 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     // compile the reviewed but default-off n1 runtime
-    implementation "androidx.work:work-runtime:2.10.1"
+    implementation "androidx.work:work-runtime:2.12.0"
     // observe durable workmanager enqueue acceptance
-    implementation "com.google.guava:guava:33.6.0-android"
+    implementation "com.google.guava:guava:33.7.2-android"
     // reuse one bounded geofence and one-shot location sdk
-    implementation "com.google.android.gms:play-services-location:21.3.0"
-    // reuse the location sdk already selected by the capacitor geolocation plugin
-    v0DiagnosticImplementation "com.google.android.gms:play-services-location:21.3.0"
+    implementation "com.google.android.gms:play-services-location:$playServicesLocationVersion"
     implementation project(':capacitor-cordova-android-plugins')
 }
 

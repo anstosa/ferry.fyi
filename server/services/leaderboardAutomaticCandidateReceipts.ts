@@ -45,9 +45,7 @@ const RETRYABLE_OUTCOMES = new Set<AutomaticCheckinOutcome>([
 
 /** fixed pre-transaction failures */
 export type LeaderboardAutomaticCandidateReceiptErrorCode =
-  | "invalid_candidate"
-  | "invalid_pepper"
-  | "invalid_policy";
+  "invalid_candidate" | "invalid_pepper" | "invalid_policy";
 
 /** detail-free candidate receipt failure */
 export class LeaderboardAutomaticCandidateReceiptError extends Error {

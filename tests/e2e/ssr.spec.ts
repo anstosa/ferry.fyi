@@ -249,15 +249,45 @@ test("keeps initial SSR content visible without an entrance animation", async ({
 test("replays an early in-root button click exactly once after startup", async ({
   page,
 }) => {
+  // derive Vite's namespace projection rather than hardcoding a minified export
+  const manifest = JSON.parse(
+    fs.readFileSync(
+      path.resolve(process.cwd(), "dist/client/.vite/manifest.json"),
+      "utf8"
+    )
+  ) as { "index.html": { file: string } };
+  const bootstrap = fs.readFileSync(
+    path.resolve(process.cwd(), "dist/client", manifest["index.html"].file),
+    "utf8"
+  );
+  const namespaceExport = bootstrap.match(
+    /import\(["']\.\/entry-client\.[^"']+["']\)\.then\(\s*([\w$]+)\s*=>\s*\1\.([\w$]+)\s*\)/
+  )?.[2];
+  const fixtureModule = [
+    "export const clientReady = new Promise((resolve) => { window.__resolveFixtureClientReady = resolve; });",
+    // preserve both direct imports and the generated namespace facade
+    namespaceExport ? `export const ${namespaceExport} = { clientReady };` : "",
+  ].join("\n");
   await page.route(/\/assets\/entry-client\.[^/]+\.js$/, async (route) => {
     await route.fulfill({
-      body: "export const clientReady = new Promise((resolve) => setTimeout(resolve, 50));",
+      body: fixtureModule,
       contentType: "text/javascript",
     });
   });
   await page.goto("https://ferry.fyi:4177/", {
     waitUntil: "load",
   });
+  // keep startup blocked until both early interaction events are captured
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          typeof (
+            window as Window & { __resolveFixtureClientReady?: () => void }
+          ).__resolveFixtureClientReady
+      )
+    )
+    .toBe("function");
   await page.evaluate(() => {
     const button = document.createElement("button");
     button.id = "early-action-probe";
@@ -273,6 +303,19 @@ test("replays an early in-root button click exactly once after startup", async (
   const probe = page.locator("#early-action-probe");
   await probe.dispatchEvent("pointerdown");
   await probe.dispatchEvent("click");
+  // prove the click is queued rather than handled before startup
+  expect(
+    await page.evaluate(
+      () =>
+        (window as Window & { earlyActionCount?: number }).earlyActionCount ?? 0
+    )
+  ).toBe(0);
+  // release the fixture only after the early click is queued
+  await page.evaluate(() => {
+    (
+      window as Window & { __resolveFixtureClientReady: () => void }
+    ).__resolveFixtureClientReady();
+  });
   await expect
     .poll(() =>
       page.evaluate(

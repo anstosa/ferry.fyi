@@ -40,9 +40,9 @@ adminLeaderboardsRouter.get("/subjects/:subject", async (request, response) => {
   );
 });
 
-adminLeaderboardsRouter.delete(
+adminLeaderboardsRouter.delete<{ id: string }>(
   "/checkins/:id",
-  requireTypedConfirmation({
+  requireTypedConfirmation<{ id: string }>({
     action: "delete-checkin",
     getTarget: (request) => `checkin:${request.params.id}`,
   }),
@@ -53,9 +53,9 @@ adminLeaderboardsRouter.delete(
   }
 );
 
-adminLeaderboardsRouter.post(
+adminLeaderboardsRouter.post<{ subject: string }>(
   "/subjects/:subject/hide",
-  requireTypedConfirmation({
+  requireTypedConfirmation<{ subject: string }>({
     action: "hide-leaderboard-profile",
     getTarget: (request) =>
       validSubject(request.params.subject)
@@ -71,9 +71,9 @@ adminLeaderboardsRouter.post(
   }
 );
 
-adminLeaderboardsRouter.post(
+adminLeaderboardsRouter.post<{ subject: string }>(
   "/subjects/:subject/opt-out",
-  requireTypedConfirmation({
+  requireTypedConfirmation<{ subject: string }>({
     action: "opt-out-user",
     getTarget: (request) =>
       validSubject(request.params.subject)
@@ -89,9 +89,9 @@ adminLeaderboardsRouter.post(
   }
 );
 
-adminLeaderboardsRouter.post(
+adminLeaderboardsRouter.post<{ subject: string }>(
   "/subjects/:subject/reset",
-  requireTypedConfirmation({
+  requireTypedConfirmation<{ subject: string }>({
     action: "reset-leaderboard-profile",
     getTarget: (request) =>
       validSubject(request.params.subject)

@@ -52,10 +52,7 @@ export type LeaderboardVesselSnapshotIngestOutcome =
 
 /** fixed aggregate batch status */
 export type LeaderboardVesselSnapshotBatchOutcome =
-  | "complete"
-  | "degraded"
-  | "migration_missing"
-  | "skipped";
+  "complete" | "degraded" | "migration_missing" | "skipped";
 
 /** retained S1 row without private location history */
 export interface LeaderboardVesselSnapshotRow {

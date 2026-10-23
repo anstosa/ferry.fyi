@@ -71,8 +71,7 @@ interface ValidatedContext {
 }
 
 type AttemptResult<T> =
-  | { generationChanged: true }
-  | { result: T; generationChanged: false };
+  { generationChanged: true } | { result: T; generationChanged: false };
 
 const unavailable = (
   request: FareTripRequest,

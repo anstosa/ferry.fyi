@@ -11,8 +11,13 @@ const schedulePaths = [
   "/:departingId/:arrivingId",
   "/:departingId/:arrivingId/:date",
 ];
+type ScheduleParams = {
+  arrivingId: string;
+  date?: string;
+  departingId: string;
+};
 
-scheduleRouter.get(schedulePaths, async (request, response) => {
+scheduleRouter.get<ScheduleParams>(schedulePaths, async (request, response) => {
   const { departingId, arrivingId, date: dateInput } = request.params;
   const date = dateInput || toWsfDate();
   const result = await getPublicSchedule({ arrivingId, date, departingId });
@@ -30,7 +35,7 @@ scheduleRouter.get(schedulePaths, async (request, response) => {
 
 // Read-only manual refresh: it returns the cached schedule and deliberately
 // never starts schedule, estimate, forecast, or WSF recalculation work.
-scheduleRouter.post(schedulePaths, (request, response) => {
+scheduleRouter.post<ScheduleParams>(schedulePaths, (request, response) => {
   const { departingId, arrivingId, date: dateInput } = request.params;
   const date = dateInput || toWsfDate();
   const result = getCachedPublicSchedule({ arrivingId, date, departingId });

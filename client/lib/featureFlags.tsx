@@ -1,4 +1,3 @@
-import { useAuth0 } from "@auth0/auth0-react";
 import React, {
   FunctionComponent,
   PropsWithChildren,
@@ -8,6 +7,7 @@ import React, {
 } from "react";
 
 import { get } from "~/lib/api";
+import { useRequiredAuth0 } from "~/lib/auth0";
 import {
   disabledFlags,
   FeatureFlagContext,
@@ -47,7 +47,7 @@ function parseFlags(value: unknown, authenticated: boolean): FeatureFlags {
 export const FeatureFlagProvider: FunctionComponent<PropsWithChildren> = ({
   children,
 }) => {
-  const { getAccessTokenSilently, isAuthenticated, user } = useAuth0();
+  const { getAccessTokenSilently, isAuthenticated, user } = useRequiredAuth0();
   const seeded = usePublicSsrSource("features");
   const currentSubject = isAuthenticated ? (user?.sub ?? null) : null;
   // initialize one subject-bound flag snapshot

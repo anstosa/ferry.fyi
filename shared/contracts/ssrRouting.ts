@@ -1,10 +1,6 @@
 /** Route policy types intentionally contain no runtime or library dependencies. */
 export type PublicSsrRouteKind =
-  | "static"
-  | "dynamic"
-  | "private"
-  | "redirect"
-  | "not-found";
+  "static" | "dynamic" | "private" | "redirect" | "not-found";
 export type PublicSsrRouteId =
   | "home"
   | "today"
@@ -76,9 +72,7 @@ export type PublicSsrSourceKey =
   | "leaderboardIndex"
   | "leaderboard";
 export type PublicSsrIndexabilityPolicy =
-  | "seo"
-  | "seo-and-public-leaderboards"
-  | "noindex";
+  "seo" | "seo-and-public-leaderboards" | "noindex";
 export type PublicSsrLoader =
   | "none"
   | "editorial"
@@ -89,11 +83,7 @@ export type PublicSsrLoader =
   | "route";
 export type PublicSsrPlaceholder = "none" | "anonymous" | "client-only";
 export type PublicSsrRefresh =
-  | "none"
-  | "public-content"
-  | "schedule"
-  | "route"
-  | "leaderboards";
+  "none" | "public-content" | "schedule" | "route" | "leaderboards";
 export type PublicSsrView =
   | "schedule"
   | "cameras"

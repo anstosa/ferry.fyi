@@ -119,9 +119,7 @@ export interface AuthenticatedAutomaticEnrollmentConfigPolicy {
 
 // name one authentication terminal failure
 export type AutomaticEnrollmentAuthenticationFailure =
-  | "authentication_failed"
-  | "enrollment_expired"
-  | "enrollment_revoked";
+  "authentication_failed" | "enrollment_expired" | "enrollment_revoked";
 
 // model one fixed authentication result
 export type AutomaticEnrollmentAuthenticationResult =

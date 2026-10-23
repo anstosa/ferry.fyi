@@ -22,8 +22,12 @@ An alternative to the WSDOT mobile app. With Ferry FYI, you get:
 
 ## Prerequisites
 
+- Node.js 24.15 or later on the Node 24 release line and Yarn classic
 - [Docker](https://docs.docker.com/get-docker/)
 - [Git LFS](https://git-lfs.com/)
+
+See [Dependency maintenance](docs/dependency-maintenance.md) for supported release
+lines, transitive override rationale, and retirement conditions.
 
 ## Setting up dev environment
 

@@ -39,9 +39,9 @@ adminContentRouter.post(
   }
 );
 
-adminContentRouter.put(
+adminContentRouter.put<{ id: string }>(
   "/announcements/:id",
-  requireTypedConfirmation({
+  requireTypedConfirmation<{ id: string }>({
     action: "publish-announcement",
     getTarget: (request) =>
       isUuid(request.params.id)

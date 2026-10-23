@@ -390,9 +390,7 @@ export const findAuth0UserByExactEmail = async (
 };
 
 export type Auth0VerificationEmailResult =
-  | "already-verified"
-  | "sent"
-  | "user-not-found";
+  "already-verified" | "sent" | "user-not-found";
 
 /** Requests verification for the matching database identity only. */
 export const sendAuth0VerificationEmailForProvider = async ({

@@ -28,10 +28,7 @@ const TERMINAL_DISTANCE_MILES = 0.35;
 const EARTH_RADIUS_MILES = 3958.8;
 
 export type SailingLifecycleEventType =
-  | "arrived"
-  | "departed"
-  | "prepare-board"
-  | "prepare-disembark";
+  "arrived" | "departed" | "prepare-board" | "prepare-disembark";
 
 export interface SailingLifecycleNotificationEvent {
   arrivalTime: number | null;

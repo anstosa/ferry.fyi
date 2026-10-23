@@ -1,4 +1,3 @@
-import { useAuth0 } from "@auth0/auth0-react";
 import { Share } from "@capacitor/share";
 import clsx from "clsx";
 import React, {
@@ -38,6 +37,7 @@ import { SupporterUpgradeNudge } from "~/components/SupporterUpgradeNudge";
 import { trackUsefulEvent } from "~/lib/analytics";
 import { ApiError } from "~/lib/api";
 import { loginWithAppFlow } from "~/lib/auth";
+import { useRequiredAuth0 } from "~/lib/auth0";
 import { useFavoriteRoutes } from "~/lib/favoriteRoutes";
 import { useFeatureFlags } from "~/lib/featureFlags";
 import { disableAutomaticLeaderboardAccount } from "~/lib/leaderboardAutomatic";
@@ -343,7 +343,7 @@ const Preferences = (): ReactElement => {
     loginWithPopup,
     loginWithRedirect,
     user,
-  } = useAuth0();
+  } = useRequiredAuth0();
   // read authoritative supporter state for upgrade visibility
   const [{ user: accountUser }] = useUser();
   const supporter = useSupporter();
@@ -888,7 +888,7 @@ const VesselLeaderboard = (): ReactElement => {
 };
 
 const LeaderboardControls = (): ReactElement | null => {
-  const { getAccessTokenSilently, isAuthenticated } = useAuth0();
+  const { getAccessTokenSilently, isAuthenticated } = useRequiredAuth0();
   const [enabled, setEnabled] = useState(true);
   const [isSaving, setSaving] = useState(false);
   useEffect(() => {

@@ -34,10 +34,7 @@ interface ButtonMenuItem extends BaseMenuItem {
 }
 
 export type MenuItem =
-  | InternalLinkMenuItem
-  | ExternalLinkMenuItem
-  | ButtonMenuItem
-  | Spacer;
+  InternalLinkMenuItem | ExternalLinkMenuItem | ButtonMenuItem | Spacer;
 
 export const MenuItem = ({ item }: Props): ReactElement | null => {
   if ("isSpacer" in item) {

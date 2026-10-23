@@ -15,10 +15,7 @@ export type SupporterLifecycleState =
   | "unknown-inactive";
 export type SupporterPlanInterval = "month" | "unknown" | "year";
 export type SupporterStore =
-  | "app_store"
-  | "play_store"
-  | "rc_billing"
-  | "unknown";
+  "app_store" | "play_store" | "rc_billing" | "unknown";
 
 export interface SupporterSummary {
   active: boolean;

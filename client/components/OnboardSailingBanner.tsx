@@ -65,10 +65,7 @@ interface SailingNotificationContent {
 }
 
 type SailingNotificationType =
-  | "arrived"
-  | "departed"
-  | "prepare-board"
-  | "prepare-disembark";
+  "arrived" | "departed" | "prepare-board" | "prepare-disembark";
 
 type VisibleSailing = OnboardSailingMatch & {
   isArrived?: boolean;

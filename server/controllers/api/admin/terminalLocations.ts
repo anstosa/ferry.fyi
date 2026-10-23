@@ -19,9 +19,9 @@ adminTerminalLocationsRouter.get("/", async (_request, response) => {
   }
 });
 
-adminTerminalLocationsRouter.put(
+adminTerminalLocationsRouter.put<{ terminalId: string }>(
   "/:terminalId",
-  requireTypedConfirmation({
+  requireTypedConfirmation<{ terminalId: string }>({
     action: "save-terminal-locations",
     // bind confirmation to the route rather than caller metadata
     getTarget: (request) =>

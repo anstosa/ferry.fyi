@@ -55,9 +55,9 @@ adminUsersRouter.get("/lookup", async (request, response) => {
   }
 });
 
-adminUsersRouter.delete(
+adminUsersRouter.delete<{ subject: string }>(
   "/:subject",
-  requireTypedConfirmation({
+  requireTypedConfirmation<{ subject: string }>({
     action: "delete-user-data",
     getTarget: (request) => `user:${request.params.subject}`,
   }),
@@ -70,9 +70,9 @@ adminUsersRouter.delete(
   }
 );
 
-adminUsersRouter.post(
+adminUsersRouter.post<{ subject: string }>(
   "/:subject/force-sign-out",
-  requireTypedConfirmation({
+  requireTypedConfirmation<{ subject: string }>({
     action: "force-sign-out",
     getTarget: (request) => `user:${request.params.subject}`,
   }),

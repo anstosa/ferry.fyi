@@ -1,4 +1,3 @@
-import { useAuth0 } from "@auth0/auth0-react";
 import React, {
   type FormEvent,
   type ReactElement,
@@ -17,6 +16,7 @@ import { getSeoMetadata } from "shared/lib/seo";
 import { AuthPageShell } from "~/components/AuthPageShell";
 import { SeoHelmet } from "~/components/SeoHelmet";
 import { ApiError, get, post } from "~/lib/api";
+import { useRequiredAuth0 } from "~/lib/auth0";
 import {
   createAuth0DatabaseAccount,
   openWebIosMigration,
@@ -52,7 +52,7 @@ export const IosMigration = (): ReactElement => {
     isAuthenticated,
     isLoading,
     loginWithRedirect,
-  } = useAuth0();
+  } = useRequiredAuth0();
   const { platform } = useAppRenderContext();
   const [status, setStatus] = useState<IosMigrationStatus>();
   const [step, setStep] = useState<MigrationStep>("password");

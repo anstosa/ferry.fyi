@@ -134,9 +134,7 @@ export interface FareUnavailableResponse {
 }
 
 export type FareCatalogApiResponse =
-  | FareCurrentCatalogResponse
-  | FareNoFareResponse
-  | FareUnavailableResponse;
+  FareCurrentCatalogResponse | FareNoFareResponse | FareUnavailableResponse;
 
 export type FareQuoteApiResponse =
   | FareCurrentQuoteResponse
@@ -166,8 +164,7 @@ export interface WsdotFareTotalResponse {
 }
 
 export type FareSourceValidation<T> =
-  | { errors: string[]; ok: false }
-  | { ok: true; value: T };
+  { errors: string[]; ok: false } | { ok: true; value: T };
 
 export interface WsdotFareEndpointCapability {
   pathTemplate: string;

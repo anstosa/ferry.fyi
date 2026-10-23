@@ -44,8 +44,7 @@ type DelayNotificationRecoveryEvent = RouteDelayState & {
 };
 
 export type DelayNotificationEvent =
-  | DelayNotificationBehindEvent
-  | DelayNotificationRecoveryEvent;
+  DelayNotificationBehindEvent | DelayNotificationRecoveryEvent;
 
 interface DelayNotificationContent {
   body: string;

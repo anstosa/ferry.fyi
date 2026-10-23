@@ -100,6 +100,18 @@ afterEach(() => {
 });
 
 describe("UserProvider auth recovery", () => {
+  // reject an absent token before making an authenticated profile request
+  it("reauthenticates instead of fetching a profile without an access token", async () => {
+    auth.getAccessTokenSilently.mockResolvedValueOnce(undefined);
+
+    await renderProvider();
+
+    await vi.waitFor(() =>
+      expect(auth.loginWithRedirect).toHaveBeenCalledOnce()
+    );
+    expect(api.get).not.toHaveBeenCalled();
+  });
+
   // refresh one rejected cached token
   it("retries an API 401 with a token fetched outside the Auth0 cache", async () => {
     const consoleError = vi
@@ -170,8 +182,7 @@ describe("UserProvider auth recovery", () => {
       authorizationParams: {
         audience: "https://ferry.fyi/api",
         prompt: "login",
-        redirect_uri:
-          "fyi.ferry://auth.ferry.fyi/capacitor/fyi.ferry/callback",
+        redirect_uri: "fyi.ferry://auth.ferry.fyi/capacitor/fyi.ferry/callback",
         scope: "openid profile email read:current_user offline_access",
       },
       openUrl: expect.any(Function),

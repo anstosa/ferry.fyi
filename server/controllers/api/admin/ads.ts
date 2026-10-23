@@ -69,9 +69,9 @@ adminAdsRouter.post(
   }
 );
 
-adminAdsRouter.post(
+adminAdsRouter.post<{ id: string }>(
   "/campaigns/:id/end",
-  requireTypedConfirmation({
+  requireTypedConfirmation<{ id: string }>({
     action: "end-ad-campaign",
     getTarget: (request) =>
       safeIdPattern.test(request.params.id)
@@ -127,9 +127,9 @@ adminAdsRouter.get("/campaigns/:id/shares", async (request, response) => {
   response.send(await listAdReportShares(request.params.id));
 });
 
-adminAdsRouter.post(
+adminAdsRouter.post<{ id: string }>(
   "/campaigns/:id/shares",
-  requireTypedConfirmation({
+  requireTypedConfirmation<{ id: string }>({
     action: "create-ad-report-share",
     getTarget: (request) =>
       safeIdPattern.test(request.params.id)
@@ -148,9 +148,9 @@ adminAdsRouter.post(
   }
 );
 
-adminAdsRouter.post(
+adminAdsRouter.post<{ id: string }>(
   "/shares/:id/revoke",
-  requireTypedConfirmation({
+  requireTypedConfirmation<{ id: string }>({
     action: "revoke-ad-report-share",
     getTarget: (request) =>
       safeIdPattern.test(request.params.id)
@@ -169,9 +169,9 @@ adminAdsRouter.post(
   }
 );
 
-adminAdsRouter.put(
+adminAdsRouter.put<{ key: string }>(
   "/placements/:key",
-  requireTypedConfirmation({
+  requireTypedConfirmation<{ key: string }>({
     action: "save-ad-settings",
     // bind confirmation only to canonical placements
     getTarget: (request) =>

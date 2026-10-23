@@ -52,9 +52,7 @@ export const PUBLIC_SSR_FORBIDDEN_KEYS = [
   "updatedAt",
 ] as const;
 export type PublicSsrUnavailableReason =
-  | "not-published"
-  | "not-supported"
-  | "source-unavailable";
+  "not-published" | "not-supported" | "source-unavailable";
 export type PublicSsrTransientUnavailableReason = "refreshing" | "warming";
 export type PublicSsrLoaderOnlyOutcome = "not-applicable" | "transient-failure";
 /** A terminal reference used for mates; intentionally does not recurse. */
@@ -211,10 +209,9 @@ export interface PublicSsrEmptyPayloadMap {
   vessels: readonly PublicSsrVessel[];
 }
 export const PUBLIC_SSR_EMPTY_DATA: PublicSsrEmptyPayloadMap & {
-  readonly [K in Exclude<
-    PublicSsrSourceKey,
-    keyof PublicSsrEmptyPayloadMap
-  >]?: undefined;
+  readonly [
+    K in Exclude<PublicSsrSourceKey, keyof PublicSsrEmptyPayloadMap>
+  ]?: undefined;
 } = {
   terminals: [],
   notices: { announcements: [], maintenance: { enabled: false, message: "" } },

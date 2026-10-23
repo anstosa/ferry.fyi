@@ -16,10 +16,7 @@ export type LeaderboardAutomaticNativeScope = AutomaticCheckinNativeScope;
 
 // name one persisted detector health state
 export type LeaderboardAutomaticEnrollmentHealth =
-  | "degraded"
-  | "disabled"
-  | "healthy"
-  | "pending";
+  "degraded" | "disabled" | "healthy" | "pending";
 
 /** device-minimal automatic enrollment identity */
 export class LeaderboardAutomaticEnrollment extends Model {

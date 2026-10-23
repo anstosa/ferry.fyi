@@ -1,4 +1,3 @@
-import { useAuth0 } from "@auth0/auth0-react";
 import { Capacitor } from "@capacitor/core";
 import React, {
   type FunctionComponent,
@@ -12,6 +11,7 @@ import type { CurrentUser } from "shared/contracts/user";
 
 import { ApiError, del, get, post } from "~/lib/api";
 import { getConfiguredAuth0RedirectUri, loginWithAppFlow } from "~/lib/auth";
+import { useRequiredAuth0 } from "~/lib/auth0";
 import {
   type AccessTokenOptions as GetAccessTokenOptions,
   type UserActions as Actions,
@@ -125,7 +125,7 @@ const _useUser = (): Response => {
     loginWithRedirect,
     isAuthenticated,
     isLoading: isAuthLoading,
-  } = useAuth0();
+  } = useRequiredAuth0();
   const [accessToken, setAccessToken] = useState<string>("");
   const isInteractiveAuthLaunchingRef = useRef<boolean>(false);
   // capture the native callback platform synchronously

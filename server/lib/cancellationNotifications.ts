@@ -11,16 +11,10 @@ import { Schedule } from "~/models/Schedule";
 import { Terminal } from "~/models/Terminal";
 
 type CancellationState =
-  | "cancelled-non-tidal"
-  | "cancelled-tidal"
-  | "clear"
-  | "tidal-risk";
+  "cancelled-non-tidal" | "cancelled-tidal" | "clear" | "tidal-risk";
 
 type CancellationEventType =
-  | "cancelled-non-tidal"
-  | "cancelled-tidal"
-  | "risk-cleared"
-  | "tidal-risk";
+  "cancelled-non-tidal" | "cancelled-tidal" | "risk-cleared" | "tidal-risk";
 
 interface CancellationCandidate {
   isCurrentServiceDay: boolean;

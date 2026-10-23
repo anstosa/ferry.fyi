@@ -32,7 +32,6 @@ const clientDirectory = path.join(repoRoot, "client");
 
 /** Starts one Express/Vite development process for API, HTML, and assets. */
 const startDevelopmentServer = async (): Promise<void> => {
-  // @ts-expect-error Vite 8 is ESM-only while this server still compiles as CJS.
   const { createServer: createViteServer } = await import("vite");
   const vite = await createViteServer({
     appType: "custom",

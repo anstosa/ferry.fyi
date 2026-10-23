@@ -5,10 +5,7 @@ import type {
 
 export type FareTravelMode = "bicycle" | "vehicle" | "walk-on";
 export type FareVehicleType =
-  | "motorcycle"
-  | "short"
-  | "standard"
-  | "tall-or-long";
+  "motorcycle" | "short" | "standard" | "tall-or-long";
 
 export interface FareWizardConfig {
   adultPassengers: number;

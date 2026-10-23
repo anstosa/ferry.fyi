@@ -1,4 +1,3 @@
-import { useAuth0 } from "@auth0/auth0-react";
 import React, {
   type ReactElement,
   useCallback,
@@ -12,6 +11,7 @@ import type {
   LeaderboardPreferences,
 } from "shared/contracts/leaderboards";
 
+import { useRequiredAuth0 } from "~/lib/auth0";
 import { isNativeMobileApp } from "~/lib/device";
 import { useFeatureFlags } from "~/lib/featureFlags";
 import {
@@ -116,7 +116,7 @@ export const LeaderboardAutomaticEnrollment = ({
   onPreferencesChange,
   preferences,
 }: Props): ReactElement | null => {
-  const { getAccessTokenSilently, isAuthenticated, user } = useAuth0();
+  const { getAccessTokenSilently, isAuthenticated, user } = useRequiredAuth0();
   const { automaticLeaderboardCheckinsEnabled, leaderboardsEnabled } =
     useFeatureFlags();
   // require both rollout decisions for new enrollment work

@@ -5,9 +5,7 @@ import { db } from "~/lib/db";
 
 // name one persisted receipt state
 export type LeaderboardAutomaticCandidateReceiptState =
-  | "final_credited"
-  | "final_rejected"
-  | "retryable";
+  "final_credited" | "final_rejected" | "retryable";
 
 /** privacy-minimal payload-bound idempotency receipt */
 export class LeaderboardAutomaticCandidateReceipt extends Model {

@@ -1,7 +1,7 @@
-import { useAuth0 } from "@auth0/auth0-react";
 import React, { ReactElement, useCallback, useEffect, useState } from "react";
 
 import { loginWithAppFlow } from "~/lib/auth";
+import { useRequiredAuth0 } from "~/lib/auth0";
 import { requestForegroundLocation } from "~/lib/geo";
 import { listenForAutomaticLeaderboardChanges } from "~/lib/leaderboardAutomatic";
 import { vesselSailingId } from "~/lib/leaderboardForeground";
@@ -63,7 +63,7 @@ export const LeaderboardManualCheckIn = ({
     isAuthenticated,
     loginWithPopup,
     loginWithRedirect,
-  } = useAuth0();
+  } = useRequiredAuth0();
   const [checkedIn, setCheckedIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isChecking, setChecking] = useState(false);

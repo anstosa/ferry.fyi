@@ -22,11 +22,7 @@ type OtaUpdater = Pick<
 >;
 
 export type OtaUpdateResult =
-  | "disabled"
-  | "failed"
-  | "native-unavailable"
-  | "queued"
-  | "up-to-date";
+  "disabled" | "failed" | "native-unavailable" | "queued" | "up-to-date";
 
 export type OtaUpdateState =
   | { status: "idle" }

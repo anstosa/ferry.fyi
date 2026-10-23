@@ -693,16 +693,14 @@ const loadRuntimeProjection = async (
         (!subscription.currentPeriodEndsAt ||
           subscription.currentPeriodEndsAt > now)
     )
-    .map(
-      (subscription): SupporterSource => ({
-        activeUntil: subscription.currentPeriodEndsAt?.toISOString() ?? null,
-        lifecycleState: subscription.lifecycleState,
-        planInterval: subscription.planInterval,
-        productIdentifier: subscription.productIdentifier,
-        store: subscription.store,
-        willRenew: subscription.willRenew,
-      })
-    );
+    .map((subscription): SupporterSource => ({
+      activeUntil: subscription.currentPeriodEndsAt?.toISOString() ?? null,
+      lifecycleState: subscription.lifecycleState,
+      planInterval: subscription.planInterval,
+      productIdentifier: subscription.productIdentifier,
+      store: subscription.store,
+      willRenew: subscription.willRenew,
+    }));
   const activeUntilValues = activeEntitlements
     .map((entitlement) => entitlement.activeUntil)
     .filter((value): value is Date => Boolean(value));

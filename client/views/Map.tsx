@@ -251,9 +251,9 @@ const layoutMapMarkerLabels = (map: Mapbox): void => {
   // reserve painted icons, docked badges, and movement trails
   markers.forEach((marker) => {
     marker
-      .querySelectorAll<
-        SVGPathElement | HTMLElement
-      >("[data-map-marker-icon] svg path, .vessel-marker-anchor, .vessel-marker-wind-streak")
+      .querySelectorAll<SVGPathElement | HTMLElement>(
+        "[data-map-marker-icon] svg path, .vessel-marker-anchor, .vessel-marker-wind-streak"
+      )
       .forEach((icon) => {
         const rect = icon.getBoundingClientRect();
         // skip hidden or unmeasured geometry

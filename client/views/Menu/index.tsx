@@ -1,4 +1,3 @@
-import { useAuth0 } from "@auth0/auth0-react";
 import { Browser } from "@capacitor/browser";
 import { Share } from "@capacitor/share";
 import clsx from "clsx";
@@ -18,6 +17,7 @@ import {
   requestInstallPrompt,
 } from "~/lib/appInstall";
 import { getConfiguredAuth0RedirectUri, loginWithAppFlow } from "~/lib/auth";
+import { useRequiredAuth0 } from "~/lib/auth0";
 import { openCameraDetectionDebugger } from "~/lib/cameraDetectionDebugger";
 import { isInstalledApp, useDevice } from "~/lib/device";
 import { useFeatureFlags } from "~/lib/featureFlags";
@@ -58,7 +58,7 @@ interface Props {
 
 // menu avatar
 const Avatar = ({ className }: SVGAttributes<SVGElement>) => {
-  const { user } = useAuth0();
+  const { user } = useRequiredAuth0();
   const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null);
 
   // image failure fallback
@@ -103,7 +103,7 @@ export const Menu = ({
     loginWithPopup,
     loginWithRedirect,
     user,
-  } = useAuth0();
+  } = useRequiredAuth0();
   const { leaderboardsEnabled } = useFeatureFlags();
   const [canShare, setShare] = useState<boolean>(false);
   const isOwner = user?.email === "anstosa@gmail.com";

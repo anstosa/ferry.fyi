@@ -9,10 +9,7 @@ export const NOTIFICATION_STATUS_TTL_MS = 5 * 60 * 1000;
 
 export type NotificationChannel = "push";
 export type NotificationRequestResult =
-  | "accepted"
-  | "failed"
-  | "paused"
-  | "unavailable";
+  "accepted" | "failed" | "paused" | "unavailable";
 
 type NotificationChannelDashboard = {
   inFlight: number;

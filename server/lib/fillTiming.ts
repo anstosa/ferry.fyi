@@ -16,10 +16,7 @@ export const RATE_CAP_MINIMUM = 1;
 export const RATE_CAP_MAXIMUM_FRACTION = 0.2;
 
 export type CapacityReportingState =
-  | "active"
-  | "inactive-all-open"
-  | "hidden"
-  | "unknown";
+  "active" | "inactive-all-open" | "hidden" | "unknown";
 
 export interface FillTimingObservation {
   allocationGroupId?: string | null;

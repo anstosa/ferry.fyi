@@ -1,7 +1,7 @@
 --extra-index-url https://download.pytorch.org/whl/cpu
-fastapi==0.125.0
-uvicorn[standard]==0.38.0
-pillow==12.3.0
-torch==2.13.0+cpu
-torchvision==0.28.0+cpu
-ultralytics==8.3.238
+fastapi==0.160.0
+uvicorn[standard]==0.54.0
+pillow==13.0.0
+torch==2.14.1+cpu
+torchvision==0.29.1+cpu
+ultralytics==8.4.184

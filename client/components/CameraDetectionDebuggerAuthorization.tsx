@@ -1,6 +1,6 @@
-import { useAuth0 } from "@auth0/auth0-react";
 import { useEffect, useRef } from "react";
 
+import { useRequiredAuth0 } from "~/lib/auth0";
 import {
   CAMERA_DETECTION_DEBUGGER_AUTHORIZATION_REFRESHED_KEY,
   CAMERA_DETECTION_DEBUGGER_TOKEN_KEY,
@@ -54,7 +54,7 @@ export const CameraDetectionDebuggerAuthorization = ({
     isAuthenticated,
     isLoading,
     loginWithRedirect,
-  } = useAuth0();
+  } = useRequiredAuth0();
   const authorizationStarted = useRef(false);
 
   // watch the app authorization route

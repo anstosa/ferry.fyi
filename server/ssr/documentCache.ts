@@ -1,16 +1,9 @@
 export type SsrHostProfile = "ferry.fyi" | "howmanyboats.today";
 export type SsrDocumentKind = "dynamic" | "static";
 export type SsrCacheOutcome =
-  | "cache_bypassed"
-  | "coalesced"
-  | "failed"
-  | "hit"
-  | "miss";
+  "cache_bypassed" | "coalesced" | "failed" | "hit" | "miss";
 export type SsrCacheFailure =
-  | "capacity"
-  | "invalidated"
-  | "load"
-  | "validation";
+  "capacity" | "invalidated" | "load" | "validation";
 
 export type SsrCandidateValidation =
   | Readonly<{ kind: "invalidated" }>

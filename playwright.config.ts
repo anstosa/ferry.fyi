@@ -1,10 +1,13 @@
 import { defineConfig, devices } from "@playwright/test";
 
-const port = 4040;
+// select a collision-free local browser port
+const port = Number(process.env.PLAYWRIGHT_PORT ?? "4040");
 const baseURL = `http://127.0.0.1:${port}`;
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  // isolate dev-browser coverage from built SSR fixtures
+  testMatch: ["app.spec.ts", "camera-detection-debugger.spec.ts"],
   timeout: 30_000,
   use: {
     baseURL,
@@ -16,9 +19,9 @@ export default defineConfig({
       use: devices["Desktop Chrome"],
     },
   ],
-  // Start just the Vite client so browser tests do not wait for server jobs.
+  // start only Vite so browser tests skip server jobs
   webServer: {
-    command: "yarn start:client",
+    command: `bash -lc 'set -a; [ ! -f .envrc ] || . ./.envrc; export BASE_URL="${baseURL}"; exec yarn start:client --host 127.0.0.1 --port ${port} --strictPort'`,
     env: {
       BASE_URL: baseURL,
     },

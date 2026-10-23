@@ -49,11 +49,7 @@ export interface OperationTelemetryEvent {
 }
 
 export type RuntimeLifecycleStage =
-  | "drain-completed"
-  | "drain-forced"
-  | "drain-started"
-  | "ready"
-  | "startup";
+  "drain-completed" | "drain-forced" | "drain-started" | "ready" | "startup";
 
 export interface RuntimeLifecycleTelemetryEvent {
   event: "server_lifecycle";

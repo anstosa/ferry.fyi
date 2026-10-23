@@ -60,8 +60,7 @@ interface ForecastWorkerFailure {
 }
 
 export type ForecastWorkerResponse =
-  | ForecastWorkerFailure
-  | ForecastWorkerSuccess;
+  ForecastWorkerFailure | ForecastWorkerSuccess;
 
 // serialize one private worker crossing
 const serializeForecastCrossing = (

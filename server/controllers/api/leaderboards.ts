@@ -243,7 +243,7 @@ const requirePublicLeaderboards = async (
   next();
 };
 
-leaderboardRouter.get(
+leaderboardRouter.get<{ terminalId: string }>(
   "/terminals/:terminalId",
   requirePublicLeaderboards,
   async (request, response) => {
@@ -261,7 +261,7 @@ leaderboardRouter.get(
   }
 );
 
-leaderboardRouter.get(
+leaderboardRouter.get<{ vesselId: string }>(
   "/vessels/:vesselId",
   requirePublicLeaderboards,
   async (request, response) => {

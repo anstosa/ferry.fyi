@@ -11,13 +11,13 @@ const confirmationError = { error: "Invalid typed confirmation" };
 const maxConfirmationLength = 300;
 const canonicalTargetPattern = /^[a-z][a-z0-9-]*:[A-Za-z0-9|_.:-]+$/;
 
-export interface TypedConfirmationOptions {
+export interface TypedConfirmationOptions<Params = Request["params"]> {
   action: AdminConfirmationAction;
   /**
    * Resolve this from route parameters or a trusted resource lookup, never
    * from the request body. This keeps the phrase tied to the actual mutation.
    */
-  getTarget: (request: Request) => string | undefined;
+  getTarget: (request: Request<Params>) => string | undefined;
 }
 
 const isAction = (input: unknown): input is AdminConfirmationAction =>
@@ -70,8 +70,11 @@ const isConfirmationPayload = (
  * It deliberately neither logs nor stores the request payload or phrase.
  */
 export const requireTypedConfirmation =
-  ({ action, getTarget }: TypedConfirmationOptions): RequestHandler =>
-  (request: Request, response: Response, next: NextFunction): void => {
+  <Params = Request["params"]>({
+    action,
+    getTarget,
+  }: TypedConfirmationOptions<Params>): RequestHandler<Params> =>
+  (request: Request<Params>, response: Response, next: NextFunction): void => {
     const expectedTarget = getTarget(request);
     const expectedPhrase =
       typeof expectedTarget === "string"

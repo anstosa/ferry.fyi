@@ -16,10 +16,7 @@ interface Props {
 }
 
 type ProductLabel =
-  | "Reservation Account"
-  | "Multi-Ride Ticket"
-  | "Single Ride Ticket"
-  | "Ticket";
+  "Reservation Account" | "Multi-Ride Ticket" | "Single Ride Ticket" | "Ticket";
 
 // stub line pairs
 const PRODUCT_LABEL_LINES: Record<ProductLabel, [string, string]> = {

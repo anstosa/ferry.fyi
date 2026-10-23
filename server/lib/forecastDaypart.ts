@@ -1,11 +1,7 @@
 import { DateTime } from "luxon";
 
 export type ForecastDaypart =
-  | "all"
-  | "evening"
-  | "midday"
-  | "morning"
-  | "overnight";
+  "all" | "evening" | "midday" | "morning" | "overnight";
 
 // slot daypart
 export const getForecastDaypart = (time: DateTime): ForecastDaypart => {

@@ -5,6 +5,7 @@ import type { AdminOperationName } from "~/lib/admin/operations";
 import { requireTypedConfirmation } from "./confirmation";
 
 export const adminOperationsRouter = Router();
+type OperationParams = { operation: string };
 
 adminOperationsRouter.get(
   "/",
@@ -15,14 +16,14 @@ adminOperationsRouter.get(
 );
 
 const operationFromRequest = async (
-  request: Request
+  request: Request<OperationParams>
 ): Promise<AdminOperationName | undefined> => {
   const { operation } = request.params;
   const { isAdminOperationName } = await import("~/lib/admin/operations");
   return isAdminOperationName(operation) ? operation : undefined;
 };
 
-adminOperationsRouter.post(
+adminOperationsRouter.post<OperationParams>(
   "/:operation/run",
   async (request, response, next) => {
     const operation = await operationFromRequest(request);
@@ -32,14 +33,14 @@ adminOperationsRouter.post(
     }
     const { isDestructiveAdminOperation } =
       await import("~/lib/admin/operations");
-    return requireTypedConfirmation({
+    return requireTypedConfirmation<OperationParams>({
       action: isDestructiveAdminOperation(operation)
         ? "clear-cache"
         : "run-operation",
       getTarget: () => `operation:${operation}`,
     })(request, response, next);
   },
-  async (request: Request, response: Response) => {
+  async (request: Request<OperationParams>, response: Response) => {
     const operation = await operationFromRequest(request);
     if (!operation) {
       response.status(404).send({ error: "Unknown admin operation" });

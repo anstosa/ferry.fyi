@@ -4,10 +4,7 @@ import type { SupporterEnvironment } from "shared/contracts/supporter";
 import { db } from "~/lib/db";
 
 export type RevenueCatWebhookStatus =
-  | "failed"
-  | "pending"
-  | "processing"
-  | "succeeded";
+  "failed" | "pending" | "processing" | "succeeded";
 
 /** Minimal durable RevenueCat webhook inbox record. */
 export class RevenueCatWebhookEvent extends Model {

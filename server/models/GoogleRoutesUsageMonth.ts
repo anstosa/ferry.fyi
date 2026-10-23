@@ -3,9 +3,7 @@ import { DataTypes, Model } from "sequelize";
 import { db } from "~/lib/db";
 
 export type GoogleRoutesSku =
-  | "autocomplete_requests"
-  | "compute_routes_essentials"
-  | "compute_routes_pro";
+  "autocomplete_requests" | "compute_routes_essentials" | "compute_routes_pro";
 
 /** One atomic application-classified Google Routes billing month. */
 export class GoogleRoutesUsageMonth extends Model {
