@@ -52,6 +52,7 @@ jobs:
       AUTH0_DOMAIN: tenant.example.test
       BASE_URL: https://ferry.fyi
       DATABASE_URL: postgres://test:testing@localhost:5432/ferryfyi
+      OPENAI_CAMERA_STORE_TEST_DATABASE_URL: postgres://test:testing@localhost:5432/ferryfyi
       LEADERBOARD_AUTOMATIC_POLICY_TEST_DATABASE_URL: postgres://test:testing@localhost:5432/ferryfyi
       LEADERBOARD_AUTOMATIC_RECEIPT_TEST_DATABASE_URL: postgres://test:testing@localhost:5432/ferryfyi
       LEADERBOARD_TERMINAL_AUTOMATIC_ORDERING_TEST_DATABASE_URL: postgres://test:testing@localhost:5432/ferryfyi

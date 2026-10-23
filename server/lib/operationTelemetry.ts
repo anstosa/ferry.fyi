@@ -11,6 +11,7 @@ import type {
   AdminOperationState,
 } from "./admin/operations";
 import { normalizeRelease } from "./httpTelemetry";
+import { OPENAI_CAMERA_SLOT_MS } from "./openaiCameraSchedule";
 
 const MINUTE_MS = 60_000;
 const HOUR_MS = 60 * MINUTE_MS;
@@ -20,6 +21,7 @@ export const OPERATION_CADENCE_MS: Record<AdminOperationName, number> = {
   "capacity-observation-retention": DAY_MS,
   "google-routes-usage-export": 5 * MINUTE_MS,
   "camera-line-detection-refresh": MINUTE_MS,
+  "openai-camera-line-detection-refresh": OPENAI_CAMERA_SLOT_MS,
   "clear-wsf-memory-cache": DAY_MS,
   "demand-events-refresh": DAY_MS,
   "fare-catalog-refresh": HOUR_MS,

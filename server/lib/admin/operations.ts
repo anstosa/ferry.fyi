@@ -6,6 +6,7 @@ import { db } from "~/lib/db";
 import { updateMajorSportsEvents } from "~/lib/demandEvents/updateMajorSportsEvents";
 import { updateSchoolBreakEvents } from "~/lib/demandEvents/updateSchoolBreakEvents";
 import { warmDueFareCatalogs, warmTodayFareCatalogs } from "~/lib/fareCache";
+import { OPENAI_CAMERA_SLOT_MS } from "~/lib/openaiCameraSchedule";
 import {
   cleanupProviderActionWindows,
   processPendingSupporterWork,
@@ -29,6 +30,7 @@ export type AdminOperationName =
   | "capacity-observation-retention"
   | "google-routes-usage-export"
   | "camera-line-detection-refresh"
+  | "openai-camera-line-detection-refresh"
   | "clear-wsf-memory-cache"
   | "demand-events-refresh"
   | "fare-catalog-refresh"
@@ -67,6 +69,8 @@ type OperationDefinition = {
   adminAllowed: boolean;
   description: string;
   destructive: boolean;
+  // fixed deadlines never renew through the generic heartbeat
+  fixedLeaseExpiresAt?: (now: Date) => Date;
   run: () => Promise<void> | void;
   trigger: string;
 };
@@ -111,6 +115,28 @@ const operationRegistry: Record<AdminOperationName, OperationDefinition> = {
     run: refreshCameraLineDetectionCache,
     trigger:
       "Every minute at :30 on the web process; also warmed after server startup.",
+  },
+  "openai-camera-line-detection-refresh": {
+    adminAllowed: true,
+    description:
+      "Refreshes isolated owner-only OpenAI camera evidence when dedicated configuration is enabled.",
+    destructive: false,
+    // release crash recovery before the next camera slot
+    fixedLeaseExpiresAt: (now) =>
+      new Date(
+        Math.floor(now.getTime() / OPENAI_CAMERA_SLOT_MS) *
+          OPENAI_CAMERA_SLOT_MS +
+          OPENAI_CAMERA_SLOT_MS -
+          10_000
+      ),
+    // preserve the shared owner-operation lease without importing paid work at startup
+    run: async () => {
+      const { refreshOpenaiCameraPipeline } =
+        await import("~/lib/openaiCameraRuntime");
+      await refreshOpenaiCameraPipeline();
+    },
+    trigger:
+      "Five-minute clock boundaries only; disabled until a dedicated key, model, preprocessor and enable switch are configured.",
   },
   "clear-wsf-memory-cache": {
     adminAllowed: true,
@@ -352,7 +378,7 @@ const acquireOperationLease = (
     }
 
     const token = randomUUID();
-    const leaseExpiresAt = new Date(now.getTime() + ADMIN_OPERATION_LEASE_MS);
+    const leaseExpiresAt = getAdminOperationLeaseExpiresAt(operation, now);
     await row.update(
       {
         endedAt: null,
@@ -367,6 +393,17 @@ const acquireOperationLease = (
     );
     return { state: toState(operation, row), token };
   });
+
+// release camera crash recovery before the next five-minute scheduler tick
+export const getAdminOperationLeaseExpiresAt = (
+  operation: AdminOperationName,
+  now: Date
+): Date => {
+  return (
+    operationRegistry[operation].fixedLeaseExpiresAt?.(now) ??
+    new Date(now.getTime() + ADMIN_OPERATION_LEASE_MS)
+  );
+};
 
 /**
  * Extends a running lease only when this process still owns its token. A zero
@@ -460,7 +497,10 @@ export const runAdminOperation = async (
         renewal = undefined;
       });
   };
-  const heartbeat = setInterval(renewLease, ADMIN_OPERATION_LEASE_RENEWAL_MS);
+  // camera rounds end before their slot lease and must not renew across the boundary
+  const heartbeat = operationRegistry[operation].fixedLeaseExpiresAt
+    ? undefined
+    : setInterval(renewLease, ADMIN_OPERATION_LEASE_RENEWAL_MS);
 
   let outcome: Pick<AdminOperationStatus, "error" | "result" | "status">;
   try {
@@ -470,7 +510,10 @@ export const runAdminOperation = async (
     outcome = { error: "Operation failed", result: null, status: "failed" };
   } finally {
     // Prevent a renewal from racing the token-conditional terminal update.
-    clearInterval(heartbeat);
+    // only ordinary long-running operations own a renewal timer
+    if (heartbeat) {
+      clearInterval(heartbeat);
+    }
     await renewal;
   }
 

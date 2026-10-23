@@ -40,6 +40,13 @@ export GOOGLE_ROUTES_API_KEY="<server-only routes-api-restricted key>"
 export GOOGLE_PLACES_ENABLED="false"
 export GOOGLE_PLACES_API_KEY="<server-only places-api-new-restricted key>"
 
+# isolated camera inference stays disabled until implementation benchmarks select a model
+export OPENAI_CAMERA_ENABLED="false"
+export OPENAI_CAMERA_API_KEY=""
+export OPENAI_CAMERA_MODEL=""
+export OPENAI_CAMERA_IMAGE_DETAIL="auto"
+export OPENAI_CAMERA_PREPROCESSOR_ENDPOINT="http://127.0.0.1:8001/prepare"
+
 # Android
 export ANDROID_SDK_ROOT="/home/ansto/Android/Sdk"
 

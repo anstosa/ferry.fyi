@@ -7,6 +7,7 @@ const operations = vi.hoisted(() => ({
   updateShort: vi.fn().mockResolvedValue(undefined),
   updateUserFacingStatus: vi.fn().mockResolvedValue(undefined),
   refreshCameraLineDetectionCache: vi.fn().mockResolvedValue(undefined),
+  refreshOpenaiCameraPipeline: vi.fn().mockResolvedValue(undefined),
   updateMajorSportsEvents: vi.fn().mockResolvedValue(undefined),
   updateSchoolBreakEvents: vi.fn().mockResolvedValue(undefined),
   warmDueFareCatalogs: vi.fn().mockResolvedValue(undefined),
@@ -31,6 +32,10 @@ const db = vi.hoisted(() => ({
 
 vi.mock("~/lib/cameraLineDetection", () => ({
   refreshCameraLineDetectionCache: operations.refreshCameraLineDetectionCache,
+}));
+// isolate paid camera work while testing the existing owner lease boundary
+vi.mock("~/lib/openaiCameraRuntime", () => ({
+  refreshOpenaiCameraPipeline: operations.refreshOpenaiCameraPipeline,
 }));
 vi.mock("~/lib/demandEvents/updateMajorSportsEvents", () => ({
   updateMajorSportsEvents: operations.updateMajorSportsEvents,
@@ -69,6 +74,7 @@ vi.mock("~/lib/db", () => ({ db }));
 import {
   ADMIN_OPERATION_LEASE_MS,
   ADMIN_OPERATION_LEASE_RENEWAL_MS,
+  getAdminOperationLeaseExpiresAt,
   getAdminOperationStates,
   runAdminOperation,
 } from "../../../server/lib/admin/operations";
@@ -129,6 +135,63 @@ describe("admin operation leases", () => {
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  // crash leases and off-tick invocations cannot suppress the next required scan
+  it("reclaims a crashed camera operation before the next clock boundary", async () => {
+    const operation = "openai-camera-line-detection-refresh";
+    const start = new Date("2026-10-23T10:00:00Z");
+    const expiration = getAdminOperationLeaseExpiresAt(operation, start);
+    expect(expiration.toISOString()).toBe("2026-10-23T10:04:50.000Z");
+    expect(
+      getAdminOperationLeaseExpiresAt(
+        operation,
+        new Date("2026-10-23T10:04:40Z")
+      )
+    ).toEqual(expiration);
+    makeRow(operation, {
+      status: "running",
+      startedAt: start,
+      leaseToken: "crashed-owner",
+      leaseExpiresAt: expiration,
+    });
+    expect(
+      (await runAdminOperation(operation, new Date("2026-10-23T10:04:49Z")))
+        .started
+    ).toBe(false);
+    expect(
+      (await runAdminOperation(operation, new Date("2026-10-23T10:05:00Z")))
+        .started
+    ).toBe(true);
+    expect(operations.refreshOpenaiCameraPipeline).toHaveBeenCalledTimes(1);
+  });
+
+  // fixed camera leases remain reclaimable even when their former worker hangs
+  it("does not heartbeat a pending camera operation beyond its slot", async () => {
+    const operation = "openai-camera-line-detection-refresh";
+    vi.useFakeTimers({ now: new Date("2026-10-23T10:00:00Z") });
+    let completeOperation: (() => void) | undefined;
+    operations.refreshOpenaiCameraPipeline.mockImplementationOnce(
+      // keep the old worker pending past ordinary heartbeat renewal
+      () =>
+        new Promise<void>((resolve) => {
+          completeOperation = resolve;
+        })
+    );
+    const firstRun = runAdminOperation(operation);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(operations.refreshOpenaiCameraPipeline).toHaveBeenCalledOnce();
+    await vi.advanceTimersByTimeAsync(ADMIN_OPERATION_LEASE_MS + 1);
+
+    const replacement = await runAdminOperation(operation);
+    expect(replacement.started).toBe(true);
+    expect(operations.refreshOpenaiCameraPipeline).toHaveBeenCalledTimes(2);
+    // release the old worker without replacing the newer owner's completion
+    if (!completeOperation) {
+      throw new Error("pending camera operation was not started");
+    }
+    completeOperation();
+    expect((await firstRun).operation).toEqual(replacement.operation);
   });
 
   it("renews a pending lease so another process cannot acquire after its initial TTL", async () => {

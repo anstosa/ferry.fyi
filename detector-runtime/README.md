@@ -22,6 +22,31 @@ CPU-only Python HTTP service for image object detection. It keeps raw images in 
 
 Pass `X-Detection-Areas` as JSON with `allowedAreas` and `excludedAreas` polygon collections to crop detection to the bounding box of countable pixels and black out exclusions. Returned boxes remain normalized to the original image.
 
+### Camera image preprocessing
+
+`POST /prepare` prepares a camera frame for the private OpenAI line-estimation pipeline without loading or calling YOLO. Send the raw image bytes with:
+
+- `X-Camera-Id`: the camera identifier.
+- `X-Detection-Areas`: JSON containing at least one `allowedAreas` entry. Each allowed entry requires a unique `id`, a non-empty `label`, and a normalized polygon. `excludedAreas` entries require a polygon and may include an ID/label.
+- Optional `frameSize: { "width": ..., "height": ... }` inside `X-Detection-Areas`. When supplied, it must exactly match the decoded source dimensions; mismatches return HTTP 400 instead of applying stale geometry.
+
+The endpoint masks all non-target and excluded pixels, chooses the minimum-area enclosing rotation at native scale, tightly crops the result, and adds thin colored lane-section outlines plus PNG identity metadata. It does not stretch, perspective-warp, resize, archive, or infer over the image. The response is:
+
+```json
+{
+  "imageBase64": "<base64 PNG without a data-URL prefix>",
+  "fingerprint": "<canonical SHA-256>",
+  "width": 128,
+  "height": 64,
+  "sourceWidth": 335,
+  "sourceHeight": 249,
+  "rotationDegrees": -12.5,
+  "laneIds": ["lane-section-id"]
+}
+```
+
+The fingerprint covers decoded RGB pixels only where the canonical include/exclude mask is countable, along with source dimensions, lane IDs, and normalized area geometry. Labels, annotations, encoded-file differences, and pixels outside the target mask do not affect it. The PNG stores `cameraId`, `laneAnnotations`, and `rotationDegrees` text metadata; `laneAnnotations` maps compact visual markers and outline colors back to the returned lane IDs.
+
 ## Runtime
 
 Default provider is `ultralytics-yolo` with the checksum-verified baked `/app/models/yolov8n.pt` weights on CPU. Swap implementations with `DETECTOR_PROVIDER`; use `noop` for health/smoke-only startup without model loading.

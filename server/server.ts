@@ -22,6 +22,7 @@ import { httpCachePolicy } from "~/lib/httpCachePolicy";
 import { createHttpSecurityMiddleware } from "~/lib/httpSecurity";
 import { createHttpTelemetryMiddleware } from "~/lib/httpTelemetry";
 import logger from "~/lib/logger";
+import { OPENAI_CAMERA_SCHEDULE_MINUTES } from "~/lib/openaiCameraSchedule";
 import {
   reportOperationTelemetry,
   reportRuntimeLifecycleTelemetry,
@@ -396,6 +397,13 @@ export function startScheduler(): void {
       runOperationInBackground("camera-line-detection-refresh")
     )
   );
+  // run isolated opt-in camera inference only at five-minute clock boundaries
+  scheduleJob(
+    { minute: OPENAI_CAMERA_SCHEDULE_MINUTES, second: 0 },
+    safeScheduledTask("OpenAI camera pipeline", () =>
+      runOperationInBackground("openai-camera-line-detection-refresh")
+    )
+  );
   // clear cache at 4am
   scheduleJob(
     { hour: 4, minute: 0, second: 0 },
@@ -413,7 +421,7 @@ export function startScheduler(): void {
   logger.info(
     "WSF refresh jobs scheduled: schedules daily 04:05, daily 04:10, " +
       "demand events daily 04:20, long every 5 minutes, short every minute, " +
-      "camera detection every minute"
+      "camera detection every minute, opt-in OpenAI camera pipeline slot-aligned"
   );
 }
 

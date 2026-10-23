@@ -136,6 +136,7 @@ data-health API.
 | Operation                                            | Effect                                                                    | Normal trigger                                                                   |
 | ---------------------------------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
 | `camera-line-detection-refresh`                      | Refreshes camera line-detection results used by camera views.             | Every minute at `:30`; also deferred after web server startup.                   |
+| `openai-camera-line-detection-refresh`               | Refreshes isolated owner-only OpenAI camera evidence when explicitly configured. | Five-minute clock boundaries; disabled by default.                         |
 | `clear-wsf-memory-cache`                             | Clears the in-memory schedule cache while preserving core route data.     | Daily at 04:00 server time.                                                      |
 | `demand-events-refresh`                              | Refreshes school-break and major-sports forecast inputs.                  | Daily at 04:20; also deferred after web server startup.                          |
 | `fare-catalog-refresh`                               | Warms current ferry-day and due fare catalogs.                            | Hourly at `:15`, daily at 00:05 America/Los_Angeles, and deferred after startup. |
@@ -153,7 +154,12 @@ data-health API.
 
 An operation has one persisted current-status row, not an execution history.
 States are `idle`, `running`, `succeeded`, or `failed`, with sanitized result or
-error text and timing/lease fields. A run holds a 15-minute database lease.
+error text and timing/lease fields. Ordinary runs hold a 15-minute database lease.
+The isolated OpenAI camera operation instead expires ten seconds before its
+next five-minute boundary without renewal, so a crashed run cannot suppress
+the next required scan. Its round deadline leaves thirty seconds for cleanup.
+See [internal OpenAI camera operations](openai-camera-pipeline.md) for dedicated
+configuration, private results and deferred model benchmarking.
 Another request for a non-expired run returns the current state instead of
 starting duplicate work; a stale lease can be recovered. The lease token
 prevents a stale worker from overwriting a newer run's result.

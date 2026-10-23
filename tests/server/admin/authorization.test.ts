@@ -11,9 +11,14 @@ const flags = vi.hoisted(() => ({
   setAutomaticLeaderboardCheckinsEnabled: vi.fn(),
   setLeaderboardsEnabled: vi.fn(),
 }));
+const openaiCameras = vi.hoisted(() => ({
+  getOpenaiCameraStatus: vi.fn(),
+}));
 
 vi.mock("~/lib/auth0Admin", () => auth0);
 vi.mock("~/lib/leaderboardFlags", () => flags);
+// keep owner inspection isolated from source and provider work
+vi.mock("~/lib/openaiCameraRuntime", () => openaiCameras);
 vi.mock("express-oauth2-jwt-bearer", () => ({
   auth:
     () =>
@@ -90,6 +95,10 @@ describe("owner admin authorization", () => {
       .mockReset()
       .mockResolvedValue(false);
     flags.setLeaderboardsEnabled.mockReset().mockResolvedValue(false);
+    openaiCameras.getOpenaiCameraStatus.mockReset().mockResolvedValue({
+      active: false,
+      state: null,
+    });
   });
 
   it("rejects an unauthenticated request before the admin root", async () => {
@@ -119,6 +128,7 @@ describe("owner admin authorization", () => {
     "/api/admin/operations/",
     "/api/admin/notifications/",
     "/api/admin/content/",
+    "/api/admin/openai-cameras/",
   ])("rejects a non-owner before entering %s", async (path) => {
     auth0.getAuth0UserEmail.mockResolvedValueOnce("other@example.com");
 
@@ -173,6 +183,18 @@ describe("owner admin authorization", () => {
     expect(response.headers["cache-control"]).toBe("no-store");
   });
 
+  // expose private camera evidence only after the shared owner boundary
+  it("allows cached camera inspection for the verified owner without caching", async () => {
+    auth0.getAuth0UserEmail.mockResolvedValueOnce("anstosa@gmail.com");
+    const response = await request(createApp())
+      .get("/api/admin/openai-cameras")
+      .set("Authorization", "Bearer owner")
+      .expect(200);
+    expect(response.headers["cache-control"]).toBe("no-store");
+    expect(response.body).toEqual({ active: false, state: null });
+    expect(openaiCameras.getOpenaiCameraStatus).toHaveBeenCalledTimes(1);
+  });
+
   it("authorizes the matching owner token without Management API access", async () => {
     auth0.getAuth0UserInfo.mockResolvedValueOnce({
       email: "ANSTOSA@gmail.com",
@@ -207,8 +229,7 @@ describe("owner admin authorization", () => {
 
   it("coalesces concurrent verification for the same owner subject", async () => {
     let completeVerification:
-      | ((identity: { email: string; subject: string }) => void)
-      | undefined;
+      ((identity: { email: string; subject: string }) => void) | undefined;
     auth0.getAuth0UserInfo.mockReturnValue(
       new Promise((resolve) => {
         completeVerification = resolve;

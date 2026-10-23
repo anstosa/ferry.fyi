@@ -12,6 +12,8 @@ from typing import Protocol
 from fastapi import FastAPI, HTTPException, Request
 from PIL import Image, ImageDraw, UnidentifiedImageError
 
+from app.camera_preprocessing import CameraPreparationError, prepare_camera_request
+
 
 # detection box shape
 @dataclass(frozen=True)
@@ -349,6 +351,23 @@ def create_app(provider: DetectorProvider | None = None) -> FastAPI:
             )
 
         return {"detections": response_detections}
+
+    # camera preprocessing endpoint
+    @app.post("/prepare")
+    async def prepare(request: Request) -> dict:
+        image_bytes = await request.body()
+
+        # preprocessing validation
+        try:
+            prepared = prepare_camera_request(
+                image_bytes,
+                request.headers.get("X-Detection-Areas"),
+                request.headers.get("X-Camera-Id"),
+            )
+        except CameraPreparationError as error:
+            raise HTTPException(status_code=error.status_code, detail=error.detail) from error
+
+        return prepared.as_dict()
 
     return app
 
