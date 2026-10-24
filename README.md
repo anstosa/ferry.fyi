@@ -1,27 +1,25 @@
 # Ferry FYI
 
-## Engineering reliable decisions from uncertain transportation data
+**Engineering reliable decisions from uncertain transportation data**
 
 <img width="1200" height="630" alt="social" src="https://github.com/user-attachments/assets/8005d82a-bd98-4f01-89bf-f3f6f5f2eb81" />
 
-
 **Technical white paper · Ansel Santosa**
 
-[Live application](https://ferry.fyi) · [Forecasting methodology](https://ferry.fyi/forecasting) · [Data sources and API](https://ferry.fyi/data-sources)
+[Live product](https://ferry.fyi) · [Architecture](#2-reference-architecture) · [Verification](#6-verification-and-evidence) · [Development](#8-reproducing-the-system)
 
 ## At a glance
 
-**Product:** A live ferry-planning experience combining schedules, vessel telemetry, capacity reports, and camera evidence across web and mobile.
+| | |
+| --- | --- |
+| **Product** | A live ferry-planning platform combining schedules, vessel positions, vehicle-capacity reports, and camera evidence across web and mobile. |
+| **Engineering challenge** | Reconcile delayed and sometimes contradictory inputs without mistaking forecasts for operational facts. |
+| **Technical scope** | React, TypeScript, Express, PostgreSQL, Python/YOLO, AWS, and native mobile integration. |
+| **Design principle** | Expose provenance, freshness, uncertainty, and failure behavior as explicit product contracts. |
 
-**Engineering problem:** Reconcile delayed or contradictory observations without presenting predictions as operational facts. Freshness, provenance, uncertainty, and failure behavior are explicit parts of the user experience.
+The sections below document design decisions, implementation evidence, and known limitations.
 
-**Technical scope:** React, TypeScript, Express, PostgreSQL, Python/YOLO, AWS infrastructure, and native mobile integration.
-
-**Read more:** [System architecture](#2-reference-architecture) · [Forecasting and computer vision](#3-applied-ai-and-predictive-modeling) · [Operational reliability](#5-trust-failure-isolation-and-operational-control) · [Verification](#6-verification-and-evidence).
-
-The white paper below explains the architectural decisions, evidence, and known limitations behind the product.
-
-### Abstract
+## Abstract
 
 Ferry FYI is an independent web and mobile platform for planning travel on Washington State Ferries. It integrates schedules, vessel telemetry, vehicle inventory, service bulletins, weather, tides, and camera imagery into a decision surface for a deceptively difficult question: **which sailing can I realistically catch?**
 
@@ -225,7 +223,15 @@ Forecast backtests require historical database observations. Environment-depende
 - **iOS:** use macOS, Xcode, and an Apple Developer account. Configure the dedicated iOS Auth0 application and `fyi.ferry://callback`, then use `yarn open:ios` or `yarn ios`. See [iOS identity configuration](docs/ios-account-migration.md) and [TestFlight automation](docs/ios-testflight-automation.md).
 - **Store releases:** use **Publish apps** with the exact intended platform and version, or the corresponding `android-v*` / `ios-v*` tag. The workflows build, synchronize, sign, and upload from a clean checkout. Native changes require this path rather than OTA publication.
 
-## Credits and license
+## Resources
+
+- [Live ferry-planning product](https://ferry.fyi)
+- [Forecasting methodology](https://ferry.fyi/forecasting)
+- [Data sources and API](https://ferry.fyi/data-sources)
+- [Local container development](docs/local-container-development.md)
+- [Project license](LICENSE.txt)
+
+### Credits and license
 
 Created by **Ansel Santosa**. Ferry FYI is independent of Washington State Ferries and WSDOT.
 
