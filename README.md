@@ -1,116 +1,219 @@
-# ferry.fyi
+# Ferry FYI
 
-A better tracker for the Washington State Ferry System
+## Engineering reliable decisions from uncertain transportation data
 
-An alternative to the WSDOT mobile app. With Ferry FYI, you get:
+**Technical white paper · Ansel Santosa**
 
-✨ Polished, modern UI with dark mode support
+[Live application](https://ferry.fyi) · [Forecasting methodology](https://ferry.fyi/forecasting) · [Data sources and API](https://ferry.fyi/data-sources)
 
-🔮 Forecasted sailing fullness
+### Abstract
 
-⌚ More accurate delay reporting
+Ferry FYI is an independent web and mobile platform for planning travel on Washington State Ferries. It integrates schedules, vessel telemetry, vehicle inventory, service bulletins, weather, tides, and camera imagery into a decision surface for a deceptively difficult question: **which sailing can I realistically catch?**
 
-📢 Filtered WSF bulletins
+The engineering challenge is not displaying a schedule. It is reconciling incomplete, delayed, and sometimes contradictory evidence without presenting an estimate as an operational fact. Ferry FYI addresses that challenge through interpretable forecasting, computer vision, explicit uncertainty contracts, universal React rendering, and policy-controlled backend services.
 
-📷 Traffic cameras: ordered, tagged, and enhanced
+The repository spans product UX, TypeScript APIs, PostgreSQL data modeling, Python inference, Android and iOS integration, infrastructure as code, and release engineering. Its central architectural principle is that **a prediction is useful only when its provenance, freshness, failure behavior, and operational cost are understood**.
 
-⛴️ Supports all WSF routes
+## 1. The decision problem
 
-🗺️ Shortcuts to VesselWatch
+A published departure time is only one input to a ferry trip. A traveler also needs to reason about a vessel's actual progress, remaining vehicle space, the queue ahead, and the time required to reach the terminal. Those inputs arrive from different systems and describe different things.
 
-🎫 Link to reserve sailings
+| Evidence                                    | What it supports                            | What it does not establish                      |
+| ------------------------------------------- | ------------------------------------------- | ----------------------------------------------- |
+| Published schedules and bulletins           | Planned service and reported disruptions    | Actual departure or boarding availability       |
+| Vessel positions and operational reports    | Progress and observed timing                | A guaranteed future departure                   |
+| Vehicle-capacity reports                    | Reported inventory for a particular sailing | A measured queue or a boarding guarantee        |
+| Camera images and occupancy classifications | Spatial conditions in a visible area        | Exact wait time, queue length, or vehicle count |
+| Historical, weather, and calendar signals   | Forecasts and planning context              | Confirmed present conditions                    |
 
-## Prerequisites
+These distinctions shape both the API and the interface. Unknown is not zero, stale is not current, and an unavailable report is not an all-clear. Route direction, service date, source time, and observed-versus-predicted state remain part of the product contract.
 
-- Node.js 24.15 or later on the Node 24 release line and Yarn classic
-- [Docker](https://docs.docker.com/get-docker/)
-- [Git LFS](https://git-lfs.com/)
+The user-facing result combines route schedules, capacity forecasts, delay reporting, cameras, fares, tickets, account alerts, and native conveniences rather than exposing a collection of disconnected data feeds.
 
-See [Dependency maintenance](docs/dependency-maintenance.md) for supported release
-lines, transitive override rationale, and retirement conditions.
+## 2. Reference architecture
 
-## Setting up dev environment
+The core application is a modular TypeScript system with a separately deployable Python vision runtime. Shared domain contracts connect the client, server, server-rendered documents, and native shells; inference is isolated where its dependencies and compute characteristics differ.
 
-1. Install [postgres](https://www.postgresql.org/)
-   1. Create a database named `ferryfyi` (`CREATE DATABASE ferryfyi;`)
-2. `git clone git@github.com:anstosa/ferry.fyi.git`
-3. `cd ferry.fyi`
-4. `git lfs install && git lfs pull`
-5. `yarn`
-6. `cp .envrc.sample .envrc` and fill out `.envrc` file (use [`direnv`](https://direnv.net/) or similar to populate variables)
-7. `yarn db:migrate` to initialize database
+```text
+React web / PWA                 Capacitor Android / iOS
+        \                         /
+         Shared TypeScript contracts
+                      |
+      Express API + server-rendered React
+                      |
+       Domain services and policy boundaries
+          /           |             \
+ PostgreSQL     Ingestion/jobs     Inference adapters
+                    |                |          |
+             WSF / weather /     Private     Opt-in owner-only
+             tides / routing     Python YOLO OpenAI evaluation
+```
 
-## Local container stack
+The main application owns data ingestion, forecasting, account workflows, and scheduling. PostgreSQL stores operational history and durable coordination state. The detector exposes a narrow image-inference boundary rather than pulling Python model dependencies into the web process.
 
-For a prod-like local Docker Compose setup with the app, detector runtime, Postgres, and automatic database migrations, see [Local container development](docs/local-container-development.md).
+This preserves a relatively small deployment surface while allowing the detector to be built, sized, and released independently. The production infrastructure definition pairs an ARM64 web service with an x86 CPU detector reachable through private service discovery and security-group restrictions.
 
-Run the full containerized development stack with `yarn dev:up`.
+**Implementation:** [server composition](server/server.ts), [shared contracts](shared/contracts), [detector runtime](detector-runtime/README.md), [AWS topology](infra/aws/terraform/README.md).
 
-## Production hosting
+## 3. Applied AI and predictive modeling
 
-Ferry FYI runs on AWS ECS Fargate with PostgreSQL on Amazon RDS. Production
-images are built and deployed by `.github/workflows/deploy-aws.yml`; runtime
-configuration is stored in AWS Secrets Manager and exposed through the ECS task
-definition.
+### 3.1 Interpretable capacity forecasting
 
-## Running locally
+Capacity estimates blend live vehicle inventory with up to two years of comparable historical sailings. Historical observations are weighted by temporal and calendar context and normalized for vessel capacity. Weather, events, and recent directional demand shifts provide additional context without replacing authoritative operational observations.
 
-`yarn` installs the repository pre-commit hook automatically. It type-checks
-app changes, synchronizes Capacitor artifacts after native dependency or
-configuration changes, and compiles Android resources for native edits.
+Recent-demand adjustments use minimum sample requirements, shrinkage, bounded influence, and asymmetric warning costs. They support `off`, `shadow`, and `on` modes, so a candidate can be evaluated without changing selected user-facing forecasts.
 
-1. Run `yarn client`
-2. Run `yarn server` (in another terminal)
-3. Go to http://localhost:4040
+Evaluation is designed around causality. Paired walk-forward backtests restrict historical inputs to what was available at an explicit `asOf` time and compare baseline and candidate forecasts against identical targets and input fingerprints. Metrics include absolute error, tail error, Brier score, full-sailing recall, precision, false-full rates, and coherence violations. A model must be evaluated as both an estimator and a decision aid.
 
-## Android testing
+**Implementation:** [forecast model](server/lib/forecast.ts), [demand-shift controls](server/lib/forecastDemandShock.ts), [capacity methodology and backtesting](docs/capacity-forecasting.md).
 
-From WSL, `yarn start:android` uses the Windows Android SDK and emulator when it
-is installed, avoiding WSL graphics issues. It waits for Android itself to finish
-booting, builds the APK in WSL, then installs and opens it through Windows ADB.
-It uses the first configured AVD by default; set `ANDROID_AVD_NAME` to select a
-specific emulator. Without a Windows SDK, it falls back to the Linux emulator.
+### 3.2 Combining travel uncertainty with inventory depletion
 
-Physical device
+The recommendation path extends capacity forecasting into a joint decision problem: will vehicle space remain when the traveler arrives?
 
-1. Plug device into Windows via compatible cable
-2. Run `adb tcpip 5555` on Windows
-3. Run `adb connect <phone ip>:5555` in WSL
-4. Run `adb reverse tcp:4040 tcp:4040` in WSL
-5. Run `npm run start:android` to load app onto phone
+Drive-up fill estimates combine a historical departure prior with robust live depletion slopes and freshness guards. The sailing-chance model integrates travel-time uncertainty against a depletion-rate distribution rather than multiplying marginal probabilities as though they were independent. Versioned response contracts carry the resulting assessment and uncertainty across the API/UI boundary.
 
-WSA
+These distributions are documented planning assumptions, not empirically established boarding-success rates. Live routing-provider activation and production launch checks remain separate from local implementation validation.
 
-1. Install WSA
-2. Enable Developer Mode in WSA Settings
-3. Open any WSA app
-4. Run `adb connect <WSA ip from settings page>`
-5. Run `npm run start:android` to load app into WSA or run app from Android Studio
+**Implementation:** [fill timing](server/lib/fillTiming.ts), [joint chance model](server/lib/sailingChance.ts), [recommendation contracts](shared/contracts/sailingRecommendations.ts), [validation and remaining launch gates](docs/sailing-recommendation-validation.md).
 
-## Android Release
+### 3.3 Computer vision with constrained interpretation
 
-Use the **Publish apps** GitHub Action with platform `android` and the release
-version, or push an `android-v*` tag. It starts from a clean checkout, installs
-dependencies, builds the production web bundle, runs `cap sync android`, signs
-the App Bundle, and uploads it to Play internal testing. No local build, sync,
-or version-code command is required before committing.
+The public camera-detection path uses a CPU-only YOLO runtime and reviewed polygon geometry to classify spatial occupancy. The application masks relevant areas, bounds inference time, coalesces concurrent work, and caches results. It exposes coarse occupancy states rather than translating a still image into an unsupported exact queue length or wait estimate.
 
-## iOS development and release
+A separate **owner-only, disabled-by-default multimodal evaluation pipeline** explores semantic lane occupancy through OpenAI. It does not replace the public YOLO path, and no model is selected by default. Its engineering work centers on the boundaries around inference:
 
-The iOS target is generated from the same Capacitor app as Android and requires macOS, Xcode, and an Apple Developer account for device builds and App Store distribution.
+- **Constrained inputs:** reviewed lane geometry, native-scale crops, masks, and section annotations make the visual task explicit.
+- **Validated outputs:** strict JSON Schema is followed by independent checks of identifiers, completeness, and semantic consistency; malformed, refused, or invisible results remain unknown.
+- **Cost-aware scheduling:** service-window gating, grouped initial requests, bounded serial follow-ups, progressive backoff, and content fingerprints avoid unnecessary inference.
+- **Durable concurrency controls:** PostgreSQL round claims and fenced writes prevent stale workers and restart replay from corrupting current evidence.
+- **Privacy-conscious retention:** requests use `store: false`; the pipeline persists derived results and fingerprints rather than raw frames or credentials.
 
-1. Install dependencies with `yarn` on a Mac.
-2. Set `AUTH0_IOS_CLIENT_ID` to the dedicated Auth0 iOS application, set `AUTH0_CLIENT_REDIRECT` to `fyi.ferry://callback`, and add that URL to the Auth0 application's allowed callback and logout URLs. Keep only the Auth0 database connection enabled for the iOS application; the web application retains Google for the `/ios` account-migration flow.
-3. Run `yarn open:ios`, select the **App** target in Xcode, and choose the Apple Developer signing team. Keep the bundle identifier as `fyi.ferry` unless the registered App ID requires a different one.
-4. Run `yarn ios` to build, sync, and launch on a selected simulator or connected iPhone. The iPhone must grant camera and location access for ticket scanning and nearby-terminal features.
-5. For a release, use **Publish apps** with platform `ios` and the release version, or push an `ios-v*` tag. The workflow builds, synchronizes, signs, and uploads the TestFlight archive from a clean checkout.
+Model, prompt, and geometry changes invalidate relevant cached classifications. Source-image age, check time, and inference time remain distinct. Timed-out provider calls may still incur cost; replay prevention is not an exactly-once billing guarantee.
 
-`yarn build:ios` builds the production web bundle with an iOS-specific cache name and synchronizes it into the Xcode project. Run it again after changing web code or Capacitor plugins. The generated project targets iOS 15 and later.
+The vision benchmark protocol defines human-labeled spatial-occupancy evaluation and acceptance thresholds. Label coverage remains incomplete; neither benchmark acceptance nor multimodal accuracy is claimed here. Real token usage and model selection also require a separate benchmark phase.
 
-For automated TestFlight uploads, configure the GitHub Actions credentials in [iOS TestFlight release automation](docs/ios-testflight-automation.md), then push an `ios-v*` tag or run **Publish apps** manually.
+**Implementation:** [public detection adapter](server/lib/cameraLineDetection.ts), [multimodal pipeline and controls](docs/openai-camera-pipeline.md), [vision benchmark protocol](benchmarks/camera-detection/README.md).
 
-## Credits
+## 4. Full-stack product engineering
 
-Thank you to [![BrowserStack](https://user-images.githubusercontent.com/568242/60857158-6ad96100-a1be-11e9-9cdf-aa5872f2f6c5.png)](http://browserstack.com/) for providing free cross-browser testing.
+### Universal rendering without importing the browser into the server
 
-Weather data and forecasts are provided by [Open-Meteo](https://open-meteo.com/) under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Ferry FYI uses and summarizes this data for capacity forecasts.
+Server rendering uses an anonymous, versioned data projection and a narrow compiled React renderer. Authentication, browser storage, native bridges, and other client-only effects are separated from that rendering graph.
+
+The client hydrates only when the server snapshot, rendering mode, and document integrity agree; incompatible seed data falls back to a clean client render. A shared route manifest coordinates universal and browser-only routes. This makes first paint, hydration, authentication, and live refresh explicit lifecycle transitions rather than incidental application side effects.
+
+**Implementation:** [universal composition](client/AppRoot.tsx), [server entry](client/entry-server.tsx), [client runtime](client/clientRuntime.tsx), [SSR contract](shared/contracts/ssr.ts).
+
+### Contracts that carry policy, not just types
+
+The canonical public-operation matrix records authentication, cache class, rate class, freshness, and discovery policy alongside endpoint identity. An OpenAPI generator and drift check turn those decisions into inspectable interface documentation.
+
+The accompanying `llms.txt` gives automated consumers task-oriented guidance, including the distinction between observed and predictive values and the limits on authenticated actions. AI integration is therefore addressed on both sides: model-backed features inside the system and bounded, machine-readable interfaces outside it.
+
+**Implementation:** [operation matrix](shared/contracts/publicApiOperations.ts), [OpenAPI generator](server/scripts/generatePublicApiContract.ts), [AI-consumer guide](client/static/llms.txt).
+
+### Shared experience, explicit native boundaries
+
+The React product runs on the web and in Capacitor Android and iOS shells, with native integrations for capabilities such as ticket scanning, location, notifications, sharing, and app updates. Signed native releases remain distinct from over-the-air web-asset updates: an OTA bundle cannot change plugins, permissions, or native code.
+
+Commercial workflows follow the same boundary discipline. Supporter subscriptions use a shared RevenueCat entitlement across storefronts, server-generated pseudonymous customer identifiers, authenticated and signed webhook intake, event deduplication, and server-side entitlement reconciliation. Checkout channels default closed until configured and validated.
+
+**Implementation:** [Capacitor configuration](capacitor.config.ts), [OTA operations](docs/ota-operations.md), [subscription architecture](docs/supporter-subscriptions.md).
+
+## 5. Trust, failure isolation, and operational control
+
+### Background work is coordinated beyond a single process
+
+Scheduled refreshes and owner-triggered operations share named database-backed leases, overlap prevention, stale-run recovery, and lease-token fencing. This addresses deploy/startup/manual-operation collisions without assuming an in-memory scheduler lock is sufficient.
+
+The repository-defined production topology still has one web scheduler. The coordination mechanisms are safeguards, not a claim that horizontal scheduling or active-active operation has been validated.
+
+### Security and privacy are enforced at decision boundaries
+
+- **Administration:** JWT authentication is followed by server-side owner verification; sensitive mutations require confirmations tied to the intended action and resource.
+- **Notifications:** consent is evaluated at send time, and a shared global pause fails closed if policy cannot be read. Provider acceptance is not reported as confirmed delivery.
+- **HTTP APIs:** endpoint-specific origin, caching, and abuse policies separate public reads, paid-provider work, mutations, and sensitive lookups.
+- **Browser caching:** private and live API data stay out of service-worker caches; the offline shell is not represented as current operational data.
+- **Observability:** typed telemetry excludes raw URLs, credentials, account identifiers, ticket identifiers, precise locations, and request/response bodies.
+
+**Implementation:** [owner operations](docs/admin-operations.md), [API policy](server/lib/httpApiPolicy.ts), [notification policy](server/lib/admin/notificationPolicy.ts), [service worker](client/service-worker.ts), [reliability runbook](docs/reliability-operations.md).
+
+### Deployment and recovery account for schema changes
+
+Terraform defines ECS Fargate, PostgreSQL on RDS, Secrets Manager, private detector connectivity, and GitHub OIDC deployment permissions. The default footprint deliberately favors operational simplicity and cost control: a singleton web service, Single-AZ RDS, and no NAT gateway. It is not presented as a highly available topology.
+
+The deployment workflow publishes immutable images, captures previous task/image state and the migration range, runs migrations as a one-off task, and performs semantic post-deploy smoke checks. Automatic rollback is disabled because an earlier application revision may not be compatible with the migrated database.
+
+OTA delivery has its own supply-chain controls: private S3 storage, CloudFront access, content hashes, immutable bundle identities, and explicit channel pointers. Recovery follows the affected boundary rather than treating every failure as an interchangeable redeploy.
+
+**Implementation:** [infrastructure and operating constraints](infra/aws/terraform/README.md), [AWS deployment workflow](.github/workflows/deploy-aws.yml), [OTA operations](docs/ota-operations.md).
+
+## 6. Verification and evidence
+
+The repository separates deterministic correctness gates from measurements that require representative runtime or field evidence.
+
+| Layer                   | Verification approach                                                                                               |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Domain and API behavior | Vitest, shared-contract tests, server integration tests, and database-backed concurrency tests                      |
+| Forecast changes        | Causal paired backtests, probabilistic metrics, regression assertions, and shadow-mode comparisons                  |
+| Inference orchestration | Mocked provider failures, synthetic image geometry, schema validation, stale-frame cases, and durable fencing tests |
+| Web delivery            | Production builds, SSR/PWA artifact smokes, Playwright flows, and focused Axe accessibility checks                  |
+| Native delivery         | Android build/emulator checks and iOS simulator/archive verification in CI                                          |
+| Performance             | Enforced aggregate CSS budget and a separate baseline/candidate browser benchmark with privacy-checked receipts     |
+| Operations              | Semantic public-contract smoke checks and privacy-safe lifecycle/operation telemetry                                |
+
+The browser harness records scenario, device, cache, and source-revision context so comparisons are reproducible. Test results, synthetic observations, and field outcomes remain different evidence classes: automated accessibility checks are not WCAG conformance, model priors are not measured boarding success, and proposed reliability objectives are not attained SLOs.
+
+**Implementation:** [blocking checks](.github/workflows/check.yml), [scheduled/manual runtime quality](.github/workflows/runtime-quality.yml), [browser benchmark](scripts/benchmark-browser-runtime.mjs), [evidence and operator requirements](docs/reliability-operations.md).
+
+## 7. Engineering conclusions
+
+Ferry FYI demonstrates an end-to-end approach to AI-enabled product engineering: identify a real decision problem, select interpretable models where they fit, isolate learned inference where it adds value, and carry uncertainty and authorization through every interface.
+
+The most consequential choices are not framework selections. They are the boundaries: observation versus prediction, public versus private, browser versus server, native release versus OTA, retryable work versus potentially billable inference, and repository validation versus production proof. Making those distinctions explicit keeps a broad product understandable, testable, and operable without requiring a microservice for every capability.
+
+## 8. Reproducing the system
+
+### Local development
+
+Prerequisites: Node.js 24.15 or later on the Node 24 release line, Yarn classic, Docker, and Git LFS. See [dependency maintenance](docs/dependency-maintenance.md) for supported release lines and override rationale.
+
+```sh
+git clone git@github.com:anstosa/ferry.fyi.git
+cd ferry.fyi
+git lfs install && git lfs pull
+yarn
+yarn dev:up
+```
+
+Open <http://localhost:4040>. The Compose stack includes the app, detector, PostgreSQL, health checks, and automatic migrations. It boots without a WSDOT key, but live ferry refreshes require `WSDOT_API_KEY`. Optional provider, identity, and native capabilities require their own configuration; startup is not proof that every integration is active.
+
+For container configuration, copy `local-container.env.example` to an untracked `.env`; see [local container development](docs/local-container-development.md). For host-based development, configure `.envrc` from `.envrc.sample`, run `yarn db:start` and `yarn db:migrate`, then `yarn start`. Keep credentials and signing material outside Git.
+
+### Validation commands
+
+```sh
+yarn type-check
+yarn lint
+yarn test
+SENTRY_AUTH_TOKEN= yarn build
+yarn test:openapi
+yarn forecast:backtest --assert
+```
+
+Forecast backtests require historical database observations. Environment-dependent tests and native builds have additional prerequisites documented in their respective runbooks. The build command clears the Sentry upload token to avoid publishing source maps during local validation.
+
+### Native development and release
+
+- **Android:** `yarn start:android` supports local device/emulator testing, including the Windows SDK path from WSL. See [Android release automation](docs/android-release-automation.md).
+- **iOS:** use macOS, Xcode, and an Apple Developer account. Configure the dedicated iOS Auth0 application and `fyi.ferry://callback`, then use `yarn open:ios` or `yarn ios`. See [iOS identity configuration](docs/ios-account-migration.md) and [TestFlight automation](docs/ios-testflight-automation.md).
+- **Store releases:** use **Publish apps** with the exact intended platform and version, or the corresponding `android-v*` / `ios-v*` tag. The workflows build, synchronize, sign, and upload from a clean checkout. Native changes require this path rather than OTA publication.
+
+## Credits and license
+
+Created by **Ansel Santosa**. Ferry FYI is independent of Washington State Ferries and WSDOT.
+
+Weather data and forecasts are provided by [Open-Meteo](https://open-meteo.com/) under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Thank you to [BrowserStack](https://www.browserstack.com/) for supporting cross-browser testing.
+
+See [LICENSE.txt](LICENSE.txt) for project licensing. Provider data, model weights, and third-party components remain subject to their respective terms and licenses.
