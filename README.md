@@ -2,6 +2,9 @@
 
 ## Engineering reliable decisions from uncertain transportation data
 
+<img width="1200" height="630" alt="social" src="https://github.com/user-attachments/assets/8005d82a-bd98-4f01-89bf-f3f6f5f2eb81" />
+
+
 **Technical white paper · Ansel Santosa**
 
 [Live application](https://ferry.fyi) · [Forecasting methodology](https://ferry.fyi/forecasting) · [Data sources and API](https://ferry.fyi/data-sources)
