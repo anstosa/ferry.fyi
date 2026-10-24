@@ -9,6 +9,18 @@
 
 [Live application](https://ferry.fyi) · [Forecasting methodology](https://ferry.fyi/forecasting) · [Data sources and API](https://ferry.fyi/data-sources)
 
+## At a glance
+
+**Product:** A live ferry-planning experience combining schedules, vessel telemetry, capacity reports, and camera evidence across web and mobile.
+
+**Engineering problem:** Reconcile delayed or contradictory observations without presenting predictions as operational facts. Freshness, provenance, uncertainty, and failure behavior are explicit parts of the user experience.
+
+**Technical scope:** React, TypeScript, Express, PostgreSQL, Python/YOLO, AWS infrastructure, and native mobile integration.
+
+**Read more:** [System architecture](#2-reference-architecture) · [Forecasting and computer vision](#3-applied-ai-and-predictive-modeling) · [Operational reliability](#5-trust-failure-isolation-and-operational-control) · [Verification](#6-verification-and-evidence).
+
+The white paper below explains the architectural decisions, evidence, and known limitations behind the product.
+
 ### Abstract
 
 Ferry FYI is an independent web and mobile platform for planning travel on Washington State Ferries. It integrates schedules, vessel telemetry, vehicle inventory, service bulletins, weather, tides, and camera imagery into a decision surface for a deceptively difficult question: **which sailing can I realistically catch?**
